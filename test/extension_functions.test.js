@@ -16,12 +16,12 @@ if( process.env.NODE_SQLITE3_JSON1 === 'no' ){
             db = new sqlite3.Database(':memory:', done);
         });
 
-        it('should select sqrt(9) as 3', function(done) {
-            db.all('SELECT sqrt(9) AS val', function(err, rows) {
+        it('should select atn2(0, 1) as 0', function(done) {
+            db.all('SELECT ATN2(0, 1) AS val', function(err, rows) {
                 if (err) {
                     throw err;
                 }
-                assert.equal(rows[0].val, 3);
+                assert.equal(rows[0].val, 0);
                 done();
             });
         });

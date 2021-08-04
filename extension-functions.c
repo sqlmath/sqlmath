@@ -9,13 +9,104 @@ shRawLibFetch
         }
     ]
 }
+-    /\\* math.h *\\/
+-    { "acos",               1, 0, SQLITE_UTF8,    0, acosFunc  },
+-    { "asin",               1, 0, SQLITE_UTF8,    0, asinFunc  },
+-    { "atan",               1, 0, SQLITE_UTF8,    0, atanFunc  },
+-    { "atn2",               2, 0, SQLITE_UTF8,    0, atn2Func  },
+-    /\\* XXX alias *\\/
+-    { "atan2",              2, 0, SQLITE_UTF8,    0, atn2Func  },
+-    { "acosh",              1, 0, SQLITE_UTF8,    0, acoshFunc  },
+-    { "asinh",              1, 0, SQLITE_UTF8,    0, asinhFunc  },
+-    { "atanh",              1, 0, SQLITE_UTF8,    0, atanhFunc  },
+-
+-    { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
+-    { "degrees",            1, 0, SQLITE_UTF8,    0, rad2degFunc  },
+-    { "radians",            1, 0, SQLITE_UTF8,    0, deg2radFunc  },
+-
+-    { "cos",                1, 0, SQLITE_UTF8,    0, cosFunc  },
+-    { "sin",                1, 0, SQLITE_UTF8,    0, sinFunc },
+-    { "tan",                1, 0, SQLITE_UTF8,    0, tanFunc },
+-    { "cot",                1, 0, SQLITE_UTF8,    0, cotFunc },
+-    { "cosh",               1, 0, SQLITE_UTF8,    0, coshFunc  },
+-    { "sinh",               1, 0, SQLITE_UTF8,    0, sinhFunc },
+-    { "tanh",               1, 0, SQLITE_UTF8,    0, tanhFunc },
+-    { "coth",               1, 0, SQLITE_UTF8,    0, cothFunc },
+-
+-    { "exp",                1, 0, SQLITE_UTF8,    0, expFunc  },
+-    { "log",                1, 0, SQLITE_UTF8,    0, logFunc  },
+-    { "log10",              1, 0, SQLITE_UTF8,    0, log10Func  },
+-    { "power",              2, 0, SQLITE_UTF8,    0, powerFunc  },
+-    { "sign",               1, 0, SQLITE_UTF8,    0, signFunc },
+-    { "sqrt",               1, 0, SQLITE_UTF8,    0, sqrtFunc },
+-    { "square",             1, 0, SQLITE_UTF8,    0, squareFunc },
+-
+-    { "ceil",               1, 0, SQLITE_UTF8,    0, ceilFunc },
+-    { "floor",              1, 0, SQLITE_UTF8,    0, floorFunc },
+-
+-    { "pi",                 0, 0, SQLITE_UTF8,    1, piFunc },
++// hack-sqlite3
++    /\\* math.h *\\/
++    { "atn2",               2, 0, SQLITE_UTF8,    0, atn2Func  },
++    { "cot",                1, 0, SQLITE_UTF8,    0, cotFunc },
++    { "coth",               1, 0, SQLITE_UTF8,    0, cothFunc },
++    { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
++    { "square",             1, 0, SQLITE_UTF8,    0, squareFunc },
+
+-    zl = sqlite3Utf8CharLen(zi, -1);
++// hack-sqlite3
++    zl = sqlite3Utf8CharLen2(zi, -1);
+
+-    zl = sqlite3Utf8CharLen(zi, -1);
++// hack-sqlite3
++    zl = sqlite3Utf8CharLen2(zi, -1);
+
+-    zl = sqlite3Utf8CharLen(zi, -1);
++// hack-sqlite3
++    zl = sqlite3Utf8CharLen2(zi, -1);
+
+-  READ_UTF8(z, c);
++// hack-sqlite3
++  READ_UTF8_2(z, c);
+
+-#define READ_UTF8(zIn, c) { \
++// hack-sqlite3
++#define READ_UTF8_2(zIn, c) { \
+
+-#include "sqlite3ext.h"
++// hack-sqlite3
++// #include "sqlite3ext.h"
+
+-GEN_MATH_WRAP_DOUBLE_1(logFunc, log)
++// hack-sqlite3
++GEN_MATH_WRAP_DOUBLE_1(logFunc2, log)
+
+-static int sqlite3Utf8CharLen(const char *z, int nByte){
++// hack-sqlite3
++static int sqlite3Utf8CharLen2(const char *z, int nByte){
+
+-static void piFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
++// hack-sqlite3
++static void piFunc2(sqlite3_context *context, int argc, sqlite3_value **argv){
+
+-static void signFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
++// hack-sqlite3
++static void signFunc2(sqlite3_context *context, int argc, sqlite3_value **argv){
+
+-typedef uint8_t         u8;
+-typedef uint16_t        u16;
+-typedef int64_t         i64;
++// hack-sqlite3
++// typedef uint8_t         u8;
++// typedef uint16_t        u16;
++// typedef int64_t         i64;
 */
 /*jslint-enable*/
 
 
 /*
 repo https://github.com/sqlite/sqlite/tree/master
-committed 2021-07-23T18:43:58Z
+committed 2021-07-31T20:30:41Z
 */
 
 
@@ -145,7 +236,8 @@ Original code 2006 June 05 by relicoder.
 #define HAVE_TRIM 1		/* LMH 2007-03-25 if sqlite has trim functions */
 
 #ifdef COMPILE_SQLITE_EXTENSIONS_AS_LOADABLE_MODULE
-#include "sqlite3ext.h"
+// hack-sqlite3
+// #include "sqlite3ext.h"
 SQLITE_EXTENSION_INIT1
 #else
 #include "sqlite3.h"
@@ -221,9 +313,10 @@ int double_cmp(const void *a, const void *b);
 
 #endif /* _MAP_H_ */
 
-typedef uint8_t         u8;
-typedef uint16_t        u16;
-typedef int64_t         i64;
+// hack-sqlite3
+// typedef uint8_t         u8;
+// typedef uint16_t        u16;
+// typedef int64_t         i64;
 
 static char *sqlite3StrDup( const char *z ) {
     char *res = sqlite3_malloc( strlen(z)+1 );
@@ -296,7 +389,8 @@ static const int utf_mask[] = {
 };
 
 /* LMH salvaged from sqlite3 3.3.13 source code src/utf.c */
-#define READ_UTF8(zIn, c) { \
+// hack-sqlite3
+#define READ_UTF8_2(zIn, c) { \
   int xtra;                                            \
   c = *(zIn)++;                                        \
   xtra = xtra_utf8_bytes[c];                           \
@@ -314,7 +408,8 @@ static const int utf_mask[] = {
 
 static int sqlite3ReadUtf8(const unsigned char *z){
   int c;
-  READ_UTF8(z, c);
+// hack-sqlite3
+  READ_UTF8_2(z, c);
   return c;
 }
 
@@ -329,7 +424,8 @@ static int sqlite3ReadUtf8(const unsigned char *z){
 ** number of unicode characters in the first nByte of pZ (or up to
 ** the first 0x00, whichever comes first).
 */
-static int sqlite3Utf8CharLen(const char *z, int nByte){
+// hack-sqlite3
+static int sqlite3Utf8CharLen2(const char *z, int nByte){
   int r = 0;
   const char *zTerm;
   if( nByte>=0 ){
@@ -493,7 +589,8 @@ static double log10(double x){
 }
 #endif
 
-GEN_MATH_WRAP_DOUBLE_1(logFunc, log)
+// hack-sqlite3
+GEN_MATH_WRAP_DOUBLE_1(logFunc2, log)
 GEN_MATH_WRAP_DOUBLE_1(log10Func, log10)
 GEN_MATH_WRAP_DOUBLE_1(expFunc, exp)
 
@@ -523,7 +620,8 @@ GEN_MATH_WRAP_DOUBLE_1(rad2degFunc, rad2deg)
 GEN_MATH_WRAP_DOUBLE_1(deg2radFunc, deg2rad)
 
 /* constant function that returns the value of PI=3.1415... */
-static void piFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
+// hack-sqlite3
+static void piFunc2(sqlite3_context *context, int argc, sqlite3_value **argv){
   sqlite3_result_double(context, M_PI);
 }
 
@@ -608,7 +706,8 @@ static void atn2Func(sqlite3_context *context, int argc, sqlite3_value **argv){
 ** positive, 0 or negative.
 ** When the argument is NULL the result is also NULL (completly conventional)
 */
-static void signFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
+// hack-sqlite3
+static void signFunc2(sqlite3_context *context, int argc, sqlite3_value **argv){
   double rVal=0.0;
   i64 iVal=0;
   assert( argc==1 );
@@ -804,7 +903,8 @@ static void padlFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
       sqlite3_result_error(context, "domain error", -1);
       return;
     }
-    zl = sqlite3Utf8CharLen(zi, -1);
+// hack-sqlite3
+    zl = sqlite3Utf8CharLen2(zi, -1);
     if( zl>=ilen ){
       /* string is longer than the requested pad length, return the same string (dup it) */
       zo = sqlite3StrDup(zi);
@@ -858,7 +958,8 @@ static void padrFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
       sqlite3_result_error(context, "domain error", -1);
       return;
     }
-    zl = sqlite3Utf8CharLen(zi, -1);
+// hack-sqlite3
+    zl = sqlite3Utf8CharLen2(zi, -1);
     if( zl>=ilen ){
       /* string is longer than the requested pad length, return the same string (dup it) */
       zo = sqlite3StrDup(zi);
@@ -913,7 +1014,8 @@ static void padcFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
       sqlite3_result_error(context, "domain error", -1);
       return;
     }
-    zl = sqlite3Utf8CharLen(zi, -1);
+// hack-sqlite3
+    zl = sqlite3Utf8CharLen2(zi, -1);
     if( zl>=ilen ){
       /* string is longer than the requested pad length, return the same string (dup it) */
       zo = sqlite3StrDup(zi);
@@ -1738,42 +1840,13 @@ int RegisterExtensionFunctions(sqlite3 *db){
      u8 needCollSeq;
      void (*xFunc)(sqlite3_context*,int,sqlite3_value **);
   } aFuncs[] = {
+// hack-sqlite3
     /* math.h */
-    { "acos",               1, 0, SQLITE_UTF8,    0, acosFunc  },
-    { "asin",               1, 0, SQLITE_UTF8,    0, asinFunc  },
-    { "atan",               1, 0, SQLITE_UTF8,    0, atanFunc  },
     { "atn2",               2, 0, SQLITE_UTF8,    0, atn2Func  },
-    /* XXX alias */
-    { "atan2",              2, 0, SQLITE_UTF8,    0, atn2Func  },
-    { "acosh",              1, 0, SQLITE_UTF8,    0, acoshFunc  },
-    { "asinh",              1, 0, SQLITE_UTF8,    0, asinhFunc  },
-    { "atanh",              1, 0, SQLITE_UTF8,    0, atanhFunc  },
-
-    { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
-    { "degrees",            1, 0, SQLITE_UTF8,    0, rad2degFunc  },
-    { "radians",            1, 0, SQLITE_UTF8,    0, deg2radFunc  },
-
-    { "cos",                1, 0, SQLITE_UTF8,    0, cosFunc  },
-    { "sin",                1, 0, SQLITE_UTF8,    0, sinFunc },
-    { "tan",                1, 0, SQLITE_UTF8,    0, tanFunc },
     { "cot",                1, 0, SQLITE_UTF8,    0, cotFunc },
-    { "cosh",               1, 0, SQLITE_UTF8,    0, coshFunc  },
-    { "sinh",               1, 0, SQLITE_UTF8,    0, sinhFunc },
-    { "tanh",               1, 0, SQLITE_UTF8,    0, tanhFunc },
     { "coth",               1, 0, SQLITE_UTF8,    0, cothFunc },
-
-    { "exp",                1, 0, SQLITE_UTF8,    0, expFunc  },
-    { "log",                1, 0, SQLITE_UTF8,    0, logFunc  },
-    { "log10",              1, 0, SQLITE_UTF8,    0, log10Func  },
-    { "power",              2, 0, SQLITE_UTF8,    0, powerFunc  },
-    { "sign",               1, 0, SQLITE_UTF8,    0, signFunc },
-    { "sqrt",               1, 0, SQLITE_UTF8,    0, sqrtFunc },
+    { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
     { "square",             1, 0, SQLITE_UTF8,    0, squareFunc },
-
-    { "ceil",               1, 0, SQLITE_UTF8,    0, ceilFunc },
-    { "floor",              1, 0, SQLITE_UTF8,    0, floorFunc },
-
-    { "pi",                 0, 0, SQLITE_UTF8,    1, piFunc },
 
 
     /* string */

@@ -30,3 +30,5 @@ setup.sh
 
 .*
 package-lock.json
+
+sqlite-autoconf-3360000
