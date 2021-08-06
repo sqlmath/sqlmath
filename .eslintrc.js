@@ -1,12 +1,14 @@
+/*global module*/ //jslint-quiet
 module.exports = {
-    "extends": "eslint:recommended",
     "env": {
         "node": true
     },
+    "extends": "eslint:recommended",
     "rules": {
         "indent": ["error", 4],
         "linebreak-style": ["error", "unix"],
-        "semi": ["error", "always"],
-        "no-cond-assign": ["error", "always"]
+        "no-cond-assign": ["error", "always"],
+        "quotes": ["error", "double"],
+        "semi": ["error", "always"]
     }
 };

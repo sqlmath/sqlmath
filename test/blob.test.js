@@ -1,15 +1,15 @@
-var sqlite3 = require('..'),
-    fs = require('fs'),
-    assert = require('assert'),
-    Buffer = require('buffer').Buffer;
+var sqlite3 = require(".."),
+    fs = require("fs"),
+    assert = require("assert"),
+    Buffer = require("buffer").Buffer;
 
 // lots of elmo
-var elmo = fs.readFileSync(__dirname + '/support/elmo.png');
+var elmo = fs.readFileSync(__dirname + "/support/elmo.png");
 
-describe('blob', function() {
+describe("blob", function() {
     var db;
     before(function(done) {
-        db = new sqlite3.Database(':memory:');
+        db = new sqlite3.Database(":memory:");
         db.run("CREATE TABLE elmos (id INT, image BLOB)", done);
     });
 
@@ -18,9 +18,9 @@ describe('blob', function() {
     var retrieved = 0;
 
 
-    it('should insert blobs', function(done) {
+    it("should insert blobs", function(done) {
         for (var i = 0; i < total; i++) {
-            db.run('INSERT INTO elmos (id, image) VALUES (?, ?)', i, elmo, function(err) {
+            db.run("INSERT INTO elmos (id, image) VALUES (?, ?)", i, elmo, function(err) {
                 if (err) throw err;
                 inserted++;
             });
@@ -31,8 +31,8 @@ describe('blob', function() {
         });
     });
 
-    it('should retrieve the blobs', function(done) {
-        db.all('SELECT id, image FROM elmos ORDER BY id', function(err, rows) {
+    it("should retrieve the blobs", function(done) {
+        db.all("SELECT id, image FROM elmos ORDER BY id", function(err, rows) {
             if (err) throw err;
             for (var i = 0; i < rows.length; i++) {
                 assert.ok(Buffer.isBuffer(rows[i].image));

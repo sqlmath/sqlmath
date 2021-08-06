@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 
 function createdb(callback) {
-    var existsSync = require('fs').existsSync || require('path').existsSync;
-    var path = require('path');
+    var existsSync = require("fs").existsSync || require("path").existsSync;
+    var path = require("path");
 
-    var sqlite3 = require('../../lib/sqlite3');
+    var sqlite3 = require("../../sqlmath.js");
 
     var count = 1000000;
-    var db_path = path.join(__dirname,'big.db');
+    var db_path = path.join(__dirname,"big.db");
 
     function randomString() {
-        var str = '';
-        var chars = 'abcdefghijklmnopqrstuvwxzyABCDEFGHIJKLMNOPQRSTUVWXZY0123456789  ';
+        var str = "";
+        var chars = "abcdefghijklmnopqrstuvwxzyABCDEFGHIJKLMNOPQRSTUVWXZY0123456789  ";
         for (var i = Math.random() * 100; i > 0; i--) {
             str += chars[Math.floor(Math.random() * chars.length)];
         }
@@ -20,7 +20,7 @@ function createdb(callback) {
 
 
     if (existsSync(db_path)) {
-        console.log('okay: database already created (' + db_path + ')');
+        console.log("okay: database already created (" + db_path + ")");
         if (callback) callback();
     } else {
         console.log("Creating test database... This may take several minutes.");
