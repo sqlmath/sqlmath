@@ -1,14 +1,14 @@
-var sqlite3 = require('..');
-var assert = require('assert');
+var sqlite3 = require("..");
+var assert = require("assert");
 
-describe('query properties', function() {
+describe("query properties", function() {
     var db;
     before(function(done) {
-        db = new sqlite3.Database(':memory:');
+        db = new sqlite3.Database(":memory:");
         db.run("CREATE TABLE foo (id INT PRIMARY KEY, count INT)", done);
     });
 
-    (sqlite3.VERSION_NUMBER < 3024000 ? it.skip : it)('should upsert', function(done) {
+    (sqlite3.VERSION_NUMBER < 3024000 ? it.skip : it)("should upsert", function(done) {
         var stmt = db.prepare("INSERT INTO foo VALUES(?, ?)");
         stmt.run(1, 1, function(err) { // insert 1
             if (err) throw err;

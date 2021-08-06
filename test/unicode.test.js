@@ -1,7 +1,7 @@
-var sqlite3 = require('..');
-var assert = require('assert');
+var sqlite3 = require("..");
+var assert = require("assert");
 
-describe('unicode', function() {
+describe("unicode", function() {
     var first_values = [],
         trailing_values = [],
         chars = [],
@@ -10,7 +10,7 @@ describe('unicode', function() {
         db,
         i;
 
-    before(function(done) { db = new sqlite3.Database(':memory:', done); });
+    before(function(done) { db = new sqlite3.Database(":memory:", done); });
 
     for (i = 0x20; i < 0x80; i++) {
         first_values.push(i);
@@ -57,7 +57,7 @@ describe('unicode', function() {
     }
 
     function randomString() {
-        var str = '',
+        var str = "",
             i;
 
         for (i = Math.random() * 300; i > 0; i--) {
@@ -78,11 +78,11 @@ describe('unicode', function() {
     var inserted = 0;
     var retrieved = 0;
 
-    it('should create the table', function(done) {
+    it("should create the table", function(done) {
         db.run("CREATE TABLE foo (id int, txt text)", done);
     });
 
-    it('should insert all values', function(done) {
+    it("should insert all values", function(done) {
         var stmt = db.prepare("INSERT INTO foo VALUES(?, ?)");
         for (var i = 0; i < data.length; i++) {
             stmt.run(i, data[i], function(err) {
@@ -93,7 +93,7 @@ describe('unicode', function() {
         stmt.finalize(done);
     });
 
-    it('should retrieve all values', function(done) {
+    it("should retrieve all values", function(done) {
         db.all("SELECT txt FROM foo ORDER BY id", function(err, rows) {
             if (err) throw err;
 
@@ -105,7 +105,7 @@ describe('unicode', function() {
         });
     });
 
-    it('should have inserted and retrieved the correct amount', function() {
+    it("should have inserted and retrieved the correct amount", function() {
         assert.equal(inserted, length);
         assert.equal(retrieved, length);
     });

@@ -1,12 +1,12 @@
-var assert = require('assert');
-var fs = require('fs');
-var pathExists = require('fs').existsSync || require('path').existsSync;
+var assert = require("assert");
+var fs = require("fs");
+var pathExists = require("fs").existsSync || require("path").existsSync;
 
 exports.deleteFile = function(name) {
     try {
         fs.unlinkSync(name);
     } catch(err) {
-        if (err.errno !== process.ENOENT && err.code !== 'ENOENT' && err.syscall !== 'unlink') {
+        if (err.errno !== process.ENOENT && err.code !== "ENOENT" && err.syscall !== "unlink") {
             throw err;
         }
     }
@@ -22,7 +22,7 @@ assert.fileDoesNotExist = function(name) {
     try {
         fs.statSync(name);
     } catch(err) {
-        if (err.errno !== process.ENOENT && err.code !== 'ENOENT' && err.syscall !== 'unlink') {
+        if (err.errno !== process.ENOENT && err.code !== "ENOENT" && err.syscall !== "unlink") {
             throw err;
         }
     }
