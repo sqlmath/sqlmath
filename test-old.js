@@ -149,11 +149,26 @@ shRawLibFetch
         },
         {
             "aa": "'test/support/prepare.db'",
-            "bb": "'test-old-prepare.db'",
+            "bb": "'.tmp/test/prepare.db'",
             "flags": "g"
         }
     ]
 }
++// hack-test
++                assert.equal(Math.floor(row.flt * 10**10), Math.floor(10 * Math.PI * 10**10));
+
+-                        assert.equal(rows[i].flt, i * Math.PI);
++// hack-test
++                        assert.equal(Math.floor(rows[i].flt * 10**10), Math.floor(i * Math.PI * 10**10));
+
+-                    assert.equal(row.flt, 10 * Math.PI);
++// hack-test
++                    assert.equal(Math.floor(row.flt * 10**10), Math.floor(10 * Math.PI * 10**10));
+
+-                    assert.equal(row.flt, val * Math.PI);
++// hack-test
++                    assert.equal(Math.floor(row.flt * 10**10), Math.floor(val * Math.PI * 10**10));
+
 -                    assert.equal(row.integer, integer);
 -                    done();
 -                });
@@ -167,6 +182,10 @@ shRawLibFetch
 +        });
 +// hack-test
 +    }
+
+-                assert.equal(row.flt, 10 * Math.PI);
++// hack-test
++                assert.equal(Math.floor(row.flt * 10**10), Math.floor(10 * Math.PI * 10**10));
 
 -            var buff = new Buffer(2);
 +// hack-test
@@ -231,6 +250,7 @@ shRawLibFetch
 -/\\*
 -file none
 -*\\/
++// hack-test
 +}());
 +}());
 +/\\*
@@ -252,9 +272,39 @@ shRawLibFetch
 
 -if (require.main === module) {
 -    createdb();
+-}
 +// hack-test
 +if (true || require.main === module) {
 +    await new Promise(function (resolve) {createdb(resolve);});
++}
++/\\*jslint node*\\/
++new Promise(function (resolve) {
++    let db;
++    let sqlite3 = require(".");
++    db = new sqlite3.Database(".tmp/test/prepare.db");
++    db.serialize(function () {
++        db.exec((
++            "CREATE TABLE foo (txt text, num int, flt float, blb blob);\n"
++            + "BEGIN TRANSACTION;\n"
++            + Array.from(new Array(5000), function (ignore, ii) {
++                return (
++                    "INSERT INTO foo VALUES("
++                    + "'String " + ii + "',"
++                    + ii + ","
++                    + ii * Math.PI + ","
++                    + "NULL" // null (SQLite sets this implicitly)
++                    + ");\n"
++                );
++            }).join("")
++            + "COMMIT TRANSACTION;\n"
++        ), function (err) {
++            if (err) {
++                throw err;
++            }
++            resolve();
++        });
++    });
++});
 
 -var elmo = fs.readFileSync(__dirname + '/support/elmo.png');
 +// hack-test
@@ -274,14 +324,6 @@ shRawLibFetch
 +function afterEach(fnc) {
 +    afterEach2 = fnc;
 +}
-+async function awaitFnc(fnc) {
-+    if (fnc.length === 0) {
-+        return fnc();
-+    }
-+    await new Promise(function (resolve) {
-+        fnc(resolve);
-+    });
-+}
 +function beforeEach(fnc) {
 +    beforeEach2 = fnc;
 +}
@@ -299,9 +341,9 @@ shRawLibFetch
 +        + " - " + testShould
 +        + " ... "
 +    );
-+    await awaitFnc(beforeEach2);
-+    await awaitFnc(fnc);
-+    await awaitFnc(afterEach2);
++    await promisify(beforeEach2);
++    await promisify(fnc);
++    await promisify(afterEach2);
 +    console.error(
 +        (Date.now() - timeStart) + " ms"
 +        + " \u001b[32m\u2713\u001b[39m "
@@ -315,8 +357,17 @@ shRawLibFetch
 +function noop() {
 +    return;
 +}
-+after = awaitFnc;
-+before = awaitFnc;
++async function promisify(fnc) {
++    if (fnc.length === 0) {
++        return fnc();
++    }
++    await new Promise(function (resolve) {
++        fnc(resolve);
++    });
++}
++after = promisify;
++before = promisify;
++require("fs").rmdirSync(".tmp/test", {recursive: true});
 +require("fs").mkdirSync(".tmp/test", {recursive: true});
 
 -}());
@@ -383,14 +434,6 @@ let helper = {};
 function afterEach(fnc) {
     afterEach2 = fnc;
 }
-async function awaitFnc(fnc) {
-    if (fnc.length === 0) {
-        return fnc();
-    }
-    await new Promise(function (resolve) {
-        fnc(resolve);
-    });
-}
 function beforeEach(fnc) {
     beforeEach2 = fnc;
 }
@@ -408,9 +451,9 @@ async function it(testShould, fnc) {
         + " - " + testShould
         + " ... "
     );
-    await awaitFnc(beforeEach2);
-    await awaitFnc(fnc);
-    await awaitFnc(afterEach2);
+    await promisify(beforeEach2);
+    await promisify(fnc);
+    await promisify(afterEach2);
     console.error(
         (Date.now() - timeStart) + " ms"
         + " \u001b[32m\u2713\u001b[39m "
@@ -424,8 +467,17 @@ function lineno() {
 function noop() {
     return;
 }
-after = awaitFnc;
-before = awaitFnc;
+async function promisify(fnc) {
+    if (fnc.length === 0) {
+        return fnc();
+    }
+    await new Promise(function (resolve) {
+        fnc(resolve);
+    });
+}
+after = promisify;
+before = promisify;
+require("fs").rmdirSync(".tmp/test", {recursive: true});
 require("fs").mkdirSync(".tmp/test", {recursive: true});
 /*
 file https://github.com/mapbox/node-sqlite3/blob/v5.0.2/test/support/createdb.js
@@ -480,6 +532,34 @@ function createdb(callback) {
 if (true || require.main === module) {
     await new Promise(function (resolve) {createdb(resolve);});
 }
+/*jslint node*/
+new Promise(function (resolve) {
+    let db;
+    let sqlite3 = require(".");
+    db = new sqlite3.Database(".tmp/test/prepare.db");
+    db.serialize(function () {
+        db.exec((
+            "CREATE TABLE foo (txt text, num int, flt float, blb blob);\n"
+            + "BEGIN TRANSACTION;\n"
+            + Array.from(new Array(5000), function (ignore, ii) {
+                return (
+                    "INSERT INTO foo VALUES("
+                    + "'String " + ii + "',"
+                    + ii + ","
+                    + ii * Math.PI + ","
+                    + "NULL" // null (SQLite sets this implicitly)
+                    + ");\n"
+                );
+            }).join("")
+            + "COMMIT TRANSACTION;\n"
+        ), function (err) {
+            if (err) {
+                throw err;
+            }
+            resolve();
+        });
+    });
+});
 
 module.exports = createdb;
 
@@ -695,7 +775,7 @@ await describe('backup', async function() {
     beforeEach(function(done) {
         helper.deleteFile('.tmp/test/backup.db');
         helper.deleteFile('.tmp/test/backup2.db');
-        db = new sqlite3.Database('test-old-prepare.db', sqlite3.OPEN_READONLY, done);
+        db = new sqlite3.Database('.tmp/test/prepare.db', sqlite3.OPEN_READONLY, done);
     });
 
     afterEach(function(done) {
@@ -839,7 +919,7 @@ await describe('backup', async function() {
     });
 
     await it ('can backup from main to temp', function(done) {
-        var backup = db.backup('test-old-prepare.db', 'main', 'temp', false, function(err) {
+        var backup = db.backup('.tmp/test/prepare.db', 'main', 'temp', false, function(err) {
             if (err) throw err;
             backup.step(-1, function(err) {
                 if (err) throw err;
@@ -2332,7 +2412,7 @@ await describe('prepare', async function() {
 
     await describe('retrieving reset() function', async function() {
         var db;
-        await before(function(done) { db = new sqlite3.Database('test-old-prepare.db', sqlite3.OPEN_READONLY, done); });
+        await before(function(done) { db = new sqlite3.Database('.tmp/test/prepare.db', sqlite3.OPEN_READONLY, done); });
 
         var retrieved = 0;
 
@@ -2361,7 +2441,7 @@ await describe('prepare', async function() {
 
     await describe('multiple get() parameter binding', async function() {
         var db;
-        await before(function(done) { db = new sqlite3.Database('test-old-prepare.db', sqlite3.OPEN_READONLY, done); });
+        await before(function(done) { db = new sqlite3.Database('.tmp/test/prepare.db', sqlite3.OPEN_READONLY, done); });
 
         var retrieved = 0;
 
@@ -2374,7 +2454,8 @@ await describe('prepare', async function() {
                     var val = i * 10 + 1;
                     assert.equal(row.txt, 'String ' + val);
                     assert.equal(row.num, val);
-                    assert.equal(row.flt, val * Math.PI);
+// hack-test
+                    assert.equal(Math.floor(row.flt * 10**10), Math.floor(val * Math.PI * 10**10));
                     assert.equal(row.blb, null);
                     retrieved++;
                 });
@@ -2392,7 +2473,7 @@ await describe('prepare', async function() {
 
     await describe('prepare() parameter binding', async function() {
         var db;
-        await before(function(done) { db = new sqlite3.Database('test-old-prepare.db', sqlite3.OPEN_READONLY, done); });
+        await before(function(done) { db = new sqlite3.Database('.tmp/test/prepare.db', sqlite3.OPEN_READONLY, done); });
 
         var retrieved = 0;
 
@@ -2402,7 +2483,8 @@ await describe('prepare', async function() {
                     if (err) throw err;
                     assert.equal(row.txt, 'String 10');
                     assert.equal(row.num, 10);
-                    assert.equal(row.flt, 10 * Math.PI);
+// hack-test
+                    assert.equal(Math.floor(row.flt * 10**10), Math.floor(10 * Math.PI * 10**10));
                     assert.equal(row.blb, null);
                     retrieved++;
                 })
@@ -2418,7 +2500,7 @@ await describe('prepare', async function() {
 
     await describe('all()', async function() {
         var db;
-        await before(function(done) { db = new sqlite3.Database('test-old-prepare.db', sqlite3.OPEN_READONLY, done); });
+        await before(function(done) { db = new sqlite3.Database('.tmp/test/prepare.db', sqlite3.OPEN_READONLY, done); });
 
         var retrieved = 0;
         var count = 1000;
@@ -2430,7 +2512,8 @@ await describe('prepare', async function() {
                     for (var i = 0; i < rows.length; i++) {
                         assert.equal(rows[i].txt, 'String ' + i);
                         assert.equal(rows[i].num, i);
-                        assert.equal(rows[i].flt, i * Math.PI);
+// hack-test
+                        assert.equal(Math.floor(rows[i].flt * 10**10), Math.floor(i * Math.PI * 10**10));
                         assert.equal(rows[i].blb, null);
                         retrieved++;
                     }
@@ -2447,7 +2530,7 @@ await describe('prepare', async function() {
 
     await describe('all()', async function() {
         var db;
-        await before(function(done) { db = new sqlite3.Database('test-old-prepare.db', sqlite3.OPEN_READONLY, done); });
+        await before(function(done) { db = new sqlite3.Database('.tmp/test/prepare.db', sqlite3.OPEN_READONLY, done); });
 
         await it('should retrieve particular rows', function(done) {
            db.prepare("SELECT txt, num, flt, blb FROM foo WHERE num > 5000")
@@ -2530,7 +2613,7 @@ await describe('prepare', async function() {
 
     await describe('test Database#get()', async function() {
         var db;
-        await before(function(done) { db = new sqlite3.Database('test-old-prepare.db', sqlite3.OPEN_READONLY, done); });
+        await before(function(done) { db = new sqlite3.Database('.tmp/test/prepare.db', sqlite3.OPEN_READONLY, done); });
 
         var retrieved = 0;
 
@@ -2539,7 +2622,8 @@ await describe('prepare', async function() {
                 if (err) throw err;
                 assert.equal(row.txt, 'String 10');
                 assert.equal(row.num, 10);
-                assert.equal(row.flt, 10 * Math.PI);
+// hack-test
+                assert.equal(Math.floor(row.flt * 10**10), Math.floor(10 * Math.PI * 10**10));
                 assert.equal(row.blb, null);
                 retrieved++;
                 done();
@@ -3193,6 +3277,7 @@ await describe('verbose', async function() {
 });
 
 
+// hack-test
 }());
 }());
 /*
