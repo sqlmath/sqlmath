@@ -3,6 +3,7 @@
 # Todo
 
 # v2021.8.7
+- jslint file sqlmath.js.
 - merge file test-old-prepare.db into test-old.js.
 
 # v2021.8.6
