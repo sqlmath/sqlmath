@@ -277,7 +277,7 @@ shRawLibFetch
 +if (true || require.main === module) {
 +    await new Promise(function (resolve) {createdb(resolve);});
 +}
-+/\\*jslint node*\\/
++/\\*jslint beta, node*\\/
 +new Promise(function (resolve) {
 +    let db;
 +    let sqlite3 = require(".");
@@ -532,7 +532,7 @@ function createdb(callback) {
 if (true || require.main === module) {
     await new Promise(function (resolve) {createdb(resolve);});
 }
-/*jslint node*/
+/*jslint beta, node*/
 new Promise(function (resolve) {
     let db;
     let sqlite3 = require(".");
