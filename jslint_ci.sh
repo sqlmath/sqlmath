@@ -112,55 +112,51 @@ import moduleUrl from "url";
 shCiArtifactUpload() {(set -e
 # this function will upload build-artifacts to branch-gh-pages
     local BRANCH
-    local SIZE
     node --input-type=module -e '
 process.exit(Number(
-    `${process.version.split(".")[0]}.${process.arch}.${process.platform}` !==
-    process.env.CI_NODE_VERSION_ARCH_PLATFORM
+    `${process.version.split(".")[0]}.${process.arch}.${process.platform}`
+    !== process.env.CI_NODE_VERSION_ARCH_PLATFORM
 ));
 ' || return 0
-    # init $BRANCH
-    BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-    git pull --unshallow origin "$BRANCH"
     # init .git/config
     git config --local user.email "github-actions@users.noreply.github.com"
     git config --local user.name "github-actions"
+    # init $BRANCH
+    BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+    git pull --unshallow origin "$BRANCH"
+    # init $UPSTREAM_OWNER
+    export UPSTREAM_OWNER="${UPSTREAM_OWNER:-jslint-org}"
+    # init $UPSTREAM_REPO
+    export UPSTREAM_REPO="${UPSTREAM_REPO:-jslint}"
     # screenshot asset-image-jslint
-    shImageJslintCreate &
+    shImageLogoCreate &
     # screenshot web-demo
     shBrowserScreenshot \
-        https://jslint-org.github.io/jslint/branch-beta/index.html
+        "https://$UPSTREAM_OWNER.github.io/\
+$UPSTREAM_REPO/branch-beta/index.html"
+    # screenshot changelog and files
     node --input-type=module -e '
-import moduleFs from "fs";
 import moduleChildProcess from "child_process";
-(async function () {
-    let screenshotCurl = await moduleFs.promises.stat("jslint.mjs");
-    screenshotCurl = String(`
-echo "\
-% Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                     Dload  Upload   Total   Spent    Left  Speed
-100  250k  100  250k    0     0   250k      0  0:00:01 --:--:--  0:00:01  250k\
-"
-    `).trim().replace((
-        /250/g
-    ), Math.floor(screenshotCurl.size / 1024));
+(function () {
     [
-        // parallel-task - screenshot files
-        [
-            "shRunWithScreenshotTxt",
-            ".build/screenshot-files.svg",
-            "shGitLsTree"
-        ],
         // parallel-task - screenshot changelog
         [
+            "jslint_ci.sh",
             "shRunWithScreenshotTxt",
             ".build/screenshot-changelog.svg",
             "head",
             "-n50",
             "CHANGELOG.md"
+        ],
+        // parallel-task - screenshot files
+        [
+            "jslint_ci.sh",
+            "shRunWithScreenshotTxt",
+            ".build/screenshot-files.svg",
+            "shGitLsTree"
         ]
     ].forEach(function (argList) {
-        moduleChildProcess.spawn("./jslint_ci.sh", argList, {
+        moduleChildProcess.spawn("sh", argList, {
             stdio: [
                 "ignore", 1, 2
             ]
@@ -170,6 +166,26 @@ echo "\
             }
         });
     });
+}());
+' # '
+    # screenshot curl
+    if [ -f jslint.mjs ]
+    then
+        node --input-type=module -e '
+import moduleFs from "fs";
+import moduleChildProcess from "child_process";
+(async function () {
+    let screenshotCurl;
+    screenshotCurl = await moduleFs.promises.stat("jslint.mjs");
+    screenshotCurl = String(`
+echo "\
+% Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                     Dload  Upload   Total   Spent    Left  Speed
+100  250k  100  250k    0     0   250k      0  0:00:01 --:--:--  0:00:01  250k\
+"
+    `).trim().replace((
+        /250/g
+    ), Math.floor(screenshotCurl.size / 1024));
     // parallel-task - screenshot example-shell-commands in README.md
     Array.from(String(
         await moduleFs.promises.readFile("README.md", "utf8")
@@ -194,8 +210,9 @@ echo "\
             )
         ));
         moduleChildProcess.spawn(
-            "./jslint_ci.sh",
+            "sh",
             [
+                "jslint_ci.sh",
                 "shRunWithScreenshotTxt",
                 file,
                 "sh",
@@ -210,6 +227,7 @@ echo "\
     });
 }());
 ' # '
+    fi
     # seo - inline css-assets and invalidate cached-assets
     node --input-type=module -e '
 import moduleFs from "fs";
@@ -221,7 +239,11 @@ import moduleFs from "fs";
         "browser.mjs",
         "index.html"
     ].map(async function (file) {
-        fileDict[file] = await moduleFs.promises.readFile(file, "utf8");
+        try {
+            fileDict[file] = await moduleFs.promises.readFile(file, "utf8");
+        } catch (ignore) {
+            process.exit();
+        }
     }));
 
 // Inline css-assets.
@@ -265,16 +287,16 @@ import moduleFs from "fs";
     }));
 }());
 ' # '
+    git add -f jslint.cjs jslint.js || true
     # add dir .build
-    git add -f .build jslint.cjs jslint.js
+    git add -f .build
     git commit -am "add dir .build"
     # checkout branch-gh-pages
-    git checkout -b gh-pages
-    git fetch origin gh-pages
-    git reset --hard origin/gh-pages
+    git fetch origin gh-pages --depth=1
+    git checkout -b gh-pages origin/gh-pages
     # update dir branch-$BRANCH
     rm -rf "branch-$BRANCH"
-    mkdir "branch-$BRANCH"
+    mkdir -p "branch-$BRANCH"
     (set -e
         cd "branch-$BRANCH"
         git init -b branch1
@@ -285,14 +307,14 @@ import moduleFs from "fs";
     # update root-dir with branch-beta
     if [ "$BRANCH" = beta ]
     then
-        git rm -rf .build
+        rm -rf .build
         git checkout beta .
     fi
     # update README.md with branch-$BRANCH and $GITHUB_REPOSITORY
     sed -i \
         -e "s|/branch-[0-9A-Z_a-z]*/|/branch-$BRANCH/|g" \
-        -e "s|\bjslint-org/jslint\b|$GITHUB_REPOSITORY|g" \
-        -e "s|\bjslint-org\.github\.io/jslint\b|$(
+        -e "s|\b$UPSTREAM_OWNER/$UPSTREAM_REPO\b|$GITHUB_REPOSITORY|g" \
+        -e "s|\b$UPSTREAM_OWNER\.github\.io/$UPSTREAM_REPO\b|$(
             printf "$GITHUB_REPOSITORY" | sed -e "s|/|.github.io/|"
         )|g" \
         "branch-$BRANCH/README.md"
@@ -327,6 +349,79 @@ import moduleFs from "fs";
 
 shCiBase() {(set -e
 # this function will run base-ci
+    # create jslint.cjs
+    cp jslint.mjs jslint.js
+    cat jslint.mjs | sed \
+        -e "s|^// module.exports = |module.exports = |" \
+        -e "s|^export default Object.freeze(|// &|" \
+        -e "s|^jslint_import_meta_url = |// &|" \
+        > jslint.cjs
+    # run test with coverage-report
+    # coverage-hack - test jslint's invalid-file handling-behavior
+    mkdir -p .test-dir.js
+    # test jslint's cli handling-behavior
+    printf "node jslint.cjs .\n"
+    node jslint.cjs .
+    printf "node jslint.mjs .\n"
+    node jslint.mjs .
+    printf "node test.mjs\n"
+    (set -e
+        # coverage-hack - test jslint's cli handling-behavior
+        export JSLINT_BETA=1
+        shRunWithCoverage node test.mjs
+    )
+    # update version from CHANGELOG.md
+    node --input-type=module -e '
+import moduleFs from "fs";
+(async function () {
+
+// Update edition in README.md, jslint.mjs from CHANGELOG.md
+
+    let dict;
+    let versionBeta;
+    let versionMaster;
+    dict = {};
+    await Promise.all([
+        "CHANGELOG.md",
+        "README.md",
+        "jslint.mjs"
+    ].map(async function (file) {
+        dict[file] = await moduleFs.promises.readFile(file, "utf8");
+    }));
+    Array.from(dict["CHANGELOG.md"].matchAll(
+        /\n\n#\u0020(v\d\d\d\d\.\d\d?\.\d\d?(.*?)?)\n/g
+    )).slice(0, 2).forEach(function ([
+        ignore, version, isBeta
+    ]) {
+        versionBeta = versionBeta || version;
+        versionMaster = versionMaster || (!isBeta && version);
+    });
+    [
+        {
+            file: "README.md",
+            src: dict["README.md"].replace((
+                /\bv\d\d\d\d\.\d\d?\.\d\d?\b/m
+            ), versionMaster),
+            src0: dict["README.md"]
+        }, {
+            file: "jslint.mjs",
+            src: dict["jslint.mjs"].replace((
+                /^let\u0020jslint_edition\u0020=\u0020".*?";$/m
+            ), `let jslint_edition = "${versionBeta}";`),
+            src0: dict["jslint.mjs"]
+        }
+    ].forEach(function ({
+        file,
+        src,
+        src0
+    }) {
+        if (src !== src0) {
+            console.error(`update file ${file}`);
+            moduleFs.promises.writeFile(file, src);
+        }
+    });
+}());
+' # '
 )}
 
 shCiBranchPromote() {(set -e
@@ -636,10 +731,10 @@ import moduleUrl from "url";
                 return;
             }
             console.error(
-                "serverLog - " +
-                new Date(timeStart).toISOString() + " - " +
-                (Date.now() - timeStart) + "ms - " +
-                (res.statusCode || 0) + " " + req.method + " " + pathname
+                "serverLog - "
+                + new Date(timeStart).toISOString() + " - "
+                + (Date.now() - timeStart) + "ms - "
+                + (res.statusCode || 0) + " " + req.method + " " + pathname
             );
         });
         // debug - echo request
@@ -756,8 +851,8 @@ import moduleUrl from "url";
                 console.error(
                     match2.split("").map(function (chr) {
                         return (
-                            "\\u" +
-                            chr.charCodeAt(0).toString(16).padStart(4, 0)
+                            "\\u"
+                            + chr.charCodeAt(0).toString(16).padStart(4, 0)
                         );
                     }).join("")
                 );
@@ -772,15 +867,15 @@ import moduleUrl from "url";
             // console.error(Object.keys(global).map(function(key){return(typeof global[key]===\u0027object\u0027&&global[key]&&global[key]===global[key]?\u0027global\u0027:typeof global[key])+\u0027 \u0027+key;}).sort().join(\u0027\n\u0027)) //jslint-quiet
             case "keys":
                 script = (
-                    "console.error(Object.keys(" + match2 +
-                    ").map(function(key){return(" +
-                    "typeof " + match2 + "[key]===\u0027object\u0027&&" +
-                    match2 + "[key]&&" +
-                    match2 + "[key]===global[key]" +
-                    "?\u0027global\u0027" +
-                    ":typeof " + match2 + "[key]" +
-                    ")+\u0027 \u0027+key;" +
-                    "}).sort().join(\u0027\\n\u0027))\n"
+                    "console.error(Object.keys(" + match2
+                    + ").map(function(key){return("
+                    + "typeof " + match2 + "[key]===\u0027object\u0027&&"
+                    + match2 + "[key]&&"
+                    + match2 + "[key]===global[key]"
+                    + "?\u0027global\u0027"
+                    + ":typeof " + match2 + "[key]"
+                    + ")+\u0027 \u0027+key;"
+                    + "}).sort().join(\u0027\\n\u0027))\n"
                 );
                 break;
             // syntax-sugar - print String(val)
@@ -820,15 +915,16 @@ import moduleUrl from "url";
 ' "$@" # '
 )}
 
-shImageJslintCreate() {(set -e
-# this function will create .png logo of jslint
+shImageLogoCreate() {(set -e
+# this function will create .png logo
+    local SIZE
     echo '
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <title>logo</title>
 <style>
-/* sh jslint_ci.sh shBrowserScreenshot asset-image-jslint.html --window-size=512x512 */
+/* sh jslint_ci.sh shBrowserScreenshot asset-image-logo.html --window-size=512x512 */
 /* csslint box-model:false */
 /* csslint ignore:start */
 *,
@@ -884,19 +980,19 @@ div {
 </div>
 </body>
 </html>
-' > .build/asset-image-jslint-512.html
-    cp asset-font-daley-bold.woff2 .build
-    # screenshot asset-image-jslint-512.png
-    shBrowserScreenshot .build/asset-image-jslint-512.html \
+' > .build/asset-image-logo-512.html
+    cp asset-font-daley-bold.woff2 .build || true
+    # screenshot asset-image-logo-512.png
+    shBrowserScreenshot .build/asset-image-logo-512.html \
         --window-size=512x512 \
-        -screenshot=.build/asset-image-jslint-512.png
+        -screenshot=.build/asset-image-logo-512.png
     # create various smaller thumbnails
     for SIZE in 32 64 128 256
     do
-        convert -resize "${SIZE}x${SIZE}" .build/asset-image-jslint-512.png \
-            ".build/asset-image-jslint-$SIZE.png"
+        convert -resize "${SIZE}x${SIZE}" .build/asset-image-logo-512.png \
+            ".build/asset-image-logo-$SIZE.png"
         printf \
-"shImageJslintCreate - wrote - .build/asset-image-jslint-$SIZE.png\n" 1>&2
+"shImageLogoCreate - wrote - .build/asset-image-logo-$SIZE.png\n" 1>&2
     done
     # convert to svg @ https://convertio.co/png-svg/
 )}
@@ -1129,12 +1225,12 @@ import modulePath from "path";
             }
             if (elem.dateCommitted) {
                 result += (
-                    "\n\n\n/*\n" +
-                    "repo " + elem.prefix.replace("/blob/", "/tree/") + "\n" +
-                    "committed " + (
+                    "\n\n\n/*\n"
+                    + "repo " + elem.prefix.replace("/blob/", "/tree/") + "\n"
+                    + "committed " + (
                         /\b\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ\b/
-                    ).exec(elem.dateCommitted.toString())[0] + "\n" +
-                    "*/"
+                    ).exec(elem.dateCommitted.toString())[0] + "\n"
+                    + "*/"
                 );
             }
             // comment /*...*/
@@ -1147,13 +1243,13 @@ import modulePath from "path";
             }
             // mangle module.exports
             result += (
-                "\n\n\n/*\nfile " + elem.url + "\n*/\n" +
-                elem.data.toString().trim()
+                "\n\n\n/*\nfile " + elem.url + "\n*/\n"
+                + elem.data.toString().trim()
             );
         });
         result = (
-            "\n" + result.trim() +
-            "\n\n\n/*\nfile none\n*/\n/*jslint-enable*/\n"
+            "\n" + result.trim()
+            + "\n\n\n/*\nfile none\n*/\n/*jslint-enable*/\n"
         );
         // comment #!
         result = result.replace((
@@ -1186,17 +1282,17 @@ import modulePath from "path";
             result = result.replace(new RegExp(aa, flags), bb);
             if (result0 === result) {
                 throw new Error(
-                    "shRawLibFetch - cannot find-and-replace snippet " +
-                    JSON.stringify(aa)
+                    "shRawLibFetch - cannot find-and-replace snippet "
+                    + JSON.stringify(aa)
                 );
             }
         });
         // init header
         header = (
-            matchObj.input.slice(0, matchObj.index) +
-            "/*jslint-disable*/\n/*\nshRawLibFetch\n" +
-            JSON.stringify(JSON.parse(matchObj[1]), undefined, 4) + "\n" +
-            matchObj[2].split("\n\n").filter(function (elem) {
+            matchObj.input.slice(0, matchObj.index)
+            + "/*jslint-disable*/\n/*\nshRawLibFetch\n"
+            + JSON.stringify(JSON.parse(matchObj[1]), undefined, 4) + "\n"
+            + matchObj[2].split("\n\n").filter(function (elem) {
                 return elem.trim();
             }).map(function (elem) {
                 return elem.trim().replace((
@@ -1231,8 +1327,8 @@ import modulePath from "path";
             });
             if (result0 === result) {
                 throw new Error(
-                    "shRawLibFetch - cannot find-and-replace snippet " +
-                    JSON.stringify(aa)
+                    "shRawLibFetch - cannot find-and-replace snippet "
+                    + JSON.stringify(aa)
                 );
             }
             return "";
@@ -1247,8 +1343,8 @@ import modulePath from "path";
                 return;
             }
             data = (
-                "data:" + dataUriType + ";base64," +
-                data.toString("base64")
+                "data:" + dataUriType + ";base64,"
+                + data.toString("base64")
             );
             result0 = result;
             result = result.replace(
@@ -1260,8 +1356,8 @@ import modulePath from "path";
             );
             if (result0 === result) {
                 throw new Error(
-                    "shRawLibFetch - cannot find-and-replace snippet " +
-                    JSON.stringify(exports)
+                    "shRawLibFetch - cannot find-and-replace snippet "
+                    + JSON.stringify(exports)
                 );
             }
         });
@@ -1287,6 +1383,7 @@ shRunWithCoverage() {(set -e
     EXIT_CODE=0
     export DIR_COVERAGE=.build/coverage/
     rm -rf "$DIR_COVERAGE"
+    mkdir -p "$DIR_COVERAGE"
     (set -e
         export NODE_V8_COVERAGE="$DIR_COVERAGE"
         "$@"
@@ -1416,6 +1513,9 @@ body {
 .coverage .coverageHigh{
     background: #9d9;
 }
+.coverage .coverageIgnore{
+    background: #ccc;
+}
 .coverage .coverageLow{
     background: #ebb;
 }
@@ -1460,20 +1560,24 @@ body {
 </thead>
 <tbody>`;
         if (!lineList) {
-            padLines = String("100.00 %").length;
+            padLines = String("(ignore) 100.00 %").length;
             padPathname = 32;
             fileList.unshift({
                 linesCovered: 0,
                 linesTotal: 0,
+                modeCoverageIgnoreFile: "",
                 pathname: "./"
             });
             fileList.slice(1).forEach(function ({
                 linesCovered,
                 linesTotal,
+                modeCoverageIgnoreFile,
                 pathname
             }) {
-                fileList[0].linesCovered += linesCovered;
-                fileList[0].linesTotal += linesTotal;
+                if (!modeCoverageIgnoreFile) {
+                    fileList[0].linesCovered += linesCovered;
+                    fileList[0].linesTotal += linesTotal;
+                }
                 padPathname = Math.max(padPathname, pathname.length + 2);
                 padLines = Math.max(
                     padLines,
@@ -1496,6 +1600,7 @@ body {
         fileList.forEach(function ({
             linesCovered,
             linesTotal,
+            modeCoverageIgnoreFile,
             pathname
         }, ii) {
             let coverageLevel;
@@ -1507,7 +1612,9 @@ body {
             let xx2;
             coveragePct = Math.floor(10000 * linesCovered / linesTotal || 0);
             coverageLevel = (
-                coveragePct >= 8000
+                modeCoverageIgnoreFile
+                ? "coverageIgnore"
+                : coveragePct >= 8000
                 ? "coverageHigh"
                 : coveragePct >= 5000
                 ? "coverageMedium"
@@ -1557,7 +1664,9 @@ body {
             txt += (
                 "| "
                 + String("./" + pathname).padEnd(padPathname, " ") + " | "
-                + String(coveragePct + " %").padStart(padLines, " ") + " |\n"
+                + String(
+                    modeCoverageIgnoreFile + " " + coveragePct + " %"
+                ).padStart(padLines, " ") + " |\n"
             );
             txt += (
                 "| " + "*".repeat(
@@ -1587,7 +1696,7 @@ body {
 </div>
 </td>
 <td style="text-align: right;">
-    ${coveragePct} %<br>
+    ${modeCoverageIgnoreFile} ${coveragePct} %<br>
     ${linesCovered} / ${linesTotal}
 </td>
 </tr>`;
@@ -1819,24 +1928,27 @@ ${String(count).padStart(7, " ")}
         ), {
             recursive: true
         });
-        await htmlRender({
-            fileList: [
-                {
-                    linesCovered,
-                    linesTotal,
-                    pathname
-                }
-            ],
-            lineList,
-            pathname: DIR_COVERAGE + pathname
-        });
         fileDict[pathname] = {
             lineList,
             linesCovered,
             linesTotal,
+            modeCoverageIgnoreFile: (
+                (
+                    /^\/\*mode-coverage-ignore-file\*\/$/m
+                ).test(src.slice(0, 65536))
+                ? "(ignore)"
+                : ""
+            ),
             pathname,
             src
         };
+        await htmlRender({
+            fileList: [
+                fileDict[pathname]
+            ],
+            lineList,
+            pathname: DIR_COVERAGE + pathname
+        });
     }));
     await htmlRender({
         fileList: Object.keys(fileDict).sort().map(function (pathname) {
@@ -1943,7 +2055,7 @@ ${result}
 )}
 
 shCiMain() {(set -e
-# run $@
+# this function will run $@
     # run "$@" with winpty
     export CI_UNAME="${CI_UNAME:-$(uname)}"
     case "$CI_UNAME" in
@@ -1961,6 +2073,11 @@ shCiMain() {(set -e
     if [ -f ./.ci.sh ]
     then
         . ./.ci.sh "$@"
+    fi
+    if [ "$npm_config_mode_coverage" ] && [ "$1" = "node" ]
+    then
+        shRunWithCoverage "$@"
+        return
     fi
     "$@"
 )}

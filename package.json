@@ -4,10 +4,6 @@
         "name": "kai zhu"
     },
     "description": "sqlite for data-science",
-    "devDependencies": {
-        "eslint": "3.5.0",
-        "mocha": "^5.2.0"
-    },
     "homepage": "https://github.com/sqlmath/sqlmath.js",
     "keywords": [
         "data-science",
@@ -21,6 +17,9 @@
     "repository": {
         "type": "git",
         "url": "https://github.com/sqlmath/sqlmath.js"
+    },
+    "scripts": {
+        "test": "sh jslint_ci.sh node test.js"
     },
     "version": "0.0.1"
 }

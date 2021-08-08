@@ -1,14 +1,17 @@
-/*global module*/ //jslint-quiet
+/*global module*/
 module.exports = {
     "env": {
+        "es2017": true,
         "node": true
     },
     "extends": "eslint:recommended",
     "rules": {
-        "indent": ["error", 4],
+        //!! "indent": ["error", 4],
         "linebreak-style": ["error", "unix"],
         "no-cond-assign": ["error", "always"],
-        "quotes": ["error", "double"],
+        //!! "no-var": ["error"],
+        //!! "one-var-declaration-per-line": ["error"],
+        //!! "quotes": ["error", "double"],
         "semi": ["error", "always"]
     }
 };

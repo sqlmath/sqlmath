@@ -14,9 +14,9 @@ on:
       - beta
       - master
       - sandbox
-# shCiBase - start
 jobs:
-  build:
+# shCiBase - start
+  job1:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -32,7 +32,7 @@ jobs:
           - macos-latest
           - ubuntu-latest
           - windows-latest
-    name: node . v${{ matrix.node_version }} . ${{ matrix.architecture }} . ${{ matrix.os }}
+    name: job1 . node . v${{ matrix.node_version }} . ${{ matrix.architecture }} . ${{ matrix.os }}
     steps:
       # disable autocrlf in windows
       - run: git config --global core.autocrlf false
@@ -48,14 +48,51 @@ jobs:
       # run nodejs coverages and tests
       - run: sh jslint_ci.sh shCiBase
 # shCiBase - end
-      #!! # fetch jslint_ci.sh from trusted source
-      #!! - run: git fetch origin alpha && git checkout origin/alpha jslint_ci.sh
-      #!! # upload build-artifacts to branch-gh-pages
-      #!! - run: sh jslint_ci.sh shCiArtifactUpload
-        #!! env:
-          #!! CI_NODE_VERSION_ARCH_PLATFORM: v14.x64.linux
-          #!! GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# shCiArtifactUpload - start
+      # fetch jslint_ci.sh from trusted source
+      - run: git fetch origin alpha && git checkout origin/alpha jslint_ci.sh
+      # upload build-artifacts to branch-gh-pages
+      - run: sh jslint_ci.sh shCiArtifactUpload
+        env:
+          CI_NODE_VERSION_ARCH_PLATFORM: v14.x64.linux
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# shCiArtifactUpload - end
+# upload binding.node - start
       - uses: actions/upload-artifact@v2
         with:
-          name: lib
-          path: lib
+          name: binding.node
+          path: .binding-*.node
+# upload binding.node - end
+  job2:
+    needs: job1
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        architecture:
+          - x64
+        node_version:
+          # - 12
+          - 14
+          # - 16
+        os:
+          - ubuntu-latest
+    name: job2 . node . v${{ matrix.node_version }} . ${{ matrix.architecture }} . ${{ matrix.os }}
+    steps:
+      # disable autocrlf in windows
+      - run: git config --global core.autocrlf false
+      # https://github.com/actions/checkout
+      - uses: actions/checkout@v2
+# download binding.node - start
+      - uses: actions/download-artifact@v2
+        with:
+          name: binding.node
+# download binding.node - end
+# shCiArtifactUpload2 - start
+      # fetch jslint_ci.sh from trusted source
+      - run: git fetch origin alpha && git checkout origin/alpha jslint_ci.sh
+      # upload build-artifacts to branch-gh-pages
+      - run: sh jslint_ci.sh shCiArtifactUpload2
+        env:
+          CI_NODE_VERSION_ARCH_PLATFORM: v14.x64.linux
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+# shCiArtifactUpload2 - end
