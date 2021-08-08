@@ -63,15 +63,6 @@ function objectDeepCopyWithKeysSorted(obj) {
     return sorted;
 }
 
-async function promiseCreate(fnc) {
-    if (fnc.length === 0) {
-        return fnc();
-    }
-    await new Promise(function (resolve) {
-        fnc(resolve);
-    });
-}
-
 async function promiseDescribe(testDescribe, fnc) {
     console.error("    " + lineno() + " - describe - " + testDescribe);
     await fnc();
@@ -85,11 +76,20 @@ async function promiseIt(testShould, fnc) {
         + " - " + testShould
         + " ... "
     );
-    await promiseCreate(fnc);
+    await promisify(fnc);
     console.error(
         (Date.now() - timeStart) + " ms"
         + " \u001b[32m\u2713\u001b[39m "
     );
+}
+
+async function promisify(fnc) {
+    if (fnc.length === 0) {
+        return fnc();
+    }
+    await new Promise(function (resolve) {
+        fnc(resolve);
+    });
 }
 
 (async function () {
