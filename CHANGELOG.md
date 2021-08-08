@@ -1,4 +1,12 @@
 # Changelog
+
+# Todo
+
+# v2021.8.6
+- add coverage testing.
+- add extension-function support.
+- fork repo as sqlmath.
+
 ## 5.0.2
 - build: rebuild binaries before publishing [#1426](https://github.com/mapbox/node-sqlite3/pull/1426)
 
@@ -13,7 +21,7 @@
 
 ## 5.0.0
 - prebuilt: Node 14 support, dropped support for all version of Node < 10 [#1304](https://github.com/mapbox/node-sqlite3/pull/1304)
-- prebuilt: add electron 7.2 [#1324](https://github.com/mapbox/node-sqlite3/pull/1324) 
+- prebuilt: add electron 7.2 [#1324](https://github.com/mapbox/node-sqlite3/pull/1324)
 - napi: refactor codebase to use N-API instead of NAN (+ various improvements) [#1304](https://github.com/mapbox/node-sqlite3/pull/1304)
 - trace: don't require throw to add trace info for verbose [#1317](https://github.com/mapbox/node-sqlite3/pull/1317)
 - ci: remove permission setting [#1319](https://github.com/mapbox/node-sqlite3/pull/1319)

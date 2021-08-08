@@ -1,7 +1,7 @@
-var path = require("path");
-var EventEmitter = require("events").EventEmitter;
-var sqlite3 = require(
-    "./.sqlmath-binding"
+let path = require("path");
+let EventEmitter = require("events").EventEmitter;
+let sqlite3 = require(
+    "./.binding-sqlmath"
     + "-" + "napi" + process.versions.napi
     + "-" + process.platform
     + "-" + process.arch
@@ -11,17 +11,17 @@ module.exports = sqlite3;
 
 function normalizeMethod (fn) {
     return function (sql) {
-        var errBack;
-        var args = Array.prototype.slice.call(arguments, 1);
+        let errBack;
+        let args = Array.prototype.slice.call(arguments, 1);
         if (typeof args[args.length - 1] === "function") {
-            var callback = args[args.length - 1];
+            let callback = args[args.length - 1];
             errBack = function(err) {
                 if (err) {
                     callback(err);
                 }
             };
         }
-        var statement = new Statement(this, sql, errBack);
+        let statement = new Statement(this, sql, errBack);
         return fn.call(this, statement, args);
     };
 }
@@ -33,7 +33,7 @@ sqlite3.cached = {
             return new Database(file, a, b);
         }
 
-        var db;
+        let db;
         file = path.resolve(file);
         function cb() { callback.call(db, null); }
 
@@ -58,7 +58,7 @@ sqlite3.cached = {
 
 var Database = sqlite3.Database;
 var Statement = sqlite3.Statement;
-var Backup = sqlite3.Backup;
+let Backup = sqlite3.Backup;
 
 Object.assign(Database.prototype, EventEmitter.prototype);
 Object.assign(Statement.prototype, EventEmitter.prototype);
@@ -103,7 +103,7 @@ Database.prototype.map = normalizeMethod(function(statement, params) {
 // Database#backup(filename, [callback])
 // Database#backup(filename, destName, sourceName, filenameIsDest, [callback])
 Database.prototype.backup = function() {
-    var backup;
+    let backup;
     if (arguments.length <= 2) {
         // By default, we write the main database out to the main database of the named file.
         // This is the most likely use of the backup api.
@@ -118,20 +118,21 @@ Database.prototype.backup = function() {
 };
 
 Statement.prototype.map = function() {
-    var params = Array.prototype.slice.call(arguments);
-    var callback = params.pop();
+    let params = Array.prototype.slice.call(arguments);
+    let callback = params.pop();
     params.push(function(err, rows) {
         if (err) return callback(err);
-        var result = {};
+        let result = {};
         if (rows.length) {
-            var keys = Object.keys(rows[0]), key = keys[0];
+            let keys = Object.keys(rows[0]),
+                key = keys[0];
             if (keys.length > 2) {
                 // Value is an object
                 for (var i = 0; i < rows.length; i++) {
                     result[rows[i][key]] = rows[i];
                 }
             } else {
-                var value = keys[1];
+                let value = keys[1];
                 // Value is a plain value
                 for (i = 0; i < rows.length; i++) {
                     result[rows[i][key]] = rows[i][value];
@@ -143,12 +144,12 @@ Statement.prototype.map = function() {
     return this.all.apply(this, params);
 };
 
-var isVerbose = false;
+let isVerbose = false;
 
-var supportedEvents = [ "trace", "profile", "insert", "update", "delete" ];
+let supportedEvents = [ "trace", "profile", "insert", "update", "delete" ];
 
 Database.prototype.addListener = Database.prototype.on = function(type) {
-    var val = EventEmitter.prototype.addListener.apply(this, arguments);
+    let val = EventEmitter.prototype.addListener.apply(this, arguments);
     if (supportedEvents.indexOf(type) >= 0) {
         this.configure(type, true);
     }
@@ -156,7 +157,7 @@ Database.prototype.addListener = Database.prototype.on = function(type) {
 };
 
 Database.prototype.removeListener = function(type) {
-    var val = EventEmitter.prototype.removeListener.apply(this, arguments);
+    let val = EventEmitter.prototype.removeListener.apply(this, arguments);
     if (supportedEvents.indexOf(type) >= 0 && !this._events[type]) {
         this.configure(type, false);
     }
@@ -164,7 +165,7 @@ Database.prototype.removeListener = function(type) {
 };
 
 Database.prototype.removeAllListeners = function(type) {
-    var val = EventEmitter.prototype.removeAllListeners.apply(this, arguments);
+    let val = EventEmitter.prototype.removeAllListeners.apply(this, arguments);
     if (supportedEvents.indexOf(type) >= 0) {
         this.configure(type, false);
     }
@@ -173,22 +174,22 @@ Database.prototype.removeAllListeners = function(type) {
 
 // Save the stack trace over EIO callbacks.
 // Inspired by https://github.com/tlrobinson/long-stack-traces
-var util = require("util");
+let util = require("util");
 function trace(object, property, pos) {
-    var old = object[property];
+    let old = object[property];
     object[property] = function() {
-        var error = new Error();
-        var name = object.constructor.name + "#" + property + "(" +
+        let error = new Error();
+        let name = object.constructor.name + "#" + property + "(" +
             Array.prototype.slice.call(arguments).map(function(el) {
                 return util.inspect(el, false, 0);
             }).join(", ") + ")";
 
         if (typeof pos === "undefined") pos = -1;
         if (pos < 0) pos += arguments.length;
-        var cb = arguments[pos];
+        let cb = arguments[pos];
         if (typeof arguments[pos] === "function") {
             arguments[pos] = function replacement() {
-                var err = arguments[0];
+                let err = arguments[0];
                 if (err && err.stack && !err.__augmented) {
                     err.stack = err.stack.split("\n").filter(function(line) {
                         return line.indexOf(__filename) < 0;
