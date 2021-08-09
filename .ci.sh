@@ -284,100 +284,212 @@ shCiBase() {(set -e
     # init dir .tmp
     rm -rf .tmp
     mkdir -p .tmp
-    cp -a  sqlite-autoconf-3360000 .tmp/src
-    # amalgamate extension-functions.c
-    cp extension-functions.c .tmp/src
-    node -e '
-(async function () {
-    let fileDict = {};
-    process.chdir(".tmp/src");
-    await Promise.all([
-        "extension-functions.c",
-        "sqlite3.c"
-    ].map(async function (file) {
-        fileDict[file] = await require("fs").promises.readFile(file, "utf8");
-    }));
-    fileDict["sqlite3.c"] = fileDict["sqlite3.c"].replace((
-        "/************** End of json1.c "
-        + "***********************************************/"
-    ), function (match0) {
-        return match0 + "\n" + fileDict["extension-functions.c"];
-    }).replace(
-        "SQLITE_PRIVATE int sqlite3Json1Init(sqlite3*);",
-        "$&\nSQLITE_PRIVATE int RegisterExtensionFunctions(sqlite3*);"
-    ).replace(
-        "sqlite3Json1Init,",
-        "$&\nRegisterExtensionFunctions,"
-    );
-    await require("fs").promises.writeFile("sqlite3.c", fileDict["sqlite3.c"]);
-}());
-' "$@" # '
-    # node-gyp - init
-    # https://www.sqlite.org/compile.html
-    # shJsonNormalize .tmp/binding.gyp && cat .tmp/binding.gyp
     printf '
 {
+    "target_defaults": {
+        "cflags": [
+            "-std=c99"
+        ],
+        "cflags!": [
+            "-fno-exceptions"
+        ],
+        "cflags_cc!": [
+            "-fno-exceptions"
+        ],
+        "conditions": [
+            [
+                "OS == \\"linux\\"",
+                {
+                    "link_settings": {
+                        "libraries": [
+                            "-lm"
+                        ]
+                    }
+                }
+            ],
+            [
+                "OS == \\"win\\"",
+                {
+                    "defines": [
+                        "WIN32"
+                    ]
+                }
+            ]
+        ],
+        "configurations": {
+            "Debug": {
+                "cflags_cc!": [
+                    "-O3",
+                    "-Os",
+                    "-DNDEBUG"
+                ],
+                "defines": [
+                    "DEBUG",
+                    "_DEBUG"
+                ],
+                "defines!": [
+                    "NDEBUG"
+                ],
+                "msvs_settings": {
+                    "VCCLCompilerTool": {
+                        "RuntimeLibrary": 1
+                    }
+                },
+                "xcode_settings": {
+                    "GCC_GENERATE_DEBUGGING_SYMBOLS": "YES",
+                    "GCC_OPTIMIZATION_LEVEL": "0",
+                    "OTHER_CPLUSPLUSFLAGS!": [
+                        "-O3",
+                        "-Os",
+                        "-DDEBUG"
+                    ]
+                }
+            },
+            "Release": {
+                "cflags": [
+                    "-w"
+                ],
+                "cflags!": [
+                    "-Wall"
+                ],
+                "cflags_cc": [
+                    "-w"
+                ],
+                "cflags_cc!": [
+                    "-Wall"
+                ],
+                "defines": [
+                    "NDEBUG"
+                ],
+                "msvs_settings": {
+                    "VCCLCompilerTool": {
+                        "RuntimeLibrary": 0
+                    }
+                },
+                "xcode_settings": {
+                    "DEAD_CODE_STRIPPING": "YES",
+                    "GCC_GENERATE_DEBUGGING_SYMBOLS": "NO",
+                    "GCC_INLINES_ARE_PRIVATE_EXTERN": "YES",
+                    "GCC_OPTIMIZATION_LEVEL": "3",
+                    "OTHER_CFLAGS": [
+                        "-w"
+                    ],
+                    "OTHER_CFLAGS!": [
+                        "-Wall"
+                    ],
+                    "OTHER_CPLUSPLUSFLAGS": [
+                        "-w"
+                    ],
+                    "OTHER_CPLUSPLUSFLAGS!": [
+                        "-O2",
+                        "-Os",
+                        "-Wall"
+                    ]
+                }
+            }
+        },
+        "default_configuration": "Release",
+        "defines": [
+
+# https://www.sqlite.org/compile.html#recommended_compile_time_options
+
+            "SQLITE_DEFAULT_MEMSTATUS=0",
+            "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
+            "SQLITE_DQS=0",
+            "SQLITE_LIKE_DOESNT_MATCH_BLOBS",
+            # "SQLITE_MAX_EXPR_DEPTH=0",
+            # "SQLITE_OMIT_AUTOINIT",
+            "SQLITE_OMIT_DECLTYPE",
+            # "SQLITE_OMIT_DEPRECATED",
+            "SQLITE_OMIT_PROGRESS_CALLBACK",
+            # "SQLITE_OMIT_SHARED_CACHE",
+            # "SQLITE_THREADSAFE=0",
+            "SQLITE_USE_ALLOCA",
+
+# custom
+
+            "COMPILE_SQLITE_EXTENSIONS_AS_LOADABLE_MODULE",
+            "SQLITE_ENABLE_MATH_FUNCTIONS",
+            # "SQLITE_ENABLE_STMTVTAB",
+            # "SQLITE_ENABLE_UNKNOWN_SQL_FUNCTION",
+
+# node-sqlite3
+
+            "HAVE_USLEEP=1",
+            "SQLITE_ENABLE_DBSTAT_VTAB=1",
+            "SQLITE_ENABLE_FTS3",
+            "SQLITE_ENABLE_FTS4",
+            "SQLITE_ENABLE_FTS5",
+            "SQLITE_ENABLE_JSON1",
+            "SQLITE_ENABLE_RTREE",
+            "SQLITE_THREADSAFE=1",
+            "_REENTRANT=1"
+        ],
+        "include_dirs": [
+            "..",
+            "../sqlite-autoconf-3360000"
+        ],
+        "msvs_settings": {
+            "VCCLCompilerTool": {
+                "ExceptionHandling": 1
+            },
+            "VCLinkerTool": {
+                "GenerateDebugInformation": "true"
+            }
+        },
+        "xcode_settings": {
+            "CLANG_CXX_LIBRARY": "libc++",
+            "GCC_ENABLE_CPP_EXCEPTIONS": "YES"
+        }
+    },
     "targets": [
         {
             "cflags": [
-                "-std=c99"
+                "-Wall",
+                "-Wunused-variable"
             ],
             "cflags!": [
-                "-fno-exceptions"
+                "-w"
             ],
             "cflags_cc": [
-                "-Wno-unused-value"
+                "-Wall",
+                "-Wunused-variable"
             ],
             "cflags_cc!": [
-                "-fno-exceptions"
+                "-w"
             ],
-            "default_configuration": "Release",
-            "defines": [
-                "HAVE_USLEEP=1",
-                "NAPI_DISABLE_CPP_EXCEPTIONS=1",
-                "NAPI_VERSION=<(napi_build_version)",
-                "NDEBUG",
-                "SQLITE_DEFAULT_MEMSTATUS=0",
-                "SQLITE_DQS=0",
-                "SQLITE_ENABLE_DBSTAT_VTAB",
-                "SQLITE_ENABLE_FTS3",
-                "SQLITE_ENABLE_FTS4",
-                "SQLITE_ENABLE_FTS5",
-                "SQLITE_ENABLE_JSON1",
-                "SQLITE_ENABLE_MATH_FUNCTIONS",
-                "SQLITE_ENABLE_RTREE",
-                "SQLITE_ENABLE_STMTVTAB",
-                "SQLITE_ENABLE_UNKNOWN_SQL_FUNCTION",
-                "SQLITE_THREADSAFE=1",
-                "_REENTRANT=1"
-            ],
-            "include_dirs": [
-                "..",
-                "src"
-            ],
-            "msvs_settings": {
-                "VCCLCompilerTool": {
-                    "ExceptionHandling": 1
-                }
-            },
             "sources": [
-                "../node_sqlite3.cc",
-                "src/sqlite3.c"
+                "../sqlmath.c"
             ],
-            "target_name": "<(module_name)",
+            "target_name": "sqlmath.c",
+            "type": "static_library",
             "xcode_settings": {
-                "CLANG_CXX_LIBRARY": "libc++",
-                "DEAD_CODE_STRIPPING": "YES",
-                "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-                "GCC_GENERATE_DEBUGGING_SYMBOLS": "NO",
-                "GCC_INLINES_ARE_PRIVATE_EXTERN": "YES",
-                "GCC_OPTIMIZATION_LEVEL": "3",
-                "MACOSX_DEPLOYMENT_TARGET": "10.7",
+                "OTHER_CFLAGS": [
+                    "-Wall"
+                ],
+                "OTHER_CFLAGS!": [
+                    "-w"
+                ],
+                "OTHER_CPLUSPLUSFLAGS": [
+                    "-Wall"
+                ],
                 "OTHER_CPLUSPLUSFLAGS!": [
-                    "-Os",
-                    "-O2"
+                    "-w"
                 ]
             }
+        },
+        {
+            "defines": [
+                "NAPI_DISABLE_CPP_EXCEPTIONS=1"
+            ],
+            "dependencies": [
+                "sqlmath.c"
+            ],
+            "sources": [
+                "../node_sqlite3.cc",
+                "../sqlite-autoconf-3360000/sqlite3.c"
+            ],
+            "target_name": "<(module_name)"
         },
         {
             "copies": [

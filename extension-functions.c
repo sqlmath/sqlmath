@@ -7,6 +7,13 @@ shRawLibFetch
             "url": "https://github.com/sqlite/sqlite/tree/master/contrib/download/extension-functions.c/download/extension-functions.c",
             "url2": "https://www.sqlite.org/contrib/download/extension-functions.c/download/extension-functions.c?get=25"
         }
+    ],
+    "replaceList": [
+        {
+            "aa": "^GEN_MATH_WRAP_DOUBLE_1\\(",
+            "bb": "// $&",
+            "flags": "gm"
+        }
     ]
 }
 -    /\\* math.h *\\/
@@ -51,62 +58,98 @@ shRawLibFetch
 +    { "cot",                1, 0, SQLITE_UTF8,    0, cotFunc },
 +    { "coth",               1, 0, SQLITE_UTF8,    0, cothFunc },
 +    { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
++    { "sign",               1, 0, SQLITE_UTF8,    0, signFunc },
 +    { "square",             1, 0, SQLITE_UTF8,    0, squareFunc },
 
--    zl = sqlite3Utf8CharLen(zi, -1);
+-  int i;
 +// hack-sqlite3
-+    zl = sqlite3Utf8CharLen2(zi, -1);
++  unsigned long i;
 
--    zl = sqlite3Utf8CharLen(zi, -1);
+-// GEN_MATH_WRAP_DOUBLE_1(cotFunc, cot)
 +// hack-sqlite3
-+    zl = sqlite3Utf8CharLen2(zi, -1);
++GEN_MATH_WRAP_DOUBLE_1(cotFunc, cot)
 
--    zl = sqlite3Utf8CharLen(zi, -1);
+-// GEN_MATH_WRAP_DOUBLE_1(cothFunc, coth)
 +// hack-sqlite3
-+    zl = sqlite3Utf8CharLen2(zi, -1);
++GEN_MATH_WRAP_DOUBLE_1(cothFunc, coth)
 
+-int sqlite3_extension_init(
++// hack-sqlite3
++int sqlite3ext_extension_functions_init(
+
+-static double deg2rad(double x){
++// hack-sqlite3
++#if 0
++static double deg2rad(double x){
+
+-static int sqlite3ReadUtf8(const unsigned char *z){
+-  int c;
 -  READ_UTF8(z, c);
+-  return c;
+-}
++static int sqlite3ReadUtf8(const unsigned char *z){
++  int c;
 +// hack-sqlite3
-+  READ_UTF8_2(z, c);
++  int xtra;
++  c = *(z)++;
++  xtra = xtra_utf8_bytes[c];
++  switch( xtra ){
++    case 4: c = (int)0xFFFD; break;
++    case 3: c = (c<<6) + *(z)++;
++    // fall through
++    case 2: c = (c<<6) + *(z)++;
++    // fall through
++    case 1: c = (c<<6) + *(z)++;
++    c -= xtra_utf8_bits[xtra];
++    if( (utf_mask[xtra]&c)==0
++        || (c&0xFFFFF800)==0xD800
++        || (c&0xFFFFFFFE)==0xFFFE ){  c = 0xFFFD; }
++  }
++  return c;
++}
 
--#define READ_UTF8(zIn, c) { \
+-static void atn2Func(sqlite3_context *context, int argc, sqlite3_value **argv){
 +// hack-sqlite3
-+#define READ_UTF8_2(zIn, c) { \
++#endif
++static void atn2Func(sqlite3_context *context, int argc, sqlite3_value **argv){
 
--#include "sqlite3ext.h"
+-static void ceilFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 +// hack-sqlite3
-+// #include "sqlite3ext.h"
++#if 0
++static void ceilFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 
--GEN_MATH_WRAP_DOUBLE_1(logFunc, log)
+-static void powerFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 +// hack-sqlite3
-+GEN_MATH_WRAP_DOUBLE_1(logFunc2, log)
++#if 0
++static void powerFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 
--static int sqlite3Utf8CharLen(const char *z, int nByte){
+-static void replicateFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 +// hack-sqlite3
-+static int sqlite3Utf8CharLen2(const char *z, int nByte){
++#endif
++static void replicateFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 
--static void piFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
+-static void squareFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 +// hack-sqlite3
-+static void piFunc2(sqlite3_context *context, int argc, sqlite3_value **argv){
++#endif
++static void squareFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 
--static void signFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
+-void print_elem(void *e, int64_t c, void* p){
+-  int ee = *(int*)(e);
+-  printf("%d => %lld\n", ee,c);
+-}
 +// hack-sqlite3
-+static void signFunc2(sqlite3_context *context, int argc, sqlite3_value **argv){
-
--typedef uint8_t         u8;
--typedef uint16_t        u16;
--typedef int64_t         i64;
-+// hack-sqlite3
-+// typedef uint8_t         u8;
-+// typedef uint16_t        u16;
-+// typedef int64_t         i64;
++#if 0
++void print_elem(void *e, int64_t c, void* p){
++  int ee = *(int*)(e);
++  printf("%d => %lld\n", ee,c);
++}
++#endif
 */
-/*jslint-enable*/
 
 
 /*
 repo https://github.com/sqlite/sqlite/tree/master
-committed 2021-07-31T20:30:41Z
+committed 2021-08-07T23:16:52Z
 */
 
 
@@ -236,8 +279,7 @@ Original code 2006 June 05 by relicoder.
 #define HAVE_TRIM 1		/* LMH 2007-03-25 if sqlite has trim functions */
 
 #ifdef COMPILE_SQLITE_EXTENSIONS_AS_LOADABLE_MODULE
-// hack-sqlite3
-// #include "sqlite3ext.h"
+#include "sqlite3ext.h"
 SQLITE_EXTENSION_INIT1
 #else
 #include "sqlite3.h"
@@ -313,10 +355,9 @@ int double_cmp(const void *a, const void *b);
 
 #endif /* _MAP_H_ */
 
-// hack-sqlite3
-// typedef uint8_t         u8;
-// typedef uint16_t        u16;
-// typedef int64_t         i64;
+typedef uint8_t         u8;
+typedef uint16_t        u16;
+typedef int64_t         i64;
 
 static char *sqlite3StrDup( const char *z ) {
     char *res = sqlite3_malloc( strlen(z)+1 );
@@ -389,8 +430,7 @@ static const int utf_mask[] = {
 };
 
 /* LMH salvaged from sqlite3 3.3.13 source code src/utf.c */
-// hack-sqlite3
-#define READ_UTF8_2(zIn, c) { \
+#define READ_UTF8(zIn, c) { \
   int xtra;                                            \
   c = *(zIn)++;                                        \
   xtra = xtra_utf8_bytes[c];                           \
@@ -409,7 +449,21 @@ static const int utf_mask[] = {
 static int sqlite3ReadUtf8(const unsigned char *z){
   int c;
 // hack-sqlite3
-  READ_UTF8_2(z, c);
+  int xtra;
+  c = *(z)++;
+  xtra = xtra_utf8_bytes[c];
+  switch( xtra ){
+    case 4: c = (int)0xFFFD; break;
+    case 3: c = (c<<6) + *(z)++;
+    // fall through
+    case 2: c = (c<<6) + *(z)++;
+    // fall through
+    case 1: c = (c<<6) + *(z)++;
+    c -= xtra_utf8_bits[xtra];
+    if( (utf_mask[xtra]&c)==0
+        || (c&0xFFFFF800)==0xD800
+        || (c&0xFFFFFFFE)==0xFFFE ){  c = 0xFFFD; }
+  }
   return c;
 }
 
@@ -424,8 +478,7 @@ static int sqlite3ReadUtf8(const unsigned char *z){
 ** number of unicode characters in the first nByte of pZ (or up to
 ** the first 0x00, whichever comes first).
 */
-// hack-sqlite3
-static int sqlite3Utf8CharLen2(const char *z, int nByte){
+static int sqlite3Utf8CharLen(const char *z, int nByte){
   int r = 0;
   const char *zTerm;
   if( nByte>=0 ){
@@ -492,12 +545,12 @@ static void name(sqlite3_context *context, int argc, sqlite3_value **argv){\
 ** Example of GEN_MATH_WRAP_DOUBLE_1 usage
 ** this creates function sqrtFunc to wrap the math.h standard function sqrt(x)=x^0.5
 */
-GEN_MATH_WRAP_DOUBLE_1(sqrtFunc, sqrt)
+// GEN_MATH_WRAP_DOUBLE_1(sqrtFunc, sqrt)
 
 /* trignometric functions */
-GEN_MATH_WRAP_DOUBLE_1(acosFunc, acos)
-GEN_MATH_WRAP_DOUBLE_1(asinFunc, asin)
-GEN_MATH_WRAP_DOUBLE_1(atanFunc, atan)
+// GEN_MATH_WRAP_DOUBLE_1(acosFunc, acos)
+// GEN_MATH_WRAP_DOUBLE_1(asinFunc, asin)
+// GEN_MATH_WRAP_DOUBLE_1(atanFunc, atan)
 
 /*
 ** Many of systems don't have inverse hyperbolic trig functions so this will emulate
@@ -511,7 +564,7 @@ static double acosh(double x){
 }
 #endif
 
-GEN_MATH_WRAP_DOUBLE_1(acoshFunc, acosh)
+// GEN_MATH_WRAP_DOUBLE_1(acoshFunc, acosh)
 
 #ifndef HAVE_ASINH
 static double asinh(double x){
@@ -519,7 +572,7 @@ static double asinh(double x){
 }
 #endif
 
-GEN_MATH_WRAP_DOUBLE_1(asinhFunc, asinh)
+// GEN_MATH_WRAP_DOUBLE_1(asinhFunc, asinh)
 
 #ifndef HAVE_ATANH
 static double atanh(double x){
@@ -527,7 +580,7 @@ static double atanh(double x){
 }
 #endif
 
-GEN_MATH_WRAP_DOUBLE_1(atanhFunc, atanh)
+// GEN_MATH_WRAP_DOUBLE_1(atanhFunc, atanh)
 
 /*
 ** math.h doesn't require cot (cotangent) so it's defined here
@@ -536,9 +589,10 @@ static double cot(double x){
   return 1.0/tan(x);
 }
 
-GEN_MATH_WRAP_DOUBLE_1(sinFunc, sin)
-GEN_MATH_WRAP_DOUBLE_1(cosFunc, cos)
-GEN_MATH_WRAP_DOUBLE_1(tanFunc, tan)
+// GEN_MATH_WRAP_DOUBLE_1(sinFunc, sin)
+// GEN_MATH_WRAP_DOUBLE_1(cosFunc, cos)
+// GEN_MATH_WRAP_DOUBLE_1(tanFunc, tan)
+// hack-sqlite3
 GEN_MATH_WRAP_DOUBLE_1(cotFunc, cot)
 
 static double coth(double x){
@@ -555,7 +609,7 @@ static double sinh(double x){
 }
 #endif
 
-GEN_MATH_WRAP_DOUBLE_1(sinhFunc, sinh)
+// GEN_MATH_WRAP_DOUBLE_1(sinhFunc, sinh)
 
 #ifndef HAVE_COSH
 static double cosh(double x){
@@ -563,7 +617,7 @@ static double cosh(double x){
 }
 #endif
 
-GEN_MATH_WRAP_DOUBLE_1(coshFunc, cosh)
+// GEN_MATH_WRAP_DOUBLE_1(coshFunc, cosh)
 
 #ifndef HAVE_TANH
 static double tanh(double x){
@@ -571,8 +625,9 @@ static double tanh(double x){
 }
 #endif
 
-GEN_MATH_WRAP_DOUBLE_1(tanhFunc, tanh)
+// GEN_MATH_WRAP_DOUBLE_1(tanhFunc, tanh)
 
+// hack-sqlite3
 GEN_MATH_WRAP_DOUBLE_1(cothFunc, coth)
 
 /*
@@ -589,10 +644,9 @@ static double log10(double x){
 }
 #endif
 
-// hack-sqlite3
-GEN_MATH_WRAP_DOUBLE_1(logFunc2, log)
-GEN_MATH_WRAP_DOUBLE_1(log10Func, log10)
-GEN_MATH_WRAP_DOUBLE_1(expFunc, exp)
+// GEN_MATH_WRAP_DOUBLE_1(logFunc, log)
+// GEN_MATH_WRAP_DOUBLE_1(log10Func, log10)
+// GEN_MATH_WRAP_DOUBLE_1(expFunc, exp)
 
 /*
 ** Fallback for systems where math.h doesn't define M_PI
@@ -607,6 +661,8 @@ GEN_MATH_WRAP_DOUBLE_1(expFunc, exp)
 #endif
 
 /* Convert Degrees into Radians */
+// hack-sqlite3
+#if 0
 static double deg2rad(double x){
   return x*M_PI/180.0;
 }
@@ -616,12 +672,11 @@ static double rad2deg(double x){
   return 180.0*x/M_PI;
 }
 
-GEN_MATH_WRAP_DOUBLE_1(rad2degFunc, rad2deg)
-GEN_MATH_WRAP_DOUBLE_1(deg2radFunc, deg2rad)
+// GEN_MATH_WRAP_DOUBLE_1(rad2degFunc, rad2deg)
+// GEN_MATH_WRAP_DOUBLE_1(deg2radFunc, deg2rad)
 
 /* constant function that returns the value of PI=3.1415... */
-// hack-sqlite3
-static void piFunc2(sqlite3_context *context, int argc, sqlite3_value **argv){
+static void piFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
   sqlite3_result_double(context, M_PI);
 }
 
@@ -630,6 +685,8 @@ static void piFunc2(sqlite3_context *context, int argc, sqlite3_value **argv){
 ** the argument is an integer.
 ** Since SQLite isn't strongly typed (almost untyped actually) this is a bit pedantic
 */
+// hack-sqlite3
+#endif
 static void squareFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
   i64 iVal = 0;
   double rVal = 0.0;
@@ -660,6 +717,8 @@ static void squareFunc(sqlite3_context *context, int argc, sqlite3_value **argv)
 /* LMH 2007-03-25 Changed to use errno; no pre-checking for errors.  Also removes
   but that was present in the pre-checking that called sqlite3_result_error on
   a non-positive first argument, which is not always an error. */
+// hack-sqlite3
+#if 0
 static void powerFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
   double r1 = 0.0;
   double r2 = 0.0;
@@ -685,6 +744,8 @@ static void powerFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 /*
 ** atan2 wrapper
 */
+// hack-sqlite3
+#endif
 static void atn2Func(sqlite3_context *context, int argc, sqlite3_value **argv){
   double r1 = 0.0;
   double r2 = 0.0;
@@ -706,8 +767,7 @@ static void atn2Func(sqlite3_context *context, int argc, sqlite3_value **argv){
 ** positive, 0 or negative.
 ** When the argument is NULL the result is also NULL (completly conventional)
 */
-// hack-sqlite3
-static void signFunc2(sqlite3_context *context, int argc, sqlite3_value **argv){
+static void signFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
   double rVal=0.0;
   i64 iVal=0;
   assert( argc==1 );
@@ -737,6 +797,8 @@ static void signFunc2(sqlite3_context *context, int argc, sqlite3_value **argv){
 /*
 ** smallest integer value not less than argument
 */
+// hack-sqlite3
+#if 0
 static void ceilFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
   double rVal=0.0;
   i64 iVal=0;
@@ -788,6 +850,8 @@ static void floorFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 ** Given a string (s) in the first argument and an integer (n) in the second returns the
 ** string that constains s contatenated n times
 */
+// hack-sqlite3
+#endif
 static void replicateFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
   unsigned char *z;        /* input string */
   unsigned char *zo;       /* result string */
@@ -903,8 +967,7 @@ static void padlFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
       sqlite3_result_error(context, "domain error", -1);
       return;
     }
-// hack-sqlite3
-    zl = sqlite3Utf8CharLen2(zi, -1);
+    zl = sqlite3Utf8CharLen(zi, -1);
     if( zl>=ilen ){
       /* string is longer than the requested pad length, return the same string (dup it) */
       zo = sqlite3StrDup(zi);
@@ -958,8 +1021,7 @@ static void padrFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
       sqlite3_result_error(context, "domain error", -1);
       return;
     }
-// hack-sqlite3
-    zl = sqlite3Utf8CharLen2(zi, -1);
+    zl = sqlite3Utf8CharLen(zi, -1);
     if( zl>=ilen ){
       /* string is longer than the requested pad length, return the same string (dup it) */
       zo = sqlite3StrDup(zi);
@@ -1014,8 +1076,7 @@ static void padcFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
       sqlite3_result_error(context, "domain error", -1);
       return;
     }
-// hack-sqlite3
-    zl = sqlite3Utf8CharLen2(zi, -1);
+    zl = sqlite3Utf8CharLen(zi, -1);
     if( zl>=ilen ){
       /* string is longer than the requested pad length, return the same string (dup it) */
       zo = sqlite3StrDup(zi);
@@ -1846,6 +1907,7 @@ int RegisterExtensionFunctions(sqlite3 *db){
     { "cot",                1, 0, SQLITE_UTF8,    0, cotFunc },
     { "coth",               1, 0, SQLITE_UTF8,    0, cothFunc },
     { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
+    { "sign",               1, 0, SQLITE_UTF8,    0, signFunc },
     { "square",             1, 0, SQLITE_UTF8,    0, squareFunc },
 
 
@@ -1884,7 +1946,8 @@ int RegisterExtensionFunctions(sqlite3 *db){
     { "lower_quartile",   1, 0, 0, modeStep,     lower_quartileFinalize  },
     { "upper_quartile",   1, 0, 0, modeStep,     upper_quartileFinalize  },
   };
-  int i;
+// hack-sqlite3
+  unsigned long i;
 
   for(i=0; i<sizeof(aFuncs)/sizeof(aFuncs[0]); i++){
     void *pArg = 0;
@@ -1931,7 +1994,8 @@ int RegisterExtensionFunctions(sqlite3 *db){
 }
 
 #ifdef COMPILE_SQLITE_EXTENSIONS_AS_LOADABLE_MODULE
-int sqlite3_extension_init(
+// hack-sqlite3
+int sqlite3ext_extension_functions_init(
     sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi){
   SQLITE_EXTENSION_INIT2(pApi);
   RegisterExtensionFunctions(db);
@@ -2036,12 +2100,16 @@ int double_cmp(const void *a, const void *b){
     return 1;
 }
 
+// hack-sqlite3
+#if 0
 void print_elem(void *e, int64_t c, void* p){
   int ee = *(int*)(e);
   printf("%d => %lld\n", ee,c);
 }
+#endif
 
 
 /*
 file none
 */
+/*jslint-enable*/
