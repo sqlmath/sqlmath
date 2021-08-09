@@ -18,6 +18,14 @@ shRawLibFetch
             "url": "https://github.com/mapbox/node-sqlite3/blob/v5.0.2/LICENSE"
         },
         {
+            "comment": true,
+            "url": "https://github.com/mapbox/node-sqlite3/blob/v5.0.2/deps/common-sqlite.gypi"
+        },
+        {
+            "comment": true,
+            "url": "https://github.com/mapbox/node-sqlite3/blob/v5.0.2/deps/sqlite3.gyp"
+        },
+        {
             "url": "https://github.com/mapbox/node-sqlite3/blob/v5.0.2/src/threading.h"
         },
         {
@@ -56,47 +64,52 @@ shRawLibFetch
         }
     ]
 }
-+#ifndef NODE_SQLITE3_SRC_THREADING_H
-+#define NODE_SQLITE3_SRC_THREADING_H
-
 -# include "napi-inl.deprecated.h"
-+// hack-node_sqlite3.cc
++// hack-sqlite
 +// # include "napi-inl.deprecated.h"
 
 -#define SRC_NAPI_H_
-+// hack-node_sqlite3.cc
++// hack-sqlite
 +#define SRC_NAPI_H_
 +#include <algorithm>
++#include <assert.h>
 +#include <cstdlib>
 +#include <cstring>
 +#include <functional>
 +#include <initializer_list>
 +#include <memory>
 +#include <mutex>
++#include <node_api.h>
 +#include <queue>
 +#include <set>
-+#include <string>
-+#include <type_traits>
-+#include <vector>
-+
-+#include <assert.h>
 +#include <sqlite3.h>
 +#include <sstream>
 +#include <stdint.h>
 +#include <string.h>
 +#include <string>
++#include <type_traits>
 +#include <uv.h>
-+
-+#include <node_api.h>
++#include <vector>
 
 -#endif // SRC_NAPI_H_
-+// hack-node_sqlite3.cc
++// hack-sqlite
 +// #endif // SRC_NAPI_H_
 
 -#endif // SRC_NAPI_INL_H_
-+// hack-node_sqlite3.cc
++// hack-sqlite
 +#endif // SRC_NAPI_INL_H_
 +#endif // SRC_NAPI_H_
+
+-Napi::Object RegisterModule(Napi::Env env, Napi::Object exports) {
++// hack-sqlite
++extern "C" {
++    int sqlite3_auto_extension(void(*)(void));
++    int sqlite3ext_extension_functions_init(sqlite3*, char**, const sqlite3_api_routines*);
++    int sqlite3ext_sqlmath_init(sqlite3*, char**, const sqlite3_api_routines*);
++}
++Napi::Object RegisterModule(Napi::Env env, Napi::Object exports) {
++    sqlite3_auto_extension((void(*)(void))sqlite3ext_extension_functions_init);
++    sqlite3_auto_extension((void(*)(void))sqlite3ext_sqlmath_init);
 */
 
 
@@ -130,30 +143,27 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 file https://github.com/nodejs/node-addon-api/blob/3.2.1/napi.h
 */
 #ifndef SRC_NAPI_H_
-// hack-node_sqlite3.cc
+// hack-sqlite
 #define SRC_NAPI_H_
 #include <algorithm>
+#include <assert.h>
 #include <cstdlib>
 #include <cstring>
 #include <functional>
 #include <initializer_list>
 #include <memory>
 #include <mutex>
+#include <node_api.h>
 #include <queue>
 #include <set>
-#include <string>
-#include <type_traits>
-#include <vector>
-
-#include <assert.h>
 #include <sqlite3.h>
 #include <sstream>
 #include <stdint.h>
 #include <string.h>
 #include <string>
+#include <type_traits>
 #include <uv.h>
-
-#include <node_api.h>
+#include <vector>
 
 // #include <node_api.h>
 // #include <functional>
@@ -2877,7 +2887,7 @@ namespace Napi {
 // Inline implementations of all the above class methods are included here.
 // #include "napi-inl.h"
 
-// hack-node_sqlite3.cc
+// hack-sqlite
 // #endif // SRC_NAPI_H_
 
 
@@ -3222,7 +3232,7 @@ struct AccessorCallbackData {
 }  // namespace details
 
 #ifndef NODE_ADDON_API_DISABLE_DEPRECATED
-// hack-node_sqlite3.cc
+// hack-sqlite
 // # include "napi-inl.deprecated.h"
 #endif // !NODE_ADDON_API_DISABLE_DEPRECATED
 
@@ -8553,7 +8563,7 @@ Addon<T>::DefineProperties(Object object,
 #endif  // NAPI_VERSION > 5
 } // namespace Napi
 
-// hack-node_sqlite3.cc
+// hack-sqlite
 #endif // SRC_NAPI_INL_H_
 #endif // SRC_NAPI_H_
 
@@ -8593,6 +8603,201 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
 ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+
+/*
+file https://github.com/mapbox/node-sqlite3/blob/v5.0.2/deps/common-sqlite.gypi
+*/
+/*
+{
+  'variables': {
+      'sqlite_version%':'3340000',
+      "toolset%":'',
+  },
+  'target_defaults': {
+    'default_configuration': 'Release',
+    'conditions': [
+      [ 'toolset!=""', {
+        'msbuild_toolset':'<(toolset)'
+      }]
+    ],
+    'configurations': {
+      'Debug': {
+        'defines!': [
+          'NDEBUG'
+        ],
+        'cflags_cc!': [
+          '-O3',
+          '-Os',
+          '-DNDEBUG'
+        ],
+        'xcode_settings': {
+          'OTHER_CPLUSPLUSFLAGS!': [
+            '-O3',
+            '-Os',
+            '-DDEBUG'
+          ],
+          'GCC_OPTIMIZATION_LEVEL': '0',
+          'GCC_GENERATE_DEBUGGING_SYMBOLS': 'YES'
+        },
+        'msvs_settings': {
+          'VCCLCompilerTool': {
+            'ExceptionHandling': 1, # /EHsc
+          }
+        }
+      },
+      'Release': {
+        'defines': [
+          'NDEBUG'
+        ],
+        'xcode_settings': {
+          'OTHER_CPLUSPLUSFLAGS!': [
+            '-Os',
+            '-O2'
+          ],
+          'GCC_OPTIMIZATION_LEVEL': '3',
+          'GCC_GENERATE_DEBUGGING_SYMBOLS': 'NO',
+          'DEAD_CODE_STRIPPING': 'YES',
+          'GCC_INLINES_ARE_PRIVATE_EXTERN': 'YES'
+        },
+        'msvs_settings': {
+          'VCCLCompilerTool': {
+            'ExceptionHandling': 1, # /EHsc
+          }
+        }
+      }
+    }
+  }
+}
+*/
+
+
+/*
+file https://github.com/mapbox/node-sqlite3/blob/v5.0.2/deps/sqlite3.gyp
+*/
+/*
+{
+  'includes': [ 'common-sqlite.gypi' ],
+
+  'variables': {
+    'sqlite_magic%': '',
+  },
+
+  'target_defaults': {
+    'default_configuration': 'Release',
+    'cflags':[
+      '-std=c99'
+    ],
+    'configurations': {
+      'Debug': {
+        'defines': [ 'DEBUG', '_DEBUG' ],
+        'msvs_settings': {
+          'VCCLCompilerTool': {
+            'RuntimeLibrary': 1, # static debug
+          },
+        },
+      },
+      'Release': {
+        'defines': [ 'NDEBUG' ],
+        'msvs_settings': {
+          'VCCLCompilerTool': {
+            'RuntimeLibrary': 0, # static release
+          },
+        },
+      }
+    },
+    'msvs_settings': {
+      'VCCLCompilerTool': {
+      },
+      'VCLibrarianTool': {
+      },
+      'VCLinkerTool': {
+        'GenerateDebugInformation': 'true',
+      },
+    },
+    'conditions': [
+      ['OS == "win"', {
+        'defines': [
+          'WIN32'
+        ],
+      }]
+    ],
+  },
+
+  'targets': [
+    {
+      'target_name': 'action_before_build',
+      'type': 'none',
+      'hard_dependency': 1,
+      'actions': [
+        {
+          'action_name': 'unpack_sqlite_dep',
+          'inputs': [
+            './sqlite-autoconf-<@(sqlite_version).tar.gz'
+          ],
+          'outputs': [
+            '<(SHARED_INTERMEDIATE_DIR)/sqlite-autoconf-<@(sqlite_version)/sqlite3.c'
+          ],
+          'action': ['<!(node -p "process.env.npm_config_python || \\"python\\"")','./extract.py','./sqlite-autoconf-<@(sqlite_version).tar.gz','<(SHARED_INTERMEDIATE_DIR)']
+        }
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(SHARED_INTERMEDIATE_DIR)/sqlite-autoconf-<@(sqlite_version)/',
+        ]
+      },
+    },
+    {
+      'target_name': 'sqlite3',
+      'type': 'static_library',
+      'include_dirs': [ '<(SHARED_INTERMEDIATE_DIR)/sqlite-autoconf-<@(sqlite_version)/' ],
+      'dependencies': [
+        'action_before_build'
+      ],
+      'sources': [
+        '<(SHARED_INTERMEDIATE_DIR)/sqlite-autoconf-<@(sqlite_version)/sqlite3.c'
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [ '<(SHARED_INTERMEDIATE_DIR)/sqlite-autoconf-<@(sqlite_version)/' ],
+        'defines': [
+          'SQLITE_THREADSAFE=1',
+          'HAVE_USLEEP=1',
+          'SQLITE_ENABLE_FTS3',
+          'SQLITE_ENABLE_FTS4',
+          'SQLITE_ENABLE_FTS5',
+          'SQLITE_ENABLE_JSON1',
+          'SQLITE_ENABLE_RTREE',
+          'SQLITE_ENABLE_DBSTAT_VTAB=1'
+        ],
+      },
+      'cflags_cc': [
+          '-Wno-unused-value'
+      ],
+      'defines': [
+        '_REENTRANT=1',
+        'SQLITE_THREADSAFE=1',
+        'HAVE_USLEEP=1',
+        'SQLITE_ENABLE_FTS3',
+        'SQLITE_ENABLE_FTS4',
+        'SQLITE_ENABLE_FTS5',
+        'SQLITE_ENABLE_JSON1',
+        'SQLITE_ENABLE_RTREE',
+        'SQLITE_ENABLE_DBSTAT_VTAB=1'
+      ],
+      'export_dependent_settings': [
+        'action_before_build',
+      ],
+      'conditions': [
+        ["sqlite_magic != ''", {
+            'defines': [
+              'SQLITE_FILE_HEADER="<(sqlite_magic)"'
+            ]
+        }]
+      ],
+    }
+  ]
+}
 */
 
 
@@ -11770,7 +11975,15 @@ using namespace node_sqlite3;
 
 namespace {
 
+// hack-sqlite
+extern "C" {
+    int sqlite3_auto_extension(void(*)(void));
+    int sqlite3ext_extension_functions_init(sqlite3*, char**, const sqlite3_api_routines*);
+    int sqlite3ext_sqlmath_init(sqlite3*, char**, const sqlite3_api_routines*);
+}
 Napi::Object RegisterModule(Napi::Env env, Napi::Object exports) {
+    sqlite3_auto_extension((void(*)(void))sqlite3ext_extension_functions_init);
+    sqlite3_auto_extension((void(*)(void))sqlite3ext_sqlmath_init);
     Napi::HandleScope scope(env);
 
     Database::Init(env, exports);

@@ -3,6 +3,7 @@
 # Todo
 
 # v2021.8.7
+- begin compiling sqlmath.c.
 - jslint file sqlmath.js.
 - merge file test-old-prepare.db into test-old.js.
 

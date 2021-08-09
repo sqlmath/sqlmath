@@ -96,15 +96,17 @@ async function promisify(fnc) {
     console.error(require("path").basename(__filename));
     await promiseDescribe("test extension-functions", async function () {
         let db = new sqlite3.Database(":memory:");
-        await promiseIt("test sqrt", function (done) {
-            db.all("SELECT sqrt(9) AS val", function (err, rows) {
+        await promiseIt("test atn2", function (done) {
+            db.all("SELECT atn2(0, 0) AS val", function (err, rows) {
                 assertOrThrow(!err, err);
-                assertJsonEqual(rows[0].val, 3);
+                assertJsonEqual(rows[0].val, 0);
                 done();
             });
         });
     });
 
     // run legacy-test.
-    require("./test-old.js");
+    if (!process.env.npm_config_mode_fast) {
+        require("./test-old.js");
+    }
 }());
