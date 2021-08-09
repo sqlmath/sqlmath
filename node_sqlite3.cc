@@ -99,17 +99,6 @@ shRawLibFetch
 +// hack-sqlite
 +#endif // SRC_NAPI_INL_H_
 +#endif // SRC_NAPI_H_
-
--Napi::Object RegisterModule(Napi::Env env, Napi::Object exports) {
-+// hack-sqlite
-+extern "C" {
-+    int sqlite3_auto_extension(void(*)(void));
-+    int sqlite3ext_extension_functions_init(sqlite3*, char**, const sqlite3_api_routines*);
-+    int sqlite3ext_sqlmath_init(sqlite3*, char**, const sqlite3_api_routines*);
-+}
-+Napi::Object RegisterModule(Napi::Env env, Napi::Object exports) {
-+    sqlite3_auto_extension((void(*)(void))sqlite3ext_extension_functions_init);
-+    sqlite3_auto_extension((void(*)(void))sqlite3ext_sqlmath_init);
 */
 
 
@@ -11975,15 +11964,7 @@ using namespace node_sqlite3;
 
 namespace {
 
-// hack-sqlite
-extern "C" {
-    int sqlite3_auto_extension(void(*)(void));
-    int sqlite3ext_extension_functions_init(sqlite3*, char**, const sqlite3_api_routines*);
-    int sqlite3ext_sqlmath_init(sqlite3*, char**, const sqlite3_api_routines*);
-}
 Napi::Object RegisterModule(Napi::Env env, Napi::Object exports) {
-    sqlite3_auto_extension((void(*)(void))sqlite3ext_extension_functions_init);
-    sqlite3_auto_extension((void(*)(void))sqlite3ext_sqlmath_init);
     Napi::HandleScope scope(env);
 
     Database::Init(env, exports);

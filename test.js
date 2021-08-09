@@ -39,7 +39,7 @@ function assertOrThrow(passed, msg) {
 
 function lineno() {
     return new Error().stack.match(
-        /(?:\n.*?){3}(\d+?):\d+?\)?\n/
+        /(?:\n.*?){3}(\d+?):\d+?\)?$/m
     )[1];
 }
 
@@ -94,6 +94,16 @@ async function promisify(fnc) {
 
 (async function () {
     console.error(require("path").basename(__filename));
+    await promiseDescribe("test sqlmath.noop", async function () {
+        let db = new sqlite3.Database(":memory:");
+        await promiseIt("test sqlmath.noop", function (done) {
+            db.all("SELECT noop('hello world') AS val", function (err, rows) {
+                assertOrThrow(!err, err);
+                assertJsonEqual(rows[0].val, "hello world");
+                done();
+            });
+        });
+    });
     await promiseDescribe("test extension-functions", async function () {
         let db = new sqlite3.Database(":memory:");
         await promiseIt("test atn2", function (done) {
