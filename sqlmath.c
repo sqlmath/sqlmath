@@ -1,4 +1,14 @@
-#include "extension-functions.c"
+#include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "sqlite3ext.h"
+// SQLITE_EXTENSION_INIT1
+sqlite3_api_routines *sqlite3_api;
 
 static void covarianceStep(sqlite3_context *ctx, int argc, sqlite3_value **argv){
 /*
@@ -74,12 +84,41 @@ int RegisterSqlmath(sqlite3 *db){
     return 0;
 }
 
-int sqlite3ext_sqlmath_init(
+static void noopfunc(
+  sqlite3_context *context,
+  int argc,
+  sqlite3_value **argv
+){
+  assert( argc==1 );
+  sqlite3_result_value(context, argv[0]);
+}
+
+
+int sqlite3_sqlmath_init(
     sqlite3 *db,
     char **pzErrMsg,
     const sqlite3_api_routines *pApi
 ){
-    SQLITE_EXTENSION_INIT2(pApi);
-    RegisterSqlmath(db);
-    return 0;
+    // SQLITE_EXTENSION_INIT2(pApi);
+    //!! RegisterSqlmath(db);
+    //!! return 0;
+    int rc = SQLITE_OK;
+    //!! SQLITE_EXTENSION_INIT2(pApi);
+    (void)pzErrMsg;  /* Unused parameter */
+    rc = sqlite3_create_function(db, "noop", 1,
+                       SQLITE_UTF8 | SQLITE_DETERMINISTIC,
+                       0, noopfunc, 0, 0);
+    if( rc ) return rc;
+    rc = sqlite3_create_function(db, "noop_i", 1,
+                       SQLITE_UTF8 | SQLITE_DETERMINISTIC | SQLITE_INNOCUOUS,
+                       0, noopfunc, 0, 0);
+    if( rc ) return rc;
+    rc = sqlite3_create_function(db, "noop_do", 1,
+                       SQLITE_UTF8 | SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY,
+                       0, noopfunc, 0, 0);
+    if( rc ) return rc;
+    rc = sqlite3_create_function(db, "noop_nd", 1,
+                       SQLITE_UTF8,
+                       0, noopfunc, 0, 0);
+    return rc;
 }

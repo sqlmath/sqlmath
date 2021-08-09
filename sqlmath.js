@@ -5,7 +5,7 @@ let EventEmitter = require("events").EventEmitter;
 let Statement;
 let isVerbose = false;
 let sqlite3 = require(
-    "./.binding-sqlmath"
+    "./.binary-sqlmath-node"
     + "-" + "napi" + process.versions.napi
     + "-" + process.platform
     + "-" + process.arch

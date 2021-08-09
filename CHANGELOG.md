@@ -2,7 +2,9 @@
 
 # Todo
 
-# v2021.8.7
+# v2021.8.7-beta
+- add target_cli.
+- binaries - upload darwin/linux/win32 binaries to gh-pages.
 - begin compiling sqlmath.c.
 - jslint file sqlmath.js.
 - merge file test-old-prepare.db into test-old.js.

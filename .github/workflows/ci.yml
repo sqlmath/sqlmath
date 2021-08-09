@@ -57,12 +57,12 @@ jobs:
           CI_NODE_VERSION_ARCH_PLATFORM: v14.x64.linux
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 # shCiArtifactUpload - end
-# upload binding.node - start
+# upload binaries - start
       - uses: actions/upload-artifact@v2
         with:
-          name: binding.node
-          path: .binding-*.node
-# upload binding.node - end
+          name: binaries
+          path: .binary-*
+# upload binaries - end
   job2:
     needs: job1
     runs-on: ${{ matrix.os }}
@@ -82,11 +82,11 @@ jobs:
       - run: git config --global core.autocrlf false
       # https://github.com/actions/checkout
       - uses: actions/checkout@v2
-# download binding.node - start
+# download binaries - start
       - uses: actions/download-artifact@v2
         with:
-          name: binding.node
-# download binding.node - end
+          name: binaries
+# download binaries - end
 # shCiArtifactUpload2 - start
       # fetch jslint_ci.sh from trusted source
       - run: git fetch origin alpha && git checkout origin/alpha jslint_ci.sh

@@ -1228,7 +1228,7 @@ import modulePath from "path";
                     "\n\n\n/*\n"
                     + "repo " + elem.prefix.replace("/blob/", "/tree/") + "\n"
                     + "committed " + (
-                        /\b\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ\b/
+                        /\b\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ\b|[\S\s]{100}$/
                     ).exec(elem.dateCommitted.toString())[0] + "\n"
                     + "*/"
                 );

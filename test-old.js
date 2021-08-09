@@ -351,7 +351,7 @@ shRawLibFetch
 +}
 +function lineno() {
 +    return new Error().stack.match(
-+        /(?:\n.*?){3}(\d+?):\d+?\)?\n/
++        /(?:\n.*?){3}(\d+?):\d+?\)?$/m
 +    )[1];
 +}
 +function noop() {
@@ -461,7 +461,7 @@ async function it(testShould, fnc) {
 }
 function lineno() {
     return new Error().stack.match(
-        /(?:\n.*?){3}(\d+?):\d+?\)?\n/
+        /(?:\n.*?){3}(\d+?):\d+?\)?$/m
     )[1];
 }
 function noop() {
