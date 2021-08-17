@@ -19,7 +19,8 @@
         "url": "https://github.com/sqlmath/sqlmath.js"
     },
     "scripts": {
-        "test": "sh jslint_ci.sh node test.js"
+        "build": "sh jslint_ci.sh shCiBuild",
+        "test": "sh jslint_ci.sh shCiTest"
     },
     "version": "0.0.1"
 }

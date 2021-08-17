@@ -2,7 +2,9 @@
 
 # Todo
 
-# v2021.8.7-beta
+# v2021.8.16
+- add extension-function b64decode()
+- add c-function sqlite3_exec_get_tables().
 - add target_cli.
 - binaries - upload darwin/linux/win32 binaries to gh-pages.
 - begin compiling sqlmath.c.
