@@ -277,70 +277,123 @@ shCiArtifactUpload2() {(set -e
     shGitCmdWithGithubToken push origin gh-pages
 )}
 
+shCiTest() {(set -e
+    shRunWithCoverage node test.js
+)}
+
 shCiBase() {(set -e
+    shCiBuild
+    shCiTest
+)}
+
+shCiBuild() {(set -e
 # this function will run base-ci
+    local FILE
     # cleanup
     rm -f .binary-*
     rm -rf .tmp
     # init .tmp
     mkdir -p .tmp
-    # patch sqlite3.c
     cp -a sqlite-autoconf-3360000 .tmp/src
-    sed -i.bak "s/  *$//" .tmp/src/sqlite3.c
-    sed -i.bak "s/  *$//" .tmp/src/shell.c
+    # cd .tmp/src - start
+    (set -e
+    cd .tmp/src
+    # init sqlmath.xxx
+    cp ../../sqlmath.cpp .
+    # remove trailing-whitespace
+    sed -i.bak "s/  *$//" *.c
+    # patch sqlite3.c
     printf '
 @@ -192171,7 +192171,10 @@
  ** functions and the virtual table implemented by this file.
  ****************************************************************************/
 
-+// sqlite-hack
++// hack-sqlite
 +int sqlite3_extension_functions_init(sqlite3*, char**, const sqlite3_api_routines*);
  SQLITE_PRIVATE int sqlite3Json1Init(sqlite3 *db){
 +  sqlite3_auto_extension((void(*)(void))sqlite3_extension_functions_init);
    int rc = SQLITE_OK;
    unsigned int i;
    static const struct {
-    ' | patch -ut .tmp/src/sqlite3.c
+    ' | patch -ut sqlite3.c
+    # patch shell.c
     printf '
-@@ -6637,7 +6637,7 @@
+@@ -6637,7 +6637,8 @@
  #ifdef _WIN32
 
  #endif
 -int sqlite3_regexp_init(
++// hack-sqlite
 +int sqlite3_regexp_init2(
    sqlite3 *db,
    char **pzErrMsg,
    const sqlite3_api_routines *pApi
-@@ -15559,7 +15559,7 @@
+@@ -15559,7 +15559,8 @@
      sqlite3_completion_init(p->db, 0, 0);
      sqlite3_uint_init(p->db, 0, 0);
      sqlite3_decimal_init(p->db, 0, 0);
 -    sqlite3_regexp_init(p->db, 0, 0);
++// hack-sqlite
 +    // sqlite3_regexp_init(p->db, 0, 0);
      sqlite3_ieee_init(p->db, 0, 0);
      sqlite3_series_init(p->db, 0, 0);
  #if !defined(SQLITE_OMIT_VIRTUALTABLE) && defined(SQLITE_ENABLE_DBPAGE_VTAB)
-    ' | patch -ut .tmp/src/shell.c
+    ' | patch -ut shell.c
+    # pragma GCC diagnostic ignored "-W"
+    printf '
+# pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
+# pragma GCC diagnostic ignored "-Wunused-function"
+# pragma GCC diagnostic ignored "-Wunused-variable"
+' > tmp1.c
+    case "$(uname)" in
+    Darwin)
+        sed -i.bak "s/GCC/clang/" tmp1.c
+        ;;
+    Linux)
+        ;;
+    *)
+        sed -i.bak "s/.*//" tmp1.c
+        ;;
+    esac
+    for FILE in \
+        shell.c \
+        sqlite3.c \
+        sqlmath.cpp
+    do
+        cp "$FILE" tmp2.c
+        cat tmp1.c tmp2.c > "$FILE"
+    done
+    )
+    # cd .tmp/src - end
     # node-gyp - run
     node -e '
 /*jslint name*/
 (function () {
     process.chdir(".tmp");
+    let cflags = {
+        "cflags": [
+            "-Wall",
+            "-fdiagnostics-show-option",
+            "-std=c17"
+        ],
+        "cflags!": [
+            "-fno-exceptions",
+            "-w"
+        ],
+        "cflags_cc": [
+            "-Wall"
+        ],
+        "cflags_cc!": [
+            "-fno-exceptions",
+            "-w"
+        ]
+    };
     let fileNodeGypJs = require("path").resolve(
         require("path").dirname(process.execPath),
         "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
     ).replace("/bin/node_modules/", "/lib/node_modules/");
     require("fs").writeFileSync("binding.gyp", JSON.stringify({
         "target_defaults": {
-            "cflags": [
-                "-std=c99"
-            ],
-            "cflags!": [
-                "-fno-exceptions"
-            ],
-            "cflags_cc!": [
-                "-fno-exceptions"
-            ],
             "conditions": [
                 [
                     "OS == \u0027win\u0027",
@@ -390,18 +443,6 @@ shCiBase() {(set -e
                     }
                 },
                 "Release": {
-                    "cflags": [
-                        "-w"
-                    ],
-                    "cflags!": [
-                        "-Wall"
-                    ],
-                    "cflags_cc": [
-                        "-w"
-                    ],
-                    "cflags_cc!": [
-                        "-Wall"
-                    ],
                     "defines": [
                         "NDEBUG"
                     ],
@@ -415,24 +456,18 @@ shCiBase() {(set -e
                         "GCC_GENERATE_DEBUGGING_SYMBOLS": "NO",
                         "GCC_INLINES_ARE_PRIVATE_EXTERN": "YES",
                         "GCC_OPTIMIZATION_LEVEL": "3",
-                        "OTHER_CFLAGS": [
-                            "-w"
-                        ],
-                        "OTHER_CFLAGS!": [
-                            "-Wall"
-                        ],
-                        "OTHER_CPLUSPLUSFLAGS": [
-                            "-w"
-                        ],
                         "OTHER_CPLUSPLUSFLAGS!": [
                             "-O2",
-                            "-Os",
-                            "-Wall"
+                            "-Os"
                         ]
                     }
                 }
             },
-            "default_configuration": "Release",
+            "default_configuration": (
+                process.env.npm_config_mode_debug
+                ? "Debug"
+                : "Release"
+            ),
             "defines": [
 
 // https://www.sqlite.org/compile.html#recommended_compile_time_options
@@ -474,7 +509,8 @@ shCiBase() {(set -e
             ],
             "msvs_settings": {
                 "VCCLCompilerTool": {
-                    "ExceptionHandling": 1
+                    "ExceptionHandling": 1,
+                    "WarningLevel": 4
                 },
                 "VCLinkerTool": {
                     "GenerateDebugInformation": "true"
@@ -482,51 +518,18 @@ shCiBase() {(set -e
             },
             "xcode_settings": {
                 "CLANG_CXX_LIBRARY": "libc++",
-                "GCC_ENABLE_CPP_EXCEPTIONS": "YES"
+                "GCC_C_LANGUAGE_STANDARD": "c17",
+                "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
+                "OTHER_CFLAGS": cflags.cflags,
+                "OTHER_CFLAGS!": cflags["cflags!"],
+                "OTHER_CPLUSPLUSFLAGS": cflags.cflags_cc,
+                "OTHER_CPLUSPLUSFLAGS!": cflags["cflags_cc!"]
             }
         },
         "targets": [
             {
-                "cflags": [
-                    "-Wall",
-                    "-Wunused-variable"
-                ],
-                "cflags!": [
-                    "-w"
-                ],
-                "cflags_cc": [
-                    "-Wall",
-                    "-Wunused-variable"
-                ],
-                "cflags_cc!": [
-                    "-w"
-                ],
                 "sources": [
-                    "../sqlmath.c"
-                ],
-                "target_name": "sqlmath.c",
-                "type": "static_library",
-                "xcode_settings": {
-                    "OTHER_CFLAGS": [
-                        "-Wall"
-                    ],
-                    "OTHER_CFLAGS!": [
-                        "-w"
-                    ],
-                    "OTHER_CPLUSPLUSFLAGS": [
-                        "-Wall"
-                    ],
-                    "OTHER_CPLUSPLUSFLAGS!": [
-                        "-w"
-                    ]
-                }
-            },
-            {
-                "dependencies": [
-                    "sqlmath.c"
-                ],
-                "sources": [
-                    "../extension-functions.c",
+                    "../sqlmath.c",
                     "src/sqlite3.c"
                 ],
                 "target_name": "sqlite3.c",
@@ -550,7 +553,7 @@ shCiBase() {(set -e
                     "sqlite3.c"
                 ],
                 "sources": [
-                    "../node_sqlite3.cc"
+                    "src/sqlmath.cpp"
                 ],
                 "target_name": "<(target_node)"
             },
@@ -621,8 +624,7 @@ shCiBase() {(set -e
     });
 }());
 ' "$@" # '
-    # run test
-    shRunWithCoverage node test.js
+    npm test --mode-fast
 )}
 
 (set -e

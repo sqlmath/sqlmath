@@ -114,6 +114,47 @@ async function promisify(fnc) {
             });
         });
     });
+    (function () {
+        let db = new sqlite3.Database(":memory:");
+        db.exec(`
+CREATE VIRTUAL TABLE aa USING sqlmatrix(2);
+INSERT INTO aa VALUES (NULL,2),(3,4),(5,6);
+        `);
+        db.all("SELECT * FROM aa;", function (err, rows) {
+            assertOrThrow(!err, err);
+            console.error(rows);
+        });
+        db.all("pragma table_info(aa);", function (err, rows) {
+            assertOrThrow(!err, err);
+            console.error(rows);
+        });
+        /*
+        db.all("SELECT noop2(ptr), cols, rows FROM aa;", function (err, rows) {
+            assertOrThrow(!err, err);
+            console.error(rows);
+        });
+        */
+        db.all((`
+CREATE TABLE tt1 AS
+SELECT 101 AS c102, 102 AS c102
+UNION ALL
+VALUES (201, 202),
+       (301, NULL);
+
+CREATE TABLE tt2 AS
+SELECT 401 AS c402, 402 AS c402, 403 AS c403
+UNION ALL
+VALUES (501, 502.0123, 5030123456789),
+       (601, NULL, 603),
+       (701, b64decode('0123456789'), b64decode('8J+YgQ'));
+
+SELECT * FROM tt1;
+SELECT * FROM tt2;
+        `), function (err, rows) {
+            //!! assertOrThrow(!err, err);
+            //!! console.error(rows);
+        });
+    }());
 
     // run legacy-test.
     if (!process.env.npm_config_mode_fast) {

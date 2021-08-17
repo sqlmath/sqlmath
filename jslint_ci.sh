@@ -1228,7 +1228,7 @@ import modulePath from "path";
                     "\n\n\n/*\n"
                     + "repo " + elem.prefix.replace("/blob/", "/tree/") + "\n"
                     + "committed " + (
-                        /\b\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ\b|[\S\s]{100}$/
+                        /\b\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ\b|$/
                     ).exec(elem.dateCommitted.toString())[0] + "\n"
                     + "*/"
                 );
@@ -1244,7 +1244,9 @@ import modulePath from "path";
             // mangle module.exports
             result += (
                 "\n\n\n/*\nfile " + elem.url + "\n*/\n"
+                + (elem.header || "")
                 + elem.data.toString().trim()
+                + (elem.footer || "")
             );
         });
         result = (
