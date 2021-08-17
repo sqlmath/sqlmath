@@ -151,8 +151,8 @@ VALUES (501, 502.0123, 5030123456789),
 SELECT * FROM tt1;
 SELECT * FROM tt2;
         `), function (err, rows) {
-            //!! assertOrThrow(!err, err);
-            //!! console.error(rows);
+            assertOrThrow(!err, err);
+            console.error(rows);
         });
     }());
 

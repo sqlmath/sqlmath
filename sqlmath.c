@@ -1103,7 +1103,7 @@ int sqlite3_sqlmath_init(
         SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, noopfunc2, 0, 0);
     //!! example_sqlite3_get_table(db);
     //!! example_sqlite3_step(db);
-    example_sqlite3_exec_get_tables_json(db);
+    //!! example_sqlite3_exec_get_tables_json(db);
     return rc;
 }
 
