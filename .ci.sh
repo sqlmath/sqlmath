@@ -278,6 +278,42 @@ shCiArtifactUpload2() {(set -e
 )}
 
 shCiTest() {(set -e
+    #!! export npm_config_mode_debug=1
+    node -e '
+/*jslint name*/
+(function () {
+    process.chdir(".tmp");
+    let fileNodeGypJs = require("path").resolve(
+        require("path").dirname(process.execPath),
+        "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+    ).replace("/bin/node_modules/", "/lib/node_modules/");
+    [
+        "build"
+    ].forEach(function (action) {
+        action = [
+            fileNodeGypJs,
+            action,
+            (
+                process.env.npm_config_mode_debug
+                ? "--debug"
+                : "--release"
+            )
+        ];
+        console.error(
+            "(cd .tmp && node " + action.map(function (elem) {
+                return "\u0027" + elem + "\u0027";
+            }).join(" ") + ")"
+        );
+        if (require("child_process").spawnSync("node", action, {
+            stdio: [
+                "ignore", 1, 2
+            ]
+        }).status !== 0) {
+            process.exit(1);
+        }
+    });
+}());
+' "$@" # '
     shRunWithCoverage node test.js
 )}
 
@@ -290,18 +326,22 @@ shCiBuild() {(set -e
 # this function will run base-ci
     local FILE
     # cleanup
-    rm -f .binary-*
+    rm -f _binary_*
     rm -rf .tmp
     # init .tmp
     mkdir -p .tmp
     cp -a sqlite-autoconf-3360000 .tmp/src
+    printf '
+"\Program Files\Git\bin\bash.exe" -c "cd .. && npm test"
+..\_binary_sqlmath_cli_win32_x64.exe
+sleep 10
+    ' > .tmp/.test.bat
     # cd .tmp/src - start
     (set -e
     cd .tmp/src
-    # init sqlmath.xxx
-    cp ../../sqlmath.cpp .
     # remove trailing-whitespace
     sed -i.bak "s/  *$//" *.c
+    #
     # patch sqlite3.c
     printf '
 @@ -192171,7 +192171,10 @@
@@ -316,6 +356,7 @@ shCiBuild() {(set -e
    unsigned int i;
    static const struct {
     ' | patch -ut sqlite3.c
+    #
     # patch shell.c
     printf '
 @@ -6637,7 +6637,8 @@
@@ -323,7 +364,7 @@ shCiBuild() {(set -e
 
  #endif
 -int sqlite3_regexp_init(
-+// hack-sqlite
++// hack-sqlite - disable redundant sqlite3_regexp_init
 +int sqlite3_regexp_init2(
    sqlite3 *db,
    char **pzErrMsg,
@@ -333,12 +374,13 @@ shCiBuild() {(set -e
      sqlite3_uint_init(p->db, 0, 0);
      sqlite3_decimal_init(p->db, 0, 0);
 -    sqlite3_regexp_init(p->db, 0, 0);
-+// hack-sqlite
++// hack-sqlite - disable redundant sqlite3_regexp_init
 +    // sqlite3_regexp_init(p->db, 0, 0);
      sqlite3_ieee_init(p->db, 0, 0);
      sqlite3_series_init(p->db, 0, 0);
  #if !defined(SQLITE_OMIT_VIRTUALTABLE) && defined(SQLITE_ENABLE_DBPAGE_VTAB)
     ' | patch -ut shell.c
+    #
     # pragma GCC diagnostic ignored "-W"
     printf '
 # pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
@@ -357,8 +399,7 @@ shCiBuild() {(set -e
     esac
     for FILE in \
         shell.c \
-        sqlite3.c \
-        sqlmath.cpp
+        sqlite3.c
     do
         cp "$FILE" tmp2.c
         cat tmp1.c tmp2.c > "$FILE"
@@ -407,7 +448,8 @@ shCiBuild() {(set -e
                         "link_settings": {
                             "libraries": [
                                 "-ldl",
-                                "-lm"
+                                "-lm",
+                                "-lz"
                             ]
                         }
                     }
@@ -416,9 +458,9 @@ shCiBuild() {(set -e
             "configurations": {
                 "Debug": {
                     "cflags_cc!": [
+                        "-DNDEBUG",
                         "-O3",
-                        "-Os",
-                        "-DNDEBUG"
+                        "-Os"
                     ],
                     "defines": [
                         "DEBUG",
@@ -436,9 +478,9 @@ shCiBuild() {(set -e
                         "GCC_GENERATE_DEBUGGING_SYMBOLS": "YES",
                         "GCC_OPTIMIZATION_LEVEL": "0",
                         "OTHER_CPLUSPLUSFLAGS!": [
+                            "-DNDEBUG",
                             "-O3",
-                            "-Os",
-                            "-DDEBUG"
+                            "-Os"
                         ]
                     }
                 },
@@ -463,11 +505,6 @@ shCiBuild() {(set -e
                     }
                 }
             },
-            "default_configuration": (
-                process.env.npm_config_mode_debug
-                ? "Debug"
-                : "Release"
-            ),
             "defines": [
 
 // https://www.sqlite.org/compile.html#recommended_compile_time_options
@@ -494,6 +531,7 @@ shCiBuild() {(set -e
 // node-sqlite3
 
                 "HAVE_USLEEP=1",
+                "NAPI_DISABLE_CPP_EXCEPTIONS=1",
                 "SQLITE_ENABLE_DBSTAT_VTAB=1",
                 "SQLITE_ENABLE_FTS3",
                 "SQLITE_ENABLE_FTS4",
@@ -510,7 +548,7 @@ shCiBuild() {(set -e
             "msvs_settings": {
                 "VCCLCompilerTool": {
                     "ExceptionHandling": 1,
-                    "WarningLevel": 4
+                    "WarningLevel": 3
                 },
                 "VCLinkerTool": {
                     "GenerateDebugInformation": "true"
@@ -546,31 +584,15 @@ shCiBuild() {(set -e
                 "type": "executable"
             },
             {
-                "defines": [
-                    "NAPI_DISABLE_CPP_EXCEPTIONS=1"
-                ],
                 "dependencies": [
                     "sqlite3.c"
                 ],
                 "sources": [
-                    "src/sqlmath.cpp"
+                    "../sqlmath_napi.c"
                 ],
                 "target_name": "<(target_node)"
             },
             {
-                "conditions": [
-                    [
-                        "OS == \u0027linux\u0027",
-                        {
-                            "link_settings": {
-                                "libraries": [
-                                    "-ldl",
-                                    "-lm"
-                                ]
-                            }
-                        }
-                    ]
-                ],
                 "copies": [
                     {
                         "destination": "..",
@@ -583,9 +605,34 @@ shCiBuild() {(set -e
                 "dependencies": [
                     "<(target_node)"
                 ],
-                "target_name": "target_copy",
+                "target_name": "target_install",
                 "type": "none"
             }
+            //!! {
+                //!! "actions": [
+                    //!! {
+                        //!! "action": [
+                            //!! (
+                                //!! process.platform === "win32"
+                                //!! ? "cd .. && npm run test_win32"
+                                //!! : "cd .. && npm run test"
+                            //!! )
+                        //!! ],
+                        //!! "action_name": "action_test",
+                        //!! "inputs": [
+                            //!! "../<(target_node).node"
+                        //!! ],
+                        //!! "outputs": [
+                            //!! "../<(target_node).node"
+                        //!! ]
+                    //!! }
+                //!! ],
+                //!! "dependencies": [
+                    //!! "target_install"
+                //!! ],
+                //!! "target_name": "target_test",
+                //!! "type": "none"
+            //!! }
         ],
         "variables": {
             ".exe": (
@@ -594,15 +641,15 @@ shCiBuild() {(set -e
                 : ""
             ),
             "target_cli": (
-                ".binary-sqlmath-cli"
-                + "-" + process.platform
-                + "-" + process.arch
+                "_binary_sqlmath_cli"
+                + "_" + process.platform
+                + "_" + process.arch
             ),
             "target_node": (
-                ".binary-sqlmath-node"
-                + "-" + "napi" + process.versions.napi
-                + "-" + process.platform
-                + "-" + process.arch
+                "_binary_sqlmath_napi"
+                + "_" + process.versions.napi
+                + "_" + process.platform
+                + "_" + process.arch
             )
         }
     }, undefined, 4));
@@ -611,10 +658,21 @@ shCiBuild() {(set -e
         "configure",
         "build"
     ].forEach(function (action) {
-        if (require("child_process").spawnSync(process.execPath, [
+        action = [
             fileNodeGypJs,
-            action
-        ], {
+            action,
+            (
+                process.env.npm_config_mode_debug
+                ? "--debug"
+                : "--release"
+            )
+        ];
+        console.error(
+            "(cd .tmp && node " + action.map(function (elem) {
+                return "\u0027" + elem + "\u0027";
+            }).join(" ") + ")"
+        );
+        if (require("child_process").spawnSync("node", action, {
             stdio: [
                 "ignore", 1, 2
             ]

@@ -1,6 +1,10 @@
 # Changelog
 
 # Todo
+- fix build for darwin and win32.
+
+# v2021.8.24
+- add addon functions dbOpen(), dbClose(), dbExec(). but ci works only in linux.
 
 # v2021.8.16
 - add extension-function b64decode()

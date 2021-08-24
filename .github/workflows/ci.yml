@@ -29,9 +29,9 @@ jobs:
           - 14
           # - 16
         os:
-          - macos-latest
+          #!! - macos-latest
           - ubuntu-latest
-          - windows-latest
+          #!! - windows-latest
     name: job1 . node . v${{ matrix.node_version }} . ${{ matrix.architecture }} . ${{ matrix.os }}
     steps:
       # disable autocrlf in windows

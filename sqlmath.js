@@ -1,318 +1,220 @@
-/*jslint beta, name, node, this*/
-let Backup;
-let Database;
-let EventEmitter = require("events").EventEmitter;
-let Statement;
-let isVerbose = false;
-let sqlite3 = require(
-    "./.binary-sqlmath-node"
-    + "-" + "napi" + process.versions.napi
-    + "-" + process.platform
-    + "-" + process.arch
-    + ".node"
-);
-let supportedEvents = [
-    "trace", "profile", "insert", "update", "delete"
-];
-
-function databaseAddListener(type, ...argList) {
-    let val = EventEmitter.prototype.addListener.call(this, type, ...argList);
-    if (supportedEvents.indexOf(type) >= 0) {
-        this.configure(type, true);
-    }
-    return val;
-}
-
-function databaseAll(statement, params) {
-
-// Database#all(sql, [bind1, bind2, ...], [callback])
-
-    statement.all.apply(statement, params).finalize();
-    return this;
-}
-
-function databaseBackup(...argList) {
-
-// Database#backup(filename, [callback])
-// Database#backup(filename, destName, sourceName, filenameIsDest, [callback])
-
-    let backup;
-    if (argList.length <= 2) {
-
-// By default, we write the main database out to the main database of the named
-// file.
-// This is the most likely use of the backup api.
-
-        backup = new Backup(this, argList[0], "main", "main", true, argList[1]);
-    } else {
-
-// Otherwise, give the user full control over the sqlite3_backup_init arguments.
-
-        backup = new Backup(this, ...argList);
-    }
-
-// Per the sqlite docs, exclude the following errors as non-fatal by default.
-
-    backup.retryErrors = [
-        sqlite3.BUSY, sqlite3.LOCKED
-    ];
-    return backup;
-}
-
-function databaseEach(statement, params) {
-
-// Database#each(sql, [bind1, bind2, ...], [callback], [complete])
-
-    statement.each.apply(statement, params).finalize();
-    return this;
-}
-
-function databaseGet(statement, params) {
-
-// Database#get(sql, [bind1, bind2, ...], [callback])
-
-    statement.get.apply(statement, params).finalize();
-    return this;
-}
-
-function databaseMap(statement, params) {
-    statement.map.apply(statement, params).finalize();
-    return this;
-}
-
-function databasePrepare(statement, params) {
-
-// Database#prepare(sql, [bind1, bind2, ...], [callback])
-
-    return (
-        params.length
-        ? statement.bind.apply(statement, params)
-        : statement
-    );
-}
-
-function databaseRemoveAllListeners(type, ...argList) {
-    let val = EventEmitter.prototype.removeAllListeners.call(
-        this,
-        type,
-        ...argList
-    );
-    if (supportedEvents.indexOf(type) >= 0) {
-        this.configure(type, false);
-    }
-    return val;
-}
-
-function databaseRemoveListener(type, ...argList) {
-    let val = EventEmitter.prototype.removeListener.call(
-        this,
-        type,
-        ...argList
-    );
-    if (supportedEvents.indexOf(type) >= 0 && !this._events[type]) {
-        this.configure(type, false);
-    }
-    return val;
-}
-
-function databaseRun(statement, params) {
-
-// Database#run(sql, [bind1, bind2, ...], [callback])
-
-    statement.run.apply(statement, params).finalize();
-    return this;
-}
-
-function normalizeMethod(fnc) {
-    return function (sql, ...argList) {
-        let onError;
-        if (typeof argList[argList.length - 1] === "function") {
-            onError = function (err) {
-                if (err) {
-                    argList[argList.length - 1](err);
-                }
-            };
-        }
-        return fnc.call(this, new Statement(this, sql, onError), argList);
+/*jslint beta, name, node*/
+"use strict";
+// init debugInline
+(function () {
+    let consoleError = console.error;
+    globalThis.debugInline = globalThis.debugInline || function (...argList) {
+// this function will both print <argList> to stderr and return <argList>[0]
+        consoleError("\n\ndebugInline");
+        consoleError(...argList);
+        consoleError("\n");
+        return argList[0];
     };
+}());
+
+function noop(val) {
+// this function will do nothing except return val
+    return val;
 }
 
-function sqliteCachedDatabase(file, aa, bb) {
-    let callback;
-    let db;
-    if (file === "" || file === ":memory:") {
-
-// Don't cache special databases.
-
-        return new Database(file, aa, bb);
-    }
-
-    file = require("path").resolve(file);
-    db = sqlite3.cached.objects[file];
-    if (!db) {
-        db = new Database(file, aa, bb);
-        sqlite3.cached.objects[file] = db;
-        return db;
-    }
-
-// Make sure the callback is called.
-
-    callback = (
-        (typeof aa === "function")
-        ? aa
-        : bb
+(function () {
+    let JSBATON_INFO;
+    let addon = require(
+        "./_binary_sqlmath_napi"
+        + "_" + process.versions.napi
+        + "_" + process.platform
+        + "_" + process.arch
+        + ".node"
     );
-    if (typeof callback === "function" && db.open) {
-        process.nextTick(callback.bind(db));
-        return db;
-    }
-    if (typeof callback === "function") {
-        db.once("open", callback.bind(db));
-        return db;
-    }
-    return db;
-}
+    let dbMap = new WeakMap();
 
-function sqliteVerbose() {
-    if (!isVerbose) {
+    function assertJsonEqual(aa, bb) {
+// this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
+        aa = JSON.stringify(objectDeepCopyWithKeysSorted(aa));
+        bb = JSON.stringify(objectDeepCopyWithKeysSorted(bb));
+        if (aa !== bb) {
+            throw new Error(
+                JSON.stringify(aa) + " !== " + JSON.stringify(bb)
+            );
+        }
+    }
+
+    function assertOrThrow(passed, err) {
+// this function will throw <err> if passed is falsy
+        if (!passed) {
+            throw (
+                typeof err === "string"
+                ? new Error(err)
+                : err
+            );
+        }
+    }
+
+    function dbCall(db, fnc, argList) {
+// this function will serialize <argList> to <db.argList>,
+// suitable for passing into napi
+        assertOrThrow(dbMap.has(db), "invalid db handle");
+        // zero arg
         [
-            "prepare",
-            "get",
-            "run",
-            "all",
-            "each",
-            "map",
-            "close",
-            "exec"
-        ].forEach(function (name) {
-            sqliteVerboseTrace(Database.prototype, name);
-        });
-        [
-            "bind",
-            "get",
-            "run",
-            "all",
-            "each",
-            "map",
-            "reset",
-            "finalize"
-        ].forEach(function (name) {
-            sqliteVerboseTrace(Statement.prototype, name);
-        });
-        isVerbose = true;
-    }
-    return this;
-}
-
-function sqliteVerboseTrace(object, property, pos) {
-
-// Save the stack trace over EIO callbacks.
-// Inspired by https://github.com/tlrobinson/long-stack-traces
-
-    let old = object[property];
-    object[property] = function (...argList) {
-        let cb;
-        let error = new Error();
-        let name = (
-            object.constructor.name + "#" + property + "("
-            + argList.map(function (elem) {
-                return require("util").inspect(elem, false, 0);
-            }).join(", ") + ")"
-        );
-        if (pos === undefined) {
-            pos = -1;
-        }
-        if (pos < 0) {
-            pos += argList.length;
-        }
-        cb = argList[pos];
-        if (typeof argList[pos] === "function") {
-            argList[pos] = function replacement(err, ...argList) {
-                if (err && err.stack && !err.__augmented) {
-                    err.stack = err.stack.split("\n").filter(function (line) {
-                        return line.indexOf(__filename) < 0;
-                    }).join("\n");
-                    err.stack += "\n--> in " + name;
-                    err.stack += "\n" + error.stack.split(
-                        "\n"
-                    ).filter(function (line) {
-                        return line.indexOf(__filename) < 0;
-                    }).slice(1).join("\n");
-                    err.__augmented = true;
-                }
-                return cb.call(this, err, ...argList);
-            };
-        }
-        return old.apply(this, argList);
-    };
-}
-
-function statementMap(...params) {
-    let callback = params.pop();
-    params.push(function (err, rowList) {
-        let ii;
-        let key;
-        let keyList;
-        let result;
-        let val;
-        if (err) {
-            return callback(err);
-        }
-        result = {};
-        if (rowList.length) {
-            keyList = Object.keys(rowList[0]);
-            key = keyList[0];
-            if (keyList.length > 2) {
-
-// val is an object.
-
-                ii = 0;
-                while (ii < rowList.length) {
-                    result[rowList[ii][key]] = rowList[ii];
-                    ii += 1;
-                }
-            } else {
-                val = keyList[1];
-
-// val is a plain value.
-
-                ii = 0;
-                while (ii < rowList.length) {
-                    result[rowList[ii][key]] = rowList[ii][val];
-                    ii += 1;
-                }
+            JSBATON_INFO.buf8, JSBATON_INFO.num8
+        ].forEach(function ([
+            aa, bb
+        ]) {
+            bb += aa;
+            while (aa < bb) {
+                db.baton[aa] = 0;
+                aa += 1;
             }
-        }
-        callback(err, result);
-    });
-    return this.all.apply(this, params);
-}
+        });
+        db.argList = [
+            db.baton
+        ];
+        argList.slice(0, 8).forEach(function (arg, ii) {
+            // handle buffer
+            if (Buffer.isBuffer(arg)) {
+                db.argList.push(arg);
+                return;
+            }
+            if (typeof arg === "string") {
+                db.argList.push(Buffer.from(arg + "\u0000"));
+                return;
+            }
+            arg = Number(arg ?? 0);
+            db.baton.writeDoubleLE(arg, JSBATON_INFO.num8[0] + 8 * ii);
+        });
+        return addon[fnc](...db.argList);
+    }
 
-Backup = sqlite3.Backup;
-Database = sqlite3.Database;
-Statement = sqlite3.Statement;
-Object.assign(Backup.prototype, EventEmitter.prototype);
-Object.assign(Database.prototype, EventEmitter.prototype, {
-    addListener: databaseAddListener,
-    all: normalizeMethod(databaseAll),
-    backup: databaseBackup,
-    each: normalizeMethod(databaseEach),
-    get: normalizeMethod(databaseGet),
-    map: normalizeMethod(databaseMap),
-    on: databaseAddListener,
-    prepare: normalizeMethod(databasePrepare),
-    removeAllListeners: databaseRemoveAllListeners,
-    removeListener: databaseRemoveListener,
-    run: normalizeMethod(databaseRun)
-});
-Object.assign(Statement.prototype, EventEmitter.prototype, {
-    map: statementMap
-});
-Object.assign(sqlite3, {
-    cached: {
-        Database: sqliteCachedDatabase,
-        objects: {}
-    },
-    verbose: sqliteVerbose
-});
-module.exports = sqlite3;
+    function dbClose({
+        db
+    }) {
+// this function will return sqlite-database-connection <db>
+        dbCall(db, "_sqlite3_close", []);
+        dbMap.delete(db);
+    }
+
+    function dbExec({
+        db,
+        sql
+    }) {
+// this function will exec <sql> in <db> and return result
+        return Buffer.from(dbCall(db, "_jssqlExec", [
+            sql
+        ]));
+    }
+
+    function dbOpen({
+        filename,
+        flags = 6
+    }) {
+// this function will return sqlite-database-connection <db>
+// int sqlite3_open_v2(
+//   const char *filename,   /* Database filename (UTF-8) */
+//   sqlite3 **ppDb,         /* OUT: SQLite db handle */
+//   int flags,              /* Flags */
+//   const char *zVfs        /* Name of VFS module to use */
+// );
+        let db = {
+            argList: [],
+            baton: Buffer.alloc(JSBATON_INFO.sizeof[0])
+        };
+        dbMap.set(db, true);
+        dbCall(db, "_sqlite3_open_v2", [
+            filename, undefined, flags, undefined
+        ]);
+        return db;
+    }
+
+    function objectDeepCopyWithKeysSorted(obj) {
+// this function will recursively deep-copy <obj> with keys sorted
+        let sorted;
+        if (typeof obj !== "object" || !obj) {
+            return obj;
+        }
+        // recursively deep-copy list with child-keys sorted
+        if (Array.isArray(obj)) {
+            return obj.map(objectDeepCopyWithKeysSorted);
+        }
+        // recursively deep-copy obj with keys sorted
+        sorted = {};
+        Object.keys(obj).sort().forEach(function (key) {
+            sorted[key] = objectDeepCopyWithKeysSorted(obj[key]);
+        });
+        return sorted;
+    }
+
+    JSBATON_INFO = JSON.parse(addon.jsbatonInfo());
+    debugInline(JSBATON_INFO);
+    assertJsonEqual(JSBATON_INFO.sizeof[0], JSBATON_INFO.sizeof[1]);
+
+    (function testJsbaton() {
+// this function will test passing argList between nodejs <-> c
+        let db = dbOpen({
+            filename: ":memory:"
+        });
+        let result;
+        let sql;
+        [
+            [-0, "0"],
+            [-Infinity, "-Infinity"],
+            [0, "0"],
+            [1 / 0, "Infinity"],
+            [Infinity, "Infinity"],
+            [false, "0"],
+            [null, "0"],
+            [true, "1"],
+            [undefined, "0"],
+            [{}, "NaN"]
+        ].forEach(function ([
+            aa, bb
+        ]) {
+            let cc;
+            dbCall(db, "napiNoop", [aa]);
+            cc = String(db.baton.readDoubleLE(JSBATON_INFO.num8[0]));
+            assertOrThrow(bb === cc, [aa, bb, cc]);
+        });
+        sql = (`
+CREATE TABLE tt1 AS
+SELECT 101 AS c101, 102 AS c102
+UNION ALL
+VALUES (201, 202),
+       (301, NULL);
+CREATE TABLE tt2 AS
+SELECT 401 AS c401, 402 AS c402, 403 AS c403
+UNION ALL
+VALUES (501, 502.0123, 5030123456789),
+       (601, '602', '603' || '\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e');
+       --(701, b64decode('0123456789'), b64decode('8J+YgQ'));
+SELECT * FROM tt1;
+SELECT * FROM tt2;
+        `);
+        debugInline(JSON.parse(dbExec({
+            db,
+            sql
+        })));
+        try {
+            debugInline(JSON.parse(dbExec({
+                db,
+                sql
+            })));
+        } catch (err) {
+            console.error(err);
+        }
+        try {
+            debugInline(JSON.parse(dbExec({
+                db,
+                sql
+            })));
+        } catch (err) {
+            console.error(err);
+        }
+        dbClose({
+            db
+        });
+    }());
+
+    module.exports = addon;
+
+    // coverage-hack
+    noop();
+}());
