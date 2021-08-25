@@ -38,19 +38,9 @@ shRawLibFetch
             "aa": "SQLITE_EXTENSION_INIT",
             "bb": "// $&",
             "flags": "g"
-        },
-        {
-            "aa": "(0, *?\\/\\* xRename *?\\*\\/)(\\n\\};)",
-            "bb": "$1\n0, 0, 0, 0$2",
-            "flags": "g"
         }
     ]
 }
--        case RE_OP_CC_INC: {
-+// hack-sqlite
-+        // fall through
-+        case RE_OP_CC_INC: {
-
 -    /\\* math.h *\\/
 -    { "acos",               1, 0, SQLITE_UTF8,    0, acosFunc  },
 -    { "asin",               1, 0, SQLITE_UTF8,    0, asinFunc  },
@@ -96,83 +86,10 @@ shRawLibFetch
 +    { "sign",               1, 0, SQLITE_UTF8,    0, signFunc },
 +    { "square",             1, 0, SQLITE_UTF8,    0, squareFunc },
 
--  READ_UTF8(z, c);
+-#include "sqlite3ext.h"
++#include "sqlite3ext.h"
 +// hack-sqlite
-+/\\* LMH salvaged from sqlite3 3.3.13 source code src/utf.c *\\/
-+  int xtra;
-+  c = *(z)++;
-+  xtra = xtra_utf8_bytes[c];
-+  switch( xtra ){
-+    case 4: c = (int)0xFFFD; break;
-+    case 3: c = (c<<6) + *(z)++;
-+    // fall through
-+    case 2: c = (c<<6) + *(z)++;
-+    // fall through
-+    case 1: c = (c<<6) + *(z)++;
-+    c -= xtra_utf8_bits[xtra];
-+    if( (utf_mask[xtra]&c)==0
-+        || (c&0xFFFFF800)==0xD800
-+        || (c&0xFFFFFFFE)==0xFFFE ){  c = 0xFFFD; }
-+  }
-
--  for(i=3; i<argc; i++){
-+// hack-sqlite
-+  for(i=3; i<(unsigned int)argc; i++){
-
--  if( !p->bStatic ) sqlite3_free(p->zBuf);
-+// hack-sqlite
-+  if (p == NULL) {return;}
-+  if( !p->bStatic ) sqlite3_free(p->zBuf);
-
--  int i, j;                  /\\* Loop counters *\\/
-+// hack-sqlite
-+  unsigned int i, j;                  /\\* Loop counters *\\/
-
--  int i;
--
--  for(i=0; i<sizeof(aFuncs)/sizeof(aFuncs[0]); i++){
-+// hack-sqlite
-+  unsigned int i;
-+
-+  for(i=0; i<sizeof(aFuncs)/sizeof(aFuncs[0]); i++){
-
--  int i;
--
--  pIn = sqlite3_value_blob(argv[0]);
-+// hack-sqlite
-+  unsigned int i;
-+
-+  pIn = sqlite3_value_blob(argv[0]);
-
--#define GEN_MATH_WRAP_DOUBLE_1(name, function) \
-+// hack-sqlite
-+#define GEN_MATH_WRAP_DOUBLE_1(name, function)
-+#define GEN_MATH_WRAP_DOUBLE_2(name, function) \
-
--#ifndef deliberate_fall_through
--# define deliberate_fall_through
--#endif
-+#ifndef deliberate_fall_through
-+// hack-sqlite
-+#ifdef __GNUC__
-+# define deliberate_fall_through __attribute__((fallthrough));
-+#else
-+# define deliberate_fall_through
-+#endif
-+#endif
-
--// SQLITE_EXTENSION_INIT1
-+// SQLITE_EXTENSION_INIT1
-+// hack-sqlite
-+const sqlite3_api_routines *sqlite3_api=0;
-
--GEN_MATH_WRAP_DOUBLE_1(cotFunc, cot)
-+// hack-sqlite
-+GEN_MATH_WRAP_DOUBLE_2(cotFunc, cot)
-
--GEN_MATH_WRAP_DOUBLE_1(cothFunc, coth)
-+// hack-sqlite
-+GEN_MATH_WRAP_DOUBLE_2(cothFunc, coth)
++static const sqlite3_api_routines *sqlite3_api;
 
 -int sqlite3_extension_init(
 -    sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi){
@@ -183,55 +100,13 @@ shRawLibFetch
 +    sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi){
 +  // SQLITE_EXTENSION_INIT2(pApi);
 +  sqlite3_api=pApi;
-+  sqlite3_auto_extension((void(*)(void))sqlite3_carray_init);
-+  sqlite3_auto_extension((void(*)(void))sqlite3_compress_init);
-+  sqlite3_auto_extension((void(*)(void))sqlite3_csv_init);
-+  sqlite3_auto_extension((void(*)(void))sqlite3_noop_init);
-+  sqlite3_auto_extension((void(*)(void))sqlite3_regexp_init);
-+  sqlite3_auto_extension((void(*)(void))sqlite3_sqlmath_init);
-+  sqlite3_auto_extension((void(*)(void))sqlite3_templatevtab_init);
-
--static double deg2rad(double x){
-+// hack-sqlite
-+#if 0
-+static double deg2rad(double x){
-
--static void atn2Func(sqlite3_context *context, int argc, sqlite3_value **argv){
-+// hack-sqlite
-+#endif
-+static void atn2Func(sqlite3_context *context, int argc, sqlite3_value **argv){
-
--static void ceilFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
-+// hack-sqlite
-+#if 0
-+static void ceilFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
-
--static void powerFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
-+// hack-sqlite
-+#if 0
-+static void powerFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
-
--static void replicateFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
-+// hack-sqlite
-+#endif
-+static void replicateFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
-
--static void squareFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
-+// hack-sqlite
-+#endif
-+static void squareFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
-
--void print_elem(void *e, int64_t c, void* p){
--  int ee = *(int*)(e);
--  printf("%d => %lld\n", ee,c);
--}
-+// hack-sqlite
-+#if 0
-+void print_elem(void *e, int64_t c, void* p){
-+  int ee = *(int*)(e);
-+  printf("%d => %lld\n", ee,c);
-+}
-+#endif
++  sqlite3_carray_init(db, pzErrMsg, pApi);
++  sqlite3_compress_init(db, pzErrMsg, pApi);
++  sqlite3_csv_init(db, pzErrMsg, pApi);
++  sqlite3_noop_init(db, pzErrMsg, pApi);
++  sqlite3_regexp_init(db, pzErrMsg, pApi);
++  sqlite3_sqlmath_init(db, pzErrMsg, pApi);
++  sqlite3_templatevtab_init(db, pzErrMsg, pApi);
 */
 
 
@@ -312,9 +187,9 @@ file https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/carray.c
 ** the array, element by element.
 */
 #include "sqlite3ext.h"
-// SQLITE_EXTENSION_INIT1
 // hack-sqlite
-const sqlite3_api_routines *sqlite3_api=0;
+static const sqlite3_api_routines *sqlite3_api;
+// SQLITE_EXTENSION_INIT1
 #include <assert.h>
 #include <string.h>
 
@@ -644,7 +519,6 @@ static sqlite3_module carrayModule = {
   0,                         /* xRollback */
   0,                         /* xFindMethod */
   0,                         /* xRename */
-0, 0, 0, 0
 };
 
 /*
@@ -877,8 +751,7 @@ static void uncompressFunc(
   unsigned int nIn;
   unsigned long int nOut;
   int rc;
-// hack-sqlite
-  unsigned int i;
+  int i;
 
   pIn = sqlite3_value_blob(argv[0]);
   nIn = sqlite3_value_bytes(argv[0]);
@@ -1418,8 +1291,7 @@ static int csvtabConnect(
   CsvTable *pNew = 0;        /* The CsvTable object to construct */
   int bHeader = -1;          /* header= flags.  -1 means not seen yet */
   int rc = SQLITE_OK;        /* Result code from this routine */
-// hack-sqlite
-  unsigned int i, j;                  /* Loop counters */
+  int i, j;                  /* Loop counters */
 #ifdef SQLITE_TEST
   int tstFlags = 0;          /* Value for testflags=N parameter */
 #endif
@@ -1439,8 +1311,7 @@ static int csvtabConnect(
   assert( sizeof(azPValue)==sizeof(azParam) );
   memset(&sRdr, 0, sizeof(sRdr));
   memset(azPValue, 0, sizeof(azPValue));
-// hack-sqlite
-  for(i=3; i<(unsigned int)argc; i++){
+  for(i=3; i<argc; i++){
     const char *z = argv[i];
     const char *zValue;
     for(j=0; j<sizeof(azParam)/sizeof(azParam[0]); j++){
@@ -1817,7 +1688,6 @@ static sqlite3_module CsvModule = {
   0,                       /* xRollback */
   0,                       /* xFindMethod */
   0,                       /* xRename */
-0, 0, 0, 0
 };
 
 #ifdef SQLITE_TEST
@@ -1850,7 +1720,6 @@ static sqlite3_module CsvModuleFauxWrite = {
   0,                       /* xRollback */
   0,                       /* xFindMethod */
   0,                       /* xRename */
-0, 0, 0, 0
 };
 #endif /* SQLITE_TEST */
 
@@ -1934,12 +1803,7 @@ file https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/json1.c
 #endif
 
 #ifndef deliberate_fall_through
-// hack-sqlite
-#ifdef __GNUC__
-# define deliberate_fall_through __attribute__((fallthrough));
-#else
 # define deliberate_fall_through
-#endif
 #endif
 
 /*
@@ -2110,8 +1974,6 @@ static void jsonInit(JsonString *p, sqlite3_context *pCtx){
 ** initial state.
 */
 static void jsonReset(JsonString *p){
-// hack-sqlite
-  if (p == NULL) {return;}
   if( !p->bStatic ) sqlite3_free(p->zBuf);
   jsonZero(p);
 }
@@ -4908,8 +4770,6 @@ static int re_match(ReCompiled *pRe, const unsigned char *zIn, int nIn){
           if( c==0 ) break;
           /* fall-through */
         }
-// hack-sqlite
-        // fall through
         case RE_OP_CC_INC: {
           int j = 1;
           int n = pRe->aArg[x];
@@ -5954,23 +5814,7 @@ static const int utf_mask[] = {
 
 static int sqlite3ReadUtf8(const unsigned char *z){
   int c;
-// hack-sqlite
-/* LMH salvaged from sqlite3 3.3.13 source code src/utf.c */
-  int xtra;
-  c = *(z)++;
-  xtra = xtra_utf8_bytes[c];
-  switch( xtra ){
-    case 4: c = (int)0xFFFD; break;
-    case 3: c = (c<<6) + *(z)++;
-    // fall through
-    case 2: c = (c<<6) + *(z)++;
-    // fall through
-    case 1: c = (c<<6) + *(z)++;
-    c -= xtra_utf8_bits[xtra];
-    if( (utf_mask[xtra]&c)==0
-        || (c&0xFFFFF800)==0xD800
-        || (c&0xFFFFFFFE)==0xFFFE ){  c = 0xFFFD; }
-  }
+  READ_UTF8(z, c);
   return c;
 }
 
@@ -6024,9 +5868,7 @@ static int sqlite3Utf8CharLen(const char *z, int nByte){
 **            (eg: rval<0 for sqrt)
 */
 /* LMH 2007-03-25 Changed to use errno and remove domain; no pre-checking for errors. */
-// hack-sqlite
-#define GEN_MATH_WRAP_DOUBLE_1(name, function)
-#define GEN_MATH_WRAP_DOUBLE_2(name, function) \
+#define GEN_MATH_WRAP_DOUBLE_1(name, function) \
 static void name(sqlite3_context *context, int argc, sqlite3_value **argv){\
   double rVal = 0.0, val;\
   assert( argc==1 );\
@@ -6101,8 +5943,7 @@ static double cot(double x){
 GEN_MATH_WRAP_DOUBLE_1(sinFunc, sin)
 GEN_MATH_WRAP_DOUBLE_1(cosFunc, cos)
 GEN_MATH_WRAP_DOUBLE_1(tanFunc, tan)
-// hack-sqlite
-GEN_MATH_WRAP_DOUBLE_2(cotFunc, cot)
+GEN_MATH_WRAP_DOUBLE_1(cotFunc, cot)
 
 static double coth(double x){
   return 1.0/tanh(x);
@@ -6136,8 +5977,7 @@ static double tanh(double x){
 
 GEN_MATH_WRAP_DOUBLE_1(tanhFunc, tanh)
 
-// hack-sqlite
-GEN_MATH_WRAP_DOUBLE_2(cothFunc, coth)
+GEN_MATH_WRAP_DOUBLE_1(cothFunc, coth)
 
 /*
 ** Some systems lack log in base 10. This will emulate it
@@ -6170,8 +6010,6 @@ GEN_MATH_WRAP_DOUBLE_1(expFunc, exp)
 #endif
 
 /* Convert Degrees into Radians */
-// hack-sqlite
-#if 0
 static double deg2rad(double x){
   return x*M_PI/180.0;
 }
@@ -6194,8 +6032,6 @@ static void piFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 ** the argument is an integer.
 ** Since SQLite isn't strongly typed (almost untyped actually) this is a bit pedantic
 */
-// hack-sqlite
-#endif
 static void squareFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
   i64 iVal = 0;
   double rVal = 0.0;
@@ -6226,8 +6062,6 @@ static void squareFunc(sqlite3_context *context, int argc, sqlite3_value **argv)
 /* LMH 2007-03-25 Changed to use errno; no pre-checking for errors.  Also removes
   but that was present in the pre-checking that called sqlite3_result_error on
   a non-positive first argument, which is not always an error. */
-// hack-sqlite
-#if 0
 static void powerFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
   double r1 = 0.0;
   double r2 = 0.0;
@@ -6253,8 +6087,6 @@ static void powerFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 /*
 ** atan2 wrapper
 */
-// hack-sqlite
-#endif
 static void atn2Func(sqlite3_context *context, int argc, sqlite3_value **argv){
   double r1 = 0.0;
   double r2 = 0.0;
@@ -6306,8 +6138,6 @@ static void signFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 /*
 ** smallest integer value not less than argument
 */
-// hack-sqlite
-#if 0
 static void ceilFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
   double rVal=0.0;
   i64 iVal=0;
@@ -6359,8 +6189,6 @@ static void floorFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
 ** Given a string (s) in the first argument and an integer (n) in the second returns the
 ** string that constains s contatenated n times
 */
-// hack-sqlite
-#endif
 static void replicateFunc(sqlite3_context *context, int argc, sqlite3_value **argv){
   unsigned char *z;        /* input string */
   unsigned char *zo;       /* result string */
@@ -7455,8 +7283,7 @@ int RegisterExtensionFunctions(sqlite3 *db){
     { "lower_quartile",   1, 0, 0, modeStep,     lower_quartileFinalize  },
     { "upper_quartile",   1, 0, 0, modeStep,     upper_quartileFinalize  },
   };
-// hack-sqlite
-  unsigned int i;
+  int i;
 
   for(i=0; i<sizeof(aFuncs)/sizeof(aFuncs[0]); i++){
     void *pArg = 0;
@@ -7509,13 +7336,13 @@ int sqlite3_extension_functions_init(
     sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi){
   // SQLITE_EXTENSION_INIT2(pApi);
   sqlite3_api=pApi;
-  sqlite3_auto_extension((void(*)(void))sqlite3_carray_init);
-  sqlite3_auto_extension((void(*)(void))sqlite3_compress_init);
-  sqlite3_auto_extension((void(*)(void))sqlite3_csv_init);
-  sqlite3_auto_extension((void(*)(void))sqlite3_noop_init);
-  sqlite3_auto_extension((void(*)(void))sqlite3_regexp_init);
-  sqlite3_auto_extension((void(*)(void))sqlite3_sqlmath_init);
-  sqlite3_auto_extension((void(*)(void))sqlite3_templatevtab_init);
+  sqlite3_carray_init(db, pzErrMsg, pApi);
+  sqlite3_compress_init(db, pzErrMsg, pApi);
+  sqlite3_csv_init(db, pzErrMsg, pApi);
+  sqlite3_noop_init(db, pzErrMsg, pApi);
+  sqlite3_regexp_init(db, pzErrMsg, pApi);
+  sqlite3_sqlmath_init(db, pzErrMsg, pApi);
+  sqlite3_templatevtab_init(db, pzErrMsg, pApi);
   RegisterExtensionFunctions(db);
   return 0;
 }
@@ -7618,13 +7445,10 @@ int double_cmp(const void *a, const void *b){
     return 1;
 }
 
-// hack-sqlite
-#if 0
 void print_elem(void *e, int64_t c, void* p){
   int ee = *(int*)(e);
   printf("%d => %lld\n", ee,c);
 }
-#endif
 
 
 /*

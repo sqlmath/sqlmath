@@ -187,6 +187,7 @@ VALUES (501, 502.0123, 5030123456789),
        --(701, b64decode('0123456789'), b64decode('8J+YgQ'));
 SELECT * FROM tt1;
 SELECT * FROM tt2;
+select noop(1234);
         `);
         debugInline(JSON.parse(dbExec({
             db,
