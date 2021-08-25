@@ -252,7 +252,7 @@ shCiArtifactUpload2() {(set -e
     # init $BRANCH
     BRANCH="$(git rev-parse --abbrev-ref HEAD)"
     # save binaries
-    git add -f .binary-*
+    git add -f _binary_*
     git commit -am binaries
     # checkout branch-gh-pages
     git fetch origin gh-pages --depth=1
@@ -261,7 +261,7 @@ shCiArtifactUpload2() {(set -e
     (set -e
         cd "branch-$BRANCH"
         cp -a ../.git .
-        git checkout "$BRANCH" .binary-*
+        git checkout "$BRANCH" _binary_*
         rm -rf .git
         git add -f .
     )
@@ -278,15 +278,14 @@ shCiArtifactUpload2() {(set -e
 )}
 
 shCiTest() {(set -e
-    #!! export npm_config_mode_debug=1
     node -e '
-/*jslint name*/
+/*jslint beta, name*/
 (function () {
-    process.chdir(".tmp");
     let fileNodeGypJs = require("path").resolve(
         require("path").dirname(process.execPath),
         "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
     ).replace("/bin/node_modules/", "/lib/node_modules/");
+    process.chdir(".tmp");
     [
         "build"
     ].forEach(function (action) {
@@ -331,11 +330,6 @@ shCiBuild() {(set -e
     # init .tmp
     mkdir -p .tmp
     cp -a sqlite-autoconf-3360000 .tmp/src
-    printf '
-"\Program Files\Git\bin\bash.exe" -c "cd .. && npm test"
-..\_binary_sqlmath_cli_win32_x64.exe
-sleep 10
-    ' > .tmp/.test.bat
     # cd .tmp/src - start
     (set -e
     cd .tmp/src
@@ -356,6 +350,13 @@ sleep 10
    unsigned int i;
    static const struct {
     ' | patch -ut sqlite3.c
+    #
+    # patch sqlmath_napi.cpp
+    printf '
+extern "C" {
+#include <sqlmath_napi.c>
+}
+    ' > sqlmath_napi.cpp
     #
     # patch shell.c
     printf '
@@ -408,9 +409,8 @@ sleep 10
     # cd .tmp/src - end
     # node-gyp - run
     node -e '
-/*jslint name*/
+/*jslint beta, name*/
 (function () {
-    process.chdir(".tmp");
     let cflags = {
         "cflags": [
             "-Wall",
@@ -433,6 +433,7 @@ sleep 10
         require("path").dirname(process.execPath),
         "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
     ).replace("/bin/node_modules/", "/lib/node_modules/");
+    process.chdir(".tmp");
     require("fs").writeFileSync("binding.gyp", JSON.stringify({
         "target_defaults": {
             "conditions": [
@@ -472,6 +473,9 @@ sleep 10
                     "msvs_settings": {
                         "VCCLCompilerTool": {
                             "RuntimeLibrary": 1
+                        },
+                        "VCLinkerTool": {
+                            "GenerateDebugInformation": "true"
                         }
                     },
                     "xcode_settings": {
@@ -488,11 +492,6 @@ sleep 10
                     "defines": [
                         "NDEBUG"
                     ],
-                    "msvs_settings": {
-                        "VCCLCompilerTool": {
-                            "RuntimeLibrary": 0
-                        }
-                    },
                     "xcode_settings": {
                         "DEAD_CODE_STRIPPING": "YES",
                         "GCC_GENERATE_DEBUGGING_SYMBOLS": "NO",
@@ -548,6 +547,11 @@ sleep 10
             "msvs_settings": {
                 "VCCLCompilerTool": {
                     "ExceptionHandling": 1,
+                    // https://github.com/nodejs/node-gyp/issues/1686
+                    "RuntimeLibrary": 0, // 0 - MultiThreaded (/MT)
+                    // "RuntimeLibrary": 1, // 1 - MultiThreadedDebug (/MTd)
+                    // "RuntimeLibrary": 2, // 2 - MultiThreadedDLL (/MD)
+                    // "RuntimeLibrary": 3, // 3 - MultiThreadedDebugDLL (/MDd)
                     "WarningLevel": 3
                 },
                 "VCLinkerTool": {
@@ -588,7 +592,7 @@ sleep 10
                     "sqlite3.c"
                 ],
                 "sources": [
-                    "../sqlmath_napi.c"
+                    "src/sqlmath_napi.cpp"
                 ],
                 "target_name": "<(target_node)"
             },
@@ -608,31 +612,6 @@ sleep 10
                 "target_name": "target_install",
                 "type": "none"
             }
-            //!! {
-                //!! "actions": [
-                    //!! {
-                        //!! "action": [
-                            //!! (
-                                //!! process.platform === "win32"
-                                //!! ? "cd .. && npm run test_win32"
-                                //!! : "cd .. && npm run test"
-                            //!! )
-                        //!! ],
-                        //!! "action_name": "action_test",
-                        //!! "inputs": [
-                            //!! "../<(target_node).node"
-                        //!! ],
-                        //!! "outputs": [
-                            //!! "../<(target_node).node"
-                        //!! ]
-                    //!! }
-                //!! ],
-                //!! "dependencies": [
-                    //!! "target_install"
-                //!! ],
-                //!! "target_name": "target_test",
-                //!! "type": "none"
-            //!! }
         ],
         "variables": {
             ".exe": (

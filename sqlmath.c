@@ -201,7 +201,7 @@ bool jssqlExec(
     sqlite3 * db,               /* The database on which the SQL executes */
     const char *zSql,           /* The SQL to be executed */
     char **pzBuf,
-    int *pUsed,
+    int *pAlloced,
     const char **errmsg
 ) {
 // This function will run <zSql> in <db> and save any result (list of tables
@@ -318,6 +318,9 @@ bool jssqlExec(
     zTmp = (const char *) realloc(ctx.buf, ctx.used);
     if (zTmp == NULL) {
         ctx.errcode = JSSQL_NOMEM;
+    } else {
+        ctx.buf = zTmp;
+        ctx.alloced = ctx.used;
     }
   label_error:
     // handle errcode
@@ -339,7 +342,7 @@ bool jssqlExec(
         sqlite3_mutex_leave(sqlite3_db_mutex(db));
         return false;
     }
-    *pUsed = ctx.used;
+    *pAlloced = ctx.alloced;
     *pzBuf = ctx.buf;
     // mutext leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));

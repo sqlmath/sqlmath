@@ -89,7 +89,7 @@ function noop(val) {
         db
     }) {
 // this function will return sqlite-database-connection <db>
-        dbCall(db, "_sqlite3_close", []);
+        dbCall(db, "_sqlite3_close_v2", []);
         dbMap.delete(db);
     }
 

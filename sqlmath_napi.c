@@ -26,18 +26,15 @@ void jssqlExec(sqlite3 *, const char *, char **, int *, const char **);
 /* *INDENT-ON* */
 typedef struct Jsbaton {
     // ctx
-    napi_env napiEnv;
     sqlite3 *sqlDb;
     // data
     char *buf8[8];
     double num8[8];
-    // err
-    const char *errMsg;
 } Jsbaton;
 
 bool assertNapiOk(
     napi_env env,
-    napi_status errcode
+    int errcode
 ) {
 // this function will throw error if <errcode> != napi_ok
 // derived from https://github.com/nodejs/node-addon-api/blob/3.2.1/napi-inl.h
@@ -160,13 +157,10 @@ napi_value jsbatonInfo(
     pp = json;
     pp += snprintf(pp, sizeof(json), "{");
     // ctx
-    JSBATON_INFO_MEMBER_OFFSET(napiEnv, 0);
     JSBATON_INFO_MEMBER_OFFSET(sqlDb, 0);
     // data
     JSBATON_INFO_MEMBER_OFFSET(buf8, sizeof(void *));
     JSBATON_INFO_MEMBER_OFFSET(num8, 8);
-    // err
-    JSBATON_INFO_MEMBER_OFFSET(errMsg, 0);
     pp +=
         snprintf(pp, sizeof(json), "\"sizeof\":[%zu,%zu]}", offset,
         sizeof(baton));
@@ -199,7 +193,6 @@ Jsbaton *jsbatonCreate(
     errcode = napi_get_buffer_info(env, argv[0], &zTmp, &length);
     ASSERT_NAPI_OK_OR_RETURN(env, errcode);
     baton = (Jsbaton *) zTmp;
-    baton->napiEnv = env;
     // init buf8
     ii = 1;
     while (ii < argc) {
@@ -219,6 +212,8 @@ void napiFinalize(
 // this function will finalize <finalize_data>
     UNUSED(env);
     UNUSED(finalize_hint);
+    // printf("\n\n[data=%s]\n\n", (char *) finalize_data);
+    // printf("\n\n[hint=%s]\n\n", (char *) finalize_hint);
     free(finalize_data);
 }
 
@@ -231,11 +226,11 @@ napi_value napiNoop(
     return NULL;
 }
 
-napi_value _sqlite3_close(
+napi_value _sqlite3_close_v2(
     napi_env env,
     napi_callback_info info
 ) {
-// int sqlite3_close(sqlite3*);
+// int sqlite3_close_v2(sqlite3*);
     Jsbaton *baton = JSBATON_CREATE_OR_RETURN(env, info);
     sqlite3 *db = baton->sqlDb;
     int errcode = sqlite3_close_v2(db);
@@ -276,21 +271,26 @@ napi_value _jssqlExec(
     // declare var
     char *zBuf = NULL;
     char *zErrmsg = NULL;
-    const char *zSql = baton->buf8[0];
-    ASSERT_NOT_NULL_OR_RETURN(env, (void *) zSql);
+    const char *zSql = NULL;
     int errcode = napi_ok;
-    int nUsed = 0;
+    int nAlloced = 0;
     napi_value result = NULL;
     sqlite3 *db = baton->sqlDb;
+    // read from buf8
     zSql = (const char *) baton->buf8[0];
+    ASSERT_NOT_NULL_OR_RETURN(env, (void *) zSql);
     // exec sql
-    jssqlExec(db, zSql, &zBuf, &nUsed, (const char **) &zErrmsg);
+    jssqlExec(db, zSql, &zBuf, &nAlloced, (const char **) &zErrmsg);
     ASSERT_OR_RETURN(env, zErrmsg == NULL, zErrmsg);
     // init result
-    errcode =
-        napi_create_external_arraybuffer(env, (void *) zBuf, (size_t) nUsed,
-        napiFinalize, NULL, &result);
+    errcode = napi_create_external_arraybuffer(env,     // napi_env env,
+        (void *) zBuf,          // void* external_data,
+        (size_t) nAlloced,      // size_t byte_length,
+        napiFinalize,           // napi_finalize finalize_cb,
+        NULL,                   // void* finalize_hint,
+        &result);               // napi_value* result
     ASSERT_NAPI_OK_OR_RETURN(env, errcode);
+    // printf("\n\n[zBuf=%s nAlloced=%i]\n\n", zBuf, nAlloced);
     return result;
 }
 
@@ -307,7 +307,7 @@ napi_value napi_module_init(
     int errcode;
     const napi_property_descriptor propList[] = {
         NAPI_EXPORT_MEMBER(_jssqlExec),
-        NAPI_EXPORT_MEMBER(_sqlite3_close),
+        NAPI_EXPORT_MEMBER(_sqlite3_close_v2),
         NAPI_EXPORT_MEMBER(_sqlite3_open_v2),
         NAPI_EXPORT_MEMBER(jsbatonInfo),
         NAPI_EXPORT_MEMBER(napiNoop),
