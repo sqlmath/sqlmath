@@ -299,6 +299,12 @@ napi_value _jssqlExec(
 //!! // this function will run tests
 //!! }
 
+int sqlite3_sqlmath_init(
+  sqlite3 *db,
+  char **pzErrMsg,
+  const sqlite3_api_routines *pApi
+);
+
 napi_value napi_module_init(
     napi_env env,
     napi_value exports
@@ -318,6 +324,7 @@ napi_value napi_module_init(
 //!! #ifdef DEBUG
     //!! test();
 //!! #endif
+    //!! sqlite3_auto_extension((void(*)(void))sqlite3_sqlmath_init);
     return exports;
 }
 

@@ -1,9 +1,11 @@
 # Changelog
 
 # Todo
-- unpatch sqlite3.c to vanilla
+- none
 
 # v2021.8.25-beta
+- inline function sqlite3_extension_functions_init without auto_extension
+- disable warnings for all targets except sqlmath.c and sqlmath_napi.c
 - fix build for darwin and win32.
 
 # v2021.8.24

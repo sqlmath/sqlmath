@@ -15,7 +15,8 @@
 #ifdef WIN32
 #include <windows.h>
 #endif
-#include <sqlmath.h>
+#include <sqlite3ext.h>
+static const sqlite3_api_routines *sqlite3_api;
 #ifndef SQLITE_MAX_LENGTH
 # define SQLITE_MAX_LENGTH 1000000000
 #endif
@@ -319,7 +320,7 @@ bool jssqlExec(
     if (zTmp == NULL) {
         ctx.errcode = JSSQL_NOMEM;
     } else {
-        ctx.buf = zTmp;
+        ctx.buf = (char *) zTmp;
         ctx.alloced = ctx.used;
     }
   label_error:
@@ -355,7 +356,7 @@ int sqlite3_sqlmath_init(
     const sqlite3_api_routines * pApi
 ) {
     int rc = SQLITE_OK;
-    // SQLITE_EXTENSION_INIT2(pApi);
+    sqlite3_api=pApi;
     return rc;
 }
 

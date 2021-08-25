@@ -342,10 +342,10 @@ shCiBuild() {(set -e
  ** functions and the virtual table implemented by this file.
  ****************************************************************************/
 
-+// hack-sqlite
++// hack-sqlite - inline sqlite3_extension_functions_init
 +int sqlite3_extension_functions_init(sqlite3*, char**, const sqlite3_api_routines*);
  SQLITE_PRIVATE int sqlite3Json1Init(sqlite3 *db){
-+  sqlite3_auto_extension((void(*)(void))sqlite3_extension_functions_init);
++  sqlite3_extension_functions_init(db, NULL, &sqlite3Apis);
    int rc = SQLITE_OK;
    unsigned int i;
    static const struct {
@@ -360,51 +360,19 @@ extern "C" {
     #
     # patch shell.c
     printf '
-@@ -6637,7 +6637,8 @@
+@@ -6637,7 +6637,9 @@
  #ifdef _WIN32
 
  #endif
 -int sqlite3_regexp_init(
 +// hack-sqlite - disable redundant sqlite3_regexp_init
++int sqlite3_regexp_init2(sqlite3 *, char **, const sqlite3_api_routines *);
 +int sqlite3_regexp_init2(
    sqlite3 *db,
    char **pzErrMsg,
    const sqlite3_api_routines *pApi
-@@ -15559,7 +15559,8 @@
-     sqlite3_completion_init(p->db, 0, 0);
-     sqlite3_uint_init(p->db, 0, 0);
-     sqlite3_decimal_init(p->db, 0, 0);
--    sqlite3_regexp_init(p->db, 0, 0);
-+// hack-sqlite - disable redundant sqlite3_regexp_init
-+    // sqlite3_regexp_init(p->db, 0, 0);
-     sqlite3_ieee_init(p->db, 0, 0);
-     sqlite3_series_init(p->db, 0, 0);
- #if !defined(SQLITE_OMIT_VIRTUALTABLE) && defined(SQLITE_ENABLE_DBPAGE_VTAB)
     ' | patch -ut shell.c
     #
-    # pragma GCC diagnostic ignored "-W"
-    printf '
-# pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-# pragma GCC diagnostic ignored "-Wunused-function"
-# pragma GCC diagnostic ignored "-Wunused-variable"
-' > tmp1.c
-    case "$(uname)" in
-    Darwin)
-        sed -i.bak "s/GCC/clang/" tmp1.c
-        ;;
-    Linux)
-        ;;
-    *)
-        sed -i.bak "s/.*//" tmp1.c
-        ;;
-    esac
-    for FILE in \
-        shell.c \
-        sqlite3.c
-    do
-        cp "$FILE" tmp2.c
-        cat tmp1.c tmp2.c > "$FILE"
-    done
     )
     # cd .tmp/src - end
     # node-gyp - run
@@ -413,29 +381,65 @@ extern "C" {
 (function () {
     let cflags = {
         "cflags": [
-            "-Wall",
             "-fdiagnostics-show-option",
             "-std=c17"
         ],
         "cflags!": [
-            "-fno-exceptions",
-            "-w"
+            "-fno-exceptions"
         ],
         "cflags_cc": [
-            "-Wall"
         ],
         "cflags_cc!": [
-            "-fno-exceptions",
-            "-w"
+            "-fno-exceptions"
         ]
     };
     let fileNodeGypJs = require("path").resolve(
         require("path").dirname(process.execPath),
         "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
     ).replace("/bin/node_modules/", "/lib/node_modules/");
+    function targetWarningLevel(level, target) {
+// this function will set <target>"s warnings to <level>
+        let warningList = ["-Wall", "-w"];
+        if (!level) {
+            warningList.reverse();
+        }
+        target.msvs_settings = target.msvs_settings || {
+            "VCCLCompilerTool": {
+                "WarningLevel": (
+                    level
+                    ? 4
+                    : 0
+                )
+            }
+        };
+        target.xcode_settings = target.xcode_settings || {};
+        [
+            target, "cflags", "cflags!",
+            target, "cflags_cc", "cflags_cc!",
+            target.xcode_settings, "OTHER_CFLAGS", "OTHER_CFLAGS!",
+            target.xcode_settings,
+            "OTHER_CPLUSPLUSFLAGS",
+            "OTHER_CPLUSPLUSFLAGS!"
+        ].forEach(function (dict, ii, list) {
+            if (ii % 3 !== 0) {
+                return;
+            }
+            [
+                list[ii + 1], list[ii + 2]
+            ].forEach(function (key, ii) {
+                dict[key] = dict[key] || [];
+                dict[key].push(warningList[ii]);
+            });
+        });
+        return target;
+    }
     process.chdir(".tmp");
     require("fs").writeFileSync("binding.gyp", JSON.stringify({
         "target_defaults": {
+            "cflags": cflags.cflags,
+            "cflags!": cflags["cflags!"],
+            "cflags_cc": cflags.cflags_cc,
+            "cflags_cc!": cflags["cflags_cc!"],
             "conditions": [
                 [
                     "OS == \u0027win\u0027",
@@ -569,33 +573,43 @@ extern "C" {
             }
         },
         "targets": [
-            {
+            targetWarningLevel(0, {
                 "sources": [
-                    "../sqlmath.c",
+                    "../sqlmath_ext.c",
                     "src/sqlite3.c"
                 ],
-                "target_name": "sqlite3.c",
+                "target_name": "sqlite3_c",
                 "type": "static_library"
-            },
-            {
+            }),
+            targetWarningLevel(1, {
                 "dependencies": [
-                    "sqlite3.c"
+                    "sqlite3_c"
+                ],
+                "sources": [
+                    "../sqlmath.c"
+                ],
+                "target_name": "sqlmath_c",
+                "type": "static_library"
+            }),
+            targetWarningLevel(0, {
+                "dependencies": [
+                    "sqlmath_c"
                 ],
                 "sources": [
                     "src/shell.c"
                 ],
                 "target_name": "<(target_cli)",
                 "type": "executable"
-            },
-            {
+            }),
+            targetWarningLevel(1, {
                 "dependencies": [
-                    "sqlite3.c"
+                    "sqlmath_c"
                 ],
                 "sources": [
                     "src/sqlmath_napi.cpp"
                 ],
                 "target_name": "<(target_node)"
-            },
+            }),
             {
                 "copies": [
                     {
