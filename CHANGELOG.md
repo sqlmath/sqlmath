@@ -1,6 +1,9 @@
 # Changelog
 
 # Todo
+- unpatch sqlite3.c to vanilla
+
+# v2021.8.25-beta
 - fix build for darwin and win32.
 
 # v2021.8.24
