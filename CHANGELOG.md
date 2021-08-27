@@ -3,7 +3,8 @@
 # Todo
 - none
 
-# v2021.8.25-beta
+# v2021.8.26
+- add async functions dbOpen, dbExec, dbClose
 - inline function sqlite3_extension_functions_init without auto_extension
 - disable warnings for all targets except sqlmath.c and sqlmath_napi.c
 - fix build for darwin and win32.

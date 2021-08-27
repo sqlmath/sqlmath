@@ -18,7 +18,6 @@ function noop(val) {
 }
 
 (function () {
-    let JSBATON_INFO;
     let addon = require(
         "./_binary_sqlmath_napi"
         + "_" + process.versions.napi
@@ -39,71 +38,72 @@ function noop(val) {
         }
     }
 
-    function assertOrThrow(passed, err) {
-// this function will throw <err> if passed is falsy
-        if (!passed) {
+    function assertOrThrow(cond, msg) {
+// this function will throw <msg> if <cond> is falsy
+        if (!cond) {
             throw (
-                typeof err === "string"
-                ? new Error(err)
-                : err
+                typeof msg === "string"
+                ? new Error(msg)
+                : msg
             );
         }
     }
 
-    function dbCall(db, fnc, argList) {
-// this function will serialize <argList> to <db.argList>,
+    function cCall(fnc, argList) {
+// this function will serialize <argList> to a c <baton>,
 // suitable for passing into napi
-        assertOrThrow(dbMap.has(db), "invalid db handle");
-        // zero arg
-        [
-            JSBATON_INFO.buf8, JSBATON_INFO.num8
-        ].forEach(function ([
-            aa, bb
-        ]) {
-            bb += aa;
-            while (aa < bb) {
-                db.baton[aa] = 0;
-                aa += 1;
+        let baton = new BigInt64Array(512);
+        // serialize js-args to c-args
+        argList = argList.map(function (arg, ii) {
+            switch (typeof arg) {
+            case "bigint":
+            case "boolean":
+            case "number":
+                try {
+                    baton[ii] = BigInt(arg);
+                } catch (ignore) {
+                    return;
+                }
+                break;
+            case "string":
+                // append null-terminator to string
+                arg = Buffer.from(arg + "\u0000");
+                break;
             }
-        });
-        db.argList = [
-            db.baton
-        ];
-        argList.slice(0, 8).forEach(function (arg, ii) {
-            // handle buffer
             if (Buffer.isBuffer(arg)) {
-                db.argList.push(arg);
-                return;
+                baton[ii] = BigInt(arg.byteLength);
             }
-            if (typeof arg === "string") {
-                db.argList.push(Buffer.from(arg + "\u0000"));
-                return;
-            }
-            arg = Number(arg ?? 0);
-            db.baton.writeDoubleLE(arg, JSBATON_INFO.num8[0] + 8 * ii);
+            return arg;
         });
-        return addon[fnc](...db.argList);
+        // pad argList to length = 8
+        argList = argList.concat([
+            undefined, undefined, undefined, undefined,
+            undefined, undefined, undefined, undefined
+        ]).slice(0, 8);
+        // prepend baton to argList
+        argList.unshift(baton);
+        // call napi with fnc and argList
+        return addon[fnc](argList);
     }
 
-    function dbClose({
+    async function dbClose({
         db
     }) {
 // this function will return sqlite-database-connection <db>
-        dbCall(db, "_sqlite3_close_v2", []);
+        await cCall("_sqlite3_close_v2", [db.ptr]);
         dbMap.delete(db);
     }
 
-    function dbExec({
+    async function dbExec({
         db,
         sql
     }) {
 // this function will exec <sql> in <db> and return result
-        return Buffer.from(dbCall(db, "_jssqlExec", [
-            sql
-        ]));
+        let result = await cCall("_jssqlExec", [db.ptr, sql]);
+        return Buffer.from(result[1], 0, result[1].byteLength - 1);
     }
 
-    function dbOpen({
+    async function dbOpen({
         filename,
         flags = 6
     }) {
@@ -114,14 +114,12 @@ function noop(val) {
 //   int flags,              /* Flags */
 //   const char *zVfs        /* Name of VFS module to use */
 // );
-        let db = {
-            argList: [],
-            baton: Buffer.alloc(JSBATON_INFO.sizeof[0])
-        };
-        dbMap.set(db, true);
-        dbCall(db, "_sqlite3_open_v2", [
+        let db = {};
+        let result = await cCall("_sqlite3_open_v2", [
             filename, undefined, flags, undefined
         ]);
+        db.ptr = result[0][0];
+        dbMap.set(db, true);
         return db;
     }
 
@@ -143,37 +141,37 @@ function noop(val) {
         return sorted;
     }
 
-    JSBATON_INFO = JSON.parse(addon.jsbatonInfo());
-    debugInline(JSBATON_INFO);
-    assertJsonEqual(JSBATON_INFO.sizeof[0], JSBATON_INFO.sizeof[1]);
-
-    (function testJsbaton() {
+    (async function testJsbaton() {
 // this function will test passing argList between nodejs <-> c
-        let db = dbOpen({
+        let db;
+        let result;
+        result = await cCall("jspromiseNoop", [1234]);
+        //!! debugInline(result, "jspromiseNoop");
+        db = await dbOpen({
             filename: ":memory:"
         });
-        let result;
-        let sql;
+        //!! debugInline(db, "db");
         [
             [-0, "0"],
-            [-Infinity, "-Infinity"],
+            [-Infinity, "0"],
             [0, "0"],
-            [1 / 0, "Infinity"],
-            [Infinity, "Infinity"],
+            [1 / 0, "0"],
+            [Infinity, "0"],
             [false, "0"],
             [null, "0"],
             [true, "1"],
             [undefined, "0"],
-            [{}, "NaN"]
+            [{}, "0"]
         ].forEach(function ([
             aa, bb
         ]) {
             let cc;
-            dbCall(db, "napiNoop", [aa]);
-            cc = String(db.baton.readDoubleLE(JSBATON_INFO.num8[0]));
+            result = cCall("napiNoop", [aa]);
+            cc = String(result[0][0]);
             assertOrThrow(bb === cc, [aa, bb, cc]);
         });
-        sql = (`
+        await Promise.all(Array.from(new Array(4)).map(async function () {
+            let sql = (`
 CREATE TABLE tt1 AS
 SELECT 101 AS c101, 102 AS c102
 UNION ALL
@@ -188,34 +186,24 @@ VALUES (501, 502.0123, 5030123456789),
 SELECT * FROM tt1;
 SELECT * FROM tt2;
 select noop(1234);
-        `);
-        debugInline(JSON.parse(dbExec({
-            db,
-            sql
-        })));
-        try {
-            debugInline(JSON.parse(dbExec({
-                db,
-                sql
-            })));
-        } catch (err) {
-            console.error(err);
-        }
-        try {
-            debugInline(JSON.parse(dbExec({
-                db,
-                sql
-            })));
-        } catch (err) {
-            console.error(err);
-        }
-        dbClose({
+            `);
+            try {
+                result = await dbExec({
+                    db,
+                    sql
+                });
+                result = JSON.parse(Buffer.from(result));
+                //!! debugInline(result, "jssqlExec");
+            } catch (err) {
+                console.error(err);
+            }
+        }));
+        await dbClose({
             db
         });
     }());
 
     module.exports = addon;
-
     // coverage-hack
-    noop();
+    noop(assertJsonEqual);
 }());

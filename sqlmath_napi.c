@@ -1,5 +1,5 @@
-// LINT_C_FILE
 // copyright nobody
+// LINT_C_FILE
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,31 +9,86 @@
 #endif
 #include <sqlite3.h>
 #include <node_api.h>
-#define ASSERT_NAPI_OK_OR_RETURN(env, errcode) \
-    if (!assertNapiOk(env, errcode)) {return NULL;}
-#define ASSERT_NOT_NULL_OR_RETURN(env, ptr) \
-    if (!assertNotNull(env, ptr)) {return NULL;}
-#define ASSERT_OR_RETURN(env, cond, errmsg) \
-    if (!assertOrThrow(env, cond, errmsg)) {return NULL;}
-#define ASSERT_SQLITE_OK_OR_RETURN(env, db, errcode) \
-    if (!assertSqliteOk(env, db, errcode)) {return NULL;}
-#define JSBATON_CREATE_OR_RETURN(env, info) \
+
+// printf("\n\n[napi errcode=%d]\n\n", errcode);
+// this function will set <baton->errmsg> to <msg> if <cond> is falsy
+#define ASSERT_BATON(baton, cond, msg) \
+    if (baton->errmsg[0] != 0) { \
+        return 0; \
+    } \
+    if (!(cond)) { \
+        __snprintfTrace(baton->errmsg, msg, __func__, __FILE__, __LINE__); \
+        return 0; \
+    }
+
+#define ASSERT_NAPI(env, cond, msg) \
+    if (!(cond)) { \
+        char buf[256] = { 0 }; \
+        napi_throw_error(env, NULL, \
+            __snprintfTrace(buf, msg, __func__, __FILE__, __LINE__)); \
+        return 0; \
+    }
+
+#define ASSERT_NAPI_OK(env, errcode) \
+    if (0 != assertNapiOk(env, __func__, __FILE__, __LINE__, errcode)) { \
+        return 0; \
+    }
+
+// this function will set <baton->errmsg> to sqlite-error if <expr> is falsy
+#define ASSERT_SQLITE_OK(baton, db, expr) \
+    if (errcode != SQLITE_OK) { \
+        ASSERT_BATON( \
+            baton, \
+            false, \
+            (db == NULL ? sqlite3_errstr(errcode) : sqlite3_errmsg(db))); \
+    }
+
+#define JSBATON_CREATE(env, info) \
     jsbatonCreate(env, info); if (baton == NULL) {return NULL;}
-#define SQLITE_MAX_LENGTH 1000000000
+
+#define JSPROMISE_CREATE(func, env, data) \
+    __##func(void *data); \
+    static void _##func(napi_env env, void *data) { \
+        UNUSED(env); \
+        __##func(data); \
+    } \
+    static napi_value func(napi_env env, napi_callback_info info) { \
+        return jspromiseCreate(env, info, _##func); \
+    } \
+    static int __##func(void *data)
+
 #define UNUSED(x) (void)(x)
-/* *INDENT-OFF* */
-void jssqlExec(sqlite3 *, const char *, char **, int *, const char **);
-/* *INDENT-ON* */
+
 typedef struct Jsbaton {
-    // ctx
-    sqlite3 *sqlDb;
     // data
+    int64_t int8[8];
     char *buf8[8];
-    double num8[8];
+    char *out8[8];
+    char errmsg[256];
+    napi_value result;
+    // async
+    napi_async_work work;
+    napi_deferred deferred;
 } Jsbaton;
 
-bool assertNapiOk(
+static const char *__snprintfTrace(
+    char *buf,
+    const char *errmsg,
+    const char *func,
+    const char *file,
+    int line
+) {
+// this function will write <errmsg> to <buf> with additional trace-info
+    snprintf(buf,               // NO_LINT
+        256, "%s\n    at %s (%s:%d)", errmsg, func, file, line);
+    return (const char *) buf;
+}
+
+static int assertNapiOk(
     napi_env env,
+    const char *func,
+    const char *file,
+    int line,
     int errcode
 ) {
 // this function will throw error if <errcode> != napi_ok
@@ -46,165 +101,47 @@ bool assertNapiOk(
 // } napi_extended_error_info;
 #define ASSERT_NAPI_OK_OR_FATAL(msg) \
     if (errcode != napi_ok) { \
-        napi_fatal_error("assertNapiOk", NAPI_AUTO_LENGTH, msg, \
+        napi_fatal_error("assertNapiOk", NAPI_AUTO_LENGTH , msg, \
             NAPI_AUTO_LENGTH); \
     }
     if (errcode == napi_ok) {
-        return true;
+        return errcode;
     }
     // declare var
+    char buf[256] = { 0 };
     bool is_exception_pending;
     const napi_extended_error_info *info;
-    napi_value error = NULL;
+    napi_value val = NULL;
     // We must retrieve the last error info before doing anything else, because
     // doing anything else will replace the last error info.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 26812)
+#endif
     errcode = napi_get_last_error_info(env, &info);
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
     ASSERT_NAPI_OK_OR_FATAL("napi_get_last_error_info");
     errcode = napi_is_exception_pending(env, &is_exception_pending);
     ASSERT_NAPI_OK_OR_FATAL("napi_is_exception_pending");
     // A pending exception takes precedence over any internal error status.
     if (is_exception_pending) {
-        errcode = napi_get_and_clear_last_exception(env, &error);
+        errcode = napi_get_and_clear_last_exception(env, &val);
         ASSERT_NAPI_OK_OR_FATAL("napi_get_and_clear_last_exception");
-        napi_throw(env, error);
-        return false;
+        napi_throw(env, val);
+        return errcode;
     }
-    const char *error_message =
-        (info->error_message !=
-        NULL ? info->error_message : "Error in native callback");
-    napi_value message;
     errcode =
-        napi_create_string_utf8(env, error_message, strlen(error_message),
-        &message);
-    ASSERT_NAPI_OK_OR_FATAL("napi_create_string_utf8");
-    switch (info->error_code) {
-    case napi_object_expected:
-    case napi_string_expected:
-    case napi_boolean_expected:
-    case napi_number_expected:
-        errcode = napi_create_type_error(env, NULL, message, &error);
-        ASSERT_NAPI_OK_OR_FATAL("napi_create_type_error");
-        break;
-    default:
-        errcode = napi_create_error(env, NULL, message, &error);
-        ASSERT_NAPI_OK_OR_FATAL("napi_create_error");
-        break;
-    }
-    napi_throw(env, error);
-    return false;
+        napi_throw_error(env, NULL, __snprintfTrace(buf,
+            (info->error_message !=
+                NULL ? info->error_message : "error in native code"), func,
+            file, line));
+    ASSERT_NAPI_OK_OR_FATAL("napi_throw_error");
+    return errcode;
 }
 
-bool assertOrThrow(
-    napi_env env,
-    bool cond,
-    const char *errmsg
-) {
-// this function will throw <errmsg> if <cond> is falsy
-    if (!cond) {
-        napi_throw_error(env, NULL, errmsg);
-        return false;
-    }
-    return true;
-}
-
-bool assertSqliteOk(
-    napi_env env,
-    sqlite3 * db,
-    int errcode
-) {
-// this function will throw error if <errcode> != SQLITE_OK
-    if (errcode != SQLITE_OK) {
-        napi_throw_error(env, NULL,
-            (db == NULL ? sqlite3_errstr(errcode) : sqlite3_errmsg(db)));
-        return false;
-    }
-    return true;
-}
-
-bool assertNotNull(
-    napi_env env,
-    void *ptr
-) {
-// this function will throw error if <ptr> == NULL
-    return assertOrThrow(env, ptr != NULL, "null pointer");
-}
-
-napi_value jsbatonInfo(
-    napi_env env,
-    napi_callback_info info
-) {
-// this function will return info about data-structure of Jsbaton
-#define JSBATON_INFO_MEMBER_OFFSET(name, elemsize) \
-    size = sizeof(baton.name); \
-    wordsize = (elemsize == 0 ? size : elemsize); \
-    offset += (wordsize - (offset % wordsize)) % wordsize; \
-    pp += snprintf( \
-        pp, \
-        sizeof(json), \
-        "\"" #name "\":[%zu,%zu],", \
-        offset, size); \
-    offset += size;
-    // declare var
-    Jsbaton baton = { 0 };
-    char *pp;
-    char json[512];
-    int errcode;
-    napi_value result;
-    size_t offset = 0;
-    size_t size;
-    size_t wordsize;
-    // init pp
-    pp = json;
-    pp += snprintf(pp, sizeof(json), "{");
-    // ctx
-    JSBATON_INFO_MEMBER_OFFSET(sqlDb, 0);
-    // data
-    JSBATON_INFO_MEMBER_OFFSET(buf8, sizeof(void *));
-    JSBATON_INFO_MEMBER_OFFSET(num8, 8);
-    pp +=
-        snprintf(pp, sizeof(json), "\"sizeof\":[%zu,%zu]}", offset,
-        sizeof(baton));
-    // printf("\n\n[json=%s]\n\n", json);
-    errcode = napi_create_string_utf8(env, json, NAPI_AUTO_LENGTH, &result);
-    ASSERT_NAPI_OK_OR_RETURN(env, errcode);
-    return result;
-}
-
-Jsbaton *jsbatonCreate(
-    napi_env env,
-    napi_callback_info info
-) {
-// this function will create a baton for passing data between nodejs <-> c
-    // declare var
-    Jsbaton *baton;
-    int errcode;
-    napi_value argv[1 + 8];
-    size_t argc;
-    size_t ii;
-    size_t length;
-    void *zTmp;
-    // init argc
-    errcode = napi_get_cb_info(env, info, &argc, NULL, NULL, NULL);
-    ASSERT_NAPI_OK_OR_RETURN(env, errcode);
-    // init argv
-    errcode = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
-    ASSERT_NAPI_OK_OR_RETURN(env, errcode);
-    // init baton
-    errcode = napi_get_buffer_info(env, argv[0], &zTmp, &length);
-    ASSERT_NAPI_OK_OR_RETURN(env, errcode);
-    baton = (Jsbaton *) zTmp;
-    // init buf8
-    ii = 1;
-    while (ii < argc) {
-        errcode = napi_get_buffer_info(env, argv[ii], &zTmp, &length);
-        ASSERT_NAPI_OK_OR_RETURN(env, errcode);
-        baton->buf8[ii - 1] = (char *) zTmp;
-        ii += 1;
-    }
-    return baton;
-}
-
-void napiFinalize(
+static void jsbatonBufferFinalize(
     napi_env env,
     void *finalize_data,
     void *finalize_hint
@@ -212,35 +149,221 @@ void napiFinalize(
 // this function will finalize <finalize_data>
     UNUSED(env);
     UNUSED(finalize_hint);
-    // printf("\n\n[data=%s]\n\n", (char *) finalize_data);
-    // printf("\n\n[hint=%s]\n\n", (char *) finalize_hint);
+    // printf("\n\n[napi finalize_data=%s]\n\n", (const char *) finalize_data);
+    // printf("\n\n[napi finalize_hint=%s]\n\n", (const char *) finalize_hint);
     free(finalize_data);
 }
 
-napi_value napiNoop(
+static Jsbaton *jsbatonCreate(
     napi_env env,
     napi_callback_info info
 ) {
-// this function will do nothing
-    Jsbaton *baton = JSBATON_CREATE_OR_RETURN(env, info);
-    return NULL;
+// this function will create a baton for passing data between nodejs <-> c
+    // declare var
+    Jsbaton *baton = NULL;
+    bool istrue;
+    int errcode = 0;
+    napi_value tmp;
+    size_t ii = 1;
+    // init argv
+    errcode = napi_get_cb_info(env, info, &ii, &tmp, NULL, NULL);
+    ASSERT_NAPI_OK(env, errcode);
+    // init baton
+    errcode = napi_get_element(env, tmp, 0, (napi_value *) & baton);
+    ASSERT_NAPI_OK(env, errcode);
+    errcode =
+        napi_get_typedarray_info(env, (napi_value) baton, NULL, NULL,
+        (void **) &baton, NULL, NULL);
+    ASSERT_NAPI_OK(env, errcode);
+    baton->result = tmp;
+    // init buf8
+    ii = 0;
+    while (ii < 8) {
+        errcode = napi_get_element(env, baton->result, ii + 1, &tmp);
+        ASSERT_NAPI_OK(env, errcode);
+        errcode = napi_is_buffer(env, tmp, &istrue);
+        ASSERT_NAPI_OK(env, errcode);
+        if (istrue) {
+            errcode =
+                napi_get_buffer_info(env, tmp,
+                (void **) &baton->buf8[ii], NULL);
+            ASSERT_NAPI_OK(env, errcode);
+        }
+        ii += 1;
+    }
+    return baton;
 }
 
-napi_value _sqlite3_close_v2(
+static napi_value jsbatonExport(
     napi_env env,
-    napi_callback_info info
+    Jsbaton * baton
+) {
+// this function will export c-data to js-data in <jsbaton>
+    // declare var
+    int errcode = 0;
+    napi_value val;
+    size_t ii = 0;
+    while (ii < 8) {
+        if (baton->out8[ii] == NULL) {
+            errcode = napi_create_double(env, (double) baton->int8[ii], &val);
+            ASSERT_NAPI_OK(env, errcode);
+        } else {
+            errcode = napi_create_external_arraybuffer(env,     // napi_env env,
+                (void *) baton->out8[ii],       // void* external_data,
+                (size_t) baton->int8[ii],       // size_t byte_length,
+                jsbatonBufferFinalize,  // napi_finalize finalize_cb,
+                NULL,           // void* finalize_hint,
+                &val);          // napi_value* result
+            ASSERT_NAPI_OK(env, errcode);
+        }
+        errcode = napi_set_element(env, baton->result, ii + 1, val);
+        ASSERT_NAPI_OK(env, errcode);
+        ii += 1;
+    }
+    return baton->result;
+}
+
+static napi_value jsstringCreate(
+    napi_env env,
+    const char *ss
+) {
+// This API creates a JavaScript string value from a UTF8-encoded C string.
+// The native string is copied.
+    // declare var
+    int errcode = 0;
+    napi_value result = NULL;
+    // return result
+    errcode = napi_create_string_utf8(env, ss, NAPI_AUTO_LENGTH, &result);
+    ASSERT_NAPI_OK(env, errcode);
+    return result;
+}
+
+static int __jspromiseResolve(
+    napi_env env,
+    napi_status errcode,
+    void *data
+) {
+// This function runs on the main thread after `jspromiseExecute` exits.
+    ASSERT_NAPI_OK(env, errcode);
+    // init baton
+    Jsbaton *baton = (Jsbaton *) data;
+    // declare var
+    napi_ref ref = (napi_ref) baton->result;
+    uint32_t refcount = 1;
+    // dereference result to allow gc
+    errcode = napi_reference_unref(env, ref, &refcount);
+    ASSERT_NAPI_OK(env, errcode);
+    ASSERT_NAPI(env, refcount == 0, "memory leak");
+    errcode = napi_get_reference_value(env, ref, &baton->result);
+    ASSERT_NAPI_OK(env, errcode);
+    errcode = napi_delete_reference(env, ref);
+    ASSERT_NAPI_OK(env, errcode);
+    // Resolve or reject the promise associated with the deferred depending on
+    // whether the asynchronous action succeeded.
+    if (baton->errmsg[0] == 0) {
+        // resolve promise with result
+        if (jsbatonExport(env, baton) == NULL) {
+            return 0;
+        }
+        errcode = napi_resolve_deferred(env, baton->deferred, baton->result);
+        ASSERT_NAPI_OK(env, errcode);
+    } else {
+        // declare var
+        napi_value err;
+        // create error
+        errcode =
+            napi_create_error(env, NULL, jsstringCreate(env, baton->errmsg),
+            &err);
+        ASSERT_NAPI_OK(env, errcode);
+        // reject promise with error
+        errcode = napi_reject_deferred(env, baton->deferred, err);
+        ASSERT_NAPI_OK(env, errcode);
+    }
+    // Clean up the work item associated with this run.
+    errcode = napi_delete_async_work(env, baton->work);
+    ASSERT_NAPI_OK(env, errcode);
+    // Set both values to NULL so JavaScript can order a new run of the thread.
+    baton->work = NULL;
+    baton->deferred = NULL;
+    return 0;
+}
+
+static void jspromiseResolve(
+    napi_env env,
+    napi_status errcode,
+    void *data
+) {
+// This function runs on the main thread after `jspromiseExecute` exits.
+    __jspromiseResolve(env, errcode, data);
+}
+
+static napi_value jspromiseCreate(
+    napi_env env,
+    napi_callback_info info,
+    napi_async_execute_callback jspromiseExecute
+) {
+// Create a deferred promise and an async queue work item.
+    // init baton
+    Jsbaton *baton = JSBATON_CREATE(env, info);
+    // declare var
+    int errcode = 0;
+    napi_value promise = 0;
+    napi_value async_resource_name =
+        jsstringCreate(env, "Node-API Deferred Promise from Async Work Item");
+    // reference result to prevent gc
+    errcode = napi_create_reference(env,        // napi_env env
+        baton->result,          // napi_value value
+        1,                      // uint32_t initial_refcount
+        (napi_ref *) & baton->result);  // napi_ref* result
+    ASSERT_NAPI_OK(env, errcode);
+    // Ensure that no work is currently in progress.
+    ASSERT_NAPI(env, baton->work == NULL,
+        "Only one work item must exist at a time");
+    // Create a deferred promise which we will resolve at the completion of the
+    // work.
+    errcode = napi_create_promise(env, &(baton->deferred), &promise);
+    ASSERT_NAPI_OK(env, errcode);
+    // Create an async work item, passing in the addon data, which will give the
+    // worker thread access to the above-created deferred promise.
+    errcode = napi_create_async_work(env,       // napi_env env,
+        NULL,                   // napi_value async_resource,
+        async_resource_name,    // napi_value async_resource_name,
+        jspromiseExecute,       // napi_async_execute_callback execute,
+        jspromiseResolve,       // napi_async_complete_callback complete,
+        baton,                  // void* data,
+        &(baton->work));        // napi_async_work* result);
+    ASSERT_NAPI_OK(env, errcode);
+    // Queue the work item for execution.
+    errcode = napi_queue_async_work(env, baton->work);
+    ASSERT_NAPI_OK(env, errcode);
+    // This causes created `promise` to be returned to JavaScript.
+    return promise;
+}
+
+static int JSPROMISE_CREATE(
+    _sqlite3_close_v2,
+    env,
+    data
 ) {
 // int sqlite3_close_v2(sqlite3*);
-    Jsbaton *baton = JSBATON_CREATE_OR_RETURN(env, info);
-    sqlite3 *db = baton->sqlDb;
-    int errcode = sqlite3_close_v2(db);
-    ASSERT_SQLITE_OK_OR_RETURN(env, db, errcode);
-    return NULL;
+    // init baton
+    Jsbaton *baton = (Jsbaton *) data;
+    // declare var
+    int errcode = 0;
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->int8[0];
+    // printf("\n\n[napi close=%zd]\n\n", (intptr_t) db);
+    // call sqlite3_close_v2()
+    errcode = sqlite3_close_v2(db);
+    ASSERT_SQLITE_OK(baton, db, errcode);
+    // save result
+    baton->int8[0] = (int64_t) (intptr_t) db;
+    return 0;
 }
 
-napi_value _sqlite3_open_v2(
-    napi_env env,
-    napi_callback_info info
+static int JSPROMISE_CREATE(
+    _sqlite3_open_v2,
+    env,
+    data
 ) {
 // int sqlite3_open_v2(
 //   const char *filename,   /* Database filename (UTF-8) */
@@ -248,83 +371,126 @@ napi_value _sqlite3_open_v2(
 //   int flags,              /* Flags */
 //   const char *zVfs        /* Name of VFS module to use */
 // );
-    Jsbaton *baton = JSBATON_CREATE_OR_RETURN(env, info);
-    int errcode = 0;
-    int flags = (int) baton->num8[2];
-    sqlite3 *db = NULL;
+    // init baton
+    Jsbaton *baton = (Jsbaton *) data;
+    // declare var
     const char *filename = (const char *) baton->buf8[0];
-    ASSERT_NOT_NULL_OR_RETURN(env, (void *) filename);
+    int errcode = 0;
+    int flags = (int) baton->int8[2];
+    sqlite3 *db = NULL;
+    // validate filename
+    // printf("\n\n[napi filename=%s]\n\n", filename);
+    ASSERT_BATON(baton, filename != NULL, "filename == NULL");
+    // call sqlite3_open_v2()
     errcode = sqlite3_open_v2(filename, &db, flags, NULL);
-    ASSERT_SQLITE_OK_OR_RETURN(env, db, errcode);
-    baton->sqlDb = db;
-    return NULL;
+    ASSERT_SQLITE_OK(baton, db, errcode);
+    // printf("\n\n[napi db=%zd]\n\n", (intptr_t) db);
+    // save result
+    baton->int8[0] = (int64_t) (intptr_t) db;
+    return 0;
 }
 
-napi_value _jssqlExec(
-    napi_env env,
-    napi_callback_info info
+static int JSPROMISE_CREATE(
+    _jssqlExec,
+    env,
+    data
 ) {
 // This function will run <zSql> in <db> and save any result (list of tables
 // containing rows from SELECT/pragma/etc) as serialized a json-string in
 // <pResult>.
-    Jsbaton *baton = JSBATON_CREATE_OR_RETURN(env, info);
+/* *INDENT-OFF* */
+void jssqlExec(sqlite3 *, const char *, char **, int *, char *);
+/* *INDENT-ON* */
+    // init baton
+    Jsbaton *baton = (Jsbaton *) data;
     // declare var
     char *zBuf = NULL;
-    char *zErrmsg = NULL;
-    const char *zSql = NULL;
-    int errcode = napi_ok;
+    char zErrmsg[256] = { 0 };
+    const char *zSql = (const char *) baton->buf8[1];
     int nAlloced = 0;
-    napi_value result = NULL;
-    sqlite3 *db = baton->sqlDb;
-    // read from buf8
-    zSql = (const char *) baton->buf8[0];
-    ASSERT_NOT_NULL_OR_RETURN(env, (void *) zSql);
-    // exec sql
-    jssqlExec(db, zSql, &zBuf, &nAlloced, (const char **) &zErrmsg);
-    ASSERT_OR_RETURN(env, zErrmsg == NULL, zErrmsg);
-    // init result
-    errcode = napi_create_external_arraybuffer(env,     // napi_env env,
-        (void *) zBuf,          // void* external_data,
-        (size_t) nAlloced,      // size_t byte_length,
-        napiFinalize,           // napi_finalize finalize_cb,
-        NULL,                   // void* finalize_hint,
-        &result);               // napi_value* result
-    ASSERT_NAPI_OK_OR_RETURN(env, errcode);
-    // printf("\n\n[zBuf=%s nAlloced=%i]\n\n", zBuf, nAlloced);
-    return result;
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->int8[0];
+    // validate zSql
+    // printf("\n\n[napi zSql=%s]\n\n", zSql);
+    ASSERT_BATON(baton, zSql != NULL, "zSql == NULL");
+    // call jssqlExec()
+    jssqlExec(db, zSql, &zBuf, &nAlloced, zErrmsg);
+    // printf("\n\n[napi nAlloced=%d zBuf=%s]\n\n", nAlloced, zBuf);
+    ASSERT_BATON(baton, zErrmsg[0] == '\x00', zErrmsg);
+    // save result
+    baton->int8[0] = (int64_t) nAlloced;
+    baton->out8[0] = zBuf;
+    return 0;
 }
 
-//!! static void test(
-//!! ) {
-//!! // this function will run tests
-//!! }
+static void jspromiseExecuteNoop(
+    napi_env env,
+    void *data
+) {
+// This function runs on a worker thread. It has no access to the JavaScript.
+    UNUSED(env);
+    // init baton
+    Jsbaton *baton = (Jsbaton *) data;
+    UNUSED(baton);
+}
 
-int sqlite3_sqlmath_init(
-  sqlite3 *db,
-  char **pzErrMsg,
-  const sqlite3_api_routines *pApi
-);
+static napi_value jspromiseNoop(
+    napi_env env,
+    napi_callback_info info
+) {
+// Create a deferred promise and an async queue work item.
+    return jspromiseCreate(env, info, jspromiseExecuteNoop);
+}
+
+/*
+static int JSPROMISE_CREATE(jspromiseNoop, env, data) {
+// This function runs on a worker thread. It has no access to the JavaScript.
+    UNUSED(env);
+    // init baton
+    Jsbaton *baton = (Jsbaton *) data;
+    UNUSED(baton);
+}
+*/
+
+static napi_value napiNoop(
+    napi_env env,
+    napi_callback_info info
+) {
+// this function will do nothing
+    // init baton
+    Jsbaton *baton = JSBATON_CREATE(env, info);
+    return jsbatonExport(env, baton);
+}
 
 napi_value napi_module_init(
     napi_env env,
     napi_value exports
 ) {
-#define NAPI_EXPORT_MEMBER(name) {#name, 0, name, 0, 0, 0, napi_default, 0}
+// typedef struct {
+//   // One of utf8name or name should be NULL.
+//   const char* utf8name;
+//   napi_value name;
+//
+//   napi_callback method;
+//   napi_callback getter;
+//   napi_callback setter;
+//   napi_value value;
+//
+//   napi_property_attributes attributes;
+//   void* data;
+// } napi_property_descriptor;
+#define NAPI_EXPORT_MEMBER(name) \
+    {#name, NULL, name, NULL, NULL, NULL, napi_default, NULL}
     int errcode;
     const napi_property_descriptor propList[] = {
         NAPI_EXPORT_MEMBER(_jssqlExec),
         NAPI_EXPORT_MEMBER(_sqlite3_close_v2),
         NAPI_EXPORT_MEMBER(_sqlite3_open_v2),
-        NAPI_EXPORT_MEMBER(jsbatonInfo),
+        NAPI_EXPORT_MEMBER(jspromiseNoop),
         NAPI_EXPORT_MEMBER(napiNoop),
     };
     errcode = napi_define_properties(env, exports,
         sizeof(propList) / sizeof(napi_property_descriptor), propList);
-    ASSERT_NAPI_OK_OR_RETURN(env, errcode);
-//!! #ifdef DEBUG
-    //!! test();
-//!! #endif
-    //!! sqlite3_auto_extension((void(*)(void))sqlite3_sqlmath_init);
+    ASSERT_NAPI_OK(env, errcode);
     return exports;
 }
 

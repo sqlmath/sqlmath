@@ -281,16 +281,16 @@ shCiTest() {(set -e
     node -e '
 /*jslint beta, name*/
 (function () {
-    let fileNodeGypJs = require("path").resolve(
-        require("path").dirname(process.execPath),
-        "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
-    ).replace("/bin/node_modules/", "/lib/node_modules/");
     process.chdir(".tmp");
     [
         "build"
     ].forEach(function (action) {
+        // node-gyp.js
         action = [
-            fileNodeGypJs,
+            require("path").resolve(
+                require("path").dirname(process.execPath),
+                "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+            ).replace("/bin/node_modules/", "/lib/node_modules/"),
             action,
             (
                 process.env.npm_config_mode_debug
@@ -393,10 +393,6 @@ extern "C" {
             "-fno-exceptions"
         ]
     };
-    let fileNodeGypJs = require("path").resolve(
-        require("path").dirname(process.execPath),
-        "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
-    ).replace("/bin/node_modules/", "/lib/node_modules/");
     function targetWarningLevel(level, target) {
 // this function will set <target>"s warnings to <level>
         let warningList = ["-Wall", "-w"];
@@ -445,8 +441,7 @@ extern "C" {
                     "OS == \u0027win\u0027",
                     {
                         "defines": [
-                            "WIN32",
-                            "_WIN32"
+                            "WIN32"
                         ]
                     },
                     {
@@ -651,8 +646,12 @@ extern "C" {
         "configure",
         "build"
     ].forEach(function (action) {
+        // node-gyp.js
         action = [
-            fileNodeGypJs,
+            require("path").resolve(
+                require("path").dirname(process.execPath),
+                "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+            ).replace("/bin/node_modules/", "/lib/node_modules/"),
             action,
             (
                 process.env.npm_config_mode_debug
