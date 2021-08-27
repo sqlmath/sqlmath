@@ -7,7 +7,6 @@
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,10 +17,12 @@
 #include <sqlite3ext.h>
 static const sqlite3_api_routines *sqlite3_api;
 #ifndef SQLITE_MAX_LENGTH
-# define SQLITE_MAX_LENGTH 1000000000
+#define SQLITE_MAX_LENGTH 1000000000
 #endif
 #define JSSQL_NOMEM -1
 #define JSSQL_TOOBIG -2
+#define SQLMATH_API
+#define UNUSED(x) (void)(x)
 /* *INDENT-OFF* */
 typedef struct Jsctx { char *buf; int alloced; int used; int errcode; } Jsctx;
 /* *INDENT-ON* */
@@ -33,8 +34,10 @@ typedef struct Jsctx { char *buf; int alloced; int used; int errcode; } Jsctx;
 
 
 
-/* sqlmath.c - start */
-static bool jssqlAppendRaw(
+/*
+file sqlmath_jssqlExec.c start
+*/
+static int jssqlAppendRaw(
     Jsctx * ctx,
     const char *zz,
     int nn
@@ -50,35 +53,39 @@ static bool jssqlAppendRaw(
     if (0 <= nn && 0 <= ctx->used && ctx->used + nn <= ctx->alloced) {
         memcpy(ctx->buf + ctx->used, zz, nn);
         ctx->used += nn;
-        return true;
+        return 0;
     }
     // sanity check
     if (ctx->errcode != SQLITE_OK && ctx->errcode != SQLITE_ROW) {
-        return false;
+        return ctx->errcode;
     }
     // check integers >= 0
     if (nn < 0 || nn > SQLITE_MAX_LENGTH) {
         ctx->errcode = JSSQL_TOOBIG;
-        return false;
+        return ctx->errcode;
     }
     // grow nalloc exponentially
     nAlloc = ctx->alloced;
     while (nAlloc < ctx->used + nn) {
         nAlloc *= 2;
+        if (nAlloc > SQLITE_MAX_LENGTH) {
+            ctx->errcode = JSSQL_TOOBIG;
+            return ctx->errcode;
+        }
     }
     // realloc space
     zTmp = realloc(ctx->buf, nAlloc);
     if (zTmp == NULL) {
         ctx->errcode = JSSQL_NOMEM;
-        return false;
+        return ctx->errcode;
     }
-    ctx->alloced = nn;
+    ctx->alloced = nAlloc;
     ctx->buf = zTmp;
     // recurse
     return jssqlAppendRaw(ctx, zz, nn);
 }
 
-static bool jssqlAppendText(
+static int jssqlAppendText(
     Jsctx * ctx,
     const char *zz,
     int nn
@@ -198,20 +205,20 @@ static bool jssqlAppendText(
     return jssqlAppendRaw(ctx, "\"", 1);
 }
 
-bool jssqlExec(
+SQLMATH_API int jssqlExec(
     sqlite3 * db,               /* The database on which the SQL executes */
     const char *zSql,           /* The SQL to be executed */
     char **pzBuf,
     int *pAlloced,
-    const char **errmsg
+    char *zErrmsg
 ) {
 // This function will run <zSql> in <db> and save any result (list of tables
 // containing rows from SELECT/pragma/etc) as serialized a json-string in
 // <ctx>.
 #define JSSQL_APPEND_RAW(str, len) \
-    if (!jssqlAppendRaw(&ctx, str, len)) {goto label_error;}
+    if (0 != jssqlAppendRaw(&ctx, str, len)) {goto label_error;}
 #define JSSQL_APPEND_TEXT(str, len) \
-    if (!jssqlAppendText(&ctx, str, len)) {goto label_error;}
+    if (0 != jssqlAppendText(&ctx, str, len)) {goto label_error;}
     // declare var
     Jsctx ctx = { 0 };
     const char *zTmp = NULL;
@@ -221,12 +228,12 @@ bool jssqlExec(
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
     // init ctx.buf
-    ctx.buf = malloc(256);
+    ctx.buf = malloc(2);
     if (ctx.buf == NULL) {
         ctx.errcode = JSSQL_NOMEM;
         goto label_error;
     }
-    ctx.alloced = 256;
+    ctx.alloced = 2;
     // bracket database [
     JSSQL_APPEND_RAW("[", 1);
     // loop over each table
@@ -314,7 +321,7 @@ bool jssqlExec(
         }
     }
     // bracket database ]
-    JSSQL_APPEND_RAW("]\n", 2);
+    JSSQL_APPEND_RAW("]\n\x00", 2);
     // shrink ctx.buf to ctx.used
     zTmp = (const char *) realloc(ctx.buf, ctx.used);
     if (zTmp == NULL) {
@@ -331,23 +338,23 @@ bool jssqlExec(
         }
         switch (ctx.errcode) {
         case JSSQL_NOMEM:
-            *errmsg = sqlite3_errstr(SQLITE_NOMEM);
+            strncpy(zErrmsg, sqlite3_errstr(SQLITE_NOMEM), 255);
             break;
         case JSSQL_TOOBIG:
-            *errmsg = sqlite3_errstr(SQLITE_TOOBIG);
+            strncpy(zErrmsg, sqlite3_errstr(SQLITE_TOOBIG), 255);
             break;
         default:
-            *errmsg = sqlite3_errmsg(db);
+            strncpy(zErrmsg, sqlite3_errmsg(db), 255);
         }
         // mutext leave
         sqlite3_mutex_leave(sqlite3_db_mutex(db));
-        return false;
+        return ctx.errcode;
     }
     *pAlloced = ctx.alloced;
     *pzBuf = ctx.buf;
     // mutext leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
-    return true;
+    return 0;
 }
 
 int sqlite3_sqlmath_init(
@@ -355,9 +362,13 @@ int sqlite3_sqlmath_init(
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
 ) {
+    UNUSED(db);
+    UNUSED(pzErrMsg);
     int rc = SQLITE_OK;
-    sqlite3_api=pApi;
+    sqlite3_api = pApi;
     return rc;
 }
 
-/* sqlmath.c - end */
+/*
+file sqlmath_jssqlExec.c end
+*/

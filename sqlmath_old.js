@@ -13903,9 +13903,22 @@ void Database::Work_BeginExec(Baton* baton) {
     assert(baton->db->pending == 0);
     baton->db->pending++;
     Napi::Env env = baton->db->Env();
+//!! napi_status napi_create_async_work(
+// napi_env env,
+                                   //!! napi_value async_resource,
+                                   //!! napi_value async_resource_name,
+                                   //!! napi_async_execute_callback execute,
+                                   //!! napi_async_complete_callback complete,
+                                   //!! void* data,
+                                   //!! napi_async_work* result);
     int status = napi_create_async_work(
-        env, NULL, Napi::String::New(env, "sqlite3.Database.Exec"),
-        Work_Exec, Work_AfterExec, baton, &baton->request
+        env,
+        NULL, //!! napi_value async_resource,
+        Napi::String::New(env, "sqlite3.Database.Exec"), //!! napi_value async_resource_name,
+        Work_Exec, //!! napi_async_execute_callback execute,
+        Work_AfterExec, //!! napi_async_complete_callback complete,
+        baton, //!! void* data,
+        &baton->request //!! napi_async_work* result);
     );
     assert(status == 0);
     napi_queue_async_work(env, baton->request);
