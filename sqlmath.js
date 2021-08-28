@@ -109,11 +109,7 @@ function noop(val) {
     }) {
 // this function will import <json> into db
         let buf = Buffer.allocUnsafe(4096);
-        let ii = 0;
-        let jj;
         let offset = 0;
-        let row;
-        let val;
         function bufAppend(type, val) {
             let alloced = buf.byteLength;
             let nn = offset + type.length + (
@@ -154,27 +150,26 @@ function noop(val) {
             Array.isArray(json) && Array.isArray(json[0]),
             "json is not array-of-array"
         );
-        // type - json
-        // 1. array
+        // type - js
+        // 1. bigint
         // 2. boolean
         // 3. null
         // 4. number
         // 5. object
         // 6. string
+        // 7. symbol
+        // 8. undefined
         // type - sqlite
         // 1. blob
         // 2. integer
         // 3. null
         // 4. real
         // 5. text
-        ii = 0;
-        while (ii < json.length) {
-            row = json[ii];
-            jj = 0;
-            while (jj < row.length) {
-                val = row[jj];
+        json.forEach(function (row) {
+            row.forEach(function (val) {
                 if (!val) {
                     switch (typeof val) {
+                    case "bigint":
                     case "boolean":
                     case "number":
                         // 2. integer
@@ -184,39 +179,46 @@ function noop(val) {
                         // 5. text
                         bufAppend("t\u0000", undefined);
                         break;
-                    // case "array":
                     // case "null":
                     // case "object":
+                    // case "symbol":
+                    // case "undefined":
                     default:
                         // 3. null
                         bufAppend("\u0000", undefined);
                     }
-                } else {
-                    switch (typeof val) {
-                    case "boolean":
-                        // 2. integer
-                        bufAppend("i\u0001", undefined);
-                        break;
-                    case "number":
-                        // 4. real
-                        bufAppend("r", val);
-                        break;
-                    case "string":
-                        // 5. text
-                        bufAppend("t", val);
-                        break;
-                    // case "array":
-                    // case "null":
-                    // case "object":
-                    default:
-                        // 5. text
-                        bufAppend("t", JSON.stringify(val));
-                    }
+                    return;
                 }
-                jj += 1;
-            }
-            ii += 1;
-        }
+                switch (typeof val) {
+                case "bigint":
+                    // 5. text
+                    bufAppend("t", val.toString());
+                    break;
+                case "boolean":
+                    // 2. integer
+                    bufAppend("i\u0001", undefined);
+                    break;
+                case "number":
+                    // 4. real
+                    bufAppend("r", val);
+                    break;
+                case "string":
+                    // 5. text
+                    bufAppend("t", val);
+                    break;
+                case "symbol":
+                    // 3. null
+                    bufAppend("\u0000", undefined);
+                    break;
+                // case "null":
+                // case "object":
+                // case "undefined":
+                default:
+                    // 5. text
+                    bufAppend("t", JSON.stringify(val));
+                }
+            });
+        });
         await cCall("_jssqlImport", [
             db.ptr, buf
         ]);
