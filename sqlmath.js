@@ -18,6 +18,29 @@ function noop(val) {
 }
 
 (function () {
+    let SQLITE_MAX_LENGTH = 1000000000;
+    let SQLITE_OPEN_AUTOPROXY = 0x00000020;     /* VFS only */
+    let SQLITE_OPEN_CREATE = 0x00000004;        /* Ok for sqlite3_open_v2() */
+    let SQLITE_OPEN_DELETEONCLOSE = 0x00000008; /* VFS only */
+    let SQLITE_OPEN_EXCLUSIVE = 0x00000010;     /* VFS only */
+    let SQLITE_OPEN_FULLMUTEX = 0x00010000;     /* Ok for sqlite3_open_v2() */
+    let SQLITE_OPEN_MAIN_DB = 0x00000100;       /* VFS only */
+    let SQLITE_OPEN_MAIN_JOURNAL = 0x00000800;  /* VFS only */
+    let SQLITE_OPEN_MEMORY = 0x00000080;        /* Ok for sqlite3_open_v2() */
+    let SQLITE_OPEN_NOFOLLOW = 0x01000000;      /* Ok for sqlite3_open_v2() */
+    let SQLITE_OPEN_NOMUTEX = 0x00008000;       /* Ok for sqlite3_open_v2() */
+    let SQLITE_OPEN_PRIVATECACHE = 0x00040000;  /* Ok for sqlite3_open_v2() */
+    let SQLITE_OPEN_READONLY = 0x00000001;      /* Ok for sqlite3_open_v2() */
+    let SQLITE_OPEN_READWRITE = 0x00000002;     /* Ok for sqlite3_open_v2() */
+    let SQLITE_OPEN_SHAREDCACHE = 0x00020000;   /* Ok for sqlite3_open_v2() */
+    let SQLITE_OPEN_SUBJOURNAL = 0x00002000;    /* VFS only */
+    let SQLITE_OPEN_SUPER_JOURNAL = 0x00004000; /* VFS only */
+    let SQLITE_OPEN_TEMP_DB = 0x00000200;       /* VFS only */
+    let SQLITE_OPEN_TEMP_JOURNAL = 0x00001000;  /* VFS only */
+    let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
+    let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
+    let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
+
     let addon = require(
         "./_binary_sqlmath_napi"
         + "_" + process.versions.napi
@@ -103,11 +126,32 @@ function noop(val) {
         return Buffer.from(result[1], 0, result[1].byteLength - 1);
     }
 
-    async function dbImport({
-        db,
-        json
+    async function dbOpen({
+        filename,
+        flags = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
     }) {
-// this function will import <json> into db
+// this function will return sqlite-database-connection <db>
+// int sqlite3_open_v2(
+//   const char *filename,   /* Database filename (UTF-8) */
+//   sqlite3 **ppDb,         /* OUT: SQLite db handle */
+//   int flags,              /* Flags */
+//   const char *zVfs        /* Name of VFS module to use */
+// );
+        let db = {};
+        let result = await cCall("_sqlite3_open_v2", [
+            filename, undefined, flags, undefined
+        ]);
+        db.ptr = result[0][0];
+        dbMap.set(db, true);
+        return db;
+    }
+
+    async function dbTableInsert({
+        db,
+        json,
+        tableName
+    }) {
+// this function will insert <rowList> into <db>.<tableName>
         let buf = Buffer.allocUnsafe(4096);
         let offset = 0;
         function bufAppend(type, val) {
@@ -123,6 +167,7 @@ function noop(val) {
             // exponentially grow buf as needed
             while (alloced < nn) {
                 alloced *= 2;
+                assertOrThrow(alloced <= SQLITE_MAX_LENGTH, "");
             }
             if (alloced > buf.byteLength) {
                 tmp = Buffer.allocUnsafe(alloced);
@@ -220,28 +265,8 @@ function noop(val) {
             });
         });
         await cCall("_jssqlImport", [
-            db.ptr, buf
+            db.ptr, tableName, buf
         ]);
-    }
-
-    async function dbOpen({
-        filename,
-        flags = 6
-    }) {
-// this function will return sqlite-database-connection <db>
-// int sqlite3_open_v2(
-//   const char *filename,   /* Database filename (UTF-8) */
-//   sqlite3 **ppDb,         /* OUT: SQLite db handle */
-//   int flags,              /* Flags */
-//   const char *zVfs        /* Name of VFS module to use */
-// );
-        let db = {};
-        let result = await cCall("_sqlite3_open_v2", [
-            filename, undefined, flags, undefined
-        ]);
-        db.ptr = result[0][0];
-        dbMap.set(db, true);
-        return db;
     }
 
     function jsonRowListNormalize({
@@ -287,10 +312,8 @@ function noop(val) {
         });
         // sort colList by colListPriority
         if (!colListPriority) {
-            return {
-                colList,
-                rowList
-            };
+            rowList.unshift(colList);
+            return rowList;
         }
         colListPriority = new Map([].concat(
             colListPriority,
@@ -390,7 +413,7 @@ select noop(1234);
                 console.error(err);
             }
         }));
-        await dbImport({
+        await dbTableInsert({
             db,
             json: [
                 [
@@ -403,7 +426,30 @@ select noop(1234);
         });
     }());
 
-    module.exports = addon;
+    module.exports = Object.assign(addon, {
+        SQLITE_MAX_LENGTH,
+        SQLITE_OPEN_AUTOPROXY,
+        SQLITE_OPEN_CREATE,
+        SQLITE_OPEN_DELETEONCLOSE,
+        SQLITE_OPEN_EXCLUSIVE,
+        SQLITE_OPEN_FULLMUTEX,
+        SQLITE_OPEN_MAIN_DB,
+        SQLITE_OPEN_MAIN_JOURNAL,
+        SQLITE_OPEN_MEMORY,
+        SQLITE_OPEN_NOFOLLOW,
+        SQLITE_OPEN_NOMUTEX,
+        SQLITE_OPEN_PRIVATECACHE,
+        SQLITE_OPEN_READONLY,
+        SQLITE_OPEN_READWRITE,
+        SQLITE_OPEN_SHAREDCACHE,
+        SQLITE_OPEN_SUBJOURNAL,
+        SQLITE_OPEN_SUPER_JOURNAL,
+        SQLITE_OPEN_TEMP_DB,
+        SQLITE_OPEN_TEMP_JOURNAL,
+        SQLITE_OPEN_TRANSIENT_DB,
+        SQLITE_OPEN_URI,
+        SQLITE_OPEN_WAL
+    });
     // coverage-hack
     noop(assertJsonEqual);
 }());
