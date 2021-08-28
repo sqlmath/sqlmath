@@ -111,7 +111,6 @@ function noop(val) {
         let buf = Buffer.allocUnsafe(4096);
         let ii = 0;
         let jj;
-        let kk;
         let offset = 0;
         let row;
         let val;
@@ -145,14 +144,16 @@ function noop(val) {
         if (typeof json === "string") {
             json = JSON.parse(json);
         }
-        if (!json || json.length === 0) {
+        if (json?.length === 0) {
             return;
         }
-        json = jsonRowListNormalize(json);
-        assertOrThrow((
-            Array.isArray(json)
-            && (json.length === 0 || Array.isArray(json[0]))
-        ), "json is not array or array");
+        json = jsonRowListNormalize({
+            rowList: json
+        });
+        assertOrThrow(
+            Array.isArray(json) && Array.isArray(json[0]),
+            "json is not array-of-array"
+        );
         // type - json
         // 1. array
         // 2. boolean
@@ -167,7 +168,6 @@ function noop(val) {
         // 4. real
         // 5. text
         ii = 0;
-        kk = 0;
         while (ii < json.length) {
             row = json[ii];
             jj = 0;
@@ -178,39 +178,39 @@ function noop(val) {
                     case "boolean":
                     case "number":
                         // 2. integer
-                        kk = bufAppend(buf, kk, "i\u0000", undefined);
+                        bufAppend("i\u0000", undefined);
                         break;
                     case "string":
                         // 5. text
-                        kk = bufAppend(buf, kk, "t\u0000", undefined);
+                        bufAppend("t\u0000", undefined);
                         break;
                     // case "array":
                     // case "null":
                     // case "object":
                     default:
                         // 3. null
-                        kk = bufAppend(buf, kk, "\u0000", undefined);
+                        bufAppend("\u0000", undefined);
                     }
                 } else {
                     switch (typeof val) {
                     case "boolean":
                         // 2. integer
-                        kk = bufAppend(buf, kk, "i\u0001", undefined);
+                        bufAppend("i\u0001", undefined);
                         break;
                     case "number":
                         // 4. real
-                        kk = bufAppend(buf, kk, "r", val);
+                        bufAppend("r", val);
                         break;
                     case "string":
                         // 5. text
-                        kk = bufAppend(buf, kk, "t", val);
+                        bufAppend("t", val);
                         break;
                     // case "array":
                     // case "null":
                     // case "object":
                     default:
                         // 5. text
-                        kk = bufAppend(buf, kk, "t", JSON.stringify(val));
+                        bufAppend("t", JSON.stringify(val));
                     }
                 }
                 jj += 1;
@@ -390,7 +390,11 @@ select noop(1234);
         }));
         await dbImport({
             db,
-            json: []
+            json: [
+                [
+                    "aa", "bb"
+                ]
+            ]
         });
         await dbClose({
             db
