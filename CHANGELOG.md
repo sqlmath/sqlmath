@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2021.8.27
+- add function dbImport
+
 # v2021.8.26
 - add async functions dbOpen, dbExec, dbClose
 - inline function sqlite3_extension_functions_init without auto_extension

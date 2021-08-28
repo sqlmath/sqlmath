@@ -103,6 +103,110 @@ function noop(val) {
         return Buffer.from(result[1], 0, result[1].byteLength - 1);
     }
 
+    function dbImport(db, json) {
+// this function will import <json> into db
+        let buf = Buffer.allocUnsafe(4096);
+        let ii = 0;
+        let jj;
+        let kk;
+        let offset = 0;
+        let row;
+        let val;
+        function bufAppend(type, val) {
+            let alloced = buf.byteLength;
+            let byteLength = (
+                val === undefined
+                ? 0
+                : typeof val === "number"
+                ? 8
+                : Buffer.byteLength(val)
+            );
+            let nn = offset + type.length + byteLength;
+            let tmp;
+            // exponentially grow buf as needed
+            while (alloced < offset + byteLength) {
+                alloced *= 2;
+            }
+            if (alloced > buf.byteLength) {
+                tmp = Buffer.allocUnsafe(alloced);
+                buf.copy(tmp);
+                buf = tmp;
+            }
+            return tmp;
+        }
+        if (typeof json === "string") {
+            json = JSON.parse(json);
+        }
+        assertOrThrow((
+            Array.isArray(json)
+            && (json.length === 0 || Array.isArray(json[0]))
+        ), "json is not array or array");
+        // type - json
+        // 1. array
+        // 2. boolean
+        // 3. null
+        // 4. number
+        // 5. object
+        // 6. string
+        // type - sqlite
+        // 1. blob
+        // 2. integer
+        // 3. null
+        // 4. real
+        // 5. text
+        ii = 0;
+        kk = 0;
+        while (ii < json.length) {
+            row = json[ii];
+            jj = 0;
+            while (jj < row.length) {
+                val = row[jj];
+                if (!val) {
+                    switch (typeof val) {
+                    case "boolean":
+                    case "number":
+                        // 2. integer
+                        kk = bufAppend(buf, kk, "i\u0000", undefined);
+                        break;
+                    case "string":
+                        // 5. text
+                        kk = bufAppend(buf, kk, "t\u0000", undefined);
+                        break;
+                    // case "array":
+                    // case "null":
+                    // case "object":
+                    default:
+                        // 3. null
+                        kk = bufAppend(buf, kk, "\u0000", undefined);
+                    }
+                } else {
+                    switch (typeof val) {
+                    case "boolean":
+                        // 2. integer
+                        kk = bufAppend(buf, kk, "i\u0001", undefined);
+                        break;
+                    case "number":
+                        // 4. real
+                        kk = bufAppend(buf, kk, "r", val);
+                        break;
+                    case "string":
+                        // 5. text
+                        kk = bufAppend(buf, kk, "t", val);
+                        break;
+                    // case "array":
+                    // case "null":
+                    // case "object":
+                    default:
+                        // 5. text
+                        kk = bufAppend(buf, kk, "t", JSON.stringify(val));
+                    }
+                }
+                jj += 1;
+            }
+            ii += 1;
+        }
+    }
+
     async function dbOpen({
         filename,
         flags = 6
