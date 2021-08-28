@@ -103,7 +103,10 @@ function noop(val) {
         return Buffer.from(result[1], 0, result[1].byteLength - 1);
     }
 
-    function dbImport(db, json) {
+    async function dbImport({
+        db,
+        json
+    }) {
 // this function will import <json> into db
         let buf = Buffer.allocUnsafe(4096);
         let ii = 0;
@@ -114,17 +117,16 @@ function noop(val) {
         let val;
         function bufAppend(type, val) {
             let alloced = buf.byteLength;
-            let byteLength = (
+            let nn = offset + type.length + (
                 val === undefined
                 ? 0
                 : typeof val === "number"
                 ? 8
                 : Buffer.byteLength(val)
             );
-            let nn = offset + type.length + byteLength;
             let tmp;
             // exponentially grow buf as needed
-            while (alloced < offset + byteLength) {
+            while (alloced < nn) {
                 alloced *= 2;
             }
             if (alloced > buf.byteLength) {
@@ -132,11 +134,21 @@ function noop(val) {
                 buf.copy(tmp);
                 buf = tmp;
             }
-            return tmp;
+            offset += buf.write(type, offset);
+            if (typeof val === "number") {
+                offset = buf.writeDoubleLE(val, offset);
+            }
+            if (typeof val === "string") {
+                offset += buf.write(val, offset);
+            }
         }
         if (typeof json === "string") {
             json = JSON.parse(json);
         }
+        if (!json || json.length === 0) {
+            return;
+        }
+        json = jsonRowListNormalize(json);
         assertOrThrow((
             Array.isArray(json)
             && (json.length === 0 || Array.isArray(json[0]))
@@ -205,6 +217,9 @@ function noop(val) {
             }
             ii += 1;
         }
+        await cCall("_jssqlImport", [
+            db.ptr, buf
+        ]);
     }
 
     async function dbOpen({
@@ -225,6 +240,77 @@ function noop(val) {
         db.ptr = result[0][0];
         dbMap.set(db, true);
         return db;
+    }
+
+    function jsonRowListNormalize({
+        colList,
+        colListPriority = [],
+        rowList
+    }) {
+// this function will normalize <rowList> with given <colList>
+        // convert list-of-dict to list-of-list
+        if (!Array.isArray(rowList[0])) {
+            colList = new Map(Array.from(
+                colList || []
+            ).map(function (key, ii) {
+                return [
+                    key, ii
+                ];
+            }));
+            rowList = rowList.map(function (row) {
+                Object.keys(row).forEach(function (key) {
+                    if (!colList.has(key)) {
+                        colList.set(key, colList.size);
+                    }
+                });
+                return Array.from(colList.keys()).map(function (key) {
+                    return row[key];
+                });
+            });
+            colList = Array.from(colList.keys());
+        }
+        if (!colList) {
+            colList = rowList[0];
+            rowList = rowList.slice(1);
+        }
+        // normalize rowList
+        rowList = rowList.map(function (row) {
+            return (
+                row.length === colList.length
+                ? row
+                : colList.map(function (ignore, ii) {
+                    return row[ii];
+                })
+            );
+        });
+        // sort colList by colListPriority
+        if (!colListPriority) {
+            return {
+                colList,
+                rowList
+            };
+        }
+        colListPriority = new Map([].concat(
+            colListPriority,
+            colList
+        ).map(function (key) {
+            return [
+                key, colList.indexOf(key)
+            ];
+        }).filter(function ([
+            ignore, ii
+        ]) {
+            return ii >= 0;
+        }));
+        colList = Array.from(colListPriority.keys());
+        colListPriority = Array.from(colListPriority.values());
+        rowList = rowList.map(function (row) {
+            return colListPriority.map(function (ii) {
+                return row[ii];
+            });
+        });
+        rowList.unshift(colList);
+        return rowList;
     }
 
     function objectDeepCopyWithKeysSorted(obj) {
@@ -302,6 +388,10 @@ select noop(1234);
                 console.error(err);
             }
         }));
+        await dbImport({
+            db,
+            json: []
+        });
         await dbClose({
             db
         });
