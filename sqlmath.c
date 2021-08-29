@@ -866,7 +866,7 @@ static int csvtabConnect(
     CsvTable *pNew = 0;         /* The CsvTable object to construct */
     int bHeader = -1;           /* header= flags.  -1 means not seen yet */
     int rc = SQLITE_OK;         /* Result code from this routine */
-    int i,
+    size_t i,
      j;                         /* Loop counters */
     int b;                      /* Value of a boolean parameter */
     int nCol = -99;             /* Value of the columns= parameter */
@@ -968,8 +968,8 @@ static int csvtabConnect(
         goto csvtab_connect_oom;
 
     //!! do {
-        //!! csv_read_one_field(&sRdr);
-        //!! pNew->nCol++;
+    //!! csv_read_one_field(&sRdr);
+    //!! pNew->nCol++;
     //!! } while (sRdr.cTerm == ',');
 
     pNew->zData = CSV_DATA;
@@ -1027,11 +1027,11 @@ static void csvtabCursorRowReset(
     CsvCursor * pCur
 ) {
     CsvTable *pTab = (CsvTable *) pCur->base.pVtab;
-    int i;
-    for (i = 0; i < pTab->nCol; i++) {
-        sqlite3_free(pCur->azVal[i]);
-        pCur->azVal[i] = 0;
-        pCur->aLen[i] = 0;
+    int ii;
+    for (ii = 0; ii < pTab->nCol; ii++) {
+        sqlite3_free(pCur->azVal[ii]);
+        pCur->azVal[ii] = 0;
+        pCur->aLen[ii] = 0;
     }
 }
 
@@ -1094,40 +1094,41 @@ static int csvtabNext(
 ) {
     CsvCursor *pCur = (CsvCursor *) cur;
     CsvTable *pTab = (CsvTable *) cur->pVtab;
-    int i = 0;
-    char *z;
+    int ii = 0;
+    char *zz;
     do {
-        z = csv_read_one_field(&pCur->rdr);
-        if (z == 0) {
+        zz = csv_read_one_field(&pCur->rdr);
+        if (zz == 0) {
             break;
         }
-        if (i < pTab->nCol) {
-            if (pCur->aLen[i] < pCur->rdr.n + 1) {
+        if (ii < pTab->nCol) {
+            if (pCur->aLen[ii] < pCur->rdr.n + 1) {
                 char *zNew =
-                    sqlite3_realloc64(pCur->azVal[i], pCur->rdr.n + 1);
+                    sqlite3_realloc64(pCur->azVal[ii], pCur->rdr.n + 1);
 /* Transfer error message text from a reader into a CsvTable */
                 if (zNew == 0) {
                     csv_errmsg(&pCur->rdr, "out of memory");
                     sqlite3_free(pTab->base.zErrMsg);
-                    pTab->base.zErrMsg = sqlite3_mprintf("%s", pCur->rdr.zErr);
+                    pTab->base.zErrMsg =
+                        sqlite3_mprintf("%s", pCur->rdr.zErr);
                     break;
                 }
-                pCur->azVal[i] = zNew;
-                pCur->aLen[i] = pCur->rdr.n + 1;
+                pCur->azVal[ii] = zNew;
+                pCur->aLen[ii] = pCur->rdr.n + 1;
             }
-            memcpy(pCur->azVal[i], z, pCur->rdr.n + 1);
-            i++;
+            memcpy(pCur->azVal[ii], zz, pCur->rdr.n + 1);
+            ii++;
         }
     } while (pCur->rdr.cTerm == ',');
-    if (z == 0 || (pCur->rdr.cTerm == EOF && i < pTab->nCol)) {
+    if (zz == 0 || (pCur->rdr.cTerm == EOF && ii < pTab->nCol)) {
         pCur->iRowid = -1;
     } else {
         pCur->iRowid++;
-        while (i < pTab->nCol) {
-            sqlite3_free(pCur->azVal[i]);
-            pCur->azVal[i] = 0;
-            pCur->aLen[i] = 0;
-            i++;
+        while (ii < pTab->nCol) {
+            sqlite3_free(pCur->azVal[ii]);
+            pCur->azVal[ii] = 0;
+            pCur->aLen[ii] = 0;
+            ii++;
         }
     }
     return SQLITE_OK;
@@ -1140,12 +1141,12 @@ static int csvtabNext(
 static int csvtabColumn(
     sqlite3_vtab_cursor * cur,  /* The cursor */
     sqlite3_context * ctx,      /* First argument to sqlite3_result_...() */
-    int i                       /* Which column to return */
+    int ii                      /* Which column to return */
 ) {
     CsvCursor *pCur = (CsvCursor *) cur;
     CsvTable *pTab = (CsvTable *) cur->pVtab;
-    if (i >= 0 && i < pTab->nCol && pCur->azVal[i] != 0) {
-        sqlite3_result_text(ctx, pCur->azVal[i], -1, SQLITE_TRANSIENT);
+    if (ii >= 0 && ii < pTab->nCol && pCur->azVal[ii] != 0) {
+        sqlite3_result_text(ctx, pCur->azVal[ii], -1, SQLITE_TRANSIENT);
     }
     return SQLITE_OK;
 }
@@ -1230,6 +1231,10 @@ static sqlite3_module CsvModule = {
     0,                          /* xRollback */
     0,                          /* xFindMethod */
     0,                          /* xRename */
+    0,                          /* xSavepoint  */
+    0,                          /* xRelease    */
+    0,                          /* xRollbackTo */
+    0                           /* xShadowName */
 };
 
 
