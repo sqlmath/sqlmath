@@ -720,9 +720,9 @@ static void csv_trim_whitespace(
 static void csv_dequote(
     char *z
 ) {
-    int j;
+    int jj;
     char cQuote = z[0];
-    size_t i,
+    size_t ii,
      n;
 
     if (cQuote != '\'' && cQuote != '"')
@@ -730,12 +730,12 @@ static void csv_dequote(
     n = strlen(z);
     if (n < 2 || z[n - 1] != z[0])
         return;
-    for (i = 1, j = 0; i < n - 1; i++) {
-        if (z[i] == cQuote && z[i + 1] == cQuote)
-            i++;
-        z[j++] = z[i];
+    for (ii = 1, jj = 0; ii < n - 1; ii++) {
+        if (z[ii] == cQuote && z[ii + 1] == cQuote)
+            ii++;
+        z[jj++] = z[ii];
     }
-    z[j] = 0;
+    z[jj] = 0;
 }
 
 /* Check to see if the string is of the form:  "TAG = VALUE" with optional
@@ -866,8 +866,8 @@ static int csvtabConnect(
     CsvTable *pNew = 0;         /* The CsvTable object to construct */
     int bHeader = -1;           /* header= flags.  -1 means not seen yet */
     int rc = SQLITE_OK;         /* Result code from this routine */
-    size_t i,
-     j;                         /* Loop counters */
+    size_t ii,
+     jj;                         /* Loop counters */
     int b;                      /* Value of a boolean parameter */
     int nCol = -99;             /* Value of the columns= parameter */
 /* A CSV file reader used to store an error
@@ -883,14 +883,14 @@ static int csvtabConnect(
     assert(sizeof(azPValue) == sizeof(azParam));
     memset(&sRdr, 0, sizeof(sRdr));
     memset(azPValue, 0, sizeof(azPValue));
-    for (i = 3; i < argc; i++) {
-        const char *z = argv[i];
+    for (ii = 3; ii < argc; ii++) {
+        const char *z = argv[ii];
         const char *zValue;
-        for (j = 0; j < sizeof(azParam) / sizeof(azParam[0]); j++) {
-            if (csv_string_parameter(&sRdr, azParam[j], z, &azPValue[j]))
+        for (jj = 0; jj < sizeof(azParam) / sizeof(azParam[0]); jj++) {
+            if (csv_string_parameter(&sRdr, azParam[jj], z, &azPValue[jj]))
                 break;
         }
-        if (j < sizeof(azParam) / sizeof(azParam[0])) {
+        if (jj < sizeof(azParam) / sizeof(azParam[0])) {
             if (sRdr.zErr[0])
                 goto csvtab_connect_error;
         } else if (csv_boolean_parameter("header", 6, z, &b)) {
@@ -986,8 +986,8 @@ static int csvtabConnect(
             sqlite3_errmsg(db));
         goto csvtab_connect_error;
     }
-    for (i = 0; i < sizeof(azPValue) / sizeof(azPValue[0]); i++) {
-        sqlite3_free(azPValue[i]);
+    for (ii = 0; ii < sizeof(azPValue) / sizeof(azPValue[0]); ii++) {
+        sqlite3_free(azPValue[ii]);
     }
     /* Rationale for DIRECTONLY:
      ** An attacker who controls a database schema could use this vtab
@@ -1007,8 +1007,8 @@ static int csvtabConnect(
   csvtab_connect_error:
     if (pNew)
         csvtabDisconnect(&pNew->base);
-    for (i = 0; i < sizeof(azPValue) / sizeof(azPValue[0]); i++) {
-        sqlite3_free(azPValue[i]);
+    for (ii = 0; ii < sizeof(azPValue) / sizeof(azPValue[0]); ii++) {
+        sqlite3_free(azPValue[ii]);
     }
     if (sRdr.zErr[0]) {
         sqlite3_free(*pzErr);
