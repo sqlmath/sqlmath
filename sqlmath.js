@@ -356,16 +356,8 @@ function noop(val) {
         return sorted;
     }
 
-    (async function testJsbaton() {
-// this function will test passing argList between nodejs <-> c
-        let db;
-        let result;
-        result = await cCall("noopAsync", [1234]);
-        //!! debugInline(result, "noopAsync");
-        db = await dbOpen({
-            filename: ":memory:"
-        });
-        //!! debugInline(db, "db");
+    (function testCcall() {
+// this function will test cCall's handling-behavior
         [
             [-0, "0"],
             [-Infinity, "0"],
@@ -377,14 +369,25 @@ function noop(val) {
             [true, "1"],
             [undefined, "0"],
             [{}, "0"]
-        ].forEach(function ([
+        ].forEach(async function ([
             aa, bb
         ]) {
             let cc;
-            result = cCall("noopSync", [aa]);
-            cc = String(result[0][0]);
+            cc = String(await cCall("noopAsync", [aa]))[0][0];
+            assertOrThrow(bb === cc, [aa, bb, cc]);
+            cc = String(cCall("noopSync", [aa]))[0][0];
             assertOrThrow(bb === cc, [aa, bb, cc]);
         });
+    }());
+
+    (async function testDbExec() {
+// this function will test dbExec's handling-behavior
+        let db;
+        let result;
+        db = await dbOpen({
+            filename: ":memory:"
+        });
+        //!! debugInline(db, "db");
         await Promise.all(Array.from(new Array(4)).map(async function () {
             let sql = (`
 CREATE TABLE tt1 AS
@@ -413,14 +416,14 @@ select noop(1234);
                 console.error(err);
             }
         }));
-        await dbTableInsert({
-            db,
-            json: [
-                [
-                    "aa", "bb"
-                ]
-            ]
-        });
+        //!! await dbTableInsert({
+            //!! db,
+            //!! json: [
+                //!! [
+                    //!! "aa", "bb"
+                //!! ]
+            //!! ]
+        //!! });
         await dbClose({
             db
         });
@@ -456,5 +459,5 @@ select noop(1234);
     });
 
     // coverage-hack
-    noop(assertJsonEqual);
+    noop(assertJsonEqual, dbTableInsert);
 }());
