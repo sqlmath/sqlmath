@@ -369,11 +369,32 @@ function noop(val) {
         ]) {
             try {
                 assertOrThrow(undefined, err);
-            } catch (err) {
-                assertJsonEqual(err.message, msg);
+            } catch (err2) {
+                assertJsonEqual(err2.message, msg);
             }
         });
-    }())
+        [
+            [
+                "aa", "aa"
+            ], [
+                [
+                    {
+                        aa: 1,
+                        bb: 2
+                    }
+                ], [
+                    {
+                        bb: 2,
+                        aa: 1 //jslint-quiet
+                    }
+                ]
+            ]
+        ].forEach(function ([
+            aa, bb
+        ]) {
+            assertJsonEqual(aa, bb);
+        });
+    }());
 
     (function testCcall() {
 // this function will test cCall's handling-behavior
