@@ -543,7 +543,8 @@ SELECT * FROM tt2;
         let result;
         let sql;
         sql = (`
-CREATE VIRTUAL TABLE temp.t1 USING csv(data='thefile.csv');
+CREATE VIRTUAL TABLE temp.t1 USING csv(data='aa,bb\ncc,dd,ee\nff,gg');
+SELECT * FROM temp.t1;
 SELECT * FROM temp.t1;
         `);
         result = await dbExec({

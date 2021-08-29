@@ -403,18 +403,6 @@ file sqlmath_blobtable.c
 */
 #include <assert.h>
 
-/*
-** A macro to hint to the compiler that a function should not be
-** inlined.
-*/
-#if defined(__GNUC__)
-#  define CSV_NOINLINE  __attribute__((noinline))
-#elif defined(_MSC_VER) && _MSC_VER >= 1310
-#  define CSV_NOINLINE  __declspec(noinline)
-#else
-#  define CSV_NOINLINE
-#endif
-
 /* Max size of the error message in a CsvReader */
 #define CSV_MXERR 200
 
@@ -424,7 +412,6 @@ file sqlmath_blobtable.c
 /* A context object used when read a CSV file. */
 typedef struct CsvReader CsvReader;
 struct CsvReader {
-    FILE *in;                   /* Read the CSV text from this input stream */
     char *z;                    /* Accumulated text for a field */
     int n;                      /* Number of bytes in z */
     int nAlloc;                 /* Space allocated for z[] */
@@ -441,7 +428,6 @@ struct CsvReader {
 static void csv_reader_init(
     CsvReader * p
 ) {
-    p->in = 0;
     p->z = 0;
     p->n = 0;
     p->nAlloc = 0;
@@ -456,10 +442,6 @@ static void csv_reader_init(
 static void csv_reader_reset(
     CsvReader * p
 ) {
-    if (p->in) {
-        fclose(p->in);
-        sqlite3_free(p->zIn);
-    }
     sqlite3_free(p->z);
     csv_reader_init(p);
 }
@@ -483,29 +465,9 @@ static int csv_reader_open(
     CsvReader * p,              /* The reader to open */
     const char *zData           /*  ... or use this data */
 ) {
-    assert(p->in == 0);
     p->zIn = (char *) zData;
     p->nIn = strlen(zData);
     return 0;
-}
-
-/* The input buffer has overflowed.  Refill the input buffer, then
-** return the next character
-*/
-static CSV_NOINLINE int csv_getc_refill(
-    CsvReader * p
-) {
-    size_t got;
-
-    assert(p->iIn >= p->nIn);   /* Only called on an empty input buffer */
-    assert(p->in != 0);         /* Only called if reading froma file */
-
-    got = fread(p->zIn, 1, CSV_INBUFSZ, p->in);
-    if (got == 0)
-        return EOF;
-    p->nIn = got;
-    p->iIn = 1;
-    return p->zIn[0];
 }
 
 /* Return the next character of input.  Return EOF at end of input. */
@@ -513,8 +475,6 @@ static int csv_getc(
     CsvReader * p
 ) {
     if (p->iIn >= p->nIn) {
-        if (p->in != 0)
-            return csv_getc_refill(p);
         return EOF;
     }
     return ((unsigned char *) p->zIn)[p->iIn++];
@@ -522,7 +482,7 @@ static int csv_getc(
 
 /* Increase the size of p->z and append character c to the end.
 ** Return 0 on success and non-zero if there is an OOM error */
-static CSV_NOINLINE int csv_resize_and_append(
+static int csv_resize_and_append(
     CsvReader * p,
     char c
 ) {
@@ -1023,10 +983,8 @@ static int csvtabConnect(
     CSV_DATA = 0;
     if (bHeader != 1) {
         pNew->iStart = 0;
-    } else if (pNew->zData) {
-        pNew->iStart = (int) sRdr.iIn;
     } else {
-        pNew->iStart = (int) (ftell(sRdr.in) - sRdr.nIn + sRdr.iIn);
+        pNew->iStart = (int) sRdr.iIn;
     }
     csv_reader_reset(&sRdr);
     rc = sqlite3_declare_vtab(db, CSV_SCHEMA);
@@ -1242,16 +1200,7 @@ static int csvtabFilter(
     CsvCursor *pCur = (CsvCursor *) pVtabCursor;
     CsvTable *pTab = (CsvTable *) pVtabCursor->pVtab;
     pCur->iRowid = 0;
-    if (pCur->rdr.in == 0) {
-        assert(pCur->rdr.zIn == pTab->zData);
-        assert(pTab->iStart >= 0);
-        assert((size_t) pTab->iStart <= pCur->rdr.nIn);
-        pCur->rdr.iIn = pTab->iStart;
-    } else {
-        fseek(pCur->rdr.in, pTab->iStart, SEEK_SET);
-        pCur->rdr.iIn = 0;
-        pCur->rdr.nIn = 0;
-    }
+    pCur->rdr.iIn = pTab->iStart;
     return csvtabNext(pVtabCursor);
 }
 
