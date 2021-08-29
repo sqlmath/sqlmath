@@ -19,12 +19,12 @@ static const sqlite3_api_routines *sqlite3_api;
 #ifndef SQLITE_MAX_LENGTH
 #define SQLITE_MAX_LENGTH 1000000000
 #endif
-#define JSSQL_NOMEM -1
-#define JSSQL_TOOBIG -2
+#define STR2_NOMEM -1
+#define STR2_TOOBIG -2
 #define SQLMATH_API
 #define UNUSED(x) (void)(x)
 /* *INDENT-OFF* */
-typedef struct Jsctx { char *buf; int alloced; int used; int errcode; } Jsctx;
+typedef struct Str2 { char *buf; int alloced; int used; int errcode; } Str2;
 /* *INDENT-ON* */
 /* sqlmath.h - end */
 
@@ -37,172 +37,172 @@ typedef struct Jsctx { char *buf; int alloced; int used; int errcode; } Jsctx;
 /*
 file sqlmath_jssqlExec.c start
 */
-static int jssqlAppendRaw(
-    Jsctx * ctx,
+static int str2AppendRaw(
+    Str2 * str2,
     const char *zz,
     int nn
 ) {
 /*
-** Append <nn> bytes of text from <zz> to <ctx->buf>.
-** Increase the size of the memory allocation for <ctx->buf> if necessary.
+** Append <nn> bytes of text from <zz> to <str2->buf>.
+** Increase the size of the memory allocation for <str2->buf> if necessary.
 */
     // declare var
     char *zTmp;
     int nAlloc;
-    // write <zz> to <ctx->buf> if space available
-    if (0 <= nn && 0 <= ctx->used && ctx->used + nn <= ctx->alloced) {
-        memcpy(ctx->buf + ctx->used, zz, nn);
-        ctx->used += nn;
+    // write <zz> to <str2->buf> if space available
+    if (0 <= nn && 0 <= str2->used && str2->used + nn <= str2->alloced) {
+        memcpy(str2->buf + str2->used, zz, nn);
+        str2->used += nn;
         return 0;
     }
     // sanity check
-    if (ctx->errcode != SQLITE_OK && ctx->errcode != SQLITE_ROW) {
-        return ctx->errcode;
+    if (str2->errcode != SQLITE_OK && str2->errcode != SQLITE_ROW) {
+        return str2->errcode;
     }
     // check integers >= 0
     if (nn < 0 || nn > SQLITE_MAX_LENGTH) {
-        ctx->errcode = JSSQL_TOOBIG;
-        return ctx->errcode;
+        str2->errcode = STR2_TOOBIG;
+        return str2->errcode;
     }
     // grow nalloc exponentially
-    nAlloc = ctx->alloced;
-    while (nAlloc < ctx->used + nn) {
+    nAlloc = str2->alloced;
+    while (nAlloc < str2->used + nn) {
         nAlloc *= 2;
         if (nAlloc > SQLITE_MAX_LENGTH) {
-            ctx->errcode = JSSQL_TOOBIG;
-            return ctx->errcode;
+            str2->errcode = STR2_TOOBIG;
+            return str2->errcode;
         }
     }
     // realloc space
-    zTmp = realloc(ctx->buf, nAlloc);
+    zTmp = realloc(str2->buf, nAlloc);
     if (zTmp == NULL) {
-        ctx->errcode = JSSQL_NOMEM;
-        return ctx->errcode;
+        str2->errcode = STR2_NOMEM;
+        return str2->errcode;
     }
-    ctx->alloced = nAlloc;
-    ctx->buf = zTmp;
+    str2->alloced = nAlloc;
+    str2->buf = zTmp;
     // recurse
-    return jssqlAppendRaw(ctx, zz, nn);
+    return str2AppendRaw(str2, zz, nn);
 }
 
-static int jssqlAppendText(
-    Jsctx * ctx,
+static int str2AppendText(
+    Str2 * str2,
     const char *zz,
     int nn
 ) {
 /*
-** Append <nn> bytes of text from <zz> to <ctx->buf> with json-escaping.
-** Increase the size of the memory allocation for <ctx->buf> if necessary.
+** Append <nn> bytes of text from <zz> to <str2->buf> with json-escaping.
+** Increase the size of the memory allocation for <str2->buf> if necessary.
 */
     // declare var
     const char *zz2 = zz + nn;
     // double-quote open
-    jssqlAppendRaw(ctx, "\"", 1);
+    str2AppendRaw(str2, "\"", 1);
     while (zz < zz2) {
         switch (*zz) {
         case '\x00':
-            jssqlAppendRaw(ctx, "\\u0000", 6);
+            str2AppendRaw(str2, "\\u0000", 6);
             break;
         case '\x01':
-            jssqlAppendRaw(ctx, "\\u0001", 6);
+            str2AppendRaw(str2, "\\u0001", 6);
             break;
         case '\x02':
-            jssqlAppendRaw(ctx, "\\u0002", 6);
+            str2AppendRaw(str2, "\\u0002", 6);
             break;
         case '\x03':
-            jssqlAppendRaw(ctx, "\\u0003", 6);
+            str2AppendRaw(str2, "\\u0003", 6);
             break;
         case '\x04':
-            jssqlAppendRaw(ctx, "\\u0004", 6);
+            str2AppendRaw(str2, "\\u0004", 6);
             break;
         case '\x05':
-            jssqlAppendRaw(ctx, "\\u0005", 6);
+            str2AppendRaw(str2, "\\u0005", 6);
             break;
         case '\x06':
-            jssqlAppendRaw(ctx, "\\u0006", 6);
+            str2AppendRaw(str2, "\\u0006", 6);
             break;
         case '\x07':
-            jssqlAppendRaw(ctx, "\\u0007", 6);
+            str2AppendRaw(str2, "\\u0007", 6);
             break;
         case '\x08':
-            jssqlAppendRaw(ctx, "\\b", 2);
+            str2AppendRaw(str2, "\\b", 2);
             break;
         case '\x09':
-            jssqlAppendRaw(ctx, "\\t", 2);
+            str2AppendRaw(str2, "\\t", 2);
             break;
         case '\x0a':
-            jssqlAppendRaw(ctx, "\\n", 2);
+            str2AppendRaw(str2, "\\n", 2);
             break;
         case '\x0b':
-            jssqlAppendRaw(ctx, "\\u000b", 6);
+            str2AppendRaw(str2, "\\u000b", 6);
             break;
         case '\x0c':
-            jssqlAppendRaw(ctx, "\\f", 2);
+            str2AppendRaw(str2, "\\f", 2);
             break;
         case '\x0d':
-            jssqlAppendRaw(ctx, "\\r", 2);
+            str2AppendRaw(str2, "\\r", 2);
             break;
         case '\x0e':
-            jssqlAppendRaw(ctx, "\\u000e", 6);
+            str2AppendRaw(str2, "\\u000e", 6);
             break;
         case '\x0f':
-            jssqlAppendRaw(ctx, "\\u000f", 6);
+            str2AppendRaw(str2, "\\u000f", 6);
             break;
         case '\x10':
-            jssqlAppendRaw(ctx, "\\u0010", 6);
+            str2AppendRaw(str2, "\\u0010", 6);
             break;
         case '\x11':
-            jssqlAppendRaw(ctx, "\\u0011", 6);
+            str2AppendRaw(str2, "\\u0011", 6);
             break;
         case '\x12':
-            jssqlAppendRaw(ctx, "\\u0012", 6);
+            str2AppendRaw(str2, "\\u0012", 6);
             break;
         case '\x13':
-            jssqlAppendRaw(ctx, "\\u0013", 6);
+            str2AppendRaw(str2, "\\u0013", 6);
             break;
         case '\x14':
-            jssqlAppendRaw(ctx, "\\u0014", 6);
+            str2AppendRaw(str2, "\\u0014", 6);
             break;
         case '\x15':
-            jssqlAppendRaw(ctx, "\\u0015", 6);
+            str2AppendRaw(str2, "\\u0015", 6);
             break;
         case '\x16':
-            jssqlAppendRaw(ctx, "\\u0016", 6);
+            str2AppendRaw(str2, "\\u0016", 6);
             break;
         case '\x17':
-            jssqlAppendRaw(ctx, "\\u0017", 6);
+            str2AppendRaw(str2, "\\u0017", 6);
             break;
         case '\x18':
-            jssqlAppendRaw(ctx, "\\u0018", 6);
+            str2AppendRaw(str2, "\\u0018", 6);
             break;
         case '\x19':
-            jssqlAppendRaw(ctx, "\\u0019", 6);
+            str2AppendRaw(str2, "\\u0019", 6);
             break;
         case '\x1a':
-            jssqlAppendRaw(ctx, "\\u001a", 6);
+            str2AppendRaw(str2, "\\u001a", 6);
             break;
         case '\x1b':
-            jssqlAppendRaw(ctx, "\\u001b", 6);
+            str2AppendRaw(str2, "\\u001b", 6);
             break;
         case '\x1c':
-            jssqlAppendRaw(ctx, "\\u001c", 6);
+            str2AppendRaw(str2, "\\u001c", 6);
             break;
         case '\x1d':
-            jssqlAppendRaw(ctx, "\\u001d", 6);
+            str2AppendRaw(str2, "\\u001d", 6);
             break;
         case '\x22':
-            jssqlAppendRaw(ctx, "\\\"", 2);
+            str2AppendRaw(str2, "\\\"", 2);
             break;
         case '\x5c':
-            jssqlAppendRaw(ctx, "\\\\", 2);
+            str2AppendRaw(str2, "\\\\", 2);
             break;
         default:
-            jssqlAppendRaw(ctx, zz, 1);
+            str2AppendRaw(str2, zz, 1);
         }
         zz += 1;
     }
     // double-quote close
-    return jssqlAppendRaw(ctx, "\"", 1);
+    return str2AppendRaw(str2, "\"", 1);
 }
 
 SQLMATH_API int jssqlExec(
@@ -214,28 +214,28 @@ SQLMATH_API int jssqlExec(
 ) {
 // This function will run <zSql> in <db> and save any result (list of tables
 // containing rows from SELECT/pragma/etc) as serialized a json-string in
-// <ctx>.
-#define JSSQL_APPEND_RAW(str, len) \
-    if (0 != jssqlAppendRaw(&ctx, str, len)) {goto label_error;}
-#define JSSQL_APPEND_TEXT(str, len) \
-    if (0 != jssqlAppendText(&ctx, str, len)) {goto label_error;}
+// <str2>.
+#define STR2_APPEND_RAW(str, len) \
+    if (0 != str2AppendRaw(&str2, str, len)) {goto label_error;}
+#define STR2_APPEND_TEXT(str, len) \
+    if (0 != str2AppendText(&str2, str, len)) {goto label_error;}
     // declare var
-    Jsctx ctx = { 0 };
+    Str2 str2 = { 0 };
     const char *zTmp = NULL;
     int ii = 0;
     int nCol = 0;
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
-    // init ctx.buf
-    ctx.buf = malloc(2);
-    if (ctx.buf == NULL) {
-        ctx.errcode = JSSQL_NOMEM;
+    // init str2.buf
+    str2.buf = malloc(2);
+    if (str2.buf == NULL) {
+        str2.errcode = STR2_NOMEM;
         goto label_error;
     }
-    ctx.alloced = 2;
+    str2.alloced = 2;
     // bracket database [
-    JSSQL_APPEND_RAW("[", 1);
+    STR2_APPEND_RAW("[", 1);
     // loop over each table
     while (1) {
         // ignore whitespace
@@ -244,48 +244,48 @@ SQLMATH_API int jssqlExec(
             zSql += 1;
         }
         pStmt = NULL;
-        ctx.errcode = sqlite3_prepare_v2(db, zSql, -1, &pStmt, &zTmp);
-        if (ctx.errcode != SQLITE_OK || *zSql == '\x00') {
+        str2.errcode = sqlite3_prepare_v2(db, zSql, -1, &pStmt, &zTmp);
+        if (str2.errcode != SQLITE_OK || *zSql == '\x00') {
             break;
         }
         zSql = zTmp;
         nCol = -1;
         // loop over each row
         while (1) {
-            ctx.errcode = sqlite3_step(pStmt);
-            if (ctx.errcode != SQLITE_ROW) {
-                ctx.errcode = sqlite3_finalize(pStmt);
+            str2.errcode = sqlite3_step(pStmt);
+            if (str2.errcode != SQLITE_ROW) {
+                str2.errcode = sqlite3_finalize(pStmt);
                 break;
             }
             // insert row of column-names
             if (nCol == -1) {
-                if (ctx.used > 1) {
-                    JSSQL_APPEND_RAW(",\n\n", 3);
+                if (str2.used > 1) {
+                    STR2_APPEND_RAW(",\n\n", 3);
                 }
                 // bracket table [
                 // bracket column [
-                JSSQL_APPEND_RAW("[[", 2);
+                STR2_APPEND_RAW("[[", 2);
                 // loop over each column-name
                 nCol = sqlite3_column_count(pStmt);
                 ii = 0;
                 while (ii < nCol) {
                     if (ii > 0) {
-                        JSSQL_APPEND_RAW(",", 1);
+                        STR2_APPEND_RAW(",", 1);
                     }
                     zTmp = sqlite3_column_name(pStmt, ii);
-                    JSSQL_APPEND_TEXT(zTmp, strlen(zTmp));
+                    STR2_APPEND_TEXT(zTmp, strlen(zTmp));
                     ii += 1;
                 }
                 // bracket column ]
-                JSSQL_APPEND_RAW("]", 1);
+                STR2_APPEND_RAW("]", 1);
             }
             // bracket row [
-            JSSQL_APPEND_RAW(",\n[", 3);
+            STR2_APPEND_RAW(",\n[", 3);
             ii = 0;
             // loop over each column-value
             while (ii < nCol) {
                 if (ii > 0) {
-                    JSSQL_APPEND_RAW(",", 1);
+                    STR2_APPEND_RAW(",", 1);
                 }
                 switch (sqlite3_column_type(pStmt, ii)) {
                     // encode blob as data-uri application/octet-stream
@@ -293,54 +293,54 @@ SQLMATH_API int jssqlExec(
                     // break;
                 case SQLITE_INTEGER:
                 case SQLITE_FLOAT:
-                    JSSQL_APPEND_RAW(
+                    STR2_APPEND_RAW(
                         (const char *) sqlite3_column_text(pStmt, ii),
                         sqlite3_column_bytes(pStmt, ii));
                     break;
                     // append text as json-escaped string
                 case SQLITE_TEXT:
-                    JSSQL_APPEND_TEXT(
+                    STR2_APPEND_TEXT(
                         (const char *) sqlite3_column_text(pStmt, ii),
                         sqlite3_column_bytes(pStmt, ii));
                     break;
                 default:       /* case SQLITE_NULL: */
-                    JSSQL_APPEND_RAW("null", 4);
+                    STR2_APPEND_RAW("null", 4);
                     break;
                 }
                 ii += 1;
             }
             // bracket row ]
-            JSSQL_APPEND_RAW("]", 1);
-            if (ctx.errcode != SQLITE_ROW) {
+            STR2_APPEND_RAW("]", 1);
+            if (str2.errcode != SQLITE_ROW) {
                 break;
             }
         }
         if (nCol != -1) {
             // bracket table ]
-            JSSQL_APPEND_RAW("]", 1);
+            STR2_APPEND_RAW("]", 1);
         }
     }
     // bracket database ]
-    JSSQL_APPEND_RAW("]\n\x00", 2);
-    // shrink ctx.buf to ctx.used
-    zTmp = (const char *) realloc(ctx.buf, ctx.used);
+    STR2_APPEND_RAW("]\n\x00", 2);
+    // shrink str2.buf to str2.used
+    zTmp = (const char *) realloc(str2.buf, str2.used);
     if (zTmp == NULL) {
-        ctx.errcode = JSSQL_NOMEM;
+        str2.errcode = STR2_NOMEM;
     } else {
-        ctx.buf = (char *) zTmp;
-        ctx.alloced = ctx.used;
+        str2.buf = (char *) zTmp;
+        str2.alloced = str2.used;
     }
   label_error:
     // handle errcode
-    if (ctx.errcode != SQLITE_OK) {
-        if (ctx.buf != NULL) {
-            free(ctx.buf);
+    if (str2.errcode != SQLITE_OK) {
+        if (str2.buf != NULL) {
+            free(str2.buf);
         }
-        switch (ctx.errcode) {
-        case JSSQL_NOMEM:
+        switch (str2.errcode) {
+        case STR2_NOMEM:
             strncpy(zErrmsg, sqlite3_errstr(SQLITE_NOMEM), 255);
             break;
-        case JSSQL_TOOBIG:
+        case STR2_TOOBIG:
             strncpy(zErrmsg, sqlite3_errstr(SQLITE_TOOBIG), 255);
             break;
         default:
@@ -348,10 +348,10 @@ SQLMATH_API int jssqlExec(
         }
         // mutext leave
         sqlite3_mutex_leave(sqlite3_db_mutex(db));
-        return ctx.errcode;
+        return str2.errcode;
     }
-    *pAlloced = ctx.alloced;
-    *pzBuf = ctx.buf;
+    *pAlloced = str2.alloced;
+    *pzBuf = str2.buf;
     // mutext leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
     return 0;
