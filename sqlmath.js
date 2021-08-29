@@ -1,4 +1,4 @@
-/*jslint beta, name, node*/
+/*jslint beta, debug, name, node*/
 "use strict";
 // init debugInline
 (function () {
@@ -53,13 +53,13 @@ function noop(val) {
 
     function __dbBusyDec(db) {
 // this function will decrement db.busy
-        __dbGet(db).busy += 1;
+        db.busy -= 1;
+        assertOrThrow(db.busy >= 0, "invalid db.busy " + db.busy);
     }
 
     function __dbBusyInc(db) {
 // this function will increment db.busy
-        __dbGet(db).busy -= 1;
-        assertOrThrow(db.busy >= 0, "invalid db.busy " + db.busy);
+        db.busy += 1;
     }
 
     function __dbGet(db) {
@@ -68,11 +68,6 @@ function noop(val) {
         assertOrThrow(db, "invalid or closed db");
         assertOrThrow(db.busy >= 0, "invalid db.busy " + db.busy);
         return db;
-    }
-
-    function __dbPtr(db) {
-// this function will return c-pointer to sqlite-database-connection <db>
-        return dbOpenMap.get(db).ptr;
     }
 
     function assertJsonEqual(aa, bb) {
@@ -138,10 +133,15 @@ function noop(val) {
         db
     }) {
 // this function will close sqlite-database-connection <db>
-        db = __dbPtr(db);
+        let __db = __dbGet(db);
+        // prevent segfault - do not close db if actions are pending
+        assertOrThrow(
+            __db.busy === 0,
+            "db cannot close with " + __db.busy + " actions pending"
+        );
         dbOpenMap.delete(db);
         await cCall("__sqlite3_close_v2", [
-            db.ptr
+            __db.ptr
         ]);
     }
 
@@ -150,9 +150,16 @@ function noop(val) {
         sql
     }) {
 // this function will exec <sql> in <db> and return result
-        let result = await cCall("_dbExec", [
-            __dbPtr(db), sql
-        ]);
+        let result;
+        db = __dbGet(db);
+        __dbBusyInc(db);
+        try {
+            result = await cCall("_dbExec", [
+                db.ptr, sql
+            ]);
+        } finally {
+            __dbBusyDec(db);
+        }
         return Buffer.from(result[1], 0, result[1].byteLength - 1);
     }
 
@@ -390,6 +397,24 @@ function noop(val) {
 
     (function testAssertXxx() {
 // this function will test assertXxx's handling-behavior
+        // test assertJsonEqual handling-behavior
+        assertJsonEqual([
+            {
+                aa: 1,
+                bb: 2
+            }
+        ], [
+            {
+                bb: 2,
+                aa: 1 //jslint-quiet
+            }
+        ]);
+        try {
+            assertJsonEqual("aa", "bb");
+        } catch (err) {
+            assertJsonEqual(err.message, "\"\\\"aa\\\"\" !== \"\\\"bb\\\"\"");
+        }
+        // test assertOrThrow handling-behavior
         [
             [
                 "aa", "aa"
@@ -404,27 +429,6 @@ function noop(val) {
             } catch (err2) {
                 assertJsonEqual(err2.message, msg);
             }
-        });
-        [
-            [
-                "aa", "aa"
-            ], [
-                [
-                    {
-                        aa: 1,
-                        bb: 2
-                    }
-                ], [
-                    {
-                        bb: 2,
-                        aa: 1 //jslint-quiet
-                    }
-                ]
-            ]
-        ].forEach(function ([
-            aa, bb
-        ]) {
-            assertJsonEqual(aa, bb);
         });
     }());
 
@@ -506,6 +510,15 @@ SELECT * FROM tt2;
         promiseList.push(tmp());
         promiseList.push(tmp());
         promiseList.push(tmp());
+        try {
+            await dbClose({
+                db
+            });
+        } catch (err) {
+            assertOrThrow((
+                /db cannot close with \d+? actions pending/
+            ).test(err.message), err);
+        }
         //!! await dbTableInsert({
             //!! db,
             //!! json: [
