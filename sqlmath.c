@@ -215,10 +215,10 @@ SQLMATH_API int jssqlExec(
 // This function will run <zSql> in <db> and save any result (list of tables
 // containing rows from SELECT/pragma/etc) as serialized a json-string in
 // <str2>.
-#define STR2_APPEND_RAW(str, len) \
-    if (0 != str2AppendRaw(&str2, str, len)) {goto label_error;}
-#define STR2_APPEND_TEXT(str, len) \
-    if (0 != str2AppendText(&str2, str, len)) {goto label_error;}
+#define STR2_APPEND_RAW(str2, len) \
+    if (0 != str2AppendRaw(&str2, str2, len)) {goto label_error;}
+#define STR2_APPEND_TEXT(str2, len) \
+    if (0 != str2AppendText(&str2, str2, len)) {goto label_error;}
     // declare var
     Str2 str2 = { 0 };
     const char *zTmp = NULL;
