@@ -96,7 +96,6 @@ shRawLibFetch
 +  sqlite3_api=pApi;
 +  sqlite3_carray_init(db, pzErrMsg, pApi);
 +  sqlite3_compress_init(db, pzErrMsg, pApi);
-+  sqlite3_csv_init(db, pzErrMsg, pApi);
 +  sqlite3_noop_init(db, pzErrMsg, pApi);
 +  sqlite3_regexp_init(db, pzErrMsg, pApi);
 +  sqlite3_sqlmath_init(db, pzErrMsg, pApi);
@@ -3734,7 +3733,6 @@ int sqlite3_extension_functions_init(
   sqlite3_api=pApi;
   sqlite3_carray_init(db, pzErrMsg, pApi);
   sqlite3_compress_init(db, pzErrMsg, pApi);
-  sqlite3_csv_init(db, pzErrMsg, pApi);
   sqlite3_noop_init(db, pzErrMsg, pApi);
   sqlite3_regexp_init(db, pzErrMsg, pApi);
   sqlite3_sqlmath_init(db, pzErrMsg, pApi);
