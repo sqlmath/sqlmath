@@ -31,7 +31,7 @@ static const sqlite3_api_routines *sqlite3_api;
 */
 #if defined(__GNUC__)
 #  define NOINLINE  __attribute__((noinline))
-#elif defined(_MSC_VER) && _MSC_VER>=1310
+#elif defined(_MSC_VER) && _MSC_VER >= 1310
 #  define NOINLINE  __declspec(noinline)
 #else
 #  define NOINLINE
@@ -49,8 +49,33 @@ typedef struct Str2 {
     int errcode;
 } Str2;
 
-static int str2Resize(
+static int NOINLINE str2Resize(
     Str2 * str2,
+    const char *zz,
+    int nn
+);
+
+static int str2AppendRaw(
+    Str2 * str2,
+    const char *zz,
+    int nn
+) {
+/*
+** Append <nn> bytes of text from <zz> to <str2->buf>.
+** Increase the size of the memory allocation for <str2->buf> if necessary.
+*/
+    // write <zz> to <str2->buf> if space available
+    if (0 <= nn && 0 <= str2->used && str2->used + nn <= str2->alloced) {
+        memcpy(str2->buf + str2->used, zz, nn);
+        str2->used += nn;
+        return 0;
+    }
+    return str2Resize(str2, zz, nn);
+}
+
+static int NOINLINE str2Resize(
+    Str2 * str2,
+    const char *zz,
     int nn
 ) {
 /*
@@ -64,51 +89,6 @@ static int str2Resize(
         return str2->errcode;
     }
     // check SQLITE_MAX_LENGTH
-    if (nn < 0 || nn > SQLITE_MAX_LENGTH) {
-        str2->errcode = STR2_TOOBIG;
-        return str2->errcode;
-    }
-    // grow nalloc exponentially
-    nAlloc = str2->alloced;
-    while (nAlloc < str2->used + nn) {
-        nAlloc *= 2;
-        if (nAlloc > SQLITE_MAX_LENGTH) {
-            str2->errcode = STR2_TOOBIG;
-            return str2->errcode;
-        }
-    }
-    zTmp = realloc(str2->buf, nAlloc);
-    if (zTmp == NULL) {
-        str2->errcode = STR2_NOMEM;
-        return str2->errcode;
-    }
-    str2->alloced = nAlloc;
-    str2->buf = zTmp;
-}
-
-static int str2AppendRaw(
-    Str2 * str2,
-    const char *zz,
-    int nn
-) {
-/*
-** Append <nn> bytes of text from <zz> to <str2->buf>.
-** Increase the size of the memory allocation for <str2->buf> if necessary.
-*/
-    // declare var
-    char *zTmp;
-    int nAlloc;
-    // write <zz> to <str2->buf> if space available
-    if (0 <= nn && 0 <= str2->used && str2->used + nn <= str2->alloced) {
-        memcpy(str2->buf + str2->used, zz, nn);
-        str2->used += nn;
-        return 0;
-    }
-    // sanity check
-    if (str2->errcode != SQLITE_OK && str2->errcode != SQLITE_ROW) {
-        return str2->errcode;
-    }
-    // check integers >= 0
     if (nn < 0 || nn > SQLITE_MAX_LENGTH) {
         str2->errcode = STR2_TOOBIG;
         return str2->errcode;
@@ -895,7 +875,6 @@ static int csvtabConnect(
             "must specify either filename= or data= but not both");
         goto csvtab_connect_error;
     }
-
     //!! csv_reader_open(&sRdr, CSV_DATA);
     sRdr.zIn = (char *) CSV_DATA;
     sRdr.nIn = strlen(CSV_DATA);
