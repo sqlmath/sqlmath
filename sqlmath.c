@@ -476,7 +476,7 @@ static int csv_getc(
     if (p->iIn >= p->nIn) {
         return EOF;
     }
-    return ((unsigned char *) p->zIn)[p->iIn += 1];
+    return ((unsigned char *) p->zIn)[p->iIn++];
 }
 
 static int csv_resize_and_append(
