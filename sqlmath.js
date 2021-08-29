@@ -383,13 +383,17 @@ function noop(val) {
     (async function testDbExec() {
 // this function will test dbExec's handling-behavior
         let db;
-        let result;
+        let promiseList = [];
+        let tmp;
         db = await dbOpen({
             filename: ":memory:"
         });
-        //!! debugInline(db, "db");
-        await Promise.all(Array.from(new Array(4)).map(async function () {
-            let sql = (`
+        tmp = async function () {
+            let result;
+            try {
+                result = JSON.stringify(JSON.parse(await dbExec({
+                    db,
+                    sql: (`
 CREATE TABLE tt1 AS
 SELECT 101 AS c101, 102 AS c102
 UNION ALL
@@ -399,23 +403,37 @@ CREATE TABLE tt2 AS
 SELECT 401 AS c401, 402 AS c402, 403 AS c403
 UNION ALL
 VALUES (501, 502.0123, 5030123456789),
-       (601, '602', '603' || '\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e');
-       --(701, b64decode('0123456789'), b64decode('8J+YgQ'));
+       (601, '602', '603_\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e');
 SELECT * FROM tt1;
 SELECT * FROM tt2;
-select noop(1234);
-            `);
-            try {
-                result = await dbExec({
-                    db,
-                    sql
-                });
-                result = JSON.parse(Buffer.from(result));
-                //!! debugInline(result, "dbExec");
+                    `)
+                })));
+                assertJsonEqual(result, JSON.stringify([
+                    [
+                        ["c101", "c102"],
+                        [101, 102],
+                        [201, 202],
+                        [301, null]
+                    ],
+                    [
+                        ["c401", "c402", "c403"],
+                        [401, 402, 403],
+                        [501, 502.0123, 5030123456789],
+                        [601, "602", "603_\"\u0001\b\t\n\u000b\f\r\u000e"]
+                    ]
+                ]));
             } catch (err) {
-                console.error(err);
+                assertOrThrow(
+                    err.message.indexOf("table tt1 already exists") >= 0,
+                    err
+                );
+                return;
             }
-        }));
+        };
+        promiseList.push(tmp());
+        promiseList.push(tmp());
+        promiseList.push(tmp());
+        promiseList.push(tmp());
         //!! await dbTableInsert({
             //!! db,
             //!! json: [
@@ -424,6 +442,7 @@ select noop(1234);
                 //!! ]
             //!! ]
         //!! });
+        await Promise.all(promiseList);
         await dbClose({
             db
         });
