@@ -476,7 +476,7 @@ static int csv_getc(
     if (p->iIn >= p->nIn) {
         return EOF;
     }
-    return ((unsigned char *) p->zIn)[p->iIn += 1];
+    return ((unsigned char *) p->zIn)[p->iIn++];
 }
 
 static int csv_resize_and_append(
@@ -491,7 +491,7 @@ static int csv_resize_and_append(
     if (zNew) {
         p->z = zNew;
         p->nAlloc = nNew;
-        p->z[p->n += 1] = c;
+        p->z[p->n++] = c;
         return 0;
     } else {
         csv_errmsg(p, "out of memory");
@@ -507,7 +507,7 @@ static int csv_append(
 ) {
     if (p->n >= p->nAlloc - 1)
         return csv_resize_and_append(p, c);
-    p->z[p->n += 1] = c;
+    p->z[p->n++] = c;
     return 0;
 }
 
@@ -543,7 +543,7 @@ static char *csv_read_one_field(
             c = csv_getc(p);
             if (c <= '"' || pc == '"') {
                 if (c == '\n')
-                    p->nLine += 1;
+                    p->nLine++;
                 if (c == '"') {
                     if (pc == '"') {
                         pc = 0;
@@ -600,7 +600,7 @@ static char *csv_read_one_field(
             c = csv_getc(p);
         }
         if (c == '\n') {
-            p->nLine += 1;
+            p->nLine++;
             if (p->n > 0 && p->z[p->n - 1] == '\r')
                 p->n--;
         }
@@ -702,7 +702,7 @@ static const char *csv_skip_whitespace(
     const char *z
 ) {
     while (isspace((unsigned char) z[0]))
-        z += 1;
+        z++;
     return z;
 }
 
@@ -720,9 +720,9 @@ static void csv_trim_whitespace(
 static void csv_dequote(
     char *z
 ) {
-    int jj;
+    int j;
     char cQuote = z[0];
-    size_t ii,
+    size_t i,
      n;
 
     if (cQuote != '\'' && cQuote != '"')
@@ -730,12 +730,12 @@ static void csv_dequote(
     n = strlen(z);
     if (n < 2 || z[n - 1] != z[0])
         return;
-    for (ii = 1, jj = 0; ii < n - 1; ii += 1) {
-        if (z[ii] == cQuote && z[ii + 1] == cQuote)
-            ii += 1;
-        z[jj += 1] = z[ii];
+    for (i = 1, j = 0; i < n - 1; i++) {
+        if (z[i] == cQuote && z[i + 1] == cQuote)
+            i++;
+        z[j++] = z[i];
     }
-    z[jj] = 0;
+    z[j] = 0;
 }
 
 /* Check to see if the string is of the form:  "TAG = VALUE" with optional
@@ -866,8 +866,8 @@ static int csvtabConnect(
     CsvTable *pNew = 0;         /* The CsvTable object to construct */
     int bHeader = -1;           /* header= flags.  -1 means not seen yet */
     int rc = SQLITE_OK;         /* Result code from this routine */
-    size_t ii,
-     jj;                        /* Loop counters */
+    size_t i,
+     j;                         /* Loop counters */
     int b;                      /* Value of a boolean parameter */
     int nCol = -99;             /* Value of the columns= parameter */
 /* A CSV file reader used to store an error
@@ -883,14 +883,14 @@ static int csvtabConnect(
     assert(sizeof(azPValue) == sizeof(azParam));
     memset(&sRdr, 0, sizeof(sRdr));
     memset(azPValue, 0, sizeof(azPValue));
-    for (ii = 3; ii < (size_t) argc; ii += 1) {
-        const char *z = argv[ii];
+    for (i = 3; i < argc; i++) {
+        const char *z = argv[i];
         const char *zValue;
-        for (jj = 0; jj < sizeof(azParam) / sizeof(azParam[0]); jj += 1) {
-            if (csv_string_parameter(&sRdr, azParam[jj], z, &azPValue[jj]))
+        for (j = 0; j < sizeof(azParam) / sizeof(azParam[0]); j++) {
+            if (csv_string_parameter(&sRdr, azParam[j], z, &azPValue[j]))
                 break;
         }
-        if (jj < sizeof(azParam) / sizeof(azParam[0])) {
+        if (j < sizeof(azParam) / sizeof(azParam[0])) {
             if (sRdr.zErr[0])
                 goto csvtab_connect_error;
         } else if (csv_boolean_parameter("header", 6, z, &b)) {
@@ -935,11 +935,11 @@ static int csvtabConnect(
         nCol = 0;
         do {
             csv_read_one_field(&sRdr);
-            nCol += 1;
+            nCol++;
         } while (sRdr.cTerm == ',');
     }
     if (nCol > 0 && bHeader < 1) {
-        for (iCol = 0; iCol < nCol; iCol += 1) {
+        for (iCol = 0; iCol < nCol; iCol++) {
             sqlite3_str_appendf(pStr, "%sc%d TEXT", zSep, iCol);
             zSep = ",";
         }
@@ -949,7 +949,7 @@ static int csvtabConnect(
             if ((nCol > 0 && iCol < nCol) || (nCol < 0 && bHeader)) {
                 sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", zSep, z);
                 zSep = ",";
-                iCol += 1;
+                iCol++;
             }
         } while (sRdr.cTerm == ',');
         if (nCol < 0) {
@@ -967,6 +967,11 @@ static int csvtabConnect(
     if (CSV_SCHEMA == 0)
         goto csvtab_connect_oom;
 
+    //!! do {
+    //!! csv_read_one_field(&sRdr);
+    //!! pNew->nCol++;
+    //!! } while (sRdr.cTerm == ',');
+
     pNew->zData = CSV_DATA;
     CSV_DATA = 0;
     if (bHeader != 1) {
@@ -981,8 +986,8 @@ static int csvtabConnect(
             sqlite3_errmsg(db));
         goto csvtab_connect_error;
     }
-    for (ii = 0; ii < sizeof(azPValue) / sizeof(azPValue[0]); ii += 1) {
-        sqlite3_free(azPValue[ii]);
+    for (i = 0; i < sizeof(azPValue) / sizeof(azPValue[0]); i++) {
+        sqlite3_free(azPValue[i]);
     }
     /* Rationale for DIRECTONLY:
      ** An attacker who controls a database schema could use this vtab
@@ -1002,8 +1007,8 @@ static int csvtabConnect(
   csvtab_connect_error:
     if (pNew)
         csvtabDisconnect(&pNew->base);
-    for (ii = 0; ii < sizeof(azPValue) / sizeof(azPValue[0]); ii += 1) {
-        sqlite3_free(azPValue[ii]);
+    for (i = 0; i < sizeof(azPValue) / sizeof(azPValue[0]); i++) {
+        sqlite3_free(azPValue[i]);
     }
     if (sRdr.zErr[0]) {
         sqlite3_free(*pzErr);
@@ -1023,7 +1028,7 @@ static void csvtabCursorRowReset(
 ) {
     CsvTable *pTab = (CsvTable *) pCur->base.pVtab;
     int ii;
-    for (ii = 0; ii < pTab->nCol; ii += 1) {
+    for (ii = 0; ii < pTab->nCol; ii++) {
         sqlite3_free(pCur->azVal[ii]);
         pCur->azVal[ii] = 0;
         pCur->aLen[ii] = 0;
@@ -1112,18 +1117,18 @@ static int csvtabNext(
                 pCur->aLen[ii] = pCur->rdr.n + 1;
             }
             memcpy(pCur->azVal[ii], zz, pCur->rdr.n + 1);
-            ii += 1;
+            ii++;
         }
     } while (pCur->rdr.cTerm == ',');
     if (zz == 0 || (pCur->rdr.cTerm == EOF && ii < pTab->nCol)) {
         pCur->iRowid = -1;
     } else {
-        pCur->iRowid += 1;
+        pCur->iRowid++;
         while (ii < pTab->nCol) {
             sqlite3_free(pCur->azVal[ii]);
             pCur->azVal[ii] = 0;
             pCur->aLen[ii] = 0;
-            ii += 1;
+            ii++;
         }
     }
     return SQLITE_OK;
