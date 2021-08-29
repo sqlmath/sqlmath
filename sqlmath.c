@@ -490,27 +490,11 @@ static void csv_errmsg(
 */
 static int csv_reader_open(
     CsvReader * p,              /* The reader to open */
-    const char *zFilename,      /* Read from this filename */
     const char *zData           /*  ... or use this data */
 ) {
-    if (zFilename) {
-        p->zIn = sqlite3_malloc(CSV_INBUFSZ);
-        if (p->zIn == 0) {
-            csv_errmsg(p, "out of memory");
-            return 1;
-        }
-        p->in = fopen(zFilename, "rb");
-        if (p->in == 0) {
-            sqlite3_free(p->zIn);
-            csv_reader_reset(p);
-            csv_errmsg(p, "cannot open '%s' for reading", zFilename);
-            return 1;
-        }
-    } else {
-        assert(p->in == 0);
-        p->zIn = (char *) zData;
-        p->nIn = strlen(zData);
-    }
+    assert(p->in == 0);
+    p->zIn = (char *) zData;
+    p->nIn = strlen(zData);
     return 0;
 }
 
@@ -737,7 +721,6 @@ static int csvtabRowid(
 /* An instance of the CSV virtual table */
 typedef struct CsvTable {
     sqlite3_vtab base;          /* Base class.  Must be first */
-    char *zFilename;            /* Name of the CSV file */
     char *zData;                /* Raw CSV data in lieu of zFilename */
     int32_t iStart;             /* Offset to start of data in zFilename */
     int nCol;                   /* Number of columns in the CSV file */
@@ -768,7 +751,6 @@ static int csvtabDisconnect(
     sqlite3_vtab * pVtab
 ) {
     CsvTable *p = (CsvTable *) pVtab;
-    sqlite3_free(p->zFilename);
     sqlite3_free(p->zData);
     sqlite3_free(p);
     return SQLITE_OK;
@@ -1000,7 +982,7 @@ static int csvtabConnect(
     }
 
     if ((nCol <= 0 || bHeader == 1)
-        && csv_reader_open(&sRdr, CSV_FILENAME, CSV_DATA)
+        && csv_reader_open(&sRdr, CSV_DATA)
         ) {
         goto csvtab_connect_error;
     }
@@ -1057,8 +1039,6 @@ static int csvtabConnect(
     } else {
         pNew->nCol = nCol;
     }
-    pNew->zFilename = CSV_FILENAME;
-    CSV_FILENAME = 0;
     pNew->zData = CSV_DATA;
     CSV_DATA = 0;
     if (bHeader != 1) {
@@ -1170,7 +1150,7 @@ static int csvtabOpen(
     pCur->azVal = (char **) &pCur[1];
     pCur->aLen = (int *) &pCur->azVal[pTab->nCol];
     *ppCursor = &pCur->base;
-    if (csv_reader_open(&pCur->rdr, pTab->zFilename, pTab->zData)) {
+    if (csv_reader_open(&pCur->rdr, pTab->zData)) {
         csv_xfer_error(pTab, &pCur->rdr);
         return SQLITE_ERROR;
     }
