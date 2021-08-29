@@ -1,6 +1,5 @@
 // copyright nobody
 // LINT_C_FILE
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

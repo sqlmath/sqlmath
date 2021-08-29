@@ -3,7 +3,6 @@
 
 /* sqlmath.h - start */
 /* header */
-#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
