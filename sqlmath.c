@@ -360,7 +360,7 @@ SQLMATH_API int dbExec(
 
 
 /*
-file sqlite3_VtableBlob.c
+file sqlite3_VtabBlobcbor.c
 */
 
 

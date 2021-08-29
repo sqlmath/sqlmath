@@ -382,7 +382,7 @@ extern "C" {
     let cflags = {
         "cflags": [
             "-fdiagnostics-show-option",
-            "-std=c17"
+            "-std=c99"
         ],
         "cflags!": [
             "-fno-exceptions"
@@ -559,7 +559,7 @@ extern "C" {
             },
             "xcode_settings": {
                 "CLANG_CXX_LIBRARY": "libc++",
-                "GCC_C_LANGUAGE_STANDARD": "c17",
+                "GCC_C_LANGUAGE_STANDARD": "c99",
                 "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
                 "OTHER_CFLAGS": cflags.cflags,
                 "OTHER_CFLAGS!": cflags["cflags!"],
