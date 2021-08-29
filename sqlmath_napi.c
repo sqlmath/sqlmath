@@ -20,6 +20,11 @@
         return 0; \
     }
 
+#define ASSERT_FATAL(cond, msg) \
+    if (!(cond)) { \
+        napi_fatal_error(__func__, NAPI_AUTO_LENGTH , msg, NAPI_AUTO_LENGTH); \
+    }
+
 #define ASSERT_NAPI(env, cond, msg) \
     if (!(cond)) { \
         char buf[256] = { 0 }; \
@@ -98,11 +103,6 @@ static int assertNapiOk(
 //   uint32_t engine_error_code;
 //   napi_status error_code;
 // } napi_extended_error_info;
-#define ASSERT_NAPI_OK_OR_FATAL(msg) \
-    if (errcode != napi_ok) { \
-        napi_fatal_error("assertNapiOk", NAPI_AUTO_LENGTH , msg, \
-            NAPI_AUTO_LENGTH); \
-    }
     if (errcode == napi_ok) {
         return errcode;
     }
@@ -121,13 +121,13 @@ static int assertNapiOk(
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-    ASSERT_NAPI_OK_OR_FATAL("napi_get_last_error_info");
+    ASSERT_FATAL(errcode == 0, "napi_get_last_error_info");
     errcode = napi_is_exception_pending(env, &is_exception_pending);
-    ASSERT_NAPI_OK_OR_FATAL("napi_is_exception_pending");
+    ASSERT_FATAL(errcode == 0, "napi_is_exception_pending");
     // A pending exception takes precedence over any internal error status.
     if (is_exception_pending) {
         errcode = napi_get_and_clear_last_exception(env, &val);
-        ASSERT_NAPI_OK_OR_FATAL("napi_get_and_clear_last_exception");
+        ASSERT_FATAL(errcode == 0, "napi_get_and_clear_last_exception");
         napi_throw(env, val);
         return errcode;
     }
@@ -136,7 +136,7 @@ static int assertNapiOk(
             (info->error_message !=
                 NULL ? info->error_message : "error in native code"), func,
             file, line));
-    ASSERT_NAPI_OK_OR_FATAL("napi_throw_error");
+    ASSERT_FATAL(errcode == 0, "napi_throw_error");
     return errcode;
 }
 
@@ -251,12 +251,12 @@ static int __jspromiseResolve(
     uint32_t refcount = 1;
     // dereference result to allow gc
     errcode = napi_reference_unref(env, ref, &refcount);
-    ASSERT_NAPI_OK(env, errcode);
-    ASSERT_NAPI(env, refcount == 0, "memory leak");
+    ASSERT_FATAL(errcode == 0, "napi_reference_unref");
+    ASSERT_FATAL(refcount == 0, "memory leak");
     errcode = napi_get_reference_value(env, ref, &baton->result);
     ASSERT_NAPI_OK(env, errcode);
     errcode = napi_delete_reference(env, ref);
-    ASSERT_NAPI_OK(env, errcode);
+    ASSERT_FATAL(errcode == 0, "napi_delete_reference");
     // Resolve or reject the promise associated with the deferred depending on
     // whether the asynchronous action succeeded.
     if (baton->errmsg[0] == 0) {
@@ -265,7 +265,7 @@ static int __jspromiseResolve(
             return 0;
         }
         errcode = napi_resolve_deferred(env, baton->deferred, baton->result);
-        ASSERT_NAPI_OK(env, errcode);
+        ASSERT_FATAL(errcode == 0, "napi_resolve_deferred");
     } else {
         // declare var
         napi_value err;
@@ -276,11 +276,11 @@ static int __jspromiseResolve(
         ASSERT_NAPI_OK(env, errcode);
         // reject promise with error
         errcode = napi_reject_deferred(env, baton->deferred, err);
-        ASSERT_NAPI_OK(env, errcode);
+        ASSERT_FATAL(errcode == 0, "napi_reject_deferred");
     }
     // Clean up the work item associated with this run.
     errcode = napi_delete_async_work(env, baton->work);
-    ASSERT_NAPI_OK(env, errcode);
+    ASSERT_FATAL(errcode == 0, "napi_delete_async_work");
     // Set both values to NULL so JavaScript can order a new run of the thread.
     baton->work = NULL;
     baton->deferred = NULL;
@@ -479,7 +479,7 @@ napi_value napi_module_init(
 // } napi_property_descriptor;
 #define NAPI_EXPORT_MEMBER(name) \
     {#name, NULL, name, NULL, NULL, NULL, napi_default, NULL}
-    int errcode;
+    int errcode = 0;
     const napi_property_descriptor propList[] = {
         NAPI_EXPORT_MEMBER(_dbExec),
         NAPI_EXPORT_MEMBER(_sqlite3_close_v2),

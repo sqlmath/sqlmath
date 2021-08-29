@@ -77,7 +77,6 @@ static int str2AppendRaw(
             return str2->errcode;
         }
     }
-    // realloc space
     zTmp = realloc(str2->buf, nAlloc);
     if (zTmp == NULL) {
         str2->errcode = STR2_NOMEM;

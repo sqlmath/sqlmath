@@ -48,6 +48,7 @@ function noop(val) {
         + "_" + process.arch
         + ".node"
     );
+    // private map of sqlite-database-connections
     let dbMap = new WeakMap();
 
     function assertJsonEqual(aa, bb) {
@@ -130,7 +131,7 @@ function noop(val) {
         filename,
         flags = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
     }) {
-// this function will return sqlite-database-connection <db>
+// this function will open and return sqlite-database-connection <db>
 // int sqlite3_open_v2(
 //   const char *filename,   /* Database filename (UTF-8) */
 //   sqlite3 **ppDb,         /* OUT: SQLite db handle */
