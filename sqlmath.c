@@ -1,8 +1,9 @@
 // copyright nobody
 // LINT_C_FILE
 
+
 /*
-file sqlmath.h start
+file sqlmath.h
 */
 // header
 #include <ctype.h>
@@ -25,13 +26,10 @@ static const sqlite3_api_routines *sqlite3_api;
 #define STR2_TOOBIG -2
 #define SQLMATH_API
 #define UNUSED(x) (void)(x)
-/*
-file sqlmath.h end
-*/
 
 
 /*
-file sqlmath_dbExec.c start
+file sqlmath_dbExec.c
 */
 // dynamically growable string
 typedef struct Str2 {
@@ -371,7 +369,3 @@ int sqlite3_sqlmath_init(
     sqlite3_api = pApi;
     return rc;
 }
-
-/*
-file sqlmath_dbExec.c end
-*/

@@ -3,9 +3,8 @@
 
 
 /*
-file sqlmath_napi.h start
+file sqlmath_napi.h
 */
-// header
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,42 +13,11 @@ file sqlmath_napi.h start
 #endif
 #include <sqlite3.h>
 #include <node_api.h>
-
-#define JSBATON_CREATE(env, info) \
-    jsbatonCreate(env, info); if (baton == NULL) {return NULL;}
-
-#define JSPROMISE_CREATE(func, env, data) \
-    __##func(void *data); \
-    static void _##func(napi_env env, void *data) { \
-        UNUSED(env); \
-        __##func(data); \
-    } \
-    static napi_value func(napi_env env, napi_callback_info info) { \
-        return jspromiseCreate(env, info, _##func); \
-    } \
-    static int __##func(void *data)
-
 #define UNUSED(x) (void)(x)
 
-// struct
-typedef struct Jsbaton {
-    // data
-    int64_t int8[8];
-    char *buf8[8];
-    char *out8[8];
-    char errmsg[256];
-    napi_value result;
-    // async
-    napi_async_work work;
-    napi_deferred deferred;
-} Jsbaton;
-/*
-file sqlmath_napi.h end
-*/
-
 
 /*
-file assert.c end
+file sqlmath_assert.c
 */
 // printf("\n\n[napi errcode=%d]\n\n", errcode);
 
@@ -157,10 +125,36 @@ static int assertNapiOk(
     ASSERT_FATAL(errcode == 0, "napi_throw_error");
     return errcode;
 }
-/*
-file assert.c end
-*/
 
+
+/*
+file sqlmath_promise.c
+*/
+#define JSBATON_CREATE(env, info) \
+    jsbatonCreate(env, info); if (baton == NULL) {return NULL;}
+
+#define JSPROMISE_CREATE(func, env, data) \
+    __##func(void *data); \
+    static void _##func(napi_env env, void *data) { \
+        UNUSED(env); \
+        __##func(data); \
+    } \
+    static napi_value func(napi_env env, napi_callback_info info) { \
+        return jspromiseCreate(env, info, _##func); \
+    } \
+    static int __##func(void *data)
+
+typedef struct Jsbaton {
+    // data
+    int64_t int8[8];
+    char *buf8[8];
+    char *out8[8];
+    char errmsg[256];
+    napi_value result;
+    // async
+    napi_async_work work;
+    napi_deferred deferred;
+} Jsbaton;
 
 static void jsbatonBufferFinalize(
     napi_env env,
@@ -361,6 +355,10 @@ static napi_value jspromiseCreate(
     return promise;
 }
 
+
+/*
+file sqlmath_db.c start
+*/
 static int JSPROMISE_CREATE(
     _sqlite3_close_v2,
     env,
@@ -443,7 +441,11 @@ void dbExec(sqlite3 *, const char *, char **, int *, char *);
     return 0;
 }
 
-static void jspromiseExecuteNoop(
+
+/*
+file sqlmath_noop.c start
+*/
+static void noopAsyncExecute(
     napi_env env,
     void *data
 ) {
@@ -459,7 +461,7 @@ static napi_value noopAsync(
     napi_callback_info info
 ) {
 // Create a deferred promise and an async queue work item.
-    return jspromiseCreate(env, info, jspromiseExecuteNoop);
+    return jspromiseCreate(env, info, noopAsyncExecute);
 }
 
 /*
@@ -482,6 +484,10 @@ static napi_value noopSync(
     return jsbatonExport(env, baton);
 }
 
+
+/*
+file napi_module_init.c
+*/
 napi_value napi_module_init(
     napi_env env,
     napi_value exports
