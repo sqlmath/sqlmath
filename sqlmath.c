@@ -399,9 +399,6 @@ file sqlmath_blobtable.c
 ** N columns.  If both the columns= and schema= parameters are omitted, then
 ** the number and names of the columns is determined by the first line of
 ** the CSV input.
-**
-** Some extra debugging features (used for testing virtual tables) are available
-** if this module is compiled with -DSQLITE_TEST.
 */
 //!! #include <sqlite3ext.h>
 //!! // SQLITE_EXTENSION_INIT1
@@ -744,11 +741,7 @@ typedef struct CsvTable {
     char *zData;                /* Raw CSV data in lieu of zFilename */
     int32_t iStart;             /* Offset to start of data in zFilename */
     int nCol;                   /* Number of columns in the CSV file */
-    unsigned int tstFlags;      /* Bit values used for testing */
 } CsvTable;
-
-/* Allowed values for tstFlags */
-#define CSVTEST_FIDX  0x0001    /* Pretend that constrained searchs cost less */
 
 /* A cursor for the CSV virtual table */
 typedef struct CsvCursor {
@@ -934,10 +927,6 @@ static int csv_boolean_parameter(
 **                               columns if "yes".  Default "no".
 **    columns=N                  Assume the CSV file contains N columns.
 **
-** Only available if compiled with SQLITE_TEST:
-**
-**    testflags=N                Bitmask of test flags.  Optional
-**
 ** If schema= is omitted, then the columns are named "c0", "c1", "c2",
 ** and so forth.  If columns=N is omitted, then the file is opened and
 ** the number of columns in the first row is counted to determine the
@@ -956,9 +945,6 @@ static int csvtabConnect(
     int rc = SQLITE_OK;         /* Result code from this routine */
     int i,
      j;                         /* Loop counters */
-#ifdef SQLITE_TEST
-    int tstFlags = 0;           /* Value for testflags=N parameter */
-#endif
     int b;                      /* Value of a boolean parameter */
     int nCol = -99;             /* Value of the columns= parameter */
 /* A CSV file reader used to store an error
@@ -1075,9 +1061,6 @@ static int csvtabConnect(
     CSV_FILENAME = 0;
     pNew->zData = CSV_DATA;
     CSV_DATA = 0;
-#ifdef SQLITE_TEST
-    pNew->tstFlags = tstFlags;
-#endif
     if (bHeader != 1) {
         pNew->iStart = 0;
     } else if (pNew->zData) {
@@ -1310,45 +1293,13 @@ static int csvtabFilter(
 
 /*
 ** Only a forward full table scan is supported.  xBestIndex is mostly
-** a no-op.  If CSVTEST_FIDX is set, then the presence of equality
-** constraints lowers the estimated cost, which is fiction, but is useful
-** for testing certain kinds of virtual table behavior.
+** a no-op.
 */
 static int csvtabBestIndex(
     sqlite3_vtab * tab,
     sqlite3_index_info * pIdxInfo
 ) {
     pIdxInfo->estimatedCost = 1000000;
-#ifdef SQLITE_TEST
-    if ((((CsvTable *) tab)->tstFlags & CSVTEST_FIDX) != 0) {
-        /* The usual (and sensible) case is to always do a full table scan.
-         ** The code in this branch only runs when testflags=1.  This code
-         ** generates an artifical and unrealistic plan which is useful
-         ** for testing virtual table logic but is not helpful to real applications.
-         **
-         ** Any ==, LIKE, or GLOB constraint is marked as usable by the virtual
-         ** table (even though it is not) and the cost of running the virtual table
-         ** is reduced from 1 million to just 10.  The constraints are *not* marked
-         ** as omittable, however, so the query planner should still generate a
-         ** plan that gives a correct answer, even if they plan is not optimal.
-         */
-        int i;
-        int nConst = 0;
-        for (i = 0; i < pIdxInfo->nConstraint; i++) {
-            unsigned char op;
-            if (pIdxInfo->aConstraint[i].usable == 0)
-                continue;
-            op = pIdxInfo->aConstraint[i].op;
-            if (op == SQLITE_INDEX_CONSTRAINT_EQ
-                || op == SQLITE_INDEX_CONSTRAINT_LIKE
-                || op == SQLITE_INDEX_CONSTRAINT_GLOB) {
-                pIdxInfo->estimatedCost = 10;
-                pIdxInfo->aConstraintUsage[nConst].argvIndex = nConst + 1;
-                nConst++;
-            }
-        }
-    }
-#endif
     return SQLITE_OK;
 }
 
@@ -1375,46 +1326,6 @@ static sqlite3_module CsvModule = {
     0,                          /* xFindMethod */
     0,                          /* xRename */
 };
-
-#ifdef SQLITE_TEST
-/*
-** For virtual table testing, make a version of the CSV virtual table
-** available that has an xUpdate function.  But the xUpdate always returns
-** SQLITE_READONLY since the CSV file is not really writable.
-*/
-static int csvtabUpdate(
-    sqlite3_vtab * p,
-    int n,
-    sqlite3_value ** v,
-    sqlite3_int64 * x
-) {
-    return SQLITE_READONLY;
-}
-
-static sqlite3_module CsvModuleFauxWrite = {
-    0,                          /* iVersion */
-    csvtabCreate,               /* xCreate */
-    csvtabConnect,              /* xConnect */
-    csvtabBestIndex,            /* xBestIndex */
-    csvtabDisconnect,           /* xDisconnect */
-    csvtabDisconnect,           /* xDestroy */
-    csvtabOpen,                 /* xOpen - open a cursor */
-    csvtabClose,                /* xClose - close a cursor */
-    csvtabFilter,               /* xFilter - configure scan constraints */
-    csvtabNext,                 /* xNext - advance a cursor */
-    csvtabEof,                  /* xEof - check for end of scan */
-    csvtabColumn,               /* xColumn - read data */
-    csvtabRowid,                /* xRowid - read data */
-    csvtabUpdate,               /* xUpdate */
-    0,                          /* xBegin */
-    0,                          /* xSync */
-    0,                          /* xCommit */
-    0,                          /* xRollback */
-    0,                          /* xFindMethod */
-    0,                          /* xRename */
-};
-#endif                          /* SQLITE_TEST */
-
 #endif                          /* !defined(SQLITE_OMIT_VIRTUALTABLE) */
 
 
@@ -1435,11 +1346,6 @@ int sqlite3_csv_init(
     int rc;
     // SQLITE_EXTENSION_INIT2(pApi);
     rc = sqlite3_create_module(db, "csv", &CsvModule, 0);
-#ifdef SQLITE_TEST
-    if (rc == SQLITE_OK) {
-        rc = sqlite3_create_module(db, "csv_wr", &CsvModuleFauxWrite, 0);
-    }
-#endif
     return rc;
 #else
     return SQLITE_OK;
