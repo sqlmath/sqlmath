@@ -362,6 +362,7 @@ SQLMATH_API int dbExec(
 /*
 file sqlmath_blobtable.c
 */
+// https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/csv.c
 /*
 ** 2016-05-28
 **
@@ -400,16 +401,7 @@ file sqlmath_blobtable.c
 ** the number and names of the columns is determined by the first line of
 ** the CSV input.
 */
-//!! #include <sqlite3ext.h>
-//!! // SQLITE_EXTENSION_INIT1
-//!! #include <string.h>
-//!! #include <stdlib.h>
 #include <assert.h>
-//!! #include <stdarg.h>
-//!! #include <ctype.h>
-//!! #include <stdio.h>
-
-#ifndef SQLITE_OMIT_VIRTUALTABLE
 
 /*
 ** A macro to hint to the compiler that a function should not be
@@ -919,6 +911,8 @@ static int csvtabConnect(
     sqlite3_vtab ** ppVtab,
     char **pzErr
 ) {
+    UNUSED(pAux);
+    // declare var
     CsvTable *pNew = 0;         /* The CsvTable object to construct */
     int bHeader = -1;           /* header= flags.  -1 means not seen yet */
     int rc = SQLITE_OK;         /* Result code from this routine */
@@ -1240,6 +1234,7 @@ static int csvtabFilter(
     int argc,
     sqlite3_value ** argv
 ) {
+    UNUSED(idxStr);
     CsvCursor *pCur = (CsvCursor *) pVtabCursor;
     CsvTable *pTab = (CsvTable *) pVtabCursor->pVtab;
     pCur->iRowid = 0;
@@ -1290,30 +1285,6 @@ static sqlite3_module CsvModule = {
     0,                          /* xFindMethod */
     0,                          /* xRename */
 };
-#endif                          /* !defined(SQLITE_OMIT_VIRTUALTABLE) */
-
-#ifdef _WIN32
-__declspec(dllexport)
-#endif
-/*
-** This routine is called when the extension is loaded.  The new
-** CSV virtual table module is registered with the calling database
-** connection.
-*/
-int sqlite3_csv_init(
-    sqlite3 * db,
-    char **pzErrMsg,
-    const sqlite3_api_routines * pApi
-) {
-#ifndef SQLITE_OMIT_VIRTUALTABLE
-    int rc;
-    // SQLITE_EXTENSION_INIT2(pApi);
-    rc = sqlite3_create_module(db, "csv", &CsvModule, 0);
-    return rc;
-#else
-    return SQLITE_OK;
-#endif
-}
 
 
 /*
