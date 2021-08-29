@@ -49,13 +49,30 @@ function noop(val) {
         + ".node"
     );
     // private map of sqlite-database-connections
-    let dbMap = new WeakMap();
+    let dbOpenMap = new WeakMap();
+
+    function __dbBusyDec(db) {
+// this function will decrement db.busy
+        __dbGet(db).busy += 1;
+    }
+
+    function __dbBusyInc(db) {
+// this function will increment db.busy
+        __dbGet(db).busy -= 1;
+        assertOrThrow(db.busy >= 0, "invalid db.busy " + db.busy);
+    }
+
+    function __dbGet(db) {
+// this function will get private-object mapped to <db>
+        db = dbOpenMap.get(db);
+        assertOrThrow(db, "invalid or closed db");
+        assertOrThrow(db.busy >= 0, "invalid db.busy " + db.busy);
+        return db;
+    }
 
     function __dbPtr(db) {
-// this function will return c-pointer to sqlite-database-connection
-        let ptr = dbMap.get(db);
-        assertOrThrow(ptr, "invalid/closed db");
-        return ptr;
+// this function will return c-pointer to sqlite-database-connection <db>
+        return dbOpenMap.get(db).ptr;
     }
 
     function assertJsonEqual(aa, bb) {
@@ -121,10 +138,10 @@ function noop(val) {
         db
     }) {
 // this function will close sqlite-database-connection <db>
-        let ptr = __dbPtr(db);
-        dbMap.delete(db);
-        await cCall("_sqlite3_close_v2", [
-            ptr
+        db = __dbPtr(db);
+        dbOpenMap.delete(db);
+        await cCall("__sqlite3_close_v2", [
+            db.ptr
         ]);
     }
 
@@ -150,13 +167,14 @@ function noop(val) {
 //   int flags,              /* Flags */
 //   const char *zVfs        /* Name of VFS module to use */
 // );
-        let db = {
-            status: "open"
-        };
-        let ptr = noop(await cCall("_sqlite3_open_v2", [
+        let db = {};
+        let ptr = noop(await cCall("__sqlite3_open_v2", [
             filename, undefined, flags, undefined
         ]))[0][0];
-        dbMap.set(db, ptr);
+        dbOpenMap.set(db, {
+            busy: 0,
+            ptr
+        });
         return db;
     }
 

@@ -360,7 +360,7 @@ static napi_value jspromiseCreate(
 file sqlmath_db.c
 */
 static int JSPROMISE_CREATE(
-    _sqlite3_close_v2,
+    __sqlite3_close_v2,
     env,
     data
 ) {
@@ -380,7 +380,7 @@ static int JSPROMISE_CREATE(
 }
 
 static int JSPROMISE_CREATE(
-    _sqlite3_open_v2,
+    __sqlite3_open_v2,
     env,
     data
 ) {
@@ -510,8 +510,8 @@ napi_value sqlmath_init(
     int errcode = 0;
     const napi_property_descriptor propList[] = {
         NAPI_EXPORT_MEMBER(_dbExec),
-        NAPI_EXPORT_MEMBER(_sqlite3_close_v2),
-        NAPI_EXPORT_MEMBER(_sqlite3_open_v2),
+        NAPI_EXPORT_MEMBER(__sqlite3_close_v2),
+        NAPI_EXPORT_MEMBER(__sqlite3_open_v2),
         NAPI_EXPORT_MEMBER(noopAsync),
         NAPI_EXPORT_MEMBER(noopSync),
     };
