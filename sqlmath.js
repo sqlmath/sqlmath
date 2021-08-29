@@ -530,6 +530,15 @@ SELECT * FROM tt2;
                 /db\scannot\sclose\swith\s\d+?\sactions\spending/
             ).test(err.message), err);
         }
+        await Promise.all(promiseList);
+        dbClose({
+            db
+        });
+    }());
+
+    (function testDbTableImport() {
+// this function will test dbExec's handling-behavior
+        return;
         //!! await dbTableInsert({
             //!! db,
             //!! json: [
@@ -538,10 +547,6 @@ SELECT * FROM tt2;
                 //!! ]
             //!! ]
         //!! });
-        await Promise.all(promiseList);
-        dbClose({
-            db
-        });
     }());
 
     module.exports = Object.assign(module.exports, {
