@@ -357,7 +357,7 @@ static napi_value jspromiseCreate(
 
 
 /*
-file sqlmath_db.c start
+file sqlmath_db.c
 */
 static int JSPROMISE_CREATE(
     _sqlite3_close_v2,
@@ -443,7 +443,7 @@ void dbExec(sqlite3 *, const char *, char **, int *, char *);
 
 
 /*
-file sqlmath_noop.c start
+file sqlmath_noop.c
 */
 static void noopAsyncExecute(
     napi_env env,
@@ -486,9 +486,9 @@ static napi_value noopSync(
 
 
 /*
-file napi_module_init.c
+file sqlmath_init.c
 */
-napi_value napi_module_init(
+napi_value sqlmath_init(
     napi_env env,
     napi_value exports
 ) {
@@ -521,4 +521,4 @@ napi_value napi_module_init(
     return exports;
 }
 
-NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_init)
+NAPI_MODULE(NODE_GYP_MODULE_NAME, sqlmath_init)

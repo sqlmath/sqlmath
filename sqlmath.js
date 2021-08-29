@@ -114,7 +114,9 @@ function noop(val) {
         db
     }) {
 // this function will return sqlite-database-connection <db>
-        await cCall("_sqlite3_close_v2", [db.ptr]);
+        await cCall("_sqlite3_close_v2", [
+            dbMap.get(db)
+        ]);
         dbMap.delete(db);
     }
 
@@ -123,7 +125,9 @@ function noop(val) {
         sql
     }) {
 // this function will exec <sql> in <db> and return result
-        let result = await cCall("_dbExec", [db.ptr, sql]);
+        let result = await cCall("_dbExec", [
+            dbMap.get(db), sql
+        ]);
         return Buffer.from(result[1], 0, result[1].byteLength - 1);
     }
 
@@ -138,14 +142,13 @@ function noop(val) {
 //   int flags,              /* Flags */
 //   const char *zVfs        /* Name of VFS module to use */
 // );
-        let db = await cCall("_sqlite3_open_v2", [
-            filename, undefined, flags, undefined
-        ]);
-        db = {
-            ptr: db[0][0],
+        let db = {
             status: "open"
         };
-        dbMap.set(db, true);
+        let ptr = noop(await cCall("_sqlite3_open_v2", [
+            filename, undefined, flags, undefined
+        ]))[0][0];
+        dbMap.set(db, ptr);
         return db;
     }
 
