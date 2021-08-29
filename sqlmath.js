@@ -115,7 +115,7 @@ function noop(val) {
     }) {
 // this function will return sqlite-database-connection <db>
         await cCall("_sqlite3_close_v2", [
-            dbMap.get(db)
+            dbMap.get(db + 1)
         ]);
         dbMap.delete(db);
     }
