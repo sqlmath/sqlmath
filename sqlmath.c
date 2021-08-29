@@ -424,36 +424,36 @@ struct CsvReader {
 };
 
 static void csv_reader_init(
-    CsvReader * p
+    CsvReader * pp
 ) {
 /* Initialize a CsvReader object */
-    p->z = 0;
-    p->nn = 0;
-    p->nAlloc = 0;
-    p->nLine = 0;
-    p->bNotFirst = 0;
-    p->nIn = 0;
-    p->zIn = 0;
-    p->zErr[0] = 0;
+    pp->z = 0;
+    pp->nn = 0;
+    pp->nAlloc = 0;
+    pp->nLine = 0;
+    pp->bNotFirst = 0;
+    pp->nIn = 0;
+    pp->zIn = 0;
+    pp->zErr[0] = 0;
 }
 
 static void csv_reader_reset(
-    CsvReader * p
+    CsvReader * pp
 ) {
 /* Close and reset a CsvReader object */
-    sqlite3_free(p->z);
-    csv_reader_init(p);
+    sqlite3_free(pp->z);
+    csv_reader_init(pp);
 }
 
 static void csv_errmsg(
-    CsvReader * p,
+    CsvReader * pp,
     const char *zFormat,
     ...
 ) {
 /* Report an error on a CsvReader */
     va_list ap;
     va_start(ap, zFormat);
-    sqlite3_vsnprintf(CSV_MXERR, p->zErr, zFormat, ap);
+    sqlite3_vsnprintf(CSV_MXERR, pp->zErr, zFormat, ap);
     va_end(ap);
 }
 
@@ -461,40 +461,40 @@ static void csv_errmsg(
 ** Return the number of errors.
 */
 static int csv_reader_open(
-    CsvReader * p,              /* The reader to open */
+    CsvReader * pp,             /* The reader to open */
     const char *zData           /*  ... or use this data */
 ) {
-    p->zIn = (char *) zData;
-    p->nIn = strlen(zData);
+    pp->zIn = (char *) zData;
+    pp->nIn = strlen(zData);
     return 0;
 }
 
 static int csv_getc(
 /* Return the next character of input.  Return EOF at end of input. */
-    CsvReader * p
+    CsvReader * pp
 ) {
-    if (p->iIn >= p->nIn) {
+    if (pp->iIn >= pp->nIn) {
         return EOF;
     }
-    return ((unsigned char *) p->zIn)[p->iIn++];
+    return ((unsigned char *) pp->zIn)[pp->iIn++];
 }
 
 static int csv_resize_and_append(
-/* Increase the size of p->z and append character c to the end.
+/* Increase the size of pp->z and append character c to the end.
 ** Return 0 on success and non-zero if there is an OOM error */
-    CsvReader * p,
+    CsvReader * pp,
     char c
 ) {
     char *zNew;
-    int nNew = p->nAlloc * 2 + 100;
-    zNew = sqlite3_realloc64(p->z, nNew);
+    int nNew = pp->nAlloc * 2 + 100;
+    zNew = sqlite3_realloc64(pp->z, nNew);
     if (zNew) {
-        p->z = zNew;
-        p->nAlloc = nNew;
-        p->z[p->nn++] = c;
+        pp->z = zNew;
+        pp->nAlloc = nNew;
+        pp->z[pp->nn++] = c;
         return 0;
     } else {
-        csv_errmsg(p, "out of memory");
+        csv_errmsg(pp, "out of memory");
         return 1;
     }
 }
@@ -502,48 +502,48 @@ static int csv_resize_and_append(
 /* Append a single character to the CsvReader.z[] array.
 ** Return 0 on success and non-zero if there is an OOM error */
 static int csv_append(
-    CsvReader * p,
+    CsvReader * pp,
     char c
 ) {
-    if (p->nn >= p->nAlloc - 1)
-        return csv_resize_and_append(p, c);
-    p->z[p->nn++] = c;
+    if (pp->nn >= pp->nAlloc - 1)
+        return csv_resize_and_append(pp, c);
+    pp->z[pp->nn++] = c;
     return 0;
 }
 
 /* Read a single field of CSV text.  Compatible with rfc4180 and extended
 ** with the option of having a separator other than ",".
 **
-**   +  Input comes from p->in.
-**   +  Store results in p->z of length p->nn.  Space to hold p->z comes
+**   +  Input comes from pp->in.
+**   +  Store results in pp->z of length pp->nn.  Space to hold pp->z comes
 **      from sqlite3_malloc64().
-**   +  Keep track of the line number in p->nLine.
-**   +  Store the character that terminates the field in p->cTerm.  Store
+**   +  Keep track of the line number in pp->nLine.
+**   +  Store the character that terminates the field in pp->cTerm.  Store
 **      EOF on end-of-file.
 **
-** Return 0 at EOF or on OOM.  On EOF, the p->cTerm character will have
+** Return 0 at EOF or on OOM.  On EOF, the pp->cTerm character will have
 ** been set to EOF.
 */
 static char *csv_read_one_field(
-    CsvReader * p
+    CsvReader * pp
 ) {
     int c;
-    p->nn = 0;
-    c = csv_getc(p);
+    pp->nn = 0;
+    c = csv_getc(pp);
     if (c == EOF) {
-        p->cTerm = EOF;
+        pp->cTerm = EOF;
         return 0;
     }
     if (c == '"') {
         int pc,
          ppc;
-        int startLine = p->nLine;
+        int startLine = pp->nLine;
         pc = ppc = 0;
         while (1) {
-            c = csv_getc(p);
+            c = csv_getc(pp);
             if (c <= '"' || pc == '"') {
                 if (c == '\n')
-                    p->nLine++;
+                    pp->nLine++;
                 if (c == '"') {
                     if (pc == '"') {
                         pc = 0;
@@ -556,24 +556,24 @@ static char *csv_read_one_field(
                     || (c == EOF && pc == '"')
                     ) {
                     do {
-                        p->nn--;
-                    } while (p->z[p->nn] != '"');
-                    p->cTerm = (char) c;
+                        pp->nn--;
+                    } while (pp->z[pp->nn] != '"');
+                    pp->cTerm = (char) c;
                     break;
                 }
                 if (pc == '"' && c != '\r') {
-                    csv_errmsg(p, "line %d: unescaped %c character", p->nLine,
-                        '"');
+                    csv_errmsg(pp, "line %d: unescaped %c character",
+                        pp->nLine, '"');
                     break;
                 }
                 if (c == EOF) {
-                    csv_errmsg(p, "line %d: unterminated %c-quoted field\n",
+                    csv_errmsg(pp, "line %d: unterminated %c-quoted field\n",
                         startLine, '"');
-                    p->cTerm = (char) c;
+                    pp->cTerm = (char) c;
                     break;
                 }
             }
-            if (csv_append(p, (char) c))
+            if (csv_append(pp, (char) c))
                 return 0;
             ppc = pc;
             pc = c;
@@ -581,35 +581,35 @@ static char *csv_read_one_field(
     } else {
         /* If this is the first field being parsed and it begins with the
          ** UTF-8 BOM  (0xEF BB BF) then skip the BOM */
-        if ((c & 0xff) == 0xef && p->bNotFirst == 0) {
-            csv_append(p, (char) c);
-            c = csv_getc(p);
+        if ((c & 0xff) == 0xef && pp->bNotFirst == 0) {
+            csv_append(pp, (char) c);
+            c = csv_getc(pp);
             if ((c & 0xff) == 0xbb) {
-                csv_append(p, (char) c);
-                c = csv_getc(p);
+                csv_append(pp, (char) c);
+                c = csv_getc(pp);
                 if ((c & 0xff) == 0xbf) {
-                    p->bNotFirst = 1;
-                    p->nn = 0;
-                    return csv_read_one_field(p);
+                    pp->bNotFirst = 1;
+                    pp->nn = 0;
+                    return csv_read_one_field(pp);
                 }
             }
         }
         while (c > ',' || (c != EOF && c != ',' && c != '\n')) {
-            if (csv_append(p, (char) c))
+            if (csv_append(pp, (char) c))
                 return 0;
-            c = csv_getc(p);
+            c = csv_getc(pp);
         }
         if (c == '\n') {
-            p->nLine++;
-            if (p->nn > 0 && p->z[p->nn - 1] == '\r')
-                p->nn--;
+            pp->nLine++;
+            if (pp->nn > 0 && pp->z[pp->nn - 1] == '\r')
+                pp->nn--;
         }
-        p->cTerm = (char) c;
+        pp->cTerm = (char) c;
     }
-    if (p->z)
-        p->z[p->nn] = 0;
-    p->bNotFirst = 1;
-    return p->z;
+    if (pp->z)
+        pp->z[pp->nn] = 0;
+    pp->bNotFirst = 1;
+    return pp->z;
 }
 
 /* Forward references to the various virtual table methods implemented
@@ -690,9 +690,9 @@ typedef struct CsvCursor {
 static int csvtabDisconnect(
     sqlite3_vtab * pVtab
 ) {
-    CsvTable *p = (CsvTable *) pVtab;
-    sqlite3_free(p->zData);
-    sqlite3_free(p);
+    CsvTable *pp = (CsvTable *) pVtab;
+    sqlite3_free(pp->zData);
+    sqlite3_free(pp);
     return SQLITE_OK;
 }
 
@@ -760,10 +760,10 @@ static const char *csv_parameter(
 **
 ** Return 1 if the parameter is seen, or 0 if not.  1 is returned
 ** even if there is an error.  If an error occurs, then an error message
-** is left in p->zErr.  If there are no errors, p->zErr[0]==0.
+** is left in pp->zErr.  If there are no errors, pp->zErr[0]==0.
 */
 static int csv_string_parameter(
-    CsvReader * p,              /* Leave error message here, if there is one */
+    CsvReader * pp,             /* Leave error message here, if there is one */
     const char *zParam,         /* Parameter we are checking for */
     const char *zArg,           /* Raw text of the virtual table argment */
     char **pzVal                /* Write the dequoted string value here */
@@ -772,14 +772,14 @@ static int csv_string_parameter(
     zValue = csv_parameter(zParam, (int) strlen(zParam), zArg);
     if (zValue == 0)
         return 0;
-    p->zErr[0] = 0;
+    pp->zErr[0] = 0;
     if (*pzVal) {
-        csv_errmsg(p, "more than one '%s' parameter", zParam);
+        csv_errmsg(pp, "more than one '%s' parameter", zParam);
         return 1;
     }
     *pzVal = sqlite3_mprintf("%s", zValue);
     if (*pzVal == 0) {
-        csv_errmsg(p, "out of memory");
+        csv_errmsg(pp, "out of memory");
         return 1;
     }
     csv_trim_whitespace(*pzVal);
@@ -1062,10 +1062,10 @@ static int csvtabClose(
 ** Constructor for a new CsvTable cursor object.
 */
 static int csvtabOpen(
-    sqlite3_vtab * p,
+    sqlite3_vtab * pp,
     sqlite3_vtab_cursor ** ppCursor
 ) {
-    CsvTable *pTab = (CsvTable *) p;
+    CsvTable *pTab = (CsvTable *) pp;
     CsvCursor *pCur;
     size_t nByte;
     nByte = sizeof(*pCur) + (sizeof(char *) + sizeof(int)) * pTab->nCol;
