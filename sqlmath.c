@@ -792,14 +792,12 @@ static int csv_boolean_parameter(
 **    filename=FILENAME          Name of file containing CSV content
 **    data=TEXT                  Direct CSV content.
 **    schema=SCHEMA              Alternative CSV schema.
-**    header=YES|NO              First row of CSV defines the names of
-**                               columns if "yes".  Default "no".
 **    columns=N                  Assume the CSV file contains N columns.
 **
 ** If schema= is omitted, then the columns are named "c0", "c1", "c2",
 ** and so forth.  If columns=N is omitted, then the file is opened and
 ** the number of columns in the first row is counted to determine the
-** column count.  If header=YES, then the first row is skipped.
+** column count. first row is skipped as header.
 */
 static int csvtabConnect(
     sqlite3 * db,
