@@ -2,14 +2,20 @@
 "use strict";
 // init debugInline
 (function () {
-    let consoleError = console.error;
-    globalThis.debugInline = globalThis.debugInline || function (...argList) {
+    let consoleError = function () {
+        return;
+    };
+    function debugInline(...argList) {
 // this function will both print <argList> to stderr and return <argList>[0]
         consoleError("\n\ndebugInline");
         consoleError(...argList);
         consoleError("\n");
         return argList[0];
-    };
+    }
+    // coverage-hack
+    debugInline();
+    consoleError = console.error;
+    globalThis.debugInline = globalThis.debugInline || debugInline;
 }());
 
 function noop(val) {
@@ -516,7 +522,7 @@ SELECT * FROM tt2;
             });
         } catch (err) {
             assertOrThrow((
-                /db cannot close with \d+? actions pending/
+                /db\scannot\sclose\swith\s\d+?\sactions\spending/
             ).test(err.message), err);
         }
         //!! await dbTableInsert({
