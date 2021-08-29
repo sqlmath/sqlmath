@@ -423,7 +423,6 @@ file sqlmath_blobtable.c
 #  define CSV_NOINLINE
 #endif
 
-
 /* Max size of the error message in a CsvReader */
 #define CSV_MXERR 200
 
@@ -662,7 +661,6 @@ static char *csv_read_one_field(
     return p->z;
 }
 
-
 /* Forward references to the various virtual table methods implemented
 ** in this file. */
 static int csvtabCreate(
@@ -847,7 +845,6 @@ static int csv_string_parameter(
     return 1;
 }
 
-
 /* Return 0 if the argument is false and 1 if it is true.  Return -1 if
 ** we cannot really tell.
 */
@@ -939,8 +936,6 @@ static int csvtabConnect(
 # define CSV_FILENAME (azPValue[0])
 # define CSV_DATA     (azPValue[1])
 # define CSV_SCHEMA   (azPValue[2])
-
-
     assert(sizeof(azPValue) == sizeof(azParam));
     memset(&sRdr, 0, sizeof(sRdr));
     memset(azPValue, 0, sizeof(azPValue));
@@ -1157,7 +1152,6 @@ static int csvtabOpen(
     return SQLITE_OK;
 }
 
-
 /*
 ** Advance a CsvCursor to its next row of input.
 ** Set the EOF marker if we reach the end of input.
@@ -1283,7 +1277,6 @@ static int csvtabBestIndex(
     return SQLITE_OK;
 }
 
-
 static sqlite3_module CsvModule = {
     0,                          /* iVersion */
     csvtabCreate,               /* xCreate */
@@ -1307,7 +1300,6 @@ static sqlite3_module CsvModule = {
     0,                          /* xRename */
 };
 #endif                          /* !defined(SQLITE_OMIT_VIRTUALTABLE) */
-
 
 #ifdef _WIN32
 __declspec(dllexport)
