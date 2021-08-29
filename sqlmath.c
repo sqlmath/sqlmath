@@ -358,6 +358,10 @@ SQLMATH_API int dbExec(
     return 0;
 }
 
+
+/*
+file sqlite3_sqlmath_init.c
+*/
 int sqlite3_sqlmath_init(
     sqlite3 * db,
     char **pzErrMsg,

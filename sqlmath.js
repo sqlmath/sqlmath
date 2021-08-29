@@ -191,12 +191,12 @@ function noop(val) {
         return db;
     }
 
-    async function dbTableInsert({
+    async function dbVtmptableCreate({
         db,
-        json,
-        tableName
+        rowList,
+        tableName = "tmp1"
     }) {
-// this function will insert <rowList> into <db>.<tableName>
+// this function will create-or-replace Vtmptable <tablename> and insert f
         let buf = Buffer.allocUnsafe(4096);
         let offset = 0;
         function bufAppend(type, val) {
@@ -227,19 +227,12 @@ function noop(val) {
                 offset += buf.write(val, offset);
             }
         }
-        if (typeof json === "string") {
-            json = JSON.parse(json);
-        }
-        if (json?.length === 0) {
+        if (rowList?.length === 0) {
             return;
         }
-        json = jsonRowListNormalize({
-            rowList: json
+        rowList = jsonRowListNormalize({
+            rowList
         });
-        assertOrThrow(
-            Array.isArray(json) && Array.isArray(json[0]),
-            "json is not array-of-array"
-        );
         // type - js
         // 1. bigint
         // 2. boolean
@@ -255,7 +248,7 @@ function noop(val) {
         // 3. null
         // 4. real
         // 5. text
-        json.forEach(function (row) {
+        rowList.forEach(function (row) {
             row.forEach(function (val) {
                 if (!val) {
                     switch (typeof val) {
@@ -565,9 +558,9 @@ SELECT * FROM tt2;
         dbClose,
         dbExec,
         dbOpen,
-        dbTableInsert
+        dbVtmptableCreate
     });
 
-    // coverage-hack
-    noop(assertJsonEqual, dbTableInsert);
+    // jslint-hack
+    noop(dbVtmptableCreate);
 }());

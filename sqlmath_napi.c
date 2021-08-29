@@ -486,9 +486,9 @@ static napi_value noopSync(
 
 
 /*
-file sqlmath_init.c
+file napi_module_init.c
 */
-napi_value sqlmath_init(
+napi_value napi_module_init(
     napi_env env,
     napi_value exports
 ) {
@@ -521,4 +521,4 @@ napi_value sqlmath_init(
     return exports;
 }
 
-NAPI_MODULE(NODE_GYP_MODULE_NAME, sqlmath_init)
+NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_init)
