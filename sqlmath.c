@@ -23,20 +23,20 @@ static const sqlite3_api_routines *sqlite3_api;
 #define STR2_TOOBIG -2
 #define SQLMATH_API
 #define UNUSED(x) (void)(x)
-/* *INDENT-OFF* */
-typedef struct Str2 { char *buf; int alloced; int used; int errcode; } Str2;
-/* *INDENT-ON* */
 /* sqlmath.h - end */
 
 
-
-
-
-
-
 /*
-file sqlmath_jssqlExec.c start
+file sqlmath_dbExec.c start
 */
+// dynamically growable string
+typedef struct Str2 {
+    char *buf;
+    int alloced;
+    int used;
+    int errcode;
+} Str2;
+
 static int str2AppendRaw(
     Str2 * str2,
     const char *zz,
@@ -205,7 +205,7 @@ static int str2AppendText(
     return str2AppendRaw(str2, "\"", 1);
 }
 
-SQLMATH_API int jssqlExec(
+SQLMATH_API int dbExec(
     sqlite3 * db,               /* The database on which the SQL executes */
     const char *zSql,           /* The SQL to be executed */
     char **pzBuf,
@@ -215,10 +215,10 @@ SQLMATH_API int jssqlExec(
 // This function will run <zSql> in <db> and save any result (list of tables
 // containing rows from SELECT/pragma/etc) as serialized a json-string in
 // <str2>.
-#define STR2_APPEND_RAW(str2, len) \
-    if (0 != str2AppendRaw(&str2, str2, len)) {goto label_error;}
-#define STR2_APPEND_TEXT(str2, len) \
-    if (0 != str2AppendText(&str2, str2, len)) {goto label_error;}
+#define STR2_APPEND_RAW(zz, len) \
+    if (0 != str2AppendRaw(&str2, zz, len)) {goto label_error;}
+#define STR2_APPEND_TEXT(zz, len) \
+    if (0 != str2AppendText(&str2, zz, len)) {goto label_error;}
     // declare var
     Str2 str2 = { 0 };
     const char *zTmp = NULL;
@@ -370,5 +370,5 @@ int sqlite3_sqlmath_init(
 }
 
 /*
-file sqlmath_jssqlExec.c end
+file sqlmath_dbExec.c end
 */

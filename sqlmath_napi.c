@@ -391,7 +391,7 @@ static int JSPROMISE_CREATE(
 }
 
 static int JSPROMISE_CREATE(
-    _jssqlExec,
+    _dbExec,
     env,
     data
 ) {
@@ -399,7 +399,7 @@ static int JSPROMISE_CREATE(
 // containing rows from SELECT/pragma/etc) as serialized a json-string in
 // <pResult>.
 /* *INDENT-OFF* */
-void jssqlExec(sqlite3 *, const char *, char **, int *, char *);
+void dbExec(sqlite3 *, const char *, char **, int *, char *);
 /* *INDENT-ON* */
     // init baton
     Jsbaton *baton = (Jsbaton *) data;
@@ -412,8 +412,8 @@ void jssqlExec(sqlite3 *, const char *, char **, int *, char *);
     // validate zSql
     // printf("\n\n[napi zSql=%s]\n\n", zSql);
     ASSERT_BATON(baton, zSql != NULL, "zSql == NULL");
-    // call jssqlExec()
-    jssqlExec(db, zSql, &zBuf, &nAlloced, zErrmsg);
+    // call dbExec()
+    dbExec(db, zSql, &zBuf, &nAlloced, zErrmsg);
     // printf("\n\n[napi nAlloced=%d zBuf=%s]\n\n", nAlloced, zBuf);
     ASSERT_BATON(baton, zErrmsg[0] == '\x00', zErrmsg);
     // save result
@@ -433,7 +433,7 @@ static void jspromiseExecuteNoop(
     UNUSED(baton);
 }
 
-static napi_value jspromiseNoop(
+static napi_value noopAsync(
     napi_env env,
     napi_callback_info info
 ) {
@@ -442,7 +442,7 @@ static napi_value jspromiseNoop(
 }
 
 /*
-static int JSPROMISE_CREATE(jspromiseNoop, env, data) {
+static int JSPROMISE_CREATE(noopAsync, env, data) {
 // This function runs on a worker thread. It has no access to the JavaScript.
     UNUSED(env);
     // init baton
@@ -451,7 +451,7 @@ static int JSPROMISE_CREATE(jspromiseNoop, env, data) {
 }
 */
 
-static napi_value napiNoop(
+static napi_value noopSync(
     napi_env env,
     napi_callback_info info
 ) {
@@ -482,11 +482,11 @@ napi_value napi_module_init(
     {#name, NULL, name, NULL, NULL, NULL, napi_default, NULL}
     int errcode;
     const napi_property_descriptor propList[] = {
-        NAPI_EXPORT_MEMBER(_jssqlExec),
+        NAPI_EXPORT_MEMBER(_dbExec),
         NAPI_EXPORT_MEMBER(_sqlite3_close_v2),
         NAPI_EXPORT_MEMBER(_sqlite3_open_v2),
-        NAPI_EXPORT_MEMBER(jspromiseNoop),
-        NAPI_EXPORT_MEMBER(napiNoop),
+        NAPI_EXPORT_MEMBER(noopAsync),
+        NAPI_EXPORT_MEMBER(noopSync),
     };
     errcode = napi_define_properties(env, exports,
         sizeof(propList) / sizeof(napi_property_descriptor), propList);

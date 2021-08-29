@@ -122,7 +122,7 @@ function noop(val) {
         sql
     }) {
 // this function will exec <sql> in <db> and return result
-        let result = await cCall("_jssqlExec", [db.ptr, sql]);
+        let result = await cCall("_dbExec", [db.ptr, sql]);
         return Buffer.from(result[1], 0, result[1].byteLength - 1);
     }
 
@@ -360,8 +360,8 @@ function noop(val) {
 // this function will test passing argList between nodejs <-> c
         let db;
         let result;
-        result = await cCall("jspromiseNoop", [1234]);
-        //!! debugInline(result, "jspromiseNoop");
+        result = await cCall("noopAsync", [1234]);
+        //!! debugInline(result, "noopAsync");
         db = await dbOpen({
             filename: ":memory:"
         });
@@ -381,7 +381,7 @@ function noop(val) {
             aa, bb
         ]) {
             let cc;
-            result = cCall("napiNoop", [aa]);
+            result = cCall("noopSync", [aa]);
             cc = String(result[0][0]);
             assertOrThrow(bb === cc, [aa, bb, cc]);
         });
@@ -408,7 +408,7 @@ select noop(1234);
                     sql
                 });
                 result = JSON.parse(Buffer.from(result));
-                //!! debugInline(result, "jssqlExec");
+                //!! debugInline(result, "dbExec");
             } catch (err) {
                 console.error(err);
             }
