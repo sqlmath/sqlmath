@@ -10,7 +10,7 @@ file sqlmath.h
 #include <errno.h>
 #include <math.h>
 #include <stdint.h>
-#include <stdio.h>
+//!! #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef WIN32
@@ -19,12 +19,11 @@ file sqlmath.h
 #include <sqlite3ext.h>
 static const sqlite3_api_routines *sqlite3_api;
 // define
-#ifndef SQLITE_MAX_LENGTH
+#define EOF -1
 #define SQLITE_MAX_LENGTH 1000000000
-#endif
+#define SQLMATH_API
 #define STR2_NOMEM -1
 #define STR2_TOOBIG -2
-#define SQLMATH_API
 #define UNUSED(x) (void)(x)
 
 
@@ -424,10 +423,10 @@ struct CsvReader {
     char zErr[CSV_MXERR];       /* Error message */
 };
 
-/* Initialize a CsvReader object */
 static void csv_reader_init(
     CsvReader * p
 ) {
+/* Initialize a CsvReader object */
     p->z = 0;
     p->n = 0;
     p->nAlloc = 0;
@@ -438,20 +437,20 @@ static void csv_reader_init(
     p->zErr[0] = 0;
 }
 
-/* Close and reset a CsvReader object */
 static void csv_reader_reset(
     CsvReader * p
 ) {
+/* Close and reset a CsvReader object */
     sqlite3_free(p->z);
     csv_reader_init(p);
 }
 
-/* Report an error on a CsvReader */
 static void csv_errmsg(
     CsvReader * p,
     const char *zFormat,
     ...
 ) {
+/* Report an error on a CsvReader */
     va_list ap;
     va_start(ap, zFormat);
     sqlite3_vsnprintf(CSV_MXERR, p->zErr, zFormat, ap);
@@ -470,8 +469,8 @@ static int csv_reader_open(
     return 0;
 }
 
-/* Return the next character of input.  Return EOF at end of input. */
 static int csv_getc(
+/* Return the next character of input.  Return EOF at end of input. */
     CsvReader * p
 ) {
     if (p->iIn >= p->nIn) {
@@ -480,9 +479,9 @@ static int csv_getc(
     return ((unsigned char *) p->zIn)[p->iIn++];
 }
 
+static int csv_resize_and_append(
 /* Increase the size of p->z and append character c to the end.
 ** Return 0 on success and non-zero if there is an OOM error */
-static int csv_resize_and_append(
     CsvReader * p,
     char c
 ) {
@@ -684,15 +683,6 @@ typedef struct CsvCursor {
     int *aLen;                  /* Length of each entry */
     sqlite3_int64 iRowid;       /* The current rowid.  Negative for EOF */
 } CsvCursor;
-
-/* Transfer error message text from a reader into a CsvTable */
-static void csv_xfer_error(
-    CsvTable * pTab,
-    CsvReader * pRdr
-) {
-    sqlite3_free(pTab->base.zErrMsg);
-    pTab->base.zErrMsg = sqlite3_mprintf("%s", pRdr->zErr);
-}
 
 /*
 ** This method is the destructor fo a CsvTable object.
@@ -930,16 +920,13 @@ static int csvtabConnect(
         goto csvtab_connect_error;
     }
 
-    if ((nCol <= 0 || bHeader == 1)
-        && csv_reader_open(&sRdr, CSV_DATA)
-        ) {
-        goto csvtab_connect_error;
-    }
+    csv_reader_open(&sRdr, CSV_DATA);
     pNew = sqlite3_malloc(sizeof(*pNew));
     *ppVtab = (sqlite3_vtab *) pNew;
     if (pNew == 0)
         goto csvtab_connect_oom;
     memset(pNew, 0, sizeof(*pNew));
+
     sqlite3_str *pStr = sqlite3_str_new(0);
     char *zSep = "";
     int iCol = 0;
@@ -979,6 +966,12 @@ static int csvtabConnect(
     CSV_SCHEMA = sqlite3_str_finish(pStr);
     if (CSV_SCHEMA == 0)
         goto csvtab_connect_oom;
+
+    //!! do {
+        //!! csv_read_one_field(&sRdr);
+        //!! pNew->nCol++;
+    //!! } while (sRdr.cTerm == ',');
+
     pNew->zData = CSV_DATA;
     CSV_DATA = 0;
     if (bHeader != 1) {
@@ -1088,10 +1081,7 @@ static int csvtabOpen(
     pCur->azVal = (char **) &pCur[1];
     pCur->aLen = (int *) &pCur->azVal[pTab->nCol];
     *ppCursor = &pCur->base;
-    if (csv_reader_open(&pCur->rdr, pTab->zData)) {
-        csv_xfer_error(pTab, &pCur->rdr);
-        return SQLITE_ERROR;
-    }
+    csv_reader_open(&pCur->rdr, pTab->zData);
     return SQLITE_OK;
 }
 
@@ -1115,9 +1105,11 @@ static int csvtabNext(
             if (pCur->aLen[i] < pCur->rdr.n + 1) {
                 char *zNew =
                     sqlite3_realloc64(pCur->azVal[i], pCur->rdr.n + 1);
+/* Transfer error message text from a reader into a CsvTable */
                 if (zNew == 0) {
                     csv_errmsg(&pCur->rdr, "out of memory");
-                    csv_xfer_error(pTab, &pCur->rdr);
+                    sqlite3_free(pTab->base.zErrMsg);
+                    pTab->base.zErrMsg = sqlite3_mprintf("%s", pCur->rdr.zErr);
                     break;
                 }
                 pCur->azVal[i] = zNew;

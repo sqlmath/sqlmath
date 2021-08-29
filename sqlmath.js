@@ -543,7 +543,7 @@ SELECT * FROM tt2;
         let result;
         let sql;
         sql = (`
-CREATE VIRTUAL TABLE temp.t1 USING csv(data='aa,bb\ncc,dd,ee\nff,gg');
+CREATE VIRTUAL TABLE temp.t1 USING csv(data='aa,bb,cc\ncc,dd\nff\ngg\nhh');
 SELECT * FROM temp.t1;
 SELECT * FROM temp.t1;
         `);
