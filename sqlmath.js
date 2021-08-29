@@ -356,6 +356,25 @@ function noop(val) {
         return sorted;
     }
 
+    (function testAssertXxx() {
+// this function will test assertXxx's handling-behavior
+        [
+            [
+                "aa", "aa"
+            ], [
+                new Error("aa"), "aa"
+            ]
+        ].forEach(function ([
+            err, msg
+        ]) {
+            try {
+                assertOrThrow(undefined, err);
+            } catch (err) {
+                assertJsonEqual(err.message, msg);
+            }
+        });
+    }())
+
     (function testCcall() {
 // this function will test cCall's handling-behavior
         [

@@ -1,8 +1,10 @@
 // copyright nobody
 // LINT_C_FILE
 
-/* sqlmath.h - start */
-/* header */
+/*
+file sqlmath.h start
+*/
+// header
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
@@ -15,6 +17,7 @@
 #endif
 #include <sqlite3ext.h>
 static const sqlite3_api_routines *sqlite3_api;
+// define
 #ifndef SQLITE_MAX_LENGTH
 #define SQLITE_MAX_LENGTH 1000000000
 #endif
@@ -22,7 +25,9 @@ static const sqlite3_api_routines *sqlite3_api;
 #define STR2_TOOBIG -2
 #define SQLMATH_API
 #define UNUSED(x) (void)(x)
-/* sqlmath.h - end */
+/*
+file sqlmath.h end
+*/
 
 
 /*
