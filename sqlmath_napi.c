@@ -243,7 +243,7 @@ static int __jspromiseResolve(
     void *data
 ) {
 // This function runs on the main thread after `jspromiseExecute` exits.
-    ASSERT_NAPI_OK(env, errcode);
+    ASSERT_FATAL(errcode == 0, __func__);
     // init baton
     Jsbaton *baton = (Jsbaton *) data;
     // declare var
@@ -254,7 +254,7 @@ static int __jspromiseResolve(
     ASSERT_FATAL(errcode == 0, "napi_reference_unref");
     ASSERT_FATAL(refcount == 0, "memory leak");
     errcode = napi_get_reference_value(env, ref, &baton->result);
-    ASSERT_NAPI_OK(env, errcode);
+    ASSERT_FATAL(errcode == 0, "napi_get_reference_value");
     errcode = napi_delete_reference(env, ref);
     ASSERT_FATAL(errcode == 0, "napi_delete_reference");
     // Resolve or reject the promise associated with the deferred depending on
@@ -273,7 +273,7 @@ static int __jspromiseResolve(
         errcode =
             napi_create_error(env, NULL, jsstringCreate(env, baton->errmsg),
             &err);
-        ASSERT_NAPI_OK(env, errcode);
+        ASSERT_FATAL(errcode == 0, "napi_create_error");
         // reject promise with error
         errcode = napi_reject_deferred(env, baton->deferred, err);
         ASSERT_FATAL(errcode == 0, "napi_reject_deferred");

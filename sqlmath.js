@@ -138,11 +138,13 @@ function noop(val) {
 //   int flags,              /* Flags */
 //   const char *zVfs        /* Name of VFS module to use */
 // );
-        let db = {};
-        let result = await cCall("_sqlite3_open_v2", [
+        let db = await cCall("_sqlite3_open_v2", [
             filename, undefined, flags, undefined
         ]);
-        db.ptr = result[0][0];
+        db = {
+            ptr: db[0][0],
+            status: "open"
+        };
         dbMap.set(db, true);
         return db;
     }
