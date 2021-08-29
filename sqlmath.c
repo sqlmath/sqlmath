@@ -408,9 +408,18 @@ file sqlmath_blobtable.c
 /* Size of the CsvReader input buffer */
 #define CSV_INBUFSZ 1024
 
+/* An instance of the CSV virtual table */
+typedef struct CsvTable {
+    sqlite3_vtab base;          /* Base class.  Must be first */
+    char *zData;                /* Raw CSV data in lieu of zFilename */
+    int iStart;                 /* Offset to start of data in zFilename */
+    int nCol;                   /* Number of columns in the CSV file */
+} CsvTable;
+
 /* A context object used when read a CSV file. */
 typedef struct CsvReader CsvReader;
 struct CsvReader {
+    CsvTable base;              /* Base class.  Must be first */
     char *z;                    /* Accumulated text for a field */
     int nn;                     /* Number of bytes in z */
     int nAlloc;                 /* Space allocated for z[] */
@@ -422,14 +431,6 @@ struct CsvReader {
     char *zIn;                  /* The input buffer */
     char zErr[CSV_MXERR];       /* Error message */
 };
-
-/* An instance of the CSV virtual table */
-typedef struct CsvTable {
-    sqlite3_vtab base;          /* Base class.  Must be first */
-    char *zData;                /* Raw CSV data in lieu of zFilename */
-    int iStart;                 /* Offset to start of data in zFilename */
-    int nCol;                   /* Number of columns in the CSV file */
-} CsvTable;
 
 /* A cursor for the CSV virtual table */
 typedef struct CsvCursor {
@@ -472,18 +473,6 @@ static void csv_errmsg(
     va_start(ap, zFormat);
     sqlite3_vsnprintf(CSV_MXERR, pp->zErr, zFormat, ap);
     va_end(ap);
-}
-
-/* Open the file associated with a CsvReader
-** Return the number of errors.
-*/
-static int csv_reader_open(
-    CsvReader * pp,             /* The reader to open */
-    const char *zData           /*  ... or use this data */
-) {
-    pp->zIn = (char *) zData;
-    pp->nIn = strlen(zData);
-    return 0;
 }
 
 static int csv_getc(
@@ -859,7 +848,10 @@ static int csvtabConnect(
         goto csvtab_connect_error;
     }
 
-    csv_reader_open(&sRdr, CSV_DATA);
+    //!! csv_reader_open(&sRdr, CSV_DATA);
+    sRdr.zIn = (char *) CSV_DATA;
+    sRdr.nIn = strlen(CSV_DATA);
+
     pNew = sqlite3_malloc(sizeof(*pNew));
     *ppVtab = (sqlite3_vtab *) pNew;
     if (pNew == 0)
@@ -1003,7 +995,11 @@ static int csvtabOpen(
     pCur->azVal = (char **) &pCur[1];
     pCur->aLen = (int *) &pCur->azVal[pTab->nCol];
     *ppCursor = &pCur->base;
-    csv_reader_open(&pCur->rdr, pTab->zData);
+
+    //!! csv_reader_open(&pCur->rdr, pTab->zData);
+    pCur->rdr.zIn = (char *) pTab->zData;
+    pCur->rdr.nIn = strlen(pTab->zData);
+
     return SQLITE_OK;
 }
 
