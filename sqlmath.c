@@ -360,8 +360,182 @@ SQLMATH_API int dbExec(
 
 
 /*
-file sqlmath_VtabNaivetableblob.c
+file sqlmath_blobtable.c
 */
+//!! typedef struct blobtable_cursor {
+//!! /* blobtable_cursor is a subclass of sqlite3_vtab_cursor which will
+//!! * serve as the underlying representation of a cursor that scans
+//!! * over rows of the result
+//!! */
+//!! sqlite3_vtab_cursor base;   /* Base class - must be first */
+//!! /* Insert new fields here.  For this blobtable we only keep track
+//!! ** of the rowid */
+//!! sqlite3_int64 iRowid;       /* The rowid */
+//!! BlobtableVtab *pXtab;      /* Pointer to vtab */
+//!! } blobtable_cursor;
+typedef struct BlobtableVtab {
+/* BlobtableVtab is a subclass of sqlite3_vtab which is
+ * underlying representation of the virtual table
+ */
+    sqlite3_vtab base;          /* Base class - must be first */
+    /* Add new fields here, as necessary */
+    char *zBuf;
+    //!! double *pMatrix;            /* nRow x nCol matrix */
+    //!! int nByte;                  /* number of bytes allocated for matrix */
+    //!! int nCol;                   /* number of columns */
+    //!! int nRow;                   /* number of rows */
+} BlobtableVtab;
+
+int blobtableConnect(
+/*
+ * xConnect
+ * The blobtableConnect() method is invoked to create a new
+ * template virtual table.
+ *
+ * Think of this routine as the constructor for BlobtableVtab objects.
+ *
+ * All this routine needs to do is:
+ *
+ *    (1) Allocate the BlobtableVtab object and initialize all fields.
+ *
+ *    (2) Tell SQLite (via the sqlite3_declare_vtab() interface) what the
+ *        result set of queries against the virtual table will look like.
+ */
+    sqlite3 * db,
+    void *pAux,
+    int argc,
+    const char *const *argv,
+    sqlite3_vtab ** ppVtab,
+    char **pzErr
+) {
+    // declare var
+    char zCreateTable[15000] = { 0 };
+    int ii;
+    int jj;
+    int nCol;
+    int rc;
+    BlobtableVtab *pNew;
+/*
+ *   argv[0]    -> module name  ("approximate_match")
+ *   argv[1]    -> database name
+ *   argv[2]    -> table name
+ *   argv[3...] -> arguments
+ */
+    // CREATE VIRTUAL TABLE aa USING blobtable(2);
+    nCol = atoi(argv[3]);
+    if (!(0 < nCol && nCol <= 2000)) {
+        *pzErr =
+            sqlite3_mprintf
+            ("CREATE TABLE blobtable() is not allowed with column size %i",
+            nCol);
+        return SQLITE_ERROR;
+    }
+    ii = 0;
+    jj = 0;
+    while (ii <= nCol) {
+        jj += (ii == 0
+            ? snprintf(zCreateTable + jj, 15000ll - jj,
+                "CREATE TABLE %s(", argv[2])
+            : ii < nCol ? snprintf(&zCreateTable[jj], 15000ll - jj,
+                "c%i,", ii)
+            : snprintf(&zCreateTable[jj], 15000ll - jj,
+                "c%i," "ptr INTEGER HIDDEN,"
+                "cols INTEGER HIDDEN," "rows INTEGER HIDDEN)", ii));
+        if (!(0 <= jj && jj < 15000)) {
+            break;
+        }
+        ii += 1;
+    }
+    if (0 < jj && jj < 15000) {
+        zCreateTable[jj - 1] = ')';
+        zCreateTable[jj] = 0;
+    }
+    rc = sqlite3_declare_vtab(db, zCreateTable);
+    /* For convenience, define symbolic names for the index to each column. */
+    if (rc != SQLITE_OK) {
+        *pzErr = sqlite3_mprintf(zCreateTable);
+        return rc;
+    }
+    pNew = sqlite3_malloc(sizeof(*pNew));
+    if (pNew == NULL) {
+        return SQLITE_NOMEM;
+    }
+    memset(pNew, 0, sizeof(*pNew));
+    *ppVtab = (sqlite3_vtab *) pNew;
+    pNew->nCol = nCol;
+    pNew->nRow = 0;
+    pNew->nByte = 256 * nCol * sizeof(double);
+    pNew->pMatrix = sqlite3_malloc(pNew->nByte);
+    if (pNew->pMatrix == NULL) {
+        return SQLITE_NOMEM;
+    }
+    return rc;
+}
+
+int blobtableCreate(
+/*
+ * xCreate
+ * The xConnect and xCreate methods do the same thing, but they must be
+ * different so that the virtual table is not an eponymous virtual table.
+ */
+    sqlite3 * db,
+    void *pAux,
+    int argc,
+    const char *const *argv,
+    sqlite3_vtab ** ppVtab,
+    char **pzErr
+) {
+    return blobtableConnect(db, pAux, argc, argv, ppVtab, pzErr);
+}
+
+sqlite3_module blobtableModule = {
+/*
+ * This following structure defines all the methods for the
+ * virtual table.
+ */
+    NULL,                       /* iVersion    */
+    blobtableCreate,            /* xCreate     */
+    blobtableConnect,           /* xConnect    */
+    NULL,                       // blobtableBestIndex,         /* xBestIndex  */
+    NULL,                       // blobtableDisconnect,        /* xDisconnect */
+    NULL,                       // blobtableDisconnect,        /* xDestroy    */
+    NULL,                       // blobtableOpen,              /* xOpen       */
+    NULL,                       // blobtableClose,             /* xClose      */
+    NULL,                       // blobtableFilter,            /* xFilter     */
+    NULL,                       // blobtableNext,              /* xNext       */
+    NULL,                       // blobtableEof,               /* xEof        */
+    NULL,                       // blobtableColumn,            /* xColumn     */
+    NULL,                       // blobtableRowid,             /* xRowid      */
+    NULL,                       // blobtableUpdate,            /* xUpdate     */
+    NULL,                       /* xBegin      */
+    NULL,                       /* xSync       */
+    NULL,                       /* xCommit     */
+    NULL,                       /* xRollback   */
+    NULL,                       /* xFindMethod */
+    NULL,                       /* xRename     */
+    NULL,                       /* xSavepoint  */
+    NULL,                       /* xRelease    */
+    NULL,                       /* xRollbackTo */
+    NULL                        /* xShadowName */
+};
+
+//!! int sqlite3_sqlmath_init(
+    //!! sqlite3 * db,
+    //!! char **pzErrMsg,
+    //!! const sqlite3_api_routines * pApi
+//!! ) {
+    //!! int rc = SQLITE_OK;
+    //!! // SQLITE_EXTENSION_INIT2(pApi);
+    //!! rc = rc || sqlite3_create_function(db,
+        //!! "b64decode",
+        //!! 1, SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, base64DecodeFunc, 0, 0);
+    //!! rc = rc || sqlite3_create_function(db, "noop2", 1,
+        //!! SQLITE_UTF8 | SQLITE_DETERMINISTIC, 0, noopfunc2, 0, 0);
+    //!! //!! example_sqlite3_get_table(db);
+    //!! //!! example_sqlite3_step(db);
+    //!! example_sqlite3_exec_get_tables_json(db);
+    //!! return rc;
+//!! }
 
 
 /*
@@ -372,9 +546,14 @@ int sqlite3_sqlmath_init(
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
 ) {
+#define ASSERT_SQLITE_OK(errcode) if (errcode != SQLITE_OK) { return errcode; }
     UNUSED(db);
     UNUSED(pzErrMsg);
-    int rc = SQLITE_OK;
+    // declare var
+    int errcode = SQLITE_OK;
+    // init sqlite3_api
     sqlite3_api = pApi;
-    return rc;
+    errcode = sqlite3_create_module(db, "blobtable", &blobtableModule, 0);
+    ASSERT_SQLITE_OK(errcode);
+    return errcode;
 }
