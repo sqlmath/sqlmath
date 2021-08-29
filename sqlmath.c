@@ -49,6 +49,43 @@ typedef struct Str2 {
     int errcode;
 } Str2;
 
+static int str2Resize(
+    Str2 * str2,
+    int nn
+) {
+/*
+** Increase the size of the memory allocation for <str2->buf>.
+*/
+    // declare var
+    char *zTmp;
+    int nAlloc;
+    // sanity check
+    if (str2->errcode != SQLITE_OK && str2->errcode != SQLITE_ROW) {
+        return str2->errcode;
+    }
+    // check SQLITE_MAX_LENGTH
+    if (nn < 0 || nn > SQLITE_MAX_LENGTH) {
+        str2->errcode = STR2_TOOBIG;
+        return str2->errcode;
+    }
+    // grow nalloc exponentially
+    nAlloc = str2->alloced;
+    while (nAlloc < str2->used + nn) {
+        nAlloc *= 2;
+        if (nAlloc > SQLITE_MAX_LENGTH) {
+            str2->errcode = STR2_TOOBIG;
+            return str2->errcode;
+        }
+    }
+    zTmp = realloc(str2->buf, nAlloc);
+    if (zTmp == NULL) {
+        str2->errcode = STR2_NOMEM;
+        return str2->errcode;
+    }
+    str2->alloced = nAlloc;
+    str2->buf = zTmp;
+}
+
 static int str2AppendRaw(
     Str2 * str2,
     const char *zz,
