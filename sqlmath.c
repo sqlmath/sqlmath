@@ -395,8 +395,8 @@ file sqlmath_blobtable.c
 ** Instead of specifying a file, the text of the CSV can be loaded using
 ** the data= parameter.
 **
-** If the columns=N parameter is supplied, then the CSV file is assumed to have
-** N columns.  If both the columns= and schema= parameters are omitted, then
+** If the columns=NN parameter is supplied, then the CSV file is assumed to have
+** NN columns.  If both the columns= and schema= parameters are omitted, then
 ** the number and names of the columns is determined by the first line of
 ** the CSV input.
 */
@@ -412,7 +412,7 @@ file sqlmath_blobtable.c
 typedef struct CsvReader CsvReader;
 struct CsvReader {
     char *z;                    /* Accumulated text for a field */
-    int n;                      /* Number of bytes in z */
+    int nn;                     /* Number of bytes in z */
     int nAlloc;                 /* Space allocated for z[] */
     int nLine;                  /* Current line number */
     int bNotFirst;              /* True if prior text has been seen */
@@ -428,7 +428,7 @@ static void csv_reader_init(
 ) {
 /* Initialize a CsvReader object */
     p->z = 0;
-    p->n = 0;
+    p->nn = 0;
     p->nAlloc = 0;
     p->nLine = 0;
     p->bNotFirst = 0;
@@ -491,7 +491,7 @@ static int csv_resize_and_append(
     if (zNew) {
         p->z = zNew;
         p->nAlloc = nNew;
-        p->z[p->n++] = c;
+        p->z[p->nn++] = c;
         return 0;
     } else {
         csv_errmsg(p, "out of memory");
@@ -505,9 +505,9 @@ static int csv_append(
     CsvReader * p,
     char c
 ) {
-    if (p->n >= p->nAlloc - 1)
+    if (p->nn >= p->nAlloc - 1)
         return csv_resize_and_append(p, c);
-    p->z[p->n++] = c;
+    p->z[p->nn++] = c;
     return 0;
 }
 
@@ -515,7 +515,7 @@ static int csv_append(
 ** with the option of having a separator other than ",".
 **
 **   +  Input comes from p->in.
-**   +  Store results in p->z of length p->n.  Space to hold p->z comes
+**   +  Store results in p->z of length p->nn.  Space to hold p->z comes
 **      from sqlite3_malloc64().
 **   +  Keep track of the line number in p->nLine.
 **   +  Store the character that terminates the field in p->cTerm.  Store
@@ -528,7 +528,7 @@ static char *csv_read_one_field(
     CsvReader * p
 ) {
     int c;
-    p->n = 0;
+    p->nn = 0;
     c = csv_getc(p);
     if (c == EOF) {
         p->cTerm = EOF;
@@ -556,8 +556,8 @@ static char *csv_read_one_field(
                     || (c == EOF && pc == '"')
                     ) {
                     do {
-                        p->n--;
-                    } while (p->z[p->n] != '"');
+                        p->nn--;
+                    } while (p->z[p->nn] != '"');
                     p->cTerm = (char) c;
                     break;
                 }
@@ -589,7 +589,7 @@ static char *csv_read_one_field(
                 c = csv_getc(p);
                 if ((c & 0xff) == 0xbf) {
                     p->bNotFirst = 1;
-                    p->n = 0;
+                    p->nn = 0;
                     return csv_read_one_field(p);
                 }
             }
@@ -601,13 +601,13 @@ static char *csv_read_one_field(
         }
         if (c == '\n') {
             p->nLine++;
-            if (p->n > 0 && p->z[p->n - 1] == '\r')
-                p->n--;
+            if (p->nn > 0 && p->z[p->nn - 1] == '\r')
+                p->nn--;
         }
         p->cTerm = (char) c;
     }
     if (p->z)
-        p->z[p->n] = 0;
+        p->z[p->nn] = 0;
     p->bNotFirst = 1;
     return p->z;
 }
@@ -1097,9 +1097,9 @@ static int csvtabNext(
             break;
         }
         if (ii < pTab->nCol) {
-            if (pCur->aLen[ii] < pCur->rdr.n + 1) {
+            if (pCur->aLen[ii] < pCur->rdr.nn + 1) {
                 char *zNew =
-                    sqlite3_realloc64(pCur->azVal[ii], pCur->rdr.n + 1);
+                    sqlite3_realloc64(pCur->azVal[ii], pCur->rdr.nn + 1);
 /* Transfer error message text from a reader into a CsvTable */
                 if (zNew == 0) {
                     csv_errmsg(&pCur->rdr, "out of memory");
@@ -1109,9 +1109,9 @@ static int csvtabNext(
                     break;
                 }
                 pCur->azVal[ii] = zNew;
-                pCur->aLen[ii] = pCur->rdr.n + 1;
+                pCur->aLen[ii] = pCur->rdr.nn + 1;
             }
-            memcpy(pCur->azVal[ii], zz, pCur->rdr.n + 1);
+            memcpy(pCur->azVal[ii], zz, pCur->rdr.nn + 1);
             ii++;
         }
     } while (pCur->rdr.cTerm == ',');
