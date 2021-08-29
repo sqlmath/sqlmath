@@ -51,6 +51,13 @@ function noop(val) {
     // private map of sqlite-database-connections
     let dbMap = new WeakMap();
 
+    function __dbPtr(db) {
+// this function will return c-pointer to sqlite-database-connection
+        let ptr = dbMap.get(db);
+        assertOrThrow(ptr, "invalid/closed db");
+        return ptr;
+    }
+
     function assertJsonEqual(aa, bb) {
 // this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
         aa = JSON.stringify(objectDeepCopyWithKeysSorted(aa));
@@ -113,11 +120,12 @@ function noop(val) {
     async function dbClose({
         db
     }) {
-// this function will return sqlite-database-connection <db>
-        await cCall("_sqlite3_close_v2", [
-            dbMap.get(db + 1)
-        ]);
+// this function will close sqlite-database-connection <db>
+        let ptr = __dbPtr(db);
         dbMap.delete(db);
+        await cCall("_sqlite3_close_v2", [
+            ptr
+        ]);
     }
 
     async function dbExec({
@@ -126,7 +134,7 @@ function noop(val) {
     }) {
 // this function will exec <sql> in <db> and return result
         let result = await cCall("_dbExec", [
-            dbMap.get(db), sql
+            __dbPtr(db), sql
         ]);
         return Buffer.from(result[1], 0, result[1].byteLength - 1);
     }
@@ -489,7 +497,7 @@ SELECT * FROM tt2;
             //!! ]
         //!! });
         await Promise.all(promiseList);
-        await dbClose({
+        dbClose({
             db
         });
     }());
