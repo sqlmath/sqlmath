@@ -408,6 +408,23 @@ file sqlmath_blobtable.c
 /* Size of the CsvReader input buffer */
 #define CSV_INBUFSZ 1024
 
+/* An instance of the CSV virtual table */
+typedef struct CsvTable {
+    sqlite3_vtab base;          /* Base class.  Must be first */
+    char *zData;                /* Raw CSV data in lieu of zFilename */
+    int iStart;             /* Offset to start of data in zFilename */
+    int nCol;                   /* Number of columns in the CSV file */
+} CsvTable;
+
+/* A cursor for the CSV virtual table */
+typedef struct CsvCursor {
+    sqlite3_vtab_cursor base;   /* Base class.  Must be first */
+    CsvReader rdr;              /* The CsvReader object */
+    char **azVal;               /* Value of the current row */
+    int *aLen;                  /* Length of each entry */
+    sqlite3_int64 iRowid;       /* The current rowid.  Negative for EOF */
+} CsvCursor;
+
 /* A context object used when read a CSV file. */
 typedef struct CsvReader CsvReader;
 struct CsvReader {
@@ -614,23 +631,6 @@ static char *csv_read_one_field(
     pp->bNotFirst = 1;
     return pp->z;
 }
-
-/* An instance of the CSV virtual table */
-typedef struct CsvTable {
-    sqlite3_vtab base;          /* Base class.  Must be first */
-    char *zData;                /* Raw CSV data in lieu of zFilename */
-    int32_t iStart;             /* Offset to start of data in zFilename */
-    int nCol;                   /* Number of columns in the CSV file */
-} CsvTable;
-
-/* A cursor for the CSV virtual table */
-typedef struct CsvCursor {
-    sqlite3_vtab_cursor base;   /* Base class.  Must be first */
-    CsvReader rdr;              /* The CsvReader object */
-    char **azVal;               /* Value of the current row */
-    int *aLen;                  /* Length of each entry */
-    sqlite3_int64 iRowid;       /* The current rowid.  Negative for EOF */
-} CsvCursor;
 
 /*
 ** This method is the destructor fo a CsvTable object.
