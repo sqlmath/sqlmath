@@ -360,6 +360,11 @@ SQLMATH_API int dbExec(
 
 
 /*
+file sqlite3_VtableBlob.c
+*/
+
+
+/*
 file sqlite3_sqlmath_init.c
 */
 int sqlite3_sqlmath_init(

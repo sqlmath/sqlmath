@@ -69,8 +69,10 @@ static const char *__snprintfTrace(
     int line
 ) {
 // this function will write <errmsg> to <buf> with additional trace-info
-    snprintf(buf,               // NO_LINT
-        256, "%s\n    at %s (%s:%d)", errmsg, func, file, line);
+    if (snprintf(buf,           // NO_LINT
+            256, "%s\n    at %s (%s:%d)", errmsg, func, file, line) < 0) {
+        abort();
+    }
     return (const char *) buf;
 }
 
