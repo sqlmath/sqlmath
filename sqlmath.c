@@ -513,7 +513,7 @@ static int csv_getc(
     return ((unsigned char *) pp->zIn)[pp->iIn++];
 }
 
-static int csv_resize_and_append(
+static int NOINLINE csv_resize_and_append(
 /* Increase the size of pp->z and append character c to the end.
 ** Return 0 on success and non-zero if there is an OOM error */
     CsvReader * pp,
