@@ -1234,7 +1234,11 @@ static int csvtabFilter(
     int argc,
     sqlite3_value ** argv
 ) {
+    UNUSED(argc);
+    UNUSED(argv);
+    UNUSED(idxNum);
     UNUSED(idxStr);
+    // declare var
     CsvCursor *pCur = (CsvCursor *) pVtabCursor;
     CsvTable *pTab = (CsvTable *) pVtabCursor->pVtab;
     pCur->iRowid = 0;
@@ -1259,6 +1263,7 @@ static int csvtabBestIndex(
     sqlite3_vtab * tab,
     sqlite3_index_info * pIdxInfo
 ) {
+    UNUSED(tab);
     pIdxInfo->estimatedCost = 1000000;
     return SQLITE_OK;
 }
@@ -1296,7 +1301,6 @@ int sqlite3_sqlmath_init(
     const sqlite3_api_routines * pApi
 ) {
 #define ASSERT_SQLITE_OK(errcode) if (errcode != SQLITE_OK) { return errcode; }
-    UNUSED(db);
     UNUSED(pzErrMsg);
     // declare var
     int errcode = SQLITE_OK;
