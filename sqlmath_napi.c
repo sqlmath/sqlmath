@@ -1,5 +1,11 @@
 // copyright nobody
 // LINT_C_FILE
+
+
+/*
+file sqlmath_napi.h start
+*/
+// header
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,44 +14,6 @@
 #endif
 #include <sqlite3.h>
 #include <node_api.h>
-
-// printf("\n\n[napi errcode=%d]\n\n", errcode);
-// this function will set <baton->errmsg> to <msg> if <cond> is falsy
-#define ASSERT_BATON(baton, cond, msg) \
-    if (baton->errmsg[0] != 0) { \
-        return 0; \
-    } \
-    if (!(cond)) { \
-        __snprintfTrace(baton->errmsg, msg, __func__, __FILE__, __LINE__); \
-        return 0; \
-    }
-
-#define ASSERT_FATAL(cond, msg) \
-    if (!(cond)) { \
-        napi_fatal_error(__func__, NAPI_AUTO_LENGTH , msg, NAPI_AUTO_LENGTH); \
-    }
-
-#define ASSERT_NAPI(env, cond, msg) \
-    if (!(cond)) { \
-        char buf[256] = { 0 }; \
-        napi_throw_error(env, NULL, \
-            __snprintfTrace(buf, msg, __func__, __FILE__, __LINE__)); \
-        return 0; \
-    }
-
-#define ASSERT_NAPI_OK(env, errcode) \
-    if (0 != assertNapiOk(env, __func__, __FILE__, __LINE__, errcode)) { \
-        return 0; \
-    }
-
-// this function will set <baton->errmsg> to sqlite-error if <expr> is falsy
-#define ASSERT_SQLITE_OK(baton, db, expr) \
-    if (errcode != SQLITE_OK) { \
-        ASSERT_BATON( \
-            baton, \
-            false, \
-            (db == NULL ? sqlite3_errstr(errcode) : sqlite3_errmsg(db))); \
-    }
 
 #define JSBATON_CREATE(env, info) \
     jsbatonCreate(env, info); if (baton == NULL) {return NULL;}
@@ -63,6 +31,7 @@
 
 #define UNUSED(x) (void)(x)
 
+// struct
 typedef struct Jsbaton {
     // data
     int64_t int8[8];
@@ -74,6 +43,55 @@ typedef struct Jsbaton {
     napi_async_work work;
     napi_deferred deferred;
 } Jsbaton;
+/*
+file sqlmath_napi.h end
+*/
+
+
+/*
+file assert.c end
+*/
+// printf("\n\n[napi errcode=%d]\n\n", errcode);
+
+// this function will if <cond> is falsy, set <baton->errmsg> to <msg>
+#define ASSERT_BATON(baton, cond, msg) \
+    if (baton->errmsg[0] != 0) { \
+        return 0; \
+    } \
+    if (!(cond)) { \
+        __snprintfTrace(baton->errmsg, msg, __func__, __FILE__, __LINE__); \
+        return 0; \
+    }
+
+// this function will if <cond> is falsy, terminate process with <msg>
+#define ASSERT_FATAL(cond, msg) \
+    if (!(cond)) { \
+        napi_fatal_error(__func__, NAPI_AUTO_LENGTH , msg, NAPI_AUTO_LENGTH); \
+    }
+
+// this function will if <cond> is falsy, throw <msg> in <env>
+#define ASSERT_NAPI(env, cond, msg) \
+    if (!(cond)) { \
+        char buf[256] = { 0 }; \
+        napi_throw_error(env, NULL, \
+            __snprintfTrace(buf, msg, __func__, __FILE__, __LINE__)); \
+        return 0; \
+    }
+
+// this function will assert <errcode> == napi_ok in <env>
+#define ASSERT_NAPI_OK(env, errcode) \
+    if (0 != assertNapiOk(env, __func__, __FILE__, __LINE__, errcode)) { \
+        return 0; \
+    }
+
+// this function will assert <errcode> == SQLITE_OK in <db>
+#define ASSERT_SQLITE_OK(baton, db, errcode) \
+    if (errcode != SQLITE_OK) { \
+        ASSERT_BATON( \
+            baton, \
+            false, \
+            (db == NULL ? sqlite3_errstr(errcode) : sqlite3_errmsg(db))); \
+    }
 
 static const char *__snprintfTrace(
     char *buf,
@@ -139,6 +157,10 @@ static int assertNapiOk(
     ASSERT_FATAL(errcode == 0, "napi_throw_error");
     return errcode;
 }
+/*
+file assert.c end
+*/
+
 
 static void jsbatonBufferFinalize(
     napi_env env,
