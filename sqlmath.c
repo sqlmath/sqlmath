@@ -380,7 +380,7 @@ file sqlmath_blobtable.c
 ** Usage:
 **
 **    .load ./csv
-**    CREATE VIRTUAL TABLE temp.csv USING csv(filename=FILENAME);
+**    CREATE VIRTUAL TABLE temp.csv USING csv(data=DATA);
 **    SELECT * FROM csv;
 **
 ** The columns are named "c1", "c2", "c3", ... by default.  Or the
@@ -388,7 +388,7 @@ file sqlmath_blobtable.c
 ** schema= parameter, like this:
 **
 **    CREATE VIRTUAL TABLE temp.csv2 USING csv(
-**       filename = "../http.log",
+**       data = "c1,c2\n1,2",
 **       schema = "CREATE TABLE x(date,ipaddr,url,referrer,userAgent)"
 **    );
 **
@@ -408,23 +408,6 @@ file sqlmath_blobtable.c
 /* Size of the CsvReader input buffer */
 #define CSV_INBUFSZ 1024
 
-/* An instance of the CSV virtual table */
-typedef struct CsvTable {
-    sqlite3_vtab base;          /* Base class.  Must be first */
-    char *zData;                /* Raw CSV data in lieu of zFilename */
-    int iStart;             /* Offset to start of data in zFilename */
-    int nCol;                   /* Number of columns in the CSV file */
-} CsvTable;
-
-/* A cursor for the CSV virtual table */
-typedef struct CsvCursor {
-    sqlite3_vtab_cursor base;   /* Base class.  Must be first */
-    CsvReader rdr;              /* The CsvReader object */
-    char **azVal;               /* Value of the current row */
-    int *aLen;                  /* Length of each entry */
-    sqlite3_int64 iRowid;       /* The current rowid.  Negative for EOF */
-} CsvCursor;
-
 /* A context object used when read a CSV file. */
 typedef struct CsvReader CsvReader;
 struct CsvReader {
@@ -439,6 +422,23 @@ struct CsvReader {
     char *zIn;                  /* The input buffer */
     char zErr[CSV_MXERR];       /* Error message */
 };
+
+/* An instance of the CSV virtual table */
+typedef struct CsvTable {
+    sqlite3_vtab base;          /* Base class.  Must be first */
+    char *zData;                /* Raw CSV data in lieu of zFilename */
+    int iStart;                 /* Offset to start of data in zFilename */
+    int nCol;                   /* Number of columns in the CSV file */
+} CsvTable;
+
+/* A cursor for the CSV virtual table */
+typedef struct CsvCursor {
+    sqlite3_vtab_cursor base;   /* Base class.  Must be first */
+    CsvReader rdr;              /* The CsvReader object */
+    char **azVal;               /* Value of the current row */
+    int *aLen;                  /* Length of each entry */
+    sqlite3_int64 iRowid;       /* The current rowid.  Negative for EOF */
+} CsvCursor;
 
 static void csv_reader_init(
     CsvReader * pp
