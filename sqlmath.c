@@ -25,6 +25,17 @@ static const sqlite3_api_routines *sqlite3_api;
 #define STR2_NOMEM -1
 #define STR2_TOOBIG -2
 #define UNUSED(x) (void)(x)
+/*
+** A macro to hint to the compiler that a function should not be
+** inlined.
+*/
+#if defined(__GNUC__)
+#  define NOINLINE  __attribute__((noinline))
+#elif defined(_MSC_VER) && _MSC_VER>=1310
+#  define NOINLINE  __declspec(noinline)
+#else
+#  define NOINLINE
+#endif
 
 
 /*
