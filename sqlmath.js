@@ -469,12 +469,11 @@ file sqlmath.js
 
     (async function testDbExec() {
 // this function will test dbExec's handling-behavior
-        let db;
-        let promiseList = [];
-        let tmp;
-        db = await dbOpen({
+        let db = await dbOpen({
             filename: ":memory:"
         });
+        let promiseList = [];
+        let tmp;
         tmp = async function () {
             let result;
             try {
@@ -536,17 +535,22 @@ SELECT * FROM tt2;
         });
     }());
 
-    (function testDbTableImport() {
+    (async function testDbTableImport() {
 // this function will test dbExec's handling-behavior
-        return;
-        //!! await dbTableInsert({
-            //!! db,
-            //!! json: [
-                //!! [
-                    //!! "aa", "bb"
-                //!! ]
-            //!! ]
-        //!! });
+        let db = await dbOpen({
+            filename: ":memory:"
+        });
+        let result;
+        let sql;
+        sql = (`
+CREATE VIRTUAL TABLE temp.t1 USING csv(data='thefile.csv');
+--!! SELECT * FROM temp.t1;
+        `);
+        result = await dbExec({
+            db,
+            sql
+        });
+        debugInline(String(result));
     }());
 
     module.exports = Object.assign(module.exports, {
