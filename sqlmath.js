@@ -264,7 +264,7 @@ function noop(val) {
                 }
             });
         });
-        await cCall("_jssqlImport", [
+        await cCall("_jstableInsert", [
             db.ptr, tableName, buf
         ]);
     }
@@ -448,8 +448,13 @@ select noop(1234);
         SQLITE_OPEN_TEMP_JOURNAL,
         SQLITE_OPEN_TRANSIENT_DB,
         SQLITE_OPEN_URI,
-        SQLITE_OPEN_WAL
+        SQLITE_OPEN_WAL,
+        dbClose,
+        dbExec,
+        dbOpen,
+        dbTableInsert
     });
+
     // coverage-hack
     noop(assertJsonEqual);
 }());
