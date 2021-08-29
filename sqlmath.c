@@ -867,7 +867,7 @@ static int csvtabConnect(
     int bHeader = -1;           /* header= flags.  -1 means not seen yet */
     int rc = SQLITE_OK;         /* Result code from this routine */
     size_t ii,
-     jj;                         /* Loop counters */
+     jj;                        /* Loop counters */
     int b;                      /* Value of a boolean parameter */
     int nCol = -99;             /* Value of the columns= parameter */
 /* A CSV file reader used to store an error
@@ -966,11 +966,6 @@ static int csvtabConnect(
     CSV_SCHEMA = sqlite3_str_finish(pStr);
     if (CSV_SCHEMA == 0)
         goto csvtab_connect_oom;
-
-    //!! do {
-    //!! csv_read_one_field(&sRdr);
-    //!! pNew->nCol++;
-    //!! } while (sRdr.cTerm == ',');
 
     pNew->zData = CSV_DATA;
     CSV_DATA = 0;
