@@ -986,54 +986,45 @@ static int csvtabConnect(
     if (pNew == 0)
         goto csvtab_connect_oom;
     memset(pNew, 0, sizeof(*pNew));
-    if (CSV_SCHEMA == 0) {
-        sqlite3_str *pStr = sqlite3_str_new(0);
-        char *zSep = "";
-        int iCol = 0;
-        sqlite3_str_appendf(pStr, "CREATE TABLE x(");
-        if (nCol < 0 && bHeader < 1) {
-            nCol = 0;
-            do {
-                csv_read_one_field(&sRdr);
-                nCol++;
-            } while (sRdr.cTerm == ',');
-        }
-        if (nCol > 0 && bHeader < 1) {
-            for (iCol = 0; iCol < nCol; iCol++) {
-                sqlite3_str_appendf(pStr, "%sc%d TEXT", zSep, iCol);
-                zSep = ",";
-            }
-        } else {
-            do {
-                char *z = csv_read_one_field(&sRdr);
-                if ((nCol > 0 && iCol < nCol) || (nCol < 0 && bHeader)) {
-                    sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", zSep, z);
-                    zSep = ",";
-                    iCol++;
-                }
-            } while (sRdr.cTerm == ',');
-            if (nCol < 0) {
-                nCol = iCol;
-            } else {
-                while (iCol < nCol) {
-                    sqlite3_str_appendf(pStr, "%sc%d TEXT", zSep, ++iCol);
-                    zSep = ",";
-                }
-            }
-        }
-        pNew->nCol = nCol;
-        sqlite3_str_appendf(pStr, ")");
-        CSV_SCHEMA = sqlite3_str_finish(pStr);
-        if (CSV_SCHEMA == 0)
-            goto csvtab_connect_oom;
-    } else if (nCol < 0) {
+    sqlite3_str *pStr = sqlite3_str_new(0);
+    char *zSep = "";
+    int iCol = 0;
+    sqlite3_str_appendf(pStr, "CREATE TABLE x(");
+    if (nCol < 0 && bHeader < 1) {
+        nCol = 0;
         do {
             csv_read_one_field(&sRdr);
-            pNew->nCol++;
+            nCol++;
         } while (sRdr.cTerm == ',');
-    } else {
-        pNew->nCol = nCol;
     }
+    if (nCol > 0 && bHeader < 1) {
+        for (iCol = 0; iCol < nCol; iCol++) {
+            sqlite3_str_appendf(pStr, "%sc%d TEXT", zSep, iCol);
+            zSep = ",";
+        }
+    } else {
+        do {
+            char *z = csv_read_one_field(&sRdr);
+            if ((nCol > 0 && iCol < nCol) || (nCol < 0 && bHeader)) {
+                sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", zSep, z);
+                zSep = ",";
+                iCol++;
+            }
+        } while (sRdr.cTerm == ',');
+        if (nCol < 0) {
+            nCol = iCol;
+        } else {
+            while (iCol < nCol) {
+                sqlite3_str_appendf(pStr, "%sc%d TEXT", zSep, ++iCol);
+                zSep = ",";
+            }
+        }
+    }
+    pNew->nCol = nCol;
+    sqlite3_str_appendf(pStr, ")");
+    CSV_SCHEMA = sqlite3_str_finish(pStr);
+    if (CSV_SCHEMA == 0)
+        goto csvtab_connect_oom;
     pNew->zData = CSV_DATA;
     CSV_DATA = 0;
     if (bHeader != 1) {
