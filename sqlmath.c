@@ -555,9 +555,12 @@ static char *csv_read_one_field(
                     || (c == '\n' && pc == '\r' && ppc == '"')
                     || (c == EOF && pc == '"')
                     ) {
-                    do {
+                    while (1) {
                         pp->nn--;
-                    } while (pp->z[pp->nn] != '"');
+                        if (pp->z[pp->nn] == '"') {
+                            break;
+                        }
+                    }
                     pp->cTerm = (char) c;
                     break;
                 }
@@ -611,61 +614,6 @@ static char *csv_read_one_field(
     pp->bNotFirst = 1;
     return pp->z;
 }
-
-/* Forward references to the various virtual table methods implemented
-** in this file. */
-static int csvtabCreate(
-    sqlite3 *,
-    void *,
-    int,
-    const char *const *,
-    sqlite3_vtab **,
-    char **
-);
-static int csvtabConnect(
-    sqlite3 *,
-    void *,
-    int,
-    const char *const *,
-    sqlite3_vtab **,
-    char **
-);
-static int csvtabBestIndex(
-    sqlite3_vtab *,
-    sqlite3_index_info *
-);
-static int csvtabDisconnect(
-    sqlite3_vtab *
-);
-static int csvtabOpen(
-    sqlite3_vtab *,
-    sqlite3_vtab_cursor **
-);
-static int csvtabClose(
-    sqlite3_vtab_cursor *
-);
-static int csvtabFilter(
-    sqlite3_vtab_cursor *,
-    int idxNum,
-    const char *idxStr,
-    int argc,
-    sqlite3_value ** argv
-);
-static int csvtabNext(
-    sqlite3_vtab_cursor *
-);
-static int csvtabEof(
-    sqlite3_vtab_cursor *
-);
-static int csvtabColumn(
-    sqlite3_vtab_cursor *,
-    sqlite3_context *,
-    int
-);
-static int csvtabRowid(
-    sqlite3_vtab_cursor *,
-    sqlite3_int64 *
-);
 
 /* An instance of the CSV virtual table */
 typedef struct CsvTable {
@@ -864,7 +812,6 @@ static int csvtabConnect(
     UNUSED(pAux);
     // declare var
     CsvTable *pNew = 0;         /* The CsvTable object to construct */
-    int bHeader = -1;           /* header= flags.  -1 means not seen yet */
     int rc = SQLITE_OK;         /* Result code from this routine */
     size_t ii,
      jj;                        /* Loop counters */
@@ -893,12 +840,6 @@ static int csvtabConnect(
         if (jj < sizeof(azParam) / sizeof(azParam[0])) {
             if (sRdr.zErr[0])
                 goto csvtab_connect_error;
-        } else if (csv_boolean_parameter("header", 6, z, &b)) {
-            if (bHeader >= 0) {
-                csv_errmsg(&sRdr, "more than one 'header' parameter");
-                goto csvtab_connect_error;
-            }
-            bHeader = b;
         } else if ((zValue = csv_parameter("columns", 7, z)) != 0) {
             if (nCol > 0) {
                 csv_errmsg(&sRdr, "more than one 'columns' parameter");
@@ -931,36 +872,27 @@ static int csvtabConnect(
     char *zSep = "";
     int iCol = 0;
     sqlite3_str_appendf(pStr, "CREATE TABLE x(");
-    if (nCol < 0 && bHeader < 1) {
-        nCol = 0;
-        do {
-            csv_read_one_field(&sRdr);
-            nCol++;
-        } while (sRdr.cTerm == ',');
+
+    while (1) {
+        char *z = csv_read_one_field(&sRdr);
+        if ((nCol > 0 && iCol < nCol) || nCol < 0) {
+            sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", zSep, z);
+            zSep = ",";
+            iCol++;
+        }
+        if (sRdr.cTerm != ',') {
+            break;
+        }
     }
-    if (nCol > 0 && bHeader < 1) {
-        for (iCol = 0; iCol < nCol; iCol++) {
-            sqlite3_str_appendf(pStr, "%sc%d TEXT", zSep, iCol);
+    if (nCol < 0) {
+        nCol = iCol;
+    } else {
+        while (iCol < nCol) {
+            sqlite3_str_appendf(pStr, "%sc%d TEXT", zSep, ++iCol);
             zSep = ",";
         }
-    } else {
-        do {
-            char *z = csv_read_one_field(&sRdr);
-            if ((nCol > 0 && iCol < nCol) || (nCol < 0 && bHeader)) {
-                sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", zSep, z);
-                zSep = ",";
-                iCol++;
-            }
-        } while (sRdr.cTerm == ',');
-        if (nCol < 0) {
-            nCol = iCol;
-        } else {
-            while (iCol < nCol) {
-                sqlite3_str_appendf(pStr, "%sc%d TEXT", zSep, ++iCol);
-                zSep = ",";
-            }
-        }
     }
+
     pNew->nCol = nCol;
     sqlite3_str_appendf(pStr, ")");
     CSV_SCHEMA = sqlite3_str_finish(pStr);
@@ -969,11 +901,8 @@ static int csvtabConnect(
 
     pNew->zData = CSV_DATA;
     CSV_DATA = 0;
-    if (bHeader != 1) {
-        pNew->iStart = 0;
-    } else {
-        pNew->iStart = (int) sRdr.iIn;
-    }
+    // skip first row of headers
+    pNew->iStart = (int) sRdr.iIn;
     csv_reader_reset(&sRdr);
     rc = sqlite3_declare_vtab(db, CSV_SCHEMA);
     if (rc) {
@@ -1091,7 +1020,7 @@ static int csvtabNext(
     CsvTable *pTab = (CsvTable *) cur->pVtab;
     int ii = 0;
     char *zz;
-    do {
+    while (1) {
         zz = csv_read_one_field(&pCur->rdr);
         if (zz == 0) {
             break;
@@ -1114,7 +1043,10 @@ static int csvtabNext(
             memcpy(pCur->azVal[ii], zz, pCur->rdr.nn + 1);
             ii++;
         }
-    } while (pCur->rdr.cTerm == ',');
+        if (pCur->rdr.cTerm != ',') {
+            break;
+        }
+    }
     if (zz == 0 || (pCur->rdr.cTerm == EOF && ii < pTab->nCol)) {
         pCur->iRowid = -1;
     } else {
