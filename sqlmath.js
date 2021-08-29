@@ -544,7 +544,7 @@ SELECT * FROM tt2;
         let sql;
         sql = (`
 CREATE VIRTUAL TABLE temp.t1 USING csv(data='thefile.csv');
---!! SELECT * FROM temp.t1;
+SELECT * FROM temp.t1;
         `);
         result = await dbExec({
             db,
