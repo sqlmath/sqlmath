@@ -64,9 +64,9 @@ file sqlmath_str99.c
         errcode != SQLITE_DONE) {goto label_error;}
 
 typedef struct Str99 {
-    char *buf;
-    int alloced;
-    int used;
+    char *pBuf;
+    int nAlloced;               /* Space allocated for pBuf[] */
+    int nUsed;
 } Str99;
 
 static int NOINLINE str99Resize(
@@ -82,13 +82,13 @@ static int str99AppendChar(
     int errcode
 ) {
 /*
-** Append <cc> to <str99->buf>.
-** Increase the size of the memory allocation for <str99->buf> if necessary.
+** Append <cc> to <str99->pBuf>.
+** Increase the size of the memory allocation for <str99->pBuf> if necessary.
 */
-    // write <zz> to <str99->buf> if space available
-    if (str99->used < str99->alloced) {
-        str99->buf[str99->used] = cc;
-        str99->used += 1;
+    // write <zz> to <str99->pBuf> if space available
+    if (str99->nUsed < str99->nAlloced) {
+        str99->pBuf[str99->nUsed] = cc;
+        str99->nUsed += 1;
         return errcode;
     }
     // else resize and retry
@@ -102,16 +102,16 @@ static int str99AppendRaw(
     int errcode
 ) {
 /*
-** Append <nn> bytes of text from <zz> to <str99->buf>.
-** Increase the size of the memory allocation for <str99->buf> if necessary.
+** Append <nn> bytes of text from <zz> to <str99->pBuf>.
+** Increase the size of the memory allocation for <str99->pBuf> if necessary.
 */
     if (nn == 0) {
         return errcode;
     }
-    // write <zz> to <str99->buf> if space available
-    if (0 < nn && str99->used + nn <= str99->alloced) {
-        memcpy(str99->buf + str99->used, zz, nn);
-        str99->used += nn;
+    // write <zz> to <str99->pBuf> if space available
+    if (0 < nn && str99->nUsed + nn <= str99->nAlloced) {
+        memcpy(str99->pBuf + str99->nUsed, zz, nn);
+        str99->nUsed += nn;
         return errcode;
     }
     // else resize and retry
@@ -125,7 +125,7 @@ static int NOINLINE str99Resize(
     int errcode
 ) {
 /*
-** Increase the size of the memory allocation for <str99->buf>.
+** Increase the size of the memory allocation for <str99->pBuf>.
 */
     // declare var
     char *zTmp;
@@ -139,19 +139,19 @@ static int NOINLINE str99Resize(
         return STR99_TOOBIG;
     }
     // grow nalloc exponentially
-    nAlloc = str99->alloced;
-    while (nAlloc < str99->used + nn) {
+    nAlloc = str99->nAlloced;
+    while (nAlloc < str99->nUsed + nn) {
         nAlloc *= 2;
         if (nAlloc > SQLITE_MAX_LENGTH) {
             return STR99_TOOBIG;
         }
     }
-    zTmp = ALLOCR(str99->buf, nAlloc);
+    zTmp = ALLOCR(str99->pBuf, nAlloc);
     if (zTmp == NULL) {
         return STR99_NOMEM;
     }
-    str99->alloced = nAlloc;
-    str99->buf = zTmp;
+    str99->nAlloced = nAlloc;
+    str99->pBuf = zTmp;
     // recurse
     return str99AppendRaw(str99, zz, nn, errcode);
 }
@@ -163,8 +163,8 @@ static int str99AppendJson(
     int errcode
 ) {
 /*
-** Append <nn> bytes of text from <zz> to <str99->buf> with json-escaping.
-** Increase the size of the memory allocation for <str99->buf> if necessary.
+** Append <nn> bytes of text from <zz> to <str99->pBuf> with json-escaping.
+** Increase the size of the memory allocation for <str99->pBuf> if necessary.
 */
     // declare var
     const char *zz2 = zz + nn;
@@ -343,10 +343,9 @@ typedef struct CsvTable {
 
 /* A context object used when read a CSV file. */
 typedef struct CsvReader {
-    CsvTable base;              /* Base class.  Must be first */
-    char *zz;                   /* Accumulated text for a field */
-    int nn;                     /* Number of bytes in zz */
-    int nAlloc;                 /* Space allocated for zz[] */
+    char *pBuf;                  /* Accumulated text for a field */
+    int nAlloced;               /* Space allocated for pBuf[] */
+    int nUsed;                  /* Number of bytes in pBuf */
     int nLine;                  /* Current line number */
     int bNotFirst;              /* True if prior text has been seen */
     int cTerm;                  /* Char that terminated most recent field */
@@ -369,9 +368,9 @@ static void csv_reader_init(
     CsvReader * pRdr
 ) {
 /* Initialize a CsvReader object */
-    pRdr->zz = 0;
-    pRdr->nn = 0;
-    pRdr->nAlloc = 0;
+    pRdr->pBuf = 0;
+    pRdr->nUsed = 0;
+    pRdr->nAlloced = 0;
     pRdr->nLine = 0;
     pRdr->bNotFirst = 0;
     pRdr->nIn = 0;
@@ -383,7 +382,7 @@ static void csv_reader_reset(
     CsvReader * pRdr
 ) {
 /* Close and reset a CsvReader object */
-    sqlite3_free(pRdr->zz);
+    sqlite3_free(pRdr->pBuf);
     csv_reader_init(pRdr);
 }
 
@@ -410,18 +409,18 @@ static int csv_getc(
 }
 
 static int NOINLINE csv_resize_and_append(
-/* Increase the size of pRdr->zz and append character c to the end.
+/* Increase the size of pRdr->pBuf and append character c to the end.
 ** Return 0 on success and non-zero if there is an OOM error */
     CsvReader * pRdr,
     char c
 ) {
     char *zNew;
-    int nNew = pRdr->nAlloc * 2 + 100;
-    zNew = sqlite3_realloc64(pRdr->zz, nNew);
+    int nNew = pRdr->nAlloced * 2 + 100;
+    zNew = sqlite3_realloc64(pRdr->pBuf, nNew);
     if (zNew) {
-        pRdr->zz = zNew;
-        pRdr->nAlloc = nNew;
-        pRdr->zz[pRdr->nn++] = c;
+        pRdr->pBuf = zNew;
+        pRdr->nAlloced = nNew;
+        pRdr->pBuf[pRdr->nUsed++] = c;
         return 0;
     } else {
         csv_errmsg(pRdr, "out of memory");
@@ -429,15 +428,15 @@ static int NOINLINE csv_resize_and_append(
     }
 }
 
-/* Append a single character to the CsvReader.zz[] array.
+/* Append a single character to the CsvReader.pBuf[] array.
 ** Return 0 on success and non-zero if there is an OOM error */
 static int csv_append(
     CsvReader * pRdr,
     char c
 ) {
-    if (pRdr->nn >= pRdr->nAlloc - 1)
+    if (pRdr->nUsed >= pRdr->nAlloced - 1)
         return csv_resize_and_append(pRdr, c);
-    pRdr->zz[pRdr->nn++] = c;
+    pRdr->pBuf[pRdr->nUsed++] = c;
     return 0;
 }
 
@@ -445,7 +444,7 @@ static int csv_append(
 ** with the option of having a separator other than ",".
 **
 **   +  Input comes from pRdr->in.
-**   +  Store results in pRdr->zz of length pRdr->nn.  Space to hold pRdr->zz comes
+**   +  Store results in pRdr->pBuf of length pRdr->nUsed.  Space to hold pRdr->pBuf comes
 **      from sqlite3_malloc64().
 **   +  Keep track of the line number in pRdr->nLine.
 **   +  Store the character that terminates the field in pRdr->cTerm.  Store
@@ -458,7 +457,7 @@ static char *csv_read_one_field(
     CsvReader * pRdr
 ) {
     int c;
-    pRdr->nn = 0;
+    pRdr->nUsed = 0;
     c = csv_getc(pRdr);
     if (c == EOF) {
         pRdr->cTerm = EOF;
@@ -486,8 +485,8 @@ static char *csv_read_one_field(
                     || (c == EOF && pc == '"')
                     ) {
                     while (1) {
-                        pRdr->nn--;
-                        if (pRdr->zz[pRdr->nn] == '"') {
+                        pRdr->nUsed--;
+                        if (pRdr->pBuf[pRdr->nUsed] == '"') {
                             break;
                         }
                     }
@@ -523,15 +522,15 @@ static char *csv_read_one_field(
         }
         if (c == '\n') {
             pRdr->nLine++;
-            if (pRdr->nn > 0 && pRdr->zz[pRdr->nn - 1] == '\r')
-                pRdr->nn--;
+            if (pRdr->nUsed > 0 && pRdr->pBuf[pRdr->nUsed - 1] == '\r')
+                pRdr->nUsed--;
         }
         pRdr->cTerm = (char) c;
     }
-    if (pRdr->zz)
-        pRdr->zz[pRdr->nn] = 0;
+    if (pRdr->pBuf)
+        pRdr->pBuf[pRdr->nUsed] = 0;
     pRdr->bNotFirst = 1;
-    return pRdr->zz;
+    return pRdr->pBuf;
 }
 
 /*
@@ -549,43 +548,43 @@ static int csvtabDisconnect(
 /* Skip leading whitespace.  Return a pointer to the first non-whitespace
 ** character, or to the zero terminator if the string has only whitespace */
 static const char *csv_skip_whitespace(
-    const char *zz
+    const char *buf
 ) {
-    while (isspace((unsigned char) zz[0]))
-        zz++;
-    return zz;
+    while (isspace((unsigned char) buf[0]))
+        buf++;
+    return buf;
 }
 
-/* Remove trailing whitespace from the end of string zz[] */
+/* Remove trailing whitespace from the end of string buf[] */
 static void csv_trim_whitespace(
-    char *zz
+    char *buf
 ) {
-    size_t n = strlen(zz);
-    while (n > 0 && isspace((unsigned char) zz[n]))
+    size_t n = strlen(buf);
+    while (n > 0 && isspace((unsigned char) buf[n]))
         n--;
-    zz[n] = 0;
+    buf[n] = 0;
 }
 
 /* Dequote the string */
 static void csv_dequote(
-    char *zz
+    char *buf
 ) {
     int jj;
-    char cQuote = zz[0];
+    char cQuote = buf[0];
     size_t ii,
      n;
 
     if (cQuote != '\'' && cQuote != '"')
         return;
-    n = strlen(zz);
-    if (n < 2 || zz[n - 1] != zz[0])
+    n = strlen(buf);
+    if (n < 2 || buf[n - 1] != buf[0])
         return;
     for (ii = 1, jj = 0; ii < n - 1; ii++) {
-        if (zz[ii] == cQuote && zz[ii + 1] == cQuote)
+        if (buf[ii] == cQuote && buf[ii + 1] == cQuote)
             ii++;
-        zz[jj++] = zz[ii];
+        buf[jj++] = buf[ii];
     }
-    zz[jj] = 0;
+    buf[jj] = 0;
 }
 
 /* Check to see if the string is of the form:  "TAG = VALUE" with optional
@@ -595,15 +594,15 @@ static void csv_dequote(
 static const char *csv_parameter(
     const char *zTag,
     int nTag,
-    const char *zz
+    const char *buf
 ) {
-    zz = csv_skip_whitespace(zz);
-    if (strncmp(zTag, zz, nTag) != 0)
+    buf = csv_skip_whitespace(buf);
+    if (strncmp(zTag, buf, nTag) != 0)
         return 0;
-    zz = csv_skip_whitespace(zz + nTag);
-    if (zz[0] != '=')
+    buf = csv_skip_whitespace(buf + nTag);
+    if (buf[0] != '=')
         return 0;
-    return csv_skip_whitespace(zz + 1);
+    return csv_skip_whitespace(buf + 1);
 }
 
 /* Decode a parameter that requires a dequoted string.
@@ -641,17 +640,18 @@ static int csv_string_parameter(
 ** we cannot really tell.
 */
 static int csv_boolean(
-    const char *zz
+    const char *buf
 ) {
-    if (sqlite3_stricmp("yes", zz) == 0
-        || sqlite3_stricmp("on", zz) == 0
-        || sqlite3_stricmp("true", zz) == 0 || (zz[0] == '1' && zz[1] == 0)
+    if (sqlite3_stricmp("yes", buf) == 0
+        || sqlite3_stricmp("on", buf) == 0
+        || sqlite3_stricmp("true", buf) == 0 || (buf[0] == '1' && buf[1] == 0)
         ) {
         return 1;
     }
-    if (sqlite3_stricmp("no", zz) == 0
-        || sqlite3_stricmp("off", zz) == 0
-        || sqlite3_stricmp("false", zz) == 0 || (zz[0] == '0' && zz[1] == 0)
+    if (sqlite3_stricmp("no", buf) == 0
+        || sqlite3_stricmp("off", buf) == 0
+        || sqlite3_stricmp("false", buf) == 0 || (buf[0] == '0'
+            && buf[1] == 0)
         ) {
         return 0;
     }
@@ -666,22 +666,22 @@ static int csv_boolean(
 static int csv_boolean_parameter(
     const char *zTag,           /* Tag we are looking for */
     int nTag,                   /* Size of the tag in bytes */
-    const char *zz,             /* Input parameter */
+    const char *buf,            /* Input parameter */
     int *pValue                 /* Write boolean value here */
 ) {
     int b;
-    zz = csv_skip_whitespace(zz);
-    if (strncmp(zTag, zz, nTag) != 0)
+    buf = csv_skip_whitespace(buf);
+    if (strncmp(zTag, buf, nTag) != 0)
         return 0;
-    zz = csv_skip_whitespace(zz + nTag);
-    if (zz[0] == 0) {
+    buf = csv_skip_whitespace(buf + nTag);
+    if (buf[0] == 0) {
         *pValue = 1;
         return 1;
     }
-    if (zz[0] != '=')
+    if (buf[0] != '=')
         return 0;
-    zz = csv_skip_whitespace(zz + 1);
-    b = csv_boolean(zz);
+    buf = csv_skip_whitespace(buf + 1);
+    b = csv_boolean(buf);
     if (b >= 0) {
         *pValue = b;
         return 1;
@@ -730,16 +730,16 @@ static int csvtabConnect(
     memset(&sRdr, 0, sizeof(sRdr));
     memset(azPValue, 0, sizeof(azPValue));
     for (ii = 3; ii < argc; ii++) {
-        const char *zz = argv[ii];
+        const char *buf = argv[ii];
         const char *zValue;
         for (jj = 0; jj < sizeof(azParam) / sizeof(azParam[0]); jj++) {
-            if (csv_string_parameter(&sRdr, azParam[jj], zz, &azPValue[jj]))
+            if (csv_string_parameter(&sRdr, azParam[jj], buf, &azPValue[jj]))
                 break;
         }
         if (jj < sizeof(azParam) / sizeof(azParam[0])) {
             if (sRdr.zErr[0])
                 goto csvtab_connect_error;
-        } else if ((zValue = csv_parameter("columns", 7, zz)) != 0) {
+        } else if ((zValue = csv_parameter("columns", 7, buf)) != 0) {
             if (nCol > 0) {
                 csv_errmsg(&sRdr, "more than one 'columns' parameter");
                 goto csvtab_connect_error;
@@ -750,7 +750,7 @@ static int csvtabConnect(
                 goto csvtab_connect_error;
             }
         } else {
-            csv_errmsg(&sRdr, "bad parameter: '%s'", zz);
+            csv_errmsg(&sRdr, "bad parameter: '%s'", buf);
             goto csvtab_connect_error;
         }
     }
@@ -775,9 +775,9 @@ static int csvtabConnect(
     sqlite3_str_appendf(pStr, "CREATE TABLE x(");
     // read columns from first row
     while (1) {
-        char *zz = csv_read_one_field(&sRdr);
+        char *buf = csv_read_one_field(&sRdr);
         if ((nCol > 0 && iCol < nCol) || nCol < 0) {
-            sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", zSep, zz);
+            sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", zSep, buf);
             zSep = ",";
             iCol++;
         }
@@ -924,16 +924,16 @@ static int csvtabNext(
     CsvCursor *pCur = (CsvCursor *) cur;
     CsvTable *pTab = (CsvTable *) cur->pVtab;
     int ii = 0;
-    char *zz;
+    char *buf;
     while (1) {
-        zz = csv_read_one_field(&pCur->rdr);
-        if (zz == 0) {
+        buf = csv_read_one_field(&pCur->rdr);
+        if (buf == 0) {
             break;
         }
         if (ii < pTab->nCol) {
-            if (pCur->aLen[ii] < pCur->rdr.nn + 1) {
+            if (pCur->aLen[ii] < pCur->rdr.nUsed + 1) {
                 char *zNew =
-                    sqlite3_realloc64(pCur->azVal[ii], pCur->rdr.nn + 1);
+                    sqlite3_realloc64(pCur->azVal[ii], pCur->rdr.nUsed + 1);
 /* Transfer error message text from a reader into a CsvTable */
                 if (zNew == 0) {
                     csv_errmsg(&pCur->rdr, "out of memory");
@@ -943,16 +943,16 @@ static int csvtabNext(
                     break;
                 }
                 pCur->azVal[ii] = zNew;
-                pCur->aLen[ii] = pCur->rdr.nn + 1;
+                pCur->aLen[ii] = pCur->rdr.nUsed + 1;
             }
-            memcpy(pCur->azVal[ii], zz, pCur->rdr.nn + 1);
+            memcpy(pCur->azVal[ii], buf, pCur->rdr.nUsed + 1);
             ii++;
         }
         if (pCur->rdr.cTerm != ',') {
             break;
         }
     }
-    if (zz == 0 || (pCur->rdr.cTerm == EOF && ii < pTab->nCol)) {
+    if (buf == 0 || (pCur->rdr.cTerm == EOF && ii < pTab->nCol)) {
         pCur->iRowid = -1;
     } else {
         pCur->iRowid++;
@@ -1094,13 +1094,13 @@ SQLMATH_API int dbExec(
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
-    // init str99->buf
-    str99->buf = ALLOCM(SIZEOF_BUFFER_DEFAULT);
-    if (str99->buf == NULL) {
+    // init str99->pBuf
+    str99->pBuf = ALLOCM(SIZEOF_BUFFER_DEFAULT);
+    if (str99->pBuf == NULL) {
         errcode = STR99_NOMEM;
         goto label_error;
     }
-    str99->alloced = SIZEOF_BUFFER_DEFAULT;
+    str99->nAlloced = SIZEOF_BUFFER_DEFAULT;
     // bracket database [
     STR99_APPEND_CHAR('[');
     // loop over each table
@@ -1126,7 +1126,7 @@ SQLMATH_API int dbExec(
             }
             // insert row of column-names
             if (nCol == -1) {
-                if (str99->used > 1) {
+                if (str99->nUsed > 1) {
                     STR99_APPEND_CHAR(',');
                     STR99_APPEND_CHAR('\n');
                     STR99_APPEND_CHAR('\n');
@@ -1196,19 +1196,19 @@ SQLMATH_API int dbExec(
     STR99_APPEND_CHAR(']');
     STR99_APPEND_CHAR('\n');
     STR99_APPEND_CHAR('\x00');
-    // shrink str99->buf to str99->used
-    zTmp = (const char *) ALLOCR(str99->buf, str99->used);
+    // shrink str99->pBuf to str99->nUsed
+    zTmp = (const char *) ALLOCR(str99->pBuf, str99->nUsed);
     if (zTmp == NULL) {
         errcode = STR99_NOMEM;
     } else {
-        str99->buf = (char *) zTmp;
-        str99->alloced = str99->used;
+        str99->pBuf = (char *) zTmp;
+        str99->nAlloced = str99->nUsed;
     }
   label_error:
     // handle errcode
     if (errcode != SQLITE_OK) {
-        if (str99->buf != NULL) {
-            ALLOCF(str99->buf);
+        if (str99->pBuf != NULL) {
+            ALLOCF(str99->pBuf);
         }
         switch (errcode) {
         case STR99_NOMEM:
@@ -1224,8 +1224,8 @@ SQLMATH_API int dbExec(
         sqlite3_mutex_leave(sqlite3_db_mutex(db));
         return errcode;
     }
-    *pAlloced = str99->alloced;
-    *pzBuf = str99->buf;
+    *pAlloced = str99->nAlloced;
+    *pzBuf = str99->pBuf;
     // mutext leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
     return 0;
