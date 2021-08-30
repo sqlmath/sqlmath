@@ -535,12 +535,12 @@ static char *csv_read_one_field(
     return pRdr->zBuf;
 }
 
-/*
-** This method is the destructor fo a CsvTable object.
-*/
 static int csvtabDisconnect(
     sqlite3_vtab * pVtab
 ) {
+/*
+** This method is the destructor for a CsvTable object.
+*/
     CsvTable *pTab = (CsvTable *) pVtab;
     sqlite3_free(pTab->zData);
     sqlite3_free(pTab);
@@ -1009,10 +1009,6 @@ static int csvtabEof(
     return pCur->iRowid < 0;
 }
 
-/*
-** Only a full table scan is supported.  So xFilter simply rewinds to
-** the beginning.
-*/
 static int csvtabFilter(
     sqlite3_vtab_cursor * pVtabCursor,
     int idxNum,
@@ -1020,6 +1016,10 @@ static int csvtabFilter(
     int argc,
     sqlite3_value ** argv
 ) {
+/*
+** Only a full table scan is supported.  So xFilter simply rewinds to
+** the beginning.
+*/
     UNUSED(argc);
     UNUSED(argv);
     UNUSED(idxNum);
@@ -1027,19 +1027,20 @@ static int csvtabFilter(
     // declare var
     CsvCursor *pCur = (CsvCursor *) pVtabCursor;
     CsvTable *pTab = (CsvTable *) pVtabCursor->pVtab;
+    // reset
     pCur->iRowid = 0;
     pCur->rdr.iIn = pTab->iStart;
     return csvtabNext(pVtabCursor);
 }
 
-/*
-** Only a forward full table scan is supported.  xBestIndex is mostly
-** a no-op.
-*/
 static int csvtabBestIndex(
     sqlite3_vtab * tab,
     sqlite3_index_info * pIdxInfo
 ) {
+/*
+** Only a forward full table scan is supported.  xBestIndex is mostly
+** a no-op.
+*/
     UNUSED(tab);
     pIdxInfo->estimatedCost = 1000000;
     return SQLITE_OK;
