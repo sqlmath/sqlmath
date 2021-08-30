@@ -27,8 +27,6 @@ static const sqlite3_api_routines *sqlite3_api;
 #define SIZEOF_BUFFER_DEFAULT 1024
 #define SQLITE_MAX_LENGTH 1000000000
 #define SQLMATH_API
-#define STR99_NOMEM -1
-#define STR99_TOOBIG -2
 #define UNUSED(x) (void)(x)
 /*
 ** A macro to hint to the compiler that a function should not be
@@ -41,6 +39,14 @@ static const sqlite3_api_routines *sqlite3_api;
 #else
 #  define NOINLINE
 #endif
+
+
+/*
+file sqlmath_str99.c
+*/
+// dynamically growable string
+#define STR99_NOMEM -1
+#define STR99_TOOBIG -2
 // this macro will append <zz> to <str99> or goto label_error
 #define STR99_APPEND_JSON(zz, len) \
     errcode = str99AppendJson(str99, zz, len, errcode); \
@@ -51,6 +57,199 @@ static const sqlite3_api_routines *sqlite3_api;
     errcode = str99AppendRaw(str99, zz, len, errcode); \
     if (errcode != SQLITE_OK && errcode != SQLITE_ROW && \
         errcode != SQLITE_DONE) {goto label_error;}
+
+typedef struct Str99 {
+    char *buf;
+    int alloced;
+    int used;
+} Str99;
+
+static int NOINLINE str99Resize(
+    Str99 * str99,
+    const char *zz,
+    int nn,
+    int errcode
+);
+
+static int str99AppendRaw(
+    Str99 * str99,
+    const char *zz,
+    int nn,
+    int errcode
+) {
+/*
+** Append <nn> bytes of text from <zz> to <str99->buf>.
+** Increase the size of the memory allocation for <str99->buf> if necessary.
+*/
+    // write <zz> to <str99->buf> if space available
+    if (0 <= nn && 0 <= str99->used && str99->used + nn <= str99->alloced) {
+        memcpy(str99->buf + str99->used, zz, nn);
+        str99->used += nn;
+        return errcode;
+    }
+    return str99Resize(str99, zz, nn, errcode);
+}
+
+static int NOINLINE str99Resize(
+    Str99 * str99,
+    const char *zz,
+    int nn,
+    int errcode
+) {
+/*
+** Increase the size of the memory allocation for <str99->buf>.
+*/
+    // declare var
+    char *zTmp;
+    int nAlloc;
+    // sanity check
+    if (errcode != SQLITE_OK && errcode != SQLITE_ROW) {
+        return errcode;
+    }
+    // check SQLITE_MAX_LENGTH
+    if (nn < 0 || nn > SQLITE_MAX_LENGTH) {
+        return STR99_TOOBIG;
+    }
+    // grow nalloc exponentially
+    nAlloc = str99->alloced;
+    while (nAlloc < str99->used + nn) {
+        nAlloc *= 2;
+        if (nAlloc > SQLITE_MAX_LENGTH) {
+            return STR99_TOOBIG;
+        }
+    }
+    zTmp = ALLOCR(str99->buf, nAlloc);
+    if (zTmp == NULL) {
+        return STR99_NOMEM;
+    }
+    str99->alloced = nAlloc;
+    str99->buf = zTmp;
+    // recurse
+    return str99AppendRaw(str99, zz, nn, errcode);
+}
+
+static int str99AppendJson(
+    Str99 * str99,
+    const char *zz,
+    int nn,
+    int errcode
+) {
+/*
+** Append <nn> bytes of text from <zz> to <str99->buf> with json-escaping.
+** Increase the size of the memory allocation for <str99->buf> if necessary.
+*/
+    // declare var
+    const char *zz2 = zz + nn;
+    // double-quote open
+    STR99_APPEND_RAW("\"", 1);
+    while (zz < zz2) {
+        switch (*zz) {
+        case '\x00':
+            STR99_APPEND_RAW("\\u0000", 6);
+            break;
+        case '\x01':
+            STR99_APPEND_RAW("\\u0001", 6);
+            break;
+        case '\x02':
+            STR99_APPEND_RAW("\\u0002", 6);
+            break;
+        case '\x03':
+            STR99_APPEND_RAW("\\u0003", 6);
+            break;
+        case '\x04':
+            STR99_APPEND_RAW("\\u0004", 6);
+            break;
+        case '\x05':
+            STR99_APPEND_RAW("\\u0005", 6);
+            break;
+        case '\x06':
+            STR99_APPEND_RAW("\\u0006", 6);
+            break;
+        case '\x07':
+            STR99_APPEND_RAW("\\u0007", 6);
+            break;
+        case '\x08':
+            STR99_APPEND_RAW("\\b", 2);
+            break;
+        case '\x09':
+            STR99_APPEND_RAW("\\t", 2);
+            break;
+        case '\x0a':
+            STR99_APPEND_RAW("\\n", 2);
+            break;
+        case '\x0b':
+            STR99_APPEND_RAW("\\u000b", 6);
+            break;
+        case '\x0c':
+            STR99_APPEND_RAW("\\f", 2);
+            break;
+        case '\x0d':
+            STR99_APPEND_RAW("\\r", 2);
+            break;
+        case '\x0e':
+            STR99_APPEND_RAW("\\u000e", 6);
+            break;
+        case '\x0f':
+            STR99_APPEND_RAW("\\u000f", 6);
+            break;
+        case '\x10':
+            STR99_APPEND_RAW("\\u0010", 6);
+            break;
+        case '\x11':
+            STR99_APPEND_RAW("\\u0011", 6);
+            break;
+        case '\x12':
+            STR99_APPEND_RAW("\\u0012", 6);
+            break;
+        case '\x13':
+            STR99_APPEND_RAW("\\u0013", 6);
+            break;
+        case '\x14':
+            STR99_APPEND_RAW("\\u0014", 6);
+            break;
+        case '\x15':
+            STR99_APPEND_RAW("\\u0015", 6);
+            break;
+        case '\x16':
+            STR99_APPEND_RAW("\\u0016", 6);
+            break;
+        case '\x17':
+            STR99_APPEND_RAW("\\u0017", 6);
+            break;
+        case '\x18':
+            STR99_APPEND_RAW("\\u0018", 6);
+            break;
+        case '\x19':
+            STR99_APPEND_RAW("\\u0019", 6);
+            break;
+        case '\x1a':
+            STR99_APPEND_RAW("\\u001a", 6);
+            break;
+        case '\x1b':
+            STR99_APPEND_RAW("\\u001b", 6);
+            break;
+        case '\x1c':
+            STR99_APPEND_RAW("\\u001c", 6);
+            break;
+        case '\x1d':
+            STR99_APPEND_RAW("\\u001d", 6);
+            break;
+        case '\x22':
+            STR99_APPEND_RAW("\\\"", 2);
+            break;
+        case '\x5c':
+            STR99_APPEND_RAW("\\\\", 2);
+            break;
+        default:
+            STR99_APPEND_RAW(zz, 1);
+        }
+        zz += 1;
+    }
+    // double-quote close
+    return STR99_APPEND_RAW("\"", 1);
+  label_error:
+    return 0;
+}
 
 
 /*
@@ -839,199 +1038,6 @@ static sqlite3_module CsvModule = {
 /*
 file sqlmath_dbExec.c
 */
-// dynamically growable string
-typedef struct Str99 {
-    char *buf;
-    int alloced;
-    int used;
-} Str99;
-
-static int NOINLINE str99Resize(
-    Str99 * str99,
-    const char *zz,
-    int nn,
-    int errcode
-);
-
-static int str99AppendRaw(
-    Str99 * str99,
-    const char *zz,
-    int nn,
-    int errcode
-) {
-/*
-** Append <nn> bytes of text from <zz> to <str99->buf>.
-** Increase the size of the memory allocation for <str99->buf> if necessary.
-*/
-    // write <zz> to <str99->buf> if space available
-    if (0 <= nn && 0 <= str99->used && str99->used + nn <= str99->alloced) {
-        memcpy(str99->buf + str99->used, zz, nn);
-        str99->used += nn;
-        return errcode;
-    }
-    return str99Resize(str99, zz, nn, errcode);
-}
-
-static int NOINLINE str99Resize(
-    Str99 * str99,
-    const char *zz,
-    int nn,
-    int errcode
-) {
-/*
-** Increase the size of the memory allocation for <str99->buf>.
-*/
-    // declare var
-    char *zTmp;
-    int nAlloc;
-    // sanity check
-    if (errcode != SQLITE_OK && errcode != SQLITE_ROW) {
-        return errcode;
-    }
-    // check SQLITE_MAX_LENGTH
-    if (nn < 0 || nn > SQLITE_MAX_LENGTH) {
-        return STR99_TOOBIG;
-    }
-    // grow nalloc exponentially
-    nAlloc = str99->alloced;
-    while (nAlloc < str99->used + nn) {
-        nAlloc *= 2;
-        if (nAlloc > SQLITE_MAX_LENGTH) {
-            return STR99_TOOBIG;
-        }
-    }
-    zTmp = ALLOCR(str99->buf, nAlloc);
-    if (zTmp == NULL) {
-        return STR99_NOMEM;
-    }
-    str99->alloced = nAlloc;
-    str99->buf = zTmp;
-    // recurse
-    return str99AppendRaw(str99, zz, nn, errcode);
-}
-
-static int str99AppendJson(
-    Str99 * str99,
-    const char *zz,
-    int nn,
-    int errcode
-) {
-/*
-** Append <nn> bytes of text from <zz> to <str99->buf> with json-escaping.
-** Increase the size of the memory allocation for <str99->buf> if necessary.
-*/
-    // declare var
-    const char *zz2 = zz + nn;
-    // double-quote open
-    STR99_APPEND_RAW("\"", 1);
-    while (zz < zz2) {
-        switch (*zz) {
-        case '\x00':
-            STR99_APPEND_RAW("\\u0000", 6);
-            break;
-        case '\x01':
-            STR99_APPEND_RAW("\\u0001", 6);
-            break;
-        case '\x02':
-            STR99_APPEND_RAW("\\u0002", 6);
-            break;
-        case '\x03':
-            STR99_APPEND_RAW("\\u0003", 6);
-            break;
-        case '\x04':
-            STR99_APPEND_RAW("\\u0004", 6);
-            break;
-        case '\x05':
-            STR99_APPEND_RAW("\\u0005", 6);
-            break;
-        case '\x06':
-            STR99_APPEND_RAW("\\u0006", 6);
-            break;
-        case '\x07':
-            STR99_APPEND_RAW("\\u0007", 6);
-            break;
-        case '\x08':
-            STR99_APPEND_RAW("\\b", 2);
-            break;
-        case '\x09':
-            STR99_APPEND_RAW("\\t", 2);
-            break;
-        case '\x0a':
-            STR99_APPEND_RAW("\\n", 2);
-            break;
-        case '\x0b':
-            STR99_APPEND_RAW("\\u000b", 6);
-            break;
-        case '\x0c':
-            STR99_APPEND_RAW("\\f", 2);
-            break;
-        case '\x0d':
-            STR99_APPEND_RAW("\\r", 2);
-            break;
-        case '\x0e':
-            STR99_APPEND_RAW("\\u000e", 6);
-            break;
-        case '\x0f':
-            STR99_APPEND_RAW("\\u000f", 6);
-            break;
-        case '\x10':
-            STR99_APPEND_RAW("\\u0010", 6);
-            break;
-        case '\x11':
-            STR99_APPEND_RAW("\\u0011", 6);
-            break;
-        case '\x12':
-            STR99_APPEND_RAW("\\u0012", 6);
-            break;
-        case '\x13':
-            STR99_APPEND_RAW("\\u0013", 6);
-            break;
-        case '\x14':
-            STR99_APPEND_RAW("\\u0014", 6);
-            break;
-        case '\x15':
-            STR99_APPEND_RAW("\\u0015", 6);
-            break;
-        case '\x16':
-            STR99_APPEND_RAW("\\u0016", 6);
-            break;
-        case '\x17':
-            STR99_APPEND_RAW("\\u0017", 6);
-            break;
-        case '\x18':
-            STR99_APPEND_RAW("\\u0018", 6);
-            break;
-        case '\x19':
-            STR99_APPEND_RAW("\\u0019", 6);
-            break;
-        case '\x1a':
-            STR99_APPEND_RAW("\\u001a", 6);
-            break;
-        case '\x1b':
-            STR99_APPEND_RAW("\\u001b", 6);
-            break;
-        case '\x1c':
-            STR99_APPEND_RAW("\\u001c", 6);
-            break;
-        case '\x1d':
-            STR99_APPEND_RAW("\\u001d", 6);
-            break;
-        case '\x22':
-            STR99_APPEND_RAW("\\\"", 2);
-            break;
-        case '\x5c':
-            STR99_APPEND_RAW("\\\\", 2);
-            break;
-        default:
-            STR99_APPEND_RAW(zz, 1);
-        }
-        zz += 1;
-    }
-    // double-quote close
-    return STR99_APPEND_RAW("\"", 1);
-  label_error:
-    return 0;
-}
 
 SQLMATH_API int dbExec(
     sqlite3 * db,               /* The database on which the SQL executes */
