@@ -337,7 +337,6 @@ file sqlmath_blobtable.c
 typedef struct CsvTable {
     sqlite3_vtab base;          /* Base class.  Must be first */
     char *zData;                /* Raw CSV data in lieu of zFilename */
-    int nAlloced;               /* Space allocated for zBuf[] */
     int nUsed;                  /* Number of used-bytes in zBuf[] */
     int iStart;                 /* Offset to start of data in zFilename */
     int nCol;                   /* Number of columns in the CSV file */
@@ -345,6 +344,7 @@ typedef struct CsvTable {
 
 /* A context object used when read a CSV file. */
 typedef struct CsvReader {
+    //!! sqlite3_vtab *pTab;
     char *zBuf;                 /* Accumulated string */
     int nAlloced;               /* Space allocated for zBuf[] */
     int nUsed;                  /* Number of used-bytes in zBuf[] */
@@ -541,9 +541,9 @@ static char *csv_read_one_field(
 static int csvtabDisconnect(
     sqlite3_vtab * pVtab
 ) {
-    CsvTable *pRdr = (CsvTable *) pVtab;
-    sqlite3_free(pRdr->zData);
-    sqlite3_free(pRdr);
+    CsvTable *pTab = (CsvTable *) pVtab;
+    sqlite3_free(pTab->zData);
+    sqlite3_free(pTab);
     return SQLITE_OK;
 }
 
@@ -803,6 +803,7 @@ static int csvtabConnect(
         goto csvtab_connect_oom;
 
     pNew->zData = CSV_DATA;
+    pNew->nUsed = strlen(CSV_DATA);
     CSV_DATA = 0;
     // skip first row of headers
     pNew->iStart = (int) sRdr.iIn;
@@ -911,7 +912,7 @@ static int csvtabOpen(
 
     //!! csv_reader_open(&pCur->rdr, pTab->zData);
     pCur->rdr.zIn = (char *) pTab->zData;
-    pCur->rdr.nIn = strlen(pTab->zData);
+    pCur->rdr.nIn = pTab->nUsed;
 
     return SQLITE_OK;
 }
