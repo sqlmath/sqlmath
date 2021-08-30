@@ -281,20 +281,7 @@ static char *csv_read_one_field(
     } else {
         /* If this is the first field being parsed and it begins with the
          ** UTF-8 BOM  (0xEF BB BF) then skip the BOM */
-        if ((c & 0xff) == 0xef && pRdr->bNotFirst == 0) {
-            csv_append(pRdr, (char) c);
-            c = csv_getc(pRdr);
-            if ((c & 0xff) == 0xbb) {
-                csv_append(pRdr, (char) c);
-                c = csv_getc(pRdr);
-                if ((c & 0xff) == 0xbf) {
-                    pRdr->bNotFirst = 1;
-                    pRdr->nn = 0;
-                    // recurse
-                    return csv_read_one_field(pRdr);
-                }
-            }
-        }
+        // if (...) {...}
         while (c > ',' || (c != EOF && c != ',' && c != '\n')) {
             if (csv_append(pRdr, (char) c))
                 return 0;
