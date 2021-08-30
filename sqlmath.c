@@ -561,10 +561,10 @@ static const char *csv_skip_whitespace(
 static void csv_trim_whitespace(
     char *buf
 ) {
-    size_t n = strlen(buf);
-    while (n > 0 && isspace((unsigned char) buf[n]))
-        n--;
-    buf[n] = 0;
+    size_t nn = strlen(buf);
+    while (nn > 0 && isspace((unsigned char) buf[nn]))
+        nn--;
+    buf[nn] = 0;
 }
 
 /* Dequote the string */
@@ -574,14 +574,14 @@ static void csv_dequote(
     int jj;
     char cQuote = buf[0];
     size_t ii,
-     n;
+     nn;
 
     if (cQuote != '\'' && cQuote != '"')
         return;
-    n = strlen(buf);
-    if (n < 2 || buf[n - 1] != buf[0])
+    nn = strlen(buf);
+    if (nn < 2 || buf[nn - 1] != buf[0])
         return;
-    for (ii = 1, jj = 0; ii < n - 1; ii++) {
+    for (ii = 1, jj = 0; ii < nn - 1; ii++) {
         if (buf[ii] == cQuote && buf[ii + 1] == cQuote)
             ii++;
         buf[jj++] = buf[ii];
@@ -696,10 +696,10 @@ static int csv_boolean_parameter(
 **    filename=FILENAME          Name of file containing CSV content
 **    data=TEXT                  Direct CSV content.
 **    schema=SCHEMA              Alternative CSV schema.
-**    columns=N                  Assume the CSV file contains N columns.
+**    columns=NN                 Assume the CSV file contains NN columns.
 **
 ** If schema= is omitted, then the columns are named "c0", "c1", "c2",
-** and so forth.  If columns=N is omitted, then the file is opened and
+** and so forth.  If columns=NN is omitted, then the file is opened and
 ** the number of columns in the first row is counted to determine the
 ** column count. first row is skipped as header.
 */
