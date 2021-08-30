@@ -281,9 +281,9 @@ static int str99AppendJson(
         zz += 1;
     }
     // double-quote close
-    return STR99_APPEND_RAW("\"", 1);
+    STR99_APPEND_RAW("\"", 1);
   label_error:
-    return 0;
+    return errcode;
 }
 
 
