@@ -43,10 +43,14 @@ static const sqlite3_api_routines *sqlite3_api;
 #endif
 // this macro will append <zz> to <str99> or goto label_error
 #define STR99_APPEND_JSON(zz, len) \
-    if (0 != str99AppendJson(&str99, zz, len, errcode)) {goto label_error;}
+    errcode = str99AppendJson(&str99, zz, len, errcode); \
+    if (errcode != SQLITE_OK && errcode != SQLITE_ROW && \
+        errcode != SQLITE_DONE) {goto label_error;}
 // this macro will json-escape-and-append <zz> to <str99> or goto label_error
 #define STR99_APPEND_RAW(zz, len) \
-    if (0 != str99AppendRaw(&str99, zz, len, errcode)) {goto label_error;}
+    errcode = str99AppendRaw(&str99, zz, len, errcode); \
+    if (errcode != SQLITE_OK && errcode != SQLITE_ROW && \
+        errcode != SQLITE_DONE) {goto label_error;}
 
 
 /*
@@ -877,7 +881,7 @@ static int str99AppendRaw(
     if (0 <= nn && 0 <= str99->used && str99->used + nn <= str99->alloced) {
         memcpy(str99->buf + str99->used, zz, nn);
         str99->used += nn;
-        return 0;
+        return errcode;
     }
     return str99Resize(str99, zz, nn, errcode);
 }
