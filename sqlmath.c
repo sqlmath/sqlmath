@@ -47,14 +47,19 @@ file sqlmath_str99.c
 // dynamically growable string
 #define STR99_NOMEM -1
 #define STR99_TOOBIG -2
-// this macro will append <zz> to <str99> or goto label_error
-#define STR99_APPEND_JSON(zz, len) \
-    errcode = str99AppendJson(str99, zz, len, errcode); \
+// this macro will append <chr> to <str99> or goto label_error
+#define STR99_APPEND_CHAR(chr) \
+    errcode = str99AppendChar(str99, chr, errcode); \
     if (errcode != SQLITE_OK && errcode != SQLITE_ROW && \
         errcode != SQLITE_DONE) {goto label_error;}
 // this macro will json-escape-and-append <zz> to <str99> or goto label_error
-#define STR99_APPEND_RAW(zz, len) \
-    errcode = str99AppendRaw(str99, zz, len, errcode); \
+#define STR99_APPEND_JSON(zz, nn) \
+    errcode = str99AppendJson(str99, zz, nn, errcode); \
+    if (errcode != SQLITE_OK && errcode != SQLITE_ROW && \
+        errcode != SQLITE_DONE) {goto label_error;}
+// this macro will append <zz> to <str99> or goto label_error
+#define STR99_APPEND_RAW(zz, nn) \
+    errcode = str99AppendRaw(str99, zz, nn, errcode); \
     if (errcode != SQLITE_OK && errcode != SQLITE_ROW && \
         errcode != SQLITE_DONE) {goto label_error;}
 
@@ -71,6 +76,25 @@ static int NOINLINE str99Resize(
     int errcode
 );
 
+static int str99AppendChar(
+    Str99 * str99,
+    const char chr,
+    int errcode
+) {
+/*
+** Append <chr> to <str99->buf>.
+** Increase the size of the memory allocation for <str99->buf> if necessary.
+*/
+    // write <zz> to <str99->buf> if space available
+    if (str99->used < str99->alloced) {
+        str99->buf[str99->used] = chr;
+        str99->used += 1;
+        return errcode;
+    }
+    // else resize and retry
+    return str99Resize(str99, &chr, 1, errcode);
+}
+
 static int str99AppendRaw(
     Str99 * str99,
     const char *zz,
@@ -81,12 +105,16 @@ static int str99AppendRaw(
 ** Append <nn> bytes of text from <zz> to <str99->buf>.
 ** Increase the size of the memory allocation for <str99->buf> if necessary.
 */
+    if (nn == 0) {
+        return errcode;
+    }
     // write <zz> to <str99->buf> if space available
-    if (0 <= nn && 0 <= str99->used && str99->used + nn <= str99->alloced) {
+    if (0 < nn && str99->used + nn <= str99->alloced) {
         memcpy(str99->buf + str99->used, zz, nn);
         str99->used += nn;
         return errcode;
     }
+    // else resize and retry
     return str99Resize(str99, zz, nn, errcode);
 }
 
@@ -307,8 +335,7 @@ typedef struct CsvTable {
 } CsvTable;
 
 /* A context object used when read a CSV file. */
-typedef struct CsvReader CsvReader;
-struct CsvReader {
+typedef struct CsvReader {
     CsvTable base;              /* Base class.  Must be first */
     char *zz;                   /* Accumulated text for a field */
     int nn;                     /* Number of bytes in zz */
@@ -320,7 +347,7 @@ struct CsvReader {
     size_t nIn;                 /* Number of characters in the input buffer */
     char *zIn;                  /* The input buffer */
     char zErr[CSV_MXERR];       /* Error message */
-};
+} CsvReader;
 
 /* A cursor for the CSV virtual table */
 typedef struct CsvCursor {
@@ -466,8 +493,9 @@ static char *csv_read_one_field(
                     break;
                 }
                 if (c == EOF) {
-                    csv_errmsg(pRdr, "line %d: unterminated %c-quoted field\n",
-                        startLine, '"');
+                    csv_errmsg(pRdr,
+                        "line %d: unterminated %c-quoted field\n", startLine,
+                        '"');
                     pRdr->cTerm = (char) c;
                     break;
                 }
@@ -578,7 +606,7 @@ static const char *csv_parameter(
 ** is left in pRdr->zErr.  If there are no errors, pRdr->zErr[0]==0.
 */
 static int csv_string_parameter(
-    CsvReader * pRdr,             /* Leave error message here, if there is one */
+    CsvReader * pRdr,           /* Leave error message here, if there is one */
     const char *zParam,         /* Parameter we are checking for */
     const char *zArg,           /* Raw text of the virtual table argment */
     char **pzVal                /* Write the dequoted string value here */
