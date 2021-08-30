@@ -936,112 +936,114 @@ static int str99AppendJson(
     // declare var
     const char *zz2 = zz + nn;
     // double-quote open
-    str99AppendRaw(str99, "\"", 1, errcode);
+    STR99_APPEND_RAW("\"", 1);
     while (zz < zz2) {
         switch (*zz) {
         case '\x00':
-            str99AppendRaw(str99, "\\u0000", 6, errcode);
+            STR99_APPEND_RAW("\\u0000", 6);
             break;
         case '\x01':
-            str99AppendRaw(str99, "\\u0001", 6, errcode);
+            STR99_APPEND_RAW("\\u0001", 6);
             break;
         case '\x02':
-            str99AppendRaw(str99, "\\u0002", 6, errcode);
+            STR99_APPEND_RAW("\\u0002", 6);
             break;
         case '\x03':
-            str99AppendRaw(str99, "\\u0003", 6, errcode);
+            STR99_APPEND_RAW("\\u0003", 6);
             break;
         case '\x04':
-            str99AppendRaw(str99, "\\u0004", 6, errcode);
+            STR99_APPEND_RAW("\\u0004", 6);
             break;
         case '\x05':
-            str99AppendRaw(str99, "\\u0005", 6, errcode);
+            STR99_APPEND_RAW("\\u0005", 6);
             break;
         case '\x06':
-            str99AppendRaw(str99, "\\u0006", 6, errcode);
+            STR99_APPEND_RAW("\\u0006", 6);
             break;
         case '\x07':
-            str99AppendRaw(str99, "\\u0007", 6, errcode);
+            STR99_APPEND_RAW("\\u0007", 6);
             break;
         case '\x08':
-            str99AppendRaw(str99, "\\b", 2, errcode);
+            STR99_APPEND_RAW("\\b", 2);
             break;
         case '\x09':
-            str99AppendRaw(str99, "\\t", 2, errcode);
+            STR99_APPEND_RAW("\\t", 2);
             break;
         case '\x0a':
-            str99AppendRaw(str99, "\\n", 2, errcode);
+            STR99_APPEND_RAW("\\n", 2);
             break;
         case '\x0b':
-            str99AppendRaw(str99, "\\u000b", 6, errcode);
+            STR99_APPEND_RAW("\\u000b", 6);
             break;
         case '\x0c':
-            str99AppendRaw(str99, "\\f", 2, errcode);
+            STR99_APPEND_RAW("\\f", 2);
             break;
         case '\x0d':
-            str99AppendRaw(str99, "\\r", 2, errcode);
+            STR99_APPEND_RAW("\\r", 2);
             break;
         case '\x0e':
-            str99AppendRaw(str99, "\\u000e", 6, errcode);
+            STR99_APPEND_RAW("\\u000e", 6);
             break;
         case '\x0f':
-            str99AppendRaw(str99, "\\u000f", 6, errcode);
+            STR99_APPEND_RAW("\\u000f", 6);
             break;
         case '\x10':
-            str99AppendRaw(str99, "\\u0010", 6, errcode);
+            STR99_APPEND_RAW("\\u0010", 6);
             break;
         case '\x11':
-            str99AppendRaw(str99, "\\u0011", 6, errcode);
+            STR99_APPEND_RAW("\\u0011", 6);
             break;
         case '\x12':
-            str99AppendRaw(str99, "\\u0012", 6, errcode);
+            STR99_APPEND_RAW("\\u0012", 6);
             break;
         case '\x13':
-            str99AppendRaw(str99, "\\u0013", 6, errcode);
+            STR99_APPEND_RAW("\\u0013", 6);
             break;
         case '\x14':
-            str99AppendRaw(str99, "\\u0014", 6, errcode);
+            STR99_APPEND_RAW("\\u0014", 6);
             break;
         case '\x15':
-            str99AppendRaw(str99, "\\u0015", 6, errcode);
+            STR99_APPEND_RAW("\\u0015", 6);
             break;
         case '\x16':
-            str99AppendRaw(str99, "\\u0016", 6, errcode);
+            STR99_APPEND_RAW("\\u0016", 6);
             break;
         case '\x17':
-            str99AppendRaw(str99, "\\u0017", 6, errcode);
+            STR99_APPEND_RAW("\\u0017", 6);
             break;
         case '\x18':
-            str99AppendRaw(str99, "\\u0018", 6, errcode);
+            STR99_APPEND_RAW("\\u0018", 6);
             break;
         case '\x19':
-            str99AppendRaw(str99, "\\u0019", 6, errcode);
+            STR99_APPEND_RAW("\\u0019", 6);
             break;
         case '\x1a':
-            str99AppendRaw(str99, "\\u001a", 6, errcode);
+            STR99_APPEND_RAW("\\u001a", 6);
             break;
         case '\x1b':
-            str99AppendRaw(str99, "\\u001b", 6, errcode);
+            STR99_APPEND_RAW("\\u001b", 6);
             break;
         case '\x1c':
-            str99AppendRaw(str99, "\\u001c", 6, errcode);
+            STR99_APPEND_RAW("\\u001c", 6);
             break;
         case '\x1d':
-            str99AppendRaw(str99, "\\u001d", 6, errcode);
+            STR99_APPEND_RAW("\\u001d", 6);
             break;
         case '\x22':
-            str99AppendRaw(str99, "\\\"", 2, errcode);
+            STR99_APPEND_RAW("\\\"", 2);
             break;
         case '\x5c':
-            str99AppendRaw(str99, "\\\\", 2, errcode);
+            STR99_APPEND_RAW("\\\\", 2);
             break;
         default:
-            str99AppendRaw(str99, zz, 1, errcode);
+            STR99_APPEND_RAW(zz, 1);
         }
         zz += 1;
     }
     // double-quote close
-    return str99AppendRaw(str99, "\"", 1, errcode);
+    return STR99_APPEND_RAW("\"", 1);
+  label_error:
+    return 0;
 }
 
 SQLMATH_API int dbExec(
