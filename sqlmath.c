@@ -1100,7 +1100,7 @@ SQLMATH_API int dbExec(
     }
     str99->alloced = SIZEOF_BUFFER_DEFAULT;
     // bracket database [
-    STR99_APPEND_RAW("[", 1);
+    STR99_APPEND_CHAR('[');
     // loop over each table
     while (1) {
         // ignore whitespace
@@ -1135,14 +1135,14 @@ SQLMATH_API int dbExec(
                 ii = 0;
                 while (ii < nCol) {
                     if (ii > 0) {
-                        STR99_APPEND_RAW(",", 1);
+                        STR99_APPEND_CHAR(',');
                     }
                     zTmp = sqlite3_column_name(pStmt, ii);
                     STR99_APPEND_JSON(zTmp, strlen(zTmp));
                     ii += 1;
                 }
                 // bracket column ]
-                STR99_APPEND_RAW("]", 1);
+                STR99_APPEND_CHAR(']');
             }
             // bracket row [
             STR99_APPEND_RAW(",\n[", 3);
@@ -1150,7 +1150,7 @@ SQLMATH_API int dbExec(
             // loop over each column-value
             while (ii < nCol) {
                 if (ii > 0) {
-                    STR99_APPEND_RAW(",", 1);
+                    STR99_APPEND_CHAR(',');
                 }
                 switch (sqlite3_column_type(pStmt, ii)) {
                     // encode blob as data-uri application/octet-stream
@@ -1175,14 +1175,14 @@ SQLMATH_API int dbExec(
                 ii += 1;
             }
             // bracket row ]
-            STR99_APPEND_RAW("]", 1);
+            STR99_APPEND_CHAR(']');
             if (errcode != SQLITE_ROW) {
                 break;
             }
         }
         if (nCol != -1) {
             // bracket table ]
-            STR99_APPEND_RAW("]", 1);
+            STR99_APPEND_CHAR(']');
         }
     }
     // bracket database ]
