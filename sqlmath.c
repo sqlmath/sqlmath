@@ -448,9 +448,9 @@ typedef struct CsvTable {
 typedef struct CsvReader CsvReader;
 struct CsvReader {
     CsvTable base;              /* Base class.  Must be first */
-    char *z;                    /* Accumulated text for a field */
-    int nn;                     /* Number of bytes in z */
-    int nAlloc;                 /* Space allocated for z[] */
+    char *zz;                    /* Accumulated text for a field */
+    int nn;                     /* Number of bytes in zz */
+    int nAlloc;                 /* Space allocated for zz[] */
     int nLine;                  /* Current line number */
     int bNotFirst;              /* True if prior text has been seen */
     int cTerm;                  /* Char that terminated most recent field */
@@ -473,7 +473,7 @@ static void csv_reader_init(
     CsvReader * pp
 ) {
 /* Initialize a CsvReader object */
-    pp->z = 0;
+    pp->zz = 0;
     pp->nn = 0;
     pp->nAlloc = 0;
     pp->nLine = 0;
@@ -487,7 +487,7 @@ static void csv_reader_reset(
     CsvReader * pp
 ) {
 /* Close and reset a CsvReader object */
-    sqlite3_free(pp->z);
+    sqlite3_free(pp->zz);
     csv_reader_init(pp);
 }
 
@@ -514,18 +514,18 @@ static int csv_getc(
 }
 
 static int NOINLINE csv_resize_and_append(
-/* Increase the size of pp->z and append character c to the end.
+/* Increase the size of pp->zz and append character c to the end.
 ** Return 0 on success and non-zero if there is an OOM error */
     CsvReader * pp,
     char c
 ) {
     char *zNew;
     int nNew = pp->nAlloc * 2 + 100;
-    zNew = sqlite3_realloc64(pp->z, nNew);
+    zNew = sqlite3_realloc64(pp->zz, nNew);
     if (zNew) {
-        pp->z = zNew;
+        pp->zz = zNew;
         pp->nAlloc = nNew;
-        pp->z[pp->nn++] = c;
+        pp->zz[pp->nn++] = c;
         return 0;
     } else {
         csv_errmsg(pp, "out of memory");
@@ -533,7 +533,7 @@ static int NOINLINE csv_resize_and_append(
     }
 }
 
-/* Append a single character to the CsvReader.z[] array.
+/* Append a single character to the CsvReader.zz[] array.
 ** Return 0 on success and non-zero if there is an OOM error */
 static int csv_append(
     CsvReader * pp,
@@ -541,7 +541,7 @@ static int csv_append(
 ) {
     if (pp->nn >= pp->nAlloc - 1)
         return csv_resize_and_append(pp, c);
-    pp->z[pp->nn++] = c;
+    pp->zz[pp->nn++] = c;
     return 0;
 }
 
@@ -549,7 +549,7 @@ static int csv_append(
 ** with the option of having a separator other than ",".
 **
 **   +  Input comes from pp->in.
-**   +  Store results in pp->z of length pp->nn.  Space to hold pp->z comes
+**   +  Store results in pp->zz of length pp->nn.  Space to hold pp->zz comes
 **      from sqlite3_malloc64().
 **   +  Keep track of the line number in pp->nLine.
 **   +  Store the character that terminates the field in pp->cTerm.  Store
@@ -569,8 +569,8 @@ static char *csv_read_one_field(
         return 0;
     }
     if (c == '"') {
-        int pc,
-         ppc;
+        int pc;
+        int ppc;
         int startLine = pp->nLine;
         pc = ppc = 0;
         while (1) {
@@ -591,7 +591,7 @@ static char *csv_read_one_field(
                     ) {
                     while (1) {
                         pp->nn--;
-                        if (pp->z[pp->nn] == '"') {
+                        if (pp->zz[pp->nn] == '"') {
                             break;
                         }
                     }
@@ -638,15 +638,15 @@ static char *csv_read_one_field(
         }
         if (c == '\n') {
             pp->nLine++;
-            if (pp->nn > 0 && pp->z[pp->nn - 1] == '\r')
+            if (pp->nn > 0 && pp->zz[pp->nn - 1] == '\r')
                 pp->nn--;
         }
         pp->cTerm = (char) c;
     }
-    if (pp->z)
-        pp->z[pp->nn] = 0;
+    if (pp->zz)
+        pp->zz[pp->nn] = 0;
     pp->bNotFirst = 1;
-    return pp->z;
+    return pp->zz;
 }
 
 /*
@@ -664,43 +664,43 @@ static int csvtabDisconnect(
 /* Skip leading whitespace.  Return a pointer to the first non-whitespace
 ** character, or to the zero terminator if the string has only whitespace */
 static const char *csv_skip_whitespace(
-    const char *z
+    const char *zz
 ) {
-    while (isspace((unsigned char) z[0]))
-        z++;
-    return z;
+    while (isspace((unsigned char) zz[0]))
+        zz++;
+    return zz;
 }
 
-/* Remove trailing whitespace from the end of string z[] */
+/* Remove trailing whitespace from the end of string zz[] */
 static void csv_trim_whitespace(
-    char *z
+    char *zz
 ) {
-    size_t n = strlen(z);
-    while (n > 0 && isspace((unsigned char) z[n]))
+    size_t n = strlen(zz);
+    while (n > 0 && isspace((unsigned char) zz[n]))
         n--;
-    z[n] = 0;
+    zz[n] = 0;
 }
 
 /* Dequote the string */
 static void csv_dequote(
-    char *z
+    char *zz
 ) {
     int jj;
-    char cQuote = z[0];
+    char cQuote = zz[0];
     size_t ii,
      n;
 
     if (cQuote != '\'' && cQuote != '"')
         return;
-    n = strlen(z);
-    if (n < 2 || z[n - 1] != z[0])
+    n = strlen(zz);
+    if (n < 2 || zz[n - 1] != zz[0])
         return;
     for (ii = 1, jj = 0; ii < n - 1; ii++) {
-        if (z[ii] == cQuote && z[ii + 1] == cQuote)
+        if (zz[ii] == cQuote && zz[ii + 1] == cQuote)
             ii++;
-        z[jj++] = z[ii];
+        zz[jj++] = zz[ii];
     }
-    z[jj] = 0;
+    zz[jj] = 0;
 }
 
 /* Check to see if the string is of the form:  "TAG = VALUE" with optional
@@ -710,15 +710,15 @@ static void csv_dequote(
 static const char *csv_parameter(
     const char *zTag,
     int nTag,
-    const char *z
+    const char *zz
 ) {
-    z = csv_skip_whitespace(z);
-    if (strncmp(zTag, z, nTag) != 0)
+    zz = csv_skip_whitespace(zz);
+    if (strncmp(zTag, zz, nTag) != 0)
         return 0;
-    z = csv_skip_whitespace(z + nTag);
-    if (z[0] != '=')
+    zz = csv_skip_whitespace(zz + nTag);
+    if (zz[0] != '=')
         return 0;
-    return csv_skip_whitespace(z + 1);
+    return csv_skip_whitespace(zz + 1);
 }
 
 /* Decode a parameter that requires a dequoted string.
@@ -756,17 +756,17 @@ static int csv_string_parameter(
 ** we cannot really tell.
 */
 static int csv_boolean(
-    const char *z
+    const char *zz
 ) {
-    if (sqlite3_stricmp("yes", z) == 0
-        || sqlite3_stricmp("on", z) == 0
-        || sqlite3_stricmp("true", z) == 0 || (z[0] == '1' && z[1] == 0)
+    if (sqlite3_stricmp("yes", zz) == 0
+        || sqlite3_stricmp("on", zz) == 0
+        || sqlite3_stricmp("true", zz) == 0 || (zz[0] == '1' && zz[1] == 0)
         ) {
         return 1;
     }
-    if (sqlite3_stricmp("no", z) == 0
-        || sqlite3_stricmp("off", z) == 0
-        || sqlite3_stricmp("false", z) == 0 || (z[0] == '0' && z[1] == 0)
+    if (sqlite3_stricmp("no", zz) == 0
+        || sqlite3_stricmp("off", zz) == 0
+        || sqlite3_stricmp("false", zz) == 0 || (zz[0] == '0' && zz[1] == 0)
         ) {
         return 0;
     }
@@ -781,22 +781,22 @@ static int csv_boolean(
 static int csv_boolean_parameter(
     const char *zTag,           /* Tag we are looking for */
     int nTag,                   /* Size of the tag in bytes */
-    const char *z,              /* Input parameter */
+    const char *zz,              /* Input parameter */
     int *pValue                 /* Write boolean value here */
 ) {
     int b;
-    z = csv_skip_whitespace(z);
-    if (strncmp(zTag, z, nTag) != 0)
+    zz = csv_skip_whitespace(zz);
+    if (strncmp(zTag, zz, nTag) != 0)
         return 0;
-    z = csv_skip_whitespace(z + nTag);
-    if (z[0] == 0) {
+    zz = csv_skip_whitespace(zz + nTag);
+    if (zz[0] == 0) {
         *pValue = 1;
         return 1;
     }
-    if (z[0] != '=')
+    if (zz[0] != '=')
         return 0;
-    z = csv_skip_whitespace(z + 1);
-    b = csv_boolean(z);
+    zz = csv_skip_whitespace(zz + 1);
+    b = csv_boolean(zz);
     if (b >= 0) {
         *pValue = b;
         return 1;
@@ -846,16 +846,16 @@ static int csvtabConnect(
     memset(&sRdr, 0, sizeof(sRdr));
     memset(azPValue, 0, sizeof(azPValue));
     for (ii = 3; ii < argc; ii++) {
-        const char *z = argv[ii];
+        const char *zz = argv[ii];
         const char *zValue;
         for (jj = 0; jj < sizeof(azParam) / sizeof(azParam[0]); jj++) {
-            if (csv_string_parameter(&sRdr, azParam[jj], z, &azPValue[jj]))
+            if (csv_string_parameter(&sRdr, azParam[jj], zz, &azPValue[jj]))
                 break;
         }
         if (jj < sizeof(azParam) / sizeof(azParam[0])) {
             if (sRdr.zErr[0])
                 goto csvtab_connect_error;
-        } else if ((zValue = csv_parameter("columns", 7, z)) != 0) {
+        } else if ((zValue = csv_parameter("columns", 7, zz)) != 0) {
             if (nCol > 0) {
                 csv_errmsg(&sRdr, "more than one 'columns' parameter");
                 goto csvtab_connect_error;
@@ -866,7 +866,7 @@ static int csvtabConnect(
                 goto csvtab_connect_error;
             }
         } else {
-            csv_errmsg(&sRdr, "bad parameter: '%s'", z);
+            csv_errmsg(&sRdr, "bad parameter: '%s'", zz);
             goto csvtab_connect_error;
         }
     }
@@ -891,9 +891,9 @@ static int csvtabConnect(
     sqlite3_str_appendf(pStr, "CREATE TABLE x(");
 
     while (1) {
-        char *z = csv_read_one_field(&sRdr);
+        char *zz = csv_read_one_field(&sRdr);
         if ((nCol > 0 && iCol < nCol) || nCol < 0) {
-            sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", zSep, z);
+            sqlite3_str_appendf(pStr, "%s\"%w\" TEXT", zSep, zz);
             zSep = ",";
             iCol++;
         }
