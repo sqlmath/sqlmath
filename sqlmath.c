@@ -43,12 +43,12 @@ static const sqlite3_api_routines *sqlite3_api;
 #endif
 // this macro will append <zz> to <str99> or goto label_error
 #define STR99_APPEND_JSON(zz, len) \
-    errcode = str99AppendJson(&str99, zz, len, errcode); \
+    errcode = str99AppendJson(str99, zz, len, errcode); \
     if (errcode != SQLITE_OK && errcode != SQLITE_ROW && \
         errcode != SQLITE_DONE) {goto label_error;}
 // this macro will json-escape-and-append <zz> to <str99> or goto label_error
 #define STR99_APPEND_RAW(zz, len) \
-    errcode = str99AppendRaw(&str99, zz, len, errcode); \
+    errcode = str99AppendRaw(str99, zz, len, errcode); \
     if (errcode != SQLITE_OK && errcode != SQLITE_ROW && \
         errcode != SQLITE_DONE) {goto label_error;}
 
@@ -492,9 +492,8 @@ static int csvtabConnect(
     // declare var
     CsvTable *pNew = 0;         /* The CsvTable object to construct */
     int rc = SQLITE_OK;         /* Result code from this routine */
-    size_t ii,
-     jj;                        /* Loop counters */
-    int b;                      /* Value of a boolean parameter */
+    size_t ii;                  /* Loop counters */
+    size_t jj;                  /* Loop counters */
     int nCol = -99;             /* Value of the columns= parameter */
 /* A CSV file reader used to store an error
 ** message and/or to count the number of columns */
@@ -1056,7 +1055,8 @@ SQLMATH_API int dbExec(
 // containing rows from SELECT/pragma/etc) as serialized a json-string in
 // <str99>.
     // declare var
-    Str99 str99 = { 0 };
+    Str99 str0 = { 0 };
+    Str99 *str99 = &str0;
     const char *zTmp = NULL;
     int errcode = SQLITE_OK;
     int ii = 0;
@@ -1064,13 +1064,13 @@ SQLMATH_API int dbExec(
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
-    // init str99.buf
-    str99.buf = ALLOCM(SIZEOF_BUFFER_DEFAULT);
-    if (str99.buf == NULL) {
+    // init str99->buf
+    str99->buf = ALLOCM(SIZEOF_BUFFER_DEFAULT);
+    if (str99->buf == NULL) {
         errcode = STR99_NOMEM;
         goto label_error;
     }
-    str99.alloced = SIZEOF_BUFFER_DEFAULT;
+    str99->alloced = SIZEOF_BUFFER_DEFAULT;
     // bracket database [
     STR99_APPEND_RAW("[", 1);
     // loop over each table
@@ -1096,7 +1096,7 @@ SQLMATH_API int dbExec(
             }
             // insert row of column-names
             if (nCol == -1) {
-                if (str99.used > 1) {
+                if (str99->used > 1) {
                     STR99_APPEND_RAW(",\n\n", 3);
                 }
                 // bracket table [
@@ -1159,19 +1159,19 @@ SQLMATH_API int dbExec(
     }
     // bracket database ]
     STR99_APPEND_RAW("]\n\x00", 2);
-    // shrink str99.buf to str99.used
-    zTmp = (const char *) ALLOCR(str99.buf, str99.used);
+    // shrink str99->buf to str99->used
+    zTmp = (const char *) ALLOCR(str99->buf, str99->used);
     if (zTmp == NULL) {
         errcode = STR99_NOMEM;
     } else {
-        str99.buf = (char *) zTmp;
-        str99.alloced = str99.used;
+        str99->buf = (char *) zTmp;
+        str99->alloced = str99->used;
     }
   label_error:
     // handle errcode
     if (errcode != SQLITE_OK) {
-        if (str99.buf != NULL) {
-            ALLOCF(str99.buf);
+        if (str99->buf != NULL) {
+            ALLOCF(str99->buf);
         }
         switch (errcode) {
         case STR99_NOMEM:
@@ -1187,8 +1187,8 @@ SQLMATH_API int dbExec(
         sqlite3_mutex_leave(sqlite3_db_mutex(db));
         return errcode;
     }
-    *pAlloced = str99.alloced;
-    *pzBuf = str99.buf;
+    *pAlloced = str99->alloced;
+    *pzBuf = str99->buf;
     // mutext leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
     return 0;
