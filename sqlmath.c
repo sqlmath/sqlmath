@@ -268,10 +268,12 @@ static int str99AppendJson(
             STR99_APPEND_RAW("\\u001d", 6);
             break;
         case '\x22':
-            STR99_APPEND_RAW("\\\"", 2);
+            STR99_APPEND_CHAR('\\');
+            STR99_APPEND_CHAR('\"');
             break;
         case '\x5c':
-            STR99_APPEND_RAW("\\\\", 2);
+            STR99_APPEND_CHAR('\\');
+            STR99_APPEND_CHAR('\\');
             break;
         default:
             STR99_APPEND_CHAR(*zz);
@@ -1125,11 +1127,14 @@ SQLMATH_API int dbExec(
             // insert row of column-names
             if (nCol == -1) {
                 if (str99->used > 1) {
-                    STR99_APPEND_RAW(",\n\n", 3);
+                    STR99_APPEND_CHAR(',');
+                    STR99_APPEND_CHAR('\n');
+                    STR99_APPEND_CHAR('\n');
                 }
                 // bracket table [
+                STR99_APPEND_CHAR('[');
                 // bracket column [
-                STR99_APPEND_RAW("[[", 2);
+                STR99_APPEND_CHAR('[');
                 // loop over each column-name
                 nCol = sqlite3_column_count(pStmt);
                 ii = 0;
@@ -1145,7 +1150,9 @@ SQLMATH_API int dbExec(
                 STR99_APPEND_CHAR(']');
             }
             // bracket row [
-            STR99_APPEND_RAW(",\n[", 3);
+            STR99_APPEND_CHAR(',');
+            STR99_APPEND_CHAR('\n');
+            STR99_APPEND_CHAR('[');
             ii = 0;
             // loop over each column-value
             while (ii < nCol) {
@@ -1186,7 +1193,9 @@ SQLMATH_API int dbExec(
         }
     }
     // bracket database ]
-    STR99_APPEND_RAW("]\n\x00", 2);
+    STR99_APPEND_CHAR(']');
+    STR99_APPEND_CHAR('\n');
+    STR99_APPEND_CHAR('\x00');
     // shrink str99->buf to str99->used
     zTmp = (const char *) ALLOCR(str99->buf, str99->used);
     if (zTmp == NULL) {
