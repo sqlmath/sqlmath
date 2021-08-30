@@ -47,9 +47,9 @@ file sqlmath_str99.c
 // dynamically growable string
 #define STR99_NOMEM -1
 #define STR99_TOOBIG -2
-// this macro will append <chr> to <str99> or goto label_error
-#define STR99_APPEND_CHAR(chr) \
-    errcode = str99AppendChar(str99, chr, errcode); \
+// this macro will append <cc> to <str99> or goto label_error
+#define STR99_APPEND_CHAR(cc) \
+    errcode = str99AppendChar(str99, cc, errcode); \
     if (errcode != SQLITE_OK && errcode != SQLITE_ROW && \
         errcode != SQLITE_DONE) {goto label_error;}
 // this macro will json-escape-and-append <zz> to <str99> or goto label_error
@@ -78,21 +78,21 @@ static int NOINLINE str99Resize(
 
 static int str99AppendChar(
     Str99 * str99,
-    const char chr,
+    const char cc,
     int errcode
 ) {
 /*
-** Append <chr> to <str99->buf>.
+** Append <cc> to <str99->buf>.
 ** Increase the size of the memory allocation for <str99->buf> if necessary.
 */
     // write <zz> to <str99->buf> if space available
     if (str99->used < str99->alloced) {
-        str99->buf[str99->used] = chr;
+        str99->buf[str99->used] = cc;
         str99->used += 1;
         return errcode;
     }
     // else resize and retry
-    return str99Resize(str99, &chr, 1, errcode);
+    return str99Resize(str99, &cc, 1, errcode);
 }
 
 static int str99AppendRaw(
@@ -197,22 +197,27 @@ static int str99AppendJson(
             STR99_APPEND_RAW("\\u0007", 6);
             break;
         case '\x08':
-            STR99_APPEND_RAW("\\b", 2);
+            STR99_APPEND_CHAR('\\');
+            STR99_APPEND_CHAR('b');
             break;
         case '\x09':
-            STR99_APPEND_RAW("\\t", 2);
+            STR99_APPEND_CHAR('\\');
+            STR99_APPEND_CHAR('t');
             break;
         case '\x0a':
-            STR99_APPEND_RAW("\\n", 2);
+            STR99_APPEND_CHAR('\\');
+            STR99_APPEND_CHAR('n');
             break;
         case '\x0b':
             STR99_APPEND_RAW("\\u000b", 6);
             break;
         case '\x0c':
-            STR99_APPEND_RAW("\\f", 2);
+            STR99_APPEND_CHAR('\\');
+            STR99_APPEND_CHAR('f');
             break;
         case '\x0d':
-            STR99_APPEND_RAW("\\r", 2);
+            STR99_APPEND_CHAR('\\');
+            STR99_APPEND_CHAR('r');
             break;
         case '\x0e':
             STR99_APPEND_RAW("\\u000e", 6);
@@ -269,7 +274,7 @@ static int str99AppendJson(
             STR99_APPEND_RAW("\\\\", 2);
             break;
         default:
-            STR99_APPEND_RAW(zz, 1);
+            STR99_APPEND_CHAR(*zz);
         }
         zz += 1;
     }
