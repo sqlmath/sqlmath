@@ -13,6 +13,8 @@ file sqlmath_napi.h
 #endif
 #include <sqlite3.h>
 #include <node_api.h>
+#define CFREE free
+#define SIZEOF_BUFFER_DEFAULT 1024
 #define UNUSED(x) (void)(x)
 
 
@@ -168,7 +170,7 @@ static void jsbatonBufferFinalize(
     UNUSED(finalize_hint);
     // printf("\n\n[napi finalize_data=%s]\n\n", (const char *) finalize_data);
     // printf("\n\n[napi finalize_hint=%s]\n\n", (const char *) finalize_hint);
-    free(finalize_data);
+    CFREE(finalize_data);
 }
 
 static Jsbaton *jsbatonCreate(

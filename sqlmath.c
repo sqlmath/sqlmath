@@ -19,7 +19,11 @@ file sqlmath.h
 #include <sqlite3ext.h>
 static const sqlite3_api_routines *sqlite3_api;
 // define
+#define CFREE free
+#define CMALLOC malloc
+#define CREALLOC realloc
 #define EOF -1
+#define SIZEOF_BUFFER_DEFAULT 1024
 #define SQLITE_MAX_LENGTH 1000000000
 #define SQLMATH_API
 #define STR2_NOMEM -1
@@ -102,7 +106,7 @@ static int NOINLINE str2Resize(
             return str2->errcode;
         }
     }
-    zTmp = realloc(str2->buf, nAlloc);
+    zTmp = CREALLOC(str2->buf, nAlloc);
     if (zTmp == NULL) {
         str2->errcode = STR2_NOMEM;
         return str2->errcode;
@@ -256,12 +260,12 @@ SQLMATH_API int dbExec(
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
     // init str2.buf
-    str2.buf = malloc(2);
+    str2.buf = CMALLOC(SIZEOF_BUFFER_DEFAULT);
     if (str2.buf == NULL) {
         str2.errcode = STR2_NOMEM;
         goto label_error;
     }
-    str2.alloced = 2;
+    str2.alloced = SIZEOF_BUFFER_DEFAULT;
     // bracket database [
     STR2_APPEND_RAW("[", 1);
     // loop over each table
@@ -351,7 +355,7 @@ SQLMATH_API int dbExec(
     // bracket database ]
     STR2_APPEND_RAW("]\n\x00", 2);
     // shrink str2.buf to str2.used
-    zTmp = (const char *) realloc(str2.buf, str2.used);
+    zTmp = (const char *) CREALLOC(str2.buf, str2.used);
     if (zTmp == NULL) {
         str2.errcode = STR2_NOMEM;
     } else {
@@ -362,7 +366,7 @@ SQLMATH_API int dbExec(
     // handle errcode
     if (str2.errcode != SQLITE_OK) {
         if (str2.buf != NULL) {
-            free(str2.buf);
+            CFREE(str2.buf);
         }
         switch (str2.errcode) {
         case STR2_NOMEM:
@@ -433,9 +437,6 @@ file sqlmath_blobtable.c
 /* Max size of the error message in a CsvReader */
 #define CSV_MXERR 200
 
-/* Size of the CsvReader input buffer */
-#define CSV_INBUFSZ 1024
-
 /* An instance of the CSV virtual table */
 typedef struct CsvTable {
     sqlite3_vtab base;          /* Base class.  Must be first */
@@ -448,7 +449,7 @@ typedef struct CsvTable {
 typedef struct CsvReader CsvReader;
 struct CsvReader {
     CsvTable base;              /* Base class.  Must be first */
-    char *zz;                    /* Accumulated text for a field */
+    char *zz;                   /* Accumulated text for a field */
     int nn;                     /* Number of bytes in zz */
     int nAlloc;                 /* Space allocated for zz[] */
     int nLine;                  /* Current line number */
@@ -627,6 +628,7 @@ static char *csv_read_one_field(
                 if ((c & 0xff) == 0xbf) {
                     pp->bNotFirst = 1;
                     pp->nn = 0;
+                    // recurse
                     return csv_read_one_field(pp);
                 }
             }
@@ -781,7 +783,7 @@ static int csv_boolean(
 static int csv_boolean_parameter(
     const char *zTag,           /* Tag we are looking for */
     int nTag,                   /* Size of the tag in bytes */
-    const char *zz,              /* Input parameter */
+    const char *zz,             /* Input parameter */
     int *pValue                 /* Write boolean value here */
 ) {
     int b;
@@ -889,7 +891,7 @@ static int csvtabConnect(
     char *zSep = "";
     int iCol = 0;
     sqlite3_str_appendf(pStr, "CREATE TABLE x(");
-
+    // read columns from first row
     while (1) {
         char *zz = csv_read_one_field(&sRdr);
         if ((nCol > 0 && iCol < nCol) || nCol < 0) {
