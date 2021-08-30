@@ -6,11 +6,12 @@
 file sqlmath.h
 */
 // header
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
 #include <stdint.h>
-//!! #include <stdio.h>
+// #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef WIN32
@@ -84,7 +85,6 @@ file sqlmath_blobtable.c
 ** the number and names of the columns is determined by the first line of
 ** the CSV input.
 */
-#include <assert.h>
 
 /* Max size of the error message in a CsvReader */
 #define CSV_MXERR 200
@@ -848,19 +848,20 @@ typedef struct Str2 {
     char *buf;
     int alloced;
     int used;
-    int errcode;
 } Str2;
 
 static int NOINLINE str2Resize(
     Str2 * str2,
     const char *zz,
-    int nn
+    int nn,
+    int errcode
 );
 
 static int str2AppendRaw(
     Str2 * str2,
     const char *zz,
-    int nn
+    int nn,
+    int errcode
 ) {
 /*
 ** Append <nn> bytes of text from <zz> to <str2->buf>.
@@ -872,13 +873,14 @@ static int str2AppendRaw(
         str2->used += nn;
         return 0;
     }
-    return str2Resize(str2, zz, nn);
+    return str2Resize(str2, zz, nn, errcode);
 }
 
 static int NOINLINE str2Resize(
     Str2 * str2,
     const char *zz,
-    int nn
+    int nn,
+    int errcode
 ) {
 /*
 ** Increase the size of the memory allocation for <str2->buf>.
@@ -887,38 +889,36 @@ static int NOINLINE str2Resize(
     char *zTmp;
     int nAlloc;
     // sanity check
-    if (str2->errcode != SQLITE_OK && str2->errcode != SQLITE_ROW) {
-        return str2->errcode;
+    if (errcode != SQLITE_OK && errcode != SQLITE_ROW) {
+        return errcode;
     }
     // check SQLITE_MAX_LENGTH
     if (nn < 0 || nn > SQLITE_MAX_LENGTH) {
-        str2->errcode = STR2_TOOBIG;
-        return str2->errcode;
+        return STR2_TOOBIG;
     }
     // grow nalloc exponentially
     nAlloc = str2->alloced;
     while (nAlloc < str2->used + nn) {
         nAlloc *= 2;
         if (nAlloc > SQLITE_MAX_LENGTH) {
-            str2->errcode = STR2_TOOBIG;
-            return str2->errcode;
+            return STR2_TOOBIG;
         }
     }
     zTmp = ALLOCR(str2->buf, nAlloc);
     if (zTmp == NULL) {
-        str2->errcode = STR2_NOMEM;
-        return str2->errcode;
+        return STR2_NOMEM;
     }
     str2->alloced = nAlloc;
     str2->buf = zTmp;
     // recurse
-    return str2AppendRaw(str2, zz, nn);
+    return str2AppendRaw(str2, zz, nn, errcode);
 }
 
 static int str2AppendText(
     Str2 * str2,
     const char *zz,
-    int nn
+    int nn,
+    int errcode
 ) {
 /*
 ** Append <nn> bytes of text from <zz> to <str2->buf> with json-escaping.
@@ -927,112 +927,112 @@ static int str2AppendText(
     // declare var
     const char *zz2 = zz + nn;
     // double-quote open
-    str2AppendRaw(str2, "\"", 1);
+    str2AppendRaw(str2, "\"", 1, errcode);
     while (zz < zz2) {
         switch (*zz) {
         case '\x00':
-            str2AppendRaw(str2, "\\u0000", 6);
+            str2AppendRaw(str2, "\\u0000", 6, errcode);
             break;
         case '\x01':
-            str2AppendRaw(str2, "\\u0001", 6);
+            str2AppendRaw(str2, "\\u0001", 6, errcode);
             break;
         case '\x02':
-            str2AppendRaw(str2, "\\u0002", 6);
+            str2AppendRaw(str2, "\\u0002", 6, errcode);
             break;
         case '\x03':
-            str2AppendRaw(str2, "\\u0003", 6);
+            str2AppendRaw(str2, "\\u0003", 6, errcode);
             break;
         case '\x04':
-            str2AppendRaw(str2, "\\u0004", 6);
+            str2AppendRaw(str2, "\\u0004", 6, errcode);
             break;
         case '\x05':
-            str2AppendRaw(str2, "\\u0005", 6);
+            str2AppendRaw(str2, "\\u0005", 6, errcode);
             break;
         case '\x06':
-            str2AppendRaw(str2, "\\u0006", 6);
+            str2AppendRaw(str2, "\\u0006", 6, errcode);
             break;
         case '\x07':
-            str2AppendRaw(str2, "\\u0007", 6);
+            str2AppendRaw(str2, "\\u0007", 6, errcode);
             break;
         case '\x08':
-            str2AppendRaw(str2, "\\b", 2);
+            str2AppendRaw(str2, "\\b", 2, errcode);
             break;
         case '\x09':
-            str2AppendRaw(str2, "\\t", 2);
+            str2AppendRaw(str2, "\\t", 2, errcode);
             break;
         case '\x0a':
-            str2AppendRaw(str2, "\\n", 2);
+            str2AppendRaw(str2, "\\n", 2, errcode);
             break;
         case '\x0b':
-            str2AppendRaw(str2, "\\u000b", 6);
+            str2AppendRaw(str2, "\\u000b", 6, errcode);
             break;
         case '\x0c':
-            str2AppendRaw(str2, "\\f", 2);
+            str2AppendRaw(str2, "\\f", 2, errcode);
             break;
         case '\x0d':
-            str2AppendRaw(str2, "\\r", 2);
+            str2AppendRaw(str2, "\\r", 2, errcode);
             break;
         case '\x0e':
-            str2AppendRaw(str2, "\\u000e", 6);
+            str2AppendRaw(str2, "\\u000e", 6, errcode);
             break;
         case '\x0f':
-            str2AppendRaw(str2, "\\u000f", 6);
+            str2AppendRaw(str2, "\\u000f", 6, errcode);
             break;
         case '\x10':
-            str2AppendRaw(str2, "\\u0010", 6);
+            str2AppendRaw(str2, "\\u0010", 6, errcode);
             break;
         case '\x11':
-            str2AppendRaw(str2, "\\u0011", 6);
+            str2AppendRaw(str2, "\\u0011", 6, errcode);
             break;
         case '\x12':
-            str2AppendRaw(str2, "\\u0012", 6);
+            str2AppendRaw(str2, "\\u0012", 6, errcode);
             break;
         case '\x13':
-            str2AppendRaw(str2, "\\u0013", 6);
+            str2AppendRaw(str2, "\\u0013", 6, errcode);
             break;
         case '\x14':
-            str2AppendRaw(str2, "\\u0014", 6);
+            str2AppendRaw(str2, "\\u0014", 6, errcode);
             break;
         case '\x15':
-            str2AppendRaw(str2, "\\u0015", 6);
+            str2AppendRaw(str2, "\\u0015", 6, errcode);
             break;
         case '\x16':
-            str2AppendRaw(str2, "\\u0016", 6);
+            str2AppendRaw(str2, "\\u0016", 6, errcode);
             break;
         case '\x17':
-            str2AppendRaw(str2, "\\u0017", 6);
+            str2AppendRaw(str2, "\\u0017", 6, errcode);
             break;
         case '\x18':
-            str2AppendRaw(str2, "\\u0018", 6);
+            str2AppendRaw(str2, "\\u0018", 6, errcode);
             break;
         case '\x19':
-            str2AppendRaw(str2, "\\u0019", 6);
+            str2AppendRaw(str2, "\\u0019", 6, errcode);
             break;
         case '\x1a':
-            str2AppendRaw(str2, "\\u001a", 6);
+            str2AppendRaw(str2, "\\u001a", 6, errcode);
             break;
         case '\x1b':
-            str2AppendRaw(str2, "\\u001b", 6);
+            str2AppendRaw(str2, "\\u001b", 6, errcode);
             break;
         case '\x1c':
-            str2AppendRaw(str2, "\\u001c", 6);
+            str2AppendRaw(str2, "\\u001c", 6, errcode);
             break;
         case '\x1d':
-            str2AppendRaw(str2, "\\u001d", 6);
+            str2AppendRaw(str2, "\\u001d", 6, errcode);
             break;
         case '\x22':
-            str2AppendRaw(str2, "\\\"", 2);
+            str2AppendRaw(str2, "\\\"", 2, errcode);
             break;
         case '\x5c':
-            str2AppendRaw(str2, "\\\\", 2);
+            str2AppendRaw(str2, "\\\\", 2, errcode);
             break;
         default:
-            str2AppendRaw(str2, zz, 1);
+            str2AppendRaw(str2, zz, 1, errcode);
         }
         zz += 1;
     }
     // double-quote close
-    return str2AppendRaw(str2, "\"", 1);
+    return str2AppendRaw(str2, "\"", 1, errcode);
 }
 
 SQLMATH_API int dbExec(
@@ -1046,12 +1046,13 @@ SQLMATH_API int dbExec(
 // containing rows from SELECT/pragma/etc) as serialized a json-string in
 // <str2>.
 #define STR2_APPEND_RAW(zz, len) \
-    if (0 != str2AppendRaw(&str2, zz, len)) {goto label_error;}
+    if (0 != str2AppendRaw(&str2, zz, len, errcode)) {goto label_error;}
 #define STR2_APPEND_TEXT(zz, len) \
-    if (0 != str2AppendText(&str2, zz, len)) {goto label_error;}
+    if (0 != str2AppendText(&str2, zz, len, errcode)) {goto label_error;}
     // declare var
     Str2 str2 = { 0 };
     const char *zTmp = NULL;
+    int errcode = SQLITE_OK;
     int ii = 0;
     int nCol = 0;
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
@@ -1060,7 +1061,7 @@ SQLMATH_API int dbExec(
     // init str2.buf
     str2.buf = ALLOCM(SIZEOF_BUFFER_DEFAULT);
     if (str2.buf == NULL) {
-        str2.errcode = STR2_NOMEM;
+        errcode = STR2_NOMEM;
         goto label_error;
     }
     str2.alloced = SIZEOF_BUFFER_DEFAULT;
@@ -1074,17 +1075,17 @@ SQLMATH_API int dbExec(
             zSql += 1;
         }
         pStmt = NULL;
-        str2.errcode = sqlite3_prepare_v2(db, zSql, -1, &pStmt, &zTmp);
-        if (str2.errcode != SQLITE_OK || *zSql == '\x00') {
+        errcode = sqlite3_prepare_v2(db, zSql, -1, &pStmt, &zTmp);
+        if (errcode != SQLITE_OK || *zSql == '\x00') {
             break;
         }
         zSql = zTmp;
         nCol = -1;
         // loop over each row
         while (1) {
-            str2.errcode = sqlite3_step(pStmt);
-            if (str2.errcode != SQLITE_ROW) {
-                str2.errcode = sqlite3_finalize(pStmt);
+            errcode = sqlite3_step(pStmt);
+            if (errcode != SQLITE_ROW) {
+                sqlite3_finalize(pStmt);
                 break;
             }
             // insert row of column-names
@@ -1141,7 +1142,7 @@ SQLMATH_API int dbExec(
             }
             // bracket row ]
             STR2_APPEND_RAW("]", 1);
-            if (str2.errcode != SQLITE_ROW) {
+            if (errcode != SQLITE_ROW) {
                 break;
             }
         }
@@ -1155,18 +1156,18 @@ SQLMATH_API int dbExec(
     // shrink str2.buf to str2.used
     zTmp = (const char *) ALLOCR(str2.buf, str2.used);
     if (zTmp == NULL) {
-        str2.errcode = STR2_NOMEM;
+        errcode = STR2_NOMEM;
     } else {
         str2.buf = (char *) zTmp;
         str2.alloced = str2.used;
     }
   label_error:
     // handle errcode
-    if (str2.errcode != SQLITE_OK) {
+    if (errcode != SQLITE_OK) {
         if (str2.buf != NULL) {
             ALLOCF(str2.buf);
         }
-        switch (str2.errcode) {
+        switch (errcode) {
         case STR2_NOMEM:
             strncpy(zErrmsg, sqlite3_errstr(SQLITE_NOMEM), 255);
             break;
@@ -1178,7 +1179,7 @@ SQLMATH_API int dbExec(
         }
         // mutext leave
         sqlite3_mutex_leave(sqlite3_db_mutex(db));
-        return str2.errcode;
+        return errcode;
     }
     *pAlloced = str2.alloced;
     *pzBuf = str2.buf;
