@@ -188,7 +188,7 @@ import moduleFs from "fs";
     git add -f .build
     git commit -am "add dir .build"
     # checkout branch-gh-pages
-    git fetch origin gh-pages --depth=1
+    git fetch origin gh-pages
     git checkout -b gh-pages origin/gh-pages
     # update dir branch-$BRANCH
     rm -rf "branch-$BRANCH"
@@ -313,7 +313,10 @@ shCiTest() {(set -e
     });
 }());
 ' "$@" # '
-    shRunWithCoverage node test.js
+    shRunWithCoverage node --input-type=module -e '
+import sqlmath from "./sqlmath.mjs";
+sqlmath.testAll();
+' "$@" # "'
 )}
 
 shCiBase() {(set -e
@@ -338,14 +341,16 @@ shCiBuild() {(set -e
     #
     # patch sqlite3.c
     printf '
-@@ -192171,7 +192171,10 @@
+@@ -192171,7 +192171,12 @@
  ** functions and the virtual table implemented by this file.
  ****************************************************************************/
 
 +// hack-sqlite - inline sqlite3_extension_functions_init
 +int sqlite3_extension_functions_init(sqlite3*, char**, const sqlite3_api_routines*);
++int sqlite3_sqlmath_init(sqlite3*, char**, const sqlite3_api_routines*);
  SQLITE_PRIVATE int sqlite3Json1Init(sqlite3 *db){
 +  sqlite3_extension_functions_init(db, NULL, &sqlite3Apis);
++  sqlite3_sqlmath_init(db, NULL, &sqlite3Apis);
    int rc = SQLITE_OK;
    unsigned int i;
    static const struct {
@@ -353,8 +358,9 @@ shCiBuild() {(set -e
     #
     # patch sqlmath_napi.cpp
     printf '
+#define SQLMATH_NAPI
 extern "C" {
-#include <sqlmath_napi.c>
+#include "../../sqlmath.c"
 }
     ' > sqlmath_napi.cpp
     #
@@ -382,7 +388,7 @@ extern "C" {
     let cflags = {
         "cflags": [
             "-fdiagnostics-show-option",
-            "-std=c17"
+            "-std=c99"
         ],
         "cflags!": [
             "-fno-exceptions"
@@ -514,7 +520,7 @@ extern "C" {
                 // "SQLITE_MAX_EXPR_DEPTH=0",
                 // "SQLITE_OMIT_AUTOINIT",
                 "SQLITE_OMIT_DECLTYPE",
-                // "SQLITE_OMIT_DEPRECATED",
+                "SQLITE_OMIT_DEPRECATED",
                 "SQLITE_OMIT_PROGRESS_CALLBACK",
                 // "SQLITE_OMIT_SHARED_CACHE",
                 // "SQLITE_THREADSAFE=0",
@@ -540,7 +546,6 @@ extern "C" {
                 "_REENTRANT=1"
             ],
             "include_dirs": [
-                "..",
                 "src"
             ],
             "msvs_settings": {
@@ -559,7 +564,7 @@ extern "C" {
             },
             "xcode_settings": {
                 "CLANG_CXX_LIBRARY": "libc++",
-                "GCC_C_LANGUAGE_STANDARD": "c17",
+                "GCC_C_LANGUAGE_STANDARD": "c99",
                 "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
                 "OTHER_CFLAGS": cflags.cflags,
                 "OTHER_CFLAGS!": cflags["cflags!"],

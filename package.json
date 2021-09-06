@@ -4,7 +4,7 @@
         "name": "kai zhu"
     },
     "description": "sqlite for data-science",
-    "homepage": "https://github.com/sqlmath/sqlmath.js",
+    "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",
         "database",
@@ -12,11 +12,11 @@
         "sqlite"
     ],
     "license": "BSD-3-Clause",
-    "main": "./sqlmath.js",
+    "main": "./sqlmath.mjs",
     "name": "sqlmath",
     "repository": {
         "type": "git",
-        "url": "https://github.com/sqlmath/sqlmath.js"
+        "url": "https://github.com/sqlmath/sqlmath"
     },
     "scripts": {
         "build": "sh jslint_ci.sh shCiBuild",
