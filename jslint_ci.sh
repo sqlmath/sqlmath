@@ -292,7 +292,7 @@ import moduleFs from "fs";
     git add -f .build
     git commit -am "add dir .build"
     # checkout branch-gh-pages
-    git fetch origin gh-pages --depth=1
+    git fetch origin gh-pages
     git checkout -b gh-pages origin/gh-pages
     # update dir branch-$BRANCH
     rm -rf "branch-$BRANCH"

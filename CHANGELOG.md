@@ -3,7 +3,15 @@
 # Todo
 - none
 
+# v2021.9.4
+- add functions dbGetLastBlob, dbTableInsertAsync
+- merge file sqlmath_napi.c into sqlmath.c
+- merge file test.js into sqlmath.mjs
+- migrate repo to https://github.com/sqlmath/sqlmath
+- migrate to esm and rename sqlmath.js to sqlmath.mjs
+
 # v2021.8.26
+- merge files sqlmath.h and sqlmath_napi.c into sqlmath.c
 - add async functions dbOpen, dbExec, dbClose
 - inline function sqlite3_extension_functions_init without auto_extension
 - disable warnings for all targets except sqlmath.c and sqlmath_napi.c
