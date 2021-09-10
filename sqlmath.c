@@ -45,6 +45,8 @@ file sqlmath_h - start
 #define SQLITE_ERROR_NOMEM2 0x10001
 #define SQLITE_ERROR_TOOBIG2 0x10002
 #define SQLITE_MAX_LENGTH2 1000000000
+#define SQLITE_RESPONSETYPE_LAST_VALUE 1
+#define SQLITE_RESPONSETYPE_LAST_MATRIX_DOUBLE 2
 #define SQLMATH_API
 #define UNUSED(x) (void)(x)
 // define2
@@ -253,6 +255,10 @@ file sqlmath_c_str99
     errcode = str99AppendChar(str99, cc, errcode); \
     if (!IS_SQLITE_OK(errcode)) { goto catch_error; }
 
+#define STR99_APPEND_DOUBLE(ff) \
+    errcode = str99AppendDouble(str99, ff, errcode); \
+    if (!IS_SQLITE_OK(errcode)) { goto catch_error; }
+
 #define STR99_APPEND_JSON(zz, nn) \
     errcode = str99AppendJson(str99, zz, nn, errcode); \
     if (!IS_SQLITE_OK(errcode)) { goto catch_error; }
@@ -283,7 +289,7 @@ static int str99AppendChar(
 ** Append <cc> to <str99->zBuf>.
 ** Increase the size of the memory allocation for <str99->zBuf> if necessary.
 */
-    // write <zz> to <str99->zBuf> if space available
+    // write <cc> to <str99->zBuf> if space available
     if (str99->nUsed < str99->nAlloced) {
         str99->zBuf[str99->nUsed] = cc;
         str99->nUsed += 1;
@@ -291,6 +297,25 @@ static int str99AppendChar(
     }
     // else resize and retry
     return str99AppendRawAfterGrow(str99, &cc, 1, errcode);
+}
+
+static int str99AppendDouble(
+    Str99 * str99,
+    double ff,
+    int errcode
+) {
+/*
+** Append <ff> to <str99->zBuf>.
+** Increase the size of the memory allocation for <str99->zBuf> if necessary.
+*/
+    // write <ff> to <str99->zBuf> if space available
+    if (str99->nUsed < str99->nAlloced) {
+        ((double *) (str99->zBuf + str99->nUsed))[0] = ff;
+        str99->nUsed += 8;
+        return errcode;
+    }
+    // else resize and retry
+    return str99AppendRawAfterGrow(str99, (char *) (&ff), 8, errcode);
 }
 
 static int str99AppendRaw(
@@ -550,7 +575,7 @@ SQLMATH_API int dbExec(
 // This function will run <zSql> in <db> and save any result (list of tables
 // containing rows from SELECT/pragma/etc) as serialized json-string in <str99>.
 #define STR99_APPEND_CHAR2(cc) \
-    if (!getLastBlob) { \
+    if (!responseType) { \
         errcode = str99AppendChar(str99, cc, errcode); \
         if (!IS_SQLITE_OK(errcode)) { goto catch_error; } \
     }
@@ -566,10 +591,11 @@ SQLMATH_API int dbExec(
     int bindIdx = 0;
     int bindListLength = (int) baton->argint64[2];
     int errcode = 0;
-    int getLastBlob = (int) baton->argint64[5];
     int ii = 0;
     int jj = 0;
     int nCol = 0;
+    int nRow = 0;
+    int responseType = (int) baton->argint64[5];
     int64_t iTmp = 0;
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
     static const char bindPrefix[] = "$:@";
@@ -724,6 +750,7 @@ SQLMATH_API int dbExec(
             }
             // insert row of column-names
             if (nCol == -1) {
+                nRow = 0;
                 if (str99->nUsed > 1) {
                     STR99_APPEND_CHAR2(',');
                     STR99_APPEND_CHAR2('\n');
@@ -735,35 +762,47 @@ SQLMATH_API int dbExec(
                 STR99_APPEND_CHAR2('[');
                 // loop over each column-name
                 nCol = sqlite3_column_count(pStmt);
-                ii = 0;
-                while (ii < nCol) {
-                    if (ii > 0) {
-                        STR99_APPEND_CHAR2(',');
+                // SQLITE_RESPONSETYPE_LAST_MATRIX_DOUBLE - save nCol
+                if (responseType == SQLITE_RESPONSETYPE_LAST_MATRIX_DOUBLE) {
+                    str99->nUsed = 8;
+                    STR99_APPEND_DOUBLE((double) nCol);
+                } else {
+                    ii = 0;
+                    while (ii < nCol) {
+                        if (ii > 0) {
+                            STR99_APPEND_CHAR2(',');
+                        }
+                        zTmp = sqlite3_column_name(pStmt, ii);
+                        STR99_APPEND_JSON(zTmp, strlen(zTmp));
+                        ii += 1;
                     }
-                    zTmp = sqlite3_column_name(pStmt, ii);
-                    STR99_APPEND_JSON(zTmp, strlen(zTmp));
-                    ii += 1;
+                    // bracket column ]
+                    STR99_APPEND_CHAR2(']');
                 }
-                // bracket column ]
-                STR99_APPEND_CHAR2(']');
             }
             // bracket row [
             STR99_APPEND_CHAR2(',');
             STR99_APPEND_CHAR2('\n');
             STR99_APPEND_CHAR2('[');
             ii = 0;
+            nRow += 1;
             // loop over each column-value
             while (ii < nCol) {
-                if (getLastBlob) {
-                    // export blob as separate raw buffer
+                switch (responseType) {
+                case SQLITE_RESPONSETYPE_LAST_VALUE:
+                    // export last-value as blob
                     str99->nUsed = 0;
                     errcode =
-                        str99AppendRaw(str99,
-                        sqlite3_column_blob(pStmt, ii),
+                        str99AppendRaw(str99, sqlite3_column_blob(pStmt, ii),
                         sqlite3_column_bytes(pStmt, ii), errcode);
                     if (!IS_SQLITE_OK(errcode)) {
                         goto catch_error;
                     }
+                    ii += 1;
+                    continue;
+                case SQLITE_RESPONSETYPE_LAST_MATRIX_DOUBLE:
+                    // export last-table as matrix of doubles
+                    STR99_APPEND_DOUBLE(sqlite3_column_double(pStmt, ii));
                     ii += 1;
                     continue;
                 }
@@ -835,7 +874,10 @@ SQLMATH_API int dbExec(
     // bracket database ]
     STR99_APPEND_CHAR2(']');
     STR99_APPEND_CHAR2('\n');
-    STR99_APPEND_CHAR2('\x00');
+    // SQLITE_RESPONSETYPE_LAST_MATRIX_DOUBLE - save nRow
+    if (responseType == SQLITE_RESPONSETYPE_LAST_MATRIX_DOUBLE) {
+        ((double *) str99->zBuf)[0] = nRow;
+    }
     // shrink str99
     str99->nAlloced = str99->nUsed;
     zTmp = (const char *) ALLOCR(str99->zBuf, MAX(str99->nAlloced, 1));
