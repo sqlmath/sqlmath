@@ -24,7 +24,7 @@ process.exit(Number(
     export UPSTREAM_OWNER="${UPSTREAM_OWNER:-jslint-org}"
     # init $UPSTREAM_REPO
     export UPSTREAM_REPO="${UPSTREAM_REPO:-jslint}"
-    # screenshot asset-image-jslint
+    # screenshot asset-image-logo
     shImageLogoCreate &
     # screenshot web-demo
     shBrowserScreenshot \
@@ -63,7 +63,7 @@ import moduleChildProcess from "child_process";
         });
     });
 }());
-' # '
+' "$@" # '
     # screenshot curl
     if [ -f jslint.mjs ]
     then
@@ -122,7 +122,7 @@ echo "\
         );
     });
 }());
-' # '
+' "$@" # '
     fi
     # seo - inline css-assets and invalidate cached-assets
     node --input-type=module -e '
@@ -142,7 +142,7 @@ import moduleFs from "fs";
         }
     }));
 
-// Inline css-assets.
+// inline css-assets
 
     fileDict["index.html"] = fileDict["index.html"].replace((
         "\n<link rel=\"stylesheet\" href=\"asset-codemirror-rollup.css\">\n"
@@ -161,7 +161,7 @@ import moduleFs from "fs";
         )[0];
     });
 
-// Invalidate cached-assets.
+// invalidate cached-assets
 
     fileDict["browser.mjs"] = fileDict["browser.mjs"].replace((
         /^import\u0020.+?\u0020from\u0020".+?\.(?:js|mjs)\b/gm
@@ -174,7 +174,7 @@ import moduleFs from "fs";
         return `${match0}?cc=${cacheKey}`;
     });
 
-// Write file.
+// write file
 
     await Promise.all(Object.entries(fileDict).map(function ([
         file, data
@@ -182,7 +182,7 @@ import moduleFs from "fs";
         moduleFs.promises.writeFile(file, data);
     }));
 }());
-' # '
+' "$@" # '
     git add -f jslint.cjs jslint.js || true
     # add dir .build
     git add -f .build
@@ -216,9 +216,9 @@ import moduleFs from "fs";
         "branch-$BRANCH/README.md"
     git status
     git commit -am "update dir branch-$BRANCH" || true
-    # if branch-gh-pages has more than 100 commits,
+    # if branch-gh-pages has more than 50 commits,
     # then backup and squash commits
-    if [ "$(git rev-list --count gh-pages)" -gt 100 ]
+    if [ "$(git rev-list --count gh-pages)" -gt 50 ]
     then
         # backup
         shGitCmdWithGithubToken push origin -f gh-pages:gh-pages-backup

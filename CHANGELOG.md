@@ -3,6 +3,11 @@
 # Todo
 - none
 
+# v2021.9.9 - beta
+- add sql-function slr_ohlcv() with tests
+- update file jslint_ci.sh with chorish shell-functions
+- update function dbOpenAsync with ability to create thread-pool with multiple connections
+
 # v2021.9.8
 - merge files in sqlite-autoconf-3360000 into sqlite3.c, sqlite3_ext.c, sqlite3_shell.c
 

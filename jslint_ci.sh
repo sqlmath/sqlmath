@@ -21,6 +21,124 @@
 # sh jslint_ci.sh shRunWithScreenshotTxt .build/screenshot-changelog.svg head -n50 CHANGELOG.md
 # vim rgx-lowercase \L\1\e
 
+shBashrcDebianInit() {
+# this function will init debian:stable /etc/skel/.bashrc
+# https://sources.debian.org/src/bash/4.4-5/debian/skel.bashrc/
+    # ~/.bashrc: executed by bash(1) for non-login shells.
+    # see /usr/share/doc/bash/examples/startup-files (in the package bash-doc)
+    # for examples
+
+    # If not running interactively, don't do anything
+    case $- in
+        *i*) ;;
+          *) return;;
+    esac
+
+    # don't put duplicate lines or lines starting with space in the history.
+    # See bash(1) for more options
+    HISTCONTROL=ignoreboth
+
+    # append to the history file, don't overwrite it
+    shopt -s histappend
+
+    # for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+    HISTSIZE=1000
+    HISTFILESIZE=2000
+
+    # check the window size after each command and, if necessary,
+    # update the values of LINES and COLUMNS.
+    shopt -s checkwinsize
+
+    # If set, the pattern "**" used in a pathname expansion context will
+    # match all files and zero or more directories and subdirectories.
+    #shopt -s globstar
+
+    # make less more friendly for non-text input files, see lesspipe(1)
+    [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
+
+    # set variable identifying the chroot you work in (used in the prompt below)
+    if [ -z "${debian_chroot:-}" ] && [ -r /etc/debian_chroot ]; then
+        debian_chroot=$(cat /etc/debian_chroot)
+    fi
+
+    # set a fancy prompt (non-color, unless we know we "want" color)
+    case "$TERM" in
+        xterm-color|*-256color) color_prompt=yes;;
+    esac
+
+    # uncomment for a colored prompt, if the terminal has the capability; turned
+    # off by default to not distract the user: the focus in a terminal window
+    # should be on the output of commands, not on the prompt
+    #force_color_prompt=yes
+
+    if [ -n "$force_color_prompt" ]; then
+        if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+        # We have color support; assume it's compliant with Ecma-48
+        # (ISO/IEC-6429). (Lack of such support is extremely rare, and such
+        # a case would tend to support setf rather than setaf.)
+        color_prompt=yes
+        else
+        color_prompt=
+        fi
+    fi
+
+    if [ "$color_prompt" = yes ]; then
+        PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+    else
+        PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+    fi
+    unset color_prompt force_color_prompt
+
+    # If this is an xterm set the title to user@host:dir
+    case "$TERM" in
+    xterm*|rxvt*)
+        PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+        ;;
+    *)
+        ;;
+    esac
+
+    # enable color support of ls and also add handy aliases
+    if [ -x /usr/bin/dircolors ]; then
+        test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+        alias ls='ls --color=auto'
+        #alias dir='dir --color=auto'
+        #alias vdir='vdir --color=auto'
+
+        alias grep='grep --color=auto'
+        #alias fgrep='fgrep --color=auto'
+        #alias egrep='egrep --color=auto'
+    fi
+
+    # colored GCC warnings and errors
+    #export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
+
+    # some more ls aliases
+    alias ll='ls -alF'
+    #alias la='ls -A'
+    #alias l='ls -CF'
+
+    # Alias definitions.
+    # You may want to put all your additions into a separate file like
+    # ~/.bash_aliases, instead of adding them here directly.
+    # See /usr/share/doc/bash-doc/examples in the bash-doc package.
+
+    if [ -f ~/.bash_aliases ]; then
+        . ~/.bash_aliases
+    fi
+
+    # enable programmable completion features (you don't need to enable
+    # this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+    # sources /etc/bash.bashrc).
+    if ! shopt -oq posix; then
+        if [ -f /usr/share/bash-completion/bash_completion ]; then
+            . /usr/share/bash-completion/bash_completion
+        elif [ -f /etc/bash_completion ]; then
+            . /etc/bash_completion
+        fi
+    fi
+}
+
 shBrowserScreenshot() {(set -e
 # this function will run headless-chrome to screenshot url $1 with
 # window-size $2
@@ -106,7 +224,7 @@ import moduleUrl from "url";
         );
     });
 }());
-' "$@" # "'
+' "$@" # '
 )}
 
 shCiArtifactUpload() {(set -e
@@ -128,7 +246,7 @@ process.exit(Number(
     export UPSTREAM_OWNER="${UPSTREAM_OWNER:-jslint-org}"
     # init $UPSTREAM_REPO
     export UPSTREAM_REPO="${UPSTREAM_REPO:-jslint}"
-    # screenshot asset-image-jslint
+    # screenshot asset-image-logo
     shImageLogoCreate &
     # screenshot web-demo
     shBrowserScreenshot \
@@ -167,7 +285,7 @@ import moduleChildProcess from "child_process";
         });
     });
 }());
-' # '
+' "$@" # '
     # screenshot curl
     if [ -f jslint.mjs ]
     then
@@ -226,7 +344,7 @@ echo "\
         );
     });
 }());
-' # '
+' "$@" # '
     fi
     # seo - inline css-assets and invalidate cached-assets
     node --input-type=module -e '
@@ -246,7 +364,7 @@ import moduleFs from "fs";
         }
     }));
 
-// Inline css-assets.
+// inline css-assets
 
     fileDict["index.html"] = fileDict["index.html"].replace((
         "\n<link rel=\"stylesheet\" href=\"asset-codemirror-rollup.css\">\n"
@@ -265,7 +383,7 @@ import moduleFs from "fs";
         )[0];
     });
 
-// Invalidate cached-assets.
+// invalidate cached-assets
 
     fileDict["browser.mjs"] = fileDict["browser.mjs"].replace((
         /^import\u0020.+?\u0020from\u0020".+?\.(?:js|mjs)\b/gm
@@ -278,7 +396,7 @@ import moduleFs from "fs";
         return `${match0}?cc=${cacheKey}`;
     });
 
-// Write file.
+// write file
 
     await Promise.all(Object.entries(fileDict).map(function ([
         file, data
@@ -286,7 +404,7 @@ import moduleFs from "fs";
         moduleFs.promises.writeFile(file, data);
     }));
 }());
-' # '
+' "$@" # '
     git add -f jslint.cjs jslint.js || true
     # add dir .build
     git add -f .build
@@ -320,9 +438,9 @@ import moduleFs from "fs";
         "branch-$BRANCH/README.md"
     git status
     git commit -am "update dir branch-$BRANCH" || true
-    # if branch-gh-pages has more than 100 commits,
+    # if branch-gh-pages has more than 50 commits,
     # then backup and squash commits
-    if [ "$(git rev-list --count gh-pages)" -gt 100 ]
+    if [ "$(git rev-list --count gh-pages)" -gt 50 ]
     then
         # backup
         shGitCmdWithGithubToken push origin -f gh-pages:gh-pages-backup
@@ -370,13 +488,10 @@ shCiBase() {(set -e
         export JSLINT_BETA=1
         shRunWithCoverage node test.mjs
     )
-    # update version from CHANGELOG.md
+    # update edition in README.md, jslint.mjs from CHANGELOG.md
     node --input-type=module -e '
 import moduleFs from "fs";
 (async function () {
-
-// Update edition in README.md, jslint.mjs from CHANGELOG.md
-
     let dict;
     let versionBeta;
     let versionMaster;
@@ -421,7 +536,41 @@ import moduleFs from "fs";
         }
     });
 }());
-' # '
+' "$@" # '
+    # update table-of-contents in README.md
+    node --input-type=module -e '
+import moduleFs from "fs";
+(async function () {
+    let data = await moduleFs.promises.readFile("README.md", "utf8");
+    data = data.replace((
+        /\n#\u0020Table\u0020of\u0020Contents$[\S\s]*?\n\n\n/m
+    ), function () {
+        let ii = -1;
+        let toc = "\n# Table of Contents\n";
+        data.replace((
+            /\n\n\n#\u0020(.*)/g
+        ), function (ignore, match1) {
+            if (match1 === "Table of Contents") {
+                ii += 1;
+                return;
+            }
+            if (ii < 0) {
+                return;
+            }
+            ii += 1;
+            toc += ii + ". [" + match1 + "](#" + match1.toLowerCase().replace((
+                /[^\u0020\-0-9A-Z_a-z]/g
+            ), "").replace((
+                /\u0020/g
+            ), "-") + ")\n";
+            return "";
+        });
+        toc += "\n\n";
+        return toc;
+    });
+    await moduleFs.promises.writeFile("README.md", data);
+}());
+' "$@" # '
 )}
 
 shCiBranchPromote() {(set -e
@@ -532,7 +681,7 @@ import moduleUrl from "url";
         });
     });
 }());
-' # "'
+' "$@" # '
 )}
 
 shGitCmdWithGithubToken() {(set -e
@@ -556,6 +705,34 @@ shGitCmdWithGithubToken() {(set -e
     printf "shGitCmdWithGithubToken - EXIT_CODE=$EXIT_CODE\n" 1>&2
     return "$EXIT_CODE"
 )}
+
+shGitGc() {(set -e
+# this function will gc unreachable .git objects
+# http://stackoverflow.com/questions/3797907/how-to-remove-unused-objects-from-a-git-repository
+    git \
+        -c gc.reflogExpire=0 \
+        -c gc.reflogExpireUnreachable=0 \
+        -c gc.rerereresolved=0 \
+        -c gc.rerereunresolved=0 \
+        -c gc.pruneExpire=now \
+        gc
+)}
+
+shGitInitBase() {(set -e
+# this function will git init && git fetch utility2 base
+    git init
+    git config core.autocrlf input
+    git remote add devenv \
+        https://github.com/kaizhu256/devenv
+    git fetch devenv base
+    git reset devenv/base
+    git checkout -b alpha
+    git add .
+    git commit -am "initial commit"
+    curl -Lf -o .git/config \
+https://raw.githubusercontent.com/kaizhu256/devenv/alpha/.gitconfig
+)}
+
 
 shGitLsTree() {(set -e
 # this function will "git ls-tree" all files committed in HEAD
@@ -636,7 +813,83 @@ import moduleChildProcess from "child_process";
         }).join(""));
     });
 }());
-' # "'
+' "$@" # '
+)}
+
+shGitSquashPop() {(set -e
+# this function will squash HEAD to given $COMMIT
+# http://stackoverflow.com/questions/5189560
+# /how-can-i-squash-my-last-x-commits-together-using-git
+    COMMIT="$1"
+    MESSAGE="$2"
+    # reset git to previous $COMMIT
+    git reset "$COMMIT"
+    git add .
+    # commit HEAD immediately after previous $COMMIT
+    git commit -am "$MESSAGE" || true
+)}
+
+shGrep() {(set -e
+# this function will recursively grep . for $REGEXP
+    REGEXP="$1"
+    shift
+    FILE_FILTER="\
+/\\.|~$|/(obj|release)/|(\\b|_)(\\.\\d|\
+archive|artifact|\
+bower_component|build|\
+coverage|\
+doc|\
+external|\
+fixture|\
+git_module|\
+jquery|\
+log|\
+min|misc|mock|\
+node_module|\
+old|\
+raw|\rollup|\
+swp|\
+tmp|\
+vendor)s{0,1}(\\b|_)\
+"
+    find . -type f |
+        grep -v -E "$FILE_FILTER" |
+        tr "\n" "\000" |
+        xargs -0 grep -HIin -E "$REGEXP" "$@" |
+        tee /tmp/shGrep.txt || true
+)}
+
+shGrepReplace() {(set -e
+# this function will inline grep-and-replace /tmp/shGrep.txt
+    node --input-type=module -e '
+/*jslint bitwise, name*/
+import moduleFs from "fs";
+import moduleOs from "os";
+import modulePath from "path";
+(async function () {
+    "use strict";
+    let data;
+    let dict = {};
+    data = await moduleFs.promises.readFile((
+        moduleOs.tmpdir() + "/shGrep.txt"
+    ), "utf8");
+    data = data.replace((
+        /^(.+?):(\d+?):(.*?)$/gm
+    ), function (ignore, file, lineno, str) {
+        dict[file] = dict[file] || moduleFs.readFileSync(
+            modulePath.resolve(file),
+            "utf8"
+        ).split("\n");
+        dict[file][lineno - 1] = str;
+        return "";
+    });
+    Object.entries(dict).forEach(function ([
+        file, data
+    ]) {
+        moduleFs.promise.writeFile(file, data.join("\n"));
+    });
+}());
+' "$@" # '
 )}
 
 shHttpFileServer() {(set -e
@@ -1043,9 +1296,9 @@ shJsonNormalize() {(set -e
     node --input-type=module -e '
 import moduleFs from "fs";
 (async function () {
-    function identity(val) {
+    function noop(val) {
 
-// This function will return <val>.
+// this function will do nothing except return <val>
 
         return val;
     }
@@ -1078,7 +1331,7 @@ import moduleFs from "fs";
         JSON.stringify(
             objectDeepCopyWithKeysSorted(
                 JSON.parse(
-                    identity(
+                    noop(
                         await moduleFs.promises.readFile(
                             process.argv[1],
                             "utf8"
@@ -1241,7 +1494,7 @@ import modulePath from "path";
                     /\*\//g
                 ), "*\\/") + "\n*/";
             }
-            // mangle module.exports
+            // init header and footer
             result += (
                 "\n\n\n/*\nfile " + elem.url + "\n*/\n"
                 + (elem.header || "")
@@ -1376,6 +1629,16 @@ import modulePath from "path";
 }());
 ' "$@" # '
     git diff 2>/dev/null || true
+)}
+
+shRmDsStore() {(set -e
+# this function will recursively rm .DS_Store from current-dir
+# http://stackoverflow.com/questions/2016844/bash-recursively-remove-files
+    local NAME
+    for NAME in "._*" ".DS_Store" "desktop.ini" "npm-debug.log" "*~"
+    do
+        find . -iname "$NAME" -print0 | xargs -0 rm -f || true
+    done
 )}
 
 shRunWithCoverage() {(set -e
@@ -1959,7 +2222,7 @@ ${String(count).padStart(7, " ")}
         pathname: DIR_COVERAGE + "index"
     });
 }());
-' # "'
+' "$@" # '
         find "$DIR_COVERAGE"
     fi
     printf "shRunWithCoverage - EXIT_CODE=$EXIT_CODE\n" 1>&2
@@ -2049,7 +2312,7 @@ ${result}
     `).trim() + "\n";
     moduleFs.promises.writeFile(process.argv[1], result);
 }());
-' "$SCREENSHOT_SVG" # "'
+' "$SCREENSHOT_SVG" # '
     printf "shRunWithScreenshotTxt - wrote - $SCREENSHOT_SVG\n"
     # cleanup
     rm "$SCREENSHOT_SVG.exit_code" "$SCREENSHOT_SVG.txt"
@@ -2083,5 +2346,8 @@ shCiMain() {(set -e
     fi
     "$@"
 )}
+
+# init ubuntu .bashrc
+shBashrcDebianInit || return "$?"
 
 shCiMain "$@"

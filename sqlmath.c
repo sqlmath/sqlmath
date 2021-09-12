@@ -248,6 +248,274 @@ static char *base64Encode(
 
 
 /*
+file sqlmath_c_betadog
+*/
+typedef struct Slrxy {
+    double caa;
+    double cbb;
+    double crr;
+    double dxx;
+    double mxx;
+    double myy;
+    double nn;
+    double offset;
+    double saa;
+    double sbb;
+    double see;
+    double sxx;
+    double sxy;
+    double syy;
+    double xxhh;
+    double xxll;
+    double xxxx;
+} Slrxy;
+
+typedef struct Stockstat {
+    Slrxy aa[25 * 7];
+} Stockstat;
+
+static void func_slr_ohlcv(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will return calculate simple-linear-regression on ohlcv
+    UNUSED(argc);
+    assert(argc == 1);
+    // declare var0
+/*
+[1, 2, 3, 6, 12, 24, 36, 48].map(function (ii) { return Math.ceil(ii * 30.5); })
+*/
+    static const double aDxx[] = { 31, 61, 92, 183, 366, 732, 1098, 1464 };
+/*
+Array.from(new Array(25),
+function (ignore, ii) { return Math.ceil(ii * 30.5) + 1; });
+*/
+    Slrxy aSlrxy[25 * 8] = { 0 };
+    static const double aOffset[] =
+        { 1, 32, 62, 93, 123, 154, 184, 215, 245, 276, 306, 337, 367, 398,
+        428, 459, 489, 520, 550, 581, 611, 642, 672, 703, 733
+    };
+    static const int nDxx = 8;
+    static const int nOffset = 25;
+    // declare var
+    Slrxy *pp = NULL;
+    double *aOhlcv = (double *) sqlite3_value_blob(argv[0]);
+    double dxx = 0;
+    double xx = 0;
+    double yy = 0;
+    int ii = 0;
+    int jj = 0;
+    int kk = 0;
+    int ll = 0;
+    int nn = MIN(aOhlcv[0], aDxx[nDxx - 1] + aOffset[nOffset - 1]);
+    // init aSlrxy
+    aOhlcv += 2;
+    ii = 0;
+    while (ii < nOffset) {
+        jj = 0;
+        while (jj < nDxx) {
+            pp = aSlrxy + (ii * nDxx + jj);
+            pp->dxx = aDxx[jj];
+            pp->offset = aOffset[ii];
+            pp->xxhh = -INFINITY;
+            pp->xxll = INFINITY;
+            jj += 1;
+        }
+        ii += 1;
+    }
+    // calculate sxx, syy, sxy
+    kk = 1;
+    while (kk < nn) {
+        ll = 0;
+        while (ll < 4) {
+            yy = aOhlcv[5 * kk + ll];
+            if (yy <= 0 || !isnormal(yy)) {
+                ll += 1;
+                continue;
+            }
+            xx = (
+                // price - open
+                ll == 0
+                ? (double) kk + 0.270833333333333333
+                // price - high, low
+                : ll == 1 || ll == 2
+                ? (double) kk + 0.135416666666666666
+                // price - close
+                : (double) kk
+            );
+            ii = 0;
+            while (ii < nOffset) {
+                jj = 0;
+                while (jj < nDxx) {
+                    pp = aSlrxy + (ii * nDxx + jj);
+                    if (pp->offset <= xx && xx < pp->offset + pp->dxx) {
+// debug
+// if (ii == 0 && jj == 0) { printf("\n[nn=%d, xx=%f, yy=%f, offset=%f, dxx=%f]\n", nn, xx, yy, pp->offset, pp->dxx); }
+                        if (pp->xxhh < yy) {
+                            pp->xxhh = xx;
+                        }
+                        if (pp->xxll > yy) {
+                            pp->xxll = xx;
+                        }
+                        pp->nn += 1;
+                        pp->xxxx += xx * xx;
+                        // wellford - calculate syy
+                        dxx = yy - pp->myy;
+                        pp->myy += dxx / pp->nn;
+                        pp->syy += dxx * (yy - pp->myy);
+                        // wellford - calculate sxx
+                        dxx = xx - pp->mxx;
+                        pp->mxx += dxx / pp->nn;
+                        pp->sxx += dxx * (xx - pp->mxx);
+                        // wellford - calculate sxy
+                        pp->sxy += dxx * (yy - pp->myy);
+                    }
+                    jj += 1;
+                }
+                ii += 1;
+            }
+            ll += 1;
+        }
+        kk += 1;
+    }
+    // calculate caa, cbb, crr
+    ii = 0;
+    while (ii < nOffset) {
+        jj = 0;
+        while (jj < nDxx) {
+            pp = aSlrxy + (ii * nDxx + jj);
+            pp->cbb = pp->sxy / pp->sxx;
+            pp->caa = pp->myy - pp->cbb * pp->mxx;
+            pp->crr = pp->sxy / sqrt(pp->sxx * pp->syy);
+            jj += 1;
+        }
+        ii += 1;
+    }
+    // calculate see = rss / (nn - 2)
+    kk = 1;
+    while (kk < nn) {
+        ll = 0;
+        while (ll < 4) {
+            yy = aOhlcv[5 * kk + ll];
+            if (yy <= 0 || !isnormal(yy)) {
+                ll += 1;
+                continue;
+            }
+            xx = (
+                // price - open
+                ll == 0
+                ? (double) kk + 0.270833333333333333
+                // price - high, low
+                : ll == 1 || ll == 2
+                ? (double) kk + 0.135416666666666666
+                // price - close
+                : (double) kk
+            );
+            ii = 0;
+            while (ii < nOffset) {
+                jj = 0;
+                while (jj < nDxx) {
+                    pp = aSlrxy + (ii * nDxx + jj);
+                    if (pp->offset <= xx && xx < pp->offset + pp->dxx) {
+                        pp->see += pow(pp->caa + pp->cbb * xx - yy, 2);
+                    }
+                    jj += 1;
+                }
+                ii += 1;
+            }
+            ll += 1;
+        }
+        kk += 1;
+    }
+    // calculate sbb = see / sxx
+    // calculate saa = see * xxxx / (nn * sxx) = sbb * xxxx / nn
+    ii = 0;
+    while (ii < nOffset) {
+        jj = 0;
+        while (jj < nDxx) {
+            pp = aSlrxy + (ii * nDxx + jj);
+            pp->see /= pp->nn - 2;
+            pp->sbb = pp->see / pp->sxx;
+            pp->saa = pp->sbb * (pp->xxxx / pp->nn);
+            jj += 1;
+        }
+        ii += 1;
+    }
+    sqlite3_result_blob(context, &aSlrxy, sizeof(aSlrxy), SQLITE_TRANSIENT);
+}
+
+
+/*
+file sqlmath_c_func
+*/
+static void func_cot(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will return cot(argv[0])
+    UNUSED(argc);
+    assert(argc == 1);
+    switch (sqlite3_value_numeric_type(argv[0])) {
+    case SQLITE_INTEGER:
+    case SQLITE_FLOAT:
+        if (argv[0] == 0) {
+            sqlite3_result_double(context, INFINITY);
+            return;
+        }
+        sqlite3_result_double(context,
+            1.0 / tan(sqlite3_value_double(argv[0])));
+    }
+}
+
+static void func_coth(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will return coth(argv[0])
+    UNUSED(argc);
+    assert(argc == 1);
+    switch (sqlite3_value_numeric_type(argv[0])) {
+    case SQLITE_INTEGER:
+    case SQLITE_FLOAT:
+        if (argv[0] == 0) {
+            sqlite3_result_double(context, INFINITY);
+            return;
+        }
+        sqlite3_result_double(context,
+            1.0 / tanh(sqlite3_value_double(argv[0])));
+    }
+}
+
+static void func_sign(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+/*
+** Implementation of the sign() function
+** return one of 3 possibilities +1,0 or -1 when the argument is respectively
+** positive, 0 or negative.
+** When the argument is NULL the result is also NULL (completly conventional)
+*/
+    UNUSED(argc);
+    assert(argc == 1);
+    switch (sqlite3_value_numeric_type(argv[0])) {
+    case SQLITE_INTEGER:
+    case SQLITE_FLOAT:
+        {
+            double rVal = sqlite3_value_double(argv[0]);
+            sqlite3_result_double(context,
+                (rVal > 0) ? 1 : (rVal < 0) ? -1 : 0);
+        }
+        return;
+    }
+}
+
+
+/*
 file sqlmath_c_str99
 */
 // dynamically growable string
@@ -539,6 +807,7 @@ static void func_tobase64(
 ) {
 // this function will convert blob to base64-encoded-text
     UNUSED(argc);
+    assert(argc == 1);
     // declare var
     char *text = NULL;
     int nn = sqlite3_value_bytes(argv[0]);
@@ -560,6 +829,7 @@ static void func_tostring(
 ) {
 // this function will convert blob to text
     UNUSED(argc);
+    assert(argc == 1);
     sqlite3_result_text(context, (const char *) sqlite3_value_text(argv[0]),
         -1, SQLITE_TRANSIENT);
 }
@@ -1022,72 +1292,6 @@ SQLMATH_API int dbTableInsert(
 
 
 /*
-file sqlmath_c_func
-*/
-static void func_cot(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will return cot(argv[0])
-    assert(argc == 1);
-    switch (sqlite3_value_numeric_type(argv[0])) {
-    case SQLITE_INTEGER:
-    case SQLITE_FLOAT:
-        if (argv[0] == 0) {
-            sqlite3_result_double(context, INFINITY);
-            return;
-        }
-        sqlite3_result_double(context,
-            1.0 / tan(sqlite3_value_double(argv[0])));
-    }
-}
-
-static void func_coth(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will return coth(argv[0])
-    assert(argc == 1);
-    switch (sqlite3_value_numeric_type(argv[0])) {
-    case SQLITE_INTEGER:
-    case SQLITE_FLOAT:
-        if (argv[0] == 0) {
-            sqlite3_result_double(context, INFINITY);
-            return;
-        }
-        sqlite3_result_double(context,
-            1.0 / tanh(sqlite3_value_double(argv[0])));
-    }
-}
-
-static void func_sign(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-/*
-** Implementation of the sign() function
-** return one of 3 possibilities +1,0 or -1 when the argument is respectively
-** positive, 0 or negative.
-** When the argument is NULL the result is also NULL (completly conventional)
-*/
-    assert(argc == 1);
-    switch (sqlite3_value_numeric_type(argv[0])) {
-    case SQLITE_INTEGER:
-    case SQLITE_FLOAT:
-        {
-            double rVal = sqlite3_value_double(argv[0]);
-            sqlite3_result_double(context,
-                (rVal > 0) ? 1 : (rVal < 0) ? -1 : 0);
-        }
-        return;
-    }
-}
-
-
-/*
 file sqlmath_c_init
 */
 int sqlite3_sqlmath_init(
@@ -1107,9 +1311,10 @@ int sqlite3_sqlmath_init(
     sqlite3_api = pApi;
     SQLITE3_CREATE_FUNCTION(cot, 1);
     SQLITE3_CREATE_FUNCTION(coth, 1);
+    SQLITE3_CREATE_FUNCTION(slr_ohlcv, 1);
     SQLITE3_CREATE_FUNCTION(sign, 1);
-    SQLITE3_CREATE_FUNCTION(tostring, 1);
     SQLITE3_CREATE_FUNCTION(tobase64, 1);
+    SQLITE3_CREATE_FUNCTION(tostring, 1);
     //!! // int module blobtable
     //!! errcode = sqlite3_create_module(db, "blobtable", &blobtableModule, 0);
     //!! ASSERT_SQLITE_OK(NULL, NULL, errcode);
@@ -1128,6 +1333,7 @@ file sqlmath_napi - start
 #else                           // SQLMATH_NAPI
 // header
 #include <node_api.h>
+static int dbCount = 0;
 
 
 /*
@@ -1445,6 +1651,10 @@ static int JSPROMISE_CREATE(
     sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
     // call c-function
     errcode = sqlite3_close_v2(db);
+    if (db != NULL) {
+        dbCount -= 1;
+        // fprintf(stderr, "\nsqlite - __dbCloseAsync(%d)\n", dbCount);
+    }
     ASSERT_SQLITE_OK(baton, db, errcode);
     // save result
     baton->argint64[0] = (int64_t) (intptr_t) db;
@@ -1483,9 +1693,6 @@ static void __dbFinalizer(
 // this function will finalize <finalize_data>
     UNUSED(env);
     UNUSED(finalize_hint);
-    // fprintf(stderr,
-    //     "\nsqlite - auto-closing open-sqlite3-connection"
-    //     " due for garbage-collection\n");
     // declare var
     int errcode = 0;
     sqlite3 *db = *(sqlite3 **) finalize_data;
@@ -1493,6 +1700,10 @@ static void __dbFinalizer(
     // printf("\n\n[napi finalize_hint=%s]\n\n", (const char *) finalize_hint);
     // close db
     errcode = sqlite3_close_v2(db);
+    if (db != NULL) {
+        dbCount -= 1;
+        // fprintf(stderr, "\nsqlite - __dbFinalizer(%d)\n", dbCount);
+    }
     ASSERT_NAPI_FATAL(errcode == 0, "sqlite3_close_v2");
     ALLOCF(finalize_data);
 }
@@ -1539,6 +1750,8 @@ static int JSPROMISE_CREATE(
         &db,                    // db
         (int) baton->argint64[2],       // flags // NOLINT
         NULL);
+    dbCount += 1;
+    // fprintf(stderr, "\nsqlite - __dbOpenAsync(%d)\n", dbCount);
     ASSERT_SQLITE_OK(baton, db, errcode);
     // printf("\n\n[napi db=%zd]\n\n", (intptr_t) db);
     // save result
