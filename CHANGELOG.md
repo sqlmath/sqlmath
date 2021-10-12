@@ -1,6 +1,7 @@
 # Changelog
 
 # Todo
+- add ml-functionality
 - none
 
 # v2021.9.9 - beta
@@ -319,7 +320,7 @@ Released July 14th, 2014
 
 Released Jan 13th, 2014
 
- - updated internal libsqlite3 from 3.7.17 -> 3.8.2 (https://www.sqlite.org/news.html) which includes the next-generation query planner http://www.sqlite.org/queryplanner-ng.html
+ - updated internal libsqlite3 from 3.7.17 -> 3.8.2 (https://www.sqlite.org/news.html) which includes the next-generation query planner https://www.sqlite.org/queryplanner-ng.html
  - improved binary deploy system using https://github.com/springmeyer/node-pre-gyp
  - binary install now supports http proxies
  - source compile now supports freebsd
