@@ -15,6 +15,10 @@
 
 
 <br><br>
+# Table of Contents
+
+
+<br><br>
 # Package Listing
 ![screenshot_package_listing.svg](https://jslint-org.github.io/jslint/branch-beta/.artifact/screenshot_package_listing.svg)
 
