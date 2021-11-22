@@ -5,7 +5,7 @@
 # http://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
 
 # sh one-liner
-#
+# git add .; npm run test2; git checkout .
 # git branch -d -r origin/aa
 # git config --global diff.algorithm histogram
 # git fetch origin alpha beta master && git fetch upstream alpha beta master
@@ -18,7 +18,7 @@
 # ln -f jslint.mjs ~/jslint.mjs
 # openssl rand -base64 32 # random key
 # sh jslint_ci.sh shCiBranchPromote origin alpha beta
-# sh jslint_ci.sh shRunWithScreenshotTxt .build/screenshot_changelog.svg head -n50 CHANGELOG.md
+# sh jslint_ci.sh shRunWithScreenshotTxt .artifact/screenshot_changelog.svg head -n50 CHANGELOG.md
 # vim rgx-lowercase \L\1\e
 
 shBashrcDebianInit() {
@@ -142,7 +142,7 @@ shBashrcDebianInit() {
 shBrowserScreenshot() {(set -e
 # this function will run headless-chrome to screenshot url $1 with
 # window-size $2
-    node --input-type=module -e '
+    node --input-type=module --eval '
 import moduleChildProcess from "child_process";
 import modulePath from "path";
 import moduleUrl from "url";
@@ -159,7 +159,9 @@ import moduleUrl from "url";
         return argList[0];
     };
 }());
-(function () {
+(async function () {
+    let child;
+    let exitCode;
     let file;
     let timeStart;
     let url;
@@ -178,10 +180,10 @@ import moduleUrl from "url";
     if (String(file + "/").startsWith(process.cwd() + "/")) {
         file = file.replace(process.cwd(), "");
     }
-    file = ".build/screenshot_browser_" + encodeURIComponent(file).replace((
+    file = ".artifact/screenshot_browser_" + encodeURIComponent(file).replace((
         /%/g
     ), "_").toLowerCase() + ".png";
-    moduleChildProcess.spawn(
+    child = moduleChildProcess.spawn(
         (
             process.platform === "darwin"
             ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -214,15 +216,17 @@ import moduleUrl from "url";
                 "ignore", 1, 2
             ]
         }
-    ).on("exit", function (exitCode) {
-        console.error(
-            "shBrowserScreenshot"
-            + "\n  - url - " + url
-            + "\n  - wrote - " + file
-            + "\n  - timeElapsed - " + (Date.now() - timeStart) + " ms"
-            + "\n  - EXIT_CODE=" + exitCode
-        );
+    );
+    exitCode = await new Promise(function (resolve) {
+        child.on("exit", resolve);
     });
+    console.error(
+        "shBrowserScreenshot"
+        + "\n  - url - " + url
+        + "\n  - wrote - " + file
+        + "\n  - timeElapsed - " + (Date.now() - timeStart) + " ms"
+        + "\n  - EXIT_CODE=" + exitCode
+    );
 }());
 ' "$@" # '
 )}
@@ -230,7 +234,8 @@ import moduleUrl from "url";
 shCiArtifactUpload() {(set -e
 # this function will upload build-artifacts to branch-gh-pages
     local BRANCH
-    node --input-type=module -e '
+    local FILE
+    node --input-type=module --eval '
 process.exit(Number(
     `${process.version.split(".")[0]}.${process.arch}.${process.platform}`
     !== process.env.CI_NODE_VERSION_ARCH_PLATFORM
@@ -247,7 +252,7 @@ process.exit(Number(
     # init $UPSTREAM_REPO
     export UPSTREAM_REPO="${UPSTREAM_REPO:-jslint}"
     # screenshot changelog and files
-    node --input-type=module -e '
+    node --input-type=module --eval '
 import moduleChildProcess from "child_process";
 (function () {
     [
@@ -255,7 +260,7 @@ import moduleChildProcess from "child_process";
         [
             "jslint_ci.sh",
             "shRunWithScreenshotTxt",
-            ".build/screenshot_changelog.svg",
+            ".artifact/screenshot_changelog.svg",
             "head",
             "-n50",
             "CHANGELOG.md"
@@ -264,7 +269,7 @@ import moduleChildProcess from "child_process";
         [
             "jslint_ci.sh",
             "shRunWithScreenshotTxt",
-            ".build/screenshot_files.svg",
+            ".artifact/screenshot_package_listing.svg",
             "shGitLsTree"
         ]
     ].forEach(function (argList) {
@@ -280,10 +285,18 @@ import moduleChildProcess from "child_process";
     });
 }());
 ' "$@" # '
-    shArtifactUploadCustom
-    # add dir .build
-    git add -f .build
-    git commit -am "add dir .build"
+    shCiArtifactUploadCustom
+    # 1px-border around browser-screenshot
+    if (ls .artifact/screenshot_browser_*.png 2>/dev/null \
+            && mogrify -version 2>&1 | grep -i imagemagick)
+    then
+        mogrify -shave 1x1 -bordercolor black -border 1 \
+            .artifact/screenshot_browser_*.png
+    fi
+    # add dir .artifact
+    git add -f .artifact
+    git rm --cached -r .artifact/tmp 2>/dev/null || true
+    git commit -am "add dir .artifact"
     # checkout branch-gh-pages
     git fetch origin gh-pages
     git checkout -b gh-pages origin/gh-pages
@@ -300,8 +313,17 @@ import moduleChildProcess from "child_process";
     # update root-dir with branch-beta
     if [ "$BRANCH" = beta ]
     then
-        rm -rf .build
+        rm -rf .artifact
         git checkout beta .
+        # update apidoc.html
+        for FILE in apidoc.html
+        do
+            if [ -f ".artifact/$FILE" ]
+            then
+                cp -a ".artifact/$FILE" .
+                git add -f "$FILE"
+            fi
+        done
     fi
     # update README.md with branch-$BRANCH and $GITHUB_REPOSITORY
     sed -i \
@@ -340,38 +362,48 @@ import moduleChildProcess from "child_process";
     )
 )}
 
-shArtifactUploadCustom() {(set -e
+shCiArtifactUploadCustom() {(set -e
     return
 )}
 
 shCiBase() {(set -e
 # this function will run base-ci
-    shCiBaseCustom
     # update table-of-contents in README.md
-    node --input-type=module -e '
+    node --input-type=module --eval '
 import moduleFs from "fs";
 (async function () {
     let data = await moduleFs.promises.readFile("README.md", "utf8");
     data = data.replace((
-        /\n#\u0020Table\u0020of\u0020Contents$[\S\s]*?\n\n\n/m
+        /\n# Table of Contents$[\S\s]*?\n\n\n/m
     ), function () {
         let ii = -1;
         let toc = "\n# Table of Contents\n";
         data.replace((
-            /\n\n\n#\u0020(.*)/g
-        ), function (ignore, match1) {
-            if (match1 === "Table of Contents") {
+            // /(\n{3,}#|\n+?<br><br>\n#|\n+?###) (\S.*)/g
+            /((?:\n{3,}|\n+?(?:<br>)+?\n)(?:#|###)) (\S.*)/g
+        ), function (match0, level, title) {
+            if (title === "Table of Contents") {
                 ii += 1;
-                return;
+                return "";
             }
             if (ii < 0) {
-                return;
+                return "";
             }
-            ii += 1;
-            toc += ii + ". [" + match1 + "](#" + match1.toLowerCase().replace((
-                /[^\u0020\-0-9A-Z_a-z]/g
+            switch (level) {
+            case "\n\n\n<br><br>\n#":
+                ii += 1;
+                toc += "\n" + ii + ". [" + title + "](#";
+                break;
+            case "\n\n\n<br><br>\n###":
+                toc += "    - [" + title + "](#";
+                break;
+            default:
+                throw new Error(JSON.stringify(match0));
+            }
+            toc += title.toLowerCase().replace((
+                /[^ \-0-9A-Z_a-z]/g
             ), "").replace((
-                /\u0020/g
+                / /g
             ), "-") + ")\n";
             return "";
         });
@@ -381,6 +413,8 @@ import moduleFs from "fs";
     await moduleFs.promises.writeFile("README.md", data);
 }());
 ' "$@" # '
+    shCiBaseCustom
+    git diff
 )}
 
 shCiBaseCustom() {(set -e
@@ -404,7 +438,7 @@ shCiBranchPromote() {(set -e
 
 shDirHttplinkValidate() {(set -e
 # this function will validate http-links embedded in .html and .md files
-    node --input-type=module -e '
+    node --input-type=module --eval '
 import moduleFs from "fs";
 import moduleHttps from "https";
 import moduleUrl from "url";
@@ -498,6 +532,11 @@ import moduleUrl from "url";
 ' "$@" # '
 )}
 
+shDuList() {(set -e
+# this function will du $1 and sort its subdir by size
+    du -md1 "$1" | sort -nr
+)}
+
 shGitCmdWithGithubToken() {(set -e
 # this function will run git $CMD with $GITHUB_TOKEN
     local CMD
@@ -533,18 +572,22 @@ shGitGc() {(set -e
 )}
 
 shGitInitBase() {(set -e
-# this function will git init && git fetch utility2 base
+# this function will git init && create basic git-template from jslint-org/base
+    local BRANCH
     git init
     git config core.autocrlf input
-    git remote add devenv \
-        https://github.com/kaizhu256/devenv
-    git fetch devenv base
-    git reset devenv/base
-    git checkout -b alpha
-    git add .
-    git commit -am "initial commit"
-    curl -Lf -o .git/config \
-https://raw.githubusercontent.com/kaizhu256/devenv/alpha/.gitconfig
+    git remote remove base 2>/dev/null || true
+    git remote add base https://github.com/jslint-org/base
+    git fetch base base
+    for BRANCH in base alpha
+    do
+        git branch -D "$BRANCH" 2>/dev/null || true
+        git checkout -b "$BRANCH" base/base
+    done
+    sed -i.bak "s|owner/repo|${1:-owner/repo}|" .gitconfig
+    rm .gitconfig.bak
+    cp .gitconfig .git/config
+    git commit -am "update owner/repo to $1" || true
 )}
 
 
@@ -553,7 +596,7 @@ shGitLsTree() {(set -e
 # example use:
 # shGitLsTree | sort -rk3 # sort by date
 # shGitLsTree | sort -rk4 # sort by size
-    node --input-type=module -e '
+    node --input-type=module --eval '
 import moduleChildProcess from "child_process";
 (async function () {
     let result;
@@ -574,7 +617,7 @@ import moduleChildProcess from "child_process";
         }).setEncoding("utf8");
     });
     result = Array.from(result.matchAll(
-        /^(\S+?)\u0020+?\S+?\u0020+?\S+?\u0020+?(\S+?)\t(\S+?)$/gm
+        /^(\S+?) +?\S+? +?\S+? +?(\S+?)\t(\S+?)$/gm
     )).map(function ([
         ignore, mode, size, file
     ]) {
@@ -675,8 +718,7 @@ vendor)s{0,1}(\\b|_)\
 
 shGrepReplace() {(set -e
 # this function will inline grep-and-replace /tmp/shGrep.txt
-    node --input-type=module -e '
-/*jslint bitwise, name*/
+    node --input-type=module --eval '
 import moduleFs from "fs";
 import moduleOs from "os";
 import modulePath from "path";
@@ -690,7 +732,7 @@ import modulePath from "path";
     data = data.replace((
         /^(.+?):(\d+?):(.*?)$/gm
     ), function (ignore, file, lineno, str) {
-        dict[file] = dict[file] || moduleFs.readFileSync(
+        dict[file] = dict[file] || moduleFs.readFileSync( //jslint-quiet
             modulePath.resolve(file),
             "utf8"
         ).split("\n");
@@ -731,7 +773,7 @@ shHttpFileServer() {(set -e
         done
         return
     fi
-    node --input-type=module -e '
+    node --input-type=module --eval '
 import moduleChildProcess from "child_process";
 import moduleFs from "fs";
 import moduleHttp from "http";
@@ -752,9 +794,9 @@ import moduleUrl from "url";
     };
 }());
 (async function httpFileServer() {
-/*
- * this function will start http-file-server
- */
+
+// this function will start http-file-server
+
     let contentTypeDict = {
         ".bmp": "image/bmp",
         ".cjs": "application/javascript; charset=utf-8",
@@ -840,9 +882,9 @@ import moduleUrl from "url";
     }).listen(process.env.PORT);
 }());
 (function jslintDir() {
-/*
- * this function will jslint current-directory
- */
+
+// this function will jslint current-directory
+
     moduleFs.stat((
         process.env.HOME + "/jslint.mjs"
     ), function (ignore, exists) {
@@ -858,9 +900,9 @@ import moduleUrl from "url";
     });
 }());
 (function replStart() {
-/*
- * this function will start repl-debugger
- */
+
+// this function will start repl-debugger
+
     let that;
     // start repl
     that = moduleRepl.start({
@@ -877,7 +919,7 @@ import moduleUrl from "url";
     // hook custom-eval-function
     that.eval = function (script, context, file, onError) {
         script.replace((
-            /^(\S+)\u0020(.*?)\n/
+            /^(\S+) (.*?)\n/
         ), function (ignore, match1, match2) {
             switch (match1) {
             // syntax-sugar - run shell-cmd
@@ -897,7 +939,7 @@ import moduleUrl from "url";
                     break;
                 }
                 match2 = match2.replace((
-                    /^git\u0020/
+                    /^git /
                 ), "git --no-pager ");
                 // run shell-cmd
                 console.error("$ " + match2);
@@ -956,9 +998,9 @@ import moduleUrl from "url";
     };
 }());
 (function watchDir() {
-/*
- * this function will watch current-directory for changes
- */
+
+// this function will watch current-directory for changes
+
     moduleFs.readdir(".", function (ignore, fileList) {
         fileList.forEach(function (file) {
             if (file[0] === ".") {
@@ -1047,26 +1089,26 @@ div {
 </div>
 </body>
 </html>
-' > .build/asset_image_logo_512.html
-    cp asset_font_daley_bold.woff2 .build || true
+' > .artifact/asset_image_logo_512.html
+    cp asset_font_daley_bold.woff2 .artifact || true
     # screenshot asset_image_logo_512.png
-    shBrowserScreenshot .build/asset_image_logo_512.html \
+    shBrowserScreenshot .artifact/asset_image_logo_512.html \
         --window-size=512x512 \
-        -screenshot=.build/asset_image_logo_512.png
+        -screenshot=.artifact/asset_image_logo_512.png
     # create various smaller thumbnails
     for SIZE in 32 64 128 256
     do
-        convert -resize "${SIZE}x${SIZE}" .build/asset_image_logo_512.png \
-            ".build/asset_image_logo_$SIZE.png"
+        convert -resize "${SIZE}x${SIZE}" .artifact/asset_image_logo_512.png \
+            ".artifact/asset_image_logo_$SIZE.png"
         printf \
-"shImageLogoCreate - wrote - .build/asset_image_logo_$SIZE.png\n" 1>&2
+"shImageLogoCreate - wrote - .artifact/asset_image_logo_$SIZE.png\n" 1>&2
     done
     # convert to svg @ https://convertio.co/png-svg/
 )}
 
 shImageToDataUri() {(set -e
 # this function will convert image $1 to data-uri string
-    node --input-type=module -e '
+    node --input-type=module --eval '
 import moduleFs from "fs";
 import moduleHttps from "https";
 (async function () {
@@ -1107,40 +1149,40 @@ shJsonNormalize() {(set -e
 # 1. read json-data from file $1
 # 2. normalize json-data
 # 3. write normalized json-data back to file $1
-    node --input-type=module -e '
+    node --input-type=module --eval '
 import moduleFs from "fs";
+function noop(val) {
+
+// This function will do nothing except return <val>.
+
+    return val;
+}
+function objectDeepCopyWithKeysSorted(obj) {
+
+// This function will recursively deep-copy <obj> with keys sorted.
+
+    let sorted;
+    if (typeof obj !== "object" || !obj) {
+        return obj;
+    }
+
+// Recursively deep-copy list with child-keys sorted.
+
+    if (Array.isArray(obj)) {
+        return obj.map(objectDeepCopyWithKeysSorted);
+    }
+
+// Recursively deep-copy obj with keys sorted.
+
+    sorted = {};
+    Object.keys(obj).sort().forEach(function (key) {
+        sorted[key] = objectDeepCopyWithKeysSorted(obj[key]);
+    });
+    return sorted;
+}
 (async function () {
-    function noop(val) {
-
-// this function will do nothing except return <val>
-
-        return val;
-    }
-    function objectDeepCopyWithKeysSorted(obj) {
-
-// this function will recursively deep-copy <obj> with keys sorted
-
-        let sorted;
-        if (typeof obj !== "object" || !obj) {
-            return obj;
-        }
-
-// recursively deep-copy list with child-keys sorted
-
-        if (Array.isArray(obj)) {
-            return obj.map(objectDeepCopyWithKeysSorted);
-        }
-
-// recursively deep-copy obj with keys sorted
-
-        sorted = {};
-        Object.keys(obj).sort().forEach(function (key) {
-            sorted[key] = objectDeepCopyWithKeysSorted(obj[key]);
-        });
-        return sorted;
-    }
     console.error("shJsonNormalize - " + process.argv[1]);
-    moduleFs.promises.writeFile(
+    await moduleFs.promises.writeFile(
         process.argv[1],
         JSON.stringify(
             objectDeepCopyWithKeysSorted(
@@ -1156,16 +1198,26 @@ import moduleFs from "fs";
                 )
             ),
             undefined,
-            4
+            Number(process.argv[2]) || 4
         ) + "\n"
     );
 }());
 ' "$@" # '
 )}
 
+shNpmPublishV0() {(set -e
+# this function will npm-publish name $1 with bare package.json
+    local DIR
+    DIR=/tmp/shNpmPublishV0
+    rm -rf "$DIR" && mkdir -p "$DIR" && cd "$DIR"
+    printf "{\"name\":\"$1\",\"version\":\"0.0.1\"}\n" > package.json
+    shift
+    npm publish "$@"
+)}
+
 shRawLibFetch() {(set -e
 # this function will fetch raw-lib from $1
-    node --input-type=module -e '
+    node --input-type=module --eval '
 import moduleChildProcess from "child_process";
 import moduleFs from "fs";
 import moduleHttps from "https";
@@ -1330,11 +1382,11 @@ import modulePath from "path";
         ), "\n");
         // remove trailing-whitespace
         result = result.replace((
-            /[\t\u0020]+$/gm
+            /[\t ]+$/gm
         ), "");
         // remove leading-newline before ket
         result = result.replace((
-            /\n+?(\n\u0020*?\})/g
+            /\n+?(\n *?\})/g
         ), "$1");
         // eslint - no-multiple-empty-lines
         // https://github.com/eslint/eslint/blob/v7.2.0/docs/rules/no-multiple-empty-lines.md //jslint-quiet
@@ -1433,7 +1485,7 @@ import modulePath from "path";
         // init footer
         result = header + result;
         matchObj.input.replace((
-            /\n\/\*\nfile\u0020none\n\*\/\n\/\*jslint-enable\*\/\n([\S\s]+)/
+            /\n\/\*\nfile none\n\*\/\n\/\*jslint-enable\*\/\n([\S\s]+)/
         ), function (ignore, match1) {
             result += "\n\n" + match1.trim() + "\n";
         });
@@ -1442,7 +1494,7 @@ import modulePath from "path";
     });
 }());
 ' "$@" # '
-    git diff 2>/dev/null || true
+    git diff
 )}
 
 shRmDsStore() {(set -e
@@ -1457,590 +1509,1145 @@ shRmDsStore() {(set -e
 
 shRunWithCoverage() {(set -e
 # this function will run nodejs command $@ with v8-coverage
-# and create coverage-report .build/coverage/index.html
-    local EXIT_CODE
-    EXIT_CODE=0
-    export DIR_COVERAGE=.build/coverage/
-    rm -rf "$DIR_COVERAGE"
-    mkdir -p "$DIR_COVERAGE"
-    (set -e
-        export NODE_V8_COVERAGE="$DIR_COVERAGE"
-        "$@"
-    ) || EXIT_CODE="$?"
-    if [ "$EXIT_CODE" = 0 ]
-    then
-        node --input-type=module -e '
-import moduleFs from "fs";
-import modulePath from "path";
-// init debugInline
-(function () {
-    let consoleError = console.error;
-    globalThis.debugInline = globalThis.debugInline || function (...argList) {
+# and create coverage-report .artifact/coverage/index.html
+    node --input-type=module --eval '
+/*jslint indent2*/
+let moduleChildProcess;
+let moduleFs;
+let moduleFsInitResolveList;
+let modulePath;
+let moduleUrl;
+function assertOrThrow(condition, message) {
+  if (!condition) {
+    throw (
+      (!message || typeof message === "string")
+      ? new Error(String(message).slice(0, 2048))
+      : message
+    );
+  }
+}
+async function fsWriteFileWithParents(pathname, data) {
+  await moduleFsInit();
+  try {
+    await moduleFs.promises.writeFile(pathname, data);
+  } catch (ignore) {
+    await moduleFs.promises.mkdir(modulePath.dirname(pathname), {
+      recursive: true
+    });
+    await moduleFs.promises.writeFile(pathname, data);
+  }
+  console.error("wrote file " + pathname);
+}
+function htmlEscape(str) {
+  return String(str).replace((
+    /&/g
+  ), "&amp;").replace((
+    /</g
+  ), "&lt;").replace((
+    />/g
+  ), "&gt;");
+}
+async function moduleFsInit() {
 
-// this function will both print <argList> to stderr and return <argList>[0]
+  if (moduleFs !== undefined) {
+    return;
+  }
+  if (moduleFsInitResolveList !== undefined) {
+    return new Promise(function (resolve) {
+      moduleFsInitResolveList.push(resolve);
+    });
+  }
+  moduleFsInitResolveList = [];
+  [
+    moduleChildProcess,
+    moduleFs,
+    modulePath,
+    moduleUrl
+  ] = await Promise.all([
+    import("child_process"),
+    import("fs"),
+    import("path"),
+    import("url")
+  ]);
+  while (moduleFsInitResolveList.length > 0) {
+    moduleFsInitResolveList.shift()();
+  }
+}
+function v8CoverageListMerge(processCovs) {
+  let resultMerged = [];    // List of merged scripts from processCovs.
+  let urlToScriptDict = new Map();  // Map scriptCov.url to scriptCovs.
 
-        consoleError("\n\ndebugInline");
-        consoleError(...argList);
-        consoleError("\n");
-        return argList[0];
+  function compareRangeList(aa, bb) {
+    if (aa.startOffset !== bb.startOffset) {
+      return aa.startOffset - bb.startOffset;
+    }
+    return bb.endOffset - aa.endOffset;
+  }
+
+  function dictKeyValueAppend(dict, key, val) {
+    let list = dict.get(key);
+    if (list === undefined) {
+      list = [];
+      dict.set(key, list);
+    }
+    list.push(val);
+  }
+
+  function mergeTreeList(parentTrees) {
+    if (parentTrees.length <= 1) {
+      return parentTrees[0];
+    }
+    return {
+      children: mergeTreeListToChildren(parentTrees),
+      delta: parentTrees.reduce(function (aa, bb) {
+        return aa + bb.delta;
+      }, 0),
+      end: parentTrees[0].end,
+      start: parentTrees[0].start
     };
-}());
-(async function () {
-    let DIR_COVERAGE = process.env.DIR_COVERAGE;
-    let cwd;
-    let data;
-    let fileDict;
-    async function htmlRender({
-        fileList,
-        lineList,
-        pathname
-    }) {
-        let html;
-        let padLines;
-        let padPathname;
-        let txt;
-        let txtBorder;
-        function stringHtmlSafe(str) {
-        /*
-         * this function will make <str> html-safe
-         * https://stackoverflow.com/questions/7381974/which-characters-need-to-be-escaped-on-html //jslint-quiet
-         */
-            return str.replace((
-                /&/gu
-            ), "&amp;").replace((
-                /"/gu
-            ), "&quot;").replace((
-                /\u0027/gu
-            ), "&apos;").replace((
-                /</gu
-            ), "&lt;").replace((
-                />/gu
-            ), "&gt;").replace((
-                /&amp;(amp;|apos;|gt;|lt;|quot;)/igu
-            ), "&$1");
+  }
+
+  function mergeTreeListToChildren(parentTrees) {
+    let openRange;
+    let parentToChildDict = new Map();    // Map parent to child.
+    let queueList;
+    let queueListIi = 0;
+    let queueOffset;
+    let queueTrees;
+    let resultChildren = [];
+    let startToTreeDict = new Map();    // Map tree.start to tree.
+    function nextXxx() {
+      let [
+        nextOffset, nextTrees
+      ] = queueList[queueListIi] || [];
+      let openRangeEnd;
+      if (queueTrees === undefined) {
+        queueListIi += 1;
+      } else if (nextOffset === undefined || nextOffset > queueOffset) {
+        nextOffset = queueOffset;
+        nextTrees = queueTrees;
+        queueTrees = undefined;
+      } else {
+        if (nextOffset === queueOffset) {
+          queueTrees.forEach(function (tree) {
+            nextTrees.push(tree);
+          });
+          queueTrees = undefined;
         }
-        html = "";
-        html += `<!DOCTYPE html>
+        queueListIi += 1;
+      }
+      if (nextOffset === undefined) {
+        if (openRange !== undefined) {
+          resultAppendNextChild();
+        }
+        return true;
+      }
+      if (openRange !== undefined && openRange.end <= nextOffset) {
+        resultAppendNextChild();
+        openRange = undefined;
+      }
+      if (openRange === undefined) {
+        openRangeEnd = nextOffset + 1;
+        nextTrees.forEach(function ({
+          parentIi,
+          tree
+        }) {
+          openRangeEnd = Math.max(openRangeEnd, tree.end);
+          dictKeyValueAppend(parentToChildDict, parentIi, tree);
+        });
+        queueOffset = openRangeEnd;
+        openRange = {
+          end: openRangeEnd,
+          start: nextOffset
+        };
+      } else {
+        nextTrees.forEach(function ({
+          parentIi,
+          tree
+        }) {
+          let right;
+          if (tree.end > openRange.end) {
+            right = treeSplit(tree, openRange.end);
+            if (queueTrees === undefined) {
+              queueTrees = [];
+            }
+            queueTrees.push({
+              parentIi,
+              tree: right
+            });
+          }
+          dictKeyValueAppend(parentToChildDict, parentIi, tree);
+        });
+      }
+    }
+    function resultAppendNextChild() {
+      let treesMatching = [];
+      parentToChildDict.forEach(function (nested) {
+        if (
+          nested.length === 1
+          && nested[0].start === openRange.start
+          && nested[0].end === openRange.end
+        ) {
+          treesMatching.push(nested[0]);
+        } else {
+          treesMatching.push({
+            children: nested,
+            delta: 0,
+            end: openRange.end,
+            start: openRange.start
+          });
+        }
+      });
+      parentToChildDict.clear();
+      resultChildren.push(mergeTreeList(treesMatching));
+    }
+    function treeSplit(tree, offset) {
+      let child;
+      let ii = 0;
+      let leftChildLen = tree.children.length;
+      let mid;
+      let resultTree;
+      let rightChildren;
+      while (ii < tree.children.length) {
+        child = tree.children[ii];
+        if (child.start < offset && offset < child.end) {
+          mid = treeSplit(child, offset);
+          leftChildLen = ii + 1;
+          break;
+        }
+        if (child.start >= offset) {
+          leftChildLen = ii;
+          break;
+        }
+        ii += 1;
+      }
+      rightChildren = tree.children.splice(
+        leftChildLen,
+        tree.children.length - leftChildLen
+      );
+      if (mid !== undefined) {
+        rightChildren.unshift(mid);
+      }
+      resultTree = {
+        children: rightChildren,
+        delta: tree.delta,
+        end: tree.end,
+        start: offset
+      };
+      tree.end = offset;
+      return resultTree;
+    }
+    parentTrees.forEach(function (parentTree, parentIi) {
+      parentTree.children.forEach(function (child) {
+        dictKeyValueAppend(startToTreeDict, child.start, {
+          parentIi,
+          tree: child
+        });
+      });
+    });
+    queueList = Array.from(startToTreeDict).map(function ([
+      startOffset, trees
+    ]) {
+      return [
+        startOffset, trees
+      ];
+    }).sort(function (aa, bb) {
+      return aa[0] - bb[0];
+    });
+    while (true) {
+      if (nextXxx()) {
+        break;
+      }
+    }
+    return resultChildren;
+  }
+
+  function sortFunc(funcCov) {
+    funcCov.ranges = treeToRanges(treeFromSortedRanges(
+      funcCov.ranges.sort(compareRangeList)
+    ));
+    return funcCov;
+  }
+
+  function sortScript(scriptCov) {
+
+    scriptCov.functions.forEach(function (funcCov) {
+      sortFunc(funcCov);
+    });
+    scriptCov.functions.sort(function (aa, bb) {
+      return compareRangeList(aa.ranges[0], bb.ranges[0]);
+    });
+    return scriptCov;
+  }
+
+  function treeFromSortedRanges(ranges) {
+    let root;
+    let stack = [];   // Stack of parent trees and parent counts.
+    ranges.forEach(function (range) {
+      let node = {
+        children: [],
+        delta: range.count,
+        end: range.endOffset,
+        start: range.startOffset
+      };
+      let parent;
+      let parentCount;
+      if (root === undefined) {
+        root = node;
+        stack.push([
+          node, range.count
+        ]);
+        return;
+      }
+      while (true) {
+        [
+          parent, parentCount
+        ] = stack[stack.length - 1];
+        if (range.startOffset < parent.end) {
+          break;
+        }
+        stack.pop();
+      }
+      node.delta -= parentCount;
+      parent.children.push(node);
+      stack.push([
+        node, range.count
+      ]);
+    });
+    return root;
+  }
+
+  function treeToRanges(tree) {
+    let count;
+    let cur;
+    let ii;
+    let parentCount;
+    let ranges = [];
+    let stack = [       // Stack of parent trees and counts.
+      [
+        tree, 0
+      ]
+    ];
+    function normalizeRange(tree) {
+      let children = [];
+      let curEnd;
+      let head;
+      let tail = [];
+      function endChain() {
+        if (tail.length !== 0) {
+          head.end = tail[tail.length - 1].end;
+          tail.forEach(function (tailTree) {
+            tailTree.children.forEach(function (subChild) {
+              subChild.delta += tailTree.delta - head.delta;
+              head.children.push(subChild);
+            });
+          });
+          tail.length = 0;
+        }
+        normalizeRange(head);
+        children.push(head);
+      }
+      tree.children.forEach(function (child) {
+        if (head === undefined) {
+          head = child;
+        } else if (
+          child.delta === head.delta && child.start === curEnd
+        ) {
+          tail.push(child);
+        } else {
+          endChain();
+          head = child;
+        }
+        curEnd = child.end;
+      });
+      if (head !== undefined) {
+        endChain();
+      }
+      if (children.length === 1) {
+        if (
+          children[0].start === tree.start
+          && children[0].end === tree.end
+        ) {
+          tree.delta += children[0].delta;
+          tree.children = children[0].children;
+          return;
+        }
+      }
+      tree.children = children;
+    }
+    normalizeRange(tree);
+    while (stack.length > 0) {
+      [
+        cur, parentCount
+      ] = stack.pop();
+      count = parentCount + cur.delta;
+      ranges.push({
+        count,
+        endOffset: cur.end,
+        startOffset: cur.start
+      });
+      ii = cur.children.length - 1;
+      while (ii >= 0) {
+        stack.push([
+          cur.children[ii], count
+        ]);
+        ii -= 1;
+      }
+    }
+    return ranges;
+  }
+
+  if (processCovs.length === 0) {
+    return {
+      result: []
+    };
+  }
+  processCovs.forEach(function ({
+    result
+  }) {
+    result.forEach(function (scriptCov) {
+      dictKeyValueAppend(urlToScriptDict, scriptCov.url, scriptCov);
+    });
+  });
+  urlToScriptDict.forEach(function (scriptCovs) {
+
+    let functions = [];
+    let rangeToFuncDict = new Map();
+    if (scriptCovs.length === 1) {
+      resultMerged.push(sortScript(scriptCovs[0]));
+      return;
+    }
+    scriptCovs.forEach(function ({
+      functions
+    }) {
+      functions.forEach(function (funcCov) {
+        dictKeyValueAppend(
+          rangeToFuncDict,
+          (
+            funcCov.ranges[0].startOffset
+            + ";" + funcCov.ranges[0].endOffset
+          ),
+          funcCov
+        );
+      });
+    });
+    rangeToFuncDict.forEach(function (funcCovs) {
+
+      let count = 0;
+      let isBlockCoverage;
+      let merged;
+      let ranges;
+      let trees = [];
+      if (funcCovs.length === 1) {
+        functions.push(sortFunc(funcCovs[0]));
+        return;
+      }
+      funcCovs.forEach(function (funcCov) {
+        count += (
+          funcCov.count !== undefined
+          ? funcCov.count
+          : funcCov.ranges[0].count
+        );
+        if (funcCov.isBlockCoverage) {
+          trees.push(treeFromSortedRanges(funcCov.ranges));
+        }
+      });
+      if (trees.length > 0) {
+        isBlockCoverage = true;
+        ranges = treeToRanges(mergeTreeList(trees));
+      } else {
+        isBlockCoverage = false;
+        ranges = [
+          {
+            count,
+            endOffset: funcCovs[0].ranges[0].endOffset,
+            startOffset: funcCovs[0].ranges[0].startOffset
+          }
+        ];
+      }
+      merged = {
+        functionName: funcCovs[0].functionName,
+        isBlockCoverage,
+        ranges
+      };
+      if (count !== ranges[0].count) {
+        merged.count = count;
+      }
+      functions.push(merged);
+    });
+    resultMerged.push(sortScript({
+      functions,
+      scriptId: scriptCovs[0].scriptId,
+      url: scriptCovs[0].url
+    }));
+  });
+  Object.entries(resultMerged.sort(function (aa, bb) {
+    return (
+      aa.url > bb.url
+      ? 1
+      : -1
+    );
+  })).forEach(function ([
+    scriptId, scriptCov
+  ]) {
+    scriptCov.scriptId = scriptId.toString(10);
+  });
+  return {
+    result: resultMerged
+  };
+}
+async function v8CoverageReportCreate({
+  consoleError,
+  coverageDir,
+  processArgv = []
+}) {
+  let cwd;
+  let exitCode = 0;
+  let fileDict;
+  let fileExcludeList = [];
+  let fileIncludeList = [];
+  let fileIncludeNodeModules;
+  let processArgElem;
+  let promiseList = [];
+  let v8CoverageObj;
+
+  function htmlRender({
+    fileList,
+    lineList,
+    modeIndex,
+    pathname
+  }) {
+    let html;
+    let padLines;
+    let padPathname;
+    let txt;
+    let txtBorder;
+    html = "";
+    html += String(`
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<title>coverage-report</title>
+<title>V8 Coverage Report</title>
 <style>
-/* csslint ignore:start */
+/* jslint utility2:true */
+/*csslint ignore:start*/
 * {
 box-sizing: border-box;
-    font-family: consolas, menlo, monospace;
+  font-family: consolas, menlo, monospace;
 }
-/* csslint ignore:end */
+/*csslint ignore:end*/
+
+/* css - coverage_report - general */
 body {
-    margin: 0;
+  margin: 0;
 }
 .coverage pre {
-    margin: 5px 0;
+  margin: 5px 0;
 }
 .coverage table {
-    border-collapse: collapse;
+  border-collapse: collapse;
 }
 .coverage td,
 .coverage th {
-    border: 1px solid #777;
-    margin: 0;
-    padding: 5px;
+  border: 1px solid #777;
+  line-height: 20px;
+  margin: 0;
+  padding: 5px 10px;
 }
 .coverage td span {
-    display: inline-block;
-    width: 100%;
+  display: inline-block;
+  width: 100%;
 }
 .coverage .content {
-    padding: 0 5px;
+  padding: 0 5px;
 }
 .coverage .content a {
-    text-decoration: none;
+  text-decoration: none;
 }
 .coverage .count {
-    margin: 0 5px;
-    padding: 0 5px;
+  margin: 0 5px;
+  padding: 0 5px;
 }
 .coverage .footer,
 .coverage .header {
-    padding: 20px;
+  padding: 20px;
+}
+.coverage .footer {
+  text-align: center;
 }
 .coverage .percentbar {
-    height: 12px;
-    margin: 2px 0;
-    min-width: 200px;
-    position: relative;
-    width: 100%;
+  height: 12px;
+  margin: 2px 0;
+  min-width: 200px;
+  position: relative;
+  width: 100%;
 }
 .coverage .percentbar div {
-    height: 100%;
-    position: absolute;
+  height: 100%;
+  position: absolute;
 }
 .coverage .title {
-    font-size: large;
-    font-weight: bold;
-    margin-bottom: 10px;
+  font-size: large;
+  font-weight: bold;
+  margin-bottom: 10px;
 }
 
+/* css - coverage_report - color */
 .coverage td,
 .coverage th {
-    background: #fff;
+  background: #fff;
+}
+.coverage .count,
+.coverage .coverageHigh {
+  background: #9d9;
 }
 .coverage .count {
-    background: #9d9;
-    color: #777;
+  color: #666;
 }
-.coverage .coverageHigh{
-    background: #9d9;
+.coverage .coverageIgnore {
+  background: #ccc;
 }
-.coverage .coverageIgnore{
-    background: #ccc;
+.coverage .coverageLow,
+.coverage .uncovered {
+  background: #ebb;
 }
-.coverage .coverageLow{
-    background: #ebb;
+.coverage .coverageMedium {
+  background: #fd7;
 }
-.coverage .coverageMedium{
-    background: #fd7;
-}
-.coverage .header {
-    background: #ddd;
-}
+.coverage .footer,
+.coverage .header,
 .coverage .lineno {
-    background: #ddd;
+  background: #ddd;
 }
 .coverage .percentbar {
-    background: #999;
+  background: #999;
 }
 .coverage .percentbar div {
-    background: #666;
-}
-.coverage .uncovered {
-    background: #dbb;
+  background: #666;
 }
 
+/* css - coverage_report - important */
 .coverage pre:hover span,
 .coverage tr:hover td {
-    background: #7d7;
+  background: #7d7;
 }
 .coverage pre:hover span.uncovered,
 .coverage tr:hover td.coverageLow {
-    background: #d99;
+  background: #f99;
 }
 </style>
 </head>
 <body class="coverage">
+<!-- header start -->
 <div class="header">
-<div class="title">coverage-report</div>
+<div class="title">V8 Coverage Report</div>
 <table>
 <thead>
-<tr>
-<th>files covered</th>
-<th>lines</th>
-</tr>
+  <tr>
+  <th>Files covered</th>
+  <th>Lines</th>
+  <th>Remaining</th>
+  </tr>
 </thead>
-<tbody>`;
-        if (!lineList) {
-            padLines = String("(ignore) 100.00 %").length;
-            padPathname = 32;
-            fileList.unshift({
-                linesCovered: 0,
-                linesTotal: 0,
-                modeCoverageIgnoreFile: "",
-                pathname: "./"
-            });
-            fileList.slice(1).forEach(function ({
-                linesCovered,
-                linesTotal,
-                modeCoverageIgnoreFile,
-                pathname
-            }) {
-                if (!modeCoverageIgnoreFile) {
-                    fileList[0].linesCovered += linesCovered;
-                    fileList[0].linesTotal += linesTotal;
-                }
-                padPathname = Math.max(padPathname, pathname.length + 2);
-                padLines = Math.max(
-                    padLines,
-                    String(linesCovered + " / " + linesTotal).length
-                );
-            });
+<tbody>
+    `).trim() + "\n";
+    if (modeIndex) {
+      padLines = String("(ignore) 100.00 %").length;
+      padPathname = 32;
+      fileList.unshift({
+        linesCovered: 0,
+        linesTotal: 0,
+        modeCoverageIgnoreFile: "",
+        pathname: "./"
+      });
+      fileList.slice(1).forEach(function ({
+        linesCovered,
+        linesTotal,
+        modeCoverageIgnoreFile,
+        pathname
+      }) {
+        if (!modeCoverageIgnoreFile) {
+          fileList[0].linesCovered += linesCovered;
+          fileList[0].linesTotal += linesTotal;
         }
-        txtBorder = (
-            "+" + "-".repeat(padPathname + 2) + "+"
-            + "-".repeat(padLines + 2) + "+\n"
+        padPathname = Math.max(padPathname, pathname.length + 2);
+        padLines = Math.max(
+          padLines,
+          String(linesCovered + " / " + linesTotal).length
         );
-        txt = "";
-        txt += "coverage-report\n";
-        txt += txtBorder;
-        txt += (
-            "| " + String("files covered").padEnd(padPathname, " ") + " | "
-            + String("lines").padStart(padLines, " ") + " |\n"
+      });
+    }
+    txtBorder = (
+      "+" + "-".repeat(padPathname + 2) + "+"
+      + "-".repeat(padLines + 2) + "+\n"
+    );
+    txt = "";
+    txt += "V8 Coverage Report\n";
+    txt += txtBorder;
+    txt += (
+      "| " + String("Files covered").padEnd(padPathname, " ") + " | "
+      + String("Lines").padStart(padLines, " ") + " |\n"
+    );
+    txt += txtBorder;
+    fileList.forEach(function ({
+      linesCovered,
+      linesTotal,
+      modeCoverageIgnoreFile,
+      pathname
+    }, ii) {
+      let coverageLevel;
+      let coveragePct;
+      let fill;
+      let str1;
+      let str2;
+      let xx1;
+      let xx2;
+      coveragePct = Math.floor(10000 * linesCovered / linesTotal || 0);
+      coverageLevel = (
+        modeCoverageIgnoreFile
+        ? "coverageIgnore"
+        : coveragePct >= 8000
+        ? "coverageHigh"
+        : coveragePct >= 5000
+        ? "coverageMedium"
+        : "coverageLow"
+      );
+      coveragePct = String(coveragePct).replace((
+        /..$/m
+      ), ".$&");
+      if (modeIndex && ii === 0) {
+        fill = (
+          "#" + Math.round(
+            (100 - Number(coveragePct)) * 2.21
+          ).toString(16).padStart(2, "0")
+          + Math.round(
+            Number(coveragePct) * 2.21
+          ).toString(16).padStart(2, "0")
+          + "00"
         );
-        txt += txtBorder;
-        fileList.forEach(function ({
-            linesCovered,
-            linesTotal,
-            modeCoverageIgnoreFile,
-            pathname
-        }, ii) {
-            let coverageLevel;
-            let coveragePct;
-            let fill;
-            let str1;
-            let str2;
-            let xx1;
-            let xx2;
-            coveragePct = Math.floor(10000 * linesCovered / linesTotal || 0);
-            coverageLevel = (
-                modeCoverageIgnoreFile
-                ? "coverageIgnore"
-                : coveragePct >= 8000
-                ? "coverageHigh"
-                : coveragePct >= 5000
-                ? "coverageMedium"
-                : "coverageLow"
-            );
-            coveragePct = String(coveragePct).replace((
-                /..$/m
-            ), ".$&");
-            if (!lineList && ii === 0) {
-                fill = (
-                    // red
-                    "#" + Math.round(
-                        (100 - Number(coveragePct)) * 2.21
-                    ).toString(16).padStart(2, "0")
-                    // green
-                    + Math.round(
-                        Number(coveragePct) * 2.21
-                    ).toString(16).padStart(2, "0")
-                    + // blue
-                    "00"
-                );
-                str1 = "coverage";
-                str2 = coveragePct + " %";
-                xx1 = 6 * str1.length + 20;
-                xx2 = 6 * str2.length + 20;
-                // fs - write coverage_badge.svg
-                moduleFs.promises.writeFile((
-                    DIR_COVERAGE + "/coverage_badge.svg"
-                ), String(`
+        str1 = "coverage";
+        str2 = coveragePct + " %";
+        xx1 = 6 * str1.length + 20;
+        xx2 = 6 * str2.length + 20;
+        promiseList.push(fsWriteFileWithParents((
+          coverageDir + "coverage_badge.svg"
+        ), String(`
 <svg height="20" width="${xx1 + xx2}" xmlns="http://www.w3.org/2000/svg">
 <rect fill="#555" height="20" width="${xx1 + xx2}"/>
 <rect fill="${fill}" height="20" width="${xx2}" x="${xx1}"/>
 <g
-    fill="#fff"
-    font-family="dejavu sans, verdana, geneva, sans-serif"
-    font-size="11"
-    font-weight="bold"
-    text-anchor="middle"
+  fill="#fff"
+  font-family="verdana, geneva, dejavu sans, sans-serif"
+  font-size="11"
+  font-weight="bold"
+  text-anchor="middle"
 >
 <text x="${0.5 * xx1}" y="14">${str1}</text>
 <text x="${xx1 + 0.5 * xx2}" y="14">${str2}</text>
 </g>
 </svg>
-                `).trim() + "\n");
-                pathname = "";
-            }
-            txt += (
-                "| "
-                + String("./" + pathname).padEnd(padPathname, " ") + " | "
-                + String(
-                    modeCoverageIgnoreFile + " " + coveragePct + " %"
-                ).padStart(padLines, " ") + " |\n"
-            );
-            txt += (
-                "| " + "*".repeat(
-                    Math.round(0.01 * coveragePct * padPathname)
-                ).padEnd(padPathname, "_") + " | "
-                + String(
-                    linesCovered + " / " + linesTotal
-                ).padStart(padLines, " ") + " |\n"
-            );
-            txt += txtBorder;
-            pathname = stringHtmlSafe(pathname);
-            html += `<tr>
-<td class="${coverageLevel}">
-            ${(
-                lineList
-                ? (
-                    "<a href=\"index.html\">./ </a>"
-                    + pathname + "<br>"
-                )
-                : (
-                    "<a href=\"" + (pathname || "index") + ".html\">./ "
-                    + pathname + "</a><br>"
-                )
-            )}
-<div class="percentbar">
-    <div style="width: ${coveragePct}%;"></div>
-</div>
-</td>
-<td style="text-align: right;">
+        `).trim() + "\n"));
+        pathname = "";
+      }
+      txt += (
+        "| "
+        + String("./" + pathname).padEnd(padPathname, " ") + " | "
+        + String(
+          modeCoverageIgnoreFile + " " + coveragePct + " %"
+        ).padStart(padLines, " ") + " |\n"
+      );
+      txt += (
+        "| " + "*".repeat(
+          Math.round(0.01 * coveragePct * padPathname)
+        ).padEnd(padPathname, "_") + " | "
+        + String(
+          linesCovered + " / " + linesTotal
+        ).padStart(padLines, " ") + " |\n"
+      );
+      txt += txtBorder;
+      pathname = htmlEscape(pathname);
+      html += String(`
+  <tr>
+  <td class="${coverageLevel}">
+      ${(
+        modeIndex
+        ? (
+          "<a href=\"" + (pathname || "index") + ".html\">. / "
+          + pathname + "</a><br>"
+        )
+        : (
+          "<a href=\""
+          + "../".repeat(pathname.split("/").length - 1)
+          + "index.html\">. / </a>"
+          + pathname + "<br>"
+        )
+      )}
+    <div class="percentbar">
+      <div style="width: ${coveragePct}%;"></div>
+    </div>
+  </td>
+  <td style="text-align: right;">
     ${modeCoverageIgnoreFile} ${coveragePct} %<br>
     ${linesCovered} / ${linesTotal}
-</td>
-</tr>`;
-        });
-        if (lineList) {
-            html += `</tbody>
+  </td>
+  <td style="text-align: right;">
+    <br>
+    ${linesTotal - linesCovered} / ${linesTotal}
+  </td>
+  </tr>
+    `).trim() + "\n";
+    });
+    html += String(`
+</tbody>
 </table>
 </div>
+<!-- header end -->
+    `).trim() + "\n";
+    if (!modeIndex) {
+      html += String(`
+<!-- content start -->
 <div class="content">
-`;
-            lineList.forEach(function ({
-                count,
-                holeList,
-                line,
-                startOffset
-            }, ii) {
-                let chunk;
-                let inHole;
-                let lineHtml;
-                let lineId;
-                lineHtml = "";
-                lineId = "line_" + (ii + 1);
-                switch (count) {
-                case -1:
-                case 0:
-                    if (holeList.length === 0) {
-                        lineHtml += "</span>";
-                        lineHtml += "<span class=\"uncovered\">";
-                        lineHtml += stringHtmlSafe(line);
-                        break;
-                    }
-                    line = line.split("").map(function (chr) {
-                        return {
-                            chr,
-                            isHole: undefined
-                        };
-                    });
-                    holeList.forEach(function ([
-                        aa, bb
-                    ]) {
-                        aa = Math.max(aa - startOffset, 0);
-                        bb = Math.min(bb - startOffset, line.length);
-                        while (aa < bb) {
-                            line[aa].isHole = true;
-                            aa += 1;
-                        }
-                    });
-                    chunk = "";
-                    line.forEach(function ({
-                        chr,
-                        isHole
-                    }) {
-                        if (inHole !== isHole) {
-                            lineHtml += stringHtmlSafe(chunk);
-                            lineHtml += (
-                                isHole
-                                ? "</span><span class=\"uncovered\">"
-                                : "</span><span>"
-                            );
-                            chunk = "";
-                            inHole = isHole;
-                        }
-                        chunk += chr;
-                    });
-                    lineHtml += stringHtmlSafe(chunk);
-                    break;
-                default:
-                    lineHtml += stringHtmlSafe(line);
-                }
-                html += String(`
+      `).trim() + "\n";
+      lineList.forEach(function ({
+        count,
+        holeList,
+        line,
+        startOffset
+      }, ii) {
+        let chunk;
+        let inHole;
+        let lineHtml;
+        let lineId;
+        lineHtml = "";
+        lineId = "line_" + (ii + 1);
+        switch (count) {
+        case -1:
+        case 0:
+          if (holeList.length === 0) {
+            lineHtml += "</span>";
+            lineHtml += "<span class=\"uncovered\">";
+            lineHtml += htmlEscape(line);
+            break;
+          }
+          line = line.split("").map(function (char) {
+            return {
+              char,
+              isHole: undefined
+            };
+          });
+          holeList.forEach(function ([
+            aa, bb
+          ]) {
+            aa = Math.max(aa - startOffset, 0);
+            bb = Math.min(bb - startOffset, line.length);
+            while (aa < bb) {
+              line[aa].isHole = true;
+              aa += 1;
+            }
+          });
+          chunk = "";
+          line.forEach(function ({
+            char,
+            isHole
+          }) {
+            if (inHole !== isHole) {
+              lineHtml += htmlEscape(chunk);
+              lineHtml += "</span><span";
+              if (isHole) {
+                lineHtml += " class=\"uncovered\"";
+              }
+              lineHtml += ">";
+              chunk = "";
+              inHole = isHole;
+            }
+            chunk += char;
+          });
+          lineHtml += htmlEscape(chunk);
+          break;
+        default:
+          lineHtml += htmlEscape(line);
+        }
+        html += String(`
 <pre>
 <span class="lineno">
 <a href="#${lineId}" id="${lineId}">${String(ii + 1).padStart(5, " ")}.</a>
 </span>
 <span class="count
-                ${(
-                    count <= 0
-                    ? "uncovered"
-                    : ""
-                )}"
+        ${(
+          count <= 0
+          ? "uncovered"
+          : ""
+        )}"
 >
-${String(count).padStart(7, " ")}
+${String(count || "-0").padStart(7, " ")}
 </span>
 <span>${lineHtml}</span>
 </pre>
-                `).replace((
-                    /\n/g
-                ), "").trim() + "\n";
-            });
-        }
-        html += `
+        `).replace((
+          /\n/g
+        ), "").trim() + "\n";
+      });
+      html += String(`
 </div>
-<div class="coverageFooter">
+<!-- content end -->
+      `).trim() + "\n";
+    }
+    html += String(`
+<div class="footer">
+  [
+  This document was created with
+  <a href="https://github.com/jslint-org/jslint">JSLint</a>
+  ]
 </div>
 </body>
-</html>`;
-        html += "\n";
-        await moduleFs.promises.mkdir(modulePath.dirname(pathname), {
-            recursive: true
-        });
-        // fs - write *.html
-        moduleFs.promises.writeFile(pathname + ".html", html);
-        if (lineList) {
-            return;
-        }
-        // fs - write coverage.txt
-        console.error("\n" + txt);
-        moduleFs.promises.writeFile((
-            DIR_COVERAGE + "/coverage_report.txt"
-        ), txt);
+</html>
+    `).trim() + "\n";
+    promiseList.push(fsWriteFileWithParents(pathname + ".html", html));
+    if (!modeIndex) {
+      return;
     }
-    data = await moduleFs.promises.readdir(DIR_COVERAGE);
-    await Promise.all(data.map(async function (file) {
-        if ((
-            /^coverage-.*?\.json$/
-        ).test(file)) {
-            data = await moduleFs.promises.readFile((
-                DIR_COVERAGE + file
-            ), "utf8");
-            // fs - rename to coverage_v8.json
-            moduleFs.promises.rename(
-                DIR_COVERAGE + file,
-                DIR_COVERAGE + "coverage_v8.json"
-            );
-        }
+    consoleError("\n" + txt);
+    promiseList.push(fsWriteFileWithParents((
+      coverageDir + "coverage_report.txt"
+    ), txt));
+  }
+
+  function pathnameRelativeCwd(pathname) {
+    pathname = modulePath.resolve(pathname).replace((
+      /\\/g
+    ), "/");
+    if (!pathname.startsWith(cwd)) {
+      return;
+    }
+    pathname = pathname.slice(cwd.length);
+    return pathname;
+  }
+
+/*
+function sentinel() {}
+*/
+
+  await moduleFsInit();
+  consoleError = consoleError || console.error;
+  cwd = process.cwd().replace((
+    /\\/g
+  ), "/") + "/";
+  assertOrThrow(coverageDir, "invalid coverageDir " + coverageDir);
+  coverageDir = modulePath.resolve(coverageDir).replace((
+    /\\/g
+  ), "/") + "/";
+
+  processArgv = processArgv.slice();
+  while (processArgv[0] && processArgv[0][0] === "-") {
+    processArgElem = processArgv.shift().split("=");
+    processArgElem[1] = processArgElem.slice(1).join("=");
+    switch (processArgElem[0]) {
+    case "--exclude":
+      fileExcludeList = fileExcludeList.concat(
+        processArgElem[1].split(",")
+      );
+      break;
+    case "--exclude-node-modules":
+      fileIncludeNodeModules = (
+        /0|false|null|undefined/
+      ).test(processArgElem[1]);
+      break;
+    case "--include":
+      fileIncludeList = fileIncludeList.concat(
+        processArgElem[1].split(",")
+      );
+      break;
+    }
+  }
+  if (processArgv.length > 0) {
+    await fsWriteFileWithParents(coverageDir + "/touch.txt", "");
+    await Promise.all(Array.from(
+      await moduleFs.promises.readdir(coverageDir)
+    ).map(async function (file) {
+      if ((
+        /^coverage-\d+?-\d+?-\d+?\.json$/
+      ).test(file)) {
+        console.error("rm file " + coverageDir + file);
+        await moduleFs.promises.unlink(coverageDir + file);
+      }
     }));
-    fileDict = {};
-    cwd = process.cwd().replace((
-        /\\/g
-    ), "/") + "/";
-    await Promise.all(JSON.parse(data).result.map(async function ({
-        functions,
-        url
-    }) {
-        let lineList;
-        let linesCovered;
-        let linesTotal;
-        let pathname;
-        let src;
-        if (!url.startsWith("file:///")) {
-            return;
-        }
-        pathname = url.replace((
-            process.platform === "win32"
-            ? "file:///"
-            : "file://"
-        ), "").replace((
-            /\\\\/g
-        ), "/");
-        if (
-            !pathname.startsWith(cwd)
-            || pathname.startsWith(cwd + "[")
-            || (
-                process.env.npm_config_mode_coverage !== "all"
-                && pathname.indexOf("/node_modules/") >= 0
-            )
-        ) {
-            return;
-        }
-        pathname = pathname.replace(cwd, "");
-        src = await moduleFs.promises.readFile(pathname, "utf8");
-        lineList = [{}];
-        src.replace((
-            /^.*$/gm
-        ), function (line, startOffset) {
-            lineList[lineList.length - 1].endOffset = startOffset - 1;
-            lineList.push({
-                count: -1,
-                endOffset: 0,
-                holeList: [],
-                line,
-                startOffset
-            });
-            return "";
-        });
-        lineList.shift();
-        lineList[lineList.length - 1].endOffset = src.length;
-        functions.reverse().forEach(function ({
-            ranges
-        }) {
-            ranges.reverse().forEach(function ({
-                count,
-                endOffset,
-                startOffset
-            }, ii, list) {
-                lineList.forEach(function (elem) {
-                    if (!(
-                        (
-                            elem.startOffset <= startOffset
-                            && startOffset <= elem.endOffset
-                        ) || (
-                            elem.startOffset <= endOffset
-                            && endOffset <= elem.endOffset
-                        ) || (
-                            startOffset <= elem.startOffset
-                            && elem.endOffset <= endOffset
-                        )
-                    )) {
-                        return;
-                    }
-                    // handle root-range
-                    if (ii + 1 === list.length) {
-                        if (elem.count === -1) {
-                            elem.count = count;
-                        }
-                        return;
-                    }
-                    // handle non-root-range
-                    if (elem.count !== 0) {
-                        elem.count = Math.max(count, elem.count);
-                    }
-                    if (count === 0) {
-                        elem.count = 0;
-                        elem.holeList.push([
-                            startOffset, endOffset
-                        ]);
-                    }
-                });
-            });
-        });
-        linesTotal = lineList.length;
-        linesCovered = lineList.filter(function ({
-            count
-        }) {
-            return count > 0;
-        }).length;
-        await moduleFs.promises.mkdir((
-            modulePath.dirname(DIR_COVERAGE + pathname)
-        ), {
-            recursive: true
-        });
-        fileDict[pathname] = {
-            lineList,
-            linesCovered,
-            linesTotal,
-            modeCoverageIgnoreFile: (
-                (
-                    /^\/\*mode-coverage-ignore-file\*\/$/m
-                ).test(src.slice(0, 65536))
-                ? "(ignore)"
-                : ""
-            ),
-            pathname,
-            src
-        };
-        await htmlRender({
-            fileList: [
-                fileDict[pathname]
-            ],
-            lineList,
-            pathname: DIR_COVERAGE + pathname
-        });
-    }));
-    await htmlRender({
-        fileList: Object.keys(fileDict).sort().map(function (pathname) {
-            return fileDict[pathname];
+    exitCode = await new Promise(function (resolve) {
+      moduleChildProcess.spawn((
+        processArgv[0] === "npm"
+        ? process.platform.replace("win32", "npm.cmd").replace(
+          process.platform,
+          "npm"
+        )
+        : processArgv[0]
+      ), processArgv.slice(1), {
+        env: Object.assign({}, process.env, {
+          NODE_V8_COVERAGE: coverageDir
         }),
-        pathname: DIR_COVERAGE + "index"
+        stdio: [
+          "ignore", 1, 2
+        ]
+      }).on("exit", resolve);
     });
-}());
-' "$@" # '
-        find "$DIR_COVERAGE"
-    fi
-    printf "shRunWithCoverage - EXIT_CODE=$EXIT_CODE\n" 1>&2
-    return "$EXIT_CODE"
+  }
+  v8CoverageObj = await moduleFs.promises.readdir(coverageDir);
+  v8CoverageObj = v8CoverageObj.filter(function (file) {
+    return (
+      /^coverage-\d+?-\d+?-\d+?\.json$/
+    ).test(file);
+  });
+  v8CoverageObj = await Promise.all(v8CoverageObj.map(async function (file) {
+    let data = await moduleFs.promises.readFile(coverageDir + file, "utf8");
+    data = JSON.parse(data);
+    data.result = data.result.filter(function (scriptCov) {
+      let pathname = scriptCov.url;
+      if (!pathname.startsWith("file:///")) {
+        return;
+      }
+      pathname = pathnameRelativeCwd(moduleUrl.fileURLToPath(pathname));
+      if (
+        !pathname
+        || pathname.startsWith("[")
+        || (
+          !fileIncludeNodeModules
+          && (
+            /(?:^|\/)node_modules\//m
+          ).test(pathname)
+        )
+        || fileExcludeList.indexOf(pathname) >= 0
+        || (
+          fileIncludeList.length > 0
+          && fileIncludeList.indexOf(pathname) === -1
+        )
+      ) {
+        return;
+      }
+      scriptCov.url = pathname;
+      return true;
+    });
+    return data;
+  }));
+  v8CoverageObj = v8CoverageListMerge(v8CoverageObj);
+  await fsWriteFileWithParents(
+    coverageDir + "v8_coverage_merged.json",
+    JSON.stringify(v8CoverageObj, undefined, 1)
+  );
+  fileDict = {};
+  await Promise.all(v8CoverageObj.result.map(async function ({
+    functions,
+    url: pathname
+  }) {
+    let lineList;
+    let linesCovered;
+    let linesTotal;
+    let source;
+    source = await moduleFs.promises.readFile(pathname, "utf8");
+    lineList = [{}];
+    source.replace((
+      /^.*$/gm
+    ), function (line, startOffset) {
+      lineList[lineList.length - 1].endOffset = startOffset - 1;
+      lineList.push({
+        count: -1,
+        endOffset: 0,
+        holeList: [],
+        line,
+        startOffset
+      });
+      return "";
+    });
+    lineList.shift();
+    lineList[lineList.length - 1].endOffset = source.length;
+    functions.reverse().forEach(function ({
+      ranges
+    }) {
+      ranges.reverse().forEach(function ({
+        count,
+        endOffset,
+        startOffset
+      }, ii, list) {
+        lineList.forEach(function (elem) {
+          if (!(
+            (
+              elem.startOffset <= startOffset
+              && startOffset <= elem.endOffset
+            ) || (
+              elem.startOffset <= endOffset
+              && endOffset <= elem.endOffset
+            ) || (
+              startOffset <= elem.startOffset
+              && elem.endOffset <= endOffset
+            )
+          )) {
+            return;
+          }
+          if (ii + 1 === list.length) {
+            if (elem.count === -1) {
+              elem.count = count;
+            }
+            return;
+          }
+          if (elem.count !== 0) {
+            elem.count = Math.max(count, elem.count);
+          }
+          if (count === 0) {
+            elem.count = 0;
+            elem.holeList.push([
+              startOffset, endOffset
+            ]);
+          }
+        });
+      });
+    });
+    linesTotal = lineList.length;
+    linesCovered = lineList.filter(function ({
+      count
+    }) {
+      return count > 0;
+    }).length;
+    await moduleFs.promises.mkdir((
+      modulePath.dirname(coverageDir + pathname)
+    ), {
+      recursive: true
+    });
+    fileDict[pathname] = {
+      lineList,
+      linesCovered,
+      linesTotal,
+      modeCoverageIgnoreFile: (
+        (
+          /^\/\*coverage-ignore-file\*\/$/m
+        ).test(source.slice(0, 65536))
+        ? "(ignore)"
+        : ""
+      ),
+      pathname
+    };
+    htmlRender({
+      fileList: [
+        fileDict[pathname]
+      ],
+      lineList,
+      pathname: coverageDir + pathname
+    });
+  }));
+  htmlRender({
+    fileList: Object.keys(fileDict).sort().map(function (pathname) {
+      return fileDict[pathname];
+    }),
+    modeIndex: true,
+    pathname: coverageDir + "index"
+  });
+  await Promise.all(promiseList);
+  assertOrThrow(
+    exitCode === 0,
+    "v8CoverageReportCreate - nonzero exitCode " + exitCode
+  );
+}
+v8CoverageReportCreate({
+  coverageDir: ".artifact/coverage",
+  processArgv: process.argv.slice(2)
+});
+' 0 "$@" # '
 )}
 
 shRunWithScreenshotTxt() {(set -e
@@ -2057,9 +2664,10 @@ shRunWithScreenshotTxt() {(set -e
         "$@" 2>&1 || printf "$?\n" > "$SCREENSHOT_SVG.exit_code"
     ) | tee "$SCREENSHOT_SVG.txt"
     EXIT_CODE="$(cat "$SCREENSHOT_SVG.exit_code")"
-    printf "shRunWithScreenshotTxt - EXIT_CODE=$EXIT_CODE\n" 1>&2
+    printf "shRunWithScreenshotTxt - EXIT_CODE=$EXIT_CODE - $SCREENSHOT_SVG\n" \
+        1>&2
     # format text-output
-    node --input-type=module -e '
+    node --input-type=module --eval '
 import moduleFs from "fs";
 (async function () {
     let result = await moduleFs.promises.readFile(
@@ -2135,6 +2743,10 @@ ${result}
 
 shCiMain() {(set -e
 # this function will run $@
+    if [ "$1" = "" ]
+    then
+        return
+    fi
     # run "$@" with winpty
     export CI_UNAME="${CI_UNAME:-$(uname)}"
     case "$CI_UNAME" in
@@ -2142,7 +2754,7 @@ shCiMain() {(set -e
         if [ ! "$CI_WINPTY" ] && [ "$1" != shHttpFileServer ]
         then
             export CI_WINPTY=1
-            winpty -Xallow-non-tty -Xplain sh jslint_ci.sh "$@"
+            winpty -Xallow-non-tty -Xplain sh "$0" "$@"
             return
         fi
         ;;
@@ -2152,11 +2764,6 @@ shCiMain() {(set -e
     if [ -f ./.ci.sh ]
     then
         . ./.ci.sh "$@"
-    fi
-    if [ "$npm_config_mode_coverage" ] && [ "$1" = "node" ]
-    then
-        shRunWithCoverage "$@"
-        return
     fi
     "$@"
 )}

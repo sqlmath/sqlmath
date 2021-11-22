@@ -1,104 +1,44 @@
 /*jslint beta, bitwise, name, node*/
 "use strict";
-import {createRequire} from "module";
-let local = {};
+import {
+    Blob
+} from "buffer";
+import {
+    createRequire
+} from "module";
+import jslint from "./jslint.mjs";
 
+let {
+    assertErrorThrownAsync,
+    assertJsonEqual,
+    assertOrThrow,
+    debugInline,
+    noop
+} = jslint;
+let local = Object.assign({}, jslint);
 
-/*
-file debugInline.js
-*/
-(function () {
-    let consoleError = function () {
-        return;
-    };
-    function debugInline(...argList) {
-// this function will both print <argList> to stderr and return <argList>[0]
-        consoleError("\n\ndebugInline");
-        consoleError(...argList);
-        consoleError("\n");
-        return argList[0];
+function assertNumericalEqual(aa, bb, message) {
+
+// This function will assert aa - bb <= Number.EPSILON
+
+    assertOrThrow(aa, "value cannot be 0 or falsy");
+    if (!(Math.abs(aa - bb) <= Number.EPSILON)) {
+        throw new Error(
+            JSON.stringify(aa) + " != " + JSON.stringify(bb) + (
+                message
+                ? " - " + message
+                : ""
+            )
+        );
     }
-    // coverage-hack
-    debugInline();
-    consoleError = console.error;
-    globalThis.debugInline = globalThis.debugInline || debugInline;
-}());
-
-
-/*
-file helper.js
-*/
-(function () {
-    function assertErrorThrownAsync(func, onError) {
-// this function will assert <func> throws error
-        let isCaught;
-        func().catch(function (err) {
-            isCaught = true;
-            onError(err);
-        }).finally(function () {
-            assertOrThrow(isCaught, "no error caught");
-        });
-    }
-
-    function assertJsonEqual(aa, bb) {
-// this function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>)
-        aa = JSON.stringify(objectDeepCopyWithKeysSorted(aa));
-        bb = JSON.stringify(objectDeepCopyWithKeysSorted(bb));
-        if (aa !== bb) {
-            throw new Error(
-                JSON.stringify(aa) + " !== " + JSON.stringify(bb)
-            );
-        }
-    }
-
-    function assertOrThrow(cond, msg) {
-// this function will throw <msg> if <cond> is falsy
-        if (!cond) {
-            throw (
-                typeof msg === "string"
-                ? new Error(msg)
-                : msg
-            );
-        }
-    }
-
-    function noop(val) {
-// this function will do nothing except return val
-        return val;
-    }
-
-    function objectDeepCopyWithKeysSorted(obj) {
-// this function will recursively deep-copy <obj> with keys sorted
-        let sorted;
-        if (typeof obj !== "object" || !obj) {
-            return obj;
-        }
-        // recursively deep-copy list with child-keys sorted
-        if (Array.isArray(obj)) {
-            return obj.map(objectDeepCopyWithKeysSorted);
-        }
-        // recursively deep-copy obj with keys sorted
-        sorted = {};
-        Object.keys(obj).sort().forEach(function (key) {
-            sorted[key] = objectDeepCopyWithKeysSorted(obj[key]);
-        });
-        return sorted;
-    }
-
-    Object.assign(local, {
-        assertErrorThrownAsync,
-        assertJsonEqual,
-        assertOrThrow,
-        noop,
-        objectDeepCopyWithKeysSorted
-    });
-}());
+}
 
 
 /*
 file sqlmath.js
 */
 (function () {
+    let JSBATON_ARGC = 16;
     // let SIZEOF_MESSAGE_DEFAULT = 768;
     let SQLITE_MAX_LENGTH2 = 1000000000;
     let SQLITE_OPEN_AUTOPROXY = 0x00000020;     /* VFS only */
@@ -123,30 +63,15 @@ file sqlmath.js
     let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
     let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
     let addon;
-    let {
-        assertErrorThrownAsync,
-        assertJsonEqual,
-        assertOrThrow,
-        noop
-    } = local;
     let dbDict = new WeakMap();
     let requireCjs = createRequire(import.meta.url);
     let testList;
     // private map of sqlite-database-connections
 
-    function bufferFromView(view) {
-// this function will recast <view> to nodejs buffer-object
-        return (
-            (ArrayBuffer.isView(view) && !Buffer.isBuffer(view))
-            ? Buffer.from(view.buffer, view.byteOffset, view.byteLength)
-            : view
-        );
-    }
-
     function cCall(func, argList) {
 // this function will serialize <argList> to a c <baton>,
 // suitable for passing into napi
-        let baton = new BigInt64Array(1024);
+        let baton = new BigInt64Array(2048);
         let errStack;
         let result;
         // serialize js-args to c-args
@@ -161,24 +86,27 @@ file sqlmath.js
                     return;
                 }
                 break;
-            case "object":
-                arg = bufferFromView(arg);
-                if (Buffer.isBuffer(arg)) {
-                    baton[ii] = BigInt(arg.byteLength);
-                    return arg;
-                }
-                break;
+            // case "object":
+            //     break;
             case "string":
                 // append null-terminator to string
-                return Buffer.from(arg + "\u0000");
+                arg = new TextEncoder().encode(arg + "\u0000");
+                break;
+            }
+            if (ArrayBuffer.isView(arg)) {
+                baton[ii] = BigInt(arg.byteLength);
+                return new DataView(
+                    arg.buffer,
+                    arg.byteOffset,
+                    arg.byteLength
+                );
             }
             return arg;
         });
-        // pad argList to length = 8
-        argList = argList.concat([
-            undefined, undefined, undefined, undefined,
-            undefined, undefined, undefined, undefined
-        ]).slice(0, 8);
+        // pad argList to length = JSBATON_ARGC
+        argList = argList.concat(
+            Array.from(new Array(JSBATON_ARGC))
+        ).slice(0, JSBATON_ARGC);
         // prepend baton to argList
         argList.unshift(baton);
         // call napi with func and argList
@@ -245,6 +173,7 @@ file sqlmath.js
         bindList = [],
         db,
         responseType,
+        rowList,
         sql
     }) {
 // this function will exec <sql> in <db> and return <result>
@@ -256,6 +185,12 @@ file sqlmath.js
         );
         let result;
         let serialize = jsToSqlSerializer();
+        if (rowList) {
+            await dbTableInsertAsync({
+                db,
+                rowList
+            });
+        }
         Object.entries(bindList).forEach(function ([
             key, val
         ]) {
@@ -267,7 +202,7 @@ file sqlmath.js
         result = await dbCallAsync("__dbExecAsync", db, [
             String(sql) + "\n;\nPRAGMA noop",
             bindListLength,
-            Buffer.from(serialize.buf),
+            serialize.bufResult,
             bindByKey,
             (
                 responseType === "lastBlob"
@@ -276,7 +211,7 @@ file sqlmath.js
                 ? 2
                 : 0
             )
-        ]);
+        ].concat(serialize.bufSharedList));
         result = result[1];
         switch (responseType) {
         case "arraybuffer":
@@ -285,9 +220,9 @@ file sqlmath.js
         case "lastMatrixDouble":
             return new Float64Array(result);
         case "list":
-            return JSON.parse(Buffer.from(result));
+            return JSON.parse(new TextDecoder().decode(result));
         default:
-            result = JSON.parse(Buffer.from(result));
+            result = JSON.parse(new TextDecoder().decode(result));
             return result.map(function (rowList) {
                 let colList = rowList.shift();
                 return rowList.map(function (row) {
@@ -439,7 +374,7 @@ file sqlmath.js
         await dbCallAsync("__dbTableInsertAsync", db, [
             String(sqlCreateTable),
             String(sqlInsertRow),
-            Buffer.from(serialize.buf),
+            serialize.bufResult,
             colList.length,
             rowList.length
         ]);
@@ -447,7 +382,9 @@ file sqlmath.js
 
     function jsToSqlSerializer() {
 // this function will return another function that serializes javascript <val>
-// to <buf> as sqlite-values
+// to <bufResult> as sqlite-values
+        let BIGINT64_MAX = 2n ** 63n - 1n;
+        let BIGINT64_MIN = -(2n ** 63n - 1n);
         let SQLITE_DATATYPE_BLOB = 0x04;
         // let SQLITE_DATATYPE_BLOB_0 = 0x14;
         let SQLITE_DATATYPE_FLOAT = 0x02;
@@ -456,33 +393,57 @@ file sqlmath.js
         let SQLITE_DATATYPE_INTEGER_0 = 0x11;
         let SQLITE_DATATYPE_INTEGER_1 = 0x21;
         let SQLITE_DATATYPE_NULL = 0x05;
+        let SQLITE_DATATYPE_SHAREDARRAYBUFFER = -0x01;
         let SQLITE_DATATYPE_TEXT = 0x03;
         let SQLITE_DATATYPE_TEXT_0 = 0x13;
-        let buf = Buffer.allocUnsafe(1024);
+        let bufResult = new DataView(new ArrayBuffer(2048));
+        let bufSharedList = [];
         let offset = 0;
         function bufferAppendDatatype(datatype, byteLength) {
-// this function will grow <buf> by <bytelength> and append <datatype>
+// this function will grow <bufResult> by <bytelength> and append <datatype>
             let nn = offset + 1 + byteLength;
             let tmp;
-            // exponentially grow buf as needed
-            if (buf.byteLength < nn) {
+            // exponentially grow bufResult as needed
+            if (bufResult.byteLength < nn) {
                 assertOrThrow(nn <= SQLITE_MAX_LENGTH2, (
                     "sqlite - string or blob exceeds size limit of "
                     + SQLITE_MAX_LENGTH2 + " bytes"
                 ));
-                tmp = Buffer.allocUnsafe(
+                tmp = bufResult;
+                bufResult = new DataView(new ArrayBuffer(
                     Math.min(2 ** Math.ceil(Math.log2(nn)), SQLITE_MAX_LENGTH2)
-                );
-                buf.copy(tmp);
-                buf = tmp;
-                // save buf
-                serialize.buf = buf;
+                ));
+                // copy tmp to bufResult with offset
+                bufferSetBuffer(bufResult, tmp, 0);
+                // save bufResult
+                serialize.bufResult = bufResult;
             }
-            buf[offset] = datatype;
+            bufResult.setUint8(offset, datatype);
             offset += 1;
         }
+        function bufferSetBigint64(offset, val) {
+// this function will set bigint <val> to buffer <bufResult> at <offset>
+            assertOrThrow(
+                BIGINT64_MIN <= val && val <= BIGINT64_MAX,
+                (
+                    "The value of \"value\" is out of range."
+                    + " It must be >= -(2n ** 63n) and < 2n ** 63n."
+                )
+            );
+            bufResult.setBigInt64(offset, val, true);
+        }
+        function bufferSetBuffer(aa, bb, offset) {
+// this function will set buffer <bb> to buffer <aa> at <offset>
+            if (typeof bb === "string") {
+                bb = new TextEncoder().encode(bb);
+            }
+            aa = new Uint8Array(aa.buffer, aa.byteOffset, aa.byteLength);
+            bb = new Uint8Array(bb.buffer, bb.byteOffset, bb.byteLength);
+            aa.set(bb, offset);
+            return bb.byteLength;
+        }
         function serialize(val) {
-// this function will write to <buf>, <val> at given <offset>
+// this function will write to <bufResult>, <val> at given <offset>
             let byteLength = 0;
 /*
 #define SQLITE_DATATYPE_BLOB            0x04
@@ -512,6 +473,19 @@ file sqlmath.js
             // 17. true.symbol
             // 18. true.undefined
 */
+            // -1. SharedArrayBuffer
+            if (val && val.constructor === SharedArrayBuffer) {
+                assertOrThrow(
+                    bufSharedList.length <= 0.5 * JSBATON_ARGC,
+                    (
+                        "too many SharedArrayBuffer's " + bufSharedList.length
+                        + " > " + (0.5 * JSBATON_ARGC)
+                    )
+                );
+                bufferAppendDatatype(SQLITE_DATATYPE_SHAREDARRAYBUFFER, 0);
+                bufSharedList.push(new DataView(val));
+                return;
+            }
             // 12. true.boolean
             if (val === 1 || val === 1n || val === true) {
                 bufferAppendDatatype(SQLITE_DATATYPE_INTEGER_1, 0);
@@ -549,30 +523,24 @@ file sqlmath.js
             // 11. true.bigint
             case "true.bigint":
                 bufferAppendDatatype(SQLITE_DATATYPE_INTEGER, 8);
-                // try to write bigint as finite number
-                try {
-                    offset = buf.writeBigInt64LE(val, offset);
-                // else write as +/-infinity
-                } catch (ignore) {
-                    buf[offset - 1] = SQLITE_DATATYPE_FLOAT;
-                    offset = buf.writeDoubleLE((
-                        val > 0
-                        ? Infinity
-                        : -Infinity
-                    ), offset);
-                }
+                bufferSetBigint64(offset, val);
+                offset += 8;
                 return;
             // 14. true.number
             case "true.number":
                 bufferAppendDatatype(SQLITE_DATATYPE_FLOAT, 8);
-                offset = buf.writeDoubleLE(val, offset);
+                bufResult.setFloat64(offset, val, true);
+                offset += 8;
                 return;
             // 16. true.string
             case "true.string":
-                byteLength = Buffer.byteLength(val);
+                byteLength = new Blob([
+                    val
+                ]).size;
                 bufferAppendDatatype(SQLITE_DATATYPE_TEXT, 8 + byteLength);
-                offset = buf.writeBigInt64LE(BigInt(byteLength), offset);
-                offset += buf.write(val, offset);
+                bufferSetBigint64(offset, BigInt(byteLength));
+                offset += 8;
+                offset += bufferSetBuffer(bufResult, val, offset);
                 return;
             // 15. true.object
             default:
@@ -581,16 +549,20 @@ file sqlmath.js
                     "invalid data " + (typeof val) + " " + val
                 );
                 // write buffer
-                val = bufferFromView(val);
-                if (Buffer.isBuffer(val)) {
+                if (ArrayBuffer.isView(val)) {
                     if (val.byteLength === 0) {
                         bufferAppendDatatype(SQLITE_DATATYPE_NULL, 0);
                         return;
                     }
-                    byteLength = val.byteLength;
-                    bufferAppendDatatype(SQLITE_DATATYPE_BLOB, 8 + byteLength);
-                    offset = buf.writeBigInt64LE(BigInt(byteLength), offset);
-                    offset += val.copy(buf, offset);
+                    bufferAppendDatatype(
+                        SQLITE_DATATYPE_BLOB,
+                        8 + val.byteLength
+                    );
+                    bufferSetBigint64(offset, BigInt(val.byteLength));
+                    offset += 8;
+                    // copy val to bufResult with offset
+                    bufferSetBuffer(bufResult, val, offset);
+                    offset += val.byteLength;
                     return;
                 }
                 // write JSON.stringify(val)
@@ -599,14 +571,19 @@ file sqlmath.js
                     ? val.toJSON()
                     : JSON.stringify(val)
                 );
-                byteLength = Buffer.byteLength(val);
+                byteLength = new Blob([
+                    val
+                ]).size;
                 bufferAppendDatatype(SQLITE_DATATYPE_TEXT, 8 + byteLength);
-                offset = buf.writeBigInt64LE(BigInt(byteLength), offset);
-                offset += buf.write(val, offset);
+                bufferSetBigint64(offset, BigInt(byteLength));
+                offset += 8;
+                offset += bufferSetBuffer(bufResult, val, offset);
             }
         }
-        // save buf
-        serialize.buf = buf;
+        // save bufResult
+        serialize.bufResult = bufResult;
+        // save bufSharedList
+        serialize.bufSharedList = bufSharedList;
         return serialize;
     }
 
@@ -869,47 +846,17 @@ Definition of the CSV Format
 
     function testAssertXxx() {
 // this function will test assertXxx's handling-behavior
-        // test assertErrorThrownAsync's handling-behavior
+        // test assertNumericalEqual's handling-behavior
+        assertNumericalEqual(1, 1);
         assertErrorThrownAsync(function () {
-            return new Promise(function (ignore, reject) {
-                reject(new Error());
-            });
-        }, function (err) {
-            assertOrThrow(err, err);
-        });
-        // test assertJsonEqual handling-behavior
-        assertJsonEqual([
-            {
-                aa: 1,
-                bb: 2
-            }
-        ], [
-            {
-                bb: 2,
-                aa: 1 //jslint-quiet
-            }
-        ]);
-        try {
-            assertJsonEqual("aa", "bb");
-        } catch (err) {
-            assertJsonEqual(err.message, "\"\\\"aa\\\"\" !== \"\\\"bb\\\"\"");
-        }
-        // test assertOrThrow handling-behavior
-        [
-            [
-                "aa", "aa"
-            ], [
-                new Error("aa"), "aa"
-            ]
-        ].forEach(function ([
-            err, msg
-        ]) {
-            try {
-                assertOrThrow(undefined, err);
-            } catch (err2) {
-                assertJsonEqual(err2.message, msg);
-            }
-        });
+            assertNumericalEqual(0, 0);
+        }, "value cannot be 0 or falsy");
+        assertErrorThrownAsync(function () {
+            assertNumericalEqual(1, 2);
+        }, "1 != 2");
+        assertErrorThrownAsync(function () {
+            assertNumericalEqual(1, 2, "aa");
+        }, "aa");
     }
 
     function testCcall() {
@@ -947,19 +894,35 @@ Definition of the CSV Format
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
+        async function testDbGetLastBlobAsync(val) {
+            return await dbGetLastBlobAsync({
+                bindList: [
+                    val
+                ],
+                db,
+                sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
+            });
+        }
+        // test bigint-error handling-behavior
+        noop([
+            -(2n ** 63n),
+            2n ** 63n
+        ]).forEach(function (val) {
+            assertErrorThrownAsync(testDbGetLastBlobAsync.bind(undefined, val));
+        });
         // test datatype handling-behavior
         [
+            // -1. SharedArrayBuffer
+            // new SharedArrayBuffer(0), null,
             // 1. bigint
             -0n, -0,
             -0x7fffffffffffffffn, "-9223372036854775807",
             -1n, -1,
             -2n, -2,
-            -BigInt(1e64), null,
             0n, 0,
             0x7fffffffffffffffn, "9223372036854775807",
             1n, 1,
             2n, 2,
-            BigInt(1e64), null,
             // 2. boolean
             false, 0,
             true, 1,
@@ -981,10 +944,10 @@ Definition of the CSV Format
             Infinity, null,
             NaN, 0,
             // 5. object
-            Buffer.alloc(0), null,
-            Buffer.from(""), null,
-            Buffer.from("\u0000"), null,
-            Buffer.from("\u0000\u{1f600}\u0000"), null,
+            new Uint8Array(0), null,
+            new TextEncoder().encode(""), null,
+            new TextEncoder().encode("\u0000"), null,
+            new TextEncoder().encode("\u0000\u{1f600}\u0000"), null,
             [], "[]",
             new Date(0), "1970-01-01T00:00:00.000Z",
             new RegExp(), "{}",
@@ -1013,25 +976,12 @@ Definition of the CSV Format
                 aa
             ].forEach(async function (aa) {
                 let cc = String(bb);
-                let dd = String(Buffer.from(
-                    await dbGetLastBlobAsync({
-                        bindList: [
-                            aa
-                        ],
-                        db,
-                        sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
-                    })
-                ));
+                let dd = new TextDecoder().decode(
+                    await testDbGetLastBlobAsync(aa)
+                );
                 switch (typeof(aa)) {
                 case "bigint":
-                    switch (aa) {
-                    case -BigInt(1e64):
-                        cc = "-Inf";
-                        break;
-                    case BigInt(1e64):
-                        cc = "Inf";
-                        break;
-                    }
+                    aa = Number(aa);
                     break;
                 case "function":
                 case "symbol":
@@ -1055,8 +1005,8 @@ Definition of the CSV Format
                     }
                     break;
                 case "object":
-                    if (Buffer.isBuffer(aa)) {
-                        cc = String(aa);
+                    if (ArrayBuffer.isView(aa)) {
+                        cc = new TextDecoder().decode(aa);
                         break;
                     }
                     if (aa === null) {
@@ -1065,7 +1015,13 @@ Definition of the CSV Format
                     break;
                 }
                 // debugInline(ii, aa, bb, cc, dd);
-                assertJsonEqual(cc, dd);
+                assertJsonEqual(cc, dd, {
+                    ii,
+                    aa, //jslint-quiet
+                    bb,
+                    cc,
+                    dd
+                });
             });
             // test dbGetLastMatrixDouble's bind handling-behavior
             [
@@ -1085,14 +1041,7 @@ Definition of the CSV Format
                 });
                 switch (typeof(aa)) {
                 case "bigint":
-                    switch (aa) {
-                    case -BigInt(1e64):
-                        cc = -Infinity;
-                        break;
-                    case BigInt(1e64):
-                        cc = Infinity;
-                        break;
-                    }
+                    aa = String(aa);
                     break;
                 case "object":
                     if (typeof aa?.getUTCFullYear === "function") {
@@ -1105,9 +1054,17 @@ Definition of the CSV Format
                 ]);
                 // debugInline(ii, aa, bb, cc, dd);
                 cc.forEach(function (val, jj) {
-                    assertOrThrow(val === dd[jj], JSON.stringify([
-                        ii, String(aa), bb, String(cc), String(dd)
-                    ]));
+                    assertJsonEqual(
+                        val,
+                        dd[jj],
+                        {
+                            ii,
+                            aa, //jslint-quiet
+                            bb,
+                            cc,
+                            dd
+                        }
+                    );
                 });
             });
             // test dbExecAsync's responseType handling-behavior
@@ -1129,7 +1086,7 @@ Definition of the CSV Format
                 // debugInline(ii, responseType, aa, bb, cc);
                 switch (responseType) {
                 case "arraybuffer":
-                    cc = JSON.parse(Buffer.from(cc))[0][1][0];
+                    cc = JSON.parse(new TextDecoder().decode(cc))[0][1][0];
                     break;
                 case "list":
                     cc = cc[0][1][0];
@@ -1137,7 +1094,11 @@ Definition of the CSV Format
                 default:
                     cc = cc[0][0].val;
                 }
-                assertOrThrow(bb === cc, [aa, bb, cc]);
+                assertJsonEqual(bb, cc, {
+                    aa,
+                    bb,
+                    cc
+                });
             });
             // test dbExecAsync's bind handling-behavior
             [
@@ -1176,25 +1137,28 @@ Definition of the CSV Format
                     })
                 );
                 // debugInline(ii, aa, bb, cc);
-                assertJsonEqual([
+                assertJsonEqual(
                     [
                         [
-                            "0"
+                            [
+                                "0"
+                            ], [
+                                0
+                            ]
                         ], [
-                            0
+                            [
+                                "c1", "c2", "c3", "c4"
+                            ], [
+                                bb, bb, 0, undefined
+                            ], [
+                                bb, bb, 0, undefined
+                            ], [
+                                bb, bb, 0, undefined
+                            ]
                         ]
-                    ], [
-                        [
-                            "c1", "c2", "c3", "c4"
-                        ], [
-                            bb, bb, 0, undefined
-                        ], [
-                            bb, bb, 0, undefined
-                        ], [
-                            bb, bb, 0, undefined
-                        ]
-                    ]
-                ], cc);
+                    ],
+                    cc
+                );
             });
             // test dbTableInsertAsync's bind handling-behavior
             [
@@ -1293,9 +1257,7 @@ Definition of the CSV Format
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbCloseAsync({});
-        }, function (err) {
-            assertOrThrow(err.message.includes("invalid or closed db"), err);
-        });
+        }, "invalid or closed db");
         // test close handling-behavior
         await dbCloseAsync({
             db
@@ -1313,12 +1275,7 @@ Definition of the CSV Format
                 db,
                 sql: undefined
             });
-        }, function (err) {
-            assertOrThrow(
-                err.message.includes("near \"undefined\": syntax error"),
-                err
-            );
-        });
+        }, "near \"undefined\": syntax error");
         // test race-condition handling-behavior
         Array.from(new Array(4)).forEach(async function () {
             let result;
@@ -1326,9 +1283,9 @@ Definition of the CSV Format
                 result = JSON.stringify(
                     await dbExecAsync({
                         bindList: [
-                            Buffer.from("foob"),
-                            Buffer.from("fooba"),
-                            Buffer.from("foobar")
+                            new TextEncoder().encode("foob"),
+                            new TextEncoder().encode("fooba"),
+                            new TextEncoder().encode("foobar")
                         ],
                         db,
                         responseType: "list",
@@ -1398,11 +1355,9 @@ SELECT * FROM testDbExecAsync2;
             return dbCloseAsync({
                 db
             });
-        }, function (err) {
-            assertOrThrow((
-                /db\scannot\sclose\swith\s\d+?\sactions\spending/
-            ).test(err.message), err);
-        });
+        }, (
+            /db cannot close with \d+? actions pending/
+        ));
         // test sqlmath-defined-func handling-behavior
         [
             "COT('-1')", -0.642092615934331,
@@ -1463,22 +1418,12 @@ SELECT * FROM testDbExecAsync2;
             return dbMemoryLoadAsync({
                 db
             });
-        }, function (err) {
-            assertOrThrow(
-                err.message.includes("invalid filename undefined"),
-                err
-            );
-        });
+        }, "invalid filename undefined");
         assertErrorThrownAsync(function () {
             return dbMemorySaveAsync({
                 db
             });
-        }, function (err) {
-            assertOrThrow(
-                err.message.includes("invalid filename undefined"),
-                err
-            );
-        });
+        }, "invalid filename undefined");
         await dbExecAsync({
             db,
             sql: "CREATE TABLE t01 AS SELECT 1 AS c01"
@@ -1512,12 +1457,7 @@ SELECT * FROM testDbExecAsync2;
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbOpenAsync({});
-        }, function (err) {
-            assertOrThrow(
-                err.message.includes("invalid filename undefined"),
-                err
-            );
-        });
+        }, "invalid filename undefined");
     }
 
     async function testDbTableInsertAsync() {
@@ -1530,21 +1470,21 @@ SELECT * FROM testDbExecAsync2;
             [
                 undefined,
                 (
-                    /invalid\srowList\sundefined/
+                    /invalid rowList undefined/
                 )
             ], [
                 [
                     []
                 ],
                 (
-                    /invalid\scolList\s\[\]/
+                    /invalid colList \[\]/
                 )
             ], [
                 [
                     {}
                 ],
                 (
-                    /invalid\scolList\s\[\]/
+                    /invalid colList \[\]/
                 )
             ]
         ].forEach(function ([
@@ -1554,9 +1494,7 @@ SELECT * FROM testDbExecAsync2;
                 return dbTableInsertAsync({
                     rowList
                 });
-            }, function (err) {
-                assertOrThrow(rgx.test(err.message), err);
-            });
+            }, rgx);
         });
         // test csv handling-behavior
         [
@@ -1668,11 +1606,7 @@ SELECT * FROM testDbExecAsync2;
                     db,
                     sql
                 });
-            }, function (err) {
-                assertOrThrow(err.message.includes(bb), JSON.stringify([
-                    ii, sql, bb, err.message
-                ]));
-            });
+            }, bb);
         });
     }
 
@@ -1711,7 +1645,7 @@ SELECT * FROM testDbExecAsync2;
                     ]
                 ],
                 bindList: [
-                    Buffer.alloc(8)
+                    new Uint8Array(8)
                 ],
                 sql: "SELECT tobase64(uncompress(compress(?))) AS c01"
             }
@@ -1772,8 +1706,7 @@ SELECT * FROM testDbExecAsync2;
         SQLITE_OPEN_URI,
         SQLITE_OPEN_WAL,
         assertErrorThrownAsync,
-        assertJsonEqual,
-        assertOrThrow,
+        assertNumericalEqual,
         dbCloseAsync,
         dbExecAsync,
         dbGetLastBlobAsync,
@@ -1781,7 +1714,7 @@ SELECT * FROM testDbExecAsync2;
         dbMemorySaveAsync,
         dbOpenAsync,
         dbTableInsertAsync,
-        noop,
+        debugInline,
         testAll,
         testList
     });

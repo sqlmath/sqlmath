@@ -3,7 +3,9 @@
         "email": "kaizhu256@gmail.com",
         "name": "kai zhu"
     },
+    "counter": 1,
     "description": "sqlite for data-science",
+    "fileCount": 20,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",
@@ -11,7 +13,7 @@
         "numerical",
         "sqlite"
     ],
-    "license": "BSD-3-Clause",
+    "license": "MIT",
     "main": "./sqlmath.mjs",
     "name": "sqlmath",
     "repository": {
@@ -21,6 +23,7 @@
     "scripts": {
         "build": "sh jslint_ci.sh shCiBuild",
         "test": "sh jslint_ci.sh shCiTest",
+        "test2": "sh jslint_ci.sh shCiBase",
         "test_win32": "node -e \"require('child_process').spawn('C:\\\\Program Files\\\\Git\\\\bin\\\\bash.exe',['-c','npm run test' + ' ' + process.argv.slice(1).join(' ')],{stdio:['ignore',1,2]});\""
     },
     "version": "0.0.1"

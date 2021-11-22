@@ -1,3 +1,14 @@
+// copyright nobody
+// LINT_C_FILE
+
+
+// *INDENT-OFF*
+#if defined(__cplusplus)
+extern "C" {
+#endif
+// *INDENT-ON*
+
+
 // header
 #include "sqlmath_base.c"
 
@@ -6,14 +17,20 @@
 file sqlmath_c - start
 */
 #ifndef SQLMATH_NAPI
-// init
+
+
+/*
+file sqlmath_c_custom_init
+*/
 int sqlite3_sqlmath_custom_init(
     sqlite3 * db,
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
 ) {
     sqlite3_sqlmath_init(db, pzErrMsg, pApi);
+    return 0;
 }
+
 /*
 file sqlmath_c - end
 */
@@ -54,3 +71,8 @@ NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_custom_init)
 /*
 file sqlmath_napi - end
 */
+// *INDENT-OFF*
+#if defined(__cplusplus)
+}
+#endif
+// *INDENT-ON*
