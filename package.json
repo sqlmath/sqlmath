@@ -11,7 +11,7 @@
         "numerical",
         "sqlite"
     ],
-    "license": "BSD-3-Clause",
+    "license": "MIT",
     "main": "./sqlmath.mjs",
     "name": "sqlmath",
     "repository": {
