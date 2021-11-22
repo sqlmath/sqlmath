@@ -17,6 +17,10 @@
 <br><br>
 # Table of Contents
 
+1. [Package Listing](#package-listing)
+
+2. [Changelog](#changelog)
+
 
 <br><br>
 # Package Listing
