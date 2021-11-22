@@ -5,17 +5,35 @@ shRawLibFetch
     "fetchList": [
         {
             "comment": true,
-            "header": "\n#ifdef SQLITE3_EXT_C2_\n",
+            "header": "\n#ifdef SQLITE3_EXT_C2\n",
             "url": "https://github.com/sqlite/sqlite/blob/version-3.36.0/LICENSE.md"
+        },
+        {
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/carray.c"
+        },
+        {
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/compress.c"
         },
         {
             "url": "https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/csv.c"
         },
         {
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/json1.c"
+        },
+        {
             "url": "https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/noop.c"
         },
         {
-            "footer": "\n#endif // SQLITE3_EXT_C2_\n",
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/regexp.c"
+        },
+        {
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/series.c"
+        },
+        {
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/shathree.c"
+        },
+        {
+            "footer": "\n#endif // SQLITE3_EXT_C2\n",
             "url": "https://github.com/sqlite/sqlite/tree/version-3.36.0/contrib/download/extension-functions.c/download/extension-functions.c",
             "url2": "https://www.sqlite.org/contrib/download/extension-functions.c/download/extension-functions.c?get=25"
         }
@@ -78,18 +96,24 @@ shRawLibFetch
 +// hack-sqlite
 +    { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
 
--#endif // SQLITE3_EXT_C2_
+-#endif // SQLITE3_EXT_C2
 +// hack-sqlite - init sqlite3_ext_init
 +int sqlite3_ext_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi) {
 +  sqlite3_api=pApi;
++  sqlite3_carray_init(db, pzErrMsg, pApi);
++  sqlite3_compress_init(db, pzErrMsg, pApi);
 +  sqlite3_csv_init(db, pzErrMsg, pApi);
 +  sqlite3_extension_init(db, pzErrMsg, pApi);
++  sqlite3_json_init(db, pzErrMsg, pApi);
 +  sqlite3_noop_init(db, pzErrMsg, pApi);
++  sqlite3_regexp_init(db, pzErrMsg, pApi);
++  sqlite3_series_init(db, pzErrMsg, pApi);
++  sqlite3_shathree_init(db, pzErrMsg, pApi);
 +}
-+#endif // SQLITE3_EXT_C2_
++#endif // SQLITE3_EXT_C2
 
--#include <sqlite3ext.h>
-+#include <sqlite3ext.h>
+-#include "sqlite3ext.h"
++#include "sqlite3ext.h"
 +// hack-sqlite
 +static const sqlite3_api_routines *sqlite3_api;
 */
@@ -105,7 +129,7 @@ committed 2021-06-18T18:36:39Z
 file https://github.com/sqlite/sqlite/blob/version-3.36.0/LICENSE.md
 */
 
-#ifdef SQLITE3_EXT_C2_
+#ifdef SQLITE3_EXT_C2
 /*
 The author disclaims copyright to this source code.  In place of
 a legal notice, here is a blessing:
@@ -114,6 +138,670 @@ a legal notice, here is a blessing:
   *   May you find forgiveness for yourself and forgive others.
   *   May you share freely, never taking more than you give.
 */
+
+
+/*
+file https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/carray.c
+*/
+/*
+** 2016-06-29
+**
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
+**
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
+**
+*************************************************************************
+**
+** This file demonstrates how to create a table-valued-function that
+** returns the values in a C-language array.
+** Examples:
+**
+**      SELECT * FROM carray($ptr,5)
+**
+** The query above returns 5 integers contained in a C-language array
+** at the address $ptr.  $ptr is a pointer to the array of integers.
+** The pointer value must be assigned to $ptr using the
+** sqlite3_bind_pointer() interface with a pointer type of "carray".
+** For example:
+**
+**    static int aX[] = { 53, 9, 17, 2231, 4, 99 };
+**    int i = sqlite3_bind_parameter_index(pStmt, "$ptr");
+**    sqlite3_bind_pointer(pStmt, i, aX, "carray", 0);
+**
+** There is an optional third parameter to determine the datatype of
+** the C-language array.  Allowed values of the third parameter are
+** 'int32', 'int64', 'double', 'char*'.  Example:
+**
+**      SELECT * FROM carray($ptr,10,'char*');
+**
+** The default value of the third parameter is 'int32'.
+**
+** HOW IT WORKS
+**
+** The carray "function" is really a virtual table with the
+** following schema:
+**
+**     CREATE TABLE carray(
+**       value,
+**       pointer HIDDEN,
+**       count HIDDEN,
+**       ctype TEXT HIDDEN
+**     );
+**
+** If the hidden columns "pointer" and "count" are unconstrained, then
+** the virtual table has no rows.  Otherwise, the virtual table interprets
+** the integer value of "pointer" as a pointer to the array and "count"
+** as the number of elements in the array.  The virtual table steps through
+** the array, element by element.
+*/
+#include "sqlite3ext.h"
+// hack-sqlite
+static const sqlite3_api_routines *sqlite3_api;
+// SQLITE_EXTENSION_INIT1
+#include <assert.h>
+#include <string.h>
+
+/* Allowed values for the mFlags parameter to sqlite3_carray_bind().
+** Must exactly match the definitions in carray.h.
+*/
+#define CARRAY_INT32     0      /* Data is 32-bit signed integers */
+#define CARRAY_INT64     1      /* Data is 64-bit signed integers */
+#define CARRAY_DOUBLE    2      /* Data is doubles */
+#define CARRAY_TEXT      3      /* Data is char* */
+
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+
+/*
+** Names of allowed datatypes
+*/
+static const char *azType[] = { "int32", "int64", "double", "char*" };
+
+/*
+** Structure used to hold the sqlite3_carray_bind() information
+*/
+typedef struct carray_bind carray_bind;
+struct carray_bind {
+  void *aData;                /* The data */
+  int nData;                  /* Number of elements */
+  int mFlags;                 /* Control flags */
+  void (*xDel)(void*);        /* Destructor for aData */
+};
+
+
+/* carray_cursor is a subclass of sqlite3_vtab_cursor which will
+** serve as the underlying representation of a cursor that scans
+** over rows of the result
+*/
+typedef struct carray_cursor carray_cursor;
+struct carray_cursor {
+  sqlite3_vtab_cursor base;  /* Base class - must be first */
+  sqlite3_int64 iRowid;      /* The rowid */
+  void *pPtr;                /* Pointer to the array of values */
+  sqlite3_int64 iCnt;        /* Number of integers in the array */
+  unsigned char eType;       /* One of the CARRAY_type values */
+};
+
+/*
+** The carrayConnect() method is invoked to create a new
+** carray_vtab that describes the carray virtual table.
+**
+** Think of this routine as the constructor for carray_vtab objects.
+**
+** All this routine needs to do is:
+**
+**    (1) Allocate the carray_vtab object and initialize all fields.
+**
+**    (2) Tell SQLite (via the sqlite3_declare_vtab() interface) what the
+**        result set of queries against carray will look like.
+*/
+static int carrayConnect(
+  sqlite3 *db,
+  void *pAux,
+  int argc, const char *const*argv,
+  sqlite3_vtab **ppVtab,
+  char **pzErr
+){
+  sqlite3_vtab *pNew;
+  int rc;
+
+/* Column numbers */
+#define CARRAY_COLUMN_VALUE   0
+#define CARRAY_COLUMN_POINTER 1
+#define CARRAY_COLUMN_COUNT   2
+#define CARRAY_COLUMN_CTYPE   3
+
+  rc = sqlite3_declare_vtab(db,
+     "CREATE TABLE x(value,pointer hidden,count hidden,ctype hidden)");
+  if( rc==SQLITE_OK ){
+    pNew = *ppVtab = sqlite3_malloc( sizeof(*pNew) );
+    if( pNew==0 ) return SQLITE_NOMEM;
+    memset(pNew, 0, sizeof(*pNew));
+  }
+  return rc;
+}
+
+/*
+** This method is the destructor for carray_cursor objects.
+*/
+static int carrayDisconnect(sqlite3_vtab *pVtab){
+  sqlite3_free(pVtab);
+  return SQLITE_OK;
+}
+
+/*
+** Constructor for a new carray_cursor object.
+*/
+static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
+  carray_cursor *pCur;
+  pCur = sqlite3_malloc( sizeof(*pCur) );
+  if( pCur==0 ) return SQLITE_NOMEM;
+  memset(pCur, 0, sizeof(*pCur));
+  *ppCursor = &pCur->base;
+  return SQLITE_OK;
+}
+
+/*
+** Destructor for a carray_cursor.
+*/
+static int carrayClose(sqlite3_vtab_cursor *cur){
+  sqlite3_free(cur);
+  return SQLITE_OK;
+}
+
+
+/*
+** Advance a carray_cursor to its next row of output.
+*/
+static int carrayNext(sqlite3_vtab_cursor *cur){
+  carray_cursor *pCur = (carray_cursor*)cur;
+  pCur->iRowid++;
+  return SQLITE_OK;
+}
+
+/*
+** Return values of columns for the row at which the carray_cursor
+** is currently pointing.
+*/
+static int carrayColumn(
+  sqlite3_vtab_cursor *cur,   /* The cursor */
+  sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
+  int i                       /* Which column to return */
+){
+  carray_cursor *pCur = (carray_cursor*)cur;
+  sqlite3_int64 x = 0;
+  switch( i ){
+    case CARRAY_COLUMN_POINTER:   return SQLITE_OK;
+    case CARRAY_COLUMN_COUNT:     x = pCur->iCnt;   break;
+    case CARRAY_COLUMN_CTYPE: {
+      sqlite3_result_text(ctx, azType[pCur->eType], -1, SQLITE_STATIC);
+      return SQLITE_OK;
+    }
+    default: {
+      switch( pCur->eType ){
+        case CARRAY_INT32: {
+          int *p = (int*)pCur->pPtr;
+          sqlite3_result_int(ctx, p[pCur->iRowid-1]);
+          return SQLITE_OK;
+        }
+        case CARRAY_INT64: {
+          sqlite3_int64 *p = (sqlite3_int64*)pCur->pPtr;
+          sqlite3_result_int64(ctx, p[pCur->iRowid-1]);
+          return SQLITE_OK;
+        }
+        case CARRAY_DOUBLE: {
+          double *p = (double*)pCur->pPtr;
+          sqlite3_result_double(ctx, p[pCur->iRowid-1]);
+          return SQLITE_OK;
+        }
+        case CARRAY_TEXT: {
+          const char **p = (const char**)pCur->pPtr;
+          sqlite3_result_text(ctx, p[pCur->iRowid-1], -1, SQLITE_TRANSIENT);
+          return SQLITE_OK;
+        }
+      }
+    }
+  }
+  sqlite3_result_int64(ctx, x);
+  return SQLITE_OK;
+}
+
+/*
+** Return the rowid for the current row.  In this implementation, the
+** rowid is the same as the output value.
+*/
+static int carrayRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
+  carray_cursor *pCur = (carray_cursor*)cur;
+  *pRowid = pCur->iRowid;
+  return SQLITE_OK;
+}
+
+/*
+** Return TRUE if the cursor has been moved off of the last
+** row of output.
+*/
+static int carrayEof(sqlite3_vtab_cursor *cur){
+  carray_cursor *pCur = (carray_cursor*)cur;
+  return pCur->iRowid>pCur->iCnt;
+}
+
+/*
+** This method is called to "rewind" the carray_cursor object back
+** to the first row of output.
+*/
+static int carrayFilter(
+  sqlite3_vtab_cursor *pVtabCursor,
+  int idxNum, const char *idxStr,
+  int argc, sqlite3_value **argv
+){
+  carray_cursor *pCur = (carray_cursor *)pVtabCursor;
+  pCur->pPtr = 0;
+  pCur->iCnt = 0;
+  switch( idxNum ){
+    case 1: {
+      carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
+      if( pBind==0 ) break;
+      pCur->pPtr = pBind->aData;
+      pCur->iCnt = pBind->nData;
+      pCur->eType = pBind->mFlags & 0x03;
+      break;
+    }
+    case 2:
+    case 3: {
+      pCur->pPtr = sqlite3_value_pointer(argv[0], "carray");
+      pCur->iCnt = pCur->pPtr ? sqlite3_value_int64(argv[1]) : 0;
+      if( idxNum<3 ){
+        pCur->eType = CARRAY_INT32;
+      }else{
+        unsigned char i;
+        const char *zType = (const char*)sqlite3_value_text(argv[2]);
+        for(i=0; i<sizeof(azType)/sizeof(azType[0]); i++){
+          if( sqlite3_stricmp(zType, azType[i])==0 ) break;
+        }
+        if( i>=sizeof(azType)/sizeof(azType[0]) ){
+          pVtabCursor->pVtab->zErrMsg = sqlite3_mprintf(
+            "unknown datatype: %Q", zType);
+          return SQLITE_ERROR;
+        }else{
+          pCur->eType = i;
+        }
+      }
+      break;
+    }
+  }
+  pCur->iRowid = 1;
+  return SQLITE_OK;
+}
+
+/*
+** SQLite will invoke this method one or more times while planning a query
+** that uses the carray virtual table.  This routine needs to create
+** a query plan for each invocation and compute an estimated cost for that
+** plan.
+**
+** In this implementation idxNum is used to represent the
+** query plan.  idxStr is unused.
+**
+** idxNum is:
+**
+**    1    If only the pointer= constraint exists.  In this case, the
+**         parameter must be bound using sqlite3_carray_bind().
+**
+**    2    if the pointer= and count= constraints exist.
+**
+**    3    if the ctype= constraint also exists.
+**
+** idxNum is 0 otherwise and carray becomes an empty table.
+*/
+static int carrayBestIndex(
+  sqlite3_vtab *tab,
+  sqlite3_index_info *pIdxInfo
+){
+  int i;                 /* Loop over constraints */
+  int ptrIdx = -1;       /* Index of the pointer= constraint, or -1 if none */
+  int cntIdx = -1;       /* Index of the count= constraint, or -1 if none */
+  int ctypeIdx = -1;     /* Index of the ctype= constraint, or -1 if none */
+
+  const struct sqlite3_index_constraint *pConstraint;
+  pConstraint = pIdxInfo->aConstraint;
+  for(i=0; i<pIdxInfo->nConstraint; i++, pConstraint++){
+    if( pConstraint->usable==0 ) continue;
+    if( pConstraint->op!=SQLITE_INDEX_CONSTRAINT_EQ ) continue;
+    switch( pConstraint->iColumn ){
+      case CARRAY_COLUMN_POINTER:
+        ptrIdx = i;
+        break;
+      case CARRAY_COLUMN_COUNT:
+        cntIdx = i;
+        break;
+      case CARRAY_COLUMN_CTYPE:
+        ctypeIdx = i;
+        break;
+    }
+  }
+  if( ptrIdx>=0 ){
+    pIdxInfo->aConstraintUsage[ptrIdx].argvIndex = 1;
+    pIdxInfo->aConstraintUsage[ptrIdx].omit = 1;
+    pIdxInfo->estimatedCost = (double)1;
+    pIdxInfo->estimatedRows = 100;
+    pIdxInfo->idxNum = 1;
+    if( cntIdx>=0 ){
+      pIdxInfo->aConstraintUsage[cntIdx].argvIndex = 2;
+      pIdxInfo->aConstraintUsage[cntIdx].omit = 1;
+      pIdxInfo->idxNum = 2;
+      if( ctypeIdx>=0 ){
+        pIdxInfo->aConstraintUsage[ctypeIdx].argvIndex = 3;
+        pIdxInfo->aConstraintUsage[ctypeIdx].omit = 1;
+        pIdxInfo->idxNum = 3;
+      }
+    }
+  }else{
+    pIdxInfo->estimatedCost = (double)2147483647;
+    pIdxInfo->estimatedRows = 2147483647;
+    pIdxInfo->idxNum = 0;
+  }
+  return SQLITE_OK;
+}
+
+/*
+** This following structure defines all the methods for the
+** carray virtual table.
+*/
+static sqlite3_module carrayModule = {
+  0,                         /* iVersion */
+  0,                         /* xCreate */
+  carrayConnect,             /* xConnect */
+  carrayBestIndex,           /* xBestIndex */
+  carrayDisconnect,          /* xDisconnect */
+  0,                         /* xDestroy */
+  carrayOpen,                /* xOpen - open a cursor */
+  carrayClose,               /* xClose - close a cursor */
+  carrayFilter,              /* xFilter - configure scan constraints */
+  carrayNext,                /* xNext - advance a cursor */
+  carrayEof,                 /* xEof - check for end of scan */
+  carrayColumn,              /* xColumn - read data */
+  carrayRowid,               /* xRowid - read data */
+  0,                         /* xUpdate */
+  0,                         /* xBegin */
+  0,                         /* xSync */
+  0,                         /* xCommit */
+  0,                         /* xRollback */
+  0,                         /* xFindMethod */
+  0,                         /* xRename */
+};
+
+/*
+** Destructor for the carray_bind object
+*/
+static void carrayBindDel(void *pPtr){
+  carray_bind *p = (carray_bind*)pPtr;
+  if( p->xDel!=SQLITE_STATIC ){
+     p->xDel(p->aData);
+  }
+  sqlite3_free(p);
+}
+
+/*
+** Invoke this interface in order to bind to the single-argument
+** version of CARRAY().
+*/
+#ifdef _WIN32
+// __declspec(dllexport)
+#endif
+static int sqlite3_carray_bind(
+  sqlite3_stmt *pStmt,
+  int idx,
+  void *aData,
+  int nData,
+  int mFlags,
+  void (*xDestroy)(void*)
+){
+  carray_bind *pNew;
+  int i;
+  pNew = sqlite3_malloc64(sizeof(*pNew));
+  if( pNew==0 ){
+    if( xDestroy!=SQLITE_STATIC && xDestroy!=SQLITE_TRANSIENT ){
+      xDestroy(aData);
+    }
+    return SQLITE_NOMEM;
+  }
+  pNew->nData = nData;
+  pNew->mFlags = mFlags;
+  if( xDestroy==SQLITE_TRANSIENT ){
+    sqlite3_int64 sz = nData;
+    switch( mFlags & 0x03 ){
+      case CARRAY_INT32:   sz *= 4;              break;
+      case CARRAY_INT64:   sz *= 8;              break;
+      case CARRAY_DOUBLE:  sz *= 8;              break;
+      case CARRAY_TEXT:    sz *= sizeof(char*);  break;
+    }
+    if( (mFlags & 0x03)==CARRAY_TEXT ){
+      for(i=0; i<nData; i++){
+        const char *z = ((char**)aData)[i];
+        if( z ) sz += strlen(z) + 1;
+      }
+    }
+    pNew->aData = sqlite3_malloc64( sz );
+    if( pNew->aData==0 ){
+      sqlite3_free(pNew);
+      return SQLITE_NOMEM;
+    }
+    if( (mFlags & 0x03)==CARRAY_TEXT ){
+      char **az = (char**)pNew->aData;
+      char *z = (char*)&az[nData];
+      for(i=0; i<nData; i++){
+        const char *zData = ((char**)aData)[i];
+        sqlite3_int64 n;
+        if( zData==0 ){
+          az[i] = 0;
+          continue;
+        }
+        az[i] = z;
+        n = strlen(zData);
+        memcpy(z, zData, n+1);
+        z += n+1;
+      }
+    }else{
+      memcpy(pNew->aData, aData, sz*nData);
+    }
+    pNew->xDel = sqlite3_free;
+  }else{
+    pNew->aData = aData;
+    pNew->xDel = xDestroy;
+  }
+  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
+}
+
+
+/*
+** For testing purpose in the TCL test harness, we need a method for
+** setting the pointer value.  The inttoptr(X) SQL function accomplishes
+** this.  Tcl script will bind an integer to X and the inttoptr() SQL
+** function will use sqlite3_result_pointer() to convert that integer into
+** a pointer.
+**
+** This is for testing on TCL only.
+*/
+#ifdef SQLITE_TEST
+static void inttoptrFunc(
+  sqlite3_context *context,
+  int argc,
+  sqlite3_value **argv
+){
+  void *p;
+  sqlite3_int64 i64;
+  i64 = sqlite3_value_int64(argv[0]);
+  if( sizeof(i64)==sizeof(p) ){
+    memcpy(&p, &i64, sizeof(p));
+  }else{
+    int i32 = i64 & 0xffffffff;
+    memcpy(&p, &i32, sizeof(p));
+  }
+  sqlite3_result_pointer(context, p, "carray", 0);
+}
+#endif /* SQLITE_TEST */
+
+#endif /* SQLITE_OMIT_VIRTUALTABLE */
+
+#ifdef _WIN32
+// __declspec(dllexport)
+#endif
+static int sqlite3_carray_init(
+  sqlite3 *db,
+  char **pzErrMsg,
+  const sqlite3_api_routines *pApi
+){
+  int rc = SQLITE_OK;
+  // SQLITE_EXTENSION_INIT2(pApi);
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+  rc = sqlite3_create_module(db, "carray", &carrayModule, 0);
+#ifdef SQLITE_TEST
+  if( rc==SQLITE_OK ){
+    rc = sqlite3_create_function(db, "inttoptr", 1, SQLITE_UTF8, 0,
+                                 inttoptrFunc, 0, 0);
+  }
+#endif /* SQLITE_TEST */
+#endif /* SQLITE_OMIT_VIRTUALTABLE */
+  return rc;
+}
+
+
+/*
+file https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/compress.c
+*/
+/*
+** 2014-06-13
+**
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
+**
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
+**
+******************************************************************************
+**
+** This SQLite extension implements SQL compression functions
+** compress() and uncompress() using ZLIB.
+*/
+#include "sqlite3ext.h"
+// SQLITE_EXTENSION_INIT1
+#include <zlib.h>
+
+/*
+** Implementation of the "compress(X)" SQL function.  The input X is
+** compressed using zLib and the output is returned.
+**
+** The output is a BLOB that begins with a variable-length integer that
+** is the input size in bytes (the size of X before compression).  The
+** variable-length integer is implemented as 1 to 5 bytes.  There are
+** seven bits per integer stored in the lower seven bits of each byte.
+** More significant bits occur first.  The most significant bit (0x80)
+** is a flag to indicate the end of the integer.
+**
+** This function, SQLAR, and ZIP all use the same "deflate" compression
+** algorithm, but each is subtly different:
+**
+**   *  ZIP uses raw deflate.
+**
+**   *  SQLAR uses the "zlib format" which is raw deflate with a two-byte
+**      algorithm-identification header and a four-byte checksum at the end.
+**
+**   *  This utility uses the "zlib format" like SQLAR, but adds the variable-
+**      length integer uncompressed size value at the beginning.
+**
+** This function might be extended in the future to support compression
+** formats other than deflate, by providing a different algorithm-id
+** mark following the variable-length integer size parameter.
+*/
+static void compressFunc(
+  sqlite3_context *context,
+  int argc,
+  sqlite3_value **argv
+){
+  const unsigned char *pIn;
+  unsigned char *pOut;
+  unsigned int nIn;
+  unsigned long int nOut;
+  unsigned char x[8];
+  int rc;
+  int i, j;
+
+  pIn = sqlite3_value_blob(argv[0]);
+  nIn = sqlite3_value_bytes(argv[0]);
+  nOut = 13 + nIn + (nIn+999)/1000;
+  pOut = sqlite3_malloc( nOut+5 );
+  for(i=4; i>=0; i--){
+    x[i] = (nIn >> (7*(4-i)))&0x7f;
+  }
+  for(i=0; i<4 && x[i]==0; i++){}
+  for(j=0; i<=4; i++, j++) pOut[j] = x[i];
+  pOut[j-1] |= 0x80;
+  rc = compress(&pOut[j], &nOut, pIn, nIn);
+  if( rc==Z_OK ){
+    sqlite3_result_blob(context, pOut, nOut+j, sqlite3_free);
+  }else{
+    sqlite3_free(pOut);
+  }
+}
+
+/*
+** Implementation of the "uncompress(X)" SQL function.  The argument X
+** is a blob which was obtained from compress(Y).  The output will be
+** the value Y.
+*/
+static void uncompressFunc(
+  sqlite3_context *context,
+  int argc,
+  sqlite3_value **argv
+){
+  const unsigned char *pIn;
+  unsigned char *pOut;
+  unsigned int nIn;
+  unsigned long int nOut;
+  int rc;
+  int i;
+
+  pIn = sqlite3_value_blob(argv[0]);
+  nIn = sqlite3_value_bytes(argv[0]);
+  nOut = 0;
+  for(i=0; i<nIn && i<5; i++){
+    nOut = (nOut<<7) | (pIn[i]&0x7f);
+    if( (pIn[i]&0x80)!=0 ){ i++; break; }
+  }
+  pOut = sqlite3_malloc( nOut+1 );
+  rc = uncompress(pOut, &nOut, &pIn[i], nIn-i);
+  if( rc==Z_OK ){
+    sqlite3_result_blob(context, pOut, nOut, sqlite3_free);
+  }else{
+    sqlite3_free(pOut);
+  }
+}
+
+
+#ifdef _WIN32
+// __declspec(dllexport)
+#endif
+static int sqlite3_compress_init(
+  sqlite3 *db,
+  char **pzErrMsg,
+  const sqlite3_api_routines *pApi
+){
+  int rc = SQLITE_OK;
+  // SQLITE_EXTENSION_INIT2(pApi);
+  (void)pzErrMsg;  /* Unused parameter */
+  rc = sqlite3_create_function(db, "compress", 1,
+                    SQLITE_UTF8 | SQLITE_INNOCUOUS,
+                    0, compressFunc, 0, 0);
+  if( rc==SQLITE_OK ){
+    rc = sqlite3_create_function(db, "uncompress", 1,
+                    SQLITE_UTF8 | SQLITE_INNOCUOUS | SQLITE_DETERMINISTIC,
+                    0, uncompressFunc, 0, 0);
+  }
+  return rc;
+}
 
 
 /*
@@ -161,8 +849,6 @@ file https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/csv.c
 ** if this module is compiled with -DSQLITE_TEST.
 */
 #include <sqlite3ext.h>
-// hack-sqlite
-static const sqlite3_api_routines *sqlite3_api;
 // SQLITE_EXTENSION_INIT1
 #include <string.h>
 #include <stdlib.h>
@@ -1081,6 +1767,2642 @@ static int sqlite3_csv_init(
 
 
 /*
+file https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/json1.c
+*/
+/*
+** 2015-08-12
+**
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
+**
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
+**
+******************************************************************************
+**
+** This SQLite extension implements JSON functions.  The interface is
+** modeled after MySQL JSON functions:
+**
+**     https://dev.mysql.com/doc/refman/5.7/en/json.html
+**
+** For the time being, all JSON is stored as pure text.  (We might add
+** a JSONB type in the future which stores a binary encoding of JSON in
+** a BLOB, but there is no support for JSONB in the current implementation.
+** This implementation parses JSON text at 250 MB/s, so it is hard to see
+** how JSONB might improve on that.)
+*/
+#if !defined(SQLITE_CORE) || defined(SQLITE_ENABLE_JSON1)
+#if !defined(SQLITEINT_H)
+#include "sqlite3ext.h"
+#endif
+// SQLITE_EXTENSION_INIT1
+#include <assert.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
+/* Mark a function parameter as unused, to suppress nuisance compiler
+** warnings. */
+#ifndef UNUSED_PARAM
+# define UNUSED_PARAM(X)  (void)(X)
+#endif
+
+#ifndef LARGEST_INT64
+# define LARGEST_INT64  (0xffffffff|(((sqlite3_int64)0x7fffffff)<<32))
+# define SMALLEST_INT64 (((sqlite3_int64)-1) - LARGEST_INT64)
+#endif
+
+#ifndef deliberate_fall_through
+# define deliberate_fall_through
+#endif
+
+/*
+** Versions of isspace(), isalnum() and isdigit() to which it is safe
+** to pass signed char values.
+*/
+#ifdef sqlite3Isdigit
+   /* Use the SQLite core versions if this routine is part of the
+   ** SQLite amalgamation */
+#  define safe_isdigit(x)  sqlite3Isdigit(x)
+#  define safe_isalnum(x)  sqlite3Isalnum(x)
+#  define safe_isxdigit(x) sqlite3Isxdigit(x)
+#else
+   /* Use the standard library for separate compilation */
+#include <ctype.h>  /* amalgamator: keep */
+#  define safe_isdigit(x)  isdigit((unsigned char)(x))
+#  define safe_isalnum(x)  isalnum((unsigned char)(x))
+#  define safe_isxdigit(x) isxdigit((unsigned char)(x))
+#endif
+
+/*
+** Growing our own isspace() routine this way is twice as fast as
+** the library isspace() function, resulting in a 7% overall performance
+** increase for the parser.  (Ubuntu14.10 gcc 4.8.4 x64 with -Os).
+*/
+static const char jsonIsSpace[] = {
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 1, 1, 0, 0, 1, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  1, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+  0, 0, 0, 0, 0, 0, 0, 0,     0, 0, 0, 0, 0, 0, 0, 0,
+};
+#define safe_isspace(x) (jsonIsSpace[(unsigned char)x])
+
+#ifndef SQLITE_AMALGAMATION
+  /* Unsigned integer types.  These are already defined in the sqliteInt.h,
+  ** but the definitions need to be repeated for separate compilation. */
+  typedef sqlite3_uint64 u64;
+  typedef unsigned int u32;
+  typedef unsigned short int u16;
+  typedef unsigned char u8;
+#endif
+
+/* Objects */
+typedef struct JsonString JsonString;
+typedef struct JsonNode JsonNode;
+typedef struct JsonParse JsonParse;
+
+/* An instance of this object represents a JSON string
+** under construction.  Really, this is a generic string accumulator
+** that can be and is used to create strings other than JSON.
+*/
+struct JsonString {
+  sqlite3_context *pCtx;   /* Function context - put error messages here */
+  char *zBuf;              /* Append JSON content here */
+  u64 nAlloc;              /* Bytes of storage available in zBuf[] */
+  u64 nUsed;               /* Bytes of zBuf[] currently used */
+  u8 bStatic;              /* True if zBuf is static space */
+  u8 bErr;                 /* True if an error has been encountered */
+  char zSpace[100];        /* Initial static space */
+};
+
+/* JSON type values
+*/
+#define JSON_NULL     0
+#define JSON_TRUE     1
+#define JSON_FALSE    2
+#define JSON_INT      3
+#define JSON_REAL     4
+#define JSON_STRING   5
+#define JSON_ARRAY    6
+#define JSON_OBJECT   7
+
+/* The "subtype" set for JSON values */
+#define JSON_SUBTYPE  74    /* Ascii for "J" */
+
+/*
+** Names of the various JSON types:
+*/
+static const char * const jsonType[] = {
+  "null", "true", "false", "integer", "real", "text", "array", "object"
+};
+
+/* Bit values for the JsonNode.jnFlag field
+*/
+#define JNODE_RAW     0x01         /* Content is raw, not JSON encoded */
+#define JNODE_ESCAPE  0x02         /* Content is text with \ escapes */
+#define JNODE_REMOVE  0x04         /* Do not output */
+#define JNODE_REPLACE 0x08         /* Replace with JsonNode.u.iReplace */
+#define JNODE_PATCH   0x10         /* Patch with JsonNode.u.pPatch */
+#define JNODE_APPEND  0x20         /* More ARRAY/OBJECT entries at u.iAppend */
+#define JNODE_LABEL   0x40         /* Is a label of an object */
+
+
+/* A single node of parsed JSON
+*/
+struct JsonNode {
+  u8 eType;              /* One of the JSON_ type values */
+  u8 jnFlags;            /* JNODE flags */
+  u32 n;                 /* Bytes of content, or number of sub-nodes */
+  union {
+    const char *zJContent; /* Content for INT, REAL, and STRING */
+    u32 iAppend;           /* More terms for ARRAY and OBJECT */
+    u32 iKey;              /* Key for ARRAY objects in json_tree() */
+    u32 iReplace;          /* Replacement content for JNODE_REPLACE */
+    JsonNode *pPatch;      /* Node chain of patch for JNODE_PATCH */
+  } u;
+};
+
+/* A completely parsed JSON string
+*/
+struct JsonParse {
+  u32 nNode;         /* Number of slots of aNode[] used */
+  u32 nAlloc;        /* Number of slots of aNode[] allocated */
+  JsonNode *aNode;   /* Array of nodes containing the parse */
+  const char *zJson; /* Original JSON string */
+  u32 *aUp;          /* Index of parent of each node */
+  u8 oom;            /* Set to true if out of memory */
+  u8 nErr;           /* Number of errors seen */
+  u16 iDepth;        /* Nesting depth */
+  int nJson;         /* Length of the zJson string in bytes */
+  u32 iHold;         /* Replace cache line with the lowest iHold value */
+};
+
+/*
+** Maximum nesting depth of JSON for this implementation.
+**
+** This limit is needed to avoid a stack overflow in the recursive
+** descent parser.  A depth of 2000 is far deeper than any sane JSON
+** should go.
+*/
+#define JSON_MAX_DEPTH  2000
+
+/**************************************************************************
+** Utility routines for dealing with JsonString objects
+**************************************************************************/
+
+/* Set the JsonString object to an empty string
+*/
+static void jsonZero(JsonString *p){
+  p->zBuf = p->zSpace;
+  p->nAlloc = sizeof(p->zSpace);
+  p->nUsed = 0;
+  p->bStatic = 1;
+}
+
+/* Initialize the JsonString object
+*/
+static void jsonInit(JsonString *p, sqlite3_context *pCtx){
+  p->pCtx = pCtx;
+  p->bErr = 0;
+  jsonZero(p);
+}
+
+
+/* Free all allocated memory and reset the JsonString object back to its
+** initial state.
+*/
+static void jsonReset(JsonString *p){
+  if( !p->bStatic ) sqlite3_free(p->zBuf);
+  jsonZero(p);
+}
+
+
+/* Report an out-of-memory (OOM) condition
+*/
+static void jsonOom(JsonString *p){
+  p->bErr = 1;
+  sqlite3_result_error_nomem(p->pCtx);
+  jsonReset(p);
+}
+
+/* Enlarge pJson->zBuf so that it can hold at least N more bytes.
+** Return zero on success.  Return non-zero on an OOM error
+*/
+static int jsonGrow(JsonString *p, u32 N){
+  u64 nTotal = N<p->nAlloc ? p->nAlloc*2 : p->nAlloc+N+10;
+  char *zNew;
+  if( p->bStatic ){
+    if( p->bErr ) return 1;
+    zNew = sqlite3_malloc64(nTotal);
+    if( zNew==0 ){
+      jsonOom(p);
+      return SQLITE_NOMEM;
+    }
+    memcpy(zNew, p->zBuf, (size_t)p->nUsed);
+    p->zBuf = zNew;
+    p->bStatic = 0;
+  }else{
+    zNew = sqlite3_realloc64(p->zBuf, nTotal);
+    if( zNew==0 ){
+      jsonOom(p);
+      return SQLITE_NOMEM;
+    }
+    p->zBuf = zNew;
+  }
+  p->nAlloc = nTotal;
+  return SQLITE_OK;
+}
+
+/* Append N bytes from zIn onto the end of the JsonString string.
+*/
+static void jsonAppendRaw(JsonString *p, const char *zIn, u32 N){
+  if( N==0 ) return;
+  if( (N+p->nUsed >= p->nAlloc) && jsonGrow(p,N)!=0 ) return;
+  memcpy(p->zBuf+p->nUsed, zIn, N);
+  p->nUsed += N;
+}
+
+/* Append formatted text (not to exceed N bytes) to the JsonString.
+*/
+static void jsonPrintf(int N, JsonString *p, const char *zFormat, ...){
+  va_list ap;
+  if( (p->nUsed + N >= p->nAlloc) && jsonGrow(p, N) ) return;
+  va_start(ap, zFormat);
+  sqlite3_vsnprintf(N, p->zBuf+p->nUsed, zFormat, ap);
+  va_end(ap);
+  p->nUsed += (int)strlen(p->zBuf+p->nUsed);
+}
+
+/* Append a single character
+*/
+static void jsonAppendChar(JsonString *p, char c){
+  if( p->nUsed>=p->nAlloc && jsonGrow(p,1)!=0 ) return;
+  p->zBuf[p->nUsed++] = c;
+}
+
+/* Append a comma separator to the output buffer, if the previous
+** character is not '[' or '{'.
+*/
+static void jsonAppendSeparator(JsonString *p){
+  char c;
+  if( p->nUsed==0 ) return;
+  c = p->zBuf[p->nUsed-1];
+  if( c!='[' && c!='{' ) jsonAppendChar(p, ',');
+}
+
+/* Append the N-byte string in zIn to the end of the JsonString string
+** under construction.  Enclose the string in "..." and escape
+** any double-quotes or backslash characters contained within the
+** string.
+*/
+static void jsonAppendString(JsonString *p, const char *zIn, u32 N){
+  u32 i;
+  if( zIn==0 || ((N+p->nUsed+2 >= p->nAlloc) && jsonGrow(p,N+2)!=0) ) return;
+  p->zBuf[p->nUsed++] = '"';
+  for(i=0; i<N; i++){
+    unsigned char c = ((unsigned const char*)zIn)[i];
+    if( c=='"' || c=='\\' ){
+      json_simple_escape:
+      if( (p->nUsed+N+3-i > p->nAlloc) && jsonGrow(p,N+3-i)!=0 ) return;
+      p->zBuf[p->nUsed++] = '\\';
+    }else if( c<=0x1f ){
+      static const char aSpecial[] = {
+         0, 0, 0, 0, 0, 0, 0, 0, 'b', 't', 'n', 0, 'f', 'r', 0, 0,
+         0, 0, 0, 0, 0, 0, 0, 0,   0,   0,   0, 0,   0,   0, 0, 0
+      };
+      assert( sizeof(aSpecial)==32 );
+      assert( aSpecial['\b']=='b' );
+      assert( aSpecial['\f']=='f' );
+      assert( aSpecial['\n']=='n' );
+      assert( aSpecial['\r']=='r' );
+      assert( aSpecial['\t']=='t' );
+      if( aSpecial[c] ){
+        c = aSpecial[c];
+        goto json_simple_escape;
+      }
+      if( (p->nUsed+N+7+i > p->nAlloc) && jsonGrow(p,N+7-i)!=0 ) return;
+      p->zBuf[p->nUsed++] = '\\';
+      p->zBuf[p->nUsed++] = 'u';
+      p->zBuf[p->nUsed++] = '0';
+      p->zBuf[p->nUsed++] = '0';
+      p->zBuf[p->nUsed++] = '0' + (c>>4);
+      c = "0123456789abcdef"[c&0xf];
+    }
+    p->zBuf[p->nUsed++] = c;
+  }
+  p->zBuf[p->nUsed++] = '"';
+  assert( p->nUsed<p->nAlloc );
+}
+
+/*
+** Append a function parameter value to the JSON string under
+** construction.
+*/
+static void jsonAppendValue(
+  JsonString *p,                 /* Append to this JSON string */
+  sqlite3_value *pValue          /* Value to append */
+){
+  switch( sqlite3_value_type(pValue) ){
+    case SQLITE_NULL: {
+      jsonAppendRaw(p, "null", 4);
+      break;
+    }
+    case SQLITE_INTEGER:
+    case SQLITE_FLOAT: {
+      const char *z = (const char*)sqlite3_value_text(pValue);
+      u32 n = (u32)sqlite3_value_bytes(pValue);
+      jsonAppendRaw(p, z, n);
+      break;
+    }
+    case SQLITE_TEXT: {
+      const char *z = (const char*)sqlite3_value_text(pValue);
+      u32 n = (u32)sqlite3_value_bytes(pValue);
+      if( sqlite3_value_subtype(pValue)==JSON_SUBTYPE ){
+        jsonAppendRaw(p, z, n);
+      }else{
+        jsonAppendString(p, z, n);
+      }
+      break;
+    }
+    default: {
+      if( p->bErr==0 ){
+        sqlite3_result_error(p->pCtx, "JSON cannot hold BLOB values", -1);
+        p->bErr = 2;
+        jsonReset(p);
+      }
+      break;
+    }
+  }
+}
+
+
+/* Make the JSON in p the result of the SQL function.
+*/
+static void jsonResult(JsonString *p){
+  if( p->bErr==0 ){
+    sqlite3_result_text64(p->pCtx, p->zBuf, p->nUsed,
+                          p->bStatic ? SQLITE_TRANSIENT : sqlite3_free,
+                          SQLITE_UTF8);
+    jsonZero(p);
+  }
+  assert( p->bStatic );
+}
+
+/**************************************************************************
+** Utility routines for dealing with JsonNode and JsonParse objects
+**************************************************************************/
+
+/*
+** Return the number of consecutive JsonNode slots need to represent
+** the parsed JSON at pNode.  The minimum answer is 1.  For ARRAY and
+** OBJECT types, the number might be larger.
+**
+** Appended elements are not counted.  The value returned is the number
+** by which the JsonNode counter should increment in order to go to the
+** next peer value.
+*/
+static u32 jsonNodeSize(JsonNode *pNode){
+  return pNode->eType>=JSON_ARRAY ? pNode->n+1 : 1;
+}
+
+/*
+** Reclaim all memory allocated by a JsonParse object.  But do not
+** delete the JsonParse object itself.
+*/
+static void jsonParseReset(JsonParse *pParse){
+  sqlite3_free(pParse->aNode);
+  pParse->aNode = 0;
+  pParse->nNode = 0;
+  pParse->nAlloc = 0;
+  sqlite3_free(pParse->aUp);
+  pParse->aUp = 0;
+}
+
+/*
+** Free a JsonParse object that was obtained from sqlite3_malloc().
+*/
+static void jsonParseFree(JsonParse *pParse){
+  jsonParseReset(pParse);
+  sqlite3_free(pParse);
+}
+
+/*
+** Convert the JsonNode pNode into a pure JSON string and
+** append to pOut.  Subsubstructure is also included.  Return
+** the number of JsonNode objects that are encoded.
+*/
+static void jsonRenderNode(
+  JsonNode *pNode,               /* The node to render */
+  JsonString *pOut,              /* Write JSON here */
+  sqlite3_value **aReplace       /* Replacement values */
+){
+  if( pNode->jnFlags & (JNODE_REPLACE|JNODE_PATCH) ){
+    if( pNode->jnFlags & JNODE_REPLACE ){
+      jsonAppendValue(pOut, aReplace[pNode->u.iReplace]);
+      return;
+    }
+    pNode = pNode->u.pPatch;
+  }
+  switch( pNode->eType ){
+    default: {
+      assert( pNode->eType==JSON_NULL );
+      jsonAppendRaw(pOut, "null", 4);
+      break;
+    }
+    case JSON_TRUE: {
+      jsonAppendRaw(pOut, "true", 4);
+      break;
+    }
+    case JSON_FALSE: {
+      jsonAppendRaw(pOut, "false", 5);
+      break;
+    }
+    case JSON_STRING: {
+      if( pNode->jnFlags & JNODE_RAW ){
+        jsonAppendString(pOut, pNode->u.zJContent, pNode->n);
+        break;
+      }
+      /* no break */ deliberate_fall_through
+    }
+    case JSON_REAL:
+    case JSON_INT: {
+      jsonAppendRaw(pOut, pNode->u.zJContent, pNode->n);
+      break;
+    }
+    case JSON_ARRAY: {
+      u32 j = 1;
+      jsonAppendChar(pOut, '[');
+      for(;;){
+        while( j<=pNode->n ){
+          if( (pNode[j].jnFlags & JNODE_REMOVE)==0 ){
+            jsonAppendSeparator(pOut);
+            jsonRenderNode(&pNode[j], pOut, aReplace);
+          }
+          j += jsonNodeSize(&pNode[j]);
+        }
+        if( (pNode->jnFlags & JNODE_APPEND)==0 ) break;
+        pNode = &pNode[pNode->u.iAppend];
+        j = 1;
+      }
+      jsonAppendChar(pOut, ']');
+      break;
+    }
+    case JSON_OBJECT: {
+      u32 j = 1;
+      jsonAppendChar(pOut, '{');
+      for(;;){
+        while( j<=pNode->n ){
+          if( (pNode[j+1].jnFlags & JNODE_REMOVE)==0 ){
+            jsonAppendSeparator(pOut);
+            jsonRenderNode(&pNode[j], pOut, aReplace);
+            jsonAppendChar(pOut, ':');
+            jsonRenderNode(&pNode[j+1], pOut, aReplace);
+          }
+          j += 1 + jsonNodeSize(&pNode[j+1]);
+        }
+        if( (pNode->jnFlags & JNODE_APPEND)==0 ) break;
+        pNode = &pNode[pNode->u.iAppend];
+        j = 1;
+      }
+      jsonAppendChar(pOut, '}');
+      break;
+    }
+  }
+}
+
+/*
+** Return a JsonNode and all its descendents as a JSON string.
+*/
+static void jsonReturnJson(
+  JsonNode *pNode,            /* Node to return */
+  sqlite3_context *pCtx,      /* Return value for this function */
+  sqlite3_value **aReplace    /* Array of replacement values */
+){
+  JsonString s;
+  jsonInit(&s, pCtx);
+  jsonRenderNode(pNode, &s, aReplace);
+  jsonResult(&s);
+  sqlite3_result_subtype(pCtx, JSON_SUBTYPE);
+}
+
+/*
+** Translate a single byte of Hex into an integer.
+** This routine only works if h really is a valid hexadecimal
+** character:  0..9a..fA..F
+*/
+static u8 jsonHexToInt(int h){
+  assert( (h>='0' && h<='9') ||  (h>='a' && h<='f') ||  (h>='A' && h<='F') );
+#ifdef SQLITE_EBCDIC
+  h += 9*(1&~(h>>4));
+#else
+  h += 9*(1&(h>>6));
+#endif
+  return (u8)(h & 0xf);
+}
+
+/*
+** Convert a 4-byte hex string into an integer
+*/
+static u32 jsonHexToInt4(const char *z){
+  u32 v;
+  assert( safe_isxdigit(z[0]) );
+  assert( safe_isxdigit(z[1]) );
+  assert( safe_isxdigit(z[2]) );
+  assert( safe_isxdigit(z[3]) );
+  v = (jsonHexToInt(z[0])<<12)
+    + (jsonHexToInt(z[1])<<8)
+    + (jsonHexToInt(z[2])<<4)
+    + jsonHexToInt(z[3]);
+  return v;
+}
+
+/*
+** Make the JsonNode the return value of the function.
+*/
+static void jsonReturn(
+  JsonNode *pNode,            /* Node to return */
+  sqlite3_context *pCtx,      /* Return value for this function */
+  sqlite3_value **aReplace    /* Array of replacement values */
+){
+  switch( pNode->eType ){
+    default: {
+      assert( pNode->eType==JSON_NULL );
+      sqlite3_result_null(pCtx);
+      break;
+    }
+    case JSON_TRUE: {
+      sqlite3_result_int(pCtx, 1);
+      break;
+    }
+    case JSON_FALSE: {
+      sqlite3_result_int(pCtx, 0);
+      break;
+    }
+    case JSON_INT: {
+      sqlite3_int64 i = 0;
+      const char *z = pNode->u.zJContent;
+      if( z[0]=='-' ){ z++; }
+      while( z[0]>='0' && z[0]<='9' ){
+        unsigned v = *(z++) - '0';
+        if( i>=LARGEST_INT64/10 ){
+          if( i>LARGEST_INT64/10 ) goto int_as_real;
+          if( z[0]>='0' && z[0]<='9' ) goto int_as_real;
+          if( v==9 ) goto int_as_real;
+          if( v==8 ){
+            if( pNode->u.zJContent[0]=='-' ){
+              sqlite3_result_int64(pCtx, SMALLEST_INT64);
+              goto int_done;
+            }else{
+              goto int_as_real;
+            }
+          }
+        }
+        i = i*10 + v;
+      }
+      if( pNode->u.zJContent[0]=='-' ){ i = -i; }
+      sqlite3_result_int64(pCtx, i);
+      int_done:
+      break;
+      int_as_real: i=0; /* no break */ deliberate_fall_through
+    }
+    case JSON_REAL: {
+      double r;
+#ifdef SQLITE_AMALGAMATION
+      const char *z = pNode->u.zJContent;
+      sqlite3AtoF(z, &r, sqlite3Strlen30(z), SQLITE_UTF8);
+#else
+      r = strtod(pNode->u.zJContent, 0);
+#endif
+      sqlite3_result_double(pCtx, r);
+      break;
+    }
+    case JSON_STRING: {
+#if 0 /* Never happens because JNODE_RAW is only set by json_set(),
+      ** json_insert() and json_replace() and those routines do not
+      ** call jsonReturn() */
+      if( pNode->jnFlags & JNODE_RAW ){
+        sqlite3_result_text(pCtx, pNode->u.zJContent, pNode->n,
+                            SQLITE_TRANSIENT);
+      }else
+#endif
+      assert( (pNode->jnFlags & JNODE_RAW)==0 );
+      if( (pNode->jnFlags & JNODE_ESCAPE)==0 ){
+        /* JSON formatted without any backslash-escapes */
+        sqlite3_result_text(pCtx, pNode->u.zJContent+1, pNode->n-2,
+                            SQLITE_TRANSIENT);
+      }else{
+        /* Translate JSON formatted string into raw text */
+        u32 i;
+        u32 n = pNode->n;
+        const char *z = pNode->u.zJContent;
+        char *zOut;
+        u32 j;
+        zOut = sqlite3_malloc( n+1 );
+        if( zOut==0 ){
+          sqlite3_result_error_nomem(pCtx);
+          break;
+        }
+        for(i=1, j=0; i<n-1; i++){
+          char c = z[i];
+          if( c!='\\' ){
+            zOut[j++] = c;
+          }else{
+            c = z[++i];
+            if( c=='u' ){
+              u32 v = jsonHexToInt4(z+i+1);
+              i += 4;
+              if( v==0 ) break;
+              if( v<=0x7f ){
+                zOut[j++] = (char)v;
+              }else if( v<=0x7ff ){
+                zOut[j++] = (char)(0xc0 | (v>>6));
+                zOut[j++] = 0x80 | (v&0x3f);
+              }else{
+                u32 vlo;
+                if( (v&0xfc00)==0xd800
+                  && i<n-6
+                  && z[i+1]=='\\'
+                  && z[i+2]=='u'
+                  && ((vlo = jsonHexToInt4(z+i+3))&0xfc00)==0xdc00
+                ){
+                  /* We have a surrogate pair */
+                  v = ((v&0x3ff)<<10) + (vlo&0x3ff) + 0x10000;
+                  i += 6;
+                  zOut[j++] = 0xf0 | (v>>18);
+                  zOut[j++] = 0x80 | ((v>>12)&0x3f);
+                  zOut[j++] = 0x80 | ((v>>6)&0x3f);
+                  zOut[j++] = 0x80 | (v&0x3f);
+                }else{
+                  zOut[j++] = 0xe0 | (v>>12);
+                  zOut[j++] = 0x80 | ((v>>6)&0x3f);
+                  zOut[j++] = 0x80 | (v&0x3f);
+                }
+              }
+            }else{
+              if( c=='b' ){
+                c = '\b';
+              }else if( c=='f' ){
+                c = '\f';
+              }else if( c=='n' ){
+                c = '\n';
+              }else if( c=='r' ){
+                c = '\r';
+              }else if( c=='t' ){
+                c = '\t';
+              }
+              zOut[j++] = c;
+            }
+          }
+        }
+        zOut[j] = 0;
+        sqlite3_result_text(pCtx, zOut, j, sqlite3_free);
+      }
+      break;
+    }
+    case JSON_ARRAY:
+    case JSON_OBJECT: {
+      jsonReturnJson(pNode, pCtx, aReplace);
+      break;
+    }
+  }
+}
+
+/* Forward reference */
+static int jsonParseAddNode(JsonParse*,u32,u32,const char*);
+
+/*
+** A macro to hint to the compiler that a function should not be
+** inlined.
+*/
+#if defined(__GNUC__)
+#  define JSON_NOINLINE  __attribute__((noinline))
+#elif defined(_MSC_VER) && _MSC_VER>=1310
+#  define JSON_NOINLINE  __declspec(noinline)
+#else
+#  define JSON_NOINLINE
+#endif
+
+
+static JSON_NOINLINE int jsonParseAddNodeExpand(
+  JsonParse *pParse,        /* Append the node to this object */
+  u32 eType,                /* Node type */
+  u32 n,                    /* Content size or sub-node count */
+  const char *zContent      /* Content */
+){
+  u32 nNew;
+  JsonNode *pNew;
+  assert( pParse->nNode>=pParse->nAlloc );
+  if( pParse->oom ) return -1;
+  nNew = pParse->nAlloc*2 + 10;
+  pNew = sqlite3_realloc64(pParse->aNode, sizeof(JsonNode)*nNew);
+  if( pNew==0 ){
+    pParse->oom = 1;
+    return -1;
+  }
+  pParse->nAlloc = nNew;
+  pParse->aNode = pNew;
+  assert( pParse->nNode<pParse->nAlloc );
+  return jsonParseAddNode(pParse, eType, n, zContent);
+}
+
+/*
+** Create a new JsonNode instance based on the arguments and append that
+** instance to the JsonParse.  Return the index in pParse->aNode[] of the
+** new node, or -1 if a memory allocation fails.
+*/
+static int jsonParseAddNode(
+  JsonParse *pParse,        /* Append the node to this object */
+  u32 eType,                /* Node type */
+  u32 n,                    /* Content size or sub-node count */
+  const char *zContent      /* Content */
+){
+  JsonNode *p;
+  if( pParse->nNode>=pParse->nAlloc ){
+    return jsonParseAddNodeExpand(pParse, eType, n, zContent);
+  }
+  p = &pParse->aNode[pParse->nNode];
+  p->eType = (u8)eType;
+  p->jnFlags = 0;
+  p->n = n;
+  p->u.zJContent = zContent;
+  return pParse->nNode++;
+}
+
+/*
+** Return true if z[] begins with 4 (or more) hexadecimal digits
+*/
+static int jsonIs4Hex(const char *z){
+  int i;
+  for(i=0; i<4; i++) if( !safe_isxdigit(z[i]) ) return 0;
+  return 1;
+}
+
+/*
+** Parse a single JSON value which begins at pParse->zJson[i].  Return the
+** index of the first character past the end of the value parsed.
+**
+** Return negative for a syntax error.  Special cases:  return -2 if the
+** first non-whitespace character is '}' and return -3 if the first
+** non-whitespace character is ']'.
+*/
+static int jsonParseValue(JsonParse *pParse, u32 i){
+  char c;
+  u32 j;
+  int iThis;
+  int x;
+  JsonNode *pNode;
+  const char *z = pParse->zJson;
+  while( safe_isspace(z[i]) ){ i++; }
+  if( (c = z[i])=='{' ){
+    /* Parse object */
+    iThis = jsonParseAddNode(pParse, JSON_OBJECT, 0, 0);
+    if( iThis<0 ) return -1;
+    for(j=i+1;;j++){
+      while( safe_isspace(z[j]) ){ j++; }
+      if( ++pParse->iDepth > JSON_MAX_DEPTH ) return -1;
+      x = jsonParseValue(pParse, j);
+      if( x<0 ){
+        pParse->iDepth--;
+        if( x==(-2) && pParse->nNode==(u32)iThis+1 ) return j+1;
+        return -1;
+      }
+      if( pParse->oom ) return -1;
+      pNode = &pParse->aNode[pParse->nNode-1];
+      if( pNode->eType!=JSON_STRING ) return -1;
+      pNode->jnFlags |= JNODE_LABEL;
+      j = x;
+      while( safe_isspace(z[j]) ){ j++; }
+      if( z[j]!=':' ) return -1;
+      j++;
+      x = jsonParseValue(pParse, j);
+      pParse->iDepth--;
+      if( x<0 ) return -1;
+      j = x;
+      while( safe_isspace(z[j]) ){ j++; }
+      c = z[j];
+      if( c==',' ) continue;
+      if( c!='}' ) return -1;
+      break;
+    }
+    pParse->aNode[iThis].n = pParse->nNode - (u32)iThis - 1;
+    return j+1;
+  }else if( c=='[' ){
+    /* Parse array */
+    iThis = jsonParseAddNode(pParse, JSON_ARRAY, 0, 0);
+    if( iThis<0 ) return -1;
+    for(j=i+1;;j++){
+      while( safe_isspace(z[j]) ){ j++; }
+      if( ++pParse->iDepth > JSON_MAX_DEPTH ) return -1;
+      x = jsonParseValue(pParse, j);
+      pParse->iDepth--;
+      if( x<0 ){
+        if( x==(-3) && pParse->nNode==(u32)iThis+1 ) return j+1;
+        return -1;
+      }
+      j = x;
+      while( safe_isspace(z[j]) ){ j++; }
+      c = z[j];
+      if( c==',' ) continue;
+      if( c!=']' ) return -1;
+      break;
+    }
+    pParse->aNode[iThis].n = pParse->nNode - (u32)iThis - 1;
+    return j+1;
+  }else if( c=='"' ){
+    /* Parse string */
+    u8 jnFlags = 0;
+    j = i+1;
+    for(;;){
+      c = z[j];
+      if( (c & ~0x1f)==0 ){
+        /* Control characters are not allowed in strings */
+        return -1;
+      }
+      if( c=='\\' ){
+        c = z[++j];
+        if( c=='"' || c=='\\' || c=='/' || c=='b' || c=='f'
+           || c=='n' || c=='r' || c=='t'
+           || (c=='u' && jsonIs4Hex(z+j+1)) ){
+          jnFlags = JNODE_ESCAPE;
+        }else{
+          return -1;
+        }
+      }else if( c=='"' ){
+        break;
+      }
+      j++;
+    }
+    jsonParseAddNode(pParse, JSON_STRING, j+1-i, &z[i]);
+    if( !pParse->oom ) pParse->aNode[pParse->nNode-1].jnFlags = jnFlags;
+    return j+1;
+  }else if( c=='n'
+         && strncmp(z+i,"null",4)==0
+         && !safe_isalnum(z[i+4]) ){
+    jsonParseAddNode(pParse, JSON_NULL, 0, 0);
+    return i+4;
+  }else if( c=='t'
+         && strncmp(z+i,"true",4)==0
+         && !safe_isalnum(z[i+4]) ){
+    jsonParseAddNode(pParse, JSON_TRUE, 0, 0);
+    return i+4;
+  }else if( c=='f'
+         && strncmp(z+i,"false",5)==0
+         && !safe_isalnum(z[i+5]) ){
+    jsonParseAddNode(pParse, JSON_FALSE, 0, 0);
+    return i+5;
+  }else if( c=='-' || (c>='0' && c<='9') ){
+    /* Parse number */
+    u8 seenDP = 0;
+    u8 seenE = 0;
+    assert( '-' < '0' );
+    if( c<='0' ){
+      j = c=='-' ? i+1 : i;
+      if( z[j]=='0' && z[j+1]>='0' && z[j+1]<='9' ) return -1;
+    }
+    j = i+1;
+    for(;; j++){
+      c = z[j];
+      if( c>='0' && c<='9' ) continue;
+      if( c=='.' ){
+        if( z[j-1]=='-' ) return -1;
+        if( seenDP ) return -1;
+        seenDP = 1;
+        continue;
+      }
+      if( c=='e' || c=='E' ){
+        if( z[j-1]<'0' ) return -1;
+        if( seenE ) return -1;
+        seenDP = seenE = 1;
+        c = z[j+1];
+        if( c=='+' || c=='-' ){
+          j++;
+          c = z[j+1];
+        }
+        if( c<'0' || c>'9' ) return -1;
+        continue;
+      }
+      break;
+    }
+    if( z[j-1]<'0' ) return -1;
+    jsonParseAddNode(pParse, seenDP ? JSON_REAL : JSON_INT,
+                        j - i, &z[i]);
+    return j;
+  }else if( c=='}' ){
+    return -2;  /* End of {...} */
+  }else if( c==']' ){
+    return -3;  /* End of [...] */
+  }else if( c==0 ){
+    return 0;   /* End of file */
+  }else{
+    return -1;  /* Syntax error */
+  }
+}
+
+/*
+** Parse a complete JSON string.  Return 0 on success or non-zero if there
+** are any errors.  If an error occurs, free all memory associated with
+** pParse.
+**
+** pParse is uninitialized when this routine is called.
+*/
+static int jsonParse(
+  JsonParse *pParse,           /* Initialize and fill this JsonParse object */
+  sqlite3_context *pCtx,       /* Report errors here */
+  const char *zJson            /* Input JSON text to be parsed */
+){
+  int i;
+  memset(pParse, 0, sizeof(*pParse));
+  if( zJson==0 ) return 1;
+  pParse->zJson = zJson;
+  i = jsonParseValue(pParse, 0);
+  if( pParse->oom ) i = -1;
+  if( i>0 ){
+    assert( pParse->iDepth==0 );
+    while( safe_isspace(zJson[i]) ) i++;
+    if( zJson[i] ) i = -1;
+  }
+  if( i<=0 ){
+    if( pCtx!=0 ){
+      if( pParse->oom ){
+        sqlite3_result_error_nomem(pCtx);
+      }else{
+        sqlite3_result_error(pCtx, "malformed JSON", -1);
+      }
+    }
+    jsonParseReset(pParse);
+    return 1;
+  }
+  return 0;
+}
+
+/* Mark node i of pParse as being a child of iParent.  Call recursively
+** to fill in all the descendants of node i.
+*/
+static void jsonParseFillInParentage(JsonParse *pParse, u32 i, u32 iParent){
+  JsonNode *pNode = &pParse->aNode[i];
+  u32 j;
+  pParse->aUp[i] = iParent;
+  switch( pNode->eType ){
+    case JSON_ARRAY: {
+      for(j=1; j<=pNode->n; j += jsonNodeSize(pNode+j)){
+        jsonParseFillInParentage(pParse, i+j, i);
+      }
+      break;
+    }
+    case JSON_OBJECT: {
+      for(j=1; j<=pNode->n; j += jsonNodeSize(pNode+j+1)+1){
+        pParse->aUp[i+j] = i;
+        jsonParseFillInParentage(pParse, i+j+1, i);
+      }
+      break;
+    }
+    default: {
+      break;
+    }
+  }
+}
+
+/*
+** Compute the parentage of all nodes in a completed parse.
+*/
+static int jsonParseFindParents(JsonParse *pParse){
+  u32 *aUp;
+  assert( pParse->aUp==0 );
+  aUp = pParse->aUp = sqlite3_malloc64( sizeof(u32)*pParse->nNode );
+  if( aUp==0 ){
+    pParse->oom = 1;
+    return SQLITE_NOMEM;
+  }
+  jsonParseFillInParentage(pParse, 0, 0);
+  return SQLITE_OK;
+}
+
+/*
+** Magic number used for the JSON parse cache in sqlite3_get_auxdata()
+*/
+#define JSON_CACHE_ID  (-429938)  /* First cache entry */
+#define JSON_CACHE_SZ  4          /* Max number of cache entries */
+
+/*
+** Obtain a complete parse of the JSON found in the first argument
+** of the argv array.  Use the sqlite3_get_auxdata() cache for this
+** parse if it is available.  If the cache is not available or if it
+** is no longer valid, parse the JSON again and return the new parse,
+** and also register the new parse so that it will be available for
+** future sqlite3_get_auxdata() calls.
+*/
+static JsonParse *jsonParseCached(
+  sqlite3_context *pCtx,
+  sqlite3_value **argv,
+  sqlite3_context *pErrCtx
+){
+  const char *zJson = (const char*)sqlite3_value_text(argv[0]);
+  int nJson = sqlite3_value_bytes(argv[0]);
+  JsonParse *p;
+  JsonParse *pMatch = 0;
+  int iKey;
+  int iMinKey = 0;
+  u32 iMinHold = 0xffffffff;
+  u32 iMaxHold = 0;
+  if( zJson==0 ) return 0;
+  for(iKey=0; iKey<JSON_CACHE_SZ; iKey++){
+    p = (JsonParse*)sqlite3_get_auxdata(pCtx, JSON_CACHE_ID+iKey);
+    if( p==0 ){
+      iMinKey = iKey;
+      break;
+    }
+    if( pMatch==0
+     && p->nJson==nJson
+     && memcmp(p->zJson,zJson,nJson)==0
+    ){
+      p->nErr = 0;
+      pMatch = p;
+    }else if( p->iHold<iMinHold ){
+      iMinHold = p->iHold;
+      iMinKey = iKey;
+    }
+    if( p->iHold>iMaxHold ){
+      iMaxHold = p->iHold;
+    }
+  }
+  if( pMatch ){
+    pMatch->nErr = 0;
+    pMatch->iHold = iMaxHold+1;
+    return pMatch;
+  }
+  p = sqlite3_malloc64( sizeof(*p) + nJson + 1 );
+  if( p==0 ){
+    sqlite3_result_error_nomem(pCtx);
+    return 0;
+  }
+  memset(p, 0, sizeof(*p));
+  p->zJson = (char*)&p[1];
+  memcpy((char*)p->zJson, zJson, nJson+1);
+  if( jsonParse(p, pErrCtx, p->zJson) ){
+    sqlite3_free(p);
+    return 0;
+  }
+  p->nJson = nJson;
+  p->iHold = iMaxHold+1;
+  sqlite3_set_auxdata(pCtx, JSON_CACHE_ID+iMinKey, p,
+                      (void(*)(void*))jsonParseFree);
+  return (JsonParse*)sqlite3_get_auxdata(pCtx, JSON_CACHE_ID+iMinKey);
+}
+
+/*
+** Compare the OBJECT label at pNode against zKey,nKey.  Return true on
+** a match.
+*/
+static int jsonLabelCompare(JsonNode *pNode, const char *zKey, u32 nKey){
+  if( pNode->jnFlags & JNODE_RAW ){
+    if( pNode->n!=nKey ) return 0;
+    return strncmp(pNode->u.zJContent, zKey, nKey)==0;
+  }else{
+    if( pNode->n!=nKey+2 ) return 0;
+    return strncmp(pNode->u.zJContent+1, zKey, nKey)==0;
+  }
+}
+
+/* forward declaration */
+static JsonNode *jsonLookupAppend(JsonParse*,const char*,int*,const char**);
+
+/*
+** Search along zPath to find the node specified.  Return a pointer
+** to that node, or NULL if zPath is malformed or if there is no such
+** node.
+**
+** If pApnd!=0, then try to append new nodes to complete zPath if it is
+** possible to do so and if no existing node corresponds to zPath.  If
+** new nodes are appended *pApnd is set to 1.
+*/
+static JsonNode *jsonLookupStep(
+  JsonParse *pParse,      /* The JSON to search */
+  u32 iRoot,              /* Begin the search at this node */
+  const char *zPath,      /* The path to search */
+  int *pApnd,             /* Append nodes to complete path if not NULL */
+  const char **pzErr      /* Make *pzErr point to any syntax error in zPath */
+){
+  u32 i, j, nKey;
+  const char *zKey;
+  JsonNode *pRoot = &pParse->aNode[iRoot];
+  if( zPath[0]==0 ) return pRoot;
+  if( pRoot->jnFlags & JNODE_REPLACE ) return 0;
+  if( zPath[0]=='.' ){
+    if( pRoot->eType!=JSON_OBJECT ) return 0;
+    zPath++;
+    if( zPath[0]=='"' ){
+      zKey = zPath + 1;
+      for(i=1; zPath[i] && zPath[i]!='"'; i++){}
+      nKey = i-1;
+      if( zPath[i] ){
+        i++;
+      }else{
+        *pzErr = zPath;
+        return 0;
+      }
+    }else{
+      zKey = zPath;
+      for(i=0; zPath[i] && zPath[i]!='.' && zPath[i]!='['; i++){}
+      nKey = i;
+    }
+    if( nKey==0 ){
+      *pzErr = zPath;
+      return 0;
+    }
+    j = 1;
+    for(;;){
+      while( j<=pRoot->n ){
+        if( jsonLabelCompare(pRoot+j, zKey, nKey) ){
+          return jsonLookupStep(pParse, iRoot+j+1, &zPath[i], pApnd, pzErr);
+        }
+        j++;
+        j += jsonNodeSize(&pRoot[j]);
+      }
+      if( (pRoot->jnFlags & JNODE_APPEND)==0 ) break;
+      iRoot += pRoot->u.iAppend;
+      pRoot = &pParse->aNode[iRoot];
+      j = 1;
+    }
+    if( pApnd ){
+      u32 iStart, iLabel;
+      JsonNode *pNode;
+      iStart = jsonParseAddNode(pParse, JSON_OBJECT, 2, 0);
+      iLabel = jsonParseAddNode(pParse, JSON_STRING, nKey, zKey);
+      zPath += i;
+      pNode = jsonLookupAppend(pParse, zPath, pApnd, pzErr);
+      if( pParse->oom ) return 0;
+      if( pNode ){
+        pRoot = &pParse->aNode[iRoot];
+        pRoot->u.iAppend = iStart - iRoot;
+        pRoot->jnFlags |= JNODE_APPEND;
+        pParse->aNode[iLabel].jnFlags |= JNODE_RAW;
+      }
+      return pNode;
+    }
+  }else if( zPath[0]=='[' ){
+    i = 0;
+    j = 1;
+    while( safe_isdigit(zPath[j]) ){
+      i = i*10 + zPath[j] - '0';
+      j++;
+    }
+    if( j<2 || zPath[j]!=']' ){
+      if( zPath[1]=='#' ){
+        JsonNode *pBase = pRoot;
+        int iBase = iRoot;
+        if( pRoot->eType!=JSON_ARRAY ) return 0;
+        for(;;){
+          while( j<=pBase->n ){
+            if( (pBase[j].jnFlags & JNODE_REMOVE)==0 ) i++;
+            j += jsonNodeSize(&pBase[j]);
+          }
+          if( (pBase->jnFlags & JNODE_APPEND)==0 ) break;
+          iBase += pBase->u.iAppend;
+          pBase = &pParse->aNode[iBase];
+          j = 1;
+        }
+        j = 2;
+        if( zPath[2]=='-' && safe_isdigit(zPath[3]) ){
+          unsigned int x = 0;
+          j = 3;
+          do{
+            x = x*10 + zPath[j] - '0';
+            j++;
+          }while( safe_isdigit(zPath[j]) );
+          if( x>i ) return 0;
+          i -= x;
+        }
+        if( zPath[j]!=']' ){
+          *pzErr = zPath;
+          return 0;
+        }
+      }else{
+        *pzErr = zPath;
+        return 0;
+      }
+    }
+    if( pRoot->eType!=JSON_ARRAY ) return 0;
+    zPath += j + 1;
+    j = 1;
+    for(;;){
+      while( j<=pRoot->n && (i>0 || (pRoot[j].jnFlags & JNODE_REMOVE)!=0) ){
+        if( (pRoot[j].jnFlags & JNODE_REMOVE)==0 ) i--;
+        j += jsonNodeSize(&pRoot[j]);
+      }
+      if( (pRoot->jnFlags & JNODE_APPEND)==0 ) break;
+      iRoot += pRoot->u.iAppend;
+      pRoot = &pParse->aNode[iRoot];
+      j = 1;
+    }
+    if( j<=pRoot->n ){
+      return jsonLookupStep(pParse, iRoot+j, zPath, pApnd, pzErr);
+    }
+    if( i==0 && pApnd ){
+      u32 iStart;
+      JsonNode *pNode;
+      iStart = jsonParseAddNode(pParse, JSON_ARRAY, 1, 0);
+      pNode = jsonLookupAppend(pParse, zPath, pApnd, pzErr);
+      if( pParse->oom ) return 0;
+      if( pNode ){
+        pRoot = &pParse->aNode[iRoot];
+        pRoot->u.iAppend = iStart - iRoot;
+        pRoot->jnFlags |= JNODE_APPEND;
+      }
+      return pNode;
+    }
+  }else{
+    *pzErr = zPath;
+  }
+  return 0;
+}
+
+/*
+** Append content to pParse that will complete zPath.  Return a pointer
+** to the inserted node, or return NULL if the append fails.
+*/
+static JsonNode *jsonLookupAppend(
+  JsonParse *pParse,     /* Append content to the JSON parse */
+  const char *zPath,     /* Description of content to append */
+  int *pApnd,            /* Set this flag to 1 */
+  const char **pzErr     /* Make this point to any syntax error */
+){
+  *pApnd = 1;
+  if( zPath[0]==0 ){
+    jsonParseAddNode(pParse, JSON_NULL, 0, 0);
+    return pParse->oom ? 0 : &pParse->aNode[pParse->nNode-1];
+  }
+  if( zPath[0]=='.' ){
+    jsonParseAddNode(pParse, JSON_OBJECT, 0, 0);
+  }else if( strncmp(zPath,"[0]",3)==0 ){
+    jsonParseAddNode(pParse, JSON_ARRAY, 0, 0);
+  }else{
+    return 0;
+  }
+  if( pParse->oom ) return 0;
+  return jsonLookupStep(pParse, pParse->nNode-1, zPath, pApnd, pzErr);
+}
+
+/*
+** Return the text of a syntax error message on a JSON path.  Space is
+** obtained from sqlite3_malloc().
+*/
+static char *jsonPathSyntaxError(const char *zErr){
+  return sqlite3_mprintf("JSON path error near '%q'", zErr);
+}
+
+/*
+** Do a node lookup using zPath.  Return a pointer to the node on success.
+** Return NULL if not found or if there is an error.
+**
+** On an error, write an error message into pCtx and increment the
+** pParse->nErr counter.
+**
+** If pApnd!=NULL then try to append missing nodes and set *pApnd = 1 if
+** nodes are appended.
+*/
+static JsonNode *jsonLookup(
+  JsonParse *pParse,      /* The JSON to search */
+  const char *zPath,      /* The path to search */
+  int *pApnd,             /* Append nodes to complete path if not NULL */
+  sqlite3_context *pCtx   /* Report errors here, if not NULL */
+){
+  const char *zErr = 0;
+  JsonNode *pNode = 0;
+  char *zMsg;
+
+  if( zPath==0 ) return 0;
+  if( zPath[0]!='$' ){
+    zErr = zPath;
+    goto lookup_err;
+  }
+  zPath++;
+  pNode = jsonLookupStep(pParse, 0, zPath, pApnd, &zErr);
+  if( zErr==0 ) return pNode;
+
+lookup_err:
+  pParse->nErr++;
+  assert( zErr!=0 && pCtx!=0 );
+  zMsg = jsonPathSyntaxError(zErr);
+  if( zMsg ){
+    sqlite3_result_error(pCtx, zMsg, -1);
+    sqlite3_free(zMsg);
+  }else{
+    sqlite3_result_error_nomem(pCtx);
+  }
+  return 0;
+}
+
+
+/*
+** Report the wrong number of arguments for json_insert(), json_replace()
+** or json_set().
+*/
+static void jsonWrongNumArgs(
+  sqlite3_context *pCtx,
+  const char *zFuncName
+){
+  char *zMsg = sqlite3_mprintf("json_%s() needs an odd number of arguments",
+                               zFuncName);
+  sqlite3_result_error(pCtx, zMsg, -1);
+  sqlite3_free(zMsg);
+}
+
+/*
+** Mark all NULL entries in the Object passed in as JNODE_REMOVE.
+*/
+static void jsonRemoveAllNulls(JsonNode *pNode){
+  int i, n;
+  assert( pNode->eType==JSON_OBJECT );
+  n = pNode->n;
+  for(i=2; i<=n; i += jsonNodeSize(&pNode[i])+1){
+    switch( pNode[i].eType ){
+      case JSON_NULL:
+        pNode[i].jnFlags |= JNODE_REMOVE;
+        break;
+      case JSON_OBJECT:
+        jsonRemoveAllNulls(&pNode[i]);
+        break;
+    }
+  }
+}
+
+
+/****************************************************************************
+** SQL functions used for testing and debugging
+****************************************************************************/
+
+#ifdef SQLITE_DEBUG
+/*
+** The json_parse(JSON) function returns a string which describes
+** a parse of the JSON provided.  Or it returns NULL if JSON is not
+** well-formed.
+*/
+static void jsonParseFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonString s;       /* Output string - not real JSON */
+  JsonParse x;        /* The parse */
+  u32 i;
+
+  assert( argc==1 );
+  if( jsonParse(&x, ctx, (const char*)sqlite3_value_text(argv[0])) ) return;
+  jsonParseFindParents(&x);
+  jsonInit(&s, ctx);
+  for(i=0; i<x.nNode; i++){
+    const char *zType;
+    if( x.aNode[i].jnFlags & JNODE_LABEL ){
+      assert( x.aNode[i].eType==JSON_STRING );
+      zType = "label";
+    }else{
+      zType = jsonType[x.aNode[i].eType];
+    }
+    jsonPrintf(100, &s,"node %3u: %7s n=%-4d up=%-4d",
+               i, zType, x.aNode[i].n, x.aUp[i]);
+    if( x.aNode[i].u.zJContent!=0 ){
+      jsonAppendRaw(&s, " ", 1);
+      jsonAppendRaw(&s, x.aNode[i].u.zJContent, x.aNode[i].n);
+    }
+    jsonAppendRaw(&s, "\n", 1);
+  }
+  jsonParseReset(&x);
+  jsonResult(&s);
+}
+
+/*
+** The json_test1(JSON) function return true (1) if the input is JSON
+** text generated by another json function.  It returns (0) if the input
+** is not known to be JSON.
+*/
+static void jsonTest1Func(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  UNUSED_PARAM(argc);
+  sqlite3_result_int(ctx, sqlite3_value_subtype(argv[0])==JSON_SUBTYPE);
+}
+#endif /* SQLITE_DEBUG */
+
+/****************************************************************************
+** Scalar SQL function implementations
+****************************************************************************/
+
+/*
+** Implementation of the json_QUOTE(VALUE) function.  Return a JSON value
+** corresponding to the SQL value input.  Mostly this means putting
+** double-quotes around strings and returning the unquoted string "null"
+** when given a NULL input.
+*/
+static void jsonQuoteFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonString jx;
+  UNUSED_PARAM(argc);
+
+  jsonInit(&jx, ctx);
+  jsonAppendValue(&jx, argv[0]);
+  jsonResult(&jx);
+  sqlite3_result_subtype(ctx, JSON_SUBTYPE);
+}
+
+/*
+** Implementation of the json_array(VALUE,...) function.  Return a JSON
+** array that contains all values given in arguments.  Or if any argument
+** is a BLOB, throw an error.
+*/
+static void jsonArrayFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  int i;
+  JsonString jx;
+
+  jsonInit(&jx, ctx);
+  jsonAppendChar(&jx, '[');
+  for(i=0; i<argc; i++){
+    jsonAppendSeparator(&jx);
+    jsonAppendValue(&jx, argv[i]);
+  }
+  jsonAppendChar(&jx, ']');
+  jsonResult(&jx);
+  sqlite3_result_subtype(ctx, JSON_SUBTYPE);
+}
+
+
+/*
+** json_array_length(JSON)
+** json_array_length(JSON, PATH)
+**
+** Return the number of elements in the top-level JSON array.
+** Return 0 if the input is not a well-formed JSON array.
+*/
+static void jsonArrayLengthFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonParse *p;          /* The parse */
+  sqlite3_int64 n = 0;
+  u32 i;
+  JsonNode *pNode;
+
+  p = jsonParseCached(ctx, argv, ctx);
+  if( p==0 ) return;
+  assert( p->nNode );
+  if( argc==2 ){
+    const char *zPath = (const char*)sqlite3_value_text(argv[1]);
+    pNode = jsonLookup(p, zPath, 0, ctx);
+  }else{
+    pNode = p->aNode;
+  }
+  if( pNode==0 ){
+    return;
+  }
+  if( pNode->eType==JSON_ARRAY ){
+    assert( (pNode->jnFlags & JNODE_APPEND)==0 );
+    for(i=1; i<=pNode->n; n++){
+      i += jsonNodeSize(&pNode[i]);
+    }
+  }
+  sqlite3_result_int64(ctx, n);
+}
+
+/*
+** json_extract(JSON, PATH, ...)
+**
+** Return the element described by PATH.  Return NULL if there is no
+** PATH element.  If there are multiple PATHs, then return a JSON array
+** with the result from each path.  Throw an error if the JSON or any PATH
+** is malformed.
+*/
+static void jsonExtractFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonParse *p;          /* The parse */
+  JsonNode *pNode;
+  const char *zPath;
+  JsonString jx;
+  int i;
+
+  if( argc<2 ) return;
+  p = jsonParseCached(ctx, argv, ctx);
+  if( p==0 ) return;
+  jsonInit(&jx, ctx);
+  jsonAppendChar(&jx, '[');
+  for(i=1; i<argc; i++){
+    zPath = (const char*)sqlite3_value_text(argv[i]);
+    pNode = jsonLookup(p, zPath, 0, ctx);
+    if( p->nErr ) break;
+    if( argc>2 ){
+      jsonAppendSeparator(&jx);
+      if( pNode ){
+        jsonRenderNode(pNode, &jx, 0);
+      }else{
+        jsonAppendRaw(&jx, "null", 4);
+      }
+    }else if( pNode ){
+      jsonReturn(pNode, ctx, 0);
+    }
+  }
+  if( argc>2 && i==argc ){
+    jsonAppendChar(&jx, ']');
+    jsonResult(&jx);
+    sqlite3_result_subtype(ctx, JSON_SUBTYPE);
+  }
+  jsonReset(&jx);
+}
+
+/* This is the RFC 7396 MergePatch algorithm.
+*/
+static JsonNode *jsonMergePatch(
+  JsonParse *pParse,   /* The JSON parser that contains the TARGET */
+  u32 iTarget,         /* Node of the TARGET in pParse */
+  JsonNode *pPatch     /* The PATCH */
+){
+  u32 i, j;
+  u32 iRoot;
+  JsonNode *pTarget;
+  if( pPatch->eType!=JSON_OBJECT ){
+    return pPatch;
+  }
+  assert( iTarget>=0 && iTarget<pParse->nNode );
+  pTarget = &pParse->aNode[iTarget];
+  assert( (pPatch->jnFlags & JNODE_APPEND)==0 );
+  if( pTarget->eType!=JSON_OBJECT ){
+    jsonRemoveAllNulls(pPatch);
+    return pPatch;
+  }
+  iRoot = iTarget;
+  for(i=1; i<pPatch->n; i += jsonNodeSize(&pPatch[i+1])+1){
+    u32 nKey;
+    const char *zKey;
+    assert( pPatch[i].eType==JSON_STRING );
+    assert( pPatch[i].jnFlags & JNODE_LABEL );
+    nKey = pPatch[i].n;
+    zKey = pPatch[i].u.zJContent;
+    assert( (pPatch[i].jnFlags & JNODE_RAW)==0 );
+    for(j=1; j<pTarget->n; j += jsonNodeSize(&pTarget[j+1])+1 ){
+      assert( pTarget[j].eType==JSON_STRING );
+      assert( pTarget[j].jnFlags & JNODE_LABEL );
+      assert( (pPatch[i].jnFlags & JNODE_RAW)==0 );
+      if( pTarget[j].n==nKey && strncmp(pTarget[j].u.zJContent,zKey,nKey)==0 ){
+        if( pTarget[j+1].jnFlags & (JNODE_REMOVE|JNODE_PATCH) ) break;
+        if( pPatch[i+1].eType==JSON_NULL ){
+          pTarget[j+1].jnFlags |= JNODE_REMOVE;
+        }else{
+          JsonNode *pNew = jsonMergePatch(pParse, iTarget+j+1, &pPatch[i+1]);
+          if( pNew==0 ) return 0;
+          pTarget = &pParse->aNode[iTarget];
+          if( pNew!=&pTarget[j+1] ){
+            pTarget[j+1].u.pPatch = pNew;
+            pTarget[j+1].jnFlags |= JNODE_PATCH;
+          }
+        }
+        break;
+      }
+    }
+    if( j>=pTarget->n && pPatch[i+1].eType!=JSON_NULL ){
+      int iStart, iPatch;
+      iStart = jsonParseAddNode(pParse, JSON_OBJECT, 2, 0);
+      jsonParseAddNode(pParse, JSON_STRING, nKey, zKey);
+      iPatch = jsonParseAddNode(pParse, JSON_TRUE, 0, 0);
+      if( pParse->oom ) return 0;
+      jsonRemoveAllNulls(pPatch);
+      pTarget = &pParse->aNode[iTarget];
+      pParse->aNode[iRoot].jnFlags |= JNODE_APPEND;
+      pParse->aNode[iRoot].u.iAppend = iStart - iRoot;
+      iRoot = iStart;
+      pParse->aNode[iPatch].jnFlags |= JNODE_PATCH;
+      pParse->aNode[iPatch].u.pPatch = &pPatch[i+1];
+    }
+  }
+  return pTarget;
+}
+
+/*
+** Implementation of the json_mergepatch(JSON1,JSON2) function.  Return a JSON
+** object that is the result of running the RFC 7396 MergePatch() algorithm
+** on the two arguments.
+*/
+static void jsonPatchFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonParse x;     /* The JSON that is being patched */
+  JsonParse y;     /* The patch */
+  JsonNode *pResult;   /* The result of the merge */
+
+  UNUSED_PARAM(argc);
+  if( jsonParse(&x, ctx, (const char*)sqlite3_value_text(argv[0])) ) return;
+  if( jsonParse(&y, ctx, (const char*)sqlite3_value_text(argv[1])) ){
+    jsonParseReset(&x);
+    return;
+  }
+  pResult = jsonMergePatch(&x, 0, y.aNode);
+  assert( pResult!=0 || x.oom );
+  if( pResult ){
+    jsonReturnJson(pResult, ctx, 0);
+  }else{
+    sqlite3_result_error_nomem(ctx);
+  }
+  jsonParseReset(&x);
+  jsonParseReset(&y);
+}
+
+
+/*
+** Implementation of the json_object(NAME,VALUE,...) function.  Return a JSON
+** object that contains all name/value given in arguments.  Or if any name
+** is not a string or if any value is a BLOB, throw an error.
+*/
+static void jsonObjectFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  int i;
+  JsonString jx;
+  const char *z;
+  u32 n;
+
+  if( argc&1 ){
+    sqlite3_result_error(ctx, "json_object() requires an even number "
+                                  "of arguments", -1);
+    return;
+  }
+  jsonInit(&jx, ctx);
+  jsonAppendChar(&jx, '{');
+  for(i=0; i<argc; i+=2){
+    if( sqlite3_value_type(argv[i])!=SQLITE_TEXT ){
+      sqlite3_result_error(ctx, "json_object() labels must be TEXT", -1);
+      jsonReset(&jx);
+      return;
+    }
+    jsonAppendSeparator(&jx);
+    z = (const char*)sqlite3_value_text(argv[i]);
+    n = (u32)sqlite3_value_bytes(argv[i]);
+    jsonAppendString(&jx, z, n);
+    jsonAppendChar(&jx, ':');
+    jsonAppendValue(&jx, argv[i+1]);
+  }
+  jsonAppendChar(&jx, '}');
+  jsonResult(&jx);
+  sqlite3_result_subtype(ctx, JSON_SUBTYPE);
+}
+
+
+/*
+** json_remove(JSON, PATH, ...)
+**
+** Remove the named elements from JSON and return the result.  malformed
+** JSON or PATH arguments result in an error.
+*/
+static void jsonRemoveFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonParse x;          /* The parse */
+  JsonNode *pNode;
+  const char *zPath;
+  u32 i;
+
+  if( argc<1 ) return;
+  if( jsonParse(&x, ctx, (const char*)sqlite3_value_text(argv[0])) ) return;
+  assert( x.nNode );
+  for(i=1; i<(u32)argc; i++){
+    zPath = (const char*)sqlite3_value_text(argv[i]);
+    if( zPath==0 ) goto remove_done;
+    pNode = jsonLookup(&x, zPath, 0, ctx);
+    if( x.nErr ) goto remove_done;
+    if( pNode ) pNode->jnFlags |= JNODE_REMOVE;
+  }
+  if( (x.aNode[0].jnFlags & JNODE_REMOVE)==0 ){
+    jsonReturnJson(x.aNode, ctx, 0);
+  }
+remove_done:
+  jsonParseReset(&x);
+}
+
+/*
+** json_replace(JSON, PATH, VALUE, ...)
+**
+** Replace the value at PATH with VALUE.  If PATH does not already exist,
+** this routine is a no-op.  If JSON or PATH is malformed, throw an error.
+*/
+static void jsonReplaceFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonParse x;          /* The parse */
+  JsonNode *pNode;
+  const char *zPath;
+  u32 i;
+
+  if( argc<1 ) return;
+  if( (argc&1)==0 ) {
+    jsonWrongNumArgs(ctx, "replace");
+    return;
+  }
+  if( jsonParse(&x, ctx, (const char*)sqlite3_value_text(argv[0])) ) return;
+  assert( x.nNode );
+  for(i=1; i<(u32)argc; i+=2){
+    zPath = (const char*)sqlite3_value_text(argv[i]);
+    pNode = jsonLookup(&x, zPath, 0, ctx);
+    if( x.nErr ) goto replace_err;
+    if( pNode ){
+      pNode->jnFlags |= (u8)JNODE_REPLACE;
+      pNode->u.iReplace = i + 1;
+    }
+  }
+  if( x.aNode[0].jnFlags & JNODE_REPLACE ){
+    sqlite3_result_value(ctx, argv[x.aNode[0].u.iReplace]);
+  }else{
+    jsonReturnJson(x.aNode, ctx, argv);
+  }
+replace_err:
+  jsonParseReset(&x);
+}
+
+/*
+** json_set(JSON, PATH, VALUE, ...)
+**
+** Set the value at PATH to VALUE.  Create the PATH if it does not already
+** exist.  Overwrite existing values that do exist.
+** If JSON or PATH is malformed, throw an error.
+**
+** json_insert(JSON, PATH, VALUE, ...)
+**
+** Create PATH and initialize it to VALUE.  If PATH already exists, this
+** routine is a no-op.  If JSON or PATH is malformed, throw an error.
+*/
+static void jsonSetFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonParse x;          /* The parse */
+  JsonNode *pNode;
+  const char *zPath;
+  u32 i;
+  int bApnd;
+  int bIsSet = *(int*)sqlite3_user_data(ctx);
+
+  if( argc<1 ) return;
+  if( (argc&1)==0 ) {
+    jsonWrongNumArgs(ctx, bIsSet ? "set" : "insert");
+    return;
+  }
+  if( jsonParse(&x, ctx, (const char*)sqlite3_value_text(argv[0])) ) return;
+  assert( x.nNode );
+  for(i=1; i<(u32)argc; i+=2){
+    zPath = (const char*)sqlite3_value_text(argv[i]);
+    bApnd = 0;
+    pNode = jsonLookup(&x, zPath, &bApnd, ctx);
+    if( x.oom ){
+      sqlite3_result_error_nomem(ctx);
+      goto jsonSetDone;
+    }else if( x.nErr ){
+      goto jsonSetDone;
+    }else if( pNode && (bApnd || bIsSet) ){
+      pNode->jnFlags |= (u8)JNODE_REPLACE;
+      pNode->u.iReplace = i + 1;
+    }
+  }
+  if( x.aNode[0].jnFlags & JNODE_REPLACE ){
+    sqlite3_result_value(ctx, argv[x.aNode[0].u.iReplace]);
+  }else{
+    jsonReturnJson(x.aNode, ctx, argv);
+  }
+jsonSetDone:
+  jsonParseReset(&x);
+}
+
+/*
+** json_type(JSON)
+** json_type(JSON, PATH)
+**
+** Return the top-level "type" of a JSON string.  Throw an error if
+** either the JSON or PATH inputs are not well-formed.
+*/
+static void jsonTypeFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonParse *p;          /* The parse */
+  const char *zPath;
+  JsonNode *pNode;
+
+  p = jsonParseCached(ctx, argv, ctx);
+  if( p==0 ) return;
+  if( argc==2 ){
+    zPath = (const char*)sqlite3_value_text(argv[1]);
+    pNode = jsonLookup(p, zPath, 0, ctx);
+  }else{
+    pNode = p->aNode;
+  }
+  if( pNode ){
+    sqlite3_result_text(ctx, jsonType[pNode->eType], -1, SQLITE_STATIC);
+  }
+}
+
+/*
+** json_valid(JSON)
+**
+** Return 1 if JSON is a well-formed JSON string according to RFC-7159.
+** Return 0 otherwise.
+*/
+static void jsonValidFunc(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonParse *p;          /* The parse */
+  UNUSED_PARAM(argc);
+  p = jsonParseCached(ctx, argv, 0);
+  sqlite3_result_int(ctx, p!=0);
+}
+
+
+/****************************************************************************
+** Aggregate SQL function implementations
+****************************************************************************/
+/*
+** json_group_array(VALUE)
+**
+** Return a JSON array composed of all values in the aggregate.
+*/
+static void jsonArrayStep(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonString *pStr;
+  UNUSED_PARAM(argc);
+  pStr = (JsonString*)sqlite3_aggregate_context(ctx, sizeof(*pStr));
+  if( pStr ){
+    if( pStr->zBuf==0 ){
+      jsonInit(pStr, ctx);
+      jsonAppendChar(pStr, '[');
+    }else if( pStr->nUsed>1 ){
+      jsonAppendChar(pStr, ',');
+    }
+    pStr->pCtx = ctx;
+    jsonAppendValue(pStr, argv[0]);
+  }
+}
+static void jsonArrayCompute(sqlite3_context *ctx, int isFinal){
+  JsonString *pStr;
+  pStr = (JsonString*)sqlite3_aggregate_context(ctx, 0);
+  if( pStr ){
+    pStr->pCtx = ctx;
+    jsonAppendChar(pStr, ']');
+    if( pStr->bErr ){
+      if( pStr->bErr==1 ) sqlite3_result_error_nomem(ctx);
+      assert( pStr->bStatic );
+    }else if( isFinal ){
+      sqlite3_result_text(ctx, pStr->zBuf, (int)pStr->nUsed,
+                          pStr->bStatic ? SQLITE_TRANSIENT : sqlite3_free);
+      pStr->bStatic = 1;
+    }else{
+      sqlite3_result_text(ctx, pStr->zBuf, (int)pStr->nUsed, SQLITE_TRANSIENT);
+      pStr->nUsed--;
+    }
+  }else{
+    sqlite3_result_text(ctx, "[]", 2, SQLITE_STATIC);
+  }
+  sqlite3_result_subtype(ctx, JSON_SUBTYPE);
+}
+static void jsonArrayValue(sqlite3_context *ctx){
+  jsonArrayCompute(ctx, 0);
+}
+static void jsonArrayFinal(sqlite3_context *ctx){
+  jsonArrayCompute(ctx, 1);
+}
+
+#ifndef SQLITE_OMIT_WINDOWFUNC
+/*
+** This method works for both json_group_array() and json_group_object().
+** It works by removing the first element of the group by searching forward
+** to the first comma (",") that is not within a string and deleting all
+** text through that comma.
+*/
+static void jsonGroupInverse(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  unsigned int i;
+  int inStr = 0;
+  int nNest = 0;
+  char *z;
+  char c;
+  JsonString *pStr;
+  UNUSED_PARAM(argc);
+  UNUSED_PARAM(argv);
+  pStr = (JsonString*)sqlite3_aggregate_context(ctx, 0);
+#ifdef NEVER
+  /* pStr is always non-NULL since jsonArrayStep() or jsonObjectStep() will
+  ** always have been called to initalize it */
+  if( NEVER(!pStr) ) return;
+#endif
+  z = pStr->zBuf;
+  for(i=1; i<pStr->nUsed && ((c = z[i])!=',' || inStr || nNest); i++){
+    if( c=='"' ){
+      inStr = !inStr;
+    }else if( c=='\\' ){
+      i++;
+    }else if( !inStr ){
+      if( c=='{' || c=='[' ) nNest++;
+      if( c=='}' || c==']' ) nNest--;
+    }
+  }
+  if( i<pStr->nUsed ){
+    pStr->nUsed -= i;
+    memmove(&z[1], &z[i+1], (size_t)pStr->nUsed-1);
+    z[pStr->nUsed] = 0;
+  }else{
+    pStr->nUsed = 1;
+  }
+}
+#else
+# define jsonGroupInverse 0
+#endif
+
+
+/*
+** json_group_obj(NAME,VALUE)
+**
+** Return a JSON object composed of all names and values in the aggregate.
+*/
+static void jsonObjectStep(
+  sqlite3_context *ctx,
+  int argc,
+  sqlite3_value **argv
+){
+  JsonString *pStr;
+  const char *z;
+  u32 n;
+  UNUSED_PARAM(argc);
+  pStr = (JsonString*)sqlite3_aggregate_context(ctx, sizeof(*pStr));
+  if( pStr ){
+    if( pStr->zBuf==0 ){
+      jsonInit(pStr, ctx);
+      jsonAppendChar(pStr, '{');
+    }else if( pStr->nUsed>1 ){
+      jsonAppendChar(pStr, ',');
+    }
+    pStr->pCtx = ctx;
+    z = (const char*)sqlite3_value_text(argv[0]);
+    n = (u32)sqlite3_value_bytes(argv[0]);
+    jsonAppendString(pStr, z, n);
+    jsonAppendChar(pStr, ':');
+    jsonAppendValue(pStr, argv[1]);
+  }
+}
+static void jsonObjectCompute(sqlite3_context *ctx, int isFinal){
+  JsonString *pStr;
+  pStr = (JsonString*)sqlite3_aggregate_context(ctx, 0);
+  if( pStr ){
+    jsonAppendChar(pStr, '}');
+    if( pStr->bErr ){
+      if( pStr->bErr==1 ) sqlite3_result_error_nomem(ctx);
+      assert( pStr->bStatic );
+    }else if( isFinal ){
+      sqlite3_result_text(ctx, pStr->zBuf, (int)pStr->nUsed,
+                          pStr->bStatic ? SQLITE_TRANSIENT : sqlite3_free);
+      pStr->bStatic = 1;
+    }else{
+      sqlite3_result_text(ctx, pStr->zBuf, (int)pStr->nUsed, SQLITE_TRANSIENT);
+      pStr->nUsed--;
+    }
+  }else{
+    sqlite3_result_text(ctx, "{}", 2, SQLITE_STATIC);
+  }
+  sqlite3_result_subtype(ctx, JSON_SUBTYPE);
+}
+static void jsonObjectValue(sqlite3_context *ctx){
+  jsonObjectCompute(ctx, 0);
+}
+static void jsonObjectFinal(sqlite3_context *ctx){
+  jsonObjectCompute(ctx, 1);
+}
+
+
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+/****************************************************************************
+** The json_each virtual table
+****************************************************************************/
+typedef struct JsonEachCursor JsonEachCursor;
+struct JsonEachCursor {
+  sqlite3_vtab_cursor base;  /* Base class - must be first */
+  u32 iRowid;                /* The rowid */
+  u32 iBegin;                /* The first node of the scan */
+  u32 i;                     /* Index in sParse.aNode[] of current row */
+  u32 iEnd;                  /* EOF when i equals or exceeds this value */
+  u8 eType;                  /* Type of top-level element */
+  u8 bRecursive;             /* True for json_tree().  False for json_each() */
+  char *zJson;               /* Input JSON */
+  char *zRoot;               /* Path by which to filter zJson */
+  JsonParse sParse;          /* Parse of the input JSON */
+};
+
+/* Constructor for the json_each virtual table */
+static int jsonEachConnect(
+  sqlite3 *db,
+  void *pAux,
+  int argc, const char *const*argv,
+  sqlite3_vtab **ppVtab,
+  char **pzErr
+){
+  sqlite3_vtab *pNew;
+  int rc;
+
+/* Column numbers */
+#define JEACH_KEY     0
+#define JEACH_VALUE   1
+#define JEACH_TYPE    2
+#define JEACH_ATOM    3
+#define JEACH_ID      4
+#define JEACH_PARENT  5
+#define JEACH_FULLKEY 6
+#define JEACH_PATH    7
+/* The xBestIndex method assumes that the JSON and ROOT columns are
+** the last two columns in the table.  Should this ever changes, be
+** sure to update the xBestIndex method. */
+#define JEACH_JSON    8
+#define JEACH_ROOT    9
+
+  UNUSED_PARAM(pzErr);
+  UNUSED_PARAM(argv);
+  UNUSED_PARAM(argc);
+  UNUSED_PARAM(pAux);
+  rc = sqlite3_declare_vtab(db,
+     "CREATE TABLE x(key,value,type,atom,id,parent,fullkey,path,"
+                    "json HIDDEN,root HIDDEN)");
+  if( rc==SQLITE_OK ){
+    pNew = *ppVtab = sqlite3_malloc( sizeof(*pNew) );
+    if( pNew==0 ) return SQLITE_NOMEM;
+    memset(pNew, 0, sizeof(*pNew));
+    sqlite3_vtab_config(db, SQLITE_VTAB_INNOCUOUS);
+  }
+  return rc;
+}
+
+/* destructor for json_each virtual table */
+static int jsonEachDisconnect(sqlite3_vtab *pVtab){
+  sqlite3_free(pVtab);
+  return SQLITE_OK;
+}
+
+/* constructor for a JsonEachCursor object for json_each(). */
+static int jsonEachOpenEach(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
+  JsonEachCursor *pCur;
+
+  UNUSED_PARAM(p);
+  pCur = sqlite3_malloc( sizeof(*pCur) );
+  if( pCur==0 ) return SQLITE_NOMEM;
+  memset(pCur, 0, sizeof(*pCur));
+  *ppCursor = &pCur->base;
+  return SQLITE_OK;
+}
+
+/* constructor for a JsonEachCursor object for json_tree(). */
+static int jsonEachOpenTree(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
+  int rc = jsonEachOpenEach(p, ppCursor);
+  if( rc==SQLITE_OK ){
+    JsonEachCursor *pCur = (JsonEachCursor*)*ppCursor;
+    pCur->bRecursive = 1;
+  }
+  return rc;
+}
+
+/* Reset a JsonEachCursor back to its original state.  Free any memory
+** held. */
+static void jsonEachCursorReset(JsonEachCursor *p){
+  sqlite3_free(p->zJson);
+  sqlite3_free(p->zRoot);
+  jsonParseReset(&p->sParse);
+  p->iRowid = 0;
+  p->i = 0;
+  p->iEnd = 0;
+  p->eType = 0;
+  p->zJson = 0;
+  p->zRoot = 0;
+}
+
+/* Destructor for a jsonEachCursor object */
+static int jsonEachClose(sqlite3_vtab_cursor *cur){
+  JsonEachCursor *p = (JsonEachCursor*)cur;
+  jsonEachCursorReset(p);
+  sqlite3_free(cur);
+  return SQLITE_OK;
+}
+
+/* Return TRUE if the jsonEachCursor object has been advanced off the end
+** of the JSON object */
+static int jsonEachEof(sqlite3_vtab_cursor *cur){
+  JsonEachCursor *p = (JsonEachCursor*)cur;
+  return p->i >= p->iEnd;
+}
+
+/* Advance the cursor to the next element for json_tree() */
+static int jsonEachNext(sqlite3_vtab_cursor *cur){
+  JsonEachCursor *p = (JsonEachCursor*)cur;
+  if( p->bRecursive ){
+    if( p->sParse.aNode[p->i].jnFlags & JNODE_LABEL ) p->i++;
+    p->i++;
+    p->iRowid++;
+    if( p->i<p->iEnd ){
+      u32 iUp = p->sParse.aUp[p->i];
+      JsonNode *pUp = &p->sParse.aNode[iUp];
+      p->eType = pUp->eType;
+      if( pUp->eType==JSON_ARRAY ){
+        if( iUp==p->i-1 ){
+          pUp->u.iKey = 0;
+        }else{
+          pUp->u.iKey++;
+        }
+      }
+    }
+  }else{
+    switch( p->eType ){
+      case JSON_ARRAY: {
+        p->i += jsonNodeSize(&p->sParse.aNode[p->i]);
+        p->iRowid++;
+        break;
+      }
+      case JSON_OBJECT: {
+        p->i += 1 + jsonNodeSize(&p->sParse.aNode[p->i+1]);
+        p->iRowid++;
+        break;
+      }
+      default: {
+        p->i = p->iEnd;
+        break;
+      }
+    }
+  }
+  return SQLITE_OK;
+}
+
+/* Append the name of the path for element i to pStr
+*/
+static void jsonEachComputePath(
+  JsonEachCursor *p,       /* The cursor */
+  JsonString *pStr,        /* Write the path here */
+  u32 i                    /* Path to this element */
+){
+  JsonNode *pNode, *pUp;
+  u32 iUp;
+  if( i==0 ){
+    jsonAppendChar(pStr, '$');
+    return;
+  }
+  iUp = p->sParse.aUp[i];
+  jsonEachComputePath(p, pStr, iUp);
+  pNode = &p->sParse.aNode[i];
+  pUp = &p->sParse.aNode[iUp];
+  if( pUp->eType==JSON_ARRAY ){
+    jsonPrintf(30, pStr, "[%d]", pUp->u.iKey);
+  }else{
+    assert( pUp->eType==JSON_OBJECT );
+    if( (pNode->jnFlags & JNODE_LABEL)==0 ) pNode--;
+    assert( pNode->eType==JSON_STRING );
+    assert( pNode->jnFlags & JNODE_LABEL );
+    jsonPrintf(pNode->n+1, pStr, ".%.*s", pNode->n-2, pNode->u.zJContent+1);
+  }
+}
+
+/* Return the value of a column */
+static int jsonEachColumn(
+  sqlite3_vtab_cursor *cur,   /* The cursor */
+  sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
+  int i                       /* Which column to return */
+){
+  JsonEachCursor *p = (JsonEachCursor*)cur;
+  JsonNode *pThis = &p->sParse.aNode[p->i];
+  switch( i ){
+    case JEACH_KEY: {
+      if( p->i==0 ) break;
+      if( p->eType==JSON_OBJECT ){
+        jsonReturn(pThis, ctx, 0);
+      }else if( p->eType==JSON_ARRAY ){
+        u32 iKey;
+        if( p->bRecursive ){
+          if( p->iRowid==0 ) break;
+          iKey = p->sParse.aNode[p->sParse.aUp[p->i]].u.iKey;
+        }else{
+          iKey = p->iRowid;
+        }
+        sqlite3_result_int64(ctx, (sqlite3_int64)iKey);
+      }
+      break;
+    }
+    case JEACH_VALUE: {
+      if( pThis->jnFlags & JNODE_LABEL ) pThis++;
+      jsonReturn(pThis, ctx, 0);
+      break;
+    }
+    case JEACH_TYPE: {
+      if( pThis->jnFlags & JNODE_LABEL ) pThis++;
+      sqlite3_result_text(ctx, jsonType[pThis->eType], -1, SQLITE_STATIC);
+      break;
+    }
+    case JEACH_ATOM: {
+      if( pThis->jnFlags & JNODE_LABEL ) pThis++;
+      if( pThis->eType>=JSON_ARRAY ) break;
+      jsonReturn(pThis, ctx, 0);
+      break;
+    }
+    case JEACH_ID: {
+      sqlite3_result_int64(ctx,
+         (sqlite3_int64)p->i + ((pThis->jnFlags & JNODE_LABEL)!=0));
+      break;
+    }
+    case JEACH_PARENT: {
+      if( p->i>p->iBegin && p->bRecursive ){
+        sqlite3_result_int64(ctx, (sqlite3_int64)p->sParse.aUp[p->i]);
+      }
+      break;
+    }
+    case JEACH_FULLKEY: {
+      JsonString x;
+      jsonInit(&x, ctx);
+      if( p->bRecursive ){
+        jsonEachComputePath(p, &x, p->i);
+      }else{
+        if( p->zRoot ){
+          jsonAppendRaw(&x, p->zRoot, (int)strlen(p->zRoot));
+        }else{
+          jsonAppendChar(&x, '$');
+        }
+        if( p->eType==JSON_ARRAY ){
+          jsonPrintf(30, &x, "[%d]", p->iRowid);
+        }else if( p->eType==JSON_OBJECT ){
+          jsonPrintf(pThis->n, &x, ".%.*s", pThis->n-2, pThis->u.zJContent+1);
+        }
+      }
+      jsonResult(&x);
+      break;
+    }
+    case JEACH_PATH: {
+      if( p->bRecursive ){
+        JsonString x;
+        jsonInit(&x, ctx);
+        jsonEachComputePath(p, &x, p->sParse.aUp[p->i]);
+        jsonResult(&x);
+        break;
+      }
+      /* For json_each() path and root are the same so fall through
+      ** into the root case */
+      /* no break */ deliberate_fall_through
+    }
+    default: {
+      const char *zRoot = p->zRoot;
+      if( zRoot==0 ) zRoot = "$";
+      sqlite3_result_text(ctx, zRoot, -1, SQLITE_STATIC);
+      break;
+    }
+    case JEACH_JSON: {
+      assert( i==JEACH_JSON );
+      sqlite3_result_text(ctx, p->sParse.zJson, -1, SQLITE_STATIC);
+      break;
+    }
+  }
+  return SQLITE_OK;
+}
+
+/* Return the current rowid value */
+static int jsonEachRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
+  JsonEachCursor *p = (JsonEachCursor*)cur;
+  *pRowid = p->iRowid;
+  return SQLITE_OK;
+}
+
+/* The query strategy is to look for an equality constraint on the json
+** column.  Without such a constraint, the table cannot operate.  idxNum is
+** 1 if the constraint is found, 3 if the constraint and zRoot are found,
+** and 0 otherwise.
+*/
+static int jsonEachBestIndex(
+  sqlite3_vtab *tab,
+  sqlite3_index_info *pIdxInfo
+){
+  int i;                     /* Loop counter or computed array index */
+  int aIdx[2];               /* Index of constraints for JSON and ROOT */
+  int unusableMask = 0;      /* Mask of unusable JSON and ROOT constraints */
+  int idxMask = 0;           /* Mask of usable == constraints JSON and ROOT */
+  const struct sqlite3_index_constraint *pConstraint;
+
+  /* This implementation assumes that JSON and ROOT are the last two
+  ** columns in the table */
+  assert( JEACH_ROOT == JEACH_JSON+1 );
+  UNUSED_PARAM(tab);
+  aIdx[0] = aIdx[1] = -1;
+  pConstraint = pIdxInfo->aConstraint;
+  for(i=0; i<pIdxInfo->nConstraint; i++, pConstraint++){
+    int iCol;
+    int iMask;
+    if( pConstraint->iColumn < JEACH_JSON ) continue;
+    iCol = pConstraint->iColumn - JEACH_JSON;
+    assert( iCol==0 || iCol==1 );
+    iMask = 1 << iCol;
+    if( pConstraint->usable==0 ){
+      unusableMask |= iMask;
+    }else if( pConstraint->op==SQLITE_INDEX_CONSTRAINT_EQ ){
+      aIdx[iCol] = i;
+      idxMask |= iMask;
+    }
+  }
+  if( (unusableMask & ~idxMask)!=0 ){
+    /* If there are any unusable constraints on JSON or ROOT, then reject
+    ** this entire plan */
+    return SQLITE_CONSTRAINT;
+  }
+  if( aIdx[0]<0 ){
+    /* No JSON input.  Leave estimatedCost at the huge value that it was
+    ** initialized to to discourage the query planner from selecting this
+    ** plan. */
+    pIdxInfo->idxNum = 0;
+  }else{
+    pIdxInfo->estimatedCost = 1.0;
+    i = aIdx[0];
+    pIdxInfo->aConstraintUsage[i].argvIndex = 1;
+    pIdxInfo->aConstraintUsage[i].omit = 1;
+    if( aIdx[1]<0 ){
+      pIdxInfo->idxNum = 1;  /* Only JSON supplied.  Plan 1 */
+    }else{
+      i = aIdx[1];
+      pIdxInfo->aConstraintUsage[i].argvIndex = 2;
+      pIdxInfo->aConstraintUsage[i].omit = 1;
+      pIdxInfo->idxNum = 3;  /* Both JSON and ROOT are supplied.  Plan 3 */
+    }
+  }
+  return SQLITE_OK;
+}
+
+/* Start a search on a new JSON string */
+static int jsonEachFilter(
+  sqlite3_vtab_cursor *cur,
+  int idxNum, const char *idxStr,
+  int argc, sqlite3_value **argv
+){
+  JsonEachCursor *p = (JsonEachCursor*)cur;
+  const char *z;
+  const char *zRoot = 0;
+  sqlite3_int64 n;
+
+  UNUSED_PARAM(idxStr);
+  UNUSED_PARAM(argc);
+  jsonEachCursorReset(p);
+  if( idxNum==0 ) return SQLITE_OK;
+  z = (const char*)sqlite3_value_text(argv[0]);
+  if( z==0 ) return SQLITE_OK;
+  n = sqlite3_value_bytes(argv[0]);
+  p->zJson = sqlite3_malloc64( n+1 );
+  if( p->zJson==0 ) return SQLITE_NOMEM;
+  memcpy(p->zJson, z, (size_t)n+1);
+  if( jsonParse(&p->sParse, 0, p->zJson) ){
+    int rc = SQLITE_NOMEM;
+    if( p->sParse.oom==0 ){
+      sqlite3_free(cur->pVtab->zErrMsg);
+      cur->pVtab->zErrMsg = sqlite3_mprintf("malformed JSON");
+      if( cur->pVtab->zErrMsg ) rc = SQLITE_ERROR;
+    }
+    jsonEachCursorReset(p);
+    return rc;
+  }else if( p->bRecursive && jsonParseFindParents(&p->sParse) ){
+    jsonEachCursorReset(p);
+    return SQLITE_NOMEM;
+  }else{
+    JsonNode *pNode = 0;
+    if( idxNum==3 ){
+      const char *zErr = 0;
+      zRoot = (const char*)sqlite3_value_text(argv[1]);
+      if( zRoot==0 ) return SQLITE_OK;
+      n = sqlite3_value_bytes(argv[1]);
+      p->zRoot = sqlite3_malloc64( n+1 );
+      if( p->zRoot==0 ) return SQLITE_NOMEM;
+      memcpy(p->zRoot, zRoot, (size_t)n+1);
+      if( zRoot[0]!='$' ){
+        zErr = zRoot;
+      }else{
+        pNode = jsonLookupStep(&p->sParse, 0, p->zRoot+1, 0, &zErr);
+      }
+      if( zErr ){
+        sqlite3_free(cur->pVtab->zErrMsg);
+        cur->pVtab->zErrMsg = jsonPathSyntaxError(zErr);
+        jsonEachCursorReset(p);
+        return cur->pVtab->zErrMsg ? SQLITE_ERROR : SQLITE_NOMEM;
+      }else if( pNode==0 ){
+        return SQLITE_OK;
+      }
+    }else{
+      pNode = p->sParse.aNode;
+    }
+    p->iBegin = p->i = (int)(pNode - p->sParse.aNode);
+    p->eType = pNode->eType;
+    if( p->eType>=JSON_ARRAY ){
+      pNode->u.iKey = 0;
+      p->iEnd = p->i + pNode->n + 1;
+      if( p->bRecursive ){
+        p->eType = p->sParse.aNode[p->sParse.aUp[p->i]].eType;
+        if( p->i>0 && (p->sParse.aNode[p->i-1].jnFlags & JNODE_LABEL)!=0 ){
+          p->i--;
+        }
+      }else{
+        p->i++;
+      }
+    }else{
+      p->iEnd = p->i+1;
+    }
+  }
+  return SQLITE_OK;
+}
+
+/* The methods of the json_each virtual table */
+static sqlite3_module jsonEachModule = {
+  0,                         /* iVersion */
+  0,                         /* xCreate */
+  jsonEachConnect,           /* xConnect */
+  jsonEachBestIndex,         /* xBestIndex */
+  jsonEachDisconnect,        /* xDisconnect */
+  0,                         /* xDestroy */
+  jsonEachOpenEach,          /* xOpen - open a cursor */
+  jsonEachClose,             /* xClose - close a cursor */
+  jsonEachFilter,            /* xFilter - configure scan constraints */
+  jsonEachNext,              /* xNext - advance a cursor */
+  jsonEachEof,               /* xEof - check for end of scan */
+  jsonEachColumn,            /* xColumn - read data */
+  jsonEachRowid,             /* xRowid - read data */
+  0,                         /* xUpdate */
+  0,                         /* xBegin */
+  0,                         /* xSync */
+  0,                         /* xCommit */
+  0,                         /* xRollback */
+  0,                         /* xFindMethod */
+  0,                         /* xRename */
+  0,                         /* xSavepoint */
+  0,                         /* xRelease */
+  0,                         /* xRollbackTo */
+  0                          /* xShadowName */
+};
+
+/* The methods of the json_tree virtual table. */
+static sqlite3_module jsonTreeModule = {
+  0,                         /* iVersion */
+  0,                         /* xCreate */
+  jsonEachConnect,           /* xConnect */
+  jsonEachBestIndex,         /* xBestIndex */
+  jsonEachDisconnect,        /* xDisconnect */
+  0,                         /* xDestroy */
+  jsonEachOpenTree,          /* xOpen - open a cursor */
+  jsonEachClose,             /* xClose - close a cursor */
+  jsonEachFilter,            /* xFilter - configure scan constraints */
+  jsonEachNext,              /* xNext - advance a cursor */
+  jsonEachEof,               /* xEof - check for end of scan */
+  jsonEachColumn,            /* xColumn - read data */
+  jsonEachRowid,             /* xRowid - read data */
+  0,                         /* xUpdate */
+  0,                         /* xBegin */
+  0,                         /* xSync */
+  0,                         /* xCommit */
+  0,                         /* xRollback */
+  0,                         /* xFindMethod */
+  0,                         /* xRename */
+  0,                         /* xSavepoint */
+  0,                         /* xRelease */
+  0,                         /* xRollbackTo */
+  0                          /* xShadowName */
+};
+#endif /* SQLITE_OMIT_VIRTUALTABLE */
+
+/****************************************************************************
+** The following routines are the only publically visible identifiers in this
+** file.  Call the following routines in order to register the various SQL
+** functions and the virtual table implemented by this file.
+****************************************************************************/
+
+static int sqlite3Json1Init(sqlite3 *db){
+  int rc = SQLITE_OK;
+  unsigned int i;
+  static const struct {
+     const char *zName;
+     int nArg;
+     int flag;
+     void (*xFunc)(sqlite3_context*,int,sqlite3_value**);
+  } aFunc[] = {
+    { "json",                 1, 0,   jsonRemoveFunc        },
+    { "json_array",          -1, 0,   jsonArrayFunc         },
+    { "json_array_length",    1, 0,   jsonArrayLengthFunc   },
+    { "json_array_length",    2, 0,   jsonArrayLengthFunc   },
+    { "json_extract",        -1, 0,   jsonExtractFunc       },
+    { "json_insert",         -1, 0,   jsonSetFunc           },
+    { "json_object",         -1, 0,   jsonObjectFunc        },
+    { "json_patch",           2, 0,   jsonPatchFunc         },
+    { "json_quote",           1, 0,   jsonQuoteFunc         },
+    { "json_remove",         -1, 0,   jsonRemoveFunc        },
+    { "json_replace",        -1, 0,   jsonReplaceFunc       },
+    { "json_set",            -1, 1,   jsonSetFunc           },
+    { "json_type",            1, 0,   jsonTypeFunc          },
+    { "json_type",            2, 0,   jsonTypeFunc          },
+    { "json_valid",           1, 0,   jsonValidFunc         },
+
+#if SQLITE_DEBUG
+    /* DEBUG and TESTING functions */
+    { "json_parse",           1, 0,   jsonParseFunc         },
+    { "json_test1",           1, 0,   jsonTest1Func         },
+#endif
+  };
+  static const struct {
+     const char *zName;
+     int nArg;
+     void (*xStep)(sqlite3_context*,int,sqlite3_value**);
+     void (*xFinal)(sqlite3_context*);
+     void (*xValue)(sqlite3_context*);
+  } aAgg[] = {
+    { "json_group_array",     1,
+      jsonArrayStep,   jsonArrayFinal,  jsonArrayValue  },
+    { "json_group_object",    2,
+      jsonObjectStep,  jsonObjectFinal, jsonObjectValue },
+  };
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+  static const struct {
+     const char *zName;
+     sqlite3_module *pModule;
+  } aMod[] = {
+    { "json_each",            &jsonEachModule               },
+    { "json_tree",            &jsonTreeModule               },
+  };
+#endif
+  static const int enc =
+       SQLITE_UTF8 |
+       SQLITE_DETERMINISTIC |
+       SQLITE_INNOCUOUS;
+  for(i=0; i<sizeof(aFunc)/sizeof(aFunc[0]) && rc==SQLITE_OK; i++){
+    rc = sqlite3_create_function(db, aFunc[i].zName, aFunc[i].nArg, enc,
+                                 (void*)&aFunc[i].flag,
+                                 aFunc[i].xFunc, 0, 0);
+  }
+#ifndef SQLITE_OMIT_WINDOWFUNC
+  for(i=0; i<sizeof(aAgg)/sizeof(aAgg[0]) && rc==SQLITE_OK; i++){
+    rc = sqlite3_create_window_function(db, aAgg[i].zName, aAgg[i].nArg,
+                                 SQLITE_SUBTYPE | enc, 0,
+                                 aAgg[i].xStep, aAgg[i].xFinal,
+                                 aAgg[i].xValue, jsonGroupInverse, 0);
+  }
+#endif
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+  for(i=0; i<sizeof(aMod)/sizeof(aMod[0]) && rc==SQLITE_OK; i++){
+    rc = sqlite3_create_module(db, aMod[i].zName, aMod[i].pModule, 0);
+  }
+#endif
+  return rc;
+}
+
+
+#ifndef SQLITE_CORE
+#ifdef _WIN32
+// __declspec(dllexport)
+#endif
+static int sqlite3_json_init(
+  sqlite3 *db,
+  char **pzErrMsg,
+  const sqlite3_api_routines *pApi
+){
+  // SQLITE_EXTENSION_INIT2(pApi);
+  (void)pzErrMsg;  /* Unused parameter */
+  return sqlite3Json1Init(db);
+}
+#endif
+#endif /* !defined(SQLITE_CORE) || defined(SQLITE_ENABLE_JSON1) */
+
+
+/*
 file https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/noop.c
 */
 /*
@@ -1149,6 +4471,1960 @@ static int sqlite3_noop_init(
   rc = sqlite3_create_function(db, "noop_nd", 1,
                      SQLITE_UTF8,
                      0, noopfunc, 0, 0);
+  return rc;
+}
+
+
+/*
+file https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/regexp.c
+*/
+/*
+** 2012-11-13
+**
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
+**
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
+**
+******************************************************************************
+**
+** The code in this file implements a compact but reasonably
+** efficient regular-expression matcher for posix extended regular
+** expressions against UTF8 text.
+**
+** This file is an SQLite extension.  It registers a single function
+** named "regexp(A,B)" where A is the regular expression and B is the
+** string to be matched.  By registering this function, SQLite will also
+** then implement the "B regexp A" operator.  Note that with the function
+** the regular expression comes first, but with the operator it comes
+** second.
+**
+**  The following regular expression syntax is supported:
+**
+**     X*      zero or more occurrences of X
+**     X+      one or more occurrences of X
+**     X?      zero or one occurrences of X
+**     X{p,q}  between p and q occurrences of X
+**     (X)     match X
+**     X|Y     X or Y
+**     ^X      X occurring at the beginning of the string
+**     X$      X occurring at the end of the string
+**     .       Match any single character
+**     \c      Character c where c is one of \{}()[]|*+?.
+**     \c      C-language escapes for c in afnrtv.  ex: \t or \n
+**     \uXXXX  Where XXXX is exactly 4 hex digits, unicode value XXXX
+**     \xXX    Where XX is exactly 2 hex digits, unicode value XX
+**     [abc]   Any single character from the set abc
+**     [^abc]  Any single character not in the set abc
+**     [a-z]   Any single character in the range a-z
+**     [^a-z]  Any single character not in the range a-z
+**     \b      Word boundary
+**     \w      Word character.  [A-Za-z0-9_]
+**     \W      Non-word character
+**     \d      Digit
+**     \D      Non-digit
+**     \s      Whitespace character
+**     \S      Non-whitespace character
+**
+** A nondeterministic finite automaton (NFA) is used for matching, so the
+** performance is bounded by O(N*M) where N is the size of the regular
+** expression and M is the size of the input string.  The matcher never
+** exhibits exponential behavior.  Note that the X{p,q} operator expands
+** to p copies of X following by q-p copies of X? and that the size of the
+** regular expression in the O(N*M) performance bound is computed after
+** this expansion.
+*/
+#include <string.h>
+#include <stdlib.h>
+#include "sqlite3ext.h"
+// SQLITE_EXTENSION_INIT1
+
+/*
+** The following #defines change the names of some functions implemented in
+** this file to prevent name collisions with C-library functions of the
+** same name.
+*/
+#define re_match   sqlite3re_match
+#define re_compile sqlite3re_compile
+#define re_free    sqlite3re_free
+
+/* The end-of-input character */
+#define RE_EOF            0    /* End of input */
+
+/* The NFA is implemented as sequence of opcodes taken from the following
+** set.  Each opcode has a single integer argument.
+*/
+#define RE_OP_MATCH       1    /* Match the one character in the argument */
+#define RE_OP_ANY         2    /* Match any one character.  (Implements ".") */
+#define RE_OP_ANYSTAR     3    /* Special optimized version of .* */
+#define RE_OP_FORK        4    /* Continue to both next and opcode at iArg */
+#define RE_OP_GOTO        5    /* Jump to opcode at iArg */
+#define RE_OP_ACCEPT      6    /* Halt and indicate a successful match */
+#define RE_OP_CC_INC      7    /* Beginning of a [...] character class */
+#define RE_OP_CC_EXC      8    /* Beginning of a [^...] character class */
+#define RE_OP_CC_VALUE    9    /* Single value in a character class */
+#define RE_OP_CC_RANGE   10    /* Range of values in a character class */
+#define RE_OP_WORD       11    /* Perl word character [A-Za-z0-9_] */
+#define RE_OP_NOTWORD    12    /* Not a perl word character */
+#define RE_OP_DIGIT      13    /* digit:  [0-9] */
+#define RE_OP_NOTDIGIT   14    /* Not a digit */
+#define RE_OP_SPACE      15    /* space:  [ \t\n\r\v\f] */
+#define RE_OP_NOTSPACE   16    /* Not a digit */
+#define RE_OP_BOUNDARY   17    /* Boundary between word and non-word */
+
+/* Each opcode is a "state" in the NFA */
+typedef unsigned short ReStateNumber;
+
+/* Because this is an NFA and not a DFA, multiple states can be active at
+** once.  An instance of the following object records all active states in
+** the NFA.  The implementation is optimized for the common case where the
+** number of actives states is small.
+*/
+typedef struct ReStateSet {
+  unsigned nState;            /* Number of current states */
+  ReStateNumber *aState;      /* Current states */
+} ReStateSet;
+
+/* An input string read one character at a time.
+*/
+typedef struct ReInput ReInput;
+struct ReInput {
+  const unsigned char *z;  /* All text */
+  int i;                   /* Next byte to read */
+  int mx;                  /* EOF when i>=mx */
+};
+
+/* A compiled NFA (or an NFA that is in the process of being compiled) is
+** an instance of the following object.
+*/
+typedef struct ReCompiled ReCompiled;
+struct ReCompiled {
+  ReInput sIn;                /* Regular expression text */
+  const char *zErr;           /* Error message to return */
+  char *aOp;                  /* Operators for the virtual machine */
+  int *aArg;                  /* Arguments to each operator */
+  unsigned (*xNextChar)(ReInput*);  /* Next character function */
+  unsigned char zInit[12];    /* Initial text to match */
+  int nInit;                  /* Number of characters in zInit */
+  unsigned nState;            /* Number of entries in aOp[] and aArg[] */
+  unsigned nAlloc;            /* Slots allocated for aOp[] and aArg[] */
+};
+
+/* Add a state to the given state set if it is not already there */
+static void re_add_state(ReStateSet *pSet, int newState){
+  unsigned i;
+  for(i=0; i<pSet->nState; i++) if( pSet->aState[i]==newState ) return;
+  pSet->aState[pSet->nState++] = (ReStateNumber)newState;
+}
+
+/* Extract the next unicode character from *pzIn and return it.  Advance
+** *pzIn to the first byte past the end of the character returned.  To
+** be clear:  this routine converts utf8 to unicode.  This routine is
+** optimized for the common case where the next character is a single byte.
+*/
+static unsigned re_next_char(ReInput *p){
+  unsigned c;
+  if( p->i>=p->mx ) return 0;
+  c = p->z[p->i++];
+  if( c>=0x80 ){
+    if( (c&0xe0)==0xc0 && p->i<p->mx && (p->z[p->i]&0xc0)==0x80 ){
+      c = (c&0x1f)<<6 | (p->z[p->i++]&0x3f);
+      if( c<0x80 ) c = 0xfffd;
+    }else if( (c&0xf0)==0xe0 && p->i+1<p->mx && (p->z[p->i]&0xc0)==0x80
+           && (p->z[p->i+1]&0xc0)==0x80 ){
+      c = (c&0x0f)<<12 | ((p->z[p->i]&0x3f)<<6) | (p->z[p->i+1]&0x3f);
+      p->i += 2;
+      if( c<=0x7ff || (c>=0xd800 && c<=0xdfff) ) c = 0xfffd;
+    }else if( (c&0xf8)==0xf0 && p->i+3<p->mx && (p->z[p->i]&0xc0)==0x80
+           && (p->z[p->i+1]&0xc0)==0x80 && (p->z[p->i+2]&0xc0)==0x80 ){
+      c = (c&0x07)<<18 | ((p->z[p->i]&0x3f)<<12) | ((p->z[p->i+1]&0x3f)<<6)
+                       | (p->z[p->i+2]&0x3f);
+      p->i += 3;
+      if( c<=0xffff || c>0x10ffff ) c = 0xfffd;
+    }else{
+      c = 0xfffd;
+    }
+  }
+  return c;
+}
+static unsigned re_next_char_nocase(ReInput *p){
+  unsigned c = re_next_char(p);
+  if( c>='A' && c<='Z' ) c += 'a' - 'A';
+  return c;
+}
+
+/* Return true if c is a perl "word" character:  [A-Za-z0-9_] */
+static int re_word_char(int c){
+  return (c>='0' && c<='9') || (c>='a' && c<='z')
+      || (c>='A' && c<='Z') || c=='_';
+}
+
+/* Return true if c is a "digit" character:  [0-9] */
+static int re_digit_char(int c){
+  return (c>='0' && c<='9');
+}
+
+/* Return true if c is a perl "space" character:  [ \t\r\n\v\f] */
+static int re_space_char(int c){
+  return c==' ' || c=='\t' || c=='\n' || c=='\r' || c=='\v' || c=='\f';
+}
+
+/* Run a compiled regular expression on the zero-terminated input
+** string zIn[].  Return true on a match and false if there is no match.
+*/
+static int re_match(ReCompiled *pRe, const unsigned char *zIn, int nIn){
+  ReStateSet aStateSet[2], *pThis, *pNext;
+  ReStateNumber aSpace[100];
+  ReStateNumber *pToFree;
+  unsigned int i = 0;
+  unsigned int iSwap = 0;
+  int c = RE_EOF+1;
+  int cPrev = 0;
+  int rc = 0;
+  ReInput in;
+
+  in.z = zIn;
+  in.i = 0;
+  in.mx = nIn>=0 ? nIn : (int)strlen((char const*)zIn);
+
+  /* Look for the initial prefix match, if there is one. */
+  if( pRe->nInit ){
+    unsigned char x = pRe->zInit[0];
+    while( in.i+pRe->nInit<=in.mx
+     && (zIn[in.i]!=x ||
+         strncmp((const char*)zIn+in.i, (const char*)pRe->zInit, pRe->nInit)!=0)
+    ){
+      in.i++;
+    }
+    if( in.i+pRe->nInit>in.mx ) return 0;
+  }
+
+  if( pRe->nState<=(sizeof(aSpace)/(sizeof(aSpace[0])*2)) ){
+    pToFree = 0;
+    aStateSet[0].aState = aSpace;
+  }else{
+    pToFree = sqlite3_malloc64( sizeof(ReStateNumber)*2*pRe->nState );
+    if( pToFree==0 ) return -1;
+    aStateSet[0].aState = pToFree;
+  }
+  aStateSet[1].aState = &aStateSet[0].aState[pRe->nState];
+  pNext = &aStateSet[1];
+  pNext->nState = 0;
+  re_add_state(pNext, 0);
+  while( c!=RE_EOF && pNext->nState>0 ){
+    cPrev = c;
+    c = pRe->xNextChar(&in);
+    pThis = pNext;
+    pNext = &aStateSet[iSwap];
+    iSwap = 1 - iSwap;
+    pNext->nState = 0;
+    for(i=0; i<pThis->nState; i++){
+      int x = pThis->aState[i];
+      switch( pRe->aOp[x] ){
+        case RE_OP_MATCH: {
+          if( pRe->aArg[x]==c ) re_add_state(pNext, x+1);
+          break;
+        }
+        case RE_OP_ANY: {
+          if( c!=0 ) re_add_state(pNext, x+1);
+          break;
+        }
+        case RE_OP_WORD: {
+          if( re_word_char(c) ) re_add_state(pNext, x+1);
+          break;
+        }
+        case RE_OP_NOTWORD: {
+          if( !re_word_char(c) && c!=0 ) re_add_state(pNext, x+1);
+          break;
+        }
+        case RE_OP_DIGIT: {
+          if( re_digit_char(c) ) re_add_state(pNext, x+1);
+          break;
+        }
+        case RE_OP_NOTDIGIT: {
+          if( !re_digit_char(c) && c!=0 ) re_add_state(pNext, x+1);
+          break;
+        }
+        case RE_OP_SPACE: {
+          if( re_space_char(c) ) re_add_state(pNext, x+1);
+          break;
+        }
+        case RE_OP_NOTSPACE: {
+          if( !re_space_char(c) && c!=0 ) re_add_state(pNext, x+1);
+          break;
+        }
+        case RE_OP_BOUNDARY: {
+          if( re_word_char(c)!=re_word_char(cPrev) ) re_add_state(pThis, x+1);
+          break;
+        }
+        case RE_OP_ANYSTAR: {
+          re_add_state(pNext, x);
+          re_add_state(pThis, x+1);
+          break;
+        }
+        case RE_OP_FORK: {
+          re_add_state(pThis, x+pRe->aArg[x]);
+          re_add_state(pThis, x+1);
+          break;
+        }
+        case RE_OP_GOTO: {
+          re_add_state(pThis, x+pRe->aArg[x]);
+          break;
+        }
+        case RE_OP_ACCEPT: {
+          rc = 1;
+          goto re_match_end;
+        }
+        case RE_OP_CC_EXC: {
+          if( c==0 ) break;
+          /* fall-through */
+        }
+        case RE_OP_CC_INC: {
+          int j = 1;
+          int n = pRe->aArg[x];
+          int hit = 0;
+          for(j=1; j>0 && j<n; j++){
+            if( pRe->aOp[x+j]==RE_OP_CC_VALUE ){
+              if( pRe->aArg[x+j]==c ){
+                hit = 1;
+                j = -1;
+              }
+            }else{
+              if( pRe->aArg[x+j]<=c && pRe->aArg[x+j+1]>=c ){
+                hit = 1;
+                j = -1;
+              }else{
+                j++;
+              }
+            }
+          }
+          if( pRe->aOp[x]==RE_OP_CC_EXC ) hit = !hit;
+          if( hit ) re_add_state(pNext, x+n);
+          break;
+        }
+      }
+    }
+  }
+  for(i=0; i<pNext->nState; i++){
+    if( pRe->aOp[pNext->aState[i]]==RE_OP_ACCEPT ){ rc = 1; break; }
+  }
+re_match_end:
+  sqlite3_free(pToFree);
+  return rc;
+}
+
+/* Resize the opcode and argument arrays for an RE under construction.
+*/
+static int re_resize(ReCompiled *p, int N){
+  char *aOp;
+  int *aArg;
+  aOp = sqlite3_realloc64(p->aOp, N*sizeof(p->aOp[0]));
+  if( aOp==0 ) return 1;
+  p->aOp = aOp;
+  aArg = sqlite3_realloc64(p->aArg, N*sizeof(p->aArg[0]));
+  if( aArg==0 ) return 1;
+  p->aArg = aArg;
+  p->nAlloc = N;
+  return 0;
+}
+
+/* Insert a new opcode and argument into an RE under construction.  The
+** insertion point is just prior to existing opcode iBefore.
+*/
+static int re_insert(ReCompiled *p, int iBefore, int op, int arg){
+  int i;
+  if( p->nAlloc<=p->nState && re_resize(p, p->nAlloc*2) ) return 0;
+  for(i=p->nState; i>iBefore; i--){
+    p->aOp[i] = p->aOp[i-1];
+    p->aArg[i] = p->aArg[i-1];
+  }
+  p->nState++;
+  p->aOp[iBefore] = (char)op;
+  p->aArg[iBefore] = arg;
+  return iBefore;
+}
+
+/* Append a new opcode and argument to the end of the RE under construction.
+*/
+static int re_append(ReCompiled *p, int op, int arg){
+  return re_insert(p, p->nState, op, arg);
+}
+
+/* Make a copy of N opcodes starting at iStart onto the end of the RE
+** under construction.
+*/
+static void re_copy(ReCompiled *p, int iStart, int N){
+  if( p->nState+N>=p->nAlloc && re_resize(p, p->nAlloc*2+N) ) return;
+  memcpy(&p->aOp[p->nState], &p->aOp[iStart], N*sizeof(p->aOp[0]));
+  memcpy(&p->aArg[p->nState], &p->aArg[iStart], N*sizeof(p->aArg[0]));
+  p->nState += N;
+}
+
+/* Return true if c is a hexadecimal digit character:  [0-9a-fA-F]
+** If c is a hex digit, also set *pV = (*pV)*16 + valueof(c).  If
+** c is not a hex digit *pV is unchanged.
+*/
+static int re_hex(int c, int *pV){
+  if( c>='0' && c<='9' ){
+    c -= '0';
+  }else if( c>='a' && c<='f' ){
+    c -= 'a' - 10;
+  }else if( c>='A' && c<='F' ){
+    c -= 'A' - 10;
+  }else{
+    return 0;
+  }
+  *pV = (*pV)*16 + (c & 0xff);
+  return 1;
+}
+
+/* A backslash character has been seen, read the next character and
+** return its interpretation.
+*/
+static unsigned re_esc_char(ReCompiled *p){
+  static const char zEsc[] = "afnrtv\\()*.+?[$^{|}]";
+  static const char zTrans[] = "\a\f\n\r\t\v";
+  int i, v = 0;
+  char c;
+  if( p->sIn.i>=p->sIn.mx ) return 0;
+  c = p->sIn.z[p->sIn.i];
+  if( c=='u' && p->sIn.i+4<p->sIn.mx ){
+    const unsigned char *zIn = p->sIn.z + p->sIn.i;
+    if( re_hex(zIn[1],&v)
+     && re_hex(zIn[2],&v)
+     && re_hex(zIn[3],&v)
+     && re_hex(zIn[4],&v)
+    ){
+      p->sIn.i += 5;
+      return v;
+    }
+  }
+  if( c=='x' && p->sIn.i+2<p->sIn.mx ){
+    const unsigned char *zIn = p->sIn.z + p->sIn.i;
+    if( re_hex(zIn[1],&v)
+     && re_hex(zIn[2],&v)
+    ){
+      p->sIn.i += 3;
+      return v;
+    }
+  }
+  for(i=0; zEsc[i] && zEsc[i]!=c; i++){}
+  if( zEsc[i] ){
+    if( i<6 ) c = zTrans[i];
+    p->sIn.i++;
+  }else{
+    p->zErr = "unknown \\ escape";
+  }
+  return c;
+}
+
+/* Forward declaration */
+static const char *re_subcompile_string(ReCompiled*);
+
+/* Peek at the next byte of input */
+static unsigned char rePeek(ReCompiled *p){
+  return p->sIn.i<p->sIn.mx ? p->sIn.z[p->sIn.i] : 0;
+}
+
+/* Compile RE text into a sequence of opcodes.  Continue up to the
+** first unmatched ")" character, then return.  If an error is found,
+** return a pointer to the error message string.
+*/
+static const char *re_subcompile_re(ReCompiled *p){
+  const char *zErr;
+  int iStart, iEnd, iGoto;
+  iStart = p->nState;
+  zErr = re_subcompile_string(p);
+  if( zErr ) return zErr;
+  while( rePeek(p)=='|' ){
+    iEnd = p->nState;
+    re_insert(p, iStart, RE_OP_FORK, iEnd + 2 - iStart);
+    iGoto = re_append(p, RE_OP_GOTO, 0);
+    p->sIn.i++;
+    zErr = re_subcompile_string(p);
+    if( zErr ) return zErr;
+    p->aArg[iGoto] = p->nState - iGoto;
+  }
+  return 0;
+}
+
+/* Compile an element of regular expression text (anything that can be
+** an operand to the "|" operator).  Return NULL on success or a pointer
+** to the error message if there is a problem.
+*/
+static const char *re_subcompile_string(ReCompiled *p){
+  int iPrev = -1;
+  int iStart;
+  unsigned c;
+  const char *zErr;
+  while( (c = p->xNextChar(&p->sIn))!=0 ){
+    iStart = p->nState;
+    switch( c ){
+      case '|':
+      case '$':
+      case ')': {
+        p->sIn.i--;
+        return 0;
+      }
+      case '(': {
+        zErr = re_subcompile_re(p);
+        if( zErr ) return zErr;
+        if( rePeek(p)!=')' ) return "unmatched '('";
+        p->sIn.i++;
+        break;
+      }
+      case '.': {
+        if( rePeek(p)=='*' ){
+          re_append(p, RE_OP_ANYSTAR, 0);
+          p->sIn.i++;
+        }else{
+          re_append(p, RE_OP_ANY, 0);
+        }
+        break;
+      }
+      case '*': {
+        if( iPrev<0 ) return "'*' without operand";
+        re_insert(p, iPrev, RE_OP_GOTO, p->nState - iPrev + 1);
+        re_append(p, RE_OP_FORK, iPrev - p->nState + 1);
+        break;
+      }
+      case '+': {
+        if( iPrev<0 ) return "'+' without operand";
+        re_append(p, RE_OP_FORK, iPrev - p->nState);
+        break;
+      }
+      case '?': {
+        if( iPrev<0 ) return "'?' without operand";
+        re_insert(p, iPrev, RE_OP_FORK, p->nState - iPrev+1);
+        break;
+      }
+      case '{': {
+        int m = 0, n = 0;
+        int sz, j;
+        if( iPrev<0 ) return "'{m,n}' without operand";
+        while( (c=rePeek(p))>='0' && c<='9' ){ m = m*10 + c - '0'; p->sIn.i++; }
+        n = m;
+        if( c==',' ){
+          p->sIn.i++;
+          n = 0;
+          while( (c=rePeek(p))>='0' && c<='9' ){ n = n*10 + c-'0'; p->sIn.i++; }
+        }
+        if( c!='}' ) return "unmatched '{'";
+        if( n>0 && n<m ) return "n less than m in '{m,n}'";
+        p->sIn.i++;
+        sz = p->nState - iPrev;
+        if( m==0 ){
+          if( n==0 ) return "both m and n are zero in '{m,n}'";
+          re_insert(p, iPrev, RE_OP_FORK, sz+1);
+          n--;
+        }else{
+          for(j=1; j<m; j++) re_copy(p, iPrev, sz);
+        }
+        for(j=m; j<n; j++){
+          re_append(p, RE_OP_FORK, sz+1);
+          re_copy(p, iPrev, sz);
+        }
+        if( n==0 && m>0 ){
+          re_append(p, RE_OP_FORK, -sz);
+        }
+        break;
+      }
+      case '[': {
+        int iFirst = p->nState;
+        if( rePeek(p)=='^' ){
+          re_append(p, RE_OP_CC_EXC, 0);
+          p->sIn.i++;
+        }else{
+          re_append(p, RE_OP_CC_INC, 0);
+        }
+        while( (c = p->xNextChar(&p->sIn))!=0 ){
+          if( c=='[' && rePeek(p)==':' ){
+            return "POSIX character classes not supported";
+          }
+          if( c=='\\' ) c = re_esc_char(p);
+          if( rePeek(p)=='-' ){
+            re_append(p, RE_OP_CC_RANGE, c);
+            p->sIn.i++;
+            c = p->xNextChar(&p->sIn);
+            if( c=='\\' ) c = re_esc_char(p);
+            re_append(p, RE_OP_CC_RANGE, c);
+          }else{
+            re_append(p, RE_OP_CC_VALUE, c);
+          }
+          if( rePeek(p)==']' ){ p->sIn.i++; break; }
+        }
+        if( c==0 ) return "unclosed '['";
+        p->aArg[iFirst] = p->nState - iFirst;
+        break;
+      }
+      case '\\': {
+        int specialOp = 0;
+        switch( rePeek(p) ){
+          case 'b': specialOp = RE_OP_BOUNDARY;   break;
+          case 'd': specialOp = RE_OP_DIGIT;      break;
+          case 'D': specialOp = RE_OP_NOTDIGIT;   break;
+          case 's': specialOp = RE_OP_SPACE;      break;
+          case 'S': specialOp = RE_OP_NOTSPACE;   break;
+          case 'w': specialOp = RE_OP_WORD;       break;
+          case 'W': specialOp = RE_OP_NOTWORD;    break;
+        }
+        if( specialOp ){
+          p->sIn.i++;
+          re_append(p, specialOp, 0);
+        }else{
+          c = re_esc_char(p);
+          re_append(p, RE_OP_MATCH, c);
+        }
+        break;
+      }
+      default: {
+        re_append(p, RE_OP_MATCH, c);
+        break;
+      }
+    }
+    iPrev = iStart;
+  }
+  return 0;
+}
+
+/* Free and reclaim all the memory used by a previously compiled
+** regular expression.  Applications should invoke this routine once
+** for every call to re_compile() to avoid memory leaks.
+*/
+static void re_free(ReCompiled *pRe){
+  if( pRe ){
+    sqlite3_free(pRe->aOp);
+    sqlite3_free(pRe->aArg);
+    sqlite3_free(pRe);
+  }
+}
+
+/*
+** Compile a textual regular expression in zIn[] into a compiled regular
+** expression suitable for us by re_match() and return a pointer to the
+** compiled regular expression in *ppRe.  Return NULL on success or an
+** error message if something goes wrong.
+*/
+static const char *re_compile(ReCompiled **ppRe, const char *zIn, int noCase){
+  ReCompiled *pRe;
+  const char *zErr;
+  int i, j;
+
+  *ppRe = 0;
+  pRe = sqlite3_malloc( sizeof(*pRe) );
+  if( pRe==0 ){
+    return "out of memory";
+  }
+  memset(pRe, 0, sizeof(*pRe));
+  pRe->xNextChar = noCase ? re_next_char_nocase : re_next_char;
+  if( re_resize(pRe, 30) ){
+    re_free(pRe);
+    return "out of memory";
+  }
+  if( zIn[0]=='^' ){
+    zIn++;
+  }else{
+    re_append(pRe, RE_OP_ANYSTAR, 0);
+  }
+  pRe->sIn.z = (unsigned char*)zIn;
+  pRe->sIn.i = 0;
+  pRe->sIn.mx = (int)strlen(zIn);
+  zErr = re_subcompile_re(pRe);
+  if( zErr ){
+    re_free(pRe);
+    return zErr;
+  }
+  if( rePeek(pRe)=='$' && pRe->sIn.i+1>=pRe->sIn.mx ){
+    re_append(pRe, RE_OP_MATCH, RE_EOF);
+    re_append(pRe, RE_OP_ACCEPT, 0);
+    *ppRe = pRe;
+  }else if( pRe->sIn.i>=pRe->sIn.mx ){
+    re_append(pRe, RE_OP_ACCEPT, 0);
+    *ppRe = pRe;
+  }else{
+    re_free(pRe);
+    return "unrecognized character";
+  }
+
+  /* The following is a performance optimization.  If the regex begins with
+  ** ".*" (if the input regex lacks an initial "^") and afterwards there are
+  ** one or more matching characters, enter those matching characters into
+  ** zInit[].  The re_match() routine can then search ahead in the input
+  ** string looking for the initial match without having to run the whole
+  ** regex engine over the string.  Do not worry able trying to match
+  ** unicode characters beyond plane 0 - those are very rare and this is
+  ** just an optimization. */
+  if( pRe->aOp[0]==RE_OP_ANYSTAR && !noCase ){
+    for(j=0, i=1; j<(int)sizeof(pRe->zInit)-2 && pRe->aOp[i]==RE_OP_MATCH; i++){
+      unsigned x = pRe->aArg[i];
+      if( x<=127 ){
+        pRe->zInit[j++] = (unsigned char)x;
+      }else if( x<=0xfff ){
+        pRe->zInit[j++] = (unsigned char)(0xc0 | (x>>6));
+        pRe->zInit[j++] = 0x80 | (x&0x3f);
+      }else if( x<=0xffff ){
+        pRe->zInit[j++] = (unsigned char)(0xd0 | (x>>12));
+        pRe->zInit[j++] = 0x80 | ((x>>6)&0x3f);
+        pRe->zInit[j++] = 0x80 | (x&0x3f);
+      }else{
+        break;
+      }
+    }
+    if( j>0 && pRe->zInit[j-1]==0 ) j--;
+    pRe->nInit = j;
+  }
+  return pRe->zErr;
+}
+
+/*
+** Implementation of the regexp() SQL function.  This function implements
+** the build-in REGEXP operator.  The first argument to the function is the
+** pattern and the second argument is the string.  So, the SQL statements:
+**
+**       A REGEXP B
+**
+** is implemented as regexp(B,A).
+*/
+static void re_sql_func(
+  sqlite3_context *context,
+  int argc,
+  sqlite3_value **argv
+){
+  ReCompiled *pRe;          /* Compiled regular expression */
+  const char *zPattern;     /* The regular expression */
+  const unsigned char *zStr;/* String being searched */
+  const char *zErr;         /* Compile error message */
+  int setAux = 0;           /* True to invoke sqlite3_set_auxdata() */
+
+  (void)argc;  /* Unused */
+  pRe = sqlite3_get_auxdata(context, 0);
+  if( pRe==0 ){
+    zPattern = (const char*)sqlite3_value_text(argv[0]);
+    if( zPattern==0 ) return;
+    zErr = re_compile(&pRe, zPattern, sqlite3_user_data(context)!=0);
+    if( zErr ){
+      re_free(pRe);
+      sqlite3_result_error(context, zErr, -1);
+      return;
+    }
+    if( pRe==0 ){
+      sqlite3_result_error_nomem(context);
+      return;
+    }
+    setAux = 1;
+  }
+  zStr = (const unsigned char*)sqlite3_value_text(argv[1]);
+  if( zStr!=0 ){
+    sqlite3_result_int(context, re_match(pRe, zStr, -1));
+  }
+  if( setAux ){
+    sqlite3_set_auxdata(context, 0, pRe, (void(*)(void*))re_free);
+  }
+}
+
+/*
+** Invoke this routine to register the regexp() function with the
+** SQLite database connection.
+*/
+#ifdef _WIN32
+// __declspec(dllexport)
+#endif
+static int sqlite3_regexp_init(
+  sqlite3 *db,
+  char **pzErrMsg,
+  const sqlite3_api_routines *pApi
+){
+  int rc = SQLITE_OK;
+  // SQLITE_EXTENSION_INIT2(pApi);
+  (void)pzErrMsg;  /* Unused */
+  rc = sqlite3_create_function(db, "regexp", 2, SQLITE_UTF8|SQLITE_INNOCUOUS,
+                               0, re_sql_func, 0, 0);
+  if( rc==SQLITE_OK ){
+    /* The regexpi(PATTERN,STRING) function is a case-insensitive version
+    ** of regexp(PATTERN,STRING). */
+    rc = sqlite3_create_function(db, "regexpi", 2, SQLITE_UTF8|SQLITE_INNOCUOUS,
+                                 (void*)db, re_sql_func, 0, 0);
+  }
+  return rc;
+}
+
+
+/*
+file https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/series.c
+*/
+/*
+** 2015-08-18
+**
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
+**
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
+**
+*************************************************************************
+**
+** This file demonstrates how to create a table-valued-function using
+** a virtual table.  This demo implements the generate_series() function
+** which gives similar results to the eponymous function in PostgreSQL.
+** Examples:
+**
+**      SELECT * FROM generate_series(0,100,5);
+**
+** The query above returns integers from 0 through 100 counting by steps
+** of 5.
+**
+**      SELECT * FROM generate_series(0,100);
+**
+** Integers from 0 through 100 with a step size of 1.
+**
+**      SELECT * FROM generate_series(20) LIMIT 10;
+**
+** Integers 20 through 29.
+**
+** HOW IT WORKS
+**
+** The generate_series "function" is really a virtual table with the
+** following schema:
+**
+**     CREATE TABLE generate_series(
+**       value,
+**       start HIDDEN,
+**       stop HIDDEN,
+**       step HIDDEN
+**     );
+**
+** Function arguments in queries against this virtual table are translated
+** into equality constraints against successive hidden columns.  In other
+** words, the following pairs of queries are equivalent to each other:
+**
+**    SELECT * FROM generate_series(0,100,5);
+**    SELECT * FROM generate_series WHERE start=0 AND stop=100 AND step=5;
+**
+**    SELECT * FROM generate_series(0,100);
+**    SELECT * FROM generate_series WHERE start=0 AND stop=100;
+**
+**    SELECT * FROM generate_series(20) LIMIT 10;
+**    SELECT * FROM generate_series WHERE start=20 LIMIT 10;
+**
+** The generate_series virtual table implementation leaves the xCreate method
+** set to NULL.  This means that it is not possible to do a CREATE VIRTUAL
+** TABLE command with "generate_series" as the USING argument.  Instead, there
+** is a single generate_series virtual table that is always available without
+** having to be created first.
+**
+** The xBestIndex method looks for equality constraints against the hidden
+** start, stop, and step columns, and if present, it uses those constraints
+** to bound the sequence of generated values.  If the equality constraints
+** are missing, it uses 0 for start, 4294967295 for stop, and 1 for step.
+** xBestIndex returns a small cost when both start and stop are available,
+** and a very large cost if either start or stop are unavailable.  This
+** encourages the query planner to order joins such that the bounds of the
+** series are well-defined.
+*/
+#include "sqlite3ext.h"
+// SQLITE_EXTENSION_INIT1
+#include <assert.h>
+#include <string.h>
+
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+
+
+/* series_cursor is a subclass of sqlite3_vtab_cursor which will
+** serve as the underlying representation of a cursor that scans
+** over rows of the result
+*/
+typedef struct series_cursor series_cursor;
+struct series_cursor {
+  sqlite3_vtab_cursor base;  /* Base class - must be first */
+  int isDesc;                /* True to count down rather than up */
+  sqlite3_int64 iRowid;      /* The rowid */
+  sqlite3_int64 iValue;      /* Current value ("value") */
+  sqlite3_int64 mnValue;     /* Mimimum value ("start") */
+  sqlite3_int64 mxValue;     /* Maximum value ("stop") */
+  sqlite3_int64 iStep;       /* Increment ("step") */
+};
+
+/*
+** The seriesConnect() method is invoked to create a new
+** series_vtab that describes the generate_series virtual table.
+**
+** Think of this routine as the constructor for series_vtab objects.
+**
+** All this routine needs to do is:
+**
+**    (1) Allocate the series_vtab object and initialize all fields.
+**
+**    (2) Tell SQLite (via the sqlite3_declare_vtab() interface) what the
+**        result set of queries against generate_series will look like.
+*/
+static int seriesConnect(
+  sqlite3 *db,
+  void *pUnused,
+  int argcUnused, const char *const*argvUnused,
+  sqlite3_vtab **ppVtab,
+  char **pzErrUnused
+){
+  sqlite3_vtab *pNew;
+  int rc;
+
+/* Column numbers */
+#define SERIES_COLUMN_VALUE 0
+#define SERIES_COLUMN_START 1
+#define SERIES_COLUMN_STOP  2
+#define SERIES_COLUMN_STEP  3
+
+  (void)pUnused;
+  (void)argcUnused;
+  (void)argvUnused;
+  (void)pzErrUnused;
+  rc = sqlite3_declare_vtab(db,
+     "CREATE TABLE x(value,start hidden,stop hidden,step hidden)");
+  if( rc==SQLITE_OK ){
+    pNew = *ppVtab = sqlite3_malloc( sizeof(*pNew) );
+    if( pNew==0 ) return SQLITE_NOMEM;
+    memset(pNew, 0, sizeof(*pNew));
+    sqlite3_vtab_config(db, SQLITE_VTAB_INNOCUOUS);
+  }
+  return rc;
+}
+
+/*
+** This method is the destructor for series_cursor objects.
+*/
+static int seriesDisconnect(sqlite3_vtab *pVtab){
+  sqlite3_free(pVtab);
+  return SQLITE_OK;
+}
+
+/*
+** Constructor for a new series_cursor object.
+*/
+static int seriesOpen(sqlite3_vtab *pUnused, sqlite3_vtab_cursor **ppCursor){
+  series_cursor *pCur;
+  (void)pUnused;
+  pCur = sqlite3_malloc( sizeof(*pCur) );
+  if( pCur==0 ) return SQLITE_NOMEM;
+  memset(pCur, 0, sizeof(*pCur));
+  *ppCursor = &pCur->base;
+  return SQLITE_OK;
+}
+
+/*
+** Destructor for a series_cursor.
+*/
+static int seriesClose(sqlite3_vtab_cursor *cur){
+  sqlite3_free(cur);
+  return SQLITE_OK;
+}
+
+
+/*
+** Advance a series_cursor to its next row of output.
+*/
+static int seriesNext(sqlite3_vtab_cursor *cur){
+  series_cursor *pCur = (series_cursor*)cur;
+  if( pCur->isDesc ){
+    pCur->iValue -= pCur->iStep;
+  }else{
+    pCur->iValue += pCur->iStep;
+  }
+  pCur->iRowid++;
+  return SQLITE_OK;
+}
+
+/*
+** Return values of columns for the row at which the series_cursor
+** is currently pointing.
+*/
+static int seriesColumn(
+  sqlite3_vtab_cursor *cur,   /* The cursor */
+  sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
+  int i                       /* Which column to return */
+){
+  series_cursor *pCur = (series_cursor*)cur;
+  sqlite3_int64 x = 0;
+  switch( i ){
+    case SERIES_COLUMN_START:  x = pCur->mnValue; break;
+    case SERIES_COLUMN_STOP:   x = pCur->mxValue; break;
+    case SERIES_COLUMN_STEP:   x = pCur->iStep;   break;
+    default:                   x = pCur->iValue;  break;
+  }
+  sqlite3_result_int64(ctx, x);
+  return SQLITE_OK;
+}
+
+/*
+** Return the rowid for the current row. In this implementation, the
+** first row returned is assigned rowid value 1, and each subsequent
+** row a value 1 more than that of the previous.
+*/
+static int seriesRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
+  series_cursor *pCur = (series_cursor*)cur;
+  *pRowid = pCur->iRowid;
+  return SQLITE_OK;
+}
+
+/*
+** Return TRUE if the cursor has been moved off of the last
+** row of output.
+*/
+static int seriesEof(sqlite3_vtab_cursor *cur){
+  series_cursor *pCur = (series_cursor*)cur;
+  if( pCur->isDesc ){
+    return pCur->iValue < pCur->mnValue;
+  }else{
+    return pCur->iValue > pCur->mxValue;
+  }
+}
+
+/* True to cause run-time checking of the start=, stop=, and/or step=
+** parameters.  The only reason to do this is for testing the
+** constraint checking logic for virtual tables in the SQLite core.
+*/
+#ifndef SQLITE_SERIES_CONSTRAINT_VERIFY
+# define SQLITE_SERIES_CONSTRAINT_VERIFY 0
+#endif
+
+/*
+** This method is called to "rewind" the series_cursor object back
+** to the first row of output.  This method is always called at least
+** once prior to any call to seriesColumn() or seriesRowid() or
+** seriesEof().
+**
+** The query plan selected by seriesBestIndex is passed in the idxNum
+** parameter.  (idxStr is not used in this implementation.)  idxNum
+** is a bitmask showing which constraints are available:
+**
+**    1:    start=VALUE
+**    2:    stop=VALUE
+**    4:    step=VALUE
+**
+** Also, if bit 8 is set, that means that the series should be output
+** in descending order rather than in ascending order.  If bit 16 is
+** set, then output must appear in ascending order.
+**
+** This routine should initialize the cursor and position it so that it
+** is pointing at the first row, or pointing off the end of the table
+** (so that seriesEof() will return true) if the table is empty.
+*/
+static int seriesFilter(
+  sqlite3_vtab_cursor *pVtabCursor,
+  int idxNum, const char *idxStrUnused,
+  int argc, sqlite3_value **argv
+){
+  series_cursor *pCur = (series_cursor *)pVtabCursor;
+  int i = 0;
+  (void)idxStrUnused;
+  if( idxNum & 1 ){
+    pCur->mnValue = sqlite3_value_int64(argv[i++]);
+  }else{
+    pCur->mnValue = 0;
+  }
+  if( idxNum & 2 ){
+    pCur->mxValue = sqlite3_value_int64(argv[i++]);
+  }else{
+    pCur->mxValue = 0xffffffff;
+  }
+  if( idxNum & 4 ){
+    pCur->iStep = sqlite3_value_int64(argv[i++]);
+    if( pCur->iStep==0 ){
+      pCur->iStep = 1;
+    }else if( pCur->iStep<0 ){
+      pCur->iStep = -pCur->iStep;
+      if( (idxNum & 16)==0 ) idxNum |= 8;
+    }
+  }else{
+    pCur->iStep = 1;
+  }
+  for(i=0; i<argc; i++){
+    if( sqlite3_value_type(argv[i])==SQLITE_NULL ){
+      /* If any of the constraints have a NULL value, then return no rows.
+      ** See ticket https://www.sqlite.org/src/info/fac496b61722daf2 */
+      pCur->mnValue = 1;
+      pCur->mxValue = 0;
+      break;
+    }
+  }
+  if( idxNum & 8 ){
+    pCur->isDesc = 1;
+    pCur->iValue = pCur->mxValue;
+    if( pCur->iStep>0 ){
+      pCur->iValue -= (pCur->mxValue - pCur->mnValue)%pCur->iStep;
+    }
+  }else{
+    pCur->isDesc = 0;
+    pCur->iValue = pCur->mnValue;
+  }
+  pCur->iRowid = 1;
+  return SQLITE_OK;
+}
+
+/*
+** SQLite will invoke this method one or more times while planning a query
+** that uses the generate_series virtual table.  This routine needs to create
+** a query plan for each invocation and compute an estimated cost for that
+** plan.
+**
+** In this implementation idxNum is used to represent the
+** query plan.  idxStr is unused.
+**
+** The query plan is represented by bits in idxNum:
+**
+**  (1)  start = $value  -- constraint exists
+**  (2)  stop = $value   -- constraint exists
+**  (4)  step = $value   -- constraint exists
+**  (8)  output in descending order
+*/
+static int seriesBestIndex(
+  sqlite3_vtab *tabUnused,
+  sqlite3_index_info *pIdxInfo
+){
+  int i, j;              /* Loop over constraints */
+  int idxNum = 0;        /* The query plan bitmask */
+  int unusableMask = 0;  /* Mask of unusable constraints */
+  int nArg = 0;          /* Number of arguments that seriesFilter() expects */
+  int aIdx[3];           /* Constraints on start, stop, and step */
+  const struct sqlite3_index_constraint *pConstraint;
+
+  /* This implementation assumes that the start, stop, and step columns
+  ** are the last three columns in the virtual table. */
+  assert( SERIES_COLUMN_STOP == SERIES_COLUMN_START+1 );
+  assert( SERIES_COLUMN_STEP == SERIES_COLUMN_START+2 );
+  (void)tabUnused;
+  aIdx[0] = aIdx[1] = aIdx[2] = -1;
+  pConstraint = pIdxInfo->aConstraint;
+  for(i=0; i<pIdxInfo->nConstraint; i++, pConstraint++){
+    int iCol;    /* 0 for start, 1 for stop, 2 for step */
+    int iMask;   /* bitmask for those column */
+    if( pConstraint->iColumn<SERIES_COLUMN_START ) continue;
+    iCol = pConstraint->iColumn - SERIES_COLUMN_START;
+    assert( iCol>=0 && iCol<=2 );
+    iMask = 1 << iCol;
+    if( pConstraint->usable==0 ){
+      unusableMask |=  iMask;
+      continue;
+    }else if( pConstraint->op==SQLITE_INDEX_CONSTRAINT_EQ ){
+      idxNum |= iMask;
+      aIdx[iCol] = i;
+    }
+  }
+  for(i=0; i<3; i++){
+    if( (j = aIdx[i])>=0 ){
+      pIdxInfo->aConstraintUsage[j].argvIndex = ++nArg;
+      pIdxInfo->aConstraintUsage[j].omit = !SQLITE_SERIES_CONSTRAINT_VERIFY;
+    }
+  }
+  if( (unusableMask & ~idxNum)!=0 ){
+    /* The start, stop, and step columns are inputs.  Therefore if there
+    ** are unusable constraints on any of start, stop, or step then
+    ** this plan is unusable */
+    return SQLITE_CONSTRAINT;
+  }
+  if( (idxNum & 3)==3 ){
+    /* Both start= and stop= boundaries are available.  This is the
+    ** the preferred case */
+    pIdxInfo->estimatedCost = (double)(2 - ((idxNum&4)!=0));
+    pIdxInfo->estimatedRows = 1000;
+    if( pIdxInfo->nOrderBy==1 ){
+      if( pIdxInfo->aOrderBy[0].desc ){
+        idxNum |= 8;
+      }else{
+        idxNum |= 16;
+      }
+      pIdxInfo->orderByConsumed = 1;
+    }
+  }else{
+    /* If either boundary is missing, we have to generate a huge span
+    ** of numbers.  Make this case very expensive so that the query
+    ** planner will work hard to avoid it. */
+    pIdxInfo->estimatedRows = 2147483647;
+  }
+  pIdxInfo->idxNum = idxNum;
+  return SQLITE_OK;
+}
+
+/*
+** This following structure defines all the methods for the
+** generate_series virtual table.
+*/
+static sqlite3_module seriesModule = {
+  0,                         /* iVersion */
+  0,                         /* xCreate */
+  seriesConnect,             /* xConnect */
+  seriesBestIndex,           /* xBestIndex */
+  seriesDisconnect,          /* xDisconnect */
+  0,                         /* xDestroy */
+  seriesOpen,                /* xOpen - open a cursor */
+  seriesClose,               /* xClose - close a cursor */
+  seriesFilter,              /* xFilter - configure scan constraints */
+  seriesNext,                /* xNext - advance a cursor */
+  seriesEof,                 /* xEof - check for end of scan */
+  seriesColumn,              /* xColumn - read data */
+  seriesRowid,               /* xRowid - read data */
+  0,                         /* xUpdate */
+  0,                         /* xBegin */
+  0,                         /* xSync */
+  0,                         /* xCommit */
+  0,                         /* xRollback */
+  0,                         /* xFindMethod */
+  0,                         /* xRename */
+  0,                         /* xSavepoint */
+  0,                         /* xRelease */
+  0,                         /* xRollbackTo */
+  0                          /* xShadowName */
+};
+
+#endif /* SQLITE_OMIT_VIRTUALTABLE */
+
+#ifdef _WIN32
+// __declspec(dllexport)
+#endif
+static int sqlite3_series_init(
+  sqlite3 *db,
+  char **pzErrMsg,
+  const sqlite3_api_routines *pApi
+){
+  int rc = SQLITE_OK;
+  // SQLITE_EXTENSION_INIT2(pApi);
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+  if( sqlite3_libversion_number()<3008012 ){
+    *pzErrMsg = sqlite3_mprintf(
+        "generate_series() requires SQLite 3.8.12 or later");
+    return SQLITE_ERROR;
+  }
+  rc = sqlite3_create_module(db, "generate_series", &seriesModule, 0);
+#endif
+  return rc;
+}
+
+
+/*
+file https://github.com/sqlite/sqlite/blob/version-3.36.0/ext/misc/shathree.c
+*/
+/*
+** 2017-03-08
+**
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
+**
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
+**
+******************************************************************************
+**
+** This SQLite extension implements functions that compute SHA3 hashes.
+** Two SQL functions are implemented:
+**
+**     sha3(X,SIZE)
+**     sha3_query(Y,SIZE)
+**
+** The sha3(X) function computes the SHA3 hash of the input X, or NULL if
+** X is NULL.
+**
+** The sha3_query(Y) function evalutes all queries in the SQL statements of Y
+** and returns a hash of their results.
+**
+** The SIZE argument is optional.  If omitted, the SHA3-256 hash algorithm
+** is used.  If SIZE is included it must be one of the integers 224, 256,
+** 384, or 512, to determine SHA3 hash variant that is computed.
+*/
+#include "sqlite3ext.h"
+// SQLITE_EXTENSION_INIT1
+#include <assert.h>
+#include <string.h>
+#include <stdarg.h>
+
+#ifndef SQLITE_AMALGAMATION
+typedef sqlite3_uint64 u64;
+#endif /* SQLITE_AMALGAMATION */
+
+/******************************************************************************
+** The Hash Engine
+*/
+/*
+** Macros to determine whether the machine is big or little endian,
+** and whether or not that determination is run-time or compile-time.
+**
+** For best performance, an attempt is made to guess at the byte-order
+** using C-preprocessor macros.  If that is unsuccessful, or if
+** -DSHA3_BYTEORDER=0 is set, then byte-order is determined
+** at run-time.
+*/
+#ifndef SHA3_BYTEORDER
+# if defined(i386)     || defined(__i386__)   || defined(_M_IX86) ||    \
+     defined(__x86_64) || defined(__x86_64__) || defined(_M_X64)  ||    \
+     defined(_M_AMD64) || defined(_M_ARM)     || defined(__x86)   ||    \
+     defined(__arm__)
+#   define SHA3_BYTEORDER    1234
+# elif defined(sparc)    || defined(__ppc__)
+#   define SHA3_BYTEORDER    4321
+# else
+#   define SHA3_BYTEORDER 0
+# endif
+#endif
+
+
+/*
+** State structure for a SHA3 hash in progress
+*/
+typedef struct SHA3Context SHA3Context;
+struct SHA3Context {
+  union {
+    u64 s[25];                /* Keccak state. 5x5 lines of 64 bits each */
+    unsigned char x[1600];    /* ... or 1600 bytes */
+  } u;
+  unsigned nRate;        /* Bytes of input accepted per Keccak iteration */
+  unsigned nLoaded;      /* Input bytes loaded into u.x[] so far this cycle */
+  unsigned ixMask;       /* Insert next input into u.x[nLoaded^ixMask]. */
+};
+
+/*
+** A single step of the Keccak mixing function for a 1600-bit state
+*/
+static void KeccakF1600Step(SHA3Context *p){
+  int i;
+  u64 b0, b1, b2, b3, b4;
+  u64 c0, c1, c2, c3, c4;
+  u64 d0, d1, d2, d3, d4;
+  static const u64 RC[] = {
+    0x0000000000000001ULL,  0x0000000000008082ULL,
+    0x800000000000808aULL,  0x8000000080008000ULL,
+    0x000000000000808bULL,  0x0000000080000001ULL,
+    0x8000000080008081ULL,  0x8000000000008009ULL,
+    0x000000000000008aULL,  0x0000000000000088ULL,
+    0x0000000080008009ULL,  0x000000008000000aULL,
+    0x000000008000808bULL,  0x800000000000008bULL,
+    0x8000000000008089ULL,  0x8000000000008003ULL,
+    0x8000000000008002ULL,  0x8000000000000080ULL,
+    0x000000000000800aULL,  0x800000008000000aULL,
+    0x8000000080008081ULL,  0x8000000000008080ULL,
+    0x0000000080000001ULL,  0x8000000080008008ULL
+  };
+# define a00 (p->u.s[0])
+# define a01 (p->u.s[1])
+# define a02 (p->u.s[2])
+# define a03 (p->u.s[3])
+# define a04 (p->u.s[4])
+# define a10 (p->u.s[5])
+# define a11 (p->u.s[6])
+# define a12 (p->u.s[7])
+# define a13 (p->u.s[8])
+# define a14 (p->u.s[9])
+# define a20 (p->u.s[10])
+# define a21 (p->u.s[11])
+# define a22 (p->u.s[12])
+# define a23 (p->u.s[13])
+# define a24 (p->u.s[14])
+# define a30 (p->u.s[15])
+# define a31 (p->u.s[16])
+# define a32 (p->u.s[17])
+# define a33 (p->u.s[18])
+# define a34 (p->u.s[19])
+# define a40 (p->u.s[20])
+# define a41 (p->u.s[21])
+# define a42 (p->u.s[22])
+# define a43 (p->u.s[23])
+# define a44 (p->u.s[24])
+# define ROL64(a,x) ((a<<x)|(a>>(64-x)))
+
+  for(i=0; i<24; i+=4){
+    c0 = a00^a10^a20^a30^a40;
+    c1 = a01^a11^a21^a31^a41;
+    c2 = a02^a12^a22^a32^a42;
+    c3 = a03^a13^a23^a33^a43;
+    c4 = a04^a14^a24^a34^a44;
+    d0 = c4^ROL64(c1, 1);
+    d1 = c0^ROL64(c2, 1);
+    d2 = c1^ROL64(c3, 1);
+    d3 = c2^ROL64(c4, 1);
+    d4 = c3^ROL64(c0, 1);
+
+    b0 = (a00^d0);
+    b1 = ROL64((a11^d1), 44);
+    b2 = ROL64((a22^d2), 43);
+    b3 = ROL64((a33^d3), 21);
+    b4 = ROL64((a44^d4), 14);
+    a00 =   b0 ^((~b1)&  b2 );
+    a00 ^= RC[i];
+    a11 =   b1 ^((~b2)&  b3 );
+    a22 =   b2 ^((~b3)&  b4 );
+    a33 =   b3 ^((~b4)&  b0 );
+    a44 =   b4 ^((~b0)&  b1 );
+
+    b2 = ROL64((a20^d0), 3);
+    b3 = ROL64((a31^d1), 45);
+    b4 = ROL64((a42^d2), 61);
+    b0 = ROL64((a03^d3), 28);
+    b1 = ROL64((a14^d4), 20);
+    a20 =   b0 ^((~b1)&  b2 );
+    a31 =   b1 ^((~b2)&  b3 );
+    a42 =   b2 ^((~b3)&  b4 );
+    a03 =   b3 ^((~b4)&  b0 );
+    a14 =   b4 ^((~b0)&  b1 );
+
+    b4 = ROL64((a40^d0), 18);
+    b0 = ROL64((a01^d1), 1);
+    b1 = ROL64((a12^d2), 6);
+    b2 = ROL64((a23^d3), 25);
+    b3 = ROL64((a34^d4), 8);
+    a40 =   b0 ^((~b1)&  b2 );
+    a01 =   b1 ^((~b2)&  b3 );
+    a12 =   b2 ^((~b3)&  b4 );
+    a23 =   b3 ^((~b4)&  b0 );
+    a34 =   b4 ^((~b0)&  b1 );
+
+    b1 = ROL64((a10^d0), 36);
+    b2 = ROL64((a21^d1), 10);
+    b3 = ROL64((a32^d2), 15);
+    b4 = ROL64((a43^d3), 56);
+    b0 = ROL64((a04^d4), 27);
+    a10 =   b0 ^((~b1)&  b2 );
+    a21 =   b1 ^((~b2)&  b3 );
+    a32 =   b2 ^((~b3)&  b4 );
+    a43 =   b3 ^((~b4)&  b0 );
+    a04 =   b4 ^((~b0)&  b1 );
+
+    b3 = ROL64((a30^d0), 41);
+    b4 = ROL64((a41^d1), 2);
+    b0 = ROL64((a02^d2), 62);
+    b1 = ROL64((a13^d3), 55);
+    b2 = ROL64((a24^d4), 39);
+    a30 =   b0 ^((~b1)&  b2 );
+    a41 =   b1 ^((~b2)&  b3 );
+    a02 =   b2 ^((~b3)&  b4 );
+    a13 =   b3 ^((~b4)&  b0 );
+    a24 =   b4 ^((~b0)&  b1 );
+
+    c0 = a00^a20^a40^a10^a30;
+    c1 = a11^a31^a01^a21^a41;
+    c2 = a22^a42^a12^a32^a02;
+    c3 = a33^a03^a23^a43^a13;
+    c4 = a44^a14^a34^a04^a24;
+    d0 = c4^ROL64(c1, 1);
+    d1 = c0^ROL64(c2, 1);
+    d2 = c1^ROL64(c3, 1);
+    d3 = c2^ROL64(c4, 1);
+    d4 = c3^ROL64(c0, 1);
+
+    b0 = (a00^d0);
+    b1 = ROL64((a31^d1), 44);
+    b2 = ROL64((a12^d2), 43);
+    b3 = ROL64((a43^d3), 21);
+    b4 = ROL64((a24^d4), 14);
+    a00 =   b0 ^((~b1)&  b2 );
+    a00 ^= RC[i+1];
+    a31 =   b1 ^((~b2)&  b3 );
+    a12 =   b2 ^((~b3)&  b4 );
+    a43 =   b3 ^((~b4)&  b0 );
+    a24 =   b4 ^((~b0)&  b1 );
+
+    b2 = ROL64((a40^d0), 3);
+    b3 = ROL64((a21^d1), 45);
+    b4 = ROL64((a02^d2), 61);
+    b0 = ROL64((a33^d3), 28);
+    b1 = ROL64((a14^d4), 20);
+    a40 =   b0 ^((~b1)&  b2 );
+    a21 =   b1 ^((~b2)&  b3 );
+    a02 =   b2 ^((~b3)&  b4 );
+    a33 =   b3 ^((~b4)&  b0 );
+    a14 =   b4 ^((~b0)&  b1 );
+
+    b4 = ROL64((a30^d0), 18);
+    b0 = ROL64((a11^d1), 1);
+    b1 = ROL64((a42^d2), 6);
+    b2 = ROL64((a23^d3), 25);
+    b3 = ROL64((a04^d4), 8);
+    a30 =   b0 ^((~b1)&  b2 );
+    a11 =   b1 ^((~b2)&  b3 );
+    a42 =   b2 ^((~b3)&  b4 );
+    a23 =   b3 ^((~b4)&  b0 );
+    a04 =   b4 ^((~b0)&  b1 );
+
+    b1 = ROL64((a20^d0), 36);
+    b2 = ROL64((a01^d1), 10);
+    b3 = ROL64((a32^d2), 15);
+    b4 = ROL64((a13^d3), 56);
+    b0 = ROL64((a44^d4), 27);
+    a20 =   b0 ^((~b1)&  b2 );
+    a01 =   b1 ^((~b2)&  b3 );
+    a32 =   b2 ^((~b3)&  b4 );
+    a13 =   b3 ^((~b4)&  b0 );
+    a44 =   b4 ^((~b0)&  b1 );
+
+    b3 = ROL64((a10^d0), 41);
+    b4 = ROL64((a41^d1), 2);
+    b0 = ROL64((a22^d2), 62);
+    b1 = ROL64((a03^d3), 55);
+    b2 = ROL64((a34^d4), 39);
+    a10 =   b0 ^((~b1)&  b2 );
+    a41 =   b1 ^((~b2)&  b3 );
+    a22 =   b2 ^((~b3)&  b4 );
+    a03 =   b3 ^((~b4)&  b0 );
+    a34 =   b4 ^((~b0)&  b1 );
+
+    c0 = a00^a40^a30^a20^a10;
+    c1 = a31^a21^a11^a01^a41;
+    c2 = a12^a02^a42^a32^a22;
+    c3 = a43^a33^a23^a13^a03;
+    c4 = a24^a14^a04^a44^a34;
+    d0 = c4^ROL64(c1, 1);
+    d1 = c0^ROL64(c2, 1);
+    d2 = c1^ROL64(c3, 1);
+    d3 = c2^ROL64(c4, 1);
+    d4 = c3^ROL64(c0, 1);
+
+    b0 = (a00^d0);
+    b1 = ROL64((a21^d1), 44);
+    b2 = ROL64((a42^d2), 43);
+    b3 = ROL64((a13^d3), 21);
+    b4 = ROL64((a34^d4), 14);
+    a00 =   b0 ^((~b1)&  b2 );
+    a00 ^= RC[i+2];
+    a21 =   b1 ^((~b2)&  b3 );
+    a42 =   b2 ^((~b3)&  b4 );
+    a13 =   b3 ^((~b4)&  b0 );
+    a34 =   b4 ^((~b0)&  b1 );
+
+    b2 = ROL64((a30^d0), 3);
+    b3 = ROL64((a01^d1), 45);
+    b4 = ROL64((a22^d2), 61);
+    b0 = ROL64((a43^d3), 28);
+    b1 = ROL64((a14^d4), 20);
+    a30 =   b0 ^((~b1)&  b2 );
+    a01 =   b1 ^((~b2)&  b3 );
+    a22 =   b2 ^((~b3)&  b4 );
+    a43 =   b3 ^((~b4)&  b0 );
+    a14 =   b4 ^((~b0)&  b1 );
+
+    b4 = ROL64((a10^d0), 18);
+    b0 = ROL64((a31^d1), 1);
+    b1 = ROL64((a02^d2), 6);
+    b2 = ROL64((a23^d3), 25);
+    b3 = ROL64((a44^d4), 8);
+    a10 =   b0 ^((~b1)&  b2 );
+    a31 =   b1 ^((~b2)&  b3 );
+    a02 =   b2 ^((~b3)&  b4 );
+    a23 =   b3 ^((~b4)&  b0 );
+    a44 =   b4 ^((~b0)&  b1 );
+
+    b1 = ROL64((a40^d0), 36);
+    b2 = ROL64((a11^d1), 10);
+    b3 = ROL64((a32^d2), 15);
+    b4 = ROL64((a03^d3), 56);
+    b0 = ROL64((a24^d4), 27);
+    a40 =   b0 ^((~b1)&  b2 );
+    a11 =   b1 ^((~b2)&  b3 );
+    a32 =   b2 ^((~b3)&  b4 );
+    a03 =   b3 ^((~b4)&  b0 );
+    a24 =   b4 ^((~b0)&  b1 );
+
+    b3 = ROL64((a20^d0), 41);
+    b4 = ROL64((a41^d1), 2);
+    b0 = ROL64((a12^d2), 62);
+    b1 = ROL64((a33^d3), 55);
+    b2 = ROL64((a04^d4), 39);
+    a20 =   b0 ^((~b1)&  b2 );
+    a41 =   b1 ^((~b2)&  b3 );
+    a12 =   b2 ^((~b3)&  b4 );
+    a33 =   b3 ^((~b4)&  b0 );
+    a04 =   b4 ^((~b0)&  b1 );
+
+    c0 = a00^a30^a10^a40^a20;
+    c1 = a21^a01^a31^a11^a41;
+    c2 = a42^a22^a02^a32^a12;
+    c3 = a13^a43^a23^a03^a33;
+    c4 = a34^a14^a44^a24^a04;
+    d0 = c4^ROL64(c1, 1);
+    d1 = c0^ROL64(c2, 1);
+    d2 = c1^ROL64(c3, 1);
+    d3 = c2^ROL64(c4, 1);
+    d4 = c3^ROL64(c0, 1);
+
+    b0 = (a00^d0);
+    b1 = ROL64((a01^d1), 44);
+    b2 = ROL64((a02^d2), 43);
+    b3 = ROL64((a03^d3), 21);
+    b4 = ROL64((a04^d4), 14);
+    a00 =   b0 ^((~b1)&  b2 );
+    a00 ^= RC[i+3];
+    a01 =   b1 ^((~b2)&  b3 );
+    a02 =   b2 ^((~b3)&  b4 );
+    a03 =   b3 ^((~b4)&  b0 );
+    a04 =   b4 ^((~b0)&  b1 );
+
+    b2 = ROL64((a10^d0), 3);
+    b3 = ROL64((a11^d1), 45);
+    b4 = ROL64((a12^d2), 61);
+    b0 = ROL64((a13^d3), 28);
+    b1 = ROL64((a14^d4), 20);
+    a10 =   b0 ^((~b1)&  b2 );
+    a11 =   b1 ^((~b2)&  b3 );
+    a12 =   b2 ^((~b3)&  b4 );
+    a13 =   b3 ^((~b4)&  b0 );
+    a14 =   b4 ^((~b0)&  b1 );
+
+    b4 = ROL64((a20^d0), 18);
+    b0 = ROL64((a21^d1), 1);
+    b1 = ROL64((a22^d2), 6);
+    b2 = ROL64((a23^d3), 25);
+    b3 = ROL64((a24^d4), 8);
+    a20 =   b0 ^((~b1)&  b2 );
+    a21 =   b1 ^((~b2)&  b3 );
+    a22 =   b2 ^((~b3)&  b4 );
+    a23 =   b3 ^((~b4)&  b0 );
+    a24 =   b4 ^((~b0)&  b1 );
+
+    b1 = ROL64((a30^d0), 36);
+    b2 = ROL64((a31^d1), 10);
+    b3 = ROL64((a32^d2), 15);
+    b4 = ROL64((a33^d3), 56);
+    b0 = ROL64((a34^d4), 27);
+    a30 =   b0 ^((~b1)&  b2 );
+    a31 =   b1 ^((~b2)&  b3 );
+    a32 =   b2 ^((~b3)&  b4 );
+    a33 =   b3 ^((~b4)&  b0 );
+    a34 =   b4 ^((~b0)&  b1 );
+
+    b3 = ROL64((a40^d0), 41);
+    b4 = ROL64((a41^d1), 2);
+    b0 = ROL64((a42^d2), 62);
+    b1 = ROL64((a43^d3), 55);
+    b2 = ROL64((a44^d4), 39);
+    a40 =   b0 ^((~b1)&  b2 );
+    a41 =   b1 ^((~b2)&  b3 );
+    a42 =   b2 ^((~b3)&  b4 );
+    a43 =   b3 ^((~b4)&  b0 );
+    a44 =   b4 ^((~b0)&  b1 );
+  }
+}
+
+/*
+** Initialize a new hash.  iSize determines the size of the hash
+** in bits and should be one of 224, 256, 384, or 512.  Or iSize
+** can be zero to use the default hash size of 256 bits.
+*/
+static void SHA3Init(SHA3Context *p, int iSize){
+  memset(p, 0, sizeof(*p));
+  if( iSize>=128 && iSize<=512 ){
+    p->nRate = (1600 - ((iSize + 31)&~31)*2)/8;
+  }else{
+    p->nRate = (1600 - 2*256)/8;
+  }
+#if SHA3_BYTEORDER==1234
+  /* Known to be little-endian at compile-time. No-op */
+#elif SHA3_BYTEORDER==4321
+  p->ixMask = 7;  /* Big-endian */
+#else
+  {
+    static unsigned int one = 1;
+    if( 1==*(unsigned char*)&one ){
+      /* Little endian.  No byte swapping. */
+      p->ixMask = 0;
+    }else{
+      /* Big endian.  Byte swap. */
+      p->ixMask = 7;
+    }
+  }
+#endif
+}
+
+/*
+** Make consecutive calls to the SHA3Update function to add new content
+** to the hash
+*/
+static void SHA3Update(
+  SHA3Context *p,
+  const unsigned char *aData,
+  unsigned int nData
+){
+  unsigned int i = 0;
+#if SHA3_BYTEORDER==1234
+  if( (p->nLoaded % 8)==0 && ((aData - (const unsigned char*)0)&7)==0 ){
+    for(; i+7<nData; i+=8){
+      p->u.s[p->nLoaded/8] ^= *(u64*)&aData[i];
+      p->nLoaded += 8;
+      if( p->nLoaded>=p->nRate ){
+        KeccakF1600Step(p);
+        p->nLoaded = 0;
+      }
+    }
+  }
+#endif
+  for(; i<nData; i++){
+#if SHA3_BYTEORDER==1234
+    p->u.x[p->nLoaded] ^= aData[i];
+#elif SHA3_BYTEORDER==4321
+    p->u.x[p->nLoaded^0x07] ^= aData[i];
+#else
+    p->u.x[p->nLoaded^p->ixMask] ^= aData[i];
+#endif
+    p->nLoaded++;
+    if( p->nLoaded==p->nRate ){
+      KeccakF1600Step(p);
+      p->nLoaded = 0;
+    }
+  }
+}
+
+/*
+** After all content has been added, invoke SHA3Final() to compute
+** the final hash.  The function returns a pointer to the binary
+** hash value.
+*/
+static unsigned char *SHA3Final(SHA3Context *p){
+  unsigned int i;
+  if( p->nLoaded==p->nRate-1 ){
+    const unsigned char c1 = 0x86;
+    SHA3Update(p, &c1, 1);
+  }else{
+    const unsigned char c2 = 0x06;
+    const unsigned char c3 = 0x80;
+    SHA3Update(p, &c2, 1);
+    p->nLoaded = p->nRate - 1;
+    SHA3Update(p, &c3, 1);
+  }
+  for(i=0; i<p->nRate; i++){
+    p->u.x[i+p->nRate] = p->u.x[i^p->ixMask];
+  }
+  return &p->u.x[p->nRate];
+}
+/* End of the hashing logic
+*****************************************************************************/
+
+/*
+** Implementation of the sha3(X,SIZE) function.
+**
+** Return a BLOB which is the SIZE-bit SHA3 hash of X.  The default
+** size is 256.  If X is a BLOB, it is hashed as is.
+** For all other non-NULL types of input, X is converted into a UTF-8 string
+** and the string is hashed without the trailing 0x00 terminator.  The hash
+** of a NULL value is NULL.
+*/
+static void sha3Func(
+  sqlite3_context *context,
+  int argc,
+  sqlite3_value **argv
+){
+  SHA3Context cx;
+  int eType = sqlite3_value_type(argv[0]);
+  int nByte = sqlite3_value_bytes(argv[0]);
+  int iSize;
+  if( argc==1 ){
+    iSize = 256;
+  }else{
+    iSize = sqlite3_value_int(argv[1]);
+    if( iSize!=224 && iSize!=256 && iSize!=384 && iSize!=512 ){
+      sqlite3_result_error(context, "SHA3 size should be one of: 224 256 "
+                                    "384 512", -1);
+      return;
+    }
+  }
+  if( eType==SQLITE_NULL ) return;
+  SHA3Init(&cx, iSize);
+  if( eType==SQLITE_BLOB ){
+    SHA3Update(&cx, sqlite3_value_blob(argv[0]), nByte);
+  }else{
+    SHA3Update(&cx, sqlite3_value_text(argv[0]), nByte);
+  }
+  sqlite3_result_blob(context, SHA3Final(&cx), iSize/8, SQLITE_TRANSIENT);
+}
+
+/* Compute a string using sqlite3_vsnprintf() with a maximum length
+** of 50 bytes and add it to the hash.
+*/
+static void hash_step_vformat(
+  SHA3Context *p,                 /* Add content to this context */
+  const char *zFormat,
+  ...
+){
+  va_list ap;
+  int n;
+  char zBuf[50];
+  va_start(ap, zFormat);
+  sqlite3_vsnprintf(sizeof(zBuf),zBuf,zFormat,ap);
+  va_end(ap);
+  n = (int)strlen(zBuf);
+  SHA3Update(p, (unsigned char*)zBuf, n);
+}
+
+/*
+** Implementation of the sha3_query(SQL,SIZE) function.
+**
+** This function compiles and runs the SQL statement(s) given in the
+** argument. The results are hashed using a SIZE-bit SHA3.  The default
+** size is 256.
+**
+** The format of the byte stream that is hashed is summarized as follows:
+**
+**       S<n>:<sql>
+**       R
+**       N
+**       I<int>
+**       F<ieee-float>
+**       B<size>:<bytes>
+**       T<size>:<text>
+**
+** <sql> is the original SQL text for each statement run and <n> is
+** the size of that text.  The SQL text is UTF-8.  A single R character
+** occurs before the start of each row.  N means a NULL value.
+** I mean an 8-byte little-endian integer <int>.  F is a floating point
+** number with an 8-byte little-endian IEEE floating point value <ieee-float>.
+** B means blobs of <size> bytes.  T means text rendered as <size>
+** bytes of UTF-8.  The <n> and <size> values are expressed as an ASCII
+** text integers.
+**
+** For each SQL statement in the X input, there is one S segment.  Each
+** S segment is followed by zero or more R segments, one for each row in the
+** result set.  After each R, there are one or more N, I, F, B, or T segments,
+** one for each column in the result set.  Segments are concatentated directly
+** with no delimiters of any kind.
+*/
+static void sha3QueryFunc(
+  sqlite3_context *context,
+  int argc,
+  sqlite3_value **argv
+){
+  sqlite3 *db = sqlite3_context_db_handle(context);
+  const char *zSql = (const char*)sqlite3_value_text(argv[0]);
+  sqlite3_stmt *pStmt = 0;
+  int nCol;                   /* Number of columns in the result set */
+  int i;                      /* Loop counter */
+  int rc;
+  int n;
+  const char *z;
+  SHA3Context cx;
+  int iSize;
+
+  if( argc==1 ){
+    iSize = 256;
+  }else{
+    iSize = sqlite3_value_int(argv[1]);
+    if( iSize!=224 && iSize!=256 && iSize!=384 && iSize!=512 ){
+      sqlite3_result_error(context, "SHA3 size should be one of: 224 256 "
+                                    "384 512", -1);
+      return;
+    }
+  }
+  if( zSql==0 ) return;
+  SHA3Init(&cx, iSize);
+  while( zSql[0] ){
+    rc = sqlite3_prepare_v2(db, zSql, -1, &pStmt, &zSql);
+    if( rc ){
+      char *zMsg = sqlite3_mprintf("error SQL statement [%s]: %s",
+                                   zSql, sqlite3_errmsg(db));
+      sqlite3_finalize(pStmt);
+      sqlite3_result_error(context, zMsg, -1);
+      sqlite3_free(zMsg);
+      return;
+    }
+    if( !sqlite3_stmt_readonly(pStmt) ){
+      char *zMsg = sqlite3_mprintf("non-query: [%s]", sqlite3_sql(pStmt));
+      sqlite3_finalize(pStmt);
+      sqlite3_result_error(context, zMsg, -1);
+      sqlite3_free(zMsg);
+      return;
+    }
+    nCol = sqlite3_column_count(pStmt);
+    z = sqlite3_sql(pStmt);
+    if( z ){
+      n = (int)strlen(z);
+      hash_step_vformat(&cx,"S%d:",n);
+      SHA3Update(&cx,(unsigned char*)z,n);
+    }
+
+    /* Compute a hash over the result of the query */
+    while( SQLITE_ROW==sqlite3_step(pStmt) ){
+      SHA3Update(&cx,(const unsigned char*)"R",1);
+      for(i=0; i<nCol; i++){
+        switch( sqlite3_column_type(pStmt,i) ){
+          case SQLITE_NULL: {
+            SHA3Update(&cx, (const unsigned char*)"N",1);
+            break;
+          }
+          case SQLITE_INTEGER: {
+            sqlite3_uint64 u;
+            int j;
+            unsigned char x[9];
+            sqlite3_int64 v = sqlite3_column_int64(pStmt,i);
+            memcpy(&u, &v, 8);
+            for(j=8; j>=1; j--){
+              x[j] = u & 0xff;
+              u >>= 8;
+            }
+            x[0] = 'I';
+            SHA3Update(&cx, x, 9);
+            break;
+          }
+          case SQLITE_FLOAT: {
+            sqlite3_uint64 u;
+            int j;
+            unsigned char x[9];
+            double r = sqlite3_column_double(pStmt,i);
+            memcpy(&u, &r, 8);
+            for(j=8; j>=1; j--){
+              x[j] = u & 0xff;
+              u >>= 8;
+            }
+            x[0] = 'F';
+            SHA3Update(&cx,x,9);
+            break;
+          }
+          case SQLITE_TEXT: {
+            int n2 = sqlite3_column_bytes(pStmt, i);
+            const unsigned char *z2 = sqlite3_column_text(pStmt, i);
+            hash_step_vformat(&cx,"T%d:",n2);
+            SHA3Update(&cx, z2, n2);
+            break;
+          }
+          case SQLITE_BLOB: {
+            int n2 = sqlite3_column_bytes(pStmt, i);
+            const unsigned char *z2 = sqlite3_column_blob(pStmt, i);
+            hash_step_vformat(&cx,"B%d:",n2);
+            SHA3Update(&cx, z2, n2);
+            break;
+          }
+        }
+      }
+    }
+    sqlite3_finalize(pStmt);
+  }
+  sqlite3_result_blob(context, SHA3Final(&cx), iSize/8, SQLITE_TRANSIENT);
+}
+
+
+#ifdef _WIN32
+// __declspec(dllexport)
+#endif
+static int sqlite3_shathree_init(
+  sqlite3 *db,
+  char **pzErrMsg,
+  const sqlite3_api_routines *pApi
+){
+  int rc = SQLITE_OK;
+  // SQLITE_EXTENSION_INIT2(pApi);
+  (void)pzErrMsg;  /* Unused parameter */
+  rc = sqlite3_create_function(db, "sha3", 1,
+                      SQLITE_UTF8 | SQLITE_INNOCUOUS | SQLITE_DETERMINISTIC,
+                      0, sha3Func, 0, 0);
+  if( rc==SQLITE_OK ){
+    rc = sqlite3_create_function(db, "sha3", 2,
+                      SQLITE_UTF8 | SQLITE_INNOCUOUS | SQLITE_DETERMINISTIC,
+                      0, sha3Func, 0, 0);
+  }
+  if( rc==SQLITE_OK ){
+    rc = sqlite3_create_function(db, "sha3_query", 1,
+                      SQLITE_UTF8 | SQLITE_DIRECTONLY,
+                      0, sha3QueryFunc, 0, 0);
+  }
+  if( rc==SQLITE_OK ){
+    rc = sqlite3_create_function(db, "sha3_query", 2,
+                      SQLITE_UTF8 | SQLITE_DIRECTONLY,
+                      0, sha3QueryFunc, 0, 0);
+  }
   return rc;
 }
 
@@ -3077,11 +8353,17 @@ static void print_elem(void *e, int64_t c, void* p){
 // hack-sqlite - init sqlite3_ext_init
 int sqlite3_ext_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi) {
   sqlite3_api=pApi;
+  sqlite3_carray_init(db, pzErrMsg, pApi);
+  sqlite3_compress_init(db, pzErrMsg, pApi);
   sqlite3_csv_init(db, pzErrMsg, pApi);
   sqlite3_extension_init(db, pzErrMsg, pApi);
+  sqlite3_json_init(db, pzErrMsg, pApi);
   sqlite3_noop_init(db, pzErrMsg, pApi);
+  sqlite3_regexp_init(db, pzErrMsg, pApi);
+  sqlite3_series_init(db, pzErrMsg, pApi);
+  sqlite3_shathree_init(db, pzErrMsg, pApi);
 }
-#endif // SQLITE3_EXT_C2_
+#endif // SQLITE3_EXT_C2
 
 
 /*

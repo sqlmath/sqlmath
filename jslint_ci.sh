@@ -18,7 +18,7 @@
 # ln -f jslint.mjs ~/jslint.mjs
 # openssl rand -base64 32 # random key
 # sh jslint_ci.sh shCiBranchPromote origin alpha beta
-# sh jslint_ci.sh shRunWithScreenshotTxt .build/screenshot-changelog.svg head -n50 CHANGELOG.md
+# sh jslint_ci.sh shRunWithScreenshotTxt .build/screenshot_changelog.svg head -n50 CHANGELOG.md
 # vim rgx-lowercase \L\1\e
 
 shBashrcDebianInit() {
@@ -178,7 +178,7 @@ import moduleUrl from "url";
     if (String(file + "/").startsWith(process.cwd() + "/")) {
         file = file.replace(process.cwd(), "");
     }
-    file = ".build/screenshot-browser-" + encodeURIComponent(file).replace((
+    file = ".build/screenshot_browser_" + encodeURIComponent(file).replace((
         /%/g
     ), "_").toLowerCase() + ".png";
     moduleChildProcess.spawn(
@@ -246,12 +246,6 @@ process.exit(Number(
     export UPSTREAM_OWNER="${UPSTREAM_OWNER:-jslint-org}"
     # init $UPSTREAM_REPO
     export UPSTREAM_REPO="${UPSTREAM_REPO:-jslint}"
-    # screenshot asset-image-logo
-    shImageLogoCreate &
-    # screenshot web-demo
-    shBrowserScreenshot \
-        "https://$UPSTREAM_OWNER.github.io/\
-$UPSTREAM_REPO/branch-beta/index.html"
     # screenshot changelog and files
     node --input-type=module -e '
 import moduleChildProcess from "child_process";
@@ -261,7 +255,7 @@ import moduleChildProcess from "child_process";
         [
             "jslint_ci.sh",
             "shRunWithScreenshotTxt",
-            ".build/screenshot-changelog.svg",
+            ".build/screenshot_changelog.svg",
             "head",
             "-n50",
             "CHANGELOG.md"
@@ -270,7 +264,7 @@ import moduleChildProcess from "child_process";
         [
             "jslint_ci.sh",
             "shRunWithScreenshotTxt",
-            ".build/screenshot-files.svg",
+            ".build/screenshot_files.svg",
             "shGitLsTree"
         ]
     ].forEach(function (argList) {
@@ -286,126 +280,7 @@ import moduleChildProcess from "child_process";
     });
 }());
 ' "$@" # '
-    # screenshot curl
-    if [ -f jslint.mjs ]
-    then
-        node --input-type=module -e '
-import moduleFs from "fs";
-import moduleChildProcess from "child_process";
-(async function () {
-    let screenshotCurl;
-    screenshotCurl = await moduleFs.promises.stat("jslint.mjs");
-    screenshotCurl = String(`
-echo "\
-% Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
-                     Dload  Upload   Total   Spent    Left  Speed
-100  250k  100  250k    0     0   250k      0  0:00:01 --:--:--  0:00:01  250k\
-"
-    `).trim().replace((
-        /250/g
-    ), Math.floor(screenshotCurl.size / 1024));
-    // parallel-task - screenshot example-shell-commands in README.md
-    Array.from(String(
-        await moduleFs.promises.readFile("README.md", "utf8")
-    ).matchAll(
-        /\n```shell\u0020<!--\u0020shRunWithScreenshotTxt\u0020(.*?)\u0020-->\n([\S\s]*?\n)```\n/g
-    )).forEach(async function ([
-        ignore, file, script
-    ]) {
-        await moduleFs.promises.writeFile(file + ".sh", (
-            "printf \u0027"
-            + script.trim().replace((
-                /[%\\]/gm
-            ), "$&$&").replace((
-                /\u0027/g
-            ), "\u0027\"\u0027\"\u0027").replace((
-                /^/gm
-            ), "> ")
-            + "\n\n\n\u0027\n"
-            + script.replace(
-                "curl -L https://www.jslint.com/jslint.mjs > jslint.mjs",
-                screenshotCurl
-            )
-        ));
-        moduleChildProcess.spawn(
-            "sh",
-            [
-                "jslint_ci.sh",
-                "shRunWithScreenshotTxt",
-                file,
-                "sh",
-                file + ".sh"
-            ],
-            {
-                stdio: [
-                    "ignore", 1, 2
-                ]
-            }
-        );
-    });
-}());
-' "$@" # '
-    fi
-    # seo - inline css-assets and invalidate cached-assets
-    node --input-type=module -e '
-import moduleFs from "fs";
-(async function () {
-    let cacheKey = Math.random().toString(36).slice(-4);
-    let fileDict = {};
-    await Promise.all([
-        "asset-codemirror-rollup.css",
-        "browser.mjs",
-        "index.html"
-    ].map(async function (file) {
-        try {
-            fileDict[file] = await moduleFs.promises.readFile(file, "utf8");
-        } catch (ignore) {
-            process.exit();
-        }
-    }));
-
-// inline css-assets
-
-    fileDict["index.html"] = fileDict["index.html"].replace((
-        "\n<link rel=\"stylesheet\" href=\"asset-codemirror-rollup.css\">\n"
-    ), function () {
-        return (
-            "\n<style>\n"
-            + fileDict["asset-codemirror-rollup.css"].trim()
-            + "\n</style>\n"
-        );
-    });
-    fileDict["index.html"] = fileDict["index.html"].replace((
-        "\n<style class=\"JSLINT_REPORT_STYLE\"></style>\n"
-    ), function () {
-        return fileDict["browser.mjs"].match(
-            /\n<style\sclass="JSLINT_REPORT_STYLE">\n[\S\s]*?\n<\/style>\n/
-        )[0];
-    });
-
-// invalidate cached-assets
-
-    fileDict["browser.mjs"] = fileDict["browser.mjs"].replace((
-        /^import\u0020.+?\u0020from\u0020".+?\.(?:js|mjs)\b/gm
-    ), function (match0) {
-        return `${match0}?cc=${cacheKey}`;
-    });
-    fileDict["index.html"] = fileDict["index.html"].replace((
-        /\b(?:href|src)=".+?\.(?:css|js|mjs)\b/g
-    ), function (match0) {
-        return `${match0}?cc=${cacheKey}`;
-    });
-
-// write file
-
-    await Promise.all(Object.entries(fileDict).map(function ([
-        file, data
-    ]) {
-        moduleFs.promises.writeFile(file, data);
-    }));
-}());
-' "$@" # '
-    git add -f jslint.cjs jslint.js || true
+    shArtifactUploadCustom
     # add dir .build
     git add -f .build
     git commit -am "add dir .build"
@@ -465,78 +340,13 @@ import moduleFs from "fs";
     )
 )}
 
+shArtifactUploadCustom() {(set -e
+    return
+)}
+
 shCiBase() {(set -e
 # this function will run base-ci
-    # create jslint.cjs
-    cp jslint.mjs jslint.js
-    cat jslint.mjs | sed \
-        -e "s|^// module.exports = |module.exports = |" \
-        -e "s|^export default Object.freeze(|// &|" \
-        -e "s|^jslint_import_meta_url = |// &|" \
-        > jslint.cjs
-    # run test with coverage-report
-    # coverage-hack - test jslint's invalid-file handling-behavior
-    mkdir -p .test-dir.js
-    # test jslint's cli handling-behavior
-    printf "node jslint.cjs .\n"
-    node jslint.cjs .
-    printf "node jslint.mjs .\n"
-    node jslint.mjs .
-    printf "node test.mjs\n"
-    (set -e
-        # coverage-hack - test jslint's cli handling-behavior
-        export JSLINT_BETA=1
-        shRunWithCoverage node test.mjs
-    )
-    # update edition in README.md, jslint.mjs from CHANGELOG.md
-    node --input-type=module -e '
-import moduleFs from "fs";
-(async function () {
-    let dict;
-    let versionBeta;
-    let versionMaster;
-    dict = {};
-    await Promise.all([
-        "CHANGELOG.md",
-        "README.md",
-        "jslint.mjs"
-    ].map(async function (file) {
-        dict[file] = await moduleFs.promises.readFile(file, "utf8");
-    }));
-    Array.from(dict["CHANGELOG.md"].matchAll(
-        /\n\n#\u0020(v\d\d\d\d\.\d\d?\.\d\d?(.*?)?)\n/g
-    )).slice(0, 2).forEach(function ([
-        ignore, version, isBeta
-    ]) {
-        versionBeta = versionBeta || version;
-        versionMaster = versionMaster || (!isBeta && version);
-    });
-    [
-        {
-            file: "README.md",
-            src: dict["README.md"].replace((
-                /\bv\d\d\d\d\.\d\d?\.\d\d?\b/m
-            ), versionMaster),
-            src0: dict["README.md"]
-        }, {
-            file: "jslint.mjs",
-            src: dict["jslint.mjs"].replace((
-                /^let\u0020jslint_edition\u0020=\u0020".*?";$/m
-            ), `let jslint_edition = "${versionBeta}";`),
-            src0: dict["jslint.mjs"]
-        }
-    ].forEach(function ({
-        file,
-        src,
-        src0
-    }) {
-        if (src !== src0) {
-            console.error(`update file ${file}`);
-            moduleFs.promises.writeFile(file, src);
-        }
-    });
-}());
-' "$@" # '
+    shCiBaseCustom
     # update table-of-contents in README.md
     node --input-type=module -e '
 import moduleFs from "fs";
@@ -573,6 +383,10 @@ import moduleFs from "fs";
 ' "$@" # '
 )}
 
+shCiBaseCustom() {(set -e
+    return
+)}
+
 shCiBranchPromote() {(set -e
 # this function will promote branch $REMOTE/$BRANCH1 to branch $REMOTE/$BRANCH2
     local BRANCH1
@@ -600,7 +414,7 @@ import moduleUrl from "url";
         await moduleFs.promises.readdir(".")
     ).forEach(async function (file) {
         let data;
-        if (!(
+        if (file === "CHANGELOG.md" || !(
             /.\.html$|.\.md$/m
         ).test(file)) {
             return;
@@ -886,7 +700,7 @@ import modulePath from "path";
     Object.entries(dict).forEach(function ([
         file, data
     ]) {
-        moduleFs.promise.writeFile(file, data.join("\n"));
+        moduleFs.promises.writeFile(file, data.join("\n"));
     });
 }());
 ' "$@" # '
@@ -1177,7 +991,7 @@ shImageLogoCreate() {(set -e
 <head>
 <title>logo</title>
 <style>
-/* sh jslint_ci.sh shBrowserScreenshot asset-image-logo.html --window-size=512x512 */
+/* sh jslint_ci.sh shBrowserScreenshot asset_image_logo.html --window-size=512x512 */
 /* csslint box-model:false */
 /* csslint ignore:start */
 *,
@@ -1188,7 +1002,7 @@ shImageLogoCreate() {(set -e
 @font-face {
     font-family: Daley;
     font-weight: bold;
-    src: url("asset-font-daley-bold.woff2") format("woff2");
+    src: url("asset_font_daley_bold.woff2") format("woff2");
 }
 /* csslint ignore:end */
 body,
@@ -1233,19 +1047,19 @@ div {
 </div>
 </body>
 </html>
-' > .build/asset-image-logo-512.html
-    cp asset-font-daley-bold.woff2 .build || true
-    # screenshot asset-image-logo-512.png
-    shBrowserScreenshot .build/asset-image-logo-512.html \
+' > .build/asset_image_logo_512.html
+    cp asset_font_daley_bold.woff2 .build || true
+    # screenshot asset_image_logo_512.png
+    shBrowserScreenshot .build/asset_image_logo_512.html \
         --window-size=512x512 \
-        -screenshot=.build/asset-image-logo-512.png
+        -screenshot=.build/asset_image_logo_512.png
     # create various smaller thumbnails
     for SIZE in 32 64 128 256
     do
-        convert -resize "${SIZE}x${SIZE}" .build/asset-image-logo-512.png \
-            ".build/asset-image-logo-$SIZE.png"
+        convert -resize "${SIZE}x${SIZE}" .build/asset_image_logo_512.png \
+            ".build/asset_image_logo_$SIZE.png"
         printf \
-"shImageLogoCreate - wrote - .build/asset-image-logo-$SIZE.png\n" 1>&2
+"shImageLogoCreate - wrote - .build/asset_image_logo_$SIZE.png\n" 1>&2
     done
     # convert to svg @ https://convertio.co/png-svg/
 )}
@@ -1905,9 +1719,9 @@ body {
                 str2 = coveragePct + " %";
                 xx1 = 6 * str1.length + 20;
                 xx2 = 6 * str2.length + 20;
-                // fs - write coverage-badge.svg
+                // fs - write coverage_badge.svg
                 moduleFs.promises.writeFile((
-                    DIR_COVERAGE + "/coverage-badge.svg"
+                    DIR_COVERAGE + "/coverage_badge.svg"
                 ), String(`
 <svg height="20" width="${xx1 + xx2}" xmlns="http://www.w3.org/2000/svg">
 <rect fill="#555" height="20" width="${xx1 + xx2}"/>
@@ -2070,7 +1884,7 @@ ${String(count).padStart(7, " ")}
         // fs - write coverage.txt
         console.error("\n" + txt);
         moduleFs.promises.writeFile((
-            DIR_COVERAGE + "/coverage-report.txt"
+            DIR_COVERAGE + "/coverage_report.txt"
         ), txt);
     }
     data = await moduleFs.promises.readdir(DIR_COVERAGE);
@@ -2081,10 +1895,10 @@ ${String(count).padStart(7, " ")}
             data = await moduleFs.promises.readFile((
                 DIR_COVERAGE + file
             ), "utf8");
-            // fs - rename to coverage-v8.json
+            // fs - rename to coverage_v8.json
             moduleFs.promises.rename(
                 DIR_COVERAGE + file,
-                DIR_COVERAGE + "coverage-v8.json"
+                DIR_COVERAGE + "coverage_v8.json"
             );
         }
     }));

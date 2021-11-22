@@ -122,7 +122,6 @@ file sqlmath.js
     let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
     let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
     let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
-
     let addon;
     let {
         assertErrorThrownAsync,
@@ -132,6 +131,7 @@ file sqlmath.js
     } = local;
     let dbDict = new WeakMap();
     let requireCjs = createRequire(import.meta.url);
+    let testList;
     // private map of sqlite-database-connections
 
     function bufferFromView(view) {
@@ -264,21 +264,20 @@ file sqlmath.js
             }
             serialize(val);
         });
-        result = noop(
-            await dbCallAsync("__dbExecAsync", db, [
-                String(sql),
-                bindListLength,
-                Buffer.from(serialize.buf),
-                bindByKey,
-                (
-                    responseType === "lastBlob"
-                    ? 1
-                    : responseType === "lastMatrixDouble"
-                    ? 2
-                    : 0
-                )
-            ])
-        )[1];
+        result = await dbCallAsync("__dbExecAsync", db, [
+            String(sql) + "\n;\nPRAGMA noop",
+            bindListLength,
+            Buffer.from(serialize.buf),
+            bindByKey,
+            (
+                responseType === "lastBlob"
+                ? 1
+                : responseType === "lastMatrixDouble"
+                ? 2
+                : 0
+            )
+        ]);
+        result = result[1];
         switch (responseType) {
         case "arraybuffer":
         case "lastBlob":
@@ -330,6 +329,28 @@ file sqlmath.js
             responseType: "lastMatrixDouble",
             sql
         });
+    }
+
+    async function dbMemoryLoadAsync({
+        db,
+        filename
+    }) {
+// This function will load <filename> to <db>
+        assertOrThrow(filename, "invalid filename " + filename);
+        await dbCallAsync("__dbMemoryLoadOrSave", db, [
+            String(filename), 0
+        ]);
+    }
+
+    async function dbMemorySaveAsync({
+        db,
+        filename
+    }) {
+// This function will save <db> to <filename>
+        assertOrThrow(filename, "invalid filename " + filename);
+        await dbCallAsync("__dbMemoryLoadOrSave", db, [
+            String(filename), 1
+        ]);
     }
 
     async function dbOpenAsync({
@@ -841,14 +862,9 @@ Definition of the CSV Format
 
     function testAll() {
 // this function will run all tests
-        testAssertXxx();
-        testCcall();
-        testDbBind();
-        testDbCloseAsync();
-        testDbExecAsync();
-        testDbOpenAsync();
-        testDbTableInsertAsync();
-        testSqlcSlrOhlcv();
+        testList.forEach(function (testFunc) {
+            testFunc();
+        });
     }
 
     function testAssertXxx() {
@@ -967,14 +983,8 @@ Definition of the CSV Format
             // 5. object
             Buffer.alloc(0), null,
             Buffer.from(""), null,
-            Buffer.from("\u0000"), (
-                "data:application/octet-stream;base64,"
-                + Buffer.from("\u0000").toString("base64")
-            ),
-            Buffer.from("\u0000\u{1f600}\u0000"), (
-                "data:application/octet-stream;base64,"
-                + Buffer.from("\u0000\u{1f600}\u0000").toString("base64")
-            ),
+            Buffer.from("\u0000"), null,
+            Buffer.from("\u0000\u{1f600}\u0000"), null,
             [], "[]",
             new Date(0), "1970-01-01T00:00:00.000Z",
             new RegExp(), "{}",
@@ -1284,9 +1294,7 @@ Definition of the CSV Format
         assertErrorThrownAsync(function () {
             return dbCloseAsync({});
         }, function (err) {
-            assertOrThrow((
-                /invalid\sor\sclosed\sdb/
-            ).test(err.message), err);
+            assertOrThrow(err.message.includes("invalid or closed db"), err);
         });
         // test close handling-behavior
         await dbCloseAsync({
@@ -1306,9 +1314,10 @@ Definition of the CSV Format
                 sql: undefined
             });
         }, function (err) {
-            assertOrThrow((
-                /sqlite\s-\snear\s"undefined":\ssyntax\serror/
-            ).test(err.message), err);
+            assertOrThrow(
+                err.message.includes("near \"undefined\": syntax error"),
+                err
+            );
         });
         // test race-condition handling-behavior
         Array.from(new Array(4)).forEach(async function () {
@@ -1327,16 +1336,23 @@ Definition of the CSV Format
 CREATE TABLE testDbExecAsync1 AS
 SELECT 101 AS c101, 102 AS c102
 UNION ALL
-VALUES (201, 202),
-       (301, NULL);
+VALUES
+    (201, 202),
+    (301, NULL);
 CREATE TABLE testDbExecAsync2 AS
 SELECT 401 AS c401, 402 AS c402, 403 AS c403
 UNION ALL
-VALUES (501, 502.0123, 5030123456789),
-       (601, '602', '603_\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e'),
-       (?1, ?2, ?3),
-       (tobase64(?1), tobase64(?2), tobase64(?3)),
-       (tostring(?1), tostring(?2), tostring(?3));
+VALUES
+    (501, 502.0123, 5030123456789),
+    (601, '602', '603_\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e'),
+    (?1, ?2, ?3),
+    (tostring(?1), tostring(?2), tostring(?3)),
+    (tobase64(?1), tobase64(?2), tobase64(?3)),
+    (
+        tobase64(uncompress(compress(?1))),
+        tobase64(uncompress(compress(?2))),
+        tobase64(uncompress(compress(?3)))
+    );
 SELECT * FROM testDbExecAsync1;
 SELECT * FROM testDbExecAsync2;
                         `)
@@ -1355,15 +1371,16 @@ SELECT * FROM testDbExecAsync2;
                         [501, 502.0123, 5030123456789],
                         [601, "602", "603_\"\u0001\b\t\n\u000b\f\r\u000e"],
                         [
-                            "data:application/octet-stream;base64,Zm9vYg==",
-                            "data:application/octet-stream;base64,Zm9vYmE=",
-                            "data:application/octet-stream;base64,Zm9vYmFy"
+                            null, null, null
+                        ],
+                        [
+                            "foob", "fooba", "foobar"
                         ],
                         [
                             "Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy"
                         ],
                         [
-                            "foob", "fooba", "foobar"
+                            "Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy"
                         ]
                     ]
                 ]));
@@ -1435,20 +1452,76 @@ SELECT * FROM testDbExecAsync2;
         });
     }
 
+    async function testDbMemoryXxx() {
+// this function will test dbMemoryXxx's handling-behavior
+        let data;
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        // test null-case handling-behavior
+        assertErrorThrownAsync(function () {
+            return dbMemoryLoadAsync({
+                db
+            });
+        }, function (err) {
+            assertOrThrow(
+                err.message.includes("invalid filename undefined"),
+                err
+            );
+        });
+        assertErrorThrownAsync(function () {
+            return dbMemorySaveAsync({
+                db
+            });
+        }, function (err) {
+            assertOrThrow(
+                err.message.includes("invalid filename undefined"),
+                err
+            );
+        });
+        await dbExecAsync({
+            db,
+            sql: "CREATE TABLE t01 AS SELECT 1 AS c01"
+        });
+        await dbMemorySaveAsync({
+            db,
+            filename: ".testDbMemoryXxx.sqlite"
+        });
+        db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        await dbMemoryLoadAsync({
+            db,
+            filename: ".testDbMemoryXxx.sqlite"
+        });
+        data = await dbExecAsync({
+            db,
+            sql: "SELECT * FROM t01"
+        });
+        assertJsonEqual(data, [
+            [
+                {
+                    c01: 1
+                }
+            ]
+        ]);
+    }
+
     function testDbOpenAsync() {
 // this function will test dbOpenAsync's handling-behavior
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbOpenAsync({});
         }, function (err) {
-            assertOrThrow((
-                /invalid\sfilename\sundefined/
-            ).test(err.message), err);
+            assertOrThrow(
+                err.message.includes("invalid filename undefined"),
+                err
+            );
         });
     }
 
     async function testDbTableInsertAsync() {
-// this function will test testDbTableInsertAsync's handling-behavior
+// this function will test dbTableInsertAsync's handling-behavior
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1547,307 +1620,112 @@ SELECT * FROM testDbExecAsync2;
         });
     }
 
-    async function testSqlcSlrOhlcv() {
-// this function will test testSqlSlrOhlcv's handling-behavior
+    async function testSqlError() {
+// this function will test sql-error's handling-behavior
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        let structSlrxy = [
-            "caa", "cbb", "crr",
-            "dxx",
-            "mxx", "myy",
-            "nn",
-            "offset",
-            "saa", "sbb", "see", "sxx", "sxy", "syy",
-            "xxhh", "xxll",
-            "xxxx"
-        ];
-        function validateSimpleLinearRegression({
-            aa,
-            xxList,
-            yyList
-        }) {
-// this function will run validate simple-linear-regression <bb>
-// from <xxList> and <yyList> matches <aa>
-            let bb;
-            let caa = 0;
-            let cbb = 0;
-            let crr = 0;
-            let dxx = 0;
-            let mxx = 0;
-            let myy = 0;
-            let nn = 0;
-            let saa = 0;
-            let sbb = 0;
-            let see = 0;
-            let sxx = 0;
-            let sxy = 0;
-            let syy = 0;
-            let xxxx = 0;
-            // calculate sxx, syy, sxy
-            xxList.forEach(function (xx, ii) {
-                let yy = yyList[ii];
-                nn += 1;
-                xxxx += xx * xx;
-                // wellford - calculate syy
-                dxx = yy - myy;
-                myy += dxx / nn;
-                syy += dxx * (yy - myy);
-                // wellford - calculate sxx
-                dxx = xx - mxx;
-                mxx += dxx / nn;
-                sxx += dxx * (xx - mxx);
-                // wellford - calculate sxy
-                sxy += dxx * (yy - myy);
-            });
-            // calculate caa, cbb, crr
-            cbb = sxy / sxx;
-            caa = myy - cbb * mxx;
-            crr = sxy / Math.sqrt(sxx * syy);
-            // calculate see = rss / (nn - 2)
-            xxList.forEach(function (xx, ii) {
-                let yy = yyList[ii];
-                see += Math.pow(caa + cbb * xx - yy, 2);
-                ii += 2;
-            });
-            see = see / (nn - 2);
-            // calculate sbb = see / sxx
-            sbb = see / sxx;
-            // calculate saa = see * xxxx / (nn * sxx) = sbb * xxxx / nn
-            saa = sbb * (xxxx / nn);
-            bb = {
-                caa,
-                cbb,
-                crr,
-                mxx,
-                myy,
-                saa,
-                sbb,
-                see
-            };
-            [
-                "mxx", "myy", "cbb", "caa", "crr", "see", "sbb", "saa"
-            ].forEach(function (key) {
-                aa[key] = String(aa[key]).slice(0, 8);
-                bb[key] = String(bb[key]).slice(0, 8);
-                assertOrThrow(aa[key] === bb[key], JSON.stringify([
-                    key, aa[key], bb[key]
+        [
+            1, "SQL logic error",
+            2, "unknown error",
+            3, "access permission denied",
+            4, "query aborted",
+            5, "database is locked",
+            6, "database table is locked",
+            7, "out of memory",
+            8, "attempt to write a readonly database",
+            9, "interrupted",
+            10, "disk I/O error",
+            11, "database disk image is malformed",
+            12, "unknown operation",
+            13, "database or disk is full",
+            14, "unable to open database file",
+            15, "locking protocol",
+            16, "unknown error",
+            17, "database schema has changed",
+            18, "string or blob too big",
+            19, "constraint failed",
+            20, "datatype mismatch",
+            21, "bad parameter or other API misuse",
+            22, "unknown error",
+            23, "authorization denied",
+            24, "unknown error",
+            25, "column index out of range",
+            26, "file is not a database",
+            27, "notification message",
+            28, "warning message",
+            100, "unknown error",
+            101, "unknown error"
+        ].forEach(function (sql, ii, list) {
+            let bb = list[ii + 1];
+            if (ii % 2 === 1) {
+                return;
+            }
+            ii *= 0.5;
+            sql = "SELECT throwerror(" + sql + ")";
+            assertErrorThrownAsync(function () {
+                return dbExecAsync({
+                    db,
+                    sql
+                });
+            }, function (err) {
+                assertOrThrow(err.message.includes(bb), JSON.stringify([
+                    ii, sql, bb, err.message
                 ]));
             });
-        }
-        validateSimpleLinearRegression({
-            aa: {
-                caa: -39.06191,
-                cbb: 61.272181,
-                crr: 0.9945831,
-                mxx: 1.6506661,
-                myy: 62.077991,
-                saa: 8.6318501,
-                sbb: 3.1539011,
-                see: 0.5761961
-            },
-            xxList: [
-                1.47, 1.50, 1.52, 1.55, 1.57, 1.60, 1.63, 1.65,
-                1.68, 1.70, 1.73, 1.75, 1.78, 1.80, 1.83
-            ],
-            yyList: [
-                52.21, 53.12, 54.48, 55.84, 57.20, 58.57, 59.93, 61.29,
-                63.11, 64.47, 66.28, 68.10, 69.92, 72.19, 74.46
-            ]
         });
-        validateSimpleLinearRegression({
-            aa: {
-                caa: -39.74681,
-                cbb: 61.674631,
-                crr: 0.9954871,
-                mxx: 1.6509991,
-                myy: 62.077991,
-                saa: 7.2784471,
-                sbb: 2.6584591,
-                see: 0.4802361
-            },
-            xxList: [
-                1.47, 1.50, 1.52, 1.55, 1.57, 1.60, 1.63, 1.65,
-                1.68, 1.70, 1.73, 1.75, 1.78, 1.80, 1.83
-            ].map(function (elem) {
-                return 0.0254 * Math.round(elem / 0.0254);
-            }),
-            yyList: [
-                52.21, 53.12, 54.48, 55.84, 57.20, 58.57, 59.93, 61.29,
-                63.11, 64.47, 66.28, 68.10, 69.92, 72.19, 74.46
-            ]
+    }
+
+    async function testSqlExt() {
+// this function will test sql-ext's handling-behavior
+        let db = await dbOpenAsync({
+            filename: ":memory:"
         });
         [
-            [
-                {
-                    "0": 1,
-                    "1": 1,
-                    "2": 2,
-                    "3": 2,
-                    "4": 3,
-                    "5": 3
-                },
-                [
-                    {
-                        offset: 0,
-                        xxList: [
-                            1, 2, 3, 4, 5
-                        ],
-                        yyList: [
-                            1, 2, 2, 3, 3
-                        ]
-                    },
-                    {
-                        offset: 1,
-                        xxList: [
-                            1, 2, 3, 4, 5
-                        ],
-                        yyList: [
-                            1, 2, 2, 3, 3
-                        ]
-                    },
-                    {
-                        offset: 7,
-                        xxList: [
-                            1, 2, 3, 4, 5
-                        ],
-                        yyList: [
-                            1, 2, 2, 3, 3
-                        ]
-                    },
-                    {
-                        offset: 8,
-                        xxList: [],
-                        yyList: []
-                    },
-                    {
-                        offset: 25 * 8 - 1,
-                        xxList: [],
-                        yyList: []
-                    }
-                ]
-            ],
-            [
-                {
-                    "30": 1,
-                    "31": 1,
-                    "32": 2,
-                    "33": 2,
-                    "34": 3,
-                    "35": 3
-                },
-                [
-                    {
-                        offset: 0,
-                        xxList: [
-                            30, 31
-                        ],
-                        yyList: [
-                            1, 1
-                        ]
-                    },
-                    {
-                        offset: 1,
-                        xxList: [
-                            30, 31, 32, 33, 34, 35
-                        ],
-                        yyList: [
-                            1, 1, 2, 2, 3, 3
-                        ]
-                    },
-                    {
-                        offset: 7,
-                        xxList: [
-                            30, 31, 32, 33, 34, 35
-                        ],
-                        yyList: [
-                            1, 1, 2, 2, 3, 3
-                        ]
-                    },
-                    {
-                        offset: 8,
-                        xxList: [
-                            32, 33, 34, 35
-                        ],
-                        yyList: [
-                            2, 2, 3, 3
-                        ]
-                    },
-                    {
-                        offset: 15,
-                        xxList: [
-                            32, 33, 34, 35
-                        ],
-                        yyList: [
-                            2, 2, 3, 3
-                        ]
-                    },
-                    {
-                        offset: 16,
-                        xxList: [],
-                        yyList: []
-                    },
-                    {
-                        offset: 25 * 8 - 1,
-                        xxList: [],
-                        yyList: []
-                    }
-                ]
-            ]
-        ].forEach(function ([
-            ohlcvDict, slrList
-        ]) {
-            [
-                0, 1, 2, 3
-            ].forEach(async function (ll) {
-                let buf = new Float64Array(
-                    2 + 5 + 5 * Object.keys(ohlcvDict)[
-                        Object.keys(ohlcvDict).length - 1
+            {
+                aa: [
+                    [
+                        {
+                            "c01": ""
+                        }
                     ]
-                );
-                buf[0] = (buf.length - 2) / 5;
-                buf[1] = 5;
-                Object.entries(ohlcvDict).forEach(function ([
-                    key, val
-                ]) {
-                    buf[2 + key * 5 + ll] = val;
-                });
-                //!! debugInline(buf);
-                buf = new Float64Array(await dbGetLastBlobAsync({
-                    bindList: [
-                        buf
-                    ],
-                    db,
-                    sql: "SELECT(slr_ohlcv(?)) AS blob;"
-                }));
-                slrList.forEach(function ({
-                    offset,
-                    xxList,
-                    yyList
-                }) {
-                    let aa = {};
-                    structSlrxy.forEach(function (key, ii) {
-                        aa[key] = buf[ii + offset * structSlrxy.length];
-                    });
-                    //!! debugInline(buf);
-                    validateSimpleLinearRegression({
-                        aa,
-                        xxList: xxList.map(function (kk) {
-                            return (
-                                // price - open
-                                ll === 0
-                                ? kk + 0.270833333333333333
-                                // price - high, low
-                                : (ll === 1 || ll === 2)
-                                ? kk + 0.135416666666666666
-                                // price - close
-                                : kk
-                            );
-                        }),
-                        yyList
-                    });
-                });
+                ],
+                sql: "SELECT tobase64(NULL) AS c01"
+            },
+            {
+                aa: [
+                    [
+                        {
+                            "c01": ""
+                        }
+                    ]
+                ],
+                sql: "SELECT tobase64(?) AS c01"
+            },
+            {
+                aa: [
+                    [
+                        {
+                            "c01": "AAAAAAAAAAA="
+                        }
+                    ]
+                ],
+                bindList: [
+                    Buffer.alloc(8)
+                ],
+                sql: "SELECT tobase64(uncompress(compress(?))) AS c01"
+            }
+        ].forEach(async function ({
+            aa,
+            bindList,
+            sql
+        }) {
+            let bb = await dbExecAsync({
+                bindList,
+                db,
+                sql
             });
+            assertJsonEqual(aa, bb);
         });
     }
 
@@ -1858,6 +1736,18 @@ SELECT * FROM testDbExecAsync2;
         + "_" + process.arch
         + ".node"
     );
+    testList = [
+        testAssertXxx,
+        testCcall,
+        testDbBind,
+        testDbCloseAsync,
+        testDbExecAsync,
+        testDbMemoryXxx,
+        testDbOpenAsync,
+        testDbTableInsertAsync,
+        testSqlError,
+        testSqlExt
+    ];
     Object.assign(local, {
         SQLITE_MAX_LENGTH2,
         SQLITE_OPEN_AUTOPROXY,
@@ -1881,11 +1771,19 @@ SELECT * FROM testDbExecAsync2;
         SQLITE_OPEN_TRANSIENT_DB,
         SQLITE_OPEN_URI,
         SQLITE_OPEN_WAL,
+        assertErrorThrownAsync,
+        assertJsonEqual,
+        assertOrThrow,
         dbCloseAsync,
         dbExecAsync,
+        dbGetLastBlobAsync,
+        dbMemoryLoadAsync,
+        dbMemorySaveAsync,
         dbOpenAsync,
         dbTableInsertAsync,
-        testAll
+        noop,
+        testAll,
+        testList
     });
 }());
 
