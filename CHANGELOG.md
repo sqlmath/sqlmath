@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2021.9.8
+- merge files in sqlite-autoconf-3360000 into sqlite3.c, sqlite3_ext.c, sqlite3_shell.c
+
 # v2021.9.4
 - add functions dbGetLastBlob, dbTableInsertAsync
 - merge file sqlmath_napi.c into sqlmath.c

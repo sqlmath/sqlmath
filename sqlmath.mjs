@@ -1,4 +1,4 @@
-/*jslint beta, name, node, trace*/
+/*jslint beta, name, node*/
 "use strict";
 import {createRequire} from "module";
 let local = {};
@@ -220,7 +220,7 @@ file sqlmath.js
     async function dbExecAsync({
         bindList = [],
         db,
-        getLastBlob,
+        responseType,
         sql
     }) {
 // this function will exec <sql> in <db> and return <result>
@@ -240,18 +240,42 @@ file sqlmath.js
             }
             serialize(val);
         });
-        result = await dbCallAsync("__dbExecAsync", db, [
-            String(sql),
-            bindListLength,
-            Buffer.from(serialize.buf),
-            bindByKey,
-            getLastBlob
-        ]);
-        return (
-            getLastBlob
-            ? Buffer.from(result[1])
-            : Buffer.from(result[1], 0, result[1].byteLength - 1)
-        );
+        result = noop(
+            await dbCallAsync("__dbExecAsync", db, [
+                String(sql),
+                bindListLength,
+                Buffer.from(serialize.buf),
+                bindByKey,
+                (
+                    responseType === "lastBlob"
+                    ? 1
+                    : responseType === "lastMatrixDouble"
+                    ? 2
+                    : 0
+                )
+            ])
+        )[1];
+        switch (responseType) {
+        case "arraybuffer":
+        case "lastBlob":
+            return result;
+        case "lastMatrixDouble":
+            return new Float64Array(result);
+        case "list":
+            return JSON.parse(Buffer.from(result));
+        default:
+            result = JSON.parse(Buffer.from(result));
+            return result.map(function (rowList) {
+                let colList = rowList.shift();
+                return rowList.map(function (row) {
+                    let dict = {};
+                    colList.forEach(function (key, ii) {
+                        dict[key] = row[ii];
+                    });
+                    return dict;
+                });
+            });
+        }
     }
 
     function dbGet(db) {
@@ -272,7 +296,22 @@ file sqlmath.js
         return dbExecAsync({
             bindList,
             db,
-            getLastBlob: true,
+            responseType: "lastBlob",
+            sql
+        });
+    }
+
+    function dbGetLastMatrixDouble({
+        bindList = [],
+        db,
+        sql
+    }) {
+// this function will exec <sql> in <db> and return last SELECT-statement
+// from execution as row x col matrix of doubles
+        return dbExecAsync({
+            bindList,
+            db,
+            responseType: "lastMatrixDouble",
             sql
         });
     }
@@ -295,9 +334,11 @@ file sqlmath.js
             typeof filename === "string",
             "invalid filename " + filename
         );
-        ptr = noop(await cCall("__dbOpenAsync", [
-            String(filename), undefined, flags, undefined
-        ]))[0][0];
+        ptr = noop(
+            await cCall("__dbOpenAsync", [
+                String(filename), undefined, flags, undefined
+            ])
+        )[0][0];
         finalizer = new BigInt64Array(addon.__dbFinalizerCreate());
         finalizer[0] = BigInt(ptr);
         db = {};
@@ -847,9 +888,11 @@ Definition of the CSV Format
             aa, bb
         ]) {
             let cc;
-            cc = String(await cCall("noopAsync", [
-                aa
-            ]))[0][0];
+            cc = String(
+                await cCall("noopAsync", [
+                    aa
+                ])
+            )[0][0];
             assertOrThrow(bb === cc, [aa, bb, cc]);
             cc = String(cCall("noopSync", [
                 aa
@@ -929,18 +972,21 @@ Definition of the CSV Format
             if (ii % 2 === 1) {
                 return;
             }
+            ii *= 0.5;
             // test dbGetLastBlobAsync's bind handling-behavior
             [
                 aa
             ].forEach(async function (aa) {
                 let cc = String(bb);
-                let dd = String(await dbGetLastBlobAsync({
-                    bindList: [
-                        aa
-                    ],
-                    db,
-                    sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
-                }));
+                let dd = String(Buffer.from(
+                    await dbGetLastBlobAsync({
+                        bindList: [
+                            aa
+                        ],
+                        db,
+                        sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
+                    })
+                ));
                 switch (typeof(aa)) {
                 case "bigint":
                     switch (aa) {
@@ -983,8 +1029,80 @@ Definition of the CSV Format
                     }
                     break;
                 }
-                // debugInline(0.5 * ii, aa, bb, cc, dd);
+                // debugInline(ii, aa, bb, cc, dd);
                 assertJsonEqual(cc, dd);
+            });
+            // test dbGetLastMatrixDouble's bind handling-behavior
+            [
+                aa
+            ].forEach(async function (aa) {
+                let cc = Number(
+                    typeof aa === "symbol"
+                    ? 0
+                    : aa
+                ) || 0;
+                let dd = await dbGetLastMatrixDouble({
+                    bindList: [
+                        aa
+                    ],
+                    db,
+                    sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
+                });
+                switch (typeof(aa)) {
+                case "bigint":
+                    switch (aa) {
+                    case -BigInt(1e64):
+                        cc = -Infinity;
+                        break;
+                    case BigInt(1e64):
+                        cc = Infinity;
+                        break;
+                    }
+                    break;
+                case "object":
+                    if (typeof aa?.getUTCFullYear === "function") {
+                        cc = aa.getUTCFullYear();
+                    }
+                    break;
+                }
+                cc = new Float64Array([
+                    1, 3, 1, 2, cc
+                ]);
+                // debugInline(ii, aa, bb, cc, dd);
+                cc.forEach(function (val, jj) {
+                    assertOrThrow(val === dd[jj], JSON.stringify([
+                        ii, String(aa), bb, String(cc), String(dd)
+                    ]));
+                });
+            });
+            // test dbExecAsync's responseType handling-behavior
+            [
+                "arraybuffer",
+                "list",
+                undefined
+            ].forEach(async function (responseType) {
+                let cc = noop(
+                    await dbExecAsync({
+                        bindList: [
+                            aa
+                        ],
+                        db,
+                        responseType,
+                        sql: "SELECT ? AS val"
+                    })
+                );
+                // debugInline(ii, responseType, aa, bb, cc);
+                switch (responseType) {
+                case "arraybuffer":
+                    cc = JSON.parse(Buffer.from(cc))[0][1][0];
+                    break;
+                case "list":
+                    cc = cc[0][1][0];
+                    break;
+                default:
+                    cc = cc[0][0].val;
+                }
+                assertOrThrow(bb === cc, [aa, bb, cc]);
             });
             // test dbExecAsync's bind handling-behavior
             [
@@ -1014,12 +1132,15 @@ Definition of the CSV Format
             ].forEach(async function ([
                 bindList, sql
             ]) {
-                let cc = JSON.parse(noop(await dbExecAsync({
-                    bindList,
-                    db,
-                    sql
-                })));
-                // debugInline(0.5 * ii, aa, bb, cc);
+                let cc = noop(
+                    await dbExecAsync({
+                        bindList,
+                        db,
+                        responseType: "list",
+                        sql
+                    })
+                );
+                // debugInline(ii, aa, bb, cc);
                 assertJsonEqual([
                     [
                         [
@@ -1110,11 +1231,14 @@ Definition of the CSV Format
                     rowList,
                     tableName: "datatype_" + ii + "_" + jj
                 });
-                cc = JSON.parse(noop(await dbExecAsync({
-                    db,
-                    sql: "SELECT * FROM datatype_" + ii + "_" + jj
-                })))[0];
-                // debugInline(0.5 * ii, jj, aa, bb, cc);
+                cc = noop(
+                    await dbExecAsync({
+                        db,
+                        responseType: "list",
+                        sql: "SELECT * FROM datatype_" + ii + "_" + jj
+                    })
+                )[0];
+                // debugInline(ii, jj, aa, bb, cc);
                 assertJsonEqual([
                     [
                         "c1", "c2", "c3"
@@ -1165,14 +1289,16 @@ Definition of the CSV Format
         Array.from(new Array(4)).forEach(async function () {
             let result;
             try {
-                result = JSON.stringify(JSON.parse(await dbExecAsync({
-                    bindList: [
-                        Buffer.from("foob"),
-                        Buffer.from("fooba"),
-                        Buffer.from("foobar")
-                    ],
-                    db,
-                    sql: (`
+                result = JSON.stringify(
+                    await dbExecAsync({
+                        bindList: [
+                            Buffer.from("foob"),
+                            Buffer.from("fooba"),
+                            Buffer.from("foobar")
+                        ],
+                        db,
+                        responseType: "list",
+                        sql: (`
 CREATE TABLE testDbExecAsync1 AS
 SELECT 101 AS c101, 102 AS c102
 UNION ALL
@@ -1188,8 +1314,9 @@ VALUES (501, 502.0123, 5030123456789),
        (tostring(?1), tostring(?2), tostring(?3));
 SELECT * FROM testDbExecAsync1;
 SELECT * FROM testDbExecAsync2;
-                    `)
-                })));
+                        `)
+                    })
+                );
                 assertJsonEqual(result, JSON.stringify([
                     [
                         ["c101", "c102"],
@@ -1269,12 +1396,16 @@ SELECT * FROM testDbExecAsync2;
             if (ii % 2 === 1) {
                 return;
             }
-            cc = JSON.parse(noop(await dbExecAsync({
-                db,
-                sql: "SELECT " + sql
-            })))[0][1][0];
+            ii *= 0.5;
+            cc = noop(
+                await dbExecAsync({
+                    db,
+                    responseType: "dict",
+                    sql: "SELECT " + sql + " AS val"
+                })
+            )[0][0].val;
             assertOrThrow(bb === cc, JSON.stringify([
-                0.5 * ii, sql, bb, cc
+                ii, sql, bb, cc
             ]));
         });
     }
@@ -1375,11 +1506,13 @@ SELECT * FROM testDbExecAsync2;
                 db,
                 tableName: "csv_" + ii
             });
-            cc = await dbExecAsync({
-                db,
-                sql: "SELECT * FROM temp.csv_" + ii
-            });
-            cc = JSON.parse(cc)[0];
+            cc = noop(
+                await dbExecAsync({
+                    db,
+                    responseType: "list",
+                    sql: "SELECT * FROM temp.csv_" + ii
+                })
+            )[0];
             assertOrThrow(
                 JSON.stringify(bb) === JSON.stringify(cc),
                 JSON.stringify([

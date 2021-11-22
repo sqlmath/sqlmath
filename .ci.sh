@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# curl https://www.sqlite.org/2021/sqlite-autoconf-3360000.tar.gz | tar -xz
+# curl -L https://www.sqlite.org/2021/sqlite-autoconf-3360000.tar.gz | tar -xz
 # https://www.sqlite.org/2021/sqlite-tools-linux-x86-3360000.zip
 # https://www.sqlite.org/2021/sqlite-tools-osx-x86-3360000.zip
 # https://www.sqlite.org/2021/sqlite-tools-win32-x86-3360000.zip
@@ -332,55 +332,53 @@ shCiBuild() {(set -e
     rm -rf .tmp
     # init .tmp
     mkdir -p .tmp
-    cp -a sqlite-autoconf-3360000 .tmp/src
-    # cd .tmp/src - start
-    (set -e
-    cd .tmp/src
-    # remove trailing-whitespace
-    sed -i.bak "s/  *$//" *.c
     #
-    # patch sqlite3.c
+    # patch shell.c
     printf '
-@@ -192171,7 +192171,12 @@
- ** functions and the virtual table implemented by this file.
- ****************************************************************************/
-
-+// hack-sqlite - inline sqlite3_extension_functions_init
-+int sqlite3_extension_functions_init(sqlite3*, char**, const sqlite3_api_routines*);
-+int sqlite3_sqlmath_init(sqlite3*, char**, const sqlite3_api_routines*);
- SQLITE_PRIVATE int sqlite3Json1Init(sqlite3 *db){
-+  sqlite3_extension_functions_init(db, NULL, &sqlite3Apis);
-+  sqlite3_sqlmath_init(db, NULL, &sqlite3Apis);
-   int rc = SQLITE_OK;
-   unsigned int i;
-   static const struct {
-    ' | patch -ut sqlite3.c
+#include <stddef.h>
+#ifndef SQLITE_SHELL_IS_UTF8
+#if (defined(_WIN32) || defined(WIN32)) \\
+      && (defined(_MSC_VER) || (defined(UNICODE) && defined(__GNUC__)))
+#define SQLITE_SHELL_IS_UTF8 0
+#else
+#define SQLITE_SHELL_IS_UTF8 1
+#endif
+#endif // SQLITE_SHELL_IS_UTF8
+#if SQLITE_SHELL_IS_UTF8
+int main2(int argc, char **argv);
+int main(int argc, char **argv) {return main2(argc, argv);}
+#else
+int wmain2(int argc, wchar_t **wargv);
+int wmain(int argc, wchar_t ** wargv) {return wmain2(argc, wargv);}
+#endif
+    ' > .tmp/shell.c
+    #
+    # patch sqlite3.h
+    printf '
+#undef SQLITE3_C2_
+#define SQLITE3_H2_
+#undef SQLITE3_EXT_H2_
+#undef SQLITE3_SHELL_C2_
+#include "../sqlite3.c"
+    ' > .tmp/sqlite3.h
+    #
+    # patch sqlite3ext.h
+    printf '
+#undef SQLITE3_C2_
+#undef SQLITE3_H2_
+#define SQLITE3_EXT_H2_
+#undef SQLITE3_SHELL_C2_
+#include "../sqlite3.c"
+    ' > .tmp/sqlite3ext.h
     #
     # patch sqlmath_napi.cpp
     printf '
 #define SQLMATH_NAPI
 extern "C" {
-#include "../../sqlmath.c"
+#include "../sqlmath.c"
 }
-    ' > sqlmath_napi.cpp
+    ' > .tmp/sqlmath_napi.cpp
     #
-    # patch shell.c
-    printf '
-@@ -6637,7 +6637,9 @@
- #ifdef _WIN32
-
- #endif
--int sqlite3_regexp_init(
-+// hack-sqlite - disable redundant sqlite3_regexp_init
-+int sqlite3_regexp_init2(sqlite3 *, char **, const sqlite3_api_routines *);
-+int sqlite3_regexp_init2(
-   sqlite3 *db,
-   char **pzErrMsg,
-   const sqlite3_api_routines *pApi
-    ' | patch -ut shell.c
-    #
-    )
-    # cd .tmp/src - end
     # node-gyp - run
     node -e '
 /*jslint beta, name*/
@@ -531,6 +529,7 @@ extern "C" {
                 "SQLITE_ENABLE_MATH_FUNCTIONS",
                 // "SQLITE_ENABLE_STMTVTAB",
                 // "SQLITE_ENABLE_UNKNOWN_SQL_FUNCTION",
+                "SQLITE_HAVE_ZLIB",
 
 // node-sqlite3
 
@@ -546,7 +545,7 @@ extern "C" {
                 "_REENTRANT=1"
             ],
             "include_dirs": [
-                "src"
+                "."
             ],
             "msvs_settings": {
                 "VCCLCompilerTool": {
@@ -574,9 +573,15 @@ extern "C" {
         },
         "targets": [
             targetWarningLevel(0, {
+                "defines": [
+                    "SQLITE3_C2_",
+                    "SQLITE3_EXT_C2_",
+                    "SQLITE3_SHELL_C2_"
+                ],
                 "sources": [
-                    "../sqlmath_ext.c",
-                    "src/sqlite3.c"
+                    "../sqlite3.c",
+                    "../sqlite3_ext.c",
+                    "../sqlite3_shell.c"
                 ],
                 "target_name": "sqlite3_c",
                 "type": "static_library"
@@ -591,12 +596,12 @@ extern "C" {
                 "target_name": "sqlmath_c",
                 "type": "static_library"
             }),
-            targetWarningLevel(0, {
+            targetWarningLevel(1, {
                 "dependencies": [
                     "sqlmath_c"
                 ],
                 "sources": [
-                    "src/shell.c"
+                    "shell.c"
                 ],
                 "target_name": "<(target_cli)",
                 "type": "executable"
@@ -606,7 +611,7 @@ extern "C" {
                     "sqlmath_c"
                 ],
                 "sources": [
-                    "src/sqlmath_napi.cpp"
+                    "./sqlmath_napi.cpp"
                 ],
                 "target_name": "<(target_node)"
             }),
