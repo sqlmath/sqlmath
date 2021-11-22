@@ -1,4 +1,4 @@
-/*jslint beta, name, node*/
+/*jslint beta, bitwise, name, node*/
 "use strict";
 import {createRequire} from "module";
 let local = {};
@@ -134,6 +134,15 @@ file sqlmath.js
     let requireCjs = createRequire(import.meta.url);
     // private map of sqlite-database-connections
 
+    function bufferFromView(view) {
+// this function will recast <view> to nodejs buffer-object
+        return (
+            (ArrayBuffer.isView(view) && !Buffer.isBuffer(view))
+            ? Buffer.from(view.buffer, view.byteOffset, view.byteLength)
+            : view
+        );
+    }
+
     function cCall(func, argList) {
 // this function will serialize <argList> to a c <baton>,
 // suitable for passing into napi
@@ -152,13 +161,16 @@ file sqlmath.js
                     return;
                 }
                 break;
+            case "object":
+                arg = bufferFromView(arg);
+                if (Buffer.isBuffer(arg)) {
+                    baton[ii] = BigInt(arg.byteLength);
+                    return arg;
+                }
+                break;
             case "string":
                 // append null-terminator to string
-                arg = Buffer.from(arg + "\u0000");
-                break;
-            }
-            if (Buffer.isBuffer(arg)) {
-                baton[ii] = BigInt(arg.byteLength);
+                return Buffer.from(arg + "\u0000");
             }
             return arg;
         });
@@ -185,9 +197,7 @@ file sqlmath.js
 
     function dbCallAsync(func, db, argList) {
 // this function will call <func> using <db>
-        if (!db?.ptr) {
-            db = dbGet(db);
-        }
+        db = dbDeref(db);
         // increment db.busy
         db.busy += 1;
         return cCall(func, [
@@ -203,18 +213,32 @@ file sqlmath.js
         db
     }) {
 // this function will close sqlite-database-connection <db>
-        let __db = dbGet(db);
+        let __db = dbDeref(db);
         // prevent segfault - do not close db if actions are pending
         assertOrThrow(
             __db.busy === 0,
             "db cannot close with " + __db.busy + " actions pending"
         );
-        // cleanup finalizer
-        __db.finalizer[0] = 0n;
+        // cleanup connPool
+        await Promise.all(__db.connPool.map(async function (ptr) {
+            let val = ptr[0];
+            ptr[0] = 0n;
+            await cCall("__dbCloseAsync", [
+                val
+            ]);
+        }));
         dbDict.delete(db);
-        await cCall("__dbCloseAsync", [
-            __db.ptr
-        ]);
+    }
+
+    function dbDeref(db) {
+// this function will get private-object mapped to <db>
+        let __db = dbDict.get(db);
+        assertOrThrow(__db?.connPool[0] > 0, "invalid or closed db");
+        assertOrThrow(__db.busy >= 0, "invalid db.busy " + __db.busy);
+        __db.ii = (__db.ii + 1) % __db.connPool.length;
+        __db.ptr = __db.connPool[__db.ii][0];
+        assertOrThrow(__db.ptr > 0n, "invalid or closed db");
+        return __db;
     }
 
     async function dbExecAsync({
@@ -278,14 +302,6 @@ file sqlmath.js
         }
     }
 
-    function dbGet(db) {
-// this function will get private-object mapped to <db>
-        db = dbDict.get(db);
-        assertOrThrow(db, "invalid or closed db");
-        assertOrThrow(db.busy >= 0, "invalid db.busy " + db.busy);
-        return db;
-    }
-
     function dbGetLastBlobAsync({
         bindList = [],
         db,
@@ -318,7 +334,8 @@ file sqlmath.js
 
     async function dbOpenAsync({
         filename,
-        flags = SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
+        flags,
+        threadCount = 1
     }) {
 // this function will open and return sqlite-database-connection <db>
 // int sqlite3_open_v2(
@@ -327,25 +344,31 @@ file sqlmath.js
 //   int flags,              /* Flags */
 //   const char *zVfs        /* Name of VFS module to use */
 // );
-        let db;
-        let finalizer;
-        let ptr;
+        let connPool;
+        let db = {};
         assertOrThrow(
             typeof filename === "string",
             "invalid filename " + filename
         );
-        ptr = noop(
-            await cCall("__dbOpenAsync", [
-                String(filename), undefined, flags, undefined
-            ])
-        )[0][0];
-        finalizer = new BigInt64Array(addon.__dbFinalizerCreate());
-        finalizer[0] = BigInt(ptr);
-        db = {};
+        connPool = await Promise.all(Array.from(new Array(
+            threadCount
+        ), async function () {
+            let finalizer;
+            let ptr = await cCall("__dbOpenAsync", [
+                String(filename), undefined, flags ?? (
+                    SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
+                ), undefined
+            ]);
+            ptr = ptr[0][0];
+            finalizer = new BigInt64Array(addon.__dbFinalizerCreate());
+            finalizer[0] = BigInt(ptr);
+            return finalizer;
+        }));
         dbDict.set(db, {
             busy: 0,
-            finalizer,
-            ptr
+            connPool,
+            ii: 0,
+            ptr: 0n
         });
         return db;
     }
@@ -537,6 +560,7 @@ file sqlmath.js
                     "invalid data " + (typeof val) + " " + val
                 );
                 // write buffer
+                val = bufferFromView(val);
                 if (Buffer.isBuffer(val)) {
                     if (val.byteLength === 0) {
                         bufferAppendDatatype(SQLITE_DATATYPE_NULL, 0);
@@ -824,6 +848,7 @@ Definition of the CSV Format
         testDbExecAsync();
         testDbOpenAsync();
         testDbTableInsertAsync();
+        testSqlcSlrOhlcv();
     }
 
     function testAssertXxx() {
@@ -1519,6 +1544,310 @@ SELECT * FROM testDbExecAsync2;
                     ii, aa, bb, cc
                 ], undefined, 4)
             );
+        });
+    }
+
+    async function testSqlcSlrOhlcv() {
+// this function will test testSqlSlrOhlcv's handling-behavior
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        let structSlrxy = [
+            "caa", "cbb", "crr",
+            "dxx",
+            "mxx", "myy",
+            "nn",
+            "offset",
+            "saa", "sbb", "see", "sxx", "sxy", "syy",
+            "xxhh", "xxll",
+            "xxxx"
+        ];
+        function validateSimpleLinearRegression({
+            aa,
+            xxList,
+            yyList
+        }) {
+// this function will run validate simple-linear-regression <bb>
+// from <xxList> and <yyList> matches <aa>
+            let bb;
+            let caa = 0;
+            let cbb = 0;
+            let crr = 0;
+            let dxx = 0;
+            let mxx = 0;
+            let myy = 0;
+            let nn = 0;
+            let saa = 0;
+            let sbb = 0;
+            let see = 0;
+            let sxx = 0;
+            let sxy = 0;
+            let syy = 0;
+            let xxxx = 0;
+            // calculate sxx, syy, sxy
+            xxList.forEach(function (xx, ii) {
+                let yy = yyList[ii];
+                nn += 1;
+                xxxx += xx * xx;
+                // wellford - calculate syy
+                dxx = yy - myy;
+                myy += dxx / nn;
+                syy += dxx * (yy - myy);
+                // wellford - calculate sxx
+                dxx = xx - mxx;
+                mxx += dxx / nn;
+                sxx += dxx * (xx - mxx);
+                // wellford - calculate sxy
+                sxy += dxx * (yy - myy);
+            });
+            // calculate caa, cbb, crr
+            cbb = sxy / sxx;
+            caa = myy - cbb * mxx;
+            crr = sxy / Math.sqrt(sxx * syy);
+            // calculate see = rss / (nn - 2)
+            xxList.forEach(function (xx, ii) {
+                let yy = yyList[ii];
+                see += Math.pow(caa + cbb * xx - yy, 2);
+                ii += 2;
+            });
+            see = see / (nn - 2);
+            // calculate sbb = see / sxx
+            sbb = see / sxx;
+            // calculate saa = see * xxxx / (nn * sxx) = sbb * xxxx / nn
+            saa = sbb * (xxxx / nn);
+            bb = {
+                caa,
+                cbb,
+                crr,
+                mxx,
+                myy,
+                saa,
+                sbb,
+                see
+            };
+            [
+                "mxx", "myy", "cbb", "caa", "crr", "see", "sbb", "saa"
+            ].forEach(function (key) {
+                aa[key] = String(aa[key]).slice(0, 8);
+                bb[key] = String(bb[key]).slice(0, 8);
+                assertOrThrow(aa[key] === bb[key], JSON.stringify([
+                    key, aa[key], bb[key]
+                ]));
+            });
+        }
+        validateSimpleLinearRegression({
+            aa: {
+                caa: -39.06191,
+                cbb: 61.272181,
+                crr: 0.9945831,
+                mxx: 1.6506661,
+                myy: 62.077991,
+                saa: 8.6318501,
+                sbb: 3.1539011,
+                see: 0.5761961
+            },
+            xxList: [
+                1.47, 1.50, 1.52, 1.55, 1.57, 1.60, 1.63, 1.65,
+                1.68, 1.70, 1.73, 1.75, 1.78, 1.80, 1.83
+            ],
+            yyList: [
+                52.21, 53.12, 54.48, 55.84, 57.20, 58.57, 59.93, 61.29,
+                63.11, 64.47, 66.28, 68.10, 69.92, 72.19, 74.46
+            ]
+        });
+        validateSimpleLinearRegression({
+            aa: {
+                caa: -39.74681,
+                cbb: 61.674631,
+                crr: 0.9954871,
+                mxx: 1.6509991,
+                myy: 62.077991,
+                saa: 7.2784471,
+                sbb: 2.6584591,
+                see: 0.4802361
+            },
+            xxList: [
+                1.47, 1.50, 1.52, 1.55, 1.57, 1.60, 1.63, 1.65,
+                1.68, 1.70, 1.73, 1.75, 1.78, 1.80, 1.83
+            ].map(function (elem) {
+                return 0.0254 * Math.round(elem / 0.0254);
+            }),
+            yyList: [
+                52.21, 53.12, 54.48, 55.84, 57.20, 58.57, 59.93, 61.29,
+                63.11, 64.47, 66.28, 68.10, 69.92, 72.19, 74.46
+            ]
+        });
+        [
+            [
+                {
+                    "0": 1,
+                    "1": 1,
+                    "2": 2,
+                    "3": 2,
+                    "4": 3,
+                    "5": 3
+                },
+                [
+                    {
+                        offset: 0,
+                        xxList: [
+                            1, 2, 3, 4, 5
+                        ],
+                        yyList: [
+                            1, 2, 2, 3, 3
+                        ]
+                    },
+                    {
+                        offset: 1,
+                        xxList: [
+                            1, 2, 3, 4, 5
+                        ],
+                        yyList: [
+                            1, 2, 2, 3, 3
+                        ]
+                    },
+                    {
+                        offset: 7,
+                        xxList: [
+                            1, 2, 3, 4, 5
+                        ],
+                        yyList: [
+                            1, 2, 2, 3, 3
+                        ]
+                    },
+                    {
+                        offset: 8,
+                        xxList: [],
+                        yyList: []
+                    },
+                    {
+                        offset: 25 * 8 - 1,
+                        xxList: [],
+                        yyList: []
+                    }
+                ]
+            ],
+            [
+                {
+                    "30": 1,
+                    "31": 1,
+                    "32": 2,
+                    "33": 2,
+                    "34": 3,
+                    "35": 3
+                },
+                [
+                    {
+                        offset: 0,
+                        xxList: [
+                            30, 31
+                        ],
+                        yyList: [
+                            1, 1
+                        ]
+                    },
+                    {
+                        offset: 1,
+                        xxList: [
+                            30, 31, 32, 33, 34, 35
+                        ],
+                        yyList: [
+                            1, 1, 2, 2, 3, 3
+                        ]
+                    },
+                    {
+                        offset: 7,
+                        xxList: [
+                            30, 31, 32, 33, 34, 35
+                        ],
+                        yyList: [
+                            1, 1, 2, 2, 3, 3
+                        ]
+                    },
+                    {
+                        offset: 8,
+                        xxList: [
+                            32, 33, 34, 35
+                        ],
+                        yyList: [
+                            2, 2, 3, 3
+                        ]
+                    },
+                    {
+                        offset: 15,
+                        xxList: [
+                            32, 33, 34, 35
+                        ],
+                        yyList: [
+                            2, 2, 3, 3
+                        ]
+                    },
+                    {
+                        offset: 16,
+                        xxList: [],
+                        yyList: []
+                    },
+                    {
+                        offset: 25 * 8 - 1,
+                        xxList: [],
+                        yyList: []
+                    }
+                ]
+            ]
+        ].forEach(function ([
+            ohlcvDict, slrList
+        ]) {
+            [
+                0, 1, 2, 3
+            ].forEach(async function (ll) {
+                let buf = new Float64Array(
+                    2 + 5 + 5 * Object.keys(ohlcvDict)[
+                        Object.keys(ohlcvDict).length - 1
+                    ]
+                );
+                buf[0] = (buf.length - 2) / 5;
+                buf[1] = 5;
+                Object.entries(ohlcvDict).forEach(function ([
+                    key, val
+                ]) {
+                    buf[2 + key * 5 + ll] = val;
+                });
+                //!! debugInline(buf);
+                buf = new Float64Array(await dbGetLastBlobAsync({
+                    bindList: [
+                        buf
+                    ],
+                    db,
+                    sql: "SELECT(slr_ohlcv(?)) AS blob;"
+                }));
+                slrList.forEach(function ({
+                    offset,
+                    xxList,
+                    yyList
+                }) {
+                    let aa = {};
+                    structSlrxy.forEach(function (key, ii) {
+                        aa[key] = buf[ii + offset * structSlrxy.length];
+                    });
+                    //!! debugInline(buf);
+                    validateSimpleLinearRegression({
+                        aa,
+                        xxList: xxList.map(function (kk) {
+                            return (
+                                // price - open
+                                ll === 0
+                                ? kk + 0.270833333333333333
+                                // price - high, low
+                                : (ll === 1 || ll === 2)
+                                ? kk + 0.135416666666666666
+                                // price - close
+                                : kk
+                            );
+                        }),
+                        yyList
+                    });
+                });
+            });
         });
     }
 
