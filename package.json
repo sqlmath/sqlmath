@@ -4,6 +4,7 @@
         "name": "kai zhu"
     },
     "description": "sqlite for data-science",
+    "fileCount": 21,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",
