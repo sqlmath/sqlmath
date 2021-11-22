@@ -90,7 +90,7 @@ jobs:
           # - macos-latest
           - ubuntu-latest
           # - windows-latest
-    name: job1 . node . v${{ matrix.node_version }} . ${{ matrix.architecture }} . ${{ matrix.os }}
+    name: job2 . node . v${{ matrix.node_version }} . ${{ matrix.architecture }} . ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     steps:
       # disable autocrlf in windows

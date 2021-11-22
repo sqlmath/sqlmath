@@ -3,6 +3,7 @@
         "email": "kaizhu256@gmail.com",
         "name": "kai zhu"
     },
+    "counter": 1,
     "description": "sqlite for data-science",
     "fileCount": 21,
     "homepage": "https://github.com/sqlmath/sqlmath",
