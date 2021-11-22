@@ -78,14 +78,12 @@ shCiBuild() {(set -e
     # patch sqlmath_napi.cpp
     printf '
 #define SQLMATH_NAPI
-extern "C" {
+#include "../sqlmath_custom.cpp"
 #include "../sqlmath_custom.c"
-}
     ' > .tmp/sqlmath_napi.cpp
     #
     # node-gyp - run
     node -e '
-/*jslint beta, name*/
 (function () {
     let cflags = {
         "cflags": [
@@ -138,7 +136,7 @@ extern "C" {
         return target;
     }
     process.chdir(".tmp");
-    require("fs").writeFileSync("binding.gyp", JSON.stringify({
+    require("fs").writeFileSync("binding.gyp", JSON.stringify({ //jslint-quiet
         "target_defaults": {
             "cflags": cflags.cflags,
             "cflags!": cflags["cflags!"],
@@ -384,7 +382,7 @@ extern "C" {
                 return "\u0027" + elem + "\u0027";
             }).join(" ") + ")"
         );
-        if (require("child_process").spawnSync("node", action, {
+        if (require("child_process").spawnSync("node", action, { //jslint-quiet
             stdio: [
                 "ignore", 1, 2
             ]
@@ -394,12 +392,13 @@ extern "C" {
     });
 }());
 ' "$@" # '
-    npm test --mode-fast
+    shCiTest
 )}
 
 shCiTest() {(set -e
+    node jslint.mjs .
+    export npm_config_mode_test=1
     node -e '
-/*jslint beta, name*/
 (function () {
     process.chdir(".tmp");
     [
@@ -423,7 +422,7 @@ shCiTest() {(set -e
                 return "\u0027" + elem + "\u0027";
             }).join(" ") + ")"
         );
-        if (require("child_process").spawnSync("node", action, {
+        if (require("child_process").spawnSync("node", action, { //jslint-quiet
             stdio: [
                 "ignore", 1, 2
             ]
@@ -433,10 +432,10 @@ shCiTest() {(set -e
     });
 }());
 ' "$@" # '
-    shRunWithCoverage node --input-type=module -e '
+    shRunWithCoverage --exclude=jslint.mjs node --input-type=module --eval '
 import sqlmath from "./sqlmath_custom.mjs";
 sqlmath.testAll();
-' "$@" # "'
+' "$@" # '
 )}
 
 (set -e

@@ -25,12 +25,27 @@ file sqlmath_h - start
 #define ALLOCC calloc
 #define ALLOCF free
 #define ALLOCM malloc
-#define ALLOCR realloc
+inline void *ALLOCR(
+    void *ptr,
+    size_t size
+) {
+    // handle null-case
+    if (ptr == NULL) {
+        return NULL;
+    }
+    void *ptr2 = realloc(ptr, size);
+    // if nomem, cleanup old ptr
+    if (ptr2 == NULL) {
+        free(ptr);
+    }
+    return ptr2;
+}
+
 #define JS_MAX_SAFE_INTEGER 0x1fffffffffffff
 #define JS_MIN_SAFE_INTEGER -0x1fffffffffffff
-#define MAX(aa, bb) (((aa) > (bb)) ? (aa) : (bb))
-#define MIN(aa, bb) (((aa) < (bb)) ? (aa) : (bb))
-#define SIZEOF_MESSAGE_DEFAULT 768
+#define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
+#define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
+#define SIZEOF_MESSAGE_DEFAULT 1024
 #define SQLITE_DATATYPE_BLOB            0x04
 #define SQLITE_DATATYPE_BLOB_0          0x14
 #define SQLITE_DATATYPE_FLOAT           0x02
@@ -39,15 +54,17 @@ file sqlmath_h - start
 #define SQLITE_DATATYPE_INTEGER_0       0x11
 #define SQLITE_DATATYPE_INTEGER_1       0x21
 #define SQLITE_DATATYPE_NULL            0x05
+#define SQLITE_DATATYPE_SHAREDARRAYBUFFER       -0x01
 #define SQLITE_DATATYPE_TEXT            0x03
 #define SQLITE_DATATYPE_TEXT_0          0x13
 #define SQLITE_ERROR_DATATYPE_INVALID 0x10003
 #define SQLITE_ERROR_NOMEM2 0x10001
 #define SQLITE_ERROR_TOOBIG2 0x10002
 #define SQLITE_MAX_LENGTH2 1000000000
-#define SQLITE_RESPONSETYPE_LAST_VALUE 1
 #define SQLITE_RESPONSETYPE_LAST_MATRIX_DOUBLE 2
+#define SQLITE_RESPONSETYPE_LAST_VALUE 1
 #define SQLMATH_API
+#define SWAP(aa, bb) tmp = (aa); (aa)=(bb); (bb) = tmp
 #define UNUSED(x) (void)(x)
 // define2
 /*
@@ -66,7 +83,7 @@ file sqlmath_h - start
 /*
 file sqlmath_h_struct
 */
-#define JSBATON_ARGC 8
+#define JSBATON_ARGC 16
 typedef struct napi_async_work__ *napi_async_work;
 typedef struct napi_deferred__ *napi_deferred;
 typedef struct napi_value__ *napi_value;
@@ -170,6 +187,37 @@ static NOINLINE int assertSqliteOk(
         return errcode;
     }
 }
+
+inline static int doubleCompare(
+    const void *aa,
+    const void *bb
+) {
+// this function will compare aa with bb
+    const double cc = *(double *) aa - *(double *) bb;
+    return cc == 0 ? 0 : cc > 0 ? 1 : -1;
+}
+
+inline static double doubleMax(
+    double aa,
+    double bb
+) {
+// this function will return max of aa, bb
+    return aa < bb ? bb : aa;
+}
+
+inline static double doubleMin(
+    double aa,
+    double bb
+) {
+// this function will return min of aa, bb
+    return aa > bb ? bb : aa;
+}
+
+inline static const int noop(
+) {
+// this function will do nothing except return 0
+    return 0;
+}
 #endif                          // SQLMATH_H
 /*
 file sqlmath_h - end
@@ -193,25 +241,22 @@ static char *base64Encode(
     int *nn
 ) {
 // this function will base64-encode <blob> to <text>
-    if (blob == NULL || nn == NULL || *nn < 0) {
+#define base64EncodeCleanup ALLOCF
+    if (blob == NULL || *nn < 0) {
         *nn = 0;
     }
     // declare var
     char *text = NULL;
-    int aa = *nn;
-    int bb = aa;
+    int aa = *nn - 3;
+    int bb = 0;
     int ii = 0;
     int triplet = 0;
     static const char BASE64_ENCODE_TABLE[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     // init bb
-    if (aa % 3 != 0) {
-        bb += 3 - (aa % 3);
-    }
-    bb /= 3;
-    bb *= 4;
+    bb = 4 * ceil((double) *nn / 3);
     // init text
-    text = ALLOCM(MAX(bb, 1));
+    text = ALLOCM(MAX(bb, 4));
     // handle nomem
     if (text == NULL) {
         return NULL;
@@ -221,7 +266,6 @@ static char *base64Encode(
         text[0] = '\x00';
     }
     // base64-encode loop
-    aa -= 3;
     while (ii < aa) {
         triplet = blob[0];
         triplet = triplet << 8 | blob[1];
@@ -235,7 +279,7 @@ static char *base64Encode(
         ii += 3;
     }
     // base64-encode '='
-    if (bb >= 4) {
+    if (bb >= 4 && blob != NULL) {
         aa += 3;
         triplet = blob[0];
         triplet = ii + 1 < aa ? triplet << 8 | blob[1] : triplet << 8;
@@ -360,7 +404,6 @@ static NOINLINE int str99AppendRawAfterGrow(
 ** Increase the size of the memory allocation for <str99->zBuf>.
 */
     // declare var
-    char *zTmp;
     int nAlloc;
     // sanity check
     if (!IS_SQLITE_OK(errcode)) {
@@ -376,12 +419,11 @@ static NOINLINE int str99AppendRawAfterGrow(
         nAlloc *= 2;
     }
     if (nAlloc > str99->nAlloced) {
-        zTmp = ALLOCR(str99->zBuf, nAlloc);
-        if (zTmp == NULL) {
+        str99->zBuf = ALLOCR(str99->zBuf, nAlloc);
+        if (str99->zBuf == NULL) {
             return SQLITE_ERROR_NOMEM2;
         }
         str99->nAlloced = nAlloc;
-        str99->zBuf = zTmp;
     }
     if (zz == NULL) {
         return errcode;
@@ -540,6 +582,8 @@ SQLMATH_API int dbExec(
     BindElem *bindList = NULL;
     Str99 *str99 = NULL;
     Str99 str0 = { 0 };
+    const char **pzShared = baton->bufin + 6;
+    const char *zBind = baton->bufin[3];
     const char *zSql = baton->bufin[1];
     const char *zTmp = NULL;
     double rTmp = 0;
@@ -552,6 +596,7 @@ SQLMATH_API int dbExec(
     int nCol = 0;
     int nRow = 0;
     int responseType = (int) baton->argint64[5];
+    int64_t *pnShared = baton->argint64 + 6;
     int64_t iTmp = 0;
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
     static const char bindPrefix[] = "$:@";
@@ -566,33 +611,38 @@ SQLMATH_API int dbExec(
     }
     bindElem = bindList;
     ii = 1;
-    zTmp = baton->bufin[3];
     while (ii <= bindListLength) {
         // init key and
         if (bindByKey) {
-            zTmp += 1;
-            bindElem->key = (char *) zTmp + 8;
-            zTmp += 8 + *(int *) zTmp;
+            zBind += 1;
+            bindElem->key = (char *) zBind + 8;
+            zBind += 8 + *(int *) zBind;
         }
         // init datatype
-        bindElem->datatype = zTmp[0];
-        zTmp += 1;
+        bindElem->datatype = zBind[0];
+        zBind += 1;
         switch (bindElem->datatype) {
         case SQLITE_DATATYPE_BLOB:
         case SQLITE_DATATYPE_TEXT:
-            bindElem->buflen = *(int *) zTmp;
-            bindElem->buf = zTmp + 8;
-            zTmp += 8 + bindElem->buflen;
+            bindElem->buflen = *(int *) zBind;
+            bindElem->buf = zBind + 8;
+            zBind += 8 + bindElem->buflen;
             break;
         case SQLITE_DATATYPE_FLOAT:
         case SQLITE_DATATYPE_INTEGER:
-            bindElem->buf = zTmp;
-            zTmp += 8;
+            bindElem->buf = zBind;
+            zBind += 8;
             break;
         case SQLITE_DATATYPE_INTEGER_0:
         case SQLITE_DATATYPE_INTEGER_1:
         case SQLITE_DATATYPE_NULL:
         case SQLITE_DATATYPE_TEXT_0:
+            break;
+        case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
+            bindElem->buflen = *(int *) pnShared;
+            bindElem->buf = *pzShared;
+            pnShared += 1;
+            pzShared += 1;
             break;
         default:
             printf("\n[ii=%d, datatype=%d, len=%d]\n", ii, bindElem->datatype,
@@ -605,6 +655,7 @@ SQLMATH_API int dbExec(
     }
     // init str99
     str99 = &str0;
+    // will be cleaned up by jsbatonBufferFinalize()
     str99->zBuf = ALLOCM(SIZEOF_MESSAGE_DEFAULT);
     if (str99->zBuf == NULL) {
         errcode = SQLITE_ERROR_NOMEM2;
@@ -626,7 +677,7 @@ SQLMATH_API int dbExec(
             break;
         }
         zSql = zTmp;
-        // bind blob to pStmt
+        // bind bindList to pStmt
         bindElem = bindList;
         ii = 1;
         while (ii <= bindListLength) {
@@ -667,6 +718,11 @@ SQLMATH_API int dbExec(
                         break;
                     case SQLITE_DATATYPE_NULL:
                         errcode = sqlite3_bind_null(pStmt, bindIdx);
+                        break;
+                    case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
+                        errcode =
+                            sqlite3_bind_blob(pStmt, bindIdx, bindElem->buf,
+                            bindElem->buflen, SQLITE_STATIC);
                         break;
                     case SQLITE_DATATYPE_TEXT_0:
                         errcode =
@@ -831,12 +887,11 @@ SQLMATH_API int dbExec(
     }
     // shrink str99
     str99->nAlloced = str99->nUsed;
-    zTmp = (const char *) ALLOCR(str99->zBuf, MAX(str99->nAlloced, 1));
-    if (zTmp == NULL) {
+    str99->zBuf = (char *) ALLOCR(str99->zBuf, MAX(str99->nAlloced, 1));
+    if (str99->zBuf == NULL) {
         errcode = SQLITE_ERROR_NOMEM2;
         ASSERT_SQLITE_OK(baton, db, errcode);
     }
-    str99->zBuf = (char *) zTmp;
   catch_error:
     // cleanup bindList
     ALLOCF(bindList);
@@ -1086,7 +1141,8 @@ static void sql_tobase64_func(
         sqlite3_result_error_nomem(context);
         return;
     }
-    sqlite3_result_text(context, (const char *) text, nn, ALLOCF);
+    sqlite3_result_text(context, (const char *) text, nn,
+        base64EncodeCleanup);
 }
 
 static void sql_tostring_func(
@@ -1253,8 +1309,7 @@ static void jsbatonBufferFinalize(
 // this function will finalize <finalize_data>
     UNUSED(env);
     UNUSED(finalize_hint);
-    // printf("\n[napi finalize_data=%s]\n", (const char *) finalize_data);
-    // printf("\n[napi finalize_hint=%s]\n", (const char *) finalize_hint);
+    // cleanup baton->bufout[ii]
     ALLOCF(finalize_data);
 }
 
@@ -1265,7 +1320,7 @@ static Jsbaton *jsbatonCreate(
 // this function will create a baton for passing data between nodejs <-> c
     // declare var
     Jsbaton *baton = NULL;
-    bool istrue;
+    bool is_dataview;
     int errcode = 0;
     napi_value argv;
     size_t ii = 1;
@@ -1286,12 +1341,12 @@ static Jsbaton *jsbatonCreate(
     while (ii < JSBATON_ARGC) {
         errcode = napi_get_element(env, baton->result, ii + 1, &argv);
         ASSERT_NAPI_OK(env, errcode);
-        errcode = napi_is_buffer(env, argv, &istrue);
+        errcode = napi_is_dataview(env, argv, &is_dataview);
         ASSERT_NAPI_OK(env, errcode);
-        if (istrue) {
+        if (is_dataview) {
             errcode =
-                napi_get_buffer_info(env, argv,
-                (void **) &baton->bufin[ii], NULL);
+                napi_get_dataview_info(env, argv, NULL,
+                (void **) &baton->bufin[ii], NULL, NULL);
             ASSERT_NAPI_OK(env, errcode);
         }
         ii += 1;
@@ -1315,6 +1370,7 @@ static napi_value jsbatonExport(
                 napi_create_double(env, (double) baton->argint64[ii], &val);
             ASSERT_NAPI_OK(env, errcode);
         } else {
+            // init baton->bufout[ii]
             errcode = napi_create_external_arraybuffer(env,     // napi_env env,
                 (void *) baton->bufout[ii],     // void* external_data,
                 (size_t) baton->argint64[ii],   // size_t byte_length,
@@ -1658,6 +1714,7 @@ static void __dbFinalizer(
         // fprintf(stderr, "\nsqlite - __dbFinalizer(%d)\n", dbCount);
     }
     ASSERT_NAPI_FATAL(errcode == 0, "sqlite3_close_v2");
+    // cleanup aDb
     ALLOCF(finalize_data);
 }
 
@@ -1670,6 +1727,7 @@ static napi_value __dbFinalizerCreate(
     // declare var
     int errcode = 0;
     napi_value val = NULL;
+    // init aDb
     int64_t *aDb = (int64_t *) ALLOCM(sizeof(int64_t));
     ASSERT_NAPI_FATAL(aDb != NULL, "out of memory");
     errcode = napi_create_external_arraybuffer(env,     // napi_env env,
