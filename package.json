@@ -4,8 +4,14 @@
         "name": "kai zhu"
     },
     "counter": 1,
+    "cpu": [
+        "x64"
+    ],
     "description": "sqlite for data-science",
-    "fileCount": 20,
+    "engines": {
+        "node": ">=14"
+    },
+    "fileCount": 22,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",
@@ -14,8 +20,13 @@
         "sqlite"
     ],
     "license": "MIT",
-    "main": "./sqlmath.mjs",
+    "main": "sqlmath.mjs",
     "name": "sqlmath",
+    "os": [
+        "darwin",
+        "linux",
+        "win32"
+    ],
     "repository": {
         "type": "git",
         "url": "https://github.com/sqlmath/sqlmath"
@@ -26,5 +37,5 @@
         "test2": "sh jslint_ci.sh shCiBase",
         "test_win32": "node -e \"require('child_process').spawn('C:\\\\Program Files\\\\Git\\\\bin\\\\bash.exe',['-c','npm run test' + ' ' + process.argv.slice(1).join(' ')],{stdio:['ignore',1,2]});\""
     },
-    "version": "0.0.1"
+    "version": "2021.11.20"
 }

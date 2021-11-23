@@ -213,7 +213,7 @@ inline static double doubleMin(
     return aa > bb ? bb : aa;
 }
 
-inline static const int noop(
+inline static int noop(
 ) {
 // this function will do nothing except return 0
     return 0;
@@ -1201,6 +1201,7 @@ file sqlmath_napi - start
 */
 #ifdef SQLMATH_NAPI
 // header
+#define NAPI_VERSION 8
 #include <node_api.h>
 static int dbCount = 0;
 

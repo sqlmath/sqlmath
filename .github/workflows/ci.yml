@@ -27,12 +27,12 @@ jobs:
           # - x86
         node_version:
           # - 12
-          # - 14
+          - 14
           - 16
         os:
-          # - macos-latest
+          - macos-latest
           - ubuntu-latest
-          # - windows-latest
+          - windows-latest
     name: job1 . node . v${{ matrix.node_version }} . ${{ matrix.architecture }} . ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -63,7 +63,7 @@ jobs:
       # upload build-artifacts to branch-gh-pages
       - run: sh jslint_ci.sh shCiArtifactUpload
         env:
-          CI_NODE_VERSION_ARCH_PLATFORM: v14.x64.linux
+          CI_NODE_VERSION_ARCH_PLATFORM: v16.x64.linux
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 # shCiArtifactUpload - end
 
@@ -74,6 +74,8 @@ jobs:
           name: binaries
           path: _binary_*
 # upload binaries - end
+
+
   job2:
     needs: job1
     strategy:
@@ -97,6 +99,8 @@ jobs:
       - run: git config --global core.autocrlf false
       # https://github.com/actions/checkout
       - uses: actions/checkout@v2
+
+
 # download binaries - start
       - uses: actions/download-artifact@v2
         with:
@@ -110,6 +114,6 @@ jobs:
       # upload build-artifacts to branch-gh-pages
       - run: sh jslint_ci.sh shCiArtifactUpload2
         env:
-          CI_NODE_VERSION_ARCH_PLATFORM: v14.x64.linux
+          CI_NODE_VERSION_ARCH_PLATFORM: v16.x64.linux
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 # shCiArtifactUpload2 - end

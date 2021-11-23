@@ -29,14 +29,8 @@ shCiArtifactUpload2() {(set -e
         cp -a ../.git .
         git checkout "$BRANCH" _binary_*
         rm -rf .git
-        git add -f .
+        git add -f _binary_*
     )
-    # update root-dir with branch-beta
-    if [ "$BRANCH" = beta ]
-    then
-        git rm -rf .build
-        git checkout beta .
-    fi
     git status
     git commit -am "update dir branch-$BRANCH" || true
     # push branch-gh-pages
@@ -347,8 +341,8 @@ shCiBuild() {(set -e
                 : ""
             ),
             "target_node": (
-                "_binary_sqlmath_napi"
-                + "_" + process.versions.napi
+                "_binary_sqlmath"
+                + "_napi8"
                 + "_" + process.platform
                 + "_" + process.arch
             ),
@@ -393,6 +387,23 @@ shCiBuild() {(set -e
 }());
 ' "$@" # '
     shCiTest
+)}
+
+shCiNpmPublishCustom() {(set -e
+# this function will run custom-code to npm-publish package
+    local FILE
+    # fetch binaries
+    git fetch origin gh-pages --depth=1
+    for FILE in \
+        _binary_sqlmath_napi8_darwin_x64.node \
+        _binary_sqlmath_napi8_linux_x64.node \
+        _binary_sqlmath_napi8_win32_x64.node
+    do
+        git checkout origin/gh-pages "branch-beta/$FILE"
+    done
+    cp -a branch-beta/_binary_* .
+    # npm-publish
+    npm publish --access public
 )}
 
 shCiTest() {(set -e

@@ -1,11 +1,6 @@
 /*jslint beta, bitwise, name, node*/
 "use strict";
-import {
-    Blob
-} from "buffer";
-import {
-    createRequire
-} from "module";
+import {createRequire} from "module";
 import jslint from "./jslint.mjs";
 
 let {
@@ -444,7 +439,6 @@ file sqlmath.js
         }
         function serialize(val) {
 // this function will write to <bufResult>, <val> at given <offset>
-            let byteLength = 0;
 /*
 #define SQLITE_DATATYPE_BLOB            0x04
 #define SQLITE_DATATYPE_BLOB_0          0x14
@@ -534,11 +528,9 @@ file sqlmath.js
                 return;
             // 16. true.string
             case "true.string":
-                byteLength = new Blob([
-                    val
-                ]).size;
-                bufferAppendDatatype(SQLITE_DATATYPE_TEXT, 8 + byteLength);
-                bufferSetBigint64(offset, BigInt(byteLength));
+                val = new TextEncoder().encode(val);
+                bufferAppendDatatype(SQLITE_DATATYPE_TEXT, 8 + val.byteLength);
+                bufferSetBigint64(offset, BigInt(val.byteLength));
                 offset += 8;
                 offset += bufferSetBuffer(bufResult, val, offset);
                 return;
@@ -571,11 +563,9 @@ file sqlmath.js
                     ? val.toJSON()
                     : JSON.stringify(val)
                 );
-                byteLength = new Blob([
-                    val
-                ]).size;
-                bufferAppendDatatype(SQLITE_DATATYPE_TEXT, 8 + byteLength);
-                bufferSetBigint64(offset, BigInt(byteLength));
+                val = new TextEncoder().encode(val);
+                bufferAppendDatatype(SQLITE_DATATYPE_TEXT, 8 + val.byteLength);
+                bufferSetBigint64(offset, BigInt(val.byteLength));
                 offset += 8;
                 offset += bufferSetBuffer(bufResult, val, offset);
             }
@@ -1664,8 +1654,8 @@ SELECT * FROM testDbExecAsync2;
     }
 
     addon = requireCjs(
-        "./_binary_sqlmath_napi"
-        + "_" + process.versions.napi
+        "./_binary_sqlmath"
+        + "_napi8"
         + "_" + process.platform
         + "_" + process.arch
         + ".node"

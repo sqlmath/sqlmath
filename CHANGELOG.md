@@ -1,15 +1,15 @@
 # Changelog
 
 # Todo
-- add ml-functionality
 - none
 
 # v2021.11.20
+- npm publish v2021.10.20
 - update to jslint v2021.10.20
+- refactor - replace nodejs-buffer-api-calls with DataView / TextDecoder / TextEncoder
 
 # v2021.10.20
 - revamp - update to jslint_ci.sh from 2020.10.2
-- refactor - replace nodejs-buffer-api-calls with DataView / TextDecoder / TextEncoder
 
 # v2021.9.9
 - add sql-function slr_ohlcv() with tests
