@@ -202,11 +202,12 @@ function assertJsonEqual(aa, bb, message) {
 
 // This function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>).
 
-    aa = JSON.stringify(objectDeepCopyWithKeysSorted(aa));
-    bb = JSON.stringify(objectDeepCopyWithKeysSorted(bb));
+    aa = JSON.stringify(objectDeepCopyWithKeysSorted(aa), undefined, 1);
+    bb = JSON.stringify(objectDeepCopyWithKeysSorted(bb), undefined, 1);
     if (aa !== bb) {
         throw new Error(
-            JSON.stringify(aa) + " !== " + JSON.stringify(bb) + (
+            "\n" + aa + "\n!==\n" + bb
+            + (
                 typeof message === "string"
                 ? " - " + message
                 : message

@@ -3,6 +3,10 @@
 # Todo
 - none
 
+# v2021.12.1-beta
+- add sql-function kthpercentile(val, percentile)
+- update sql-functions compress(), uncompress() with null check/guard
+
 # v2021.11.20
 - npm publish v2021.10.20
 - update to jslint v2021.10.20

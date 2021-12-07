@@ -168,8 +168,12 @@ file sqlmath.js
         bindList = [],
         db,
         responseType,
-        rowList,
-        sql
+        sql,
+        tmpColList,
+        tmpColListPriority,
+        tmpCsv,
+        tmpRowList,
+        tmpTableName
     }) {
 // this function will exec <sql> in <db> and return <result>
         let bindByKey = !Array.isArray(bindList);
@@ -180,10 +184,14 @@ file sqlmath.js
         );
         let result;
         let serialize = jsToSqlSerializer();
-        if (rowList) {
+        if (tmpCsv || tmpRowList) {
             await dbTableInsertAsync({
+                colList: tmpColList,
+                colListPriority: tmpColListPriority,
+                csv: tmpCsv,
                 db,
-                rowList
+                rowList: tmpRowList,
+                tableName: tmpTableName
             });
         }
         Object.entries(bindList).forEach(function ([
@@ -306,9 +314,12 @@ file sqlmath.js
         ), async function () {
             let finalizer;
             let ptr = await cCall("__dbOpenAsync", [
-                String(filename), undefined, flags ?? (
+                String(filename),
+                undefined,
+                flags ?? (
                     SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
-                ), undefined
+                ),
+                undefined
             ]);
             ptr = ptr[0][0];
             finalizer = new BigInt64Array(addon.__dbFinalizerCreate());
@@ -330,13 +341,14 @@ file sqlmath.js
         csv,
         db,
         rowList,
-        tableName = "tmp1"
+        tableName
     }) {
 // this function will create-or-replace temp <tablename> with <rowList>
         let serialize = jsToSqlSerializer();
         let sqlCreateTable;
         let sqlInsertRow;
         // normalize and validate tableName
+        tableName = tableName || "__tmp1";
         tableName = "temp." + JSON.stringify(tableName.replace((
             /^temp\./
         ), ""));
@@ -429,9 +441,6 @@ file sqlmath.js
         }
         function bufferSetBuffer(aa, bb, offset) {
 // this function will set buffer <bb> to buffer <aa> at <offset>
-            if (typeof bb === "string") {
-                bb = new TextEncoder().encode(bb);
-            }
             aa = new Uint8Array(aa.buffer, aa.byteOffset, aa.byteLength);
             bb = new Uint8Array(bb.buffer, bb.byteOffset, bb.byteLength);
             aa.set(bb, offset);
@@ -1212,19 +1221,15 @@ Definition of the CSV Format
                 colListPriority,
                 rowList
             }, jj) {
-                let cc;
-                await dbTableInsertAsync({
-                    colList,
-                    colListPriority,
-                    db,
-                    rowList,
-                    tableName: "datatype_" + ii + "_" + jj
-                });
-                cc = noop(
+                let cc = noop(
                     await dbExecAsync({
                         db,
                         responseType: "list",
-                        sql: "SELECT * FROM datatype_" + ii + "_" + jj
+                        sql: `SELECT * FROM datatype_${ii}_${jj}`,
+                        tmpColList: colList,
+                        tmpColListPriority: colListPriority,
+                        tmpRowList: rowList,
+                        tmpTableName: "datatype_" + ii + "_" + jj
                     })
                 )[0];
                 // debugInline(ii, jj, aa, bb, cc);
@@ -1282,12 +1287,14 @@ Definition of the CSV Format
                         sql: (`
 CREATE TABLE testDbExecAsync1 AS
 SELECT 101 AS c101, 102 AS c102
+--
 UNION ALL
 VALUES
     (201, 202),
     (301, NULL);
 CREATE TABLE testDbExecAsync2 AS
 SELECT 401 AS c401, 402 AS c402, 403 AS c403
+--
 UNION ALL
 VALUES
     (501, 502.0123, 5030123456789),
@@ -1388,7 +1395,7 @@ SELECT * FROM testDbExecAsync2;
                 await dbExecAsync({
                     db,
                     responseType: "dict",
-                    sql: "SELECT " + sql + " AS val"
+                    sql: `SELECT ${sql} AS val`
                 })
             )[0][0].val;
             assertOrThrow(bb === cc, JSON.stringify([
@@ -1480,11 +1487,15 @@ SELECT * FROM testDbExecAsync2;
         ].forEach(function ([
             rowList, rgx
         ]) {
-            assertErrorThrownAsync(function () {
-                return dbTableInsertAsync({
-                    rowList
-                });
-            }, rgx);
+            assertErrorThrownAsync(
+                dbTableInsertAsync.bind(
+                    undefined,
+                    {
+                        rowList
+                    }
+                ),
+                rgx
+            );
         });
         // test csv handling-behavior
         [
@@ -1526,17 +1537,13 @@ SELECT * FROM testDbExecAsync2;
         ].forEach(async function ([
             aa, bb
         ], ii) {
-            let cc;
-            await dbTableInsertAsync({
-                csv: aa,
-                db,
-                tableName: "csv_" + ii
-            });
-            cc = noop(
+            let cc = noop(
                 await dbExecAsync({
                     db,
                     responseType: "list",
-                    sql: "SELECT * FROM temp.csv_" + ii
+                    sql: `SELECT * FROM temp.csv_${ii}`,
+                    tmpCsv: aa,
+                    tmpTableName: "csv_" + ii
                 })
             )[0];
             assertOrThrow(
@@ -1590,7 +1597,7 @@ SELECT * FROM testDbExecAsync2;
                 return;
             }
             ii *= 0.5;
-            sql = "SELECT throwerror(" + sql + ")";
+            sql = `SELECT throwerror(${sql})`;
             assertErrorThrownAsync(function () {
                 return dbExecAsync({
                     db,
@@ -1653,6 +1660,99 @@ SELECT * FROM testDbExecAsync2;
         });
     }
 
+    async function testSqlKthpercentile() {
+// this function will test sql-kthpercentile's handling-behavior
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        [
+            [
+                [], -99, 1
+            ], [
+                [], 0, 1
+            ], [
+                [], 0.125, 1
+            ], [
+                [], 0.25, 2
+            ], [
+                [], 0.375, 3
+            ], [
+                [], 0.5, 4
+            ], [
+                [], 0.625, 5
+            ], [
+                [], 0.75, 6
+            ], [
+                [], 0.875, 7
+            ], [
+                [], 1, 8
+            ], [
+                [], 99, 8
+            ], [
+                [
+                    0.5
+                ], 0, 0.5
+            ], [
+                [
+                    0.5
+                ], 0.125, 0.5
+            ], [
+                [
+                    1.5
+                ], 0.25, 1.5
+            ], [
+                [
+                    2.5
+                ], 0.375, 2.5
+            ], [
+                [
+                    3.5
+                ], 0.5, 3.5
+            ], [
+                [
+                    4.5
+                ], 0.625, 4.5
+            ], [
+                [
+                    5.5
+                ], 0.75, 5.5
+            ], [
+                [
+                    6.5
+                ], 0.875, 6.5
+            ], [
+                [
+                    7.5
+                ], 1, 8
+            ]
+        ].forEach(async function ([
+            data, kk, expected
+        ], ii) {
+            let actual;
+            data = data.concat([
+                undefined, undefined, 8, 7, 6, 5, 4, 3, 2, 1, undefined
+            ]);
+            actual = noop(
+                await dbExecAsync({
+                    db,
+                    sql: (`
+SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii};
+                    `),
+                    tmpRowList: data.map(function (val) {
+                        return {
+                            val
+                        };
+                    }),
+                    tmpTableName: `__tmp${ii}`
+                })
+            )[0][0].val;
+            assertJsonEqual(actual, expected, {
+                data,
+                kk
+            });
+        });
+    }
+
     addon = requireCjs(
         "./_binary_sqlmath"
         + "_napi8"
@@ -1670,7 +1770,8 @@ SELECT * FROM testDbExecAsync2;
         testDbOpenAsync,
         testDbTableInsertAsync,
         testSqlError,
-        testSqlExt
+        testSqlExt,
+        testSqlKthpercentile
     ];
     Object.assign(local, {
         SQLITE_MAX_LENGTH2,

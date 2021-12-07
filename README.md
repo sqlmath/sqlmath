@@ -19,11 +19,11 @@
 
 <br><br>
 # Package Listing
-![screenshot_package_listing.svg](https://jslint-org.github.io/jslint/branch-beta/.artifact/screenshot_package_listing.svg)
+![screenshot_package_listing.svg](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_package_listing.svg)
 
 
 <br><br>
 # Changelog
 - [Full CHANGELOG.md](CHANGELOG.md)
 
-![screenshot_changelog.svg](https://jslint-org.github.io/jslint/branch-beta/.artifact/screenshot_changelog.svg)
+![screenshot_changelog.svg](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_changelog.svg)

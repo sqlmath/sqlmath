@@ -64,7 +64,7 @@ inline void *ALLOCR(
 #define SQLITE_RESPONSETYPE_LAST_MATRIX_DOUBLE 2
 #define SQLITE_RESPONSETYPE_LAST_VALUE 1
 #define SQLMATH_API
-#define SWAP(aa, bb) tmp = (aa); (aa)=(bb); (bb) = tmp
+#define SWAP(aa, bb) tmp = (aa); (aa) = (bb); (bb) = tmp
 #define UNUSED(x) (void)(x)
 // define2
 /*
@@ -297,6 +297,93 @@ static char *base64Encode(
     *nn = bb;
     // return text
     return text - bb;
+}
+
+double kthpercentile(
+    double *arr,
+    int nn,
+    double kk
+) {
+// this function will find <kk>-th-percentile element in <arr>
+// using quickselect-algorithm
+// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
+    double aa;
+    double tmp;
+    int kk2 = kk * nn - 1;
+    if (kk2 <= 0) {
+        kk2 = nn;
+        aa = INFINITY;
+        while (kk2 > 0) {
+            kk2 -= 1;
+            aa = MIN(aa, arr[kk2]);
+        }
+        return aa;
+    }
+    if (kk2 + 1 >= nn) {
+        kk2 = nn;
+        aa = -INFINITY;
+        while (kk2 > 0) {
+            kk2 -= 1;
+            aa = MAX(aa, arr[kk2]);
+        }
+        return aa;
+    }
+    int ii;
+    int ir;
+    int jj;
+    int ll;
+    int mid;
+    ll = 0;
+    ir = nn - 1;
+    while (1) {
+        if (ir <= ll + 1) {
+            if (ir == ll + 1 && arr[ir] < arr[ll]) {
+                SWAP(arr[ll], arr[ir]);
+            }
+            return arr[kk2];
+        } else {
+            mid = (ll + ir) >> 1;
+            SWAP(arr[mid], arr[ll + 1]);
+            if (arr[ll] > arr[ir]) {
+                SWAP(arr[ll], arr[ir]);
+            }
+            if (arr[ll + 1] > arr[ir]) {
+                SWAP(arr[ll + 1], arr[ir]);
+            }
+            if (arr[ll] > arr[ll + 1]) {
+                SWAP(arr[ll], arr[ll + 1]);
+            }
+            ii = ll + 1;
+            jj = ir;
+            aa = arr[ll + 1];
+            while (1) {
+                while (1) {
+                    ii += 1;
+                    if (arr[ii] >= aa) {
+                        break;
+                    }
+                }
+                while (1) {
+                    jj -= 1;
+                    if (arr[jj] <= aa) {
+                        break;
+                    }
+                }
+                if (jj < ii) {
+                    break;
+                }
+                SWAP(arr[ii], arr[jj]);
+            }
+            arr[ll + 1] = arr[jj];
+            arr[jj] = aa;
+            if (jj >= kk2) {
+                ir = jj - 1;
+            }
+            if (jj <= kk2) {
+                ll = ii;
+            }
+        }
+    }
 }
 
 
@@ -562,6 +649,47 @@ static int str99AppendJson(
     return errcode;
 }
 
+Str99 *str99Create(
+) {
+// This function will allocate memory for and initialize new Str99 object.
+    Str99 *str99 = ALLOCC(1, sizeof(Str99));
+    if (str99 == NULL) {
+        return NULL;
+    }
+    str99->zBuf = ALLOCM(SIZEOF_MESSAGE_DEFAULT);
+    if (str99->zBuf == NULL) {
+        ALLOCF(str99);
+        return NULL;
+    }
+    str99->nAlloced = SIZEOF_MESSAGE_DEFAULT;
+    str99->nUsed = 0;
+    return str99;
+}
+
+void str99Destroy(
+    Str99 * str99
+) {
+// This function will deallocate memory for <str99>.
+    if (str99 == NULL) {
+        return;
+    }
+    ALLOCF(str99->zBuf);
+    ALLOCF(str99);
+}
+
+Str99 *str99Normalize(
+    Str99 * str99
+) {
+// This function will free unused memory in <str99>.
+    str99->zBuf = (char *) ALLOCR(str99->zBuf, MAX(str99->nAlloced, 1));
+    if (str99->zBuf == NULL) {
+        str99Destroy(str99);
+        return NULL;
+    }
+    str99->nAlloced = str99->nUsed;
+    return str99;
+}
+
 
 /*
 file sqlmath_c_dbXxx
@@ -581,7 +709,6 @@ SQLMATH_API int dbExec(
     BindElem *bindElem;
     BindElem *bindList = NULL;
     Str99 *str99 = NULL;
-    Str99 str0 = { 0 };
     const char **pzShared = baton->bufin + 6;
     const char *zBind = baton->bufin[3];
     const char *zSql = baton->bufin[1];
@@ -600,7 +727,6 @@ SQLMATH_API int dbExec(
     int64_t iTmp = 0;
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
     static const char bindPrefix[] = "$:@";
-    // printf("\n[errcode=%d, sql=%s]\n", errcode, zSql);
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
     // init bindList
@@ -645,7 +771,7 @@ SQLMATH_API int dbExec(
             pzShared += 1;
             break;
         default:
-            printf("\n[ii=%d, datatype=%d, len=%d]\n", ii, bindElem->datatype,
+            printf("\n[ii=%d  datatype=%d  len=%d]\n", ii, bindElem->datatype,
                 bindElem->buflen);
             errcode = SQLITE_ERROR_DATATYPE_INVALID;
             ASSERT_SQLITE_OK(baton, db, errcode);
@@ -654,14 +780,11 @@ SQLMATH_API int dbExec(
         ii += 1;
     }
     // init str99
-    str99 = &str0;
-    // will be cleaned up by jsbatonBufferFinalize()
-    str99->zBuf = ALLOCM(SIZEOF_MESSAGE_DEFAULT);
-    if (str99->zBuf == NULL) {
+    str99 = str99Create();
+    if (str99 == NULL) {
         errcode = SQLITE_ERROR_NOMEM2;
         ASSERT_SQLITE_OK(baton, db, errcode);
     }
-    str99->nAlloced = SIZEOF_MESSAGE_DEFAULT;
     // bracket database [
     STR99_APPEND_CHAR2('[');
     // loop over each table
@@ -671,7 +794,6 @@ SQLMATH_API int dbExec(
             || *zSql == '\r') {
             zSql += 1;
         }
-        // printf("\n[prepare=%s]\n", zSql);
         errcode = sqlite3_prepare_v2(db, zSql, -1, &pStmt, &zTmp);
         if (errcode != 0 || *zSql == '\x00') {
             break;
@@ -690,9 +812,6 @@ SQLMATH_API int dbExec(
                     bindIdx =
                         sqlite3_bind_parameter_index(pStmt, bindElem->key);
                 }
-                // printf("\n[errcode=%d, ii=%d, idx=%d, key=%s, datatype=%d,"
-                //     " len=%d]\n", errcode, ii, bindIdx, bindElem->key,
-                //     bindElem->datatype, bindElem->buflen);
                 if (bindIdx > 0) {
                     switch (bindElem->datatype) {
                     case SQLITE_DATATYPE_BLOB:
@@ -735,7 +854,7 @@ SQLMATH_API int dbExec(
                             bindElem->buflen, SQLITE_TRANSIENT);
                         break;
                     default:
-                        printf("\n[ii=%d, datatype=%d, len=%d]\n", ii,
+                        printf("\n[ii=%d  datatype=%d  len=%d]\n", ii,
                             bindElem->datatype, bindElem->buflen);
                         errcode = SQLITE_ERROR_DATATYPE_INVALID;
                     }
@@ -762,7 +881,9 @@ SQLMATH_API int dbExec(
                 if (errcode == SQLITE_DONE || errcode == SQLITE_OK) {
                     break;
                 }
-                // printf("\n[errcode=%d, line=%d]\n", errcode, __LINE__);
+                if (noop()) {
+                    printf("\n[errcode=%d  line=%d]\n", errcode, __LINE__);
+                }
                 goto catch_error;
             }
             // insert row of column-names
@@ -813,8 +934,10 @@ SQLMATH_API int dbExec(
                         str99AppendRaw(str99, sqlite3_column_blob(pStmt, ii),
                         sqlite3_column_bytes(pStmt, ii), errcode);
                     if (!IS_SQLITE_OK(errcode)) {
-                        // printf("\n[errcode=%d, line=%d]\n", errcode,
-                        //     __LINE__);
+                        if (noop()) {
+                            printf("\n[errcode=%d  line=%d]\n", errcode,
+                                __LINE__);
+                        }
                         goto catch_error;
                     }
                     ii += 1;
@@ -885,10 +1008,9 @@ SQLMATH_API int dbExec(
     if (responseType == SQLITE_RESPONSETYPE_LAST_MATRIX_DOUBLE) {
         ((double *) str99->zBuf)[0] = nRow;
     }
-    // shrink str99
-    str99->nAlloced = str99->nUsed;
-    str99->zBuf = (char *) ALLOCR(str99->zBuf, MAX(str99->nAlloced, 1));
-    if (str99->zBuf == NULL) {
+    // free unused memory in str99
+    str99 = str99Normalize(str99);
+    if (str99 == NULL) {
         errcode = SQLITE_ERROR_NOMEM2;
         ASSERT_SQLITE_OK(baton, db, errcode);
     }
@@ -900,9 +1022,9 @@ SQLMATH_API int dbExec(
     // handle errcode
     if (errcode != 0) {
         // cleanup str99
-        ALLOCF(str99->zBuf);
+        str99Destroy(str99);
         assertSqliteOk(baton, db, errcode, __func__, __FILE__, __LINE__);
-        // printf("\n[errcode=%d, errmsg=%s]\n", errcode, baton->errmsg);
+        // printf("\n[errcode=%d  errmsg=%s]\n", errcode, baton->errmsg);
         // mutext leave
         sqlite3_mutex_leave(sqlite3_db_mutex(db));
         return errcode;
@@ -919,8 +1041,8 @@ SQLMATH_API int dbTableInsert(
     sqlite3 * db,               /* The database on which the SQL executes */
     Jsbaton * baton
 ) {
-// This function will run <zSql> in <db> and save any result (list of tables
-// containing rows from SELECT/pragma/etc) as serialized json-string in <str99>.
+// This function will run <baton>->bufin[1] in <db> and insert rows
+// <baton>->bufin[2] to given table.
     // declare var
     const char *pp = baton->bufin[3];
     const char *zTmp = NULL;
@@ -942,7 +1064,6 @@ SQLMATH_API int dbTableInsert(
     bTxn = 1;
     // init pStmt
     errcode = sqlite3_prepare_v2(db, baton->bufin[2], -1, &pStmt, &zTmp);
-    // printf("\n[errcode=%d, nCol=%d, nRow=%d]\n", errcode, nCol, nRow);
     while (ii < nRow) {
         jj = 1;
         // type - js
@@ -999,7 +1120,7 @@ SQLMATH_API int dbTableInsert(
                 pp += 8 + nLen;
                 break;
             default:
-                printf("\n[ii=%d, jj=%d, datatype=%d, len=%d]\n",
+                printf("\n[ii=%d  jj=%d  datatype=%d  len=%d]\n",
                     ii, jj, datatype, *(int *) pp);
                 errcode = SQLITE_ERROR_DATATYPE_INVALID;
                 ASSERT_SQLITE_OK(baton, db, errcode);
@@ -1069,6 +1190,53 @@ static void sql_coth_func(
         sqlite3_result_double(context,
             1.0 / tanh(sqlite3_value_double(argv[0])));
     }
+}
+
+typedef struct SqlKthpercentile {
+    Str99 *str99;
+    double kk;
+} SqlKthpercentile;
+
+static void sql_kthpercentile_final(
+    sqlite3_context * context
+) {
+// this function will aggregate kth-percentile element
+    SqlKthpercentile *pp = sqlite3_aggregate_context(context, 0);
+    int nn = pp->str99->nUsed / 8;
+    double result = kthpercentile((double *) pp->str99->zBuf, nn, pp->kk);
+    str99Destroy(pp->str99);
+    if (nn <= 0) {
+        sqlite3_result_null(context);
+        return;
+    }
+    sqlite3_result_double(context, result);
+}
+
+static void sql_kthpercentile_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will aggregate kth-percentile element
+    UNUSED(argc);
+    // declare var
+    SqlKthpercentile *pp = NULL;
+    int errcode = 0;
+    if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
+        return;
+    }
+    pp = sqlite3_aggregate_context(context, sizeof(*pp));
+    if (pp->str99 == NULL) {
+        pp->str99 = str99Create();
+        if (pp->str99 == NULL) {
+            sqlite3_result_error_nomem(context);
+            return;
+        }
+        pp->kk = sqlite3_value_double(argv[1]);
+    }
+    errcode =
+        str99AppendDouble(pp->str99, sqlite3_value_double(argv[0]), errcode);
+    ASSERT_SQLITE_CONTEXT_OK(context, errcode);
 }
 
 static void sql_sign_func(
@@ -1187,6 +1355,7 @@ static int sqlite3_sqlmath_init(
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION1(tobase64, 1);
     SQLITE3_CREATE_FUNCTION1(tostring, 1);
+    SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
   catch_error:
     return errcode;
 }
@@ -1209,8 +1378,6 @@ static int dbCount = 0;
 /*
 file sqlmath_napi_assert
 */
-// printf("\n[napi errcode=%d]\n", errcode);
-
 // this function will if <cond> is falsy, throw <msg> in <env>
 #define ASSERT_NAPI(env, cond, msg) \
     if (!(cond)) { \
@@ -1667,7 +1834,6 @@ static int JSPROMISE_CREATE(
     dbCount += 1;
     // fprintf(stderr, "\nsqlite - __dbOpenAsync(%d)\n", dbCount);
     ASSERT_SQLITE_OK(baton, db, errcode);
-    // printf("\n[napi db=%zd]\n", (intptr_t) db);
     // save result
     baton->argint64[0] = (int64_t) (intptr_t) db;
   catch_error:

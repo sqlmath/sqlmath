@@ -96,6 +96,20 @@ shRawLibFetch
 +// hack-sqlite
 +    { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
 
+-  pIn = sqlite3_value_blob(argv[0]);
+-  nIn = sqlite3_value_bytes(argv[0]);
++  pIn = sqlite3_value_blob(argv[0]);
++// hack-sqlite - handle null-case compress
++  if (pIn == NULL) { sqlite3_result_error(context, "Cannot compress() NULL blob", -1); return; }
++  nIn = sqlite3_value_bytes(argv[0]);
+
+-  pIn = sqlite3_value_blob(argv[0]);
+-  nIn = sqlite3_value_bytes(argv[0]);
++  pIn = sqlite3_value_blob(argv[0]);
++// hack-sqlite - handle null-case uncompress
++  if (pIn == NULL) { sqlite3_result_error(context, "Cannot uncompress() NULL blob", -1); return; }
++  nIn = sqlite3_value_bytes(argv[0]);
+
 -#endif // SQLITE3_EXT_C2
 +// hack-sqlite - init sqlite3_ext_init
 +int sqlite3_ext_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi) {
@@ -730,6 +744,8 @@ static void compressFunc(
   int i, j;
 
   pIn = sqlite3_value_blob(argv[0]);
+// hack-sqlite - handle null-case compress
+  if (pIn == NULL) { sqlite3_result_error(context, "Cannot compress() null blob", -1); return; }
   nIn = sqlite3_value_bytes(argv[0]);
   nOut = 13 + nIn + (nIn+999)/1000;
   pOut = sqlite3_malloc( nOut+5 );
@@ -765,6 +781,8 @@ static void uncompressFunc(
   int i;
 
   pIn = sqlite3_value_blob(argv[0]);
+// hack-sqlite - handle null-case uncompress
+  if (pIn == NULL) { sqlite3_result_error(context, "Cannot uncompress() null blob", -1); return; }
   nIn = sqlite3_value_bytes(argv[0]);
   nOut = 0;
   for(i=0; i<nIn && i<5; i++){
