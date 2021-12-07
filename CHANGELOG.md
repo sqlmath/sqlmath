@@ -4,6 +4,7 @@
 - none
 
 # v2021.12.1-beta
+- remove file sqlmath_old.js
 - add sql-function kthpercentile(val, percentile)
 - update sql-functions compress(), uncompress() with null check/guard
 
