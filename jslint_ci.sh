@@ -2606,7 +2606,7 @@ function sentinel() {}
     coverageDir + "v8_coverage_merged.json",
     JSON.stringify(v8CoverageObj, undefined, 1)
   );
-  fileDict = {};
+  fileDict = Object.create(null);
   await Promise.all(v8CoverageObj.result.map(async function ({
     functions,
     url: pathname
@@ -2766,6 +2766,11 @@ import moduleFs from "fs";
     result = result.replace((
         /\r\n?/
     ), "\n").trimEnd();
+    // limit number-of-lines
+    result = result.split("\n").slice(
+        0,
+        process.env.SH_RUN_WITH_SCREENSHOT_TXT_MAX_LINES || Infinity
+    ).join("\n");
     // 96-column wordwrap
     result = result.split("\n").map(function (line) {
         let wordwrap = line.slice(0, 96).padEnd(96, " ");

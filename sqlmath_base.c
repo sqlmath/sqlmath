@@ -12,6 +12,7 @@ file sqlmath_h - start
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,6 +46,7 @@ inline void *ALLOCR(
 #define JS_MIN_SAFE_INTEGER -0x1fffffffffffff
 #define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
+#define SGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
 #define SIZEOF_MESSAGE_DEFAULT 1024
 #define SQLITE_DATATYPE_BLOB            0x04
 #define SQLITE_DATATYPE_BLOB_0          0x14
@@ -1044,16 +1046,16 @@ SQLMATH_API int dbTableInsert(
 // This function will run <baton>->bufin[1] in <db> and insert rows
 // <baton>->bufin[2] to given table.
     // declare var
+    char datatype = 0;
     const char *pp = baton->bufin[3];
     const char *zTmp = NULL;
-    char datatype = 0;
     int bTxn = 0;
     int errcode = 0;
     int ii = 0;
     int jj = 0;
     int nCol = (int) baton->argint64[4];
-    int nLen = 0;
     int nRow = (int) baton->argint64[5];
+    size_t nLen = 0;
     sqlite3_stmt *pStmt = NULL;
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
@@ -1081,7 +1083,7 @@ SQLMATH_API int dbTableInsert(
             switch (datatype) {
             case SQLITE_DATATYPE_BLOB:
                 nLen = *(int *) pp;
-                errcode = sqlite3_bind_blob(pStmt, jj, pp + 8, nLen,
+                errcode = sqlite3_bind_blob(pStmt, jj, pp + 8, (int) nLen,
                     SQLITE_TRANSIENT);
                 ASSERT_SQLITE_OK(baton, db, errcode);
                 pp += 8 + nLen;
@@ -1114,7 +1116,7 @@ SQLMATH_API int dbTableInsert(
                 break;
             case SQLITE_DATATYPE_TEXT:
                 nLen = *(int *) pp;
-                errcode = sqlite3_bind_text(pStmt, jj, pp + 8, nLen,
+                errcode = sqlite3_bind_text(pStmt, jj, pp + 8, (int) nLen,
                     SQLITE_TRANSIENT);
                 ASSERT_SQLITE_OK(baton, db, errcode);
                 pp += 8 + nLen;
@@ -1239,6 +1241,55 @@ static void sql_kthpercentile_step(
     ASSERT_SQLITE_CONTEXT_OK(context, errcode);
 }
 
+static void sql_random1_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will generate high-quality random-float between 0 <= xx < 1
+    UNUSED(argc);
+    UNUSED(argv);
+    static const double inv = 1.0 / 0x100000000;
+    uint32_t xx[1];
+    sqlite3_randomness(4, (void *) xx);
+    sqlite3_result_double(context, ((double) *xx) * inv);
+}
+
+static void sql_roundorzero_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will round <argv>[0] to decimal <argv>[1]
+    assert(argc == 1 || argc == 2);
+    if (sqlite3_value_type(argv[0]) == SQLITE_NULL) {
+        sqlite3_result_double(context, 0);
+    }
+    // declare var
+    char *zBuf = NULL;
+    double rr = sqlite3_value_double(argv[0]);
+    int nn = (argc == 2 ? sqlite3_value_int(argv[1]) : 0);
+    nn = MIN(nn, 30);
+    nn = MAX(nn, 0);
+    // If YY==0 and XX will fit in a 64-bit int,
+    // handle the rounding directly,
+    // otherwise use printf.
+    if (rr < -4503599627370496.0 || rr > +4503599627370496.0) {
+    } else if (nn == 0) {
+        // The value has no fractional part so there is nothing to round
+        rr = (double) ((sqlite_int64) (rr + (rr < 0 ? -0.5 : +0.5)));
+    } else {
+        zBuf = sqlite3_mprintf("%.*f", nn, rr);
+        if (zBuf == 0) {
+            sqlite3_result_error_nomem(context);
+            return;
+        }
+        rr = strtod(zBuf, NULL);
+        sqlite3_free(zBuf);
+    }
+    sqlite3_result_double(context, rr);
+}
+
 static void sql_sign_func(
     sqlite3_context * context,
     int argc,
@@ -1351,11 +1402,17 @@ static int sqlite3_sqlmath_init(
     sqlite3_api = pApi;
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
+    SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION1(tobase64, 1);
     SQLITE3_CREATE_FUNCTION1(tostring, 1);
     SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
+    errcode =
+        sqlite3_create_function(db, "random1", 0,
+        SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
+    ASSERT_SQLITE_OK(NULL, NULL, errcode)
+        SQLITE3_CREATE_FUNCTION1(roundorzero, 1);
   catch_error:
     return errcode;
 }

@@ -3,7 +3,9 @@
 # Todo
 - none
 
-# v2021.12.1-beta
+# v2022.3.5
+- update jslint v2022.2.20
+- add sqlite-function RANDOM1() generating random-float between 0 <= xx < 1
 - remove file sqlmath_old.js
 - add sql-function kthpercentile(val, percentile)
 - update sql-functions compress(), uncompress() with null check/guard

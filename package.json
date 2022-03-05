@@ -11,7 +11,7 @@
     "engines": {
         "node": ">=14"
     },
-    "fileCount": 22,
+    "fileCount": 21,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",
@@ -37,5 +37,5 @@
         "test2": "sh jslint_ci.sh shCiBase",
         "test_win32": "node -e \"require('child_process').spawn('C:\\\\Program Files\\\\Git\\\\bin\\\\bash.exe',['-c','npm run test' + ' ' + process.argv.slice(1).join(' ')],{stdio:['ignore',1,2]});\""
     },
-    "version": "2021.11.20"
+    "version": "2022.3.5"
 }

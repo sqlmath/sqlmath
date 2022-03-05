@@ -191,6 +191,11 @@ shCiBuild() {(set -e
                     "defines": [
                         "NDEBUG"
                     ],
+                    "msvs_settings": {
+                        "VCCLCompilerTool": {
+                            "Optimization": 2
+                        }
+                    },
                     "xcode_settings": {
                         "DEAD_CODE_STRIPPING": "YES",
                         "GCC_GENERATE_DEBUGGING_SYMBOLS": "NO",

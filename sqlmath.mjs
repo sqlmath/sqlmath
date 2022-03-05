@@ -8,7 +8,8 @@ let {
     assertJsonEqual,
     assertOrThrow,
     debugInline,
-    noop
+    noop,
+    objectDeepCopyWithKeysSorted
 } = jslint;
 let local = Object.assign({}, jslint);
 
@@ -17,7 +18,7 @@ function assertNumericalEqual(aa, bb, message) {
 // This function will assert aa - bb <= Number.EPSILON
 
     assertOrThrow(aa, "value cannot be 0 or falsy");
-    if (!(Math.abs(aa - bb) <= Number.EPSILON)) {
+    if (!(Math.abs((aa - bb) / Math.max(aa, bb)) <= 256 * Number.EPSILON)) {
         throw new Error(
             JSON.stringify(aa) + " != " + JSON.stringify(bb) + (
                 message
@@ -58,10 +59,10 @@ file sqlmath.js
     let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
     let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
     let addon;
-    let dbDict = new WeakMap();
+    let consoleError = console.error;
+    let dbDict = new WeakMap(); // private map of sqlite-database-connections
     let requireCjs = createRequire(import.meta.url);
     let testList;
-    // private map of sqlite-database-connections
 
     function cCall(func, argList) {
 // this function will serialize <argList> to a c <baton>,
@@ -236,6 +237,25 @@ file sqlmath.js
                     return dict;
                 });
             });
+        }
+    }
+
+    async function dbExecWithRetryAsync(option) {
+// this function will exec <sql> in <db> and return <result> with <retryLimit>
+        let retry = option.retryLimit || 1;
+        while (true) {
+            try {
+                return await dbExecAsync(option);
+            } catch (err) {
+                assertOrThrow(retry > 0, err);
+                consoleError(err);
+                consoleError(
+                    "dbExecWithRetryAsync - retry failed sql-query with "
+                    + retry
+                    + " remaining retry"
+                );
+                retry -= 1;
+            }
         }
     }
 
@@ -1357,18 +1377,27 @@ SELECT * FROM testDbExecAsync2;
         ));
         // test sqlmath-defined-func handling-behavior
         [
+            "COT(NULL)", null,
             "COT('-1')", -0.642092615934331,
             "COT('0')", null,
             "COT('1')", 0.642092615934331,
             "COT(-1)", -0.642092615934331,
             "COT(0)", null,
             "COT(1)", 0.642092615934331,
+            "COTH(NULL)", null,
             "COTH('-1')", -1.31303528549933,
             "COTH('0')", null,
             "COTH('1')", 1.31303528549933,
             "COTH(-1)", -1.31303528549933,
             "COTH(0)", null,
             "COTH(1)", 1.31303528549933,
+            "ROUNDORZERO(NULL)", 0,
+            "ROUNDORZERO(NULL, NULL)", 0,
+            "ROUNDORZERO(NULL, 0.5)", 0,
+            "ROUNDORZERO(0.5, NULL)", 1,
+            "ROUNDORZERO(0.5, 0.5)", 1,
+            "ROUNDORZERO(0.5, 1)", 0.5,
+            "SIGN(NULL)", null,
             "SIGN('-1')", -1,
             "SIGN('0')", 0,
             "SIGN('1')", 1,
@@ -1381,7 +1410,6 @@ SELECT * FROM testDbExecAsync2;
             "SIGN(0xffffffffffffffff)", -1,
             "SIGN(1)", 1,
             "SIGN(1e999)", 1,
-            "SIGN(NULL)", null,
             // sentinel
             "NULL", null
         ].forEach(async function (sql, ii, list) {
@@ -1398,10 +1426,21 @@ SELECT * FROM testDbExecAsync2;
                     sql: `SELECT ${sql} AS val`
                 })
             )[0][0].val;
-            assertOrThrow(bb === cc, JSON.stringify([
-                ii, sql, bb, cc
-            ]));
+            assertJsonEqual(bb, cc, {
+                bb,
+                cc,
+                ii,
+                sql
+            });
         });
+    }
+
+    function testDbExecWithRetryAsync() {
+// this function will test dbExecWithRetryAsync's handling-behavior
+        // test null-case handling-behavior
+        assertErrorThrownAsync(function () {
+            return dbExecWithRetryAsync({});
+        }, "invalid or closed db");
     }
 
     async function testDbMemoryXxx() {
@@ -1766,6 +1805,7 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii};
         testDbBind,
         testDbCloseAsync,
         testDbExecAsync,
+        testDbExecWithRetryAsync,
         testDbMemoryXxx,
         testDbOpenAsync,
         testDbTableInsertAsync,
@@ -1800,15 +1840,21 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii};
         assertNumericalEqual,
         dbCloseAsync,
         dbExecAsync,
+        dbExecWithRetryAsync,
         dbGetLastBlobAsync,
         dbMemoryLoadAsync,
         dbMemorySaveAsync,
         dbOpenAsync,
         dbTableInsertAsync,
         debugInline,
+        objectDeepCopyWithKeysSorted,
         testAll,
         testList
     });
+    if (process.env.npm_config_mode_test) {
+        // mock consoleError
+        consoleError = noop;
+    }
 }());
 
 export default Object.freeze(local);
