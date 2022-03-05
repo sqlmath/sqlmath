@@ -6,40 +6,89 @@
 # https://www.sqlite.org/2021/sqlite-tools-win32-x86-3360000.zip
 
 shCiArtifactUploadCustom() {(set -e
-    return
+    git fetch origin artifact
+    git checkout origin/artifact branch-*
 )}
 
 shCiArtifactUpload2() {(set -e
 # this function will upload build-artifacts to branch-gh-pages
-    local BRANCH
+    local BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+    local BRANCH_ARTIFACT=artifact
+    local COMMIT_MESSAGE=\
+" - upload artifact"\
+" - retry$GITHUB_UPLOAD_RETRY"\
+" - $BRANCH"\
+" - $(printf "$GITHUB_SHA" | cut -c-8)"\
+" - $(uname)"\
+""
+    node --input-type=module --eval '
+process.exit(Number(
+    `${process.version.split(".")[0]}`
+    !== process.env.GITHUB_ARTIFACT_UPLOAD_NODE_VERSION
+));
+' || return 0
     # init .git/config
     git config --local user.email "github-actions@users.noreply.github.com"
     git config --local user.name "github-actions"
-    # init $BRANCH
-    BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-    # save binaries
-    git add -f _binary_*
-    git commit -am binaries
-    # checkout branch-gh-pages
-    git fetch origin gh-pages --depth=1
-    git checkout -b gh-pages origin/gh-pages
+    rm -rf ".tmp/$BRANCH_ARTIFACT"
+    mkdir -p ".tmp/$BRANCH_ARTIFACT"
+    cd ".tmp/$BRANCH_ARTIFACT"
+    git init
+    cp ../../.git/config .git/
+    git fetch origin "$BRANCH_ARTIFACT"
+    git checkout -b "$BRANCH_ARTIFACT" "origin/$BRANCH_ARTIFACT"
     # update dir branch-$BRANCH
-    (set -e
-        cd "branch-$BRANCH"
-        cp -a ../.git .
-        git checkout "$BRANCH" _binary_*
-        rm -rf .git
-        git add -f _binary_*
-    )
-    git status
-    git commit -am "update dir branch-$BRANCH" || true
-    # push branch-gh-pages
-    shGitCmdWithGithubToken push origin gh-pages
+    mkdir -p "branch-$BRANCH"
+    cp ../../_binary_* "branch-$BRANCH"
+    git add .
+    git commit -am "$COMMIT_MESSAGE" || true
+    # git commit --allow-empty -am "$COMMIT_MESSAGE" || true
+    # squash commits
+    if [ "$BRANCH" = alpha ] \
+        && [ "$(git rev-list --count "$BRANCH_ARTIFACT")" -gt 10 ]
+    then
+        # squash commits
+        git checkout --orphan squash1
+        git commit --quiet -am "- squash $COMMIT_MESSAGE" || true
+        # reset $BRANCH_ARTIFACT to squashed-commit
+        git push . -f "squash1:$BRANCH_ARTIFACT"
+        git checkout "$BRANCH_ARTIFACT"
+        # force-push squashed-commit
+        shGitCmdWithGithubToken push origin -f "$BRANCH_ARTIFACT"
+    fi
+    # sync before push
+    git pull origin "$BRANCH_ARTIFACT"
+    # push
+    shGitCmdWithGithubToken push origin "$BRANCH_ARTIFACT"
+    # debug
+    shGitLsTree
 )}
 
 shCiBaseCustom() {(set -e
+    local BRANCH="$(git rev-parse --abbrev-ref HEAD)"
     shCiBuild
     shCiTest
+    # upload binary
+    if [ "$GITHUB_ACTION" ] && ( \
+        [ "$BRANCH" = alpha ] \
+        || [ "$BRANCH" = beta ] \
+        || [ "$BRANCH" = master ] \
+    )
+    then
+        export GITHUB_UPLOAD_RETRY=-1
+        while true
+        do
+            GITHUB_UPLOAD_RETRY="$((GITHUB_UPLOAD_RETRY + 1))"
+            if [ "$GITHUB_UPLOAD_RETRY" -gt 4 ]
+            then
+                return 1
+            fi
+            if (shCiArtifactUpload2)
+            then
+                break
+            fi
+        done
+    fi
 )}
 
 shCiBuild() {(set -e
@@ -398,14 +447,8 @@ shCiNpmPublishCustom() {(set -e
 # this function will run custom-code to npm-publish package
     local FILE
     # fetch binaries
-    git fetch origin gh-pages --depth=1
-    for FILE in \
-        _binary_sqlmath_napi8_darwin_x64.node \
-        _binary_sqlmath_napi8_linux_x64.node \
-        _binary_sqlmath_napi8_win32_x64.node
-    do
-        git checkout origin/gh-pages "branch-beta/$FILE"
-    done
+    git fetch origin artifact --depth=1
+    git checkout origin/artifact "branch-beta/_binary_"*
     cp -a branch-beta/_binary_* .
     # npm-publish
     npm publish --access public

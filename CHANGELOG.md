@@ -1,7 +1,12 @@
 # Changelog
 
 # Todo
+- add webassembly binaries
 - none
+
+# v2022.3.20-beta
+- update to sqlite v3.38.0
+- create github-branch-artifact to upload shared binaries
 
 # v2022.3.5
 - update jslint v2022.2.20

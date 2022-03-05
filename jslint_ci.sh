@@ -665,7 +665,6 @@ shGitInitBase() {(set -e
     git commit -am "update owner/repo to $1" || true
 )}
 
-
 shGitLsTree() {(set -e
 # this function will "git ls-tree" all files committed in HEAD
 # example use:
@@ -759,6 +758,76 @@ shGitSquashPop() {(set -e
     git add .
     # commit HEAD immediately after previous $COMMIT
     git commit -am "$MESSAGE" || true
+)}
+
+shGithubFileUpload() {(set -e
+# this function will upload file $2 to github repo/branch $1
+# https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
+    node --input-type=module --eval '
+import moduleFs from "fs";
+import moduleHttps from "https";
+function assertOrThrow(condition, message) {
+    if (!condition) {
+        throw (
+            (!message || typeof message === "string")
+            ? new Error(String(message).slice(0, 2048))
+            : message
+        );
+    }
+}
+(async function () {
+    let branch;
+    let content = await moduleFs.promises.readFile(process.argv[2]);
+    let responseText;
+    let path = process.argv[1];
+    let repo;
+    let url;
+    function httpRequest({
+        method,
+        payload
+    }) {
+        return new Promise(function (resolve) {
+            moduleHttps.request(`${url}?ref=${branch}`, {
+                headers: {
+                    accept: "application/vnd.github.v3+json",
+                    authorization: `token ${process.env.GITHUB_TOKEN}`,
+                    "user-agent": "undefined"
+                },
+                method
+            }, function (res) {
+                responseText = "";
+                res.setEncoding("utf8");
+                res.on("data", function (chunk) {
+                    responseText += chunk;
+                });
+                res.on("end", function () {
+                    assertOrThrow(
+                        res.statusCode === 200,
+                        `shGithubFileUpload - failed to upload file ${url} - `
+                        + responseText
+                    );
+                    resolve();
+                });
+            }).end(payload);
+        });
+    }
+    path = path.split("/");
+    repo = path.slice(0, 2).join("/");
+    branch = path[2];
+    path = path.slice(3).join("/");
+    url = `https://api.github.com/repos/${repo}/contents/${path}`;
+    await httpRequest({});
+    await httpRequest({
+        method: "PUT",
+        payload: JSON.stringify({
+            branch,
+            content: content.toString("base64"),
+            "message": `upload file ${path}`,
+            sha: JSON.parse(responseText).sha
+        })
+    });
+}());
+' "$@" # '
 )}
 
 shGrep() {(set -e

@@ -8,3 +8,4 @@
 !_binary_*
 !jslint.mjs
 !sqlmath.mjs
+!sqlmath_custom.mjs
