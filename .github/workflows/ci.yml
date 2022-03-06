@@ -44,7 +44,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           key: ${{ matrix.architecture }}-${{ matrix.node_version }}-${{ matrix.os }}-${{ hashFiles('./package.json') }}
-          path: .cache
+          path: .github_cache
       # https://github.com/actions/setup-node
       - uses: actions/setup-node@v2
         with:
@@ -55,6 +55,7 @@ jobs:
       # run nodejs coverages and tests
       - run: sh jslint_ci.sh shCiBase
         env:
+          CI_MAIN_JOB: v16.x64.linux
           GITHUB_ARTIFACT_UPLOAD_NODE_VERSION: v16
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 # shCiBase - end
@@ -66,6 +67,6 @@ jobs:
       # upload build-artifacts to branch-gh-pages
       - run: sh jslint_ci.sh shCiArtifactUpload
         env:
-          CI_NODE_VERSION_ARCH_PLATFORM: v16.x64.linux
+          CI_MAIN_JOB: v16.x64.linux
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 # shCiArtifactUpload - end

@@ -1,10 +1,10 @@
 # Changelog
 
 # Todo
-- add webassembly binaries
 - none
 
 # v2022.3.20-beta
+- add shell-function shCiBuildWasm() to build wasm binaries with online demo spa.sqlchart.html
 - update to sqlite v3.38.0
 - create github-branch-artifact to upload shared binaries
 

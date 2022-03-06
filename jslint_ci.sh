@@ -233,20 +233,17 @@ import moduleUrl from "url";
 
 shCiArtifactUpload() {(set -e
 # this function will upload build-artifacts to branch-gh-pages
-    local BRANCH
+    export GITHUB_BRANCH0="$(git rev-parse --abbrev-ref HEAD)"
     local FILE
-    node --input-type=module --eval '
-process.exit(Number(
-    `${process.version.split(".")[0]}.${process.arch}.${process.platform}`
-    !== process.env.CI_NODE_VERSION_ARCH_PLATFORM
-));
-' || return 0
+    if (! shCiIsMainJob)
+    then
+        return
+    fi
     # init .git/config
     git config --local user.email "github-actions@users.noreply.github.com"
     git config --local user.name "github-actions"
-    # init $BRANCH
-    BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-    git pull --unshallow origin "$BRANCH"
+    # init $GITHUB_BRANCH0
+    git pull --unshallow origin "$GITHUB_BRANCH0"
     # init $UPSTREAM_OWNER
     export UPSTREAM_OWNER="${UPSTREAM_OWNER:-jslint-org}"
     # init $UPSTREAM_REPO
@@ -300,18 +297,18 @@ import moduleChildProcess from "child_process";
     # checkout branch-gh-pages
     git fetch origin gh-pages
     git checkout -b gh-pages origin/gh-pages
-    # update dir branch-$BRANCH
-    rm -rf "branch-$BRANCH"
-    mkdir -p "branch-$BRANCH"
+    # update dir branch-$GITHUB_BRANCH0
+    rm -rf "branch-$GITHUB_BRANCH0"
+    mkdir -p "branch-$GITHUB_BRANCH0"
     (set -e
-        cd "branch-$BRANCH"
+        cd "branch-$GITHUB_BRANCH0"
         git init -b branch1
-        git pull --depth=1 .. "$BRANCH"
+        git pull --depth=1 .. "$GITHUB_BRANCH0"
         rm -rf .git
         git add -f .
     )
     # update root-dir with branch-beta
-    if [ "$BRANCH" = beta ]
+    if [ "$GITHUB_BRANCH0" = beta ]
     then
         rm -rf .artifact
         git checkout beta .
@@ -325,16 +322,16 @@ import moduleChildProcess from "child_process";
             fi
         done
     fi
-    # update README.md with branch-$BRANCH and $GITHUB_REPOSITORY
+    # update README.md with branch-$GITHUB_BRANCH0 and $GITHUB_REPOSITORY
     sed -i \
-        -e "s|/branch-[0-9A-Z_a-z]*/|/branch-$BRANCH/|g" \
+        -e "s|/branch-[0-9A-Z_a-z]*/|/branch-$GITHUB_BRANCH0/|g" \
         -e "s|\b$UPSTREAM_OWNER/$UPSTREAM_REPO\b|$GITHUB_REPOSITORY|g" \
         -e "s|\b$UPSTREAM_OWNER\.github\.io/$UPSTREAM_REPO\b|$(
             printf "$GITHUB_REPOSITORY" | sed -e "s|/|.github.io/|"
         )|g" \
-        "branch-$BRANCH/README.md"
+        "branch-$GITHUB_BRANCH0/README.md"
     git status
-    git commit -am "update dir branch-$BRANCH" || true
+    git commit -am "update dir branch-$GITHUB_BRANCH0" || true
     # if branch-gh-pages has more than 50 commits,
     # then backup and squash commits
     if [ "$(git rev-list --count gh-pages)" -gt 50 ]
@@ -356,7 +353,7 @@ import moduleChildProcess from "child_process";
     shGitCmdWithGithubToken push origin gh-pages
     # validate http-links
     (set -e
-        cd "branch-$BRANCH"
+        cd "branch-$GITHUB_BRANCH0"
         sleep 15
         shDirHttplinkValidate
     )
@@ -369,6 +366,7 @@ shCiArtifactUploadCustom() {(set -e
 
 shCiBase() {(set -e
 # this function will run base-ci
+    export GITHUB_BRANCH0="$(git rev-parse --abbrev-ref HEAD)"
     # update version in README.md, jslint.mjs, package.json from CHANGELOG.md
     if [ "$(git branch --show-current)" = alpha ]
     then
@@ -492,6 +490,16 @@ shCiBranchPromote() {(set -e
     git push "$REMOTE" "$REMOTE/$BRANCH1:$BRANCH2" "$@"
 )}
 
+shCiIsMainJob() {(set -e
+# this function will return 0 if current ci-job is main job
+    node --input-type=module --eval '
+process.exit(Number(
+    `${process.version.split(".")[0]}.${process.arch}.${process.platform}`
+    !== process.env.CI_MAIN_JOB
+));
+' "$@" # '
+)}
+
 shCiNpmPublish() {(set -e
 # this function will npm-publish package
     # init package.json for npm-publish
@@ -545,7 +553,9 @@ import moduleUrl from "url";
                 process.env.GITHUB_REPOSITORY || "jslint-org/jslint"
             ).replace("/", ".github.io/"));
             if (url.startsWith("http://")) {
-                throw new Error("shDirHttplinkValidate - insecure link " + url);
+                throw new Error(
+                    `shDirHttplinkValidate - ${file} - insecure link - ${url}`
+                );
             }
             // ignore duplicate-link
             if (dict.hasOwnProperty(url)) {

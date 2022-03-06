@@ -16,5 +16,7 @@ undefined
 !.gitconfig
 !.github
 !.gitignore
+!.npmignore
 
 sqlite-autoconf-*
+sqlmath_wasm.*

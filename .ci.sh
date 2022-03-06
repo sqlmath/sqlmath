@@ -7,17 +7,18 @@
 
 shCiArtifactUploadCustom() {(set -e
     git fetch origin artifact
-    git checkout origin/artifact branch-*
+    git checkout origin/artifact "branch-$GITHUB_BRANCH0"
+    mv "branch-$GITHUB_BRANCH0"/* .
+    git add -f _binary_* sqlmath_wasm.*
 )}
 
 shCiArtifactUpload2() {(set -e
 # this function will upload build-artifacts to branch-gh-pages
-    local BRANCH="$(git rev-parse --abbrev-ref HEAD)"
     local BRANCH_ARTIFACT=artifact
     local COMMIT_MESSAGE=\
 " - upload artifact"\
 " - retry$GITHUB_UPLOAD_RETRY"\
-" - $BRANCH"\
+" - $GITHUB_BRANCH0"\
 " - $(printf "$GITHUB_SHA" | cut -c-8)"\
 " - $(uname)"\
 ""
@@ -37,14 +38,18 @@ process.exit(Number(
     cp ../../.git/config .git/
     git fetch origin "$BRANCH_ARTIFACT"
     git checkout -b "$BRANCH_ARTIFACT" "origin/$BRANCH_ARTIFACT"
-    # update dir branch-$BRANCH
-    mkdir -p "branch-$BRANCH"
-    cp ../../_binary_* "branch-$BRANCH"
+    # update dir branch-$GITHUB_BRANCH0
+    mkdir -p "branch-$GITHUB_BRANCH0"
+    cp ../../_binary_* "branch-$GITHUB_BRANCH0"
+    if [ -f ../../sqlmath_wasm.wasm ]
+    then
+        cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
+    fi
     git add .
     git commit -am "$COMMIT_MESSAGE" || true
     # git commit --allow-empty -am "$COMMIT_MESSAGE" || true
     # squash commits
-    if [ "$BRANCH" = alpha ] \
+    if [ "$GITHUB_BRANCH0" = alpha ] \
         && [ "$(git rev-list --count "$BRANCH_ARTIFACT")" -gt 10 ]
     then
         # squash commits
@@ -65,14 +70,29 @@ process.exit(Number(
 )}
 
 shCiBaseCustom() {(set -e
-    local BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-    shCiBuild
-    shCiTest
-    # upload binary
+    shCiEmsdkExport
+    # .github_cache - restore
+    if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
+    then
+        cp -a .github_cache/* . || true # js-hack - */
+    fi
+    shCiBuildNodejs
+    shCiTestNodejs
+    if (shCiIsMainJob)
+    then
+        shCiBuildWasm
+        # .github_cache - save
+        if [ "$GITHUB_ACTION" ] && [ ! -d .github_cache/_emsdk ]
+        then
+            mkdir -p .github_cache
+            cp -a "$EMSDK" .github_cache
+        fi
+    fi
+    # upload artifact
     if [ "$GITHUB_ACTION" ] && ( \
-        [ "$BRANCH" = alpha ] \
-        || [ "$BRANCH" = beta ] \
-        || [ "$BRANCH" = master ] \
+        [ "$GITHUB_BRANCH0" = alpha ] \
+        || [ "$GITHUB_BRANCH0" = beta ] \
+        || [ "$GITHUB_BRANCH0" = master ] \
     )
     then
         export GITHUB_UPLOAD_RETRY=-1
@@ -91,8 +111,8 @@ shCiBaseCustom() {(set -e
     fi
 )}
 
-shCiBuild() {(set -e
-# this function will run base-ci
+shCiBuildNodejs() {(set -e
+# this function will build binaries in nodejs
     local FILE
     # cleanup
     rm -f _binary_*
@@ -289,7 +309,6 @@ shCiBuild() {(set -e
                 "SQLITE_ENABLE_FTS3",
                 "SQLITE_ENABLE_FTS4",
                 "SQLITE_ENABLE_FTS5",
-                "SQLITE_ENABLE_JSON1",
                 "SQLITE_ENABLE_RTREE",
                 "SQLITE_THREADSAFE=1",
                 "_REENTRANT=1"
@@ -325,7 +344,8 @@ shCiBuild() {(set -e
             targetWarningLevel(0, {
                 "defines": [
                     "SQLITE3_C2",
-                    "SQLITE3_EXT_C2"
+                    "SQLITE3_EXT_C2",
+                    "SQLMATH_C"
                 ],
                 "sources": [
                     "../sqlite3.c",
@@ -401,7 +421,8 @@ shCiBuild() {(set -e
                 + "_" + process.arch
             ),
             "target_shell": (
-                "_binary_sqlmath_shell"
+                "_binary_sqlmath"
+                + "_shell"
                 + "_" + process.platform
                 + "_" + process.arch
             )
@@ -440,13 +461,319 @@ shCiBuild() {(set -e
     });
 }());
 ' "$@" # '
-    shCiTest
+    shCiTestNodejs
+)}
+
+shCiBuildWasm() {(set -e
+# this function will build binaries in wasm
+    shCiEmsdkExport
+    # install emsdk
+    shCiEmsdkInstall
+    # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
+    # build wasm
+    for FILE in \
+        sqlite3.c \
+        sqlite3_ext.c
+    do
+        emcc \
+            -DSQLITE_DISABLE_LFS \
+            -DSQLITE_ENABLE_FTS3 \
+            -DSQLITE_ENABLE_FTS3_PARENTHESIS \
+            -DSQLITE_ENABLE_MATH_FUNCTIONS \
+            -DSQLITE_ENABLE_NORMALIZE \
+            -DSQLITE_HAVE_ZLIB \
+            -DSQLITE_THREADSAFE=0 \
+            \
+            -DSQLITE3_C2 \
+            -DSQLITE3_EXT_C2 \
+            -DSQLITE_HAVE_ZLIB_EMSCRIPTEN \
+            -DSQLMATH_C_DISABLE \
+            -I.tmp \
+            \
+            -Oz \
+            -Wall \
+            -flto \
+            -s INLINING_LIMIT=50 \
+            \
+            -c "$FILE" \
+            -o ".tmp/$(basename "$FILE").wasm.o"
+    done
+	emcc \
+        -s EXPORTED_FUNCTIONS='[
+"_free",
+"_malloc",
+"_sqlite3_bind_blob",
+"_sqlite3_bind_double",
+"_sqlite3_bind_int",
+"_sqlite3_bind_parameter_index",
+"_sqlite3_bind_text",
+"_sqlite3_changes",
+"_sqlite3_clear_bindings",
+"_sqlite3_close_v2",
+"_sqlite3_column_blob",
+"_sqlite3_column_bytes",
+"_sqlite3_column_count",
+"_sqlite3_column_double",
+"_sqlite3_column_name",
+"_sqlite3_column_text",
+"_sqlite3_column_type",
+"_sqlite3_create_function_v2",
+"_sqlite3_data_count",
+"_sqlite3_errmsg",
+"_sqlite3_exec",
+"_sqlite3_finalize",
+"_sqlite3_free",
+"_sqlite3_normalized_sql",
+"_sqlite3_open",
+"_sqlite3_prepare_v2",
+"_sqlite3_reset",
+"_sqlite3_result_blob",
+"_sqlite3_result_double",
+"_sqlite3_result_error",
+"_sqlite3_result_int",
+"_sqlite3_result_int64",
+"_sqlite3_result_null",
+"_sqlite3_result_text",
+"_sqlite3_sql",
+"_sqlite3_step",
+"_sqlite3_value_blob",
+"_sqlite3_value_bytes",
+"_sqlite3_value_double",
+"_sqlite3_value_int",
+"_sqlite3_value_text",
+"_sqlite3_value_type"
+        ]' \
+        -s EXPORTED_RUNTIME_METHODS='[
+"UTF8ToString",
+"cwrap",
+"stackAlloc",
+"stackRestore",
+"stackSave"
+        ]' \
+        --memory-init-file 0 \
+        -Wall \
+        -s ALLOW_MEMORY_GROWTH=1 \
+        -s ALLOW_TABLE_GROWTH=1 \
+        -s NODEJS_CATCH_EXIT=0 \
+        -s NODEJS_CATCH_REJECTION=0 \
+        -s RESERVED_FUNCTION_POINTERS=64 \
+        -s SINGLE_FILE=0 \
+        -s USE_ZLIB \
+        -s WASM=1 \
+        \
+        .tmp/sqlite3.c.wasm.o \
+        .tmp/sqlite3_ext.c.wasm.o \
+        \
+	    --pre-js sqlmath_wrapper_wasm.js \
+        \
+        -o sqlmath_wasm.js
+    printf '' > .tmp.js
+	printf '
+/*jslint-disable*/
+var initSqlJsPromise = undefined;
+var initSqlJs = function (moduleConfig) {
+    if (initSqlJsPromise){
+      return initSqlJsPromise;
+    }
+    initSqlJsPromise = new Promise(function (resolveModule, reject) {
+        var Module = typeof moduleConfig !== "undefined" ? moduleConfig : {};
+        var originalOnAbortFunction = Module["onAbort"];
+        Module["onAbort"] = function (errorThatCausedAbort) {
+            reject(new Error(errorThatCausedAbort));
+            if (originalOnAbortFunction){
+              originalOnAbortFunction(errorThatCausedAbort);
+            }
+        };
+        Module["postRun"] = Module["postRun"] || [];
+        Module["postRun"].push(function () {
+            resolveModule(Module);
+        });
+        module = undefined;
+' >> .tmp.js
+    cat sqlmath_wasm.js | sed -e "s|/\*jslint-[a-z]*\*/||g" >> .tmp.js
+    printf '
+        return Module;
+    }); // The end of the promise being returned
+  return initSqlJsPromise;
+} // The end of our initSqlJs function
+if (typeof exports === "object" && typeof module === "object"){
+    module.exports = initSqlJs;
+    module.exports.default = initSqlJs;
+}
+else if (typeof define === "function" && define["amd"]) {
+    define([], function() { return initSqlJs; });
+}
+else if (typeof exports === "object"){
+    exports["Module"] = initSqlJs;
+}
+/* global initSqlJs */
+/* eslint-env worker */
+/* eslint no-restricted-globals: ["error"] */
+
+"use strict";
+
+// hack-sqljs - conditional-worker
+if ((/\\binitSqlJsWorker=1\\b/).test(typeof location === "object" && location && location.search)) {
+var db;
+
+function onModuleReady(SQL) {
+    function createDb(data) {
+        if (db != null) db.close();
+        db = new SQL.Database(data);
+        return db;
+    }
+
+    var buff; var data; var result;
+    data = this["data"];
+    var config = data["config"] ? data["config"] : {};
+    switch (data && data["action"]) {
+        case "open":
+            buff = data["buffer"];
+            createDb(buff && new Uint8Array(buff));
+            return postMessage({
+                id: data["id"],
+                ready: true
+            });
+        case "exec":
+            if (db === null) {
+                createDb();
+            }
+            if (!data["sql"]) {
+                throw "exec: Missing query string";
+            }
+            return postMessage({
+                id: data["id"],
+                results: db.exec(data["sql"], data["params"], config)
+            });
+        case "each":
+            if (db === null) {
+                createDb();
+            }
+            var callback = function callback(row) {
+                return postMessage({
+                    id: data["id"],
+                    row: row,
+                    finished: false
+                });
+            };
+            var done = function done() {
+                return postMessage({
+                    id: data["id"],
+                    finished: true
+                });
+            };
+            return db.each(data["sql"], data["params"], callback, done, config);
+        case "export":
+            buff = db["export"]();
+            result = {
+                id: data["id"],
+                buffer: buff
+            };
+            try {
+                return postMessage(result, [result]);
+            } catch (error) {
+                return postMessage(result);
+            }
+        case "close":
+            if (db) {
+                db.close();
+            }
+            return postMessage({
+                id: data["id"]
+            });
+        default:
+            throw new Error("Invalid action : " + (data && data["action"]));
+    }
+}
+
+function onError(err) {
+    return postMessage({
+        id: this["data"]["id"],
+        error: err["message"]
+    });
+}
+
+// hack-sqljs - conditional-worker
+if (typeof importScripts === "function") {
+    db = null;
+    var sqlModuleReady = initSqlJs();
+    self.onmessage = function onmessage(event) {
+        return sqlModuleReady
+            .then(onModuleReady.bind(event))
+            .catch(onError.bind(event));
+    };
+}
+}
+/*jslint-enable*/
+' >> .tmp.js
+	mv .tmp.js sqlmath_wasm.js
+)}
+
+shCiEmsdkExport() {
+# this function will export emsdk env
+    export EMSCRIPTEN_VERSION=2.0.34
+    export EMSDK="$PWD/_emsdk"
+    # https://github.com/sql-js/sql.js/blob/v1.6.2/.devcontainer/Dockerfile
+    if [ ! "$PATH_EMSDK" ]
+    then
+        export PATH_EMSDK="$EMSDK:$EMSDK/upstream/emscripten/"
+        export PATH="$PATH_EMSDK:$PATH"
+    fi
+}
+
+shCiEmsdkInstall() {(set -e
+# this function will install emsdk
+    shCiEmsdkExport
+    if [ -d "$EMSDK" ]
+    then
+        exit
+    fi
+    # https://github.com/emscripten-core/emsdk/blob/2.0.34/docker/Dockerfile
+    git clone https://github.com/emscripten-core/emsdk.git $EMSDK
+    #
+    echo "## Install Emscripten"
+    cd ${EMSDK}
+    ./emsdk install ${EMSCRIPTEN_VERSION}
+    echo "## Done"
+    #
+    # This generates configuration that contains all valid paths according to
+    # installed SDK
+    # TODO(sbc): We should be able to use just emcc -v here but it doesn't
+    # currently create the sanity file.
+    cd ${EMSDK}
+    echo "## Generate standard configuration"
+    ./emsdk activate ${EMSCRIPTEN_VERSION}
+    chmod 777 ${EMSDK}/upstream/emscripten
+    chmod -R 777 ${EMSDK}/upstream/emscripten/cache
+    echo "int main() { return 0; }" > hello.c
+    ${EMSDK}/upstream/emscripten/emcc -c hello.c
+    cat ${EMSDK}/upstream/emscripten/cache/sanity.txt
+    echo "## Done"
+    #
+    # Cleanup Emscripten installation and strip some symbols
+    echo "## Aggressive optimization: Remove debug symbols"
+    cd ${EMSDK} && . ./emsdk_env.sh
+    # Remove debugging symbols from embedded node (extra 7MB)
+    strip -s `which node`
+    # Tests consume ~80MB disc space
+    rm -fr ${EMSDK}/upstream/emscripten/tests
+    # Fastcomp is not supported
+    rm -fr ${EMSDK}/upstream/fastcomp
+    # strip out symbols from clang (~extra 50MB disc space)
+    find ${EMSDK}/upstream/bin -type f -exec strip -s {} + || true
+    echo "## Done"
+    #
+    # download ports
+    touch "$EMSDK/.null.c"
+    emcc \
+        -s USE_ZLIB \
+        "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
 )}
 
 shCiNpmPublishCustom() {(set -e
 # this function will run custom-code to npm-publish package
     local FILE
-    # fetch binaries
+    # fetch artifact
     git fetch origin artifact --depth=1
     git checkout origin/artifact "branch-beta/_binary_"*
     cp -a branch-beta/_binary_* .
@@ -454,7 +781,8 @@ shCiNpmPublishCustom() {(set -e
     npm publish --access public
 )}
 
-shCiTest() {(set -e
+shCiTestNodejs() {(set -e
+# this function will run test in nodejs
     node jslint.mjs .
     export npm_config_mode_test=1
     node -e '
