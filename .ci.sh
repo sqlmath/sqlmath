@@ -50,7 +50,7 @@ process.exit(Number(
     # git commit --allow-empty -am "$COMMIT_MESSAGE" || true
     # squash commits
     if [ "$GITHUB_BRANCH0" = alpha ] \
-        && [ "$(git rev-list --count "$BRANCH_ARTIFACT")" -gt 10 ]
+        && [ "$(git rev-list --count "$BRANCH_ARTIFACT")" -gt 20 ]
     then
         # squash commits
         git checkout --orphan squash1
@@ -77,7 +77,6 @@ shCiBaseCustom() {(set -e
         cp -a .github_cache/* . || true # js-hack - */
     fi
     shCiBuildNodejs
-    shCiTestNodejs
     if (shCiIsMainJob)
     then
         shCiBuildWasm
@@ -341,7 +340,7 @@ shCiBuildNodejs() {(set -e
             }
         },
         "targets": [
-            targetWarningLevel(0, {
+            targetWarningLevel(1, {
                 "defines": [
                     "SQLITE3_C2",
                     "SQLITE3_EXT_C2",
@@ -471,11 +470,30 @@ shCiBuildWasm() {(set -e
     shCiEmsdkInstall
     # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
     # build wasm
+    local OPTION
+    local FILE
+    local FILE2
     for FILE in \
         sqlite3.c \
         sqlite3_ext.c
     do
-        emcc \
+        FILE2=".tmp/$(basename "$FILE").wasm.o"
+        # optimization - skip rebuild of sqlite3.c if possible
+        if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite3.c ]
+        then
+            continue
+        fi
+        OPTION=""
+        case "$FILE" in
+        sqlite3.c)
+            OPTION="$OPTION -DSQLITE3_C2"
+            ;;
+        sqlite3_ext.c)
+            OPTION="$OPTION -DSQLITE3_EXT_C2"
+            OPTION="$OPTION -DSQLITE_HAVE_ZLIB_EMSCRIPTEN"
+            ;;
+        esac
+        emcc $OPTION \
             -DSQLITE_DISABLE_LFS \
             -DSQLITE_ENABLE_FTS3 \
             -DSQLITE_ENABLE_FTS3_PARENTHESIS \
@@ -484,9 +502,6 @@ shCiBuildWasm() {(set -e
             -DSQLITE_HAVE_ZLIB \
             -DSQLITE_THREADSAFE=0 \
             \
-            -DSQLITE3_C2 \
-            -DSQLITE3_EXT_C2 \
-            -DSQLITE_HAVE_ZLIB_EMSCRIPTEN \
             -DSQLMATH_C_DISABLE \
             -I.tmp \
             \
@@ -495,8 +510,7 @@ shCiBuildWasm() {(set -e
             -flto \
             -s INLINING_LIMIT=50 \
             \
-            -c "$FILE" \
-            -o ".tmp/$(basename "$FILE").wasm.o"
+            -c "$FILE" -o "$FILE2"
     done
 	emcc \
         -s EXPORTED_FUNCTIONS='[
@@ -777,6 +791,7 @@ shCiNpmPublishCustom() {(set -e
     git fetch origin artifact --depth=1
     git checkout origin/artifact "branch-beta/_binary_"*
     cp -a branch-beta/_binary_* .
+    cp -a branch-beta/sqlmath_wasm.* .
     # npm-publish
     npm publish --access public
 )}

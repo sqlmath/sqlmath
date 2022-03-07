@@ -1402,6 +1402,7 @@ static int sqlite3_sqlmath_init(
     sqlite3_api = pApi;
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
+    SQLITE3_CREATE_FUNCTION1(roundorzero, 1);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
@@ -1411,8 +1412,7 @@ static int sqlite3_sqlmath_init(
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
-    ASSERT_SQLITE_OK(NULL, NULL, errcode)
-        SQLITE3_CREATE_FUNCTION1(roundorzero, 1);
+    ASSERT_SQLITE_OK(NULL, NULL, errcode);
   catch_error:
     return errcode;
 }

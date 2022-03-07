@@ -21,6 +21,15 @@
 # sh jslint_ci.sh shRunWithScreenshotTxt .artifact/screenshot_changelog.svg head -n50 CHANGELOG.md
 # vim rgx-lowercase \L\1\e
 
+# charset - ascii
+# \u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007
+# \b\t\n\u000b\f\r\u000e\u000f
+# \u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017
+# \u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f
+#  !\"#$%&'()*+,-./0123456789:;<=>?
+# @ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_
+# `abcdefghijklmnopqrstuvwxyz{|}~\u007f
+
 shBashrcDebianInit() {
 # this function will init debian:stable /etc/skel/.bashrc
 # https://sources.debian.org/src/bash/4.4-5/debian/skel.bashrc/
@@ -788,9 +797,9 @@ function assertOrThrow(condition, message) {
 (async function () {
     let branch;
     let content = await moduleFs.promises.readFile(process.argv[2]);
-    let responseText;
     let path = process.argv[1];
     let repo;
+    let responseText;
     let url;
     function httpRequest({
         method,
@@ -1389,6 +1398,29 @@ import modulePath from "path";
         return argList[0];
     };
 }());
+function objectDeepCopyWithKeysSorted(obj) {
+
+// This function will recursively deep-copy <obj> with keys sorted.
+
+    let sorted;
+    if (typeof obj !== "object" || !obj) {
+        return obj;
+    }
+
+// Recursively deep-copy list with child-keys sorted.
+
+    if (Array.isArray(obj)) {
+        return obj.map(objectDeepCopyWithKeysSorted);
+    }
+
+// Recursively deep-copy obj with keys sorted.
+
+    sorted = {};
+    Object.keys(obj).sort().forEach(function (key) {
+        sorted[key] = objectDeepCopyWithKeysSorted(obj[key]);
+    });
+    return sorted;
+}
 (async function () {
     let fetchList;
     let matchObj;
@@ -1411,8 +1443,23 @@ import modulePath from "path";
         /^\/\*jslint-disable\*\/\n\/\*\nshRawLibFetch\n(\{\n[\S\s]*?\n\})([\S\s]*?)\n\*\/\n/m
     ).exec(await moduleFs.promises.readFile(process.argv[1], "utf8"));
     // JSON.parse match1 with comment
-    fetchList = JSON.parse(matchObj[1]).fetchList;
-    replaceList = JSON.parse(matchObj[1]).replaceList || [];
+    matchObj[1] = Object.assign({
+        fetchList: [],
+        replaceList: []
+    }, JSON.parse(matchObj[1]));
+    fetchList = JSON.parse(JSON.stringify(matchObj[1].fetchList));
+    // normalize replaceList, sorted by aa
+    replaceList = matchObj[1].replaceList.sort(function ({
+        aa
+    }, {
+        aa: bb
+    }) {
+        return (
+            aa < bb
+            ? -1
+            : 1
+        );
+    });
     // init repoDict, fetchList
     repoDict = {};
     fetchList.forEach(function (elem) {
@@ -1566,7 +1613,11 @@ import modulePath from "path";
         header = (
             matchObj.input.slice(0, matchObj.index)
             + "/*jslint-disable*/\n/*\nshRawLibFetch\n"
-            + JSON.stringify(JSON.parse(matchObj[1]), undefined, 4) + "\n"
+            + JSON.stringify(
+                objectDeepCopyWithKeysSorted(matchObj[1]),
+                undefined,
+                4
+            ) + "\n"
             + matchObj[2].split("\n\n").filter(function (elem) {
                 return elem.trim();
             }).map(function (elem) {
