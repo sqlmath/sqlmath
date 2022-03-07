@@ -2,6 +2,29 @@
 // LINT_C_FILE
 
 
+#ifdef SQLITE3_EXT_C2
+/*
+file sqlmath_ext - start
+*/
+#include <sqlite3ext.h>
+#define UNUSED(x) (void)(x)
+int sqlite3_sqlmath_ext_custom_init(
+    sqlite3 * db,
+    char **pzErrMsg,
+    const sqlite3_api_routines * pApi
+) {
+    UNUSED(db);
+    UNUSED(pzErrMsg);
+    UNUSED(pApi);
+    return 0;
+}
+
+/*
+file sqlmath_ext - end
+*/
+
+
+#else
 // *INDENT-OFF*
 #if defined(__cplusplus)
 extern "C" {
@@ -22,12 +45,12 @@ file sqlmath_c - start
 /*
 file sqlmath_c_custom_init
 */
-int sqlite3_sqlmath_custom_init(
+int sqlite3_sqlmath_ext_custom_init(
     sqlite3 * db,
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
 ) {
-    sqlite3_sqlmath_init(db, pzErrMsg, pApi);
+    sqlite3_sqlmath_init2(db, pzErrMsg, pApi);
     return 0;
 }
 
@@ -76,3 +99,4 @@ file sqlmath_napi - end
 }
 #endif
 // *INDENT-ON*
+#endif                          // SQLITE3_EXT_C2

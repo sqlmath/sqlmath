@@ -121,26 +121,31 @@ shCiBuildNodejs() {(set -e
     #
     # patch sqlite3.h
     printf '
-#undef SQLITE3_C2
-#define SQLITE3_H2
-#undef SQLITE3_EXT_H2
-#undef SQLITE3_SHELL_C2
-#include "../sqlite3.c"
+#ifndef SQLITE3_H_INCLUDED
+    #define SQLITE3_H_INCLUDED
+    #undef SQLITE3_C2
+    #define SQLITE3_H2
+    #undef SQLITE3_EXT_H2
+    #undef SQLITE3_SHELL_C2
+    #include "../sqlite3.c"
+#endif
     ' > .tmp/sqlite3.h
     #
     # patch sqlite3ext.h
     printf '
-#undef SQLITE3_C2
-#undef SQLITE3_H2
-#define SQLITE3_EXT_H2
-#undef SQLITE3_SHELL_C2
-#include "../sqlite3.c"
+#ifndef SQLITE3EXT_H_INCLUDED
+    #define SQLITE3EXT_H_INCLUDED
+    #undef SQLITE3_C2
+    #undef SQLITE3_H2
+    #define SQLITE3_EXT_H2
+    #undef SQLITE3_SHELL_C2
+    #include "../sqlite3.c"
+#endif
     ' > .tmp/sqlite3ext.h
     #
     # patch sqlmath_napi.cpp
     printf '
 #define SQLMATH_NAPI
-#include "../sqlmath_custom.cpp"
 #include "../sqlmath_custom.c"
     ' > .tmp/sqlmath_napi.cpp
     #
@@ -340,17 +345,25 @@ shCiBuildNodejs() {(set -e
             }
         },
         "targets": [
-            targetWarningLevel(1, {
+            targetWarningLevel(0, {
                 "defines": [
-                    "SQLITE3_C2",
-                    "SQLITE3_EXT_C2",
-                    "SQLMATH_C"
+                    "SQLITE3_C2"
                 ],
                 "sources": [
-                    "../sqlite3.c",
-                    "../sqlite3_ext.c"
+                    "../sqlite3.c"
                 ],
                 "target_name": "sqlite3_c",
+                "type": "static_library"
+            }),
+            targetWarningLevel(1, {
+                "defines": [
+                    "SQLITE3_EXT_C2"
+                ],
+                "sources": [
+                    "../sqlite3_ext.c",
+                    "../sqlmath_base.c"
+                ],
+                "target_name": "sqlite3_ext_c",
                 "type": "static_library"
             }),
             targetWarningLevel(1, {
@@ -358,7 +371,8 @@ shCiBuildNodejs() {(set -e
                     "SQLMATH_C"
                 ],
                 "dependencies": [
-                    "sqlite3_c"
+                    "sqlite3_c",
+                    "sqlite3_ext_c"
                 ],
                 "sources": [
                     "../sqlmath_custom.c"
@@ -475,7 +489,9 @@ shCiBuildWasm() {(set -e
     local FILE2
     for FILE in \
         sqlite3.c \
-        sqlite3_ext.c
+        sqlite3_ext.c \
+        sqlmath_base.c \
+        sqlmath_custom.c
     do
         FILE2=".tmp/$(basename "$FILE").wasm.o"
         # optimization - skip rebuild of sqlite3.c if possible
@@ -488,7 +504,7 @@ shCiBuildWasm() {(set -e
         sqlite3.c)
             OPTION="$OPTION -DSQLITE3_C2"
             ;;
-        sqlite3_ext.c)
+        *)
             OPTION="$OPTION -DSQLITE3_EXT_C2"
             OPTION="$OPTION -DSQLITE_HAVE_ZLIB_EMSCRIPTEN"
             ;;
@@ -577,6 +593,8 @@ shCiBuildWasm() {(set -e
         \
         .tmp/sqlite3.c.wasm.o \
         .tmp/sqlite3_ext.c.wasm.o \
+        .tmp/sqlmath_base.c.wasm.o \
+        .tmp/sqlmath_custom.c.wasm.o \
         \
 	    --pre-js sqlmath_wrapper_wasm.js \
         \

@@ -1,6 +1,6 @@
 // copyright nobody
 // LINT_C_FILE
-#ifdef SQLITE3_EXT_C2
+#define IS_SQLITE_OK_OR_RETURN_RC(rc) if ((rc) != SQLITE_OK) {return (rc);}
 #define UNUSED(x) (void)(x)
 /* *INDENT-OFF* */
 
@@ -7313,14 +7313,21 @@ int sqlite3_ext_init(
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
 ) {
+    int errcode = 0;
     sqlite3_api = pApi;
-    sqlite3_compress_init(db, pzErrMsg, pApi);
-    sqlite3_csv_init(db, pzErrMsg, pApi);
-    sqlite3_extension_init(db, pzErrMsg, pApi);
-    sqlite3_noop_init(db, pzErrMsg, pApi);
-    sqlite3_regexp_init(db, pzErrMsg, pApi);
-    sqlite3_series_init(db, pzErrMsg, pApi);
-    sqlite3_shathree_init(db, pzErrMsg, pApi);
+    errcode = sqlite3_compress_init(db, pzErrMsg, pApi);
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    errcode = sqlite3_csv_init(db, pzErrMsg, pApi);
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    errcode = sqlite3_extension_init(db, pzErrMsg, pApi);
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    errcode = sqlite3_noop_init(db, pzErrMsg, pApi);
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    errcode = sqlite3_regexp_init(db, pzErrMsg, pApi);
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    errcode = sqlite3_series_init(db, pzErrMsg, pApi);
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    errcode = sqlite3_shathree_init(db, pzErrMsg, pApi);
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
     return 0;
 }
-#endif                          // SQLITE3_EXT_C2

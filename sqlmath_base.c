@@ -3,49 +3,20 @@
 
 
 /*
-file sqlmath_h - start
+file sqlmath_shared - start
 */
-#ifndef SQLMATH_H
-#define SQLMATH_H
-// header
 #include <assert.h>
-#include <ctype.h>
-#include <errno.h>
 #include <math.h>
-#include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-// header2
-#ifdef WIN32
-#include <windows.h>
-#endif
-#include <sqlite3.h>
+
+
 // define
 #define ALLOCC calloc
 #define ALLOCF free
 #define ALLOCM malloc
-inline void *ALLOCR(
-    void *ptr,
-    size_t size
-) {
-    // handle null-case
-    if (ptr == NULL) {
-        return NULL;
-    }
-    void *ptr2 = realloc(ptr, size);
-    // if nomem, cleanup old ptr
-    if (ptr2 == NULL) {
-        free(ptr);
-    }
-    return ptr2;
-}
-
 #define JS_MAX_SAFE_INTEGER 0x1fffffffffffff
 #define JS_MIN_SAFE_INTEGER -0x1fffffffffffff
-#define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
-#define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
 #define SGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
 #define SIZEOF_MESSAGE_DEFAULT 1024
 #define SQLITE_DATATYPE_BLOB            0x04
@@ -68,6 +39,336 @@ inline void *ALLOCR(
 #define SQLMATH_API
 #define SWAP(aa, bb) tmp = (aa); (aa) = (bb); (bb) = tmp
 #define UNUSED(x) (void)(x)
+inline void *ALLOCR(
+    void *ptr,
+    size_t size
+) {
+    // handle null-case
+    if (ptr == NULL) {
+        return NULL;
+    }
+    void *ptr2 = realloc(ptr, size);
+    // if nomem, cleanup old ptr
+    if (ptr2 == NULL) {
+        free(ptr);
+    }
+    return ptr2;
+}
+
+#define IS_SQLITE_OK_OR_RETURN_RC(rc) if ((rc) != SQLITE_OK) {return (rc);}
+#define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
+#define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
+#define UNUSED(x) (void)(x)
+
+
+#define SQLITE3_CREATE_FUNCTION1(func, argc) \
+    errcode = sqlite3_create_function(db, #func, argc, \
+        SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
+        sql_##func##_func, NULL, NULL); \
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+#define SQLITE3_CREATE_FUNCTION2(func, argc) \
+    errcode = sqlite3_create_function(db, #func, argc, \
+        SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
+        NULL, sql_##func##_step, sql_##func##_final); \
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+/*
+file sqlmath_shared - end
+*/
+
+
+#ifdef SQLITE3_EXT_C2
+/*
+file sqlmath_ext - start
+*/
+#include <sqlite3ext.h>
+
+static const sqlite3_api_routines *sqlite3_api;
+
+static void sql_cot_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will return cot(argv[0])
+    UNUSED(argc);
+    assert(argc == 1);
+    switch (sqlite3_value_numeric_type(argv[0])) {
+    case SQLITE_INTEGER:
+    case SQLITE_FLOAT:
+        if (argv[0] == 0) {
+            sqlite3_result_double(context, INFINITY);
+            return;
+        }
+        sqlite3_result_double(context,
+            1.0 / tan(sqlite3_value_double(argv[0])));
+    }
+}
+
+static void sql_coth_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will return coth(argv[0])
+    UNUSED(argc);
+    assert(argc == 1);
+    switch (sqlite3_value_numeric_type(argv[0])) {
+    case SQLITE_INTEGER:
+    case SQLITE_FLOAT:
+        if (argv[0] == 0) {
+            sqlite3_result_double(context, INFINITY);
+            return;
+        }
+        sqlite3_result_double(context,
+            1.0 / tanh(sqlite3_value_double(argv[0])));
+    }
+}
+
+static void sql_roundorzero_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will round <argv>[0] to decimal <argv>[1]
+    assert(argc == 1 || argc == 2);
+    if (sqlite3_value_type(argv[0]) == SQLITE_NULL) {
+        sqlite3_result_double(context, 0);
+    }
+    // declare var
+    char *zBuf = NULL;
+    double rr = sqlite3_value_double(argv[0]);
+    int nn = (argc == 2 ? sqlite3_value_int(argv[1]) : 0);
+    nn = MIN(nn, 30);
+    nn = MAX(nn, 0);
+    // If YY==0 and XX will fit in a 64-bit int,
+    // handle the rounding directly,
+    // otherwise use printf.
+    if (rr < -4503599627370496.0 || rr > +4503599627370496.0) {
+    } else if (nn == 0) {
+        // The value has no fractional part so there is nothing to round
+        rr = (double) ((sqlite_int64) (rr + (rr < 0 ? -0.5 : +0.5)));
+    } else {
+        zBuf = sqlite3_mprintf("%.*f", nn, rr);
+        if (zBuf == 0) {
+            sqlite3_result_error_nomem(context);
+            return;
+        }
+        rr = strtod(zBuf, NULL);
+        sqlite3_free(zBuf);
+    }
+    sqlite3_result_double(context, rr);
+}
+
+static void sql_random1_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will generate high-quality random-float between 0 <= xx < 1
+    UNUSED(argc);
+    UNUSED(argv);
+    static const double inv = 1.0 / 0x100000000;
+    uint32_t xx[1];
+    sqlite3_randomness(4, (void *) xx);
+    sqlite3_result_double(context, ((double) *xx) * inv);
+}
+
+static void sql_sign_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+/*
+** Implementation of the sign() function
+** return one of 3 possibilities +1,0 or -1 when the argument is respectively
+** positive, 0 or negative.
+** When the argument is NULL the result is also NULL (completly conventional)
+*/
+    UNUSED(argc);
+    assert(argc == 1);
+    switch (sqlite3_value_numeric_type(argv[0])) {
+    case SQLITE_INTEGER:
+    case SQLITE_FLOAT:
+        {
+            double rVal = sqlite3_value_double(argv[0]);
+            sqlite3_result_double(context,
+                (rVal > 0) ? 1 : (rVal < 0) ? -1 : 0);
+        }
+        return;
+    }
+}
+
+static void sql_throwerror_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will return sqlite3_result_error_code(argv[0])
+    UNUSED(argc);
+    assert(argc == 1);
+    // declare var
+    int errcode = sqlite3_value_int(argv[0]);
+    switch (errcode) {
+    case SQLITE_DONE:
+    case SQLITE_ROW:
+        sqlite3_result_error_code(context, 2);
+        break;
+    case SQLITE_NOMEM:
+        sqlite3_result_error_nomem(context);
+        break;
+    case SQLITE_TOOBIG:
+        sqlite3_result_error_toobig(context);
+        break;
+    default:
+        sqlite3_result_error_code(context, errcode);
+    }
+}
+
+static char *base64Encode(
+    const unsigned char *blob,
+    int *nn
+) {
+// this function will base64-encode <blob> to <text>
+#define base64EncodeCleanup ALLOCF
+    if (blob == NULL || *nn < 0) {
+        *nn = 0;
+    }
+    // declare var
+    char *text = NULL;
+    int aa = *nn - 3;
+    int bb = 0;
+    int ii = 0;
+    int triplet = 0;
+    static const char BASE64_ENCODE_TABLE[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    // init bb
+    bb = 4 * ceil((double) *nn / 3);
+    // init text
+    text = ALLOCM(MAX(bb, 4));
+    // handle nomem
+    if (text == NULL) {
+        return NULL;
+    }
+    // handle null-case
+    if (bb < 4) {
+        text[0] = '\x00';
+    }
+    // base64-encode loop
+    while (ii < aa) {
+        triplet = blob[0];
+        triplet = triplet << 8 | blob[1];
+        triplet = triplet << 8 | blob[2];
+        blob += 3;
+        text[0] = BASE64_ENCODE_TABLE[(triplet >> 18) & 0x3f];
+        text[1] = BASE64_ENCODE_TABLE[(triplet >> 12) & 0x3f];
+        text[2] = BASE64_ENCODE_TABLE[(triplet >> 6) & 0x3f];
+        text[3] = BASE64_ENCODE_TABLE[triplet & 0x3f];
+        text += 4;
+        ii += 3;
+    }
+    // base64-encode '='
+    if (bb >= 4 && blob != NULL) {
+        aa += 3;
+        triplet = blob[0];
+        triplet = ii + 1 < aa ? triplet << 8 | blob[1] : triplet << 8;
+        triplet = ii + 2 < aa ? triplet << 8 | blob[2] : triplet << 8;
+        blob += 3;
+        text[0] = BASE64_ENCODE_TABLE[(triplet >> 18) & 0x3f];
+        text[1] = BASE64_ENCODE_TABLE[(triplet >> 12) & 0x3f];
+        text[2] =
+            (ii + 1 < aa) ? BASE64_ENCODE_TABLE[(triplet >> 6) & 0x3f] : '=';
+        text[3] = (ii + 2 < aa) ? BASE64_ENCODE_TABLE[triplet & 0x3f] : '=';
+        text += 4;
+        ii += 3;
+    }
+    // save bb
+    *nn = bb;
+    // return text
+    return text - bb;
+}
+
+static void sql_tobase64_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will convert blob to base64-encoded-text
+    UNUSED(argc);
+    assert(argc == 1);
+    // declare var
+    char *text = NULL;
+    int nn = sqlite3_value_bytes(argv[0]);
+    // base64-encode blob to text
+    text =
+        base64Encode((const unsigned char *) sqlite3_value_blob(argv[0]),
+        &nn);
+    if (text == NULL) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
+    sqlite3_result_text(context, (const char *) text, nn,
+        base64EncodeCleanup);
+}
+
+static void sql_tostring_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will convert blob to text
+    UNUSED(argc);
+    assert(argc == 1);
+    sqlite3_result_text(context, (const char *) sqlite3_value_text(argv[0]),
+        -1, SQLITE_TRANSIENT);
+}
+
+int sqlite3_sqlmath_ext_base_init(
+    sqlite3 * db,
+    char **pzErrMsg,
+    const sqlite3_api_routines * pApi
+) {
+    UNUSED(pzErrMsg);
+    // declare var
+    int errcode = 0;
+    // init sqlite3_api
+    sqlite3_api = pApi;
+    SQLITE3_CREATE_FUNCTION1(cot, 1);
+    SQLITE3_CREATE_FUNCTION1(coth, 1);
+    errcode =
+        sqlite3_create_function(db, "random1", 0,
+        SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    SQLITE3_CREATE_FUNCTION1(roundorzero, 1);
+    SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
+    SQLITE3_CREATE_FUNCTION1(sign, 1);
+    SQLITE3_CREATE_FUNCTION1(throwerror, 1);
+    SQLITE3_CREATE_FUNCTION1(tobase64, 1);
+    SQLITE3_CREATE_FUNCTION1(tostring, 1);
+    return 0;
+}
+
+/*
+file sqlmath_ext - end
+*/
+
+
+#else
+/*
+file sqlmath_h - start
+*/
+#ifndef SQLMATH_H
+#define SQLMATH_H
+// header2
+#include <ctype.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#ifdef WIN32
+#include <windows.h>
+#endif
+#include <sqlite3.h>
+
 // define2
 /*
 ** A macro to hint to the compiler that a function should not be
@@ -231,76 +532,13 @@ file sqlmath_c - start
 */
 #ifdef SQLMATH_C
 // header
-#include <sqlite3ext.h>
+#include <sqlite3ext.h>         // NOLINT
 static const sqlite3_api_routines *sqlite3_api;
 
 
 /*
 file sqlmath_c_base
 */
-static char *base64Encode(
-    const unsigned char *blob,
-    int *nn
-) {
-// this function will base64-encode <blob> to <text>
-#define base64EncodeCleanup ALLOCF
-    if (blob == NULL || *nn < 0) {
-        *nn = 0;
-    }
-    // declare var
-    char *text = NULL;
-    int aa = *nn - 3;
-    int bb = 0;
-    int ii = 0;
-    int triplet = 0;
-    static const char BASE64_ENCODE_TABLE[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    // init bb
-    bb = 4 * ceil((double) *nn / 3);
-    // init text
-    text = ALLOCM(MAX(bb, 4));
-    // handle nomem
-    if (text == NULL) {
-        return NULL;
-    }
-    // handle null-case
-    if (bb < 4) {
-        text[0] = '\x00';
-    }
-    // base64-encode loop
-    while (ii < aa) {
-        triplet = blob[0];
-        triplet = triplet << 8 | blob[1];
-        triplet = triplet << 8 | blob[2];
-        blob += 3;
-        text[0] = BASE64_ENCODE_TABLE[(triplet >> 18) & 0x3f];
-        text[1] = BASE64_ENCODE_TABLE[(triplet >> 12) & 0x3f];
-        text[2] = BASE64_ENCODE_TABLE[(triplet >> 6) & 0x3f];
-        text[3] = BASE64_ENCODE_TABLE[triplet & 0x3f];
-        text += 4;
-        ii += 3;
-    }
-    // base64-encode '='
-    if (bb >= 4 && blob != NULL) {
-        aa += 3;
-        triplet = blob[0];
-        triplet = ii + 1 < aa ? triplet << 8 | blob[1] : triplet << 8;
-        triplet = ii + 2 < aa ? triplet << 8 | blob[2] : triplet << 8;
-        blob += 3;
-        text[0] = BASE64_ENCODE_TABLE[(triplet >> 18) & 0x3f];
-        text[1] = BASE64_ENCODE_TABLE[(triplet >> 12) & 0x3f];
-        text[2] =
-            (ii + 1 < aa) ? BASE64_ENCODE_TABLE[(triplet >> 6) & 0x3f] : '=';
-        text[3] = (ii + 2 < aa) ? BASE64_ENCODE_TABLE[triplet & 0x3f] : '=';
-        text += 4;
-        ii += 3;
-    }
-    // save bb
-    *nn = bb;
-    // return text
-    return text - bb;
-}
-
 double kthpercentile(
     double *arr,
     int nn,
@@ -1154,46 +1392,6 @@ SQLMATH_API int dbTableInsert(
 /*
 file sqlmath_c_func
 */
-static void sql_cot_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will return cot(argv[0])
-    UNUSED(argc);
-    assert(argc == 1);
-    switch (sqlite3_value_numeric_type(argv[0])) {
-    case SQLITE_INTEGER:
-    case SQLITE_FLOAT:
-        if (argv[0] == 0) {
-            sqlite3_result_double(context, INFINITY);
-            return;
-        }
-        sqlite3_result_double(context,
-            1.0 / tan(sqlite3_value_double(argv[0])));
-    }
-}
-
-static void sql_coth_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will return coth(argv[0])
-    UNUSED(argc);
-    assert(argc == 1);
-    switch (sqlite3_value_numeric_type(argv[0])) {
-    case SQLITE_INTEGER:
-    case SQLITE_FLOAT:
-        if (argv[0] == 0) {
-            sqlite3_result_double(context, INFINITY);
-            return;
-        }
-        sqlite3_result_double(context,
-            1.0 / tanh(sqlite3_value_double(argv[0])));
-    }
-}
-
 typedef struct SqlKthpercentile {
     Str99 *str99;
     double kk;
@@ -1241,179 +1439,21 @@ static void sql_kthpercentile_step(
     ASSERT_SQLITE_CONTEXT_OK(context, errcode);
 }
 
-static void sql_random1_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will generate high-quality random-float between 0 <= xx < 1
-    UNUSED(argc);
-    UNUSED(argv);
-    static const double inv = 1.0 / 0x100000000;
-    uint32_t xx[1];
-    sqlite3_randomness(4, (void *) xx);
-    sqlite3_result_double(context, ((double) *xx) * inv);
-}
-
-static void sql_roundorzero_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will round <argv>[0] to decimal <argv>[1]
-    assert(argc == 1 || argc == 2);
-    if (sqlite3_value_type(argv[0]) == SQLITE_NULL) {
-        sqlite3_result_double(context, 0);
-    }
-    // declare var
-    char *zBuf = NULL;
-    double rr = sqlite3_value_double(argv[0]);
-    int nn = (argc == 2 ? sqlite3_value_int(argv[1]) : 0);
-    nn = MIN(nn, 30);
-    nn = MAX(nn, 0);
-    // If YY==0 and XX will fit in a 64-bit int,
-    // handle the rounding directly,
-    // otherwise use printf.
-    if (rr < -4503599627370496.0 || rr > +4503599627370496.0) {
-    } else if (nn == 0) {
-        // The value has no fractional part so there is nothing to round
-        rr = (double) ((sqlite_int64) (rr + (rr < 0 ? -0.5 : +0.5)));
-    } else {
-        zBuf = sqlite3_mprintf("%.*f", nn, rr);
-        if (zBuf == 0) {
-            sqlite3_result_error_nomem(context);
-            return;
-        }
-        rr = strtod(zBuf, NULL);
-        sqlite3_free(zBuf);
-    }
-    sqlite3_result_double(context, rr);
-}
-
-static void sql_sign_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-/*
-** Implementation of the sign() function
-** return one of 3 possibilities +1,0 or -1 when the argument is respectively
-** positive, 0 or negative.
-** When the argument is NULL the result is also NULL (completly conventional)
-*/
-    UNUSED(argc);
-    assert(argc == 1);
-    switch (sqlite3_value_numeric_type(argv[0])) {
-    case SQLITE_INTEGER:
-    case SQLITE_FLOAT:
-        {
-            double rVal = sqlite3_value_double(argv[0]);
-            sqlite3_result_double(context,
-                (rVal > 0) ? 1 : (rVal < 0) ? -1 : 0);
-        }
-        return;
-    }
-}
-
-static void sql_throwerror_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will return sqlite3_result_error_code(argv[0])
-    UNUSED(argc);
-    assert(argc == 1);
-    // declare var
-    int errcode = sqlite3_value_int(argv[0]);
-    switch (errcode) {
-    case SQLITE_DONE:
-    case SQLITE_ROW:
-        sqlite3_result_error_code(context, 2);
-        break;
-    case SQLITE_NOMEM:
-        sqlite3_result_error_nomem(context);
-        break;
-    case SQLITE_TOOBIG:
-        sqlite3_result_error_toobig(context);
-        break;
-    default:
-        sqlite3_result_error_code(context, errcode);
-    }
-}
-
-static void sql_tobase64_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will convert blob to base64-encoded-text
-    UNUSED(argc);
-    assert(argc == 1);
-    // declare var
-    char *text = NULL;
-    int nn = sqlite3_value_bytes(argv[0]);
-    // base64-encode blob to text
-    text =
-        base64Encode((const unsigned char *) sqlite3_value_blob(argv[0]),
-        &nn);
-    if (text == NULL) {
-        sqlite3_result_error_nomem(context);
-        return;
-    }
-    sqlite3_result_text(context, (const char *) text, nn,
-        base64EncodeCleanup);
-}
-
-static void sql_tostring_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will convert blob to text
-    UNUSED(argc);
-    assert(argc == 1);
-    sqlite3_result_text(context, (const char *) sqlite3_value_text(argv[0]),
-        -1, SQLITE_TRANSIENT);
-}
-
 
 /*
 file sqlmath_c_init
 */
-static int sqlite3_sqlmath_init(
+static int sqlite3_sqlmath_init2(
     sqlite3 * db,
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
 ) {
-#define SQLITE3_CREATE_FUNCTION1(func, argc) \
-    errcode = sqlite3_create_function(db, #func, argc, \
-        SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
-        sql_##func##_func, NULL, NULL); \
-    ASSERT_SQLITE_OK(NULL, NULL, errcode)
-#define SQLITE3_CREATE_FUNCTION2(func, argc) \
-    errcode = sqlite3_create_function(db, #func, argc, \
-        SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
-        NULL, sql_##func##_step, sql_##func##_final); \
-    ASSERT_SQLITE_OK(NULL, NULL, errcode)
     UNUSED(pzErrMsg);
     // declare var
     int errcode = 0;
     // init sqlite3_api
     sqlite3_api = pApi;
-    SQLITE3_CREATE_FUNCTION1(cot, 1);
-    SQLITE3_CREATE_FUNCTION1(coth, 1);
-    SQLITE3_CREATE_FUNCTION1(roundorzero, 1);
-    SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
-    SQLITE3_CREATE_FUNCTION1(sign, 1);
-    SQLITE3_CREATE_FUNCTION1(throwerror, 1);
-    SQLITE3_CREATE_FUNCTION1(tobase64, 1);
-    SQLITE3_CREATE_FUNCTION1(tostring, 1);
     SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
-    errcode =
-        sqlite3_create_function(db, "random1", 0,
-        SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
-    ASSERT_SQLITE_OK(NULL, NULL, errcode);
-  catch_error:
     return errcode;
 }
 #endif                          // SQLMATH_C
@@ -2053,3 +2093,4 @@ napi_value napi_module_init(
 /*
 file sqlmath_napi - end
 */
+#endif                          // SQLITE3_EXT_C2
