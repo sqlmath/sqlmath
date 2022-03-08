@@ -506,7 +506,6 @@ shCiBuildWasm() {(set -e
             ;;
         *)
             OPTION="$OPTION -DSQLITE3_EXT_C2"
-            OPTION="$OPTION -DSQLITE_HAVE_ZLIB_EMSCRIPTEN"
             ;;
         esac
         emcc $OPTION \
@@ -518,6 +517,7 @@ shCiBuildWasm() {(set -e
             -DSQLITE_HAVE_ZLIB \
             -DSQLITE_THREADSAFE=0 \
             \
+            -DEMSCRIPTEN \
             -DSQLMATH_C_DISABLE \
             -I.tmp \
             \
