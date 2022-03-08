@@ -50,7 +50,9 @@ int sqlite3_sqlmath_ext_custom_init(
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
 ) {
-    sqlite3_sqlmath_init2(db, pzErrMsg, pApi);
+    UNUSED(db);
+    UNUSED(pApi);
+    UNUSED(pzErrMsg);
     return 0;
 }
 

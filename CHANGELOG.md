@@ -1,11 +1,12 @@
 # Changelog
 
 # Todo
+- sqlmath - use sqlite-builtin jsonstring instead of str99 for c-function dbExec
 - sqlmath - migrate test to jsTestXxx
-- sqlmath - use sqlite's builtin jsonstring instead of str99 for extenstion kthpercentile
 - none
 
 # v2022.3.20-beta
+- sqlmath - use sqlite-builtin jsonstring instead of str99 for extension kthpercentile
 - sqlmath - remove zlib.h and use handcoded headers instead
 - split build-step sqlite3_c to sqlite3_c, sqlite3_ext_c, to deduplicate definition SQLITE3_C2
 - add shell-function shCiBuildWasm() to build wasm binaries with online demo spa.sqlchart.html

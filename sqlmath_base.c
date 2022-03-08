@@ -5,6 +5,11 @@
 /*
 file sqlmath_shared - start
 */
+#ifdef SQLITE3_EXT_C2
+#include <sqlite3ext.h>
+#else                           // SQLITE3_EXT_C2
+#include <sqlite3.h>
+#endif                          // SQLITE3_EXT_C2
 #include <assert.h>
 #include <math.h>
 #include <stdint.h>
@@ -71,16 +76,83 @@ inline void *ALLOCR(
         SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         NULL, sql_##func##_step, sql_##func##_final); \
     IS_SQLITE_OK_OR_RETURN_RC(errcode);
+
+
+// api - JsonString
+/* *INDENT-OFF* */
+typedef struct JsonString JsonString;
+typedef struct sqlite3_context sqlite3_context;
+typedef uint32_t u32;
+typedef uint64_t u64;
+typedef uint8_t u8;
+#ifdef SQLITE3_EXT_C2
+/* An instance of this object represents a JSON string
+** under construction.  Really, this is a generic string accumulator
+** that can be and is used to create strings other than JSON. */
+struct JsonString {
+  sqlite3_context *pCtx;   /* Function context - put error messages here */
+  char *zBuf;              /* Append JSON content here */
+  u64 nAlloc;              /* Bytes of storage available in zBuf[] */
+  u64 nUsed;               /* Bytes of zBuf[] currently used */
+  u8 bStatic;              /* True if zBuf is static space */
+  u8 bErr;                 /* True if an error has been encountered */
+  char zSpace[100];        /* Initial static space */
+};
+#endif                          // SQLITE3_EXT_C2
+
+/* Enlarge pJson->zBuf so that it can hold at least N more bytes.
+** Return zero on success.  Return non-zero on an OOM error */
+SQLITE_API int jsonGrow(JsonString *p, u32 N);
+
+/* Append a single character */
+SQLITE_API void jsonAppendChar(JsonString *p, char c);
+
+/* Append N bytes from zIn onto the end of the JsonString string. */
+SQLITE_API void jsonAppendRaw(JsonString *p, const char *zIn, u32 N);
+
+/* Append a comma separator to the output buffer, if the previous
+** character is not '[' or '{'. */
+SQLITE_API void jsonAppendSeparator(JsonString *p);
+
+/* Append the N-byte string in zIn to the end of the JsonString string
+** under construction.  Enclose the string in "..." and escape
+** any double-quotes or backslash characters contained within the
+** string. */
+SQLITE_API void jsonAppendString(JsonString *p, const char *zIn, u32 N);
+
+/* Initialize the JsonString object */
+SQLITE_API void jsonInit(JsonString *p, sqlite3_context *pCtx);
+
+/* Report an out-of-memory (OOM) condition */
+SQLITE_API void jsonOom(JsonString *p);
+
+/* Free all allocated memory and reset the JsonString object back to its
+** initial state. */
+SQLITE_API void jsonReset(JsonString *p);
+
+/* Make the JSON in p the result of the SQL function. */
+SQLITE_API void jsonResult(JsonString *p);
+
+/* Set the JsonString object to an empty string */
+SQLITE_API void jsonZero(JsonString *p);
+/* *INDENT-ON* */
+
+SQLITE_API void jsonExtraDoubleAppend(
+    JsonString * p,
+    double val
+);
+SQLITE_API void jsonExtraDoubleLength(
+    JsonString * p
+);
 /*
 file sqlmath_shared - end
 */
 
 
-#ifdef SQLITE3_EXT_C2
 /*
 file sqlmath_ext - start
 */
-#include <sqlite3ext.h>
+#ifdef SQLITE3_EXT_C2
 
 static const sqlite3_api_routines *sqlite3_api;
 
@@ -123,6 +195,162 @@ static void sql_coth_func(
             1.0 / tanh(sqlite3_value_double(argv[0])));
     }
 }
+
+
+/*
+file sql_kthpercentile_func - start
+*/
+double kthpercentile(
+    double *arr,
+    int nn,
+    double kk
+) {
+// this function will find <kk>-th-percentile element in <arr>
+// using quickselect-algorithm
+// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
+    double aa;
+    double tmp;
+    int kk2 = kk * nn - 1;
+    if (kk2 <= 0) {
+        kk2 = nn;
+        aa = INFINITY;
+        while (kk2 > 0) {
+            kk2 -= 1;
+            aa = MIN(aa, arr[kk2]);
+        }
+        return aa;
+    }
+    if (kk2 + 1 >= nn) {
+        kk2 = nn;
+        aa = -INFINITY;
+        while (kk2 > 0) {
+            kk2 -= 1;
+            aa = MAX(aa, arr[kk2]);
+        }
+        return aa;
+    }
+    int ii;
+    int ir;
+    int jj;
+    int ll;
+    int mid;
+    ll = 0;
+    ir = nn - 1;
+    while (1) {
+        if (ir <= ll + 1) {
+            if (ir == ll + 1 && arr[ir] < arr[ll]) {
+                SWAP(arr[ll], arr[ir]);
+            }
+            return arr[kk2];
+        } else {
+            mid = (ll + ir) >> 1;
+            SWAP(arr[mid], arr[ll + 1]);
+            if (arr[ll] > arr[ir]) {
+                SWAP(arr[ll], arr[ir]);
+            }
+            if (arr[ll + 1] > arr[ir]) {
+                SWAP(arr[ll + 1], arr[ir]);
+            }
+            if (arr[ll] > arr[ll + 1]) {
+                SWAP(arr[ll], arr[ll + 1]);
+            }
+            ii = ll + 1;
+            jj = ir;
+            aa = arr[ll + 1];
+            while (1) {
+                while (1) {
+                    ii += 1;
+                    if (arr[ii] >= aa) {
+                        break;
+                    }
+                }
+                while (1) {
+                    jj -= 1;
+                    if (arr[jj] <= aa) {
+                        break;
+                    }
+                }
+                if (jj < ii) {
+                    break;
+                }
+                SWAP(arr[ii], arr[jj]);
+            }
+            arr[ll + 1] = arr[jj];
+            arr[jj] = aa;
+            if (jj >= kk2) {
+                ir = jj - 1;
+            }
+            if (jj <= kk2) {
+                ll = ii;
+            }
+        }
+    }
+}
+
+typedef struct SqlKthpercentile {
+    sqlite3_context *pCtx;      /* Function context - error messages */
+    char *zBuf;                 /* Append JSON content here */
+    u64 nAlloc;                 /* Bytes of storage available in zBuf[] */
+    u64 nUsed;                  /* Bytes of zBuf[] currently used */
+    u8 bStatic;                 /* True if zBuf is static space */
+    u8 bErr;                    /* True if an error has been encountered */
+    char zSpace[100];           /* Initial static space */
+    double kk;
+} SqlKthpercentile;
+
+static void sql_kthpercentile_final(
+    sqlite3_context * context
+) {
+// this function will aggregate kth-percentile element
+    SqlKthpercentile *pp = sqlite3_aggregate_context(context, 0);
+    int nn = pp->nUsed / 8;
+    double result = kthpercentile((double *) pp->zBuf, nn, pp->kk);
+    jsonReset((JsonString *) pp);
+    if (nn <= 0) {
+        sqlite3_result_null(context);
+        return;
+    }
+    sqlite3_result_double(context, result);
+}
+
+static void sql_kthpercentile_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will aggregate kth-percentile element
+    UNUSED(argc);
+    // declare var
+    SqlKthpercentile *pp = NULL;
+    double *arr = NULL;
+    if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
+        return;
+    }
+    // pp - init
+    pp = sqlite3_aggregate_context(context, sizeof(*pp));
+    if (pp == NULL) {
+        return;
+    }
+    // pp - jsonInit
+    if (pp->nUsed == 0) {
+        jsonInit((JsonString *) pp, context);
+        pp->kk = sqlite3_value_double(argv[1]);
+    }
+    // pp - jsonGrow
+    if (pp->nUsed >= pp->nAlloc
+        && jsonGrow((JsonString *) pp, 8) != SQLITE_OK) {
+        return;
+    }
+    // pp - append double
+    arr = (double *) &pp->zBuf[pp->nUsed];
+    *arr = sqlite3_value_double(argv[0]);
+    pp->nUsed += 8;
+}
+
+/*
+file sql_kthpercentile_func - end
+*/
+
 
 static void sql_roundorzero_func(
     sqlite3_context * context,
@@ -224,6 +452,10 @@ static void sql_throwerror_func(
     }
 }
 
+
+/*
+file sql_tobase64_func - start
+*/
 static char *base64Encode(
     const unsigned char *blob,
     int *nn
@@ -322,6 +554,11 @@ static void sql_tostring_func(
         -1, SQLITE_TRANSIENT);
 }
 
+/*
+file sql_tobase64_func - end
+*/
+
+
 int sqlite3_sqlmath_ext_base_init(
     sqlite3 * db,
     char **pzErrMsg,
@@ -334,16 +571,17 @@ int sqlite3_sqlmath_ext_base_init(
     sqlite3_api = pApi;
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
-    errcode =
-        sqlite3_create_function(db, "random1", 0,
-        SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
-    IS_SQLITE_OK_OR_RETURN_RC(errcode);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 1);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION1(tobase64, 1);
     SQLITE3_CREATE_FUNCTION1(tostring, 1);
+    SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
+    errcode =
+        sqlite3_create_function(db, "random1", 0,
+        SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
     return 0;
 }
 
@@ -352,10 +590,10 @@ file sqlmath_ext - end
 */
 
 
-#else
 /*
 file sqlmath_h - start
 */
+#else                           // SQLITE3_EXT_C2
 #ifndef SQLMATH_H
 #define SQLMATH_H
 // header2
@@ -367,7 +605,6 @@ file sqlmath_h - start
 #ifdef WIN32
 #include <windows.h>
 #endif
-#include <sqlite3.h>
 
 // define2
 /*
@@ -532,100 +769,12 @@ file sqlmath_c - start
 */
 #ifdef SQLMATH_C
 // header
-#include <sqlite3ext.h>         // NOLINT
 static const sqlite3_api_routines *sqlite3_api;
 
 
 /*
 file sqlmath_c_base
 */
-double kthpercentile(
-    double *arr,
-    int nn,
-    double kk
-) {
-// this function will find <kk>-th-percentile element in <arr>
-// using quickselect-algorithm
-// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-    double aa;
-    double tmp;
-    int kk2 = kk * nn - 1;
-    if (kk2 <= 0) {
-        kk2 = nn;
-        aa = INFINITY;
-        while (kk2 > 0) {
-            kk2 -= 1;
-            aa = MIN(aa, arr[kk2]);
-        }
-        return aa;
-    }
-    if (kk2 + 1 >= nn) {
-        kk2 = nn;
-        aa = -INFINITY;
-        while (kk2 > 0) {
-            kk2 -= 1;
-            aa = MAX(aa, arr[kk2]);
-        }
-        return aa;
-    }
-    int ii;
-    int ir;
-    int jj;
-    int ll;
-    int mid;
-    ll = 0;
-    ir = nn - 1;
-    while (1) {
-        if (ir <= ll + 1) {
-            if (ir == ll + 1 && arr[ir] < arr[ll]) {
-                SWAP(arr[ll], arr[ir]);
-            }
-            return arr[kk2];
-        } else {
-            mid = (ll + ir) >> 1;
-            SWAP(arr[mid], arr[ll + 1]);
-            if (arr[ll] > arr[ir]) {
-                SWAP(arr[ll], arr[ir]);
-            }
-            if (arr[ll + 1] > arr[ir]) {
-                SWAP(arr[ll + 1], arr[ir]);
-            }
-            if (arr[ll] > arr[ll + 1]) {
-                SWAP(arr[ll], arr[ll + 1]);
-            }
-            ii = ll + 1;
-            jj = ir;
-            aa = arr[ll + 1];
-            while (1) {
-                while (1) {
-                    ii += 1;
-                    if (arr[ii] >= aa) {
-                        break;
-                    }
-                }
-                while (1) {
-                    jj -= 1;
-                    if (arr[jj] <= aa) {
-                        break;
-                    }
-                }
-                if (jj < ii) {
-                    break;
-                }
-                SWAP(arr[ii], arr[jj]);
-            }
-            arr[ll + 1] = arr[jj];
-            arr[jj] = aa;
-            if (jj >= kk2) {
-                ir = jj - 1;
-            }
-            if (jj <= kk2) {
-                ll = ii;
-            }
-        }
-    }
-}
-
 
 /*
 file sqlmath_c_str99
@@ -1387,75 +1536,6 @@ SQLMATH_API int dbTableInsert(
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
     return errcode;
 }
-
-
-/*
-file sqlmath_c_func
-*/
-typedef struct SqlKthpercentile {
-    Str99 *str99;
-    double kk;
-} SqlKthpercentile;
-
-static void sql_kthpercentile_final(
-    sqlite3_context * context
-) {
-// this function will aggregate kth-percentile element
-    SqlKthpercentile *pp = sqlite3_aggregate_context(context, 0);
-    int nn = pp->str99->nUsed / 8;
-    double result = kthpercentile((double *) pp->str99->zBuf, nn, pp->kk);
-    str99Destroy(pp->str99);
-    if (nn <= 0) {
-        sqlite3_result_null(context);
-        return;
-    }
-    sqlite3_result_double(context, result);
-}
-
-static void sql_kthpercentile_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will aggregate kth-percentile element
-    UNUSED(argc);
-    // declare var
-    SqlKthpercentile *pp = NULL;
-    int errcode = 0;
-    if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
-        return;
-    }
-    pp = sqlite3_aggregate_context(context, sizeof(*pp));
-    if (pp->str99 == NULL) {
-        pp->str99 = str99Create();
-        if (pp->str99 == NULL) {
-            sqlite3_result_error_nomem(context);
-            return;
-        }
-        pp->kk = sqlite3_value_double(argv[1]);
-    }
-    errcode =
-        str99AppendDouble(pp->str99, sqlite3_value_double(argv[0]), errcode);
-    ASSERT_SQLITE_CONTEXT_OK(context, errcode);
-}
-
-
-/*
-file sqlmath_c_init
-*/
-static int sqlite3_sqlmath_init2(
-    sqlite3 * db,
-    char **pzErrMsg,
-    const sqlite3_api_routines * pApi
-) {
-    UNUSED(pzErrMsg);
-    // declare var
-    int errcode = 0;
-    // init sqlite3_api
-    sqlite3_api = pApi;
-    SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
-    return errcode;
-}
 #endif                          // SQLMATH_C
 /*
 file sqlmath_c - end
@@ -2090,7 +2170,7 @@ napi_value napi_module_init(
 
 // NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_init)
 #endif                          // SQLMATH_NAPI
+#endif                          // SQLITE3_EXT_C2
 /*
 file sqlmath_napi - end
 */
-#endif                          // SQLITE3_EXT_C2
