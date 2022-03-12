@@ -16,12 +16,14 @@ file sqlmath_shared - start
 #include <stdlib.h>
 
 
-// define
 #define ALLOCC calloc
 #define ALLOCF free
 #define ALLOCM malloc
+#define IS_SQLITE_OK_OR_RETURN_RC(rc) if ((rc) != SQLITE_OK) {return (rc);}
 #define JS_MAX_SAFE_INTEGER 0x1fffffffffffff
 #define JS_MIN_SAFE_INTEGER -0x1fffffffffffff
+#define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
+#define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
 #define SGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
 #define SIZEOF_MESSAGE_DEFAULT 1024
 #define SQLITE_DATATYPE_BLOB            0x04
@@ -44,7 +46,21 @@ file sqlmath_shared - start
 #define SQLMATH_API
 #define SWAP(aa, bb) tmp = (aa); (aa) = (bb); (bb) = tmp
 #define UNUSED(x) (void)(x)
-inline void *ALLOCR(
+
+
+#define SQLITE3_CREATE_FUNCTION1(func, argc) \
+    errcode = sqlite3_create_function(db, #func, argc, \
+        SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
+        sql_##func##_func, NULL, NULL); \
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+#define SQLITE3_CREATE_FUNCTION2(func, argc) \
+    errcode = sqlite3_create_function(db, #func, argc, \
+        SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
+        NULL, sql_##func##_step, sql_##func##_final); \
+    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+
+
+inline static void *ALLOCR(
     void *ptr,
     size_t size
 ) {
@@ -60,31 +76,44 @@ inline void *ALLOCR(
     return ptr2;
 }
 
-#define IS_SQLITE_OK_OR_RETURN_RC(rc) if ((rc) != SQLITE_OK) {return (rc);}
-#define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
-#define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
-#define UNUSED(x) (void)(x)
 
-
-#define SQLITE3_CREATE_FUNCTION1(func, argc) \
-    errcode = sqlite3_create_function(db, #func, argc, \
-        SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
-        sql_##func##_func, NULL, NULL); \
-    IS_SQLITE_OK_OR_RETURN_RC(errcode);
-#define SQLITE3_CREATE_FUNCTION2(func, argc) \
-    errcode = sqlite3_create_function(db, #func, argc, \
-        SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
-        NULL, sql_##func##_step, sql_##func##_final); \
-    IS_SQLITE_OK_OR_RETURN_RC(errcode);
-
-
-// api - JsonString
+// api - sqlite3
 /* *INDENT-OFF* */
+typedef struct FuncDef FuncDef;
 typedef struct JsonString JsonString;
+typedef struct Vdbe Vdbe;
+typedef struct sqlite3_value Mem;
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint8_t u8;
-#ifdef SQLITE3_EXT_C2
+
+/*
+** The "context" argument for an installable function.  A pointer to an
+** instance of this structure is the first argument to the routines used
+** implement the SQL functions.
+**
+** There is a typedef for this structure in sqlite.h.  So all routines,
+** even the public interface to SQLite, can use a pointer to this structure.
+** But this file is the only place where the internal details of this
+** structure are known.
+**
+** This structure is defined inside of vdbeInt.h because it uses substructures
+** (Mem) which are only defined there.
+*/
+struct sqlite3_context {
+  Mem *pOut;              /* The return value is stored here */
+  FuncDef *pFunc;         /* Pointer to function information */
+  Mem *pMem;              /* Memory cell used to store aggregate context */
+  Vdbe *pVdbe;            /* The VM that owns this context */
+  int iOp;                /* Instruction number of OP_Function */
+  int isError;            /* Error code returned by the function. */
+  u8 skipFlag;            /* Skip accumulator loading if true */
+  u8 argc;                /* Number of arguments */
+  sqlite3_value *argv[1]; /* Argument set */
+};
+
+
+// api - JsonString
 /* An instance of this object represents a JSON string
 ** under construction.  Really, this is a generic string accumulator
 ** that can be and is used to create strings other than JSON. */
@@ -97,7 +126,6 @@ struct JsonString {
   u8 bErr;                 /* True if an error has been encountered */
   char zSpace[100];        /* Initial static space */
 };
-#endif                          // SQLITE3_EXT_C2
 
 /* Enlarge pJson->zBuf so that it can hold at least N more bytes.
 ** Return zero on success.  Return non-zero on an OOM error */
@@ -593,9 +621,8 @@ file sqlmath_ext - end
 file sqlmath_h - start
 */
 #else                           // SQLITE3_EXT_C2
-#ifndef SQLMATH_H
-#define SQLMATH_H
-// header2
+
+
 #include <ctype.h>
 #include <errno.h>
 #include <stdbool.h>
@@ -605,7 +632,7 @@ file sqlmath_h - start
 #include <windows.h>
 #endif
 
-// define2
+
 /*
 ** A macro to hint to the compiler that a function should not be
 ** inlined.
@@ -757,7 +784,7 @@ inline static int noop(
 // this function will do nothing except return 0
     return 0;
 }
-#endif                          // SQLMATH_H
+
 /*
 file sqlmath_h - end
 */
