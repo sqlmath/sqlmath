@@ -376,6 +376,16 @@ shCiArtifactUploadCustom() {(set -e
 shCiBase() {(set -e
 # this function will run base-ci
     export GITHUB_BRANCH0="$(git rev-parse --abbrev-ref HEAD)"
+    # validate package.json.fileCount
+    node --input-type=module --eval '
+import moduleFs from "fs";
+globalThis.assert(
+    JSON.parse(
+        moduleFs.readFileSync("package.json") //jslint-quiet
+    ).fileCount === Number(process.argv[1]),
+    `package.json.fileCount !== ${process.argv[1]}`
+);
+' "$(git ls-tree -r HEAD | wc -l)" # '
     # update version in README.md, jslint.mjs, package.json from CHANGELOG.md
     if [ "$(git branch --show-current)" = alpha ]
     then
@@ -782,6 +792,8 @@ shGitSquashPop() {(set -e
 shGithubFileUpload() {(set -e
 # this function will upload file $2 to github repo/branch $1
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
+# example use:
+# shGithubFileUpload octocat/hello-worId/master/hello.txt hello.txt
     node --input-type=module --eval '
 import moduleFs from "fs";
 import moduleHttps from "https";
@@ -1448,7 +1460,7 @@ function objectDeepCopyWithKeysSorted(obj) {
         replaceList: []
     }, JSON.parse(matchObj[1]));
     fetchList = JSON.parse(JSON.stringify(matchObj[1].fetchList));
-    // normalize replaceList, sorted by aa
+    // normalize replaceList sorted by aa
     replaceList = matchObj[1].replaceList.sort(function ({
         aa
     }, {

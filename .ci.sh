@@ -70,6 +70,7 @@ process.exit(Number(
 )}
 
 shCiBaseCustom() {(set -e
+    python cpplint.py sqlmath_base.c sqlmath_custom.c
     shCiEmsdkExport
     # .github_cache - restore
     if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
@@ -150,7 +151,10 @@ shCiBuildNodejs() {(set -e
     ' > .tmp/sqlmath_napi.cpp
     #
     # node-gyp - run
-    node -e '
+    node --input-type=module --eval '
+import moduleChildProcess from "child_process";
+import moduleFs from "fs";
+import modulePath from "path";
 (function () {
     let cflags = {
         "cflags": [
@@ -203,7 +207,7 @@ shCiBuildNodejs() {(set -e
         return target;
     }
     process.chdir(".tmp");
-    require("fs").writeFileSync("binding.gyp", JSON.stringify({ //jslint-quiet
+    moduleFs.writeFileSync("binding.gyp", JSON.stringify({ //jslint-quiet
         "target_defaults": {
             "cflags": cflags.cflags,
             "cflags!": cflags["cflags!"],
@@ -232,8 +236,7 @@ shCiBuildNodejs() {(set -e
                 "Debug": {
                     "cflags_cc!": [
                         "-DNDEBUG",
-                        "-O3",
-                        "-Os"
+                        "-O3"
                     ],
                     "defines": [
                         "DEBUG",
@@ -255,8 +258,7 @@ shCiBuildNodejs() {(set -e
                         "GCC_OPTIMIZATION_LEVEL": "0",
                         "OTHER_CPLUSPLUSFLAGS!": [
                             "-DNDEBUG",
-                            "-O3",
-                            "-Os"
+                            "-O3"
                         ]
                     }
                 },
@@ -275,8 +277,7 @@ shCiBuildNodejs() {(set -e
                         "GCC_INLINES_ARE_PRIVATE_EXTERN": "YES",
                         "GCC_OPTIMIZATION_LEVEL": "3",
                         "OTHER_CPLUSPLUSFLAGS!": [
-                            "-O2",
-                            "-Os"
+                            "-O3"
                         ]
                     }
                 }
@@ -389,7 +390,6 @@ shCiBuildNodejs() {(set -e
                 ],
                 "target_name": "<(target_node)"
             }),
-/*
             targetWarningLevel(0, {
                 "defines": [
                     "SQLITE3_SHELL_C2"
@@ -403,14 +403,13 @@ shCiBuildNodejs() {(set -e
                 "target_name": "<(target_shell)",
                 "type": "executable"
             }),
-*/
             {
                 "copies": [
                     {
                         "destination": "..",
                         "files": [
-                            "<(PRODUCT_DIR)/<(target_node).node"
-                            // "<(PRODUCT_DIR)/<(target_shell)<(.exe)"
+                            "<(PRODUCT_DIR)/<(target_node).node",
+                            "<(PRODUCT_DIR)/<(target_shell)<(.exe)"
                         ]
                     }
                 ],
@@ -448,8 +447,8 @@ shCiBuildNodejs() {(set -e
     ].forEach(function (action) {
         // node-gyp.js
         action = [
-            require("path").resolve(
-                require("path").dirname(process.execPath),
+            modulePath.resolve(
+                modulePath.dirname(process.execPath),
                 "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
             ).replace("/bin/node_modules/", "/lib/node_modules/"),
             action,
@@ -464,7 +463,7 @@ shCiBuildNodejs() {(set -e
                 return "\u0027" + elem + "\u0027";
             }).join(" ") + ")"
         );
-        if (require("child_process").spawnSync("node", action, { //jslint-quiet
+        if (moduleChildProcess.spawnSync("node", action, { //jslint-quiet
             stdio: [
                 "ignore", 1, 2
             ]
@@ -521,7 +520,7 @@ shCiBuildWasm() {(set -e
             -DSQLMATH_C_DISABLE \
             -I.tmp \
             \
-            -Oz \
+            -O3 \
             -Wall \
             -flto \
             -s INLINING_LIMIT=50 \
@@ -818,7 +817,9 @@ shCiTestNodejs() {(set -e
 # this function will run test in nodejs
     node jslint.mjs .
     export npm_config_mode_test=1
-    node -e '
+    node --input-type=module --eval '
+import moduleChildProcess from "child_process";
+import modulePath from "path";
 (function () {
     process.chdir(".tmp");
     [
@@ -826,8 +827,8 @@ shCiTestNodejs() {(set -e
     ].forEach(function (action) {
         // node-gyp.js
         action = [
-            require("path").resolve(
-                require("path").dirname(process.execPath),
+            modulePath.resolve(
+                modulePath.dirname(process.execPath),
                 "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
             ).replace("/bin/node_modules/", "/lib/node_modules/"),
             action,
@@ -842,7 +843,7 @@ shCiTestNodejs() {(set -e
                 return "\u0027" + elem + "\u0027";
             }).join(" ") + ")"
         );
-        if (require("child_process").spawnSync("node", action, { //jslint-quiet
+        if (moduleChildProcess.spawnSync("node", action, { //jslint-quiet
             stdio: [
                 "ignore", 1, 2
             ]

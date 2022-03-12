@@ -81,7 +81,6 @@ inline void *ALLOCR(
 // api - JsonString
 /* *INDENT-OFF* */
 typedef struct JsonString JsonString;
-typedef struct sqlite3_context sqlite3_context;
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint8_t u8;
@@ -137,12 +136,12 @@ SQLITE_API void jsonResult(JsonString *p);
 SQLITE_API void jsonZero(JsonString *p);
 /* *INDENT-ON* */
 
-SQLITE_API void jsonExtraDoubleAppend(
-    JsonString * p,
-    double val
-);
-SQLITE_API void jsonExtraDoubleLength(
-    JsonString * p
+
+// api - base
+double kthpercentile(
+    double *arr,
+    int nn,
+    double kk
 );
 /*
 file sqlmath_shared - end

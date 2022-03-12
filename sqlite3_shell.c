@@ -16,12 +16,20 @@ shRawLibFetch
             "sh": "cat sqlite-autoconf-3380000/shell.c",
             "url": "https://github.com/sqlite/sqlite/blob/version-3.38.0/autoconf/shell.c"
         }
-    ]
+    ],
+    "replaceList": []
 }
 -int sqlite3_regexp_init(
-+// hack-sqlite - disable redundant sqlite3_regexp_init
-+// int sqlite3_regexp_init2(sqlite3 *, char **, const sqlite3_api_routines *);
-+int sqlite3_regexp_init(
++// hack-sqlite - prevent name-clash with external-function
++static int sqlite3_regexp_init(
+
+-int sqlite3_series_init(
++// hack-sqlite - prevent name-clash with external-function
++static int sqlite3_series_init(
+
+-int sqlite3_shathree_init(
++// hack-sqlite - prevent name-clash with external-function
++static int sqlite3_shathree_init(
 */
 
 
@@ -2129,7 +2137,8 @@ static void sha3QueryFunc(
 #ifdef _WIN32
 
 #endif
-int sqlite3_shathree_init(
+// hack-sqlite - prevent name-clash with external-function
+static int sqlite3_shathree_init(
   sqlite3 *db,
   char **pzErrMsg,
   const sqlite3_api_routines *pApi
@@ -5953,7 +5962,8 @@ static sqlite3_module seriesModule = {
 #ifdef _WIN32
 
 #endif
-int sqlite3_series_init(
+// hack-sqlite - prevent name-clash with external-function
+static int sqlite3_series_init(
   sqlite3 *db,
   char **pzErrMsg,
   const sqlite3_api_routines *pApi
@@ -6726,9 +6736,8 @@ static void re_sql_func(
 #ifdef _WIN32
 
 #endif
-// hack-sqlite - disable redundant sqlite3_regexp_init
-// int sqlite3_regexp_init2(sqlite3 *, char **, const sqlite3_api_routines *);
-int sqlite3_regexp_init(
+// hack-sqlite - prevent name-clash with external-function
+static int sqlite3_regexp_init(
   sqlite3 *db,
   char **pzErrMsg,
   const sqlite3_api_routines *pApi

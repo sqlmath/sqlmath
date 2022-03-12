@@ -153,6 +153,40 @@ shRawLibFetch
 +// hack-sqlite - deduplicate math-functions
 +    { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
 
+-    case 3: c = (c<<6) + *(zIn)++;                     \
+-    case 2: c = (c<<6) + *(zIn)++;                     \
++/\\* hack-sqlite - fix warning *\\/ \
++    case 3: c = (c<<6) + *(zIn)++;                     \
++    /\\* fall through *\\/ \
++    case 2: c = (c<<6) + *(zIn)++;                     \
++    /\\* fall through *\\/ \
+
+-  0,                       /\\* xRename *\\/
++// hack-sqlite - fix warning
++  0,                       /\\* xRename *\\/
++  0,                       /\\* xSavepoint *\\/
++  0,                       /\\* xRelease *\\/
++  0,                       /\\* xRollbackTo *\\/
++  0                        /\\* xShadowName *\\/
+
+-  for(i=3; i<argc; i++){
++// hack-sqlite - fix warning
++  for(i=3; i<(size_t)argc; i++){
+
+-  int i, j;                  /\\* Loop counters *\\/
+-#ifdef SQLITE_TEST
++// hack-sqlite - fix warning
++  size_t i, j;                  /\\* Loop counters *\\/
++#ifdef SQLITE_TEST
+
+-  int i;
+-
+-  for(i=0; i<sizeof(aFuncs)/sizeof(aFuncs[0]); i++){
++// hack-sqlite - fix warning
++  size_t i;
++
++  for(i=0; i<sizeof(aFuncs)/sizeof(aFuncs[0]); i++){
+
 -  pIn = sqlite3_value_blob(argv[0]);
 -  nIn = sqlite3_value_bytes(argv[0]);
 +  pIn = sqlite3_value_blob(argv[0]);
@@ -860,7 +894,8 @@ UNUSED(pAux);
   CsvTable *pNew = 0;        /* The CsvTable object to construct */
   int bHeader = -1;          /* header= flags.  -1 means not seen yet */
   int rc = SQLITE_OK;        /* Result code from this routine */
-  int i, j;                  /* Loop counters */
+// hack-sqlite - fix warning
+  size_t i, j;                  /* Loop counters */
 #ifdef SQLITE_TEST
   int tstFlags = 0;          /* Value for testflags=N parameter */
 #endif
@@ -880,7 +915,8 @@ UNUSED(pAux);
   assert( sizeof(azPValue)==sizeof(azParam) );
   memset(&sRdr, 0, sizeof(sRdr));
   memset(azPValue, 0, sizeof(azPValue));
-  for(i=3; i<argc; i++){
+// hack-sqlite - fix warning
+  for(i=3; i<(size_t)argc; i++){
     const char *z = argv[i];
     const char *zValue;
     for(j=0; j<sizeof(azParam)/sizeof(azParam[0]); j++){
@@ -1263,7 +1299,12 @@ static sqlite3_module CsvModule = {
   0,                       /* xCommit */
   0,                       /* xRollback */
   0,                       /* xFindMethod */
+// hack-sqlite - fix warning
   0,                       /* xRename */
+  0,                       /* xSavepoint */
+  0,                       /* xRelease */
+  0,                       /* xRollbackTo */
+  0                        /* xShadowName */
 };
 
 #ifdef SQLITE_TEST
@@ -3676,8 +3717,11 @@ static const int utf_mask[] = {
   xtra = xtra_utf8_bytes[c];                           \
   switch( xtra ){                                      \
     case 4: c = (int)0xFFFD; break;                    \
+/* hack-sqlite - fix warning */ \
     case 3: c = (c<<6) + *(zIn)++;                     \
+    /* fall through */ \
     case 2: c = (c<<6) + *(zIn)++;                     \
+    /* fall through */ \
     case 1: c = (c<<6) + *(zIn)++;                     \
     c -= xtra_utf8_bits[xtra];                         \
     if( (utf_mask[xtra]&c)==0                          \
@@ -4840,7 +4884,8 @@ static int RegisterExtensionFunctions(sqlite3 *db){
     { "lower_quartile",   1, 0, 0, modeStep,     lower_quartileFinalize  },
     { "upper_quartile",   1, 0, 0, modeStep,     upper_quartileFinalize  },
   };
-  int i;
+// hack-sqlite - fix warning
+  size_t i;
 
   for(i=0; i<sizeof(aFuncs)/sizeof(aFuncs[0]); i++){
     void *pArg = 0;

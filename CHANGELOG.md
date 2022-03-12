@@ -6,6 +6,8 @@
 - none
 
 # v2022.3.20-beta
+- ci - add fileCount check
+- sqlmath - re-enable building shell-executable
 - sqlmath - use sqlite-builtin jsonstring instead of str99 for extension kthpercentile
 - sqlmath - remove zlib.h and use handcoded headers instead
 - split build-step sqlite3_c to sqlite3_c, sqlite3_ext_c, to deduplicate definition SQLITE3_C2
