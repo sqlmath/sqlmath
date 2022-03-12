@@ -6,6 +6,7 @@
 - none
 
 # v2022.3.20-beta
+- update to sqlite v3.38.1
 - ci - add fileCount check
 - sqlmath - re-enable building shell-executable
 - sqlmath - use sqlite-builtin jsonstring instead of str99 for extension kthpercentile
