@@ -1,6 +1,6 @@
 // copyright nobody
 // LINT_C_FILE
-#define IS_SQLITE_OK_OR_RETURN_RC(rc) if ((rc) != SQLITE_OK) {return (rc);}
+#define SQLMATH_IS_OK_OR_RETURN_RC(rc) if ((rc) != SQLITE_OK) {return (rc);}
 #define UNUSED(x) (void)(x)
 
 
@@ -5060,18 +5060,18 @@ int sqlite3_ext_init(
     int errcode = 0;
     sqlite3_api = pApi;
     errcode = sqlite3_compress_init(db, pzErrMsg, pApi);
-    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_csv_init(db, pzErrMsg, pApi);
-    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_extension_init(db, pzErrMsg, pApi);
-    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_noop_init(db, pzErrMsg, pApi);
-    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_regexp_init(db, pzErrMsg, pApi);
-    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_series_init(db, pzErrMsg, pApi);
-    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_shathree_init(db, pzErrMsg, pApi);
-    IS_SQLITE_OK_OR_RETURN_RC(errcode);
+    SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     return 0;
 }

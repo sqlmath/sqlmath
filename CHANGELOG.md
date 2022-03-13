@@ -6,6 +6,9 @@
 - none
 
 # v2022.3.20-beta
+- remove unused responseType = lastMatrixDouble
+- export c-function dbExec to wasm
+- replace Str99 with sqlite-builtin JsonString
 - update to sqlite v3.38.1
 - ci - add fileCount check
 - sqlmath - re-enable building shell-executable

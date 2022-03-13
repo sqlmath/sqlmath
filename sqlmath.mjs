@@ -211,8 +211,6 @@ file sqlmath.js
             (
                 responseType === "lastBlob"
                 ? 1
-                : responseType === "lastMatrixDouble"
-                ? 2
                 : 0
             )
         ].concat(serialize.bufSharedList));
@@ -221,8 +219,6 @@ file sqlmath.js
         case "arraybuffer":
         case "lastBlob":
             return result;
-        case "lastMatrixDouble":
-            return new Float64Array(result);
         case "list":
             return JSON.parse(new TextDecoder().decode(result));
         default:
@@ -270,21 +266,6 @@ file sqlmath.js
             bindList,
             db,
             responseType: "lastBlob",
-            sql
-        });
-    }
-
-    function dbGetLastMatrixDouble({
-        bindList = [],
-        db,
-        sql
-    }) {
-// this function will exec <sql> in <db> and return last SELECT-statement
-// from execution as row x col matrix of doubles
-        return dbExecAsync({
-            bindList,
-            db,
-            responseType: "lastMatrixDouble",
             sql
         });
     }
@@ -1040,50 +1021,6 @@ Definition of the CSV Format
                     bb,
                     cc,
                     dd
-                });
-            });
-            // test dbGetLastMatrixDouble's bind handling-behavior
-            [
-                aa
-            ].forEach(async function (aa) {
-                let cc = Number(
-                    typeof aa === "symbol"
-                    ? 0
-                    : aa
-                ) || 0;
-                let dd = await dbGetLastMatrixDouble({
-                    bindList: [
-                        aa
-                    ],
-                    db,
-                    sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
-                });
-                switch (typeof(aa)) {
-                case "bigint":
-                    aa = String(aa);
-                    break;
-                case "object":
-                    if (typeof aa?.getUTCFullYear === "function") {
-                        cc = aa.getUTCFullYear();
-                    }
-                    break;
-                }
-                cc = new Float64Array([
-                    1, 3, 1, 2, cc
-                ]);
-                // debugInline(ii, aa, bb, cc, dd);
-                cc.forEach(function (val, jj) {
-                    assertJsonEqual(
-                        val,
-                        dd[jj],
-                        {
-                            ii,
-                            aa, //jslint-quiet
-                            bb,
-                            cc,
-                            dd
-                        }
-                    );
                 });
             });
             // test dbExecAsync's responseType handling-behavior

@@ -368,9 +368,6 @@ import modulePath from "path";
                 "type": "static_library"
             }),
             targetWarningLevel(1, {
-                "defines": [
-                    "SQLMATH_C"
-                ],
                 "dependencies": [
                     "sqlite3_c",
                     "sqlite3_ext_c"
