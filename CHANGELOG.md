@@ -1,11 +1,11 @@
 # Changelog
 
 # Todo
-- sqlmath - use sqlite-builtin jsonstring instead of str99 for c-function dbExec
 - sqlmath - migrate test to jsTestXxx
 - none
 
 # v2022.3.20-beta
+- merge/streamline buildstep sqlmath_custom.c into sqlmath_base.c
 - remove unused responseType = lastMatrixDouble
 - export c-function dbExec to wasm
 - replace Str99 with sqlite-builtin JsonString

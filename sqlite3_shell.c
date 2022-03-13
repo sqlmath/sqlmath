@@ -1,5 +1,5 @@
 /*
-curl -L https://www.sqlite.org/2021/sqlite-autoconf-3380100.tar.gz | tar -xz
+curl -L https://www.sqlite.org/2022/sqlite-autoconf-3380100.tar.gz | tar -xz
 */
 /*jslint-disable*/
 /*

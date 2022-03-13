@@ -70,7 +70,10 @@ process.exit(Number(
 )}
 
 shCiBaseCustom() {(set -e
-    python cpplint.py sqlmath_base.c sqlmath_custom.c
+    python cpplint.py \
+        --filter=-whitespace/comments \
+        sqlmath_base.c \
+        sqlmath_custom.c
     shCiEmsdkExport
     # .github_cache - restore
     if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
@@ -124,10 +127,9 @@ shCiBuildNodejs() {(set -e
     printf '
 #ifndef SQLITE3_H_INCLUDED
     #define SQLITE3_H_INCLUDED
-    #undef SQLITE3_C2
     #define SQLITE3_H2
+    #undef SQLITE3_C2
     #undef SQLITE3_EXT_H2
-    #undef SQLITE3_SHELL_C2
     #include "../sqlite3.c"
 #endif
     ' > .tmp/sqlite3.h
@@ -136,19 +138,12 @@ shCiBuildNodejs() {(set -e
     printf '
 #ifndef SQLITE3EXT_H_INCLUDED
     #define SQLITE3EXT_H_INCLUDED
+    #define SQLITE3_EXT_H2
     #undef SQLITE3_C2
     #undef SQLITE3_H2
-    #define SQLITE3_EXT_H2
-    #undef SQLITE3_SHELL_C2
     #include "../sqlite3.c"
 #endif
     ' > .tmp/sqlite3ext.h
-    #
-    # patch sqlmath_napi.cpp
-    printf '
-#define SQLMATH_NAPI
-#include "../sqlmath_custom.c"
-    ' > .tmp/sqlmath_napi.cpp
     #
     # node-gyp - run
     node --input-type=module --eval '
@@ -362,28 +357,21 @@ import modulePath from "path";
                 ],
                 "sources": [
                     "../sqlite3_ext.c",
-                    "../sqlmath_base.c"
-                ],
-                "target_name": "sqlite3_ext_c",
-                "type": "static_library"
-            }),
-            targetWarningLevel(1, {
-                "dependencies": [
-                    "sqlite3_c",
-                    "sqlite3_ext_c"
-                ],
-                "sources": [
                     "../sqlmath_custom.c"
                 ],
                 "target_name": "sqlmath_c",
                 "type": "static_library"
             }),
             targetWarningLevel(1, {
+                "defines": [
+                    "SQLMATH_NAPI"
+                ],
                 "dependencies": [
+                    "sqlite3_c",
                     "sqlmath_c"
                 ],
                 "sources": [
-                    "./sqlmath_napi.cpp"
+                    "../sqlmath_base.c"
                 ],
                 "target_name": "<(target_node)"
             }),
@@ -392,6 +380,7 @@ import modulePath from "path";
                     "SQLITE3_SHELL_C2"
                 ],
                 "dependencies": [
+                    "sqlite3_c",
                     "sqlmath_c"
                 ],
                 "sources": [
@@ -486,7 +475,6 @@ shCiBuildWasm() {(set -e
     for FILE in \
         sqlite3.c \
         sqlite3_ext.c \
-        sqlmath_base.c \
         sqlmath_custom.c
     do
         FILE2=".tmp/$(basename "$FILE").wasm.o"
@@ -589,7 +577,6 @@ shCiBuildWasm() {(set -e
         \
         .tmp/sqlite3.c.wasm.o \
         .tmp/sqlite3_ext.c.wasm.o \
-        .tmp/sqlmath_base.c.wasm.o \
         .tmp/sqlmath_custom.c.wasm.o \
         \
 	    --pre-js sqlmath_wrapper_wasm.js \

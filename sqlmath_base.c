@@ -5,16 +5,25 @@
 /*
 file sqlmath_h - start
 */
+// *INDENT-OFF*
+#if defined(__cplusplus)
+extern "C" {
+#endif
+// *INDENT-ON*
+
+
 #ifndef SQLMATH_H
 #define SQLMATH_H
 
 
-#ifdef SQLITE3_EXT_C2
-#include <sqlite3ext.h>
-static const sqlite3_api_routines *sqlite3_api;
-#else                           // SQLITE3_EXT_C2
-#include <sqlite3.h>
-#endif                          // SQLITE3_EXT_C2
+/* *INDENT-OFF* */
+#ifdef SQLMATH_NAPI
+    #include <sqlite3.h>
+#else // SQLMATH_NAPI
+    #include <sqlite3ext.h>
+    static const sqlite3_api_routines *sqlite3_api;
+#endif // SQLMATH_NAPI
+/* *INDENT-ON* */
 
 
 #include <assert.h>
@@ -81,14 +90,7 @@ static const sqlite3_api_routines *sqlite3_api;
     SQLMATH_IS_OK_OR_RETURN_RC(errcode);
 
 
-inline static int noop(
-) {
-// this function will do nothing except return 0
-    return 0;
-}
-
-
-// api - header - sqlite3
+// file sqlmath_h - sqlite3
 /* *INDENT-OFF* */
 typedef struct FuncDef FuncDef;
 typedef struct JsonString JsonString;
@@ -124,7 +126,7 @@ struct sqlite3_context {
 };
 
 
-// api - header - JsonString
+// file sqlmath_h - JsonString
 /* An instance of this object represents a JSON string
 ** under construction.  Really, this is a generic string accumulator
 ** that can be and is used to create strings other than JSON. */
@@ -172,7 +174,7 @@ SQLITE_API void jsonReset(JsonString *p);
 /* *INDENT-ON* */
 
 
-// api - header - Jsbaton
+// file sqlmath_h - Jsbaton
 #define JSBATON_ARGC 16
 
 #define JSBATON_ERRCODE_SAVE() \
@@ -195,16 +197,16 @@ typedef struct Jsbaton {
 } Jsbaton;
 
 SQLMATH_API SQLITE_NOINLINE void jsbatonErrcodeSave(
-    Jsbaton *,
-    sqlite3 *,
-    int,
-    const char *,
-    const char *,
-    int
+    Jsbaton * baton,
+    sqlite3 * db,
+    int errcode,
+    const char *func,
+    const char *file,
+    int line
 );
 
 
-// api - header - misc
+// file sqlmath_h - misc
 // this function will exec <sql> and if <errcode> is not ok,
 // throw <baton->errmsg>
 #define SQLMATH_ASSERT_NOT_OOM(pp) \
@@ -219,28 +221,59 @@ SQLMATH_API SQLITE_NOINLINE void jsbatonErrcodeSave(
 typedef struct DbExecBindElem DbExecBindElem;
 
 SQLMATH_API int dbExec(
-    sqlite3 *,
-    Jsbaton *
+    sqlite3 * db,               /* The database on which the SQL executes */
+    Jsbaton * baton
 );
 
 SQLMATH_API int dbTableInsert(
-    sqlite3 *,
-    Jsbaton *
+    sqlite3 * db,               /* The database on which the SQL executes */
+    Jsbaton * baton
+);
+
+SQLMATH_API int doubleCompare(
+    const void *aa,
+    const void *bb
+);
+
+SQLMATH_API double doubleMax(
+    double aa,
+    double bb
+);
+
+SQLMATH_API double doubleMin(
+    double aa,
+    double bb
 );
 
 SQLMATH_API void jsonVectorDoubleAppend(
-    JsonString *,
-    double
+    JsonString * pp,
+    double val
+);
+
+SQLMATH_API double kthpercentile(
+    double *arr,
+    int nn,
+    double kk
+);
+
+SQLMATH_API int noop(
 );
 
 SQLMATH_API const char *sqlmathSnprintfTrace(
-    char *,
-    const char *,
-    const char *,
-    const char *,
-    const char *,
-    int
+    char *buf,
+    const char *prefix,
+    const char *errmsg,
+    const char *func,
+    const char *file,
+    int line
 );
+
+
+// *INDENT-OFF*
+#if defined(__cplusplus)
+}
+#endif
+// *INDENT-ON*
 /*
 file sqlmath_h - end
 */
@@ -253,28 +286,13 @@ file sqlmath_ext - start
 #ifdef SQLITE3_EXT_C2
 
 
-// api - ext - dbExec - start
+// file sqlmath_ext - dbExec - start
 typedef struct DbExecBindElem {
     const char *buf;
     char *key;
     int buflen;
     char datatype;
 } DbExecBindElem;
-
-SQLMATH_API void jsonVectorDoubleAppend(
-    JsonString * pp,
-    double val
-) {
-// this function will append double <val> to <pp>
-    static const uint64_t NN = 8;
-    if ((NN + pp->nUsed >= pp->nAlloc) && jsonGrow(pp, NN) != 0) {
-        return;
-    }
-    // pp - append double
-    double *arr = (double *) &pp->zBuf[pp->nUsed];
-    *arr = val;
-    pp->nUsed += NN;
-}
 
 SQLMATH_API int dbExec(
     sqlite3 * db,               /* The database on which the SQL executes */
@@ -290,6 +308,8 @@ SQLMATH_API int dbExec(
     jsonAppendRaw(str99, zz, nn); STR99_ASSERT_NOT_OOM();
 #define STR99_ASSERT_NOT_OOM() \
     if (str99->bErr != 0) { errcode = SQLITE_NOMEM; goto catch_error; }
+    // coverage-hack
+    noop();
     // declare var
     DbExecBindElem *bindElem;
     DbExecBindElem *bindList = NULL;
@@ -311,8 +331,6 @@ SQLMATH_API int dbExec(
     int64_t iTmp = 0;
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
     static const char bindPrefix[] = "$:@";
-    // coverage-hack
-    noop();
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
     // init bindList
@@ -751,10 +769,10 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
     return (const char *) buf;
 }
 
-// api - ext - dbExec - end
+// file sqlmath_ext - dbExec - end
 
 
-// api - ext - SQLMATH_FNC
+// file sqlmath_ext - SQLMATH_FNC
 SQLMATH_FNC static void sql_cot_func(
     sqlite3_context * context,
     int argc,
@@ -796,7 +814,7 @@ SQLMATH_FNC static void sql_coth_func(
 }
 
 // SQLMATH_FNC sql_kthpercentile_func - start
-static double kthpercentile(
+SQLMATH_API double kthpercentile(
     double *arr,
     int nn,
     double kk
@@ -1125,7 +1143,55 @@ SQLMATH_FNC static void sql_tostring_func(
 }
 
 
-// api - ext - init
+// file sqlmath_ext - misc
+SQLMATH_API int doubleCompare(
+    const void *aa,
+    const void *bb
+) {
+// this function will compare aa with bb
+    const double cc = *(double *) aa - *(double *) bb;
+    return cc == 0 ? 0 : cc > 0 ? 1 : -1;
+}
+
+SQLMATH_API double doubleMax(
+    double aa,
+    double bb
+) {
+// this function will return max of aa, bb
+    return aa < bb ? bb : aa;
+}
+
+SQLMATH_API double doubleMin(
+    double aa,
+    double bb
+) {
+// this function will return min of aa, bb
+    return aa > bb ? bb : aa;
+}
+
+SQLMATH_API void jsonVectorDoubleAppend(
+    JsonString * pp,
+    double val
+) {
+// this function will append double <val> to <pp>
+    static const uint64_t NN = 8;
+    if ((NN + pp->nUsed >= pp->nAlloc) && jsonGrow(pp, NN) != 0) {
+        return;
+    }
+    // pp - append double
+    double *arr = (double *) &pp->zBuf[pp->nUsed];
+    *arr = val;
+    pp->nUsed += NN;
+}
+
+SQLMATH_API int noop(
+) {
+// this function will do nothing except return 0
+    return 0;
+}
+
+
+// file sqlmath_ext - init
 int sqlite3_sqlmath_ext_base_init(
     sqlite3 * db,
     char **pzErrMsg,
@@ -1174,7 +1240,7 @@ file sqlmath_napi - start
 static int dbCount = 0;
 
 
-// api - napi - assert
+// file sqlmath_napi - assert
 // this function will if <cond> is falsy, terminate process with <msg>
 #define NAPI_ASSERT_FATAL(cond, msg) \
     if (!(cond)) { \
@@ -1240,7 +1306,7 @@ static int napiAssertOk(
 }
 
 
-// api - napi - promise
+// file sqlmath_napi - promise
 #define NAPI_JSBATON_CREATE() \
     jsbatonCreate(env, info); if (baton == NULL) {return NULL;}
 
@@ -1463,17 +1529,18 @@ static napi_value jspromiseCreate(
 }
 
 
-// api - napi - noop
+// file sqlmath_napi - noop
 static void noopAsyncExecute(
     napi_env env,
     void *data
 ) {
 // This function runs on a worker thread. It has no access to the JavaScript.
+    // coverage-hack
+    noop();
     UNUSED(env);
     // init baton
     Jsbaton *baton = (Jsbaton *) data;
     UNUSED(baton);
-    noop();
 }
 
 static napi_value noopAsync(
@@ -1495,7 +1562,7 @@ static napi_value noopSync(
 }
 
 
-// api - napi - dbXxx
+// file sqlmath_napi - dbXxx
 static int NAPI_JSPROMISE_CREATE(
     __dbCloseAsync
 ) {
@@ -1719,8 +1786,8 @@ static napi_value __dbFinalizerCreate(
 }
 
 
-// api - napi - init
-napi_value napi_module_init(
+// file sqlmath_napi - init
+napi_value napi_module_sqlmath_init(
     napi_env env,
     napi_value exports
 ) {
@@ -1739,6 +1806,8 @@ napi_value napi_module_init(
 // } napi_property_descriptor;
 #define NAPI_EXPORT_MEMBER(name) \
     {#name, NULL, name, NULL, NULL, NULL, napi_default, NULL}
+    // coverage-hack
+    noop();
     // declare var
     int errcode = 0;
     const napi_property_descriptor propList[] = {
@@ -1757,7 +1826,7 @@ napi_value napi_module_init(
     return exports;
 }
 
-// NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_init)
+NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_sqlmath_init)
 #endif                          // SQLMATH_NAPI
 /*
 file sqlmath_napi - end

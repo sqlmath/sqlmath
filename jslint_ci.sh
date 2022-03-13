@@ -538,6 +538,11 @@ shCiNpmPublishCustom() {(set -e
     # npm publish --access public
 )}
 
+shDiffFileFromDir() {(set -e
+# this function print diff of file $1 against same file in dir $2
+    diff -u "$1" "$2/$1"
+)}
+
 shDirHttplinkValidate() {(set -e
 # this function will validate http-links embedded in .html and .md files
     node --input-type=module --eval '
