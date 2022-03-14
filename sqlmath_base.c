@@ -16,14 +16,14 @@ extern "C" {
 #define SQLMATH_H
 
 
-/* *INDENT-OFF* */
+// *INDENT-OFF*
 #ifdef SQLMATH_NAPI
     #include <sqlite3.h>
 #else // SQLMATH_NAPI
     #include <sqlite3ext.h>
     static const sqlite3_api_routines *sqlite3_api;
 #endif // SQLMATH_NAPI
-/* *INDENT-ON* */
+// *INDENT-ON*
 
 
 #include <assert.h>
@@ -91,7 +91,7 @@ extern "C" {
 
 
 // file sqlmath_h - sqlite3
-/* *INDENT-OFF* */
+// *INDENT-OFF*
 typedef struct FuncDef FuncDef;
 typedef struct JsonString JsonString;
 typedef struct Vdbe Vdbe;
@@ -171,7 +171,7 @@ SQLITE_API void jsonInitNoContext(JsonString *p);
 /* Free all allocated memory and reset the JsonString object back to its
 ** initial state. */
 SQLITE_API void jsonReset(JsonString *p);
-/* *INDENT-ON* */
+// *INDENT-ON*
 
 
 // file sqlmath_h - Jsbaton
@@ -375,8 +375,8 @@ SQLMATH_API int dbExec(
             pzShared += 1;
             break;
         default:
-            printf("\n[ii=%d  datatype=%d  len=%d]\n", ii, bindElem->datatype,
-                bindElem->buflen);
+            fprintf(stderr, "\n[ii=%d  datatype=%d  len=%d]\n", ii,
+                bindElem->datatype, bindElem->buflen);
             errcode = SQLITE_ERROR_DATATYPE_INVALID;
             SQLMATH_ASSERT_OK();
         }
@@ -456,8 +456,8 @@ SQLMATH_API int dbExec(
                             bindElem->buflen, SQLITE_TRANSIENT);
                         break;
                     default:
-                        printf("\n[ii=%d  datatype=%d  len=%d]\n", ii,
-                            bindElem->datatype, bindElem->buflen);
+                        fprintf(stderr, "\n[ii=%d  datatype=%d  len=%d]\n",
+                            ii, bindElem->datatype, bindElem->buflen);
                         errcode = SQLITE_ERROR_DATATYPE_INVALID;
                     }
                     // ignore bind-range-error
@@ -690,8 +690,8 @@ SQLMATH_API int dbTableInsert(
                 pp += 8 + nLen;
                 break;
             default:
-                printf("\n[ii=%d  jj=%d  datatype=%d  len=%d]\n",
-                    ii, jj, datatype, *(int *) pp);
+                fprintf(stderr, "\n[ii=%d  jj=%d  datatype=%d  len=%d]\n", ii,
+                    jj, datatype, *(int *) pp);
                 errcode = SQLITE_ERROR_DATATYPE_INVALID;
                 SQLMATH_ASSERT_OK();
             }
@@ -770,6 +770,41 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
 }
 
 // file sqlmath_ext - dbExec - end
+
+
+// file sqlmath_ext - jenks - start
+#include "sqlmath_jenks.c"
+SQLMATH_FNC static void sql_jenks_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will calculate jenks natural breaks
+    UNUSED(argc);
+    // declare var
+    JenksObject *self = NULL;
+    const int kk = sqlite3_value_int(argv[2]);
+    const int nn = sqlite3_value_int(argv[1]);
+    double *input = (double *) sqlite3_value_blob(argv[0]);
+    double *output = (double *) sqlite3_value_blob(argv[3]);
+    // jenks init
+    self = jenksCreate(nn, kk);
+    if (self == NULL) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
+    // jenks exec
+    jenks(self, nn, kk, input);
+    memcpy(output, self, 2 * 8);
+    memcpy(output + 2, self->resultBreaks, (size_t) self->kk * 8);
+    memcpy(output + 2 + (size_t) self->kk, self->resultCounts,
+        (size_t) self->kk * 8);
+    // jenks cleanup
+    jenksDestroy(self);
+    sqlite3_result_null(context);
+}
+
+// file sqlmath_ext - jenks - end
 
 
 // file sqlmath_ext - SQLMATH_FNC
@@ -1204,6 +1239,7 @@ int sqlite3_sqlmath_ext_base_init(
     sqlite3_api = pApi;
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
+    SQLITE3_CREATE_FUNCTION1(jenks, 4);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 1);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);
@@ -1591,9 +1627,9 @@ static int NAPI_JSPROMISE_CREATE(
 // This function will run <bufin[1]> in <db> and save any result
 // (list of tables containing rows from SELECT/pragma/etc) as serialized
 // json-string in <pResult>.
-/* *INDENT-OFF* */
+// *INDENT-OFF*
 SQLMATH_API int dbExec(sqlite3 *, Jsbaton *);
-/* *INDENT-ON* */
+// *INDENT-ON*
     // init baton
     Jsbaton *baton = (Jsbaton *) data;
     // declare var
@@ -1675,9 +1711,9 @@ static int NAPI_JSPROMISE_CREATE(
     __dbMemoryLoadOrSave
 ) {
 // This function will load/save filename <bufin[0]> to/from <db>
-/* *INDENT-OFF* */
+// *INDENT-OFF*
 SQLMATH_API int dbMemoryLoadOrSave(sqlite3 *, Jsbaton *);
-/* *INDENT-ON* */
+// *INDENT-ON*
     // init baton
     Jsbaton *baton = (Jsbaton *) data;
     // declare var
@@ -1724,9 +1760,9 @@ static int NAPI_JSPROMISE_CREATE(
     __dbTableInsertAsync
 ) {
 // this function will bulk-insert <bufin[1]> to table <bufin[2]>
-/* *INDENT-OFF* */
+// *INDENT-OFF*
 SQLMATH_API int dbTableInsert(sqlite3 *, Jsbaton *);
-/* *INDENT-ON* */
+// *INDENT-ON*
     // init baton
     Jsbaton *baton = (Jsbaton *) data;
     // declare var
@@ -1750,8 +1786,7 @@ static void __dbFinalizer(
     // declare var
     int errcode = 0;
     sqlite3 *db = *(sqlite3 **) finalize_data;
-    // printf("\n[napi finalize_data=%zd]\n", db);
-    // printf("\n[napi finalize_hint=%s]\n", (const char *) finalize_hint);
+    // fprintf(stderr, "\n[napi autoclose db=%p]\n", db);
     // close db
     errcode = sqlite3_close_v2(db);
     if (db != NULL) {

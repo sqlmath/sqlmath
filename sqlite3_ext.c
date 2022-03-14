@@ -25,7 +25,7 @@ int uncompress(
 #else                           // EMSCRIPTEN
 #include <zlib.h>
 #endif                          // EMSCRIPTEN
-/* *INDENT-OFF* */
+// *INDENT-OFF*
 
 
 /*jslint-disable*/
@@ -5051,7 +5051,7 @@ file none
 /*jslint-enable*/
 
 
-/* *INDENT-ON* */
+// *INDENT-ON*
 int sqlite3_ext_init(
     sqlite3 * db,
     char **pzErrMsg,

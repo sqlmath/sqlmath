@@ -70,10 +70,6 @@ process.exit(Number(
 )}
 
 shCiBaseCustom() {(set -e
-    python cpplint.py \
-        --filter=-whitespace/comments \
-        sqlmath_base.c \
-        sqlmath_custom.c
     shCiEmsdkExport
     # .github_cache - restore
     if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
@@ -799,7 +795,34 @@ shCiNpmPublishCustom() {(set -e
 
 shCiTestNodejs() {(set -e
 # this function will run test in nodejs
+    # # indent c-file
+    # if (uname | grep -q "MING\|MSYS")
+    # then
+    #     ./indent.exe \
+    #         --blank-lines-after-commas \
+    #         --braces-on-func-def-line \
+    #         --break-function-decl-args \
+    #         --break-function-decl-args-end \
+    #         --dont-line-up-parentheses \
+    #         --k-and-r-style \
+    #         --line-length78 \
+    #         --no-tabs \
+    #         -bfde \
+    #         sqlite3_ext.c \
+    #         sqlmath_base.c \
+    #         sqlmath_custom.c \
+    #         sqlmath_jenks.c
+    #     dos2unix *.c
+    # fi
+    # lint c-file
+    python cpplint.py \
+        --filter=-whitespace/comments \
+        sqlmath_base.c \
+        sqlmath_custom.c \
+        sqlmath_jenks.c
+    # lint js-file
     node jslint.mjs .
+    # rebuild c-module
     export npm_config_mode_test=1
     node --input-type=module --eval '
 import moduleChildProcess from "child_process";
@@ -843,9 +866,25 @@ sqlmath.testAll();
 ' "$@" # '
 )}
 
-(set -e
-    # init $UPSTREAM_OWNER
-    export UPSTREAM_OWNER=sqlmath
-    # init $UPSTREAM_REPO
-    export UPSTREAM_REPO=sqlmath.js
-)
+shSyncSqlmath() {(set -e
+# this function will sync files with ~/Documents/sqlmath/
+    local FILE
+    if [ -d "$HOME/Documents/sqlmath/" ]
+    then
+        for FILE in \
+            .ci.sh \
+            indent.exe \
+            spa.sqlchart.html \
+            spa.sqlchart.js \
+            sqlite3.c \
+            sqlite3_ext.c \
+            sqlite3_shell.c \
+            sqlmath.mjs \
+            sqlmath_base.c \
+            sqlmath_jenks.c \
+            sqlmath_wrapper_wasm.js
+        do
+            ln -f "$HOME/Documents/sqlmath/$FILE"
+        done
+    fi
+)}

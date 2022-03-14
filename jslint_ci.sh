@@ -2990,7 +2990,7 @@ shCiMain() {(set -e
     export NODE_OPTIONS="--unhandled-rejections=strict"
     if [ -f ./.ci.sh ]
     then
-        . ./.ci.sh "$@"
+        . ./.ci.sh
     fi
     "$@"
 )}

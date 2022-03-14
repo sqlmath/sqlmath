@@ -5,10 +5,11 @@
 - none
 
 # v2022.3.20-beta
-- merge/streamline buildstep sqlmath_custom.c into sqlmath_base.c
-- remove unused responseType = lastMatrixDouble
-- export c-function dbExec to wasm
-- replace Str99 with sqlite-builtin JsonString
+- sqlmath - add builtin sql-function jenks() which is a fast 1d, ml classifier
+- sqlmath - merge/streamline buildstep sqlmath_custom.c into sqlmath_base.c
+- sqlmath - remove unused responseType = lastMatrixDouble
+- sqlmath - export c-function dbExec to wasm
+- sqlmath - replace Str99 with sqlite-builtin JsonString
 - update to sqlite v3.38.1
 - ci - add fileCount check
 - sqlmath - re-enable building shell-executable
