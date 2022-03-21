@@ -874,6 +874,7 @@ shSyncSqlmath() {(set -e
         for FILE in \
             .ci.sh \
             indent.exe \
+            jslint_ci.sh \
             spa.sqlchart.html \
             spa.sqlchart.js \
             sqlite3.c \

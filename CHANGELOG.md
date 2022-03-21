@@ -4,7 +4,7 @@
 - sqlmath - migrate test to jsTestXxx
 - none
 
-# v2022.3.20-beta
+# v2022.3.20
 - sqlmath - add builtin sql-function jenks() which is a fast 1d, ml classifier
 - sqlmath - merge/streamline buildstep sqlmath_custom.c into sqlmath_base.c
 - sqlmath - remove unused responseType = lastMatrixDouble
