@@ -1328,8 +1328,8 @@ SELECT * FROM testDbExecAsync2;
             "COTH(-1)", -1.31303528549933,
             "COTH(0)", null,
             "COTH(1)", 1.31303528549933,
-            "ROUNDORZERO(NULL)", 0,
             "ROUNDORZERO(NULL, NULL)", 0,
+            "ROUNDORZERO(NULL, 0)", 0,
             "ROUNDORZERO(NULL, 0.5)", 0,
             "ROUNDORZERO(0.5, NULL)", 1,
             "ROUNDORZERO(0.5, 0.5)", 1,
@@ -1713,6 +1713,8 @@ SELECT * FROM testDbExecAsync2;
                     db,
                     sql: (`
 SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii};
+-- test null-case handling-behavior
+SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
                     `),
                     tmpRowList: data.map(function (val) {
                         return {

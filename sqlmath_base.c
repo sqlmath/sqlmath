@@ -857,21 +857,24 @@ SQLMATH_API double kthpercentile(
 // this function will find <kk>-th-percentile element in <arr>
 // using quickselect-algorithm
 // https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-    double aa;
+    if (nn <= 0) {
+        return 0;
+    }
+    double aa = *arr;
     double tmp;
     int kk2 = kk * nn - 1;
+    // handle kk <= 0
     if (kk2 <= 0) {
         kk2 = nn;
-        aa = INFINITY;
         while (kk2 > 0) {
             kk2 -= 1;
             aa = MIN(aa, arr[kk2]);
         }
         return aa;
     }
+    // handle kk >= nn - 1
     if (kk2 + 1 >= nn) {
         kk2 = nn;
-        aa = -INFINITY;
         while (kk2 > 0) {
             kk2 -= 1;
             aa = MAX(aa, arr[kk2]);
@@ -940,15 +943,20 @@ SQLMATH_FNC static void sql_kthpercentile_final(
     sqlite3_context * context
 ) {
 // this function will aggregate kth-percentile element
-    JsonString *pp = sqlite3_aggregate_context(context, 0);
-    int nn = pp->nUsed / 8;
-    double result = kthpercentile((double *) pp->zBuf, nn, pp->kk);
-    jsonReset((JsonString *) pp);
-    if (nn <= 0) {
+    // pp - init
+    JsonString *pp = (JsonString *) sqlite3_aggregate_context(context, 0);
+    if (pp == NULL) {
         sqlite3_result_null(context);
         return;
     }
-    sqlite3_result_double(context, result);
+    int nn = pp->nUsed / 8;
+    if (nn <= 0) {
+        sqlite3_result_null(context);
+    } else {
+        sqlite3_result_double(context, kthpercentile((double *) pp->zBuf, nn,
+                pp->kk));
+    }
+    jsonReset(pp);
 }
 
 SQLMATH_FNC static void sql_kthpercentile_step(
@@ -958,20 +966,20 @@ SQLMATH_FNC static void sql_kthpercentile_step(
 ) {
 // this function will aggregate kth-percentile element
     UNUSED(argc);
-    // declare var
-    JsonString *pp = NULL;
-    if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
-        return;
-    }
     // pp - init
-    pp = sqlite3_aggregate_context(context, sizeof(*pp));
+    JsonString *pp =
+        (JsonString *) sqlite3_aggregate_context(context, sizeof(*pp));
     if (pp == NULL) {
         return;
     }
     // pp - jsonInit
-    if (pp->nUsed == 0) {
-        jsonInit((JsonString *) pp, context);
+    if (pp->zBuf == 0) {
+        jsonInit(pp, context);
         pp->kk = sqlite3_value_double(argv[1]);
+    }
+    // pp - handle null-case
+    if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
+        return;
     }
     // pp - append double
     jsonVectorDoubleAppend(pp, sqlite3_value_double(argv[0]));
@@ -979,20 +987,50 @@ SQLMATH_FNC static void sql_kthpercentile_step(
 
 // SQLMATH_FNC sql_kthpercentile_func - end
 
+// SQLMATH_FNC sql_marginoferror95_func - start
+SQLMATH_API int marginoferror95(
+    double nn,
+    double pp
+) {
+// this function will calculate margin-of-error sqrt(pp*(1-pp)/nn)
+    return 1.9599639845400542 * sqrt(pp * (1 - pp) / nn);
+}
+
+SQLMATH_FNC static void sql_marginoferror95_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will calculate margin-of-error sqrt(pp*(1-pp)/nn)
+    UNUSED(argc);
+    // declare var
+    double nn = sqlite3_value_double(argv[0]);
+    double pp = sqlite3_value_double(argv[1]);
+    if (sqlite3_value_type(argv[0]) == SQLITE_NULL
+        || sqlite3_value_type(argv[1]) == SQLITE_NULL || nn == 0) {
+        sqlite3_result_null(context);
+        return;
+    }
+    sqlite3_result_double(context, marginoferror95(nn, pp));
+}
+
+// SQLMATH_FNC sql_marginoferror95_func - end
+
 SQLMATH_FNC static void sql_roundorzero_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
 // this function will round <argv>[0] to decimal <argv>[1]
-    assert(argc == 1 || argc == 2);
+    UNUSED(argc);
     if (sqlite3_value_type(argv[0]) == SQLITE_NULL) {
         sqlite3_result_double(context, 0);
+        return;
     }
     // declare var
     char *zBuf = NULL;
     double rr = sqlite3_value_double(argv[0]);
-    int nn = (argc == 2 ? sqlite3_value_int(argv[1]) : 0);
+    int nn = sqlite3_value_int(argv[1]);
     nn = MIN(nn, 30);
     nn = MAX(nn, 0);
     // If YY==0 and XX will fit in a 64-bit int,
@@ -1240,7 +1278,7 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
     SQLITE3_CREATE_FUNCTION1(jenks, 4);
-    SQLITE3_CREATE_FUNCTION1(roundorzero, 1);
+    SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);

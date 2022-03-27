@@ -4,6 +4,10 @@
 - sqlmath - migrate test to jsTestXxx
 - none
 
+# v2022.4.1-beta
+- jslint - update jslint v2022.3.24
+- sqlmath - bugfix - fix crash from sql-fnc kthpercentile(), when passed with empty-list
+
 # v2022.3.20
 - sqlmath - add builtin sql-function jenks() which is a fast 1d, ml classifier
 - sqlmath - merge/streamline buildstep sqlmath_custom.c into sqlmath_base.c
