@@ -1,6 +1,3 @@
-/*
-curl -L https://www.sqlite.org/2022/sqlite-autoconf-3380100.tar.gz | tar -xz
-*/
 /*jslint-disable*/
 /*
 shRawLibFetch
@@ -8,13 +5,13 @@ shRawLibFetch
     "fetchList": [
         {
             "comment": true,
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.1/LICENSE.md"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/LICENSE.md"
         },
         {
             "footer": "\n#endif // SQLITE3_SHELL_C2\n",
             "header": "\n#ifdef SQLITE3_SHELL_C2\n",
-            "sh": "cat sqlite-autoconf-3380100/shell.c",
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.1/autoconf/shell.c"
+            "sh": "cat sqlite-autoconf-3380200/shell.c",
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/autoconf/shell.c"
         }
     ],
     "replaceList": []
@@ -34,13 +31,13 @@ shRawLibFetch
 
 
 /*
-repo https://github.com/sqlite/sqlite/tree/version-3.38.1
-committed 2022-03-12T13:37:29Z
+repo https://github.com/sqlite/sqlite/tree/version-3.38.2
+committed 2022-03-26T13:51:10Z
 */
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.1/LICENSE.md
+file https://github.com/sqlite/sqlite/blob/version-3.38.2/LICENSE.md
 */
 /*
 The author disclaims copyright to this source code.  In place of
@@ -53,7 +50,7 @@ a legal notice, here is a blessing:
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.1/autoconf/shell.c
+file https://github.com/sqlite/sqlite/blob/version-3.38.2/autoconf/shell.c
 */
 
 #ifdef SQLITE3_SHELL_C2
@@ -8025,9 +8022,14 @@ static int zipfileFilter(
     zipfileCursorErr(pCsr, "zipfile() function requires an argument");
     return SQLITE_ERROR;
   }else if( sqlite3_value_type(argv[0])==SQLITE_BLOB ){
+    static const u8 aEmptyBlob = 0;
     const u8 *aBlob = (const u8*)sqlite3_value_blob(argv[0]);
     int nBlob = sqlite3_value_bytes(argv[0]);
     assert( pTab->pFirstEntry==0 );
+    if( aBlob==0 ){
+      aBlob = &aEmptyBlob;
+      nBlob = 0;
+    }
     rc = zipfileLoadDirectory(pTab, aBlob, nBlob);
     pCsr->pFreeEntry = pTab->pFirstEntry;
     pTab->pFirstEntry = pTab->pLastEntry = 0;

@@ -5,6 +5,7 @@
 - none
 
 # v2022.4.1-beta
+- sqlite - update to sqlite v3.38.2
 - jslint - update jslint v2022.3.24
 - sqlmath - bugfix - fix crash from sql-fnc kthpercentile(), when passed with empty-list
 
