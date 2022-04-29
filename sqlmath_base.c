@@ -27,6 +27,7 @@ extern "C" {
 
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -230,30 +231,24 @@ SQLMATH_API int dbTableInsert(
     Jsbaton * baton
 );
 
-SQLMATH_API int doubleCompare(
+SQLMATH_API int doubleSign(
+    const double aa
+);
+
+SQLMATH_API int doubleSortCompare(
     const void *aa,
     const void *bb
 );
 
-SQLMATH_API double doubleMax(
-    double aa,
-    double bb
-);
-
-SQLMATH_API double doubleMin(
-    double aa,
-    double bb
-);
-
 SQLMATH_API void jsonVectorDoubleAppend(
     JsonString * pp,
-    double val
+    const double val
 );
 
 SQLMATH_API double kthpercentile(
     double *arr,
-    int nn,
-    double kk
+    const int nn,
+    const double kk
 );
 
 SQLMATH_API int noop(
@@ -851,8 +846,8 @@ SQLMATH_FNC static void sql_coth_func(
 // SQLMATH_FNC sql_kthpercentile_func - start
 SQLMATH_API double kthpercentile(
     double *arr,
-    int nn,
-    double kk
+    const int nn,
+    const double kk
 ) {
 // this function will find <kk>-th-percentile element in <arr>
 // using quickselect-algorithm
@@ -988,7 +983,7 @@ SQLMATH_FNC static void sql_kthpercentile_step(
 // SQLMATH_FNC sql_kthpercentile_func - end
 
 // SQLMATH_FNC sql_marginoferror95_func - start
-SQLMATH_API int marginoferror95(
+SQLMATH_API double marginoferror95(
     double nn,
     double pp
 ) {
@@ -1217,29 +1212,20 @@ SQLMATH_FNC static void sql_tostring_func(
 
 
 // file sqlmath_ext - misc
-SQLMATH_API int doubleCompare(
+SQLMATH_API int doubleSign(
+    const double aa
+) {
+// this function will return sign of <aa>
+    return aa < 0 ? -1 : aa > 0 ? 1 : 0;
+}
+
+SQLMATH_API int doubleSortCompare(
     const void *aa,
     const void *bb
 ) {
-// this function will compare aa with bb
+// this function will compare <aa> with <bb>
     const double cc = *(double *) aa - *(double *) bb;
-    return cc == 0 ? 0 : cc > 0 ? 1 : -1;
-}
-
-SQLMATH_API double doubleMax(
-    double aa,
-    double bb
-) {
-// this function will return max of aa, bb
-    return aa < bb ? bb : aa;
-}
-
-SQLMATH_API double doubleMin(
-    double aa,
-    double bb
-) {
-// this function will return min of aa, bb
-    return aa > bb ? bb : aa;
+    return cc < 0 ? -1 : cc > 0 ? 1 : 0;
 }
 
 SQLMATH_API void jsonVectorDoubleAppend(

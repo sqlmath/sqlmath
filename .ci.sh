@@ -31,13 +31,14 @@ process.exit(Number(
     # init .git/config
     git config --local user.email "github-actions@users.noreply.github.com"
     git config --local user.name "github-actions"
+    # git clone origin/artifact
     rm -rf ".tmp/$BRANCH_ARTIFACT"
-    mkdir -p ".tmp/$BRANCH_ARTIFACT"
+    shGitCmdWithGithubToken clone origin ".tmp/$BRANCH_ARTIFACT" \
+        --branch="$BRANCH_ARTIFACT" \
+        --single-branch
+    (set -e
     cd ".tmp/$BRANCH_ARTIFACT"
-    git init
-    cp ../../.git/config .git/
-    git fetch origin "$BRANCH_ARTIFACT"
-    git checkout -b "$BRANCH_ARTIFACT" "origin/$BRANCH_ARTIFACT"
+    cp ../../.git/config .git/config
     # update dir branch-$GITHUB_BRANCH0
     mkdir -p "branch-$GITHUB_BRANCH0"
     cp ../../_binary_* "branch-$GITHUB_BRANCH0"
@@ -62,11 +63,12 @@ process.exit(Number(
         shGitCmdWithGithubToken push origin -f "$BRANCH_ARTIFACT"
     fi
     # sync before push
-    git pull origin "$BRANCH_ARTIFACT"
+    shGitCmdWithGithubToken pull origin "$BRANCH_ARTIFACT"
     # push
     shGitCmdWithGithubToken push origin "$BRANCH_ARTIFACT"
     # debug
     shGitLsTree
+    )
 )}
 
 shCiBaseCustom() {(set -e
@@ -786,7 +788,9 @@ shCiNpmPublishCustom() {(set -e
     local FILE
     # fetch artifact
     git fetch origin artifact --depth=1
-    git checkout origin/artifact "branch-beta/_binary_"*
+    git checkout origin/artifact \
+        "branch-beta/_binary_"* \
+        "branch-beta/sqlmath_wasm"*
     cp -a branch-beta/_binary_* .
     cp -a branch-beta/sqlmath_wasm.* .
     # npm-publish
@@ -860,6 +864,8 @@ import modulePath from "path";
     });
 }());
 ' "$@" # '
+    rm -f *~ .*test.sqlite
+    [ -f .session.json ] || touch .session.json
     shRunWithCoverage --exclude=jslint.mjs node --input-type=module --eval '
 import sqlmath from "./sqlmath_custom.mjs";
 sqlmath.testAll();

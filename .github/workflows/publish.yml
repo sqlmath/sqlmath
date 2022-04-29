@@ -5,16 +5,11 @@ on:
   release:
     types: [created]
   workflow_dispatch:
-    branches:
-      - alpha
-      - beta
-      - master
-      - sandbox
 jobs:
 
 
 # npm publish - start
-  build:
+  job1:
     strategy:
       matrix:
         architecture:
@@ -29,7 +24,12 @@ jobs:
           # - macos-latest
           - ubuntu-latest
           # - windows-latest
-    name: job1 . node . v${{ matrix.node_version }} . ${{ matrix.architecture }} . ${{ matrix.os }}
+    name: >
+      job1
+      node
+      v${{ matrix.node_version }}
+      ${{ matrix.architecture }}
+      ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read

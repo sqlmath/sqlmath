@@ -10,7 +10,7 @@ https://www.geodms.nl/CalcNaturalBreaks
 This page contains C++ code of a O(k×n×log(nn)) method for the classification
 of an array of numeric values such that the variance per class is minimal,
 known as a Fisher's Natural Breaks Classification. This algorithm is an
-improvement of Jenks' Natural Breaks Optimization method, which is an O(k×n2)
+improvement of Jenks' Natural Breaks Optimization method, which is an O(k×n^2)
 algorithm. See:
 Fisher's Natural Breaks Classification complexity proof
 
@@ -28,6 +28,7 @@ file sqlmath_h - start
 */
 #ifndef SQLMATH_H
 #define SQLMATH_API
+#define SQLMATH_FNC
 #define SQLMATH_H
 #include <assert.h>
 #include <math.h>
@@ -37,7 +38,7 @@ file sqlmath_h - start
 #define ALLOCM malloc
 #define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
-SQLMATH_API int doubleCompare(
+SQLMATH_API int doubleSortCompare(
     const void *aa,
     const void *bb
 ) {
@@ -257,7 +258,7 @@ SQLMATH_FNC void jenks(
             ii -= 1;
             self->tmp[ii] = values[ii];
         }
-        qsort(self->tmp, nn, 8, doubleCompare);
+        qsort(self->tmp, nn, 8, doubleSortCompare);
         // init histogram
         val = self->tmp[0];
         ii = 1;
@@ -355,9 +356,9 @@ file sqlmath_test - start
 // *INDENT-OFF*
 #include <algorithm>
 #include <iostream>
+typedef std::size_t                  SizeT;
 typedef SizeT                        CountType;
 typedef std::pair<double, CountType> ValueCountPair;
-typedef std::size_t                  SizeT;
 typedef std::vector<ValueCountPair>  ValueCountPairContainer;
 typedef std::vector<double>          LimitsContainer;
 // helper funcs
