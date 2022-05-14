@@ -799,36 +799,38 @@ shCiNpmPublishCustom() {(set -e
 
 shCiTestNodejs() {(set -e
 # this function will run test in nodejs
-    # # indent c-file
-    # if (uname | grep -q "MING\|MSYS")
-    # then
-    #     ./indent.exe \
-    #         --blank-lines-after-commas \
-    #         --braces-on-func-def-line \
-    #         --break-function-decl-args \
-    #         --break-function-decl-args-end \
-    #         --dont-line-up-parentheses \
-    #         --k-and-r-style \
-    #         --line-length78 \
-    #         --no-tabs \
-    #         -bfde \
-    #         sqlite3_ext.c \
-    #         sqlmath_base.c \
-    #         sqlmath_custom.c \
-    #         sqlmath_jenks.c
-    #     dos2unix *.c
-    # fi
-    # lint c-file
-    python cpplint.py \
-        --filter=-whitespace/comments \
-        sqlmath_base.c \
-        sqlmath_custom.c \
-        sqlmath_jenks.c
-    # lint js-file
-    node jslint.mjs .
     # rebuild c-module
     export npm_config_mode_test=1
-    node --input-type=module --eval '
+    if [ "$npm_config_fast" != true ]
+    then
+        # # indent c-file
+        # if (uname | grep -q "MING\|MSYS")
+        # then
+        #     ./indent.exe \
+        #         --blank-lines-after-commas \
+        #         --braces-on-func-def-line \
+        #         --break-function-decl-args \
+        #         --break-function-decl-args-end \
+        #         --dont-line-up-parentheses \
+        #         --k-and-r-style \
+        #         --line-length78 \
+        #         --no-tabs \
+        #         -bfde \
+        #         sqlite3_ext.c \
+        #         sqlmath_base.c \
+        #         sqlmath_custom.c \
+        #         sqlmath_jenks.c
+        #     dos2unix *.c
+        # fi
+        # lint c-file
+        python cpplint.py \
+            --filter=-whitespace/comments \
+            sqlmath_base.c \
+            sqlmath_custom.c \
+            sqlmath_jenks.c
+        # lint js-file
+        node jslint.mjs .
+        node --input-type=module --eval '
 import moduleChildProcess from "child_process";
 import modulePath from "path";
 (function () {
@@ -864,6 +866,7 @@ import modulePath from "path";
     });
 }());
 ' "$@" # '
+    fi;
     rm -f *~ .*test.sqlite
     [ -f .session.json ] || touch .session.json
     shRunWithCoverage --exclude=jslint.mjs node --input-type=module --eval '

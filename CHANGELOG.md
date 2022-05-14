@@ -4,6 +4,9 @@
 - sqlmath - migrate test to jsTestXxx
 - none
 
+# v2022.5.1-beta
+- jslint - update jslint v2022.05.13
+
 # v2022.4.28
 - jslint - update jslint v2022.4.28
 - sqlite - update to sqlite v3.38.2
