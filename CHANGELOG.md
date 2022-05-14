@@ -1,10 +1,10 @@
 # Changelog
 
 # Todo
-- sqlmath - migrate test to jsTestXxx
 - none
 
 # v2022.5.1-beta
+- sqlmath - migrate test to jsTestXxx
 - jslint - update jslint v2022.05.13
 
 # v2022.4.28

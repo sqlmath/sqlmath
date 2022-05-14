@@ -799,6 +799,7 @@ shCiNpmPublishCustom() {(set -e
 
 shCiTestNodejs() {(set -e
 # this function will run test in nodejs
+    local COVERAGE_EXCLUDE
     # rebuild c-module
     export npm_config_mode_test=1
     if [ "$npm_config_fast" != true ]
@@ -868,11 +869,14 @@ import modulePath from "path";
 ' "$@" # '
     fi;
     rm -f *~ .*test.sqlite
-    [ -f .session.json ] || touch .session.json
-    shRunWithCoverage --exclude=jslint.mjs node --input-type=module --eval '
-import sqlmath from "./sqlmath_custom.mjs";
-sqlmath.testAll();
-' "$@" # '
+    COVERAGE_EXCLUDE="--exclude=jslint.mjs"
+    if (node --eval '
+require("assert")(require("./package.json").name !== "sqlmath");
+' > /dev/null 2>&1)
+    then
+        COVERAGE_EXCLUDE="$COVERAGE_EXCLUDE --exclude=sqlmath.mjs"
+    fi
+    shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
 )}
 
 shSyncSqlmath() {(set -e
