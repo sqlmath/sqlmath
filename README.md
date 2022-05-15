@@ -16,6 +16,8 @@
 
 2. [Changelog](#changelog)
 
+3. [License](#license)
+
 
 <br><br>
 # Package Listing
@@ -27,3 +29,13 @@
 - [Full CHANGELOG.md](CHANGELOG.md)
 
 ![screenshot_changelog.svg](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_changelog.svg)
+
+
+<br><br>
+# License
+- SQLite is under public domain.
+- JSLint is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
+- [cpplint.py](cpplint.py) is under [BSD 3-clause license](https://github.com/cpplint/cpplint/blob/develop/LICENSE).
+- [indent.exe](indent.exe) is under [GPLv3 License](https://www.gnu.org/licenses/gpl-3.0.txt).
+- [sqlmath_jenks.c](sqlmath_jenks.c) is derived from [GPLv3 licensed CalcNaturalBreaks](https://www.geodms.nl/CalcNaturalBreaks).
+- Everything else is under MIT License.
