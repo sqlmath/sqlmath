@@ -825,6 +825,58 @@ SQLMATH_FNC static void sql_jenks_func(
 
 
 // file sqlmath_ext - SQLMATH_FNC
+SQLMATH_FNC static void sql_castrealorzero_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will cast <argv>[0] to double or zero
+    UNUSED(argc);
+    sqlite3_result_double(context, sqlite3_value_double(argv[0]));
+}
+
+SQLMATH_FNC static void sql_casttextorempty_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will cast <argv>[0] to text or empty-string
+    UNUSED(argc);
+    switch (sqlite3_value_type(argv[0])) {
+        // case SQLITE_BLOB:
+        // case SQLITE_FLOAT:
+        // case SQLITE_INTEGER:
+    case SQLITE_NULL:
+        sqlite3_result_text(context, "", 0, SQLITE_STATIC);
+        return;
+    case SQLITE_TEXT:
+        sqlite3_result_value(context, argv[0]);
+        return;
+    }
+    sqlite3_result_text(context, (const char *) sqlite3_value_text(argv[0]),
+// ^If the 3rd parameter to the sqlite3_result_text* interfaces
+// is negative, then SQLite takes result text from the 2nd parameter
+// through the first zero character.
+//
+// ^If the 3rd parameter to the sqlite3_result_text* interfaces
+// is non-negative, then as many bytes (not characters) of the text
+// pointed to by the 2nd parameter are taken as the application-defined
+// function result.
+//
+// If the 3rd parameter is non-negative, then it
+// must be the byte offset into the string where the NUL terminator would
+// appear if the string where NUL terminated.  If any NUL characters occur
+// in the string at a byte offset that is less than the value of the 3rd
+// parameter, then the resulting string will contain embedded NULs and the
+// result of expressions operating on strings with embedded NULs is undefined.
+        -1,
+        // If you insist on round-tripping through sqlite3_value_text,
+        // then you must pass SQLITE_TRANSIENT for the last parameter
+        // - the pointer returned by sqlite3_value_text is only guaranteed
+        // to be valid until the custom function returns.
+        SQLITE_TRANSIENT);
+}
+
 SQLMATH_FNC static void sql_cot_func(
     sqlite3_context * context,
     int argc,
@@ -1283,6 +1335,8 @@ int sqlite3_sqlmath_ext_base_init(
     int errcode = 0;
     // init sqlite3_api
     sqlite3_api = pApi;
+    SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
+    SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
     SQLITE3_CREATE_FUNCTION1(jenks, 4);

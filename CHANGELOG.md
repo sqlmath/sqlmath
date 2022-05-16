@@ -4,6 +4,7 @@
 - none
 
 # v2022.5.1-beta
+- sqlmath - add sql-functions castrealorzero(), casttextorempty()
 - sqlmath - migrate test to jsTestXxx
 - jslint - update jslint v2022.05.13
 
