@@ -3,7 +3,8 @@
 # Todo
 - none
 
-# v2022.5.1-beta
+# v2022.5.20
+- sqlite - update to sqlite v3.38.5
 - sqlmath - add sql-functions castrealorzero(), casttextorempty()
 - sqlmath - migrate test to jsTestXxx
 - jslint - update jslint v2022.05.13

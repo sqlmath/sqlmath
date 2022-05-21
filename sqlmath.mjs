@@ -270,6 +270,9 @@ file sqlmath.js
                     + " remaining retry"
                 );
                 retry -= 1;
+                await new Promise(function (resolve) {
+                    setTimeout(resolve, 50);
+                });
             }
         }
     }
@@ -324,7 +327,9 @@ file sqlmath.js
 //   const char *zVfs        /* Name of VFS module to use */
 // );
         let connPool;
-        let db = {};
+        let db = {
+            filename
+        };
         assertOrThrow(
             typeof filename === "string",
             "invalid filename " + filename
@@ -349,6 +354,7 @@ file sqlmath.js
         dbDict.set(db, {
             busy: 0,
             connPool,
+            filename,
             ii: 0,
             ptr: 0n
         });

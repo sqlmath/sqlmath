@@ -5,13 +5,13 @@ shRawLibFetch
     "fetchList": [
         {
             "comment": true,
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/LICENSE.md"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/LICENSE.md"
         },
         {
             "footer": "\n#endif // SQLITE3_SHELL_C2\n",
             "header": "\n#ifdef SQLITE3_SHELL_C2\n",
-            "sh": "cat sqlite-autoconf-3380200/shell.c",
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/autoconf/shell.c"
+            "sh": "cat sqlite-autoconf-3380500/shell.c",
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/autoconf/shell.c"
         }
     ],
     "replaceList": []
@@ -31,13 +31,13 @@ shRawLibFetch
 
 
 /*
-repo https://github.com/sqlite/sqlite/tree/version-3.38.2
-committed 2022-03-26T13:51:10Z
+repo https://github.com/sqlite/sqlite/tree/version-3.38.5
+committed 2022-05-06T15:25:27Z
 */
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.2/LICENSE.md
+file https://github.com/sqlite/sqlite/blob/version-3.38.5/LICENSE.md
 */
 /*
 The author disclaims copyright to this source code.  In place of
@@ -50,7 +50,7 @@ a legal notice, here is a blessing:
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.2/autoconf/shell.c
+file https://github.com/sqlite/sqlite/blob/version-3.38.5/autoconf/shell.c
 */
 
 #ifdef SQLITE3_SHELL_C2
@@ -14486,6 +14486,8 @@ static void exec_prepared_stmt_columnar(
   int bNextLine = 0;
   int bMultiLineRowExists = 0;
   int bw = p->cmOpts.bWordWrap;
+  const char *zEmpty = "";
+  const char *zShowNull = p->nullValue;
 
   rc = sqlite3_step(pStmt);
   if( rc!=SQLITE_ROW ) return;
@@ -14547,12 +14549,14 @@ static void exec_prepared_stmt_columnar(
       if( wx<0 ) wx = -wx;
       if( useNextLine ){
         uz = azNextLine[i];
+        if( uz==0 ) uz = (u8*)zEmpty;
       }else if( p->cmOpts.bQuote ){
         sqlite3_free(azQuoted[i]);
         azQuoted[i] = quoted_column(pStmt,i);
         uz = (const unsigned char*)azQuoted[i];
       }else{
         uz = (const unsigned char*)sqlite3_column_text(pStmt,i);
+        if( uz==0 ) uz = (u8*)zShowNull;
       }
       azData[nRow*nColumn + i]
         = translateForDisplayAndDup(uz, &azNextLine[i], wx, bw);
@@ -14566,7 +14570,7 @@ static void exec_prepared_stmt_columnar(
   nTotal = nColumn*(nRow+1);
   for(i=0; i<nTotal; i++){
     z = azData[i];
-    if( z==0 ) z = p->nullValue;
+    if( z==0 ) z = (char*)zEmpty;
     n = strlenChar(z);
     j = i%nColumn;
     if( n>p->actualWidth[j] ) p->actualWidth[j] = n;
@@ -14670,7 +14674,10 @@ columnar_end:
     utf8_printf(p->out, "Interrupt\n");
   }
   nData = (nRow+1)*nColumn;
-  for(i=0; i<nData; i++) free(azData[i]);
+  for(i=0; i<nData; i++){
+    z = azData[i];
+    if( z!=zEmpty && z!=zShowNull ) free(azData[i]);
+  }
   sqlite3_free(azData);
   sqlite3_free((void*)azNextLine);
   sqlite3_free(abRowDiv);
@@ -19095,12 +19102,12 @@ SELECT\
   ','||iif((cpos-1)%4>0, ' ', x'0a'||' '))\
  ||')' AS ColsSpec \
 FROM (\
- SELECT cpos, printf('\"%w\"',printf('%.*s%s', nlen-chop,name,suff)) AS cname \
+ SELECT cpos, printf('\"%w\"',printf('%!.*s%s', nlen-chop,name,suff)) AS cname \
  FROM ColNames ORDER BY cpos\
 )";
   static const char * const zRenamesDone =
     "SELECT group_concat("
-    " printf('\"%w\" to \"%w\"',name,printf('%.*s%s', nlen-chop, name, suff)),"
+    " printf('\"%w\" to \"%w\"',name,printf('%!.*s%s', nlen-chop, name, suff)),"
     " ','||x'0a')"
     "FROM ColNames WHERE suff<>'' OR chop!=0"
     ;
@@ -22699,7 +22706,8 @@ static int process_input(ShellState *p){
       qss = QSS_Start;
     }
   }
-  if( nSql && QSS_PLAINDARK(qss) ){
+  if( nSql ){
+    /* This may be incomplete. Let the SQL parser deal with that. */
     errCnt += runOneSqlLine(p, zSql, p->in, startline);
   }
   free(zSql);

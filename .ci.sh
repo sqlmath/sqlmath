@@ -882,6 +882,15 @@ require("assert")(require("./package.json").name !== "sqlmath");
 shSyncSqlmath() {(set -e
 # this function will sync files with ~/Documents/sqlmath/
     local FILE
+    if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
+    then
+        git grep '3.38.[^5]'
+        git grep '3380[^5]00'
+        shRawLibFetch sqlite3.c
+        shRawLibFetch sqlite3_ext.c
+        shRawLibFetch sqlite3_shell.c
+        return
+    fi
     if [ -d "$HOME/Documents/sqlmath/" ]
     then
         for FILE in \

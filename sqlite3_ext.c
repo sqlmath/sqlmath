@@ -35,28 +35,28 @@ shRawLibFetch
     "fetchList": [
         {
             "comment": true,
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/LICENSE.md"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/LICENSE.md"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/compress.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/compress.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/csv.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/csv.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/noop.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/noop.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/regexp.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/regexp.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/series.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/series.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/shathree.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/shathree.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/tree/version-3.38.2/contrib/download/extension-functions.c/download/extension-functions.c",
+            "url": "https://github.com/sqlite/sqlite/tree/version-3.38.5/contrib/download/extension-functions.c/download/extension-functions.c",
             "url2": "https://www.sqlite.org/contrib/download/extension-functions.c/download/extension-functions.c?get=25"
         }
     ],
@@ -228,13 +228,13 @@ shRawLibFetch
 
 
 /*
-repo https://github.com/sqlite/sqlite/tree/version-3.38.2
-committed 2022-03-26T13:51:10Z
+repo https://github.com/sqlite/sqlite/tree/version-3.38.5
+committed 2022-05-06T15:25:27Z
 */
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.2/LICENSE.md
+file https://github.com/sqlite/sqlite/blob/version-3.38.5/LICENSE.md
 */
 /*
 The author disclaims copyright to this source code.  In place of
@@ -247,7 +247,7 @@ a legal notice, here is a blessing:
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/compress.c
+file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/compress.c
 */
 /*
 ** 2014-06-13
@@ -395,7 +395,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/csv.c
+file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/csv.c
 */
 /*
 ** 2016-05-28
@@ -1374,7 +1374,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/noop.c
+file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/noop.c
 */
 /*
 ** 2020-01-08
@@ -1449,7 +1449,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/regexp.c
+file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/regexp.c
 */
 /*
 ** 2012-11-13
@@ -2229,7 +2229,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/series.c
+file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/series.c
 */
 /*
 ** 2015-08-18
@@ -2697,7 +2697,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.2/ext/misc/shathree.c
+file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/shathree.c
 */
 /*
 ** 2017-03-08
@@ -3429,13 +3429,13 @@ UNUSED(pzErrMsg);
 
 
 /*
-repo https://github.com/sqlite/sqlite/tree/version-3.38.2
-committed 2022-03-26T13:51:10Z
+repo https://github.com/sqlite/sqlite/tree/version-3.38.5
+committed
 */
 
 
 /*
-file https://github.com/sqlite/sqlite/tree/version-3.38.2/contrib/download/extension-functions.c/download/extension-functions.c
+file https://github.com/sqlite/sqlite/tree/version-3.38.5/contrib/download/extension-functions.c/download/extension-functions.c
 */
 /*
 This library will provide common mathematical and string functions in

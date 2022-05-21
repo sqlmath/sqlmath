@@ -832,7 +832,8 @@ SQLMATH_FNC static void sql_castrealorzero_func(
 ) {
 // this function will cast <argv>[0] to double or zero
     UNUSED(argc);
-    sqlite3_result_double(context, sqlite3_value_double(argv[0]));
+    double num = sqlite3_value_double(argv[0]);
+    sqlite3_result_double(context, isnormal(num) ? num : 0);
 }
 
 SQLMATH_FNC static void sql_casttextorempty_func(
