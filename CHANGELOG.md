@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2022.6.1-beta
+- none
+
 # v2022.5.20
 - sqlite - update to sqlite v3.38.5
 - sqlmath - add sql-functions castrealorzero(), casttextorempty()
