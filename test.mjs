@@ -1243,11 +1243,12 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
             filename: ":memory:"
         });
         debugInline(
-            await dbGetLastBlobAsync({
+            await dbExecAsync({
+            //!! await dbGetLastBlobAsync({
                 db,
                 sql: (`
 SELECT
-        matrix2d_concat() AS foo
+        matrix2d_concat(1, 2) AS foo
     FROM (
         SELECT 1
     )

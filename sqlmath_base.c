@@ -1120,6 +1120,8 @@ SQLMATH_FNC static void sql_marginoferror95_func(
     sqlite3_result_double(context, marginoferror95(nn, pp));
 }
 
+// SQLMATH_FNC sql_marginoferror95_func - end
+
 // SQLMATH_FNC sql_matrix2d_concat_func - start
 SQLMATH_FNC static void sql_matrix2d_concat_final(
     sqlite3_context * context
@@ -1169,42 +1171,34 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 
 // SQLMATH_FNC sql_matrix2d_concat_func - end
 
-// SQLMATH_FNC sql_matrix2d_each_func - start
-/* matrix2d_each_vtab is a subclass of sqlite3_vtab which is
-** underlying representation of the virtual table
-*/
-typedef struct matrix2d_each_vtab matrix2d_each_vtab;
-struct matrix2d_each_vtab {
-    sqlite3_vtab base;          /* Base class - must be first */
-    /* Add new fields here, as necessary */
-};
-
-/* matrix2d_each_cursor is a subclass of sqlite3_vtab_cursor which will
+// SQLMATH_FNC sql_blob_each_func - start
+/* blob_each_cursor is a subclass of sqlite3_vtab_cursor which will
 ** serve as the underlying representation of a cursor that scans
 ** over rows of the result
 */
-typedef struct matrix2d_each_cursor matrix2d_each_cursor;
-struct matrix2d_each_cursor {
+typedef struct blob_each_cursor blob_each_cursor;
+struct blob_each_cursor {
     sqlite3_vtab_cursor base;   /* Base class - must be first */
-    /* Insert new fields here.  For this matrix2d_each we only keep track
-     ** of the rowid */
     sqlite3_int64 iRowid;       /* The rowid */
+    void *pPtr;                 /* Pointer to the array of values */
+    sqlite3_int64 iCnt;         /* Number of integers in the array */
+    unsigned char eType;        /* One of the BLOB_EACH_type values */
 };
 
 /*
-** The matrix2d_eachConnect() method is invoked to create a new
-** template virtual table.
+** The blobEachConnect() method is invoked to create a new
+** blob_each_vtab that describes the blob_each virtual table.
 **
-** Think of this routine as the constructor for matrix2d_each_vtab objects.
+** Think of this routine as the constructor for blob_each_vtab objects.
 **
 ** All this routine needs to do is:
 **
-**    (1) Allocate the matrix2d_each_vtab object and initialize all fields.
+**    (1) Allocate the blob_each_vtab object and initialize all fields.
 **
 **    (2) Tell SQLite (via the sqlite3_declare_vtab() interface) what the
-**        result set of queries against the virtual table will look like.
+**        result set of queries against blob_each will look like.
 */
-static int matrix2d_eachConnect(
+static int blobEachConnect(
     sqlite3 * db,
     void *pAux,
     int argc,
@@ -1212,16 +1206,19 @@ static int matrix2d_eachConnect(
     sqlite3_vtab ** ppVtab,
     char **pzErr
 ) {
-    matrix2d_each_vtab *pNew;
+    sqlite3_vtab *pNew;
     int rc;
 
-    rc = sqlite3_declare_vtab(db, "CREATE TABLE x(a,b)");
-    /* For convenience, define symbolic names for the index to each column. */
-#define matrix2d_each_A  0
-#define matrix2d_each_B  1
+/* Column numbers */
+#define BLOB_EACH_COLUMN_VALUE   0
+#define BLOB_EACH_COLUMN_POINTER 1
+#define BLOB_EACH_COLUMN_COUNT   2
+#define BLOB_EACH_COLUMN_CTYPE   3
+
+    rc = sqlite3_declare_vtab(db,
+        "CREATE TABLE x(value,pointer hidden,count hidden,ctype hidden)");
     if (rc == SQLITE_OK) {
-        pNew = sqlite3_malloc(sizeof(*pNew));
-        *ppVtab = (sqlite3_vtab *) pNew;
+        pNew = *ppVtab = sqlite3_malloc(sizeof(*pNew));
         if (pNew == 0)
             return SQLITE_NOMEM;
         memset(pNew, 0, sizeof(*pNew));
@@ -1230,24 +1227,23 @@ static int matrix2d_eachConnect(
 }
 
 /*
-** This method is the destructor for matrix2d_each_vtab objects.
+** This method is the destructor for blob_each_cursor objects.
 */
-static int matrix2d_eachDisconnect(
+static int blobEachDisconnect(
     sqlite3_vtab * pVtab
 ) {
-    matrix2d_each_vtab *p = (matrix2d_each_vtab *) pVtab;
-    sqlite3_free(p);
+    sqlite3_free(pVtab);
     return SQLITE_OK;
 }
 
 /*
-** Constructor for a new matrix2d_each_cursor object.
+** Constructor for a new blob_each_cursor object.
 */
-static int matrix2d_eachOpen(
+static int blobEachOpen(
     sqlite3_vtab * p,
     sqlite3_vtab_cursor ** ppCursor
 ) {
-    matrix2d_each_cursor *pCur;
+    blob_each_cursor *pCur;
     pCur = sqlite3_malloc(sizeof(*pCur));
     if (pCur == 0)
         return SQLITE_NOMEM;
@@ -1257,47 +1253,69 @@ static int matrix2d_eachOpen(
 }
 
 /*
-** Destructor for a matrix2d_each_cursor.
+** Destructor for a blob_each_cursor.
 */
-static int matrix2d_eachClose(
+static int blobEachClose(
     sqlite3_vtab_cursor * cur
 ) {
-    matrix2d_each_cursor *pCur = (matrix2d_each_cursor *) cur;
-    sqlite3_free(pCur);
+    sqlite3_free(cur);
     return SQLITE_OK;
 }
 
 
 /*
-** Advance a matrix2d_each_cursor to its next row of output.
+** Advance a blob_each_cursor to its next row of output.
 */
-static int matrix2d_eachNext(
+static int blobEachNext(
     sqlite3_vtab_cursor * cur
 ) {
-    matrix2d_each_cursor *pCur = (matrix2d_each_cursor *) cur;
+    blob_each_cursor *pCur = (blob_each_cursor *) cur;
     pCur->iRowid++;
     return SQLITE_OK;
 }
 
 /*
-** Return values of columns for the row at which the matrix2d_each_cursor
+** Return values of columns for the row at which the blob_each_cursor
 ** is currently pointing.
 */
-static int matrix2d_eachColumn(
+static int blobEachColumn(
     sqlite3_vtab_cursor * cur,  /* The cursor */
     sqlite3_context * ctx,      /* First argument to sqlite3_result_...() */
     int i                       /* Which column to return */
 ) {
-    matrix2d_each_cursor *pCur = (matrix2d_each_cursor *) cur;
+    blob_each_cursor *pCur = (blob_each_cursor *) cur;
+    sqlite3_int64 x = 0;
     switch (i) {
-    case matrix2d_each_A:
-        sqlite3_result_int(ctx, 1000 + pCur->iRowid);
+    case BLOB_EACH_COLUMN_POINTER:
+        return SQLITE_OK;
+    case BLOB_EACH_COLUMN_COUNT:
+        x = pCur->iCnt;
         break;
+    case BLOB_EACH_COLUMN_CTYPE:
+        sqlite3_result_text(ctx, azType[pCur->eType], -1, SQLITE_STATIC);
+        return SQLITE_OK;
     default:
-        assert(i == matrix2d_each_B);
-        sqlite3_result_int(ctx, 2000 + pCur->iRowid);
-        break;
+        switch (pCur->eType) {
+        case BLOB_EACH_INT32:
+            int *p = (int *) pCur->pPtr;
+            sqlite3_result_int(ctx, p[pCur->iRowid - 1]);
+            return SQLITE_OK;
+        case BLOB_EACH_INT64:
+            sqlite3_int64 * p = (sqlite3_int64 *) pCur->pPtr;
+            sqlite3_result_int64(ctx, p[pCur->iRowid - 1]);
+            return SQLITE_OK;
+        case BLOB_EACH_DOUBLE:
+            double *p = (double *) pCur->pPtr;
+            sqlite3_result_double(ctx, p[pCur->iRowid - 1]);
+            return SQLITE_OK;
+        case BLOB_EACH_TEXT:
+            const char **p = (const char **) pCur->pPtr;
+            sqlite3_result_text(ctx, p[pCur->iRowid - 1], -1,
+                SQLITE_TRANSIENT);
+            return SQLITE_OK;
+        }
     }
+    sqlite3_result_int64(ctx, x);
     return SQLITE_OK;
 }
 
@@ -1305,11 +1323,11 @@ static int matrix2d_eachColumn(
 ** Return the rowid for the current row.  In this implementation, the
 ** rowid is the same as the output value.
 */
-static int matrix2d_eachRowid(
+static int blobEachRowid(
     sqlite3_vtab_cursor * cur,
     sqlite_int64 * pRowid
 ) {
-    matrix2d_each_cursor *pCur = (matrix2d_each_cursor *) cur;
+    blob_each_cursor *pCur = (blob_each_cursor *) cur;
     *pRowid = pCur->iRowid;
     return SQLITE_OK;
 }
@@ -1318,95 +1336,216 @@ static int matrix2d_eachRowid(
 ** Return TRUE if the cursor has been moved off of the last
 ** row of output.
 */
-static int matrix2d_eachEof(
+static int blobEachEof(
     sqlite3_vtab_cursor * cur
 ) {
-    matrix2d_each_cursor *pCur = (matrix2d_each_cursor *) cur;
-    return pCur->iRowid >= 10;
+    blob_each_cursor *pCur = (blob_each_cursor *) cur;
+    return pCur->iRowid > pCur->iCnt;
 }
 
 /*
-** This method is called to "rewind" the matrix2d_each_cursor object back
-** to the first row of output.  This method is always called at least
-** once prior to any call to matrix2d_eachColumn() or matrix2d_eachRowid() or
-** matrix2d_eachEof().
+** This method is called to "rewind" the blob_each_cursor object back
+** to the first row of output.
 */
-static int matrix2d_eachFilter(
+static int blobEachFilter(
     sqlite3_vtab_cursor * pVtabCursor,
     int idxNum,
     const char *idxStr,
     int argc,
     sqlite3_value ** argv
 ) {
-    matrix2d_each_cursor *pCur = (matrix2d_each_cursor *) pVtabCursor;
+    blob_each_cursor *pCur = (blob_each_cursor *) pVtabCursor;
+    pCur->pPtr = 0;
+    pCur->iCnt = 0;
+    switch (idxNum) {
+    case 1:
+        blob_each_bind * pBind =
+            sqlite3_value_pointer(argv[0], "blob-each-bind");
+        if (pBind == 0)
+            break;
+        pCur->pPtr = pBind->aData;
+        pCur->iCnt = pBind->nData;
+        pCur->eType = pBind->mFlags & 0x03;
+        break;
+    case 2:
+    case 3:
+        pCur->pPtr = sqlite3_value_pointer(argv[0], "blob_each");
+        pCur->iCnt = pCur->pPtr ? sqlite3_value_int64(argv[1]) : 0;
+        if (idxNum < 3) {
+            pCur->eType = BLOB_EACH_INT32;
+        } else {
+            unsigned char i;
+            const char *zType = (const char *) sqlite3_value_text(argv[2]);
+            for (i = 0; i < sizeof(azType) / sizeof(azType[0]); i++) {
+                if (sqlite3_stricmp(zType, azType[i]) == 0)
+                    break;
+            }
+            if (i >= sizeof(azType) / sizeof(azType[0])) {
+                pVtabCursor->pVtab->zErrMsg =
+                    sqlite3_mprintf("unknown datatype: %Q", zType);
+                return SQLITE_ERROR;
+            } else {
+                pCur->eType = i;
+            }
+        }
+        break;
+    }
     pCur->iRowid = 1;
     return SQLITE_OK;
 }
 
 /*
 ** SQLite will invoke this method one or more times while planning a query
-** that uses the virtual table.  This routine needs to create
+** that uses the blob_each virtual table.  This routine needs to create
 ** a query plan for each invocation and compute an estimated cost for that
 ** plan.
+**
+** In this implementation idxNum is used to represent the
+** query plan.  idxStr is unused.
+**
+** idxNum is:
+**
+**    1    If only the pointer= constraint exists.  In this case, the
+**         parameter must be bound using sqlite3_blob_each_bind().
+**
+**    2    if the pointer= and count= constraints exist.
+**
+**    3    if the ctype= constraint also exists.
+**
+** idxNum is 0 otherwise and blob_each becomes an empty table.
 */
-static int matrix2d_eachBestIndex(
+static int blobEachBestIndex(
     sqlite3_vtab * tab,
     sqlite3_index_info * pIdxInfo
 ) {
-    pIdxInfo->estimatedCost = (double) 10;
-    pIdxInfo->estimatedRows = 10;
+// *INDENT-OFF*
+    int i;              /* Loop over constraints */
+    int ptrIdx = -1;    /* Index of the pointer= constraint, or -1 if none */
+    int cntIdx = -1;    /* Index of the count= constraint, or -1 if none */
+    int ctypeIdx = -1;  /* Index of the ctype= constraint, or -1 if none */
+// *INDENT-ON*
+
+    const struct sqlite3_index_constraint *pConstraint;
+    pConstraint = pIdxInfo->aConstraint;
+    for (i = 0; i < pIdxInfo->nConstraint; i++, pConstraint++) {
+        if (pConstraint->usable == 0)
+            continue;
+        if (pConstraint->op != SQLITE_INDEX_CONSTRAINT_EQ)
+            continue;
+        switch (pConstraint->iColumn) {
+        case BLOB_EACH_COLUMN_POINTER:
+            ptrIdx = i;
+            break;
+        case BLOB_EACH_COLUMN_COUNT:
+            cntIdx = i;
+            break;
+        case BLOB_EACH_COLUMN_CTYPE:
+            ctypeIdx = i;
+            break;
+        }
+    }
+    if (ptrIdx >= 0) {
+        pIdxInfo->aConstraintUsage[ptrIdx].argvIndex = 1;
+        pIdxInfo->aConstraintUsage[ptrIdx].omit = 1;
+        pIdxInfo->estimatedCost = (double) 1;
+        pIdxInfo->estimatedRows = 100;
+        pIdxInfo->idxNum = 1;
+        if (cntIdx >= 0) {
+            pIdxInfo->aConstraintUsage[cntIdx].argvIndex = 2;
+            pIdxInfo->aConstraintUsage[cntIdx].omit = 1;
+            pIdxInfo->idxNum = 2;
+            if (ctypeIdx >= 0) {
+                pIdxInfo->aConstraintUsage[ctypeIdx].argvIndex = 3;
+                pIdxInfo->aConstraintUsage[ctypeIdx].omit = 1;
+                pIdxInfo->idxNum = 3;
+            }
+        }
+    } else {
+        pIdxInfo->estimatedCost = (double) 2147483647;
+        pIdxInfo->estimatedRows = 2147483647;
+        pIdxInfo->idxNum = 0;
+    }
     return SQLITE_OK;
 }
 
 /*
 ** This following structure defines all the methods for the
-** virtual table.
+** blob_each virtual table.
 */
-static sqlite3_module matrix2d_eachModule = {
-    /* iVersion    */ 0,
-    /* xCreate     */ 0,
-    /* xConnect    */ matrix2d_eachConnect,
-    /* xBestIndex  */ matrix2d_eachBestIndex,
-    /* xDisconnect */ matrix2d_eachDisconnect,
-    /* xDestroy    */ 0,
-    /* xOpen       */ matrix2d_eachOpen,
-    /* xClose      */ matrix2d_eachClose,
-    /* xFilter     */ matrix2d_eachFilter,
-    /* xNext       */ matrix2d_eachNext,
-    /* xEof        */ matrix2d_eachEof,
-    /* xColumn     */ matrix2d_eachColumn,
-    /* xRowid      */ matrix2d_eachRowid,
-    /* xUpdate     */ 0,
-    /* xBegin      */ 0,
-    /* xSync       */ 0,
-    /* xCommit     */ 0,
-    /* xRollback   */ 0,
-    /* xFindMethod */ 0,
-    /* xRename     */ 0,
-    /* xSavepoint  */ 0,
-    /* xRelease    */ 0,
-    /* xRollbackTo */ 0,
-    /* xShadowName */ 0
+static sqlite3_module blobEachModule = {
+    0,                          /* iVersion */
+    0,                          /* xCreate */
+    blobEachConnect,            /* xConnect */
+    blobEachBestIndex,          /* xBestIndex */
+    blobEachDisconnect,         /* xDisconnect */
+    0,                          /* xDestroy */
+    blobEachOpen,               /* xOpen - open a cursor */
+    blobEachClose,              /* xClose - close a cursor */
+    blobEachFilter,             /* xFilter - configure scan constraints */
+    blobEachNext,               /* xNext - advance a cursor */
+    blobEachEof,                /* xEof - check for end of scan */
+    blobEachColumn,             /* xColumn - read data */
+    blobEachRowid,              /* xRowid - read data */
+    0,                          /* xUpdate */
+    0,                          /* xBegin */
+    0,                          /* xSync */
+    0,                          /* xCommit */
+    0,                          /* xRollback */
+    0,                          /* xFindMethod */
+    0,                          /* xRename */
 };
 
 
-#ifdef _WIN32
-__declspec(dllexport)
-#endif
-int sqlite3_matrix2d_each_init(
+/*
+** For testing purpose in the TCL test harness, we need a method for
+** setting the pointer value.  The inttoptr(X) SQL function accomplishes
+** this.  Tcl script will bind an integer to X and the inttoptr() SQL
+** function will use sqlite3_result_pointer() to convert that integer into
+** a pointer.
+**
+** This is for testing on TCL only.
+*/
+#ifdef SQLITE_TEST
+static void inttoptrFunc(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+    void *p;
+    sqlite3_int64 i64;
+    i64 = sqlite3_value_int64(argv[0]);
+    if (sizeof(i64) == sizeof(p)) {
+        memcpy(&p, &i64, sizeof(p));
+    } else {
+        int i32 = i64 & 0xffffffff;
+        memcpy(&p, &i32, sizeof(p));
+    }
+    sqlite3_result_pointer(context, p, "blob_each", 0);
+}
+#endif                          /* SQLITE_TEST */
+
+#endif                          /* SQLITE_OMIT_VIRTUALTABLE */
+
+SQLITE_API int sqlite3_blob_each_init(
     sqlite3 * db,
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
 ) {
     int rc = SQLITE_OK;
     SQLITE_EXTENSION_INIT2(pApi);
-    rc = sqlite3_create_module(db, "matrix2d_each", &matrix2d_eachModule, 0);
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+    rc = sqlite3_create_module(db, "blob_each", &blobEachModule, 0);
+#ifdef SQLITE_TEST
+    if (rc == SQLITE_OK) {
+        rc = sqlite3_create_function(db, "inttoptr", 1, SQLITE_UTF8, 0,
+            inttoptrFunc, 0, 0);
+    }
+#endif                          /* SQLITE_TEST */
+#endif                          /* SQLITE_OMIT_VIRTUALTABLE */
     return rc;
 }
 
-// SQLMATH_FNC sql_matrix2d_each_func - end
-
-// SQLMATH_FNC sql_marginoferror95_func - end
+// SQLMATH_FNC sql_blob_each_func - end
 
 SQLMATH_FNC static void sql_roundorzero_func(
     sqlite3_context * context,
