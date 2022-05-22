@@ -4093,7 +4093,7 @@ UNUSED(pzErrMsg);
 
 /*
 repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed
+committed 2022-05-06T15:25:27Z
 */
 
 
