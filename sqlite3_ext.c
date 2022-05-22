@@ -126,6 +126,18 @@ shRawLibFetch
         }
     ]
 }
++SQLITE_API int carrayFilter(
++  sqlite3_vtab_cursor *pVtabCursor,
++  int idxNum, const char *idxStr,
++  int argc, sqlite3_value **argv
++){
++// hack-sqlite - custom carray
++SQLITE_API int carrayFilter2(
++  sqlite3_vtab_cursor *pVtabCursor,
++  int idxNum, const char *idxStr,
++  int argc, sqlite3_value **argv
++){
+
 -    /\\* math.h *\\/
 -    { "acos",               1, 0, SQLITE_UTF8,    0, acosFunc  },
 -    { "asin",               1, 0, SQLITE_UTF8,    0, asinFunc  },
@@ -261,7 +273,7 @@ shRawLibFetch
 -  int mFlags,
 -  void (*xDestroy)(void*)
 -){
-+  // hack-sqlite - custom carray
++// hack-sqlite - custom carray
 +SQLITE_API int sqlite3_carray_bind2(
 +  sqlite3_stmt *pStmt,
 +  int idx,
@@ -728,7 +740,7 @@ static void carrayBindDel(void *pPtr){
 ** Invoke this interface in order to bind to the single-argument
 ** version of CARRAY().
 */
-  // hack-sqlite - custom carray
+// hack-sqlite - custom carray
 SQLITE_API int sqlite3_carray_bind2(
   sqlite3_stmt *pStmt,
   int idx,
