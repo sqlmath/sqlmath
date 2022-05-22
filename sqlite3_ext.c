@@ -85,6 +85,11 @@ shRawLibFetch
             "flags": "g"
         },
         {
+            "aa": "\\*(pzErr)[\n,][^\\)]*\\n?\\)\\{",
+            "bb": "$&\nUNUSED($1);",
+            "flags": "g"
+        },
+        {
             "aa": "\\n\\*\\* This is a macro that facilitates writting[\\S\\s]*?(\\n\\*\\* Given a string)",
             "bb": "$1",
             "flags": ""
@@ -384,6 +389,7 @@ static int carrayConnect(
   char **pzErr
 ){
 UNUSED(argc);
+UNUSED(pzErr);
 UNUSED(pAux);
   sqlite3_vtab *pNew;
   int rc;
@@ -1432,6 +1438,7 @@ static int csvtabConnect(
   char **pzErr
 ){
 UNUSED(argc);
+UNUSED(pzErr);
 UNUSED(pAux);
   CsvTable *pNew = 0;        /* The CsvTable object to construct */
   int bHeader = -1;          /* header= flags.  -1 means not seen yet */
@@ -1631,6 +1638,7 @@ static int csvtabCreate(
   char **pzErr
 ){
 UNUSED(argc);
+UNUSED(pzErr);
 UNUSED(pAux);
  return csvtabConnect(db, pAux, argc, argv, ppVtab, pzErr);
 }
