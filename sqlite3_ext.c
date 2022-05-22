@@ -210,9 +210,21 @@ shRawLibFetch
 +  nIn = sqlite3_value_bytes(argv[0]);
 
 -  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
+-}
 +// hack-sqlite - custom sqlite3_carray_bind
 +  if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
 +  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
++}
++SQLITE_API int sqlite3_carray_bind(
++  sqlite3_stmt *pStmt,
++  int idx,
++  void *aData,
++  int nData,
++  int mFlags,
++  void (*xDestroy)(void*)
++){
++  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
++}
 
 -  unsigned int nIn;
 +// hack-sqlite - fix warning
@@ -240,25 +252,6 @@ shRawLibFetch
 -  void (*xDestroy)(void*)
 -){
 +// hack-sqlite - custom sqlite3_carray_bind
-+SQLITE_API int sqlite3_carray_bind2(
-+  sqlite3_stmt *pStmt,
-+  int idx,
-+  void *aData,
-+  int nData,
-+  int mFlags,
-+  void (*xDestroy)(void*),
-+  carray_bind **pBind
-+);
-+SQLITE_API int sqlite3_carray_bind(
-+  sqlite3_stmt *pStmt,
-+  int idx,
-+  void *aData,
-+  int nData,
-+  int mFlags,
-+  void (*xDestroy)(void*)
-+){
-+  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
-+}
 +SQLITE_API int sqlite3_carray_bind2(
 +  sqlite3_stmt *pStmt,
 +  int idx,
@@ -739,25 +732,6 @@ SQLITE_API int sqlite3_carray_bind2(
   int mFlags,
   void (*xDestroy)(void*),
   carray_bind **pBind
-);
-SQLITE_API int sqlite3_carray_bind(
-  sqlite3_stmt *pStmt,
-  int idx,
-  void *aData,
-  int nData,
-  int mFlags,
-  void (*xDestroy)(void*)
-){
-  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
-}
-SQLITE_API int sqlite3_carray_bind2(
-  sqlite3_stmt *pStmt,
-  int idx,
-  void *aData,
-  int nData,
-  int mFlags,
-  void (*xDestroy)(void*),
-  carray_bind **pBind
 ){
   carray_bind *pNew;
   int i;
@@ -815,6 +789,16 @@ SQLITE_API int sqlite3_carray_bind2(
 // hack-sqlite - custom sqlite3_carray_bind
   if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
   return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
+}
+SQLITE_API int sqlite3_carray_bind(
+  sqlite3_stmt *pStmt,
+  int idx,
+  void *aData,
+  int nData,
+  int mFlags,
+  void (*xDestroy)(void*)
+){
+  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
 }
 
 
