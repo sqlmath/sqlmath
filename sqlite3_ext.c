@@ -216,7 +216,7 @@ shRawLibFetch
 
 -  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
 -}
-+  // hack-sqlite - custom sqlite3_carray_bind
++  // hack-sqlite - custom carray
 +  if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
 +  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
 +}
@@ -261,7 +261,7 @@ shRawLibFetch
 -  int mFlags,
 -  void (*xDestroy)(void*)
 -){
-+// hack-sqlite - custom sqlite3_carray_bind
++  // hack-sqlite - custom carray
 +SQLITE_API int sqlite3_carray_bind2(
 +  sqlite3_stmt *pStmt,
 +  int idx,
@@ -728,7 +728,7 @@ static void carrayBindDel(void *pPtr){
 ** Invoke this interface in order to bind to the single-argument
 ** version of CARRAY().
 */
-// hack-sqlite - custom sqlite3_carray_bind
+  // hack-sqlite - custom carray
 SQLITE_API int sqlite3_carray_bind2(
   sqlite3_stmt *pStmt,
   int idx,
@@ -791,7 +791,7 @@ SQLITE_API int sqlite3_carray_bind2(
     pNew->aData = aData;
     pNew->xDel = xDestroy;
   }
-  // hack-sqlite - custom sqlite3_carray_bind
+  // hack-sqlite - custom carray
   if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
   return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
 }
@@ -4045,7 +4045,7 @@ UNUSED(pzErrMsg);
 
 /*
 repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed 2022-05-06T15:25:27Z
+committed
 */
 
 
