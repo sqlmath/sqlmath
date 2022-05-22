@@ -1247,12 +1247,17 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
             //!! await dbGetLastBlobAsync({
                 db,
                 sql: (`
-SELECT
-        matrix2d_concat(1, 2) AS foo
-    FROM (
-        SELECT 1
-    )
-;
+select * FROM blob_each(blob_create(16));
+--!! SELECT
+        --!! *
+    --!! FROM (
+        --!! SELECT
+            --!! matrix2d_concat(1, 2) AS foo
+        --!! FROM (
+            --!! SELECT 1
+        --!! )
+    --!! )
+--!! ;
                 `)
             })
         );

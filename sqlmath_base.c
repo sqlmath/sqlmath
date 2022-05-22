@@ -1171,7 +1171,7 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 
 // SQLMATH_FNC sql_matrix2d_concat_func - end
 
-// SQLMATH_FNC sql_blob_each_func - start
+// SQLMATH_FNC sql_carrayblob_func - start
 /* Allowed values for the mFlags parameter to sqlite3_carray_bind().
 ** Must exactly match the definitions in carray.h.
 */
@@ -1186,19 +1186,6 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 ** Names of allowed datatypes
 */
 static const char *azType[] = { "int32", "int64", "double", "char*" };
-
-//!! /*
-//!! ** Structure used to hold the sqlite3_carray_bind() information
-//!! */
-//!! typedef struct carray_bind carray_bind;
-//!! struct carray_bind {
-    //!! void *aData;                /* The data */
-    //!! int nData;                  /* Number of elements */
-    //!! int mFlags;                 /* Control flags */
-//!! // *INDENT-OFF*
-    //!! void (*xDel)(void*);        /* Destructor for aData */
-//!! // *INDENT-ON*
-//!! };
 
 /* carray_cursor is a subclass of sqlite3_vtab_cursor which will
 ** serve as the underlying representation of a cursor that scans
@@ -1217,7 +1204,7 @@ struct carray_cursor {
 ** This method is called to "rewind" the carray_cursor object back
 ** to the first row of output.
 */
-SQLITE_API int blobEachFilter(
+SQLITE_API int carrayblobFilter(
     sqlite3_vtab_cursor * pVtabCursor,
     int idxNum,
     const char *idxStr,
@@ -1230,6 +1217,7 @@ SQLITE_API int blobEachFilter(
     carray_cursor *pCur = (carray_cursor *) pVtabCursor;
     // init var
     pCur->iCnt = sqlite3_value_bytes(argv[0]);
+    pCur->iCnt = 0;
     pCur->pPtr = (void *) sqlite3_value_blob(argv[0]);
     pCur->eType = CARRAY_INT32;
     switch (idxNum) {
@@ -1259,7 +1247,7 @@ SQLITE_API int blobEachFilter(
     return SQLITE_OK;
 }
 
-// SQLMATH_FNC sql_blob_each_func - end
+// SQLMATH_FNC sql_carrayblob_func - end
 
 SQLMATH_FNC static void sql_roundorzero_func(
     sqlite3_context * context,
@@ -1501,7 +1489,7 @@ SQLMATH_API int noop(
 
 
 // file sqlmath_ext - init
-SQLITE_API sqlite3_module *blobEachModuleGet(
+SQLITE_API sqlite3_module *carrayblobModuleGet(
 );
 
 int sqlite3_sqlmath_ext_base_init(
@@ -1511,7 +1499,7 @@ int sqlite3_sqlmath_ext_base_init(
 ) {
     UNUSED(pzErrMsg);
     // declare var
-    sqlite3_module *blobEachModule = blobEachModuleGet();
+    sqlite3_module *carrayblobModule = carrayblobModuleGet();
     int errcode = 0;
     // init sqlite3_api
     sqlite3_api = pApi;
@@ -1534,9 +1522,10 @@ int sqlite3_sqlmath_ext_base_init(
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
     SQLMATH_IS_OK_OR_RETURN_RC(errcode);
+    carrayblobModule->xFilter = carrayblobFilter;
     errcode =
-        sqlite3_create_module(db, "blob_each",
-        (const sqlite3_module *) &blobEachModule, 0);
+        sqlite3_create_module(db, "carrayblob",
+        (const sqlite3_module *) &carrayblobModule, 0);
     SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     return 0;
 }
