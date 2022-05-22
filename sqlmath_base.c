@@ -327,10 +327,12 @@ SQLMATH_API int dbExec(
     if (str99->bErr != 0) { errcode = SQLITE_NOMEM; goto catch_error; }
     // coverage-hack
     noop();
+    // declare var0
+    JsonString _str99 = { 0 };
     // declare var
     DbExecBindElem *bindElem;
     DbExecBindElem *bindList = NULL;
-    JsonString *str99 = NULL;
+    JsonString *str99 = &_str99;
     const char **pzShared = baton->bufin + 6;
     const char *zBind = baton->bufin[3];
     const char *zSql = baton->bufin[1];
@@ -401,8 +403,6 @@ SQLMATH_API int dbExec(
         ii += 1;
     }
     // init str99
-    str99 = (JsonString *) ALLOCM(sizeof(JsonString));
-    SQLMATH_ASSERT_NOT_OOM(str99);
     jsonInitNoContext(str99);
     // bracket database [
     STR99_APPEND_CHAR2('[');
@@ -610,8 +610,6 @@ SQLMATH_API int dbExec(
     sqlite3_finalize(pStmt);
     // cleanup bindList
     ALLOCF(bindList);
-    // cleanup str99
-    ALLOCF(str99);
     if (!SQLMATH_IS_OK()) {
         // handle errcode
         JSBATON_ERRCODE_SAVE();
@@ -825,47 +823,6 @@ SQLMATH_FNC static void sql_jenks_func(
 
 
 // file sqlmath_ext - SQLMATH_FNC
-SQLMATH_FNC static void sql_blob_copy_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will copy blob <argv>[0]
-    UNUSED(argc);
-    const int nn = sqlite3_value_bytes(argv[0]);
-    if (nn <= 0) {
-        sqlite3_result_null(context);
-        return;
-    }
-    const void *buf = sqlite3_value_blob(argv[0]);
-    if (buf == NULL) {
-        sqlite3_result_null(context);
-        return;
-    }
-    sqlite3_result_blob(context, buf, nn, SQLITE_TRANSIENT);
-}
-
-SQLMATH_FNC static void sql_blob_create_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will create zeroed blob of size <argv>[0]
-    UNUSED(argc);
-    const int nn = sqlite3_value_int(argv[0]);
-    if (nn <= 0) {
-        sqlite3_result_null(context);
-        return;
-    }
-    const void *buf = sqlite3_malloc(nn);
-    if (buf == NULL) {
-        sqlite3_result_error_nomem(context);
-        return;
-    }
-    memset(buf, 0, (size_t) nn);
-    sqlite3_result_blob(context, buf, nn, sqlite3_free);
-}
-
 SQLMATH_FNC static void sql_castrealorzero_func(
     sqlite3_context * context,
     int argc,
@@ -917,6 +874,26 @@ SQLMATH_FNC static void sql_casttextorempty_func(
         // - the pointer returned by sqlite3_value_text is only guaranteed
         // to be valid until the custom function returns.
         SQLITE_TRANSIENT);
+}
+
+SQLMATH_FNC static void sql_copyblob_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will copy blob <argv>[0]
+    UNUSED(argc);
+    const int nn = sqlite3_value_bytes(argv[0]);
+    if (nn <= 0) {
+        sqlite3_result_null(context);
+        return;
+    }
+    const void *buf = sqlite3_value_blob(argv[0]);
+    if (buf == NULL) {
+        sqlite3_result_null(context);
+        return;
+    }
+    sqlite3_result_blob(context, buf, nn, SQLITE_TRANSIENT);
 }
 
 SQLMATH_FNC static void sql_cot_func(
@@ -1508,10 +1485,9 @@ int sqlite3_sqlmath_ext_base_init(
     int errcode = 0;
     // init sqlite3_api
     sqlite3_api = pApi;
-    SQLITE3_CREATE_FUNCTION1(blob_copy, 1);
-    SQLITE3_CREATE_FUNCTION1(blob_create, 1);
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
+    SQLITE3_CREATE_FUNCTION1(copyblob, 1);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
     SQLITE3_CREATE_FUNCTION1(jenks, 4);
