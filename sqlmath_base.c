@@ -225,21 +225,6 @@ SQLITE_API int sqlite3_carray_bind2(
     carray_bind ** pBind
 );
 
-SQLITE_API int sqlite3_carray_bind(
-    sqlite3_stmt * pStmt,
-    int idx,
-    void *aData,
-    int nData,
-    int mFlags,
-    void (*xDestroy) (void *)   // NOLINT
-);
-
-SQLITE_API int sqlite3_carray_init(
-    sqlite3 * db,
-    char **pzErrMsg,
-    const sqlite3_api_routines * pApi
-);
-
 
 // file sqlmath_h - JsonString
 /* An instance of this object represents a JSON string
@@ -1265,6 +1250,60 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 
 // SQLMATH_FNC sql_blob_each_func - start
 /*
+** This method is called to "rewind" the carray_cursor object back
+** to the first row of output.
+*/
+SQLITE_API int blobEachFilter(
+    sqlite3_vtab_cursor * pVtabCursor,
+    int idxNum,
+    const char *idxStr,
+    int argc,
+    sqlite3_value ** argv
+) {
+    UNUSED(argv);
+    UNUSED(idxNum);
+    UNUSED(argc);
+    UNUSED(idxStr);
+    carray_cursor *pCur = (carray_cursor *) pVtabCursor;
+    pCur->pPtr = 0;
+    pCur->iCnt = 0;
+    switch (idxNum) {
+    case 1:
+        carray_bind * pBind = sqlite3_value_pointer(argv[0], "carray-bind");
+        if (pBind == 0)
+            break;
+        pCur->pPtr = pBind->aData;
+        pCur->iCnt = pBind->nData;
+        pCur->eType = pBind->mFlags & 0x03;
+        break;
+    case 2:
+    case 3:
+        pCur->pPtr = sqlite3_value_pointer(argv[0], "carray");
+        pCur->iCnt = pCur->pPtr ? sqlite3_value_int64(argv[1]) : 0;
+        if (idxNum < 3) {
+            pCur->eType = CARRAY_INT32;
+        } else {
+            unsigned char i;
+            const char *zType = (const char *) sqlite3_value_text(argv[2]);
+            for (i = 0; i < sizeof(azType) / sizeof(azType[0]); i++) {
+                if (sqlite3_stricmp(zType, azType[i]) == 0)
+                    break;
+            }
+            if (i >= sizeof(azType) / sizeof(azType[0])) {
+                pVtabCursor->pVtab->zErrMsg =
+                    sqlite3_mprintf("unknown datatype: %Q", zType);
+                return SQLITE_ERROR;
+            } else {
+                pCur->eType = i;
+            }
+        }
+        break;
+    }
+    pCur->iRowid = 1;
+    return SQLITE_OK;
+}
+
+/*
 ** This following structure defines all the methods for the
 ** carray virtual table.
 */
@@ -1561,6 +1600,8 @@ int sqlite3_sqlmath_ext_base_init(
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
+    SQLMATH_IS_OK_OR_RETURN_RC(errcode);
+    errcode = sqlite3_create_module(db, "blob_each", &blobEachModule, 0);
     SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     return 0;
 }
