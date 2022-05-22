@@ -423,6 +423,7 @@ static int carrayDisconnect(sqlite3_vtab *pVtab){
 ** Constructor for a new carray_cursor object.
 */
 static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
+  UNUSED(p);
   carray_cursor *pCur;
   pCur = sqlite3_malloc( sizeof(*pCur) );
   if( pCur==0 ) return SQLITE_NOMEM;
@@ -680,13 +681,14 @@ static void carrayBindDel(void *pPtr){
 ** Invoke this interface in order to bind to the single-argument
 ** version of CARRAY().
 */
-SQLITE_API int sqlite3_carray_bind(
+SQLITE_API int sqlite3_carray_bind2(
   sqlite3_stmt *pStmt,
   int idx,
   void *aData,
   int nData,
   int mFlags,
-  void (*xDestroy)(void*)
+  void (*xDestroy)(void*),
+  carray_bind **pBind
 ){
   carray_bind *pNew;
   int i;
@@ -742,6 +744,16 @@ SQLITE_API int sqlite3_carray_bind(
     pNew->xDel = xDestroy;
   }
   return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
+}
+SQLITE_API int sqlite3_carray_bind(
+  sqlite3_stmt *pStmt,
+  int idx,
+  void *aData,
+  int nData,
+  int mFlags,
+  void (*xDestroy)(void*)
+){
+  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
 }
 
 
