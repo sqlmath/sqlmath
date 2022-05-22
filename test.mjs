@@ -1247,7 +1247,7 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
                 db,
                 sql: (`
 SELECT
-        matrix2d() AS foo
+        matrix2d_concat() AS foo
     FROM (
         SELECT 1
     )

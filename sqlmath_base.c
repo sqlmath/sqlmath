@@ -1084,11 +1084,11 @@ SQLMATH_FNC static void sql_marginoferror95_func(
     sqlite3_result_double(context, marginoferror95(nn, pp));
 }
 
-// SQLMATH_FNC sql_matrix2d_func - start
-SQLMATH_FNC static void sql_matrix2d_final(
+// SQLMATH_FNC sql_matrix2d_concat_func - start
+SQLMATH_FNC static void sql_matrix2d_concat_final(
     sqlite3_context * context
 ) {
-// this function will aggregate rows of nCol values into 2d-matrix of doubles
+// this function will concat rows of nCol doubles to a 2d-matrix
     // pp - init
     JsonString *pp = (JsonString *) sqlite3_aggregate_context(context, 0);
     if (pp == NULL) {
@@ -1106,12 +1106,12 @@ SQLMATH_FNC static void sql_matrix2d_final(
     // jsonReset(pp);
 }
 
-SQLMATH_FNC static void sql_matrix2d_step(
+SQLMATH_FNC static void sql_matrix2d_concat_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will aggregate rows of nCol values into 2d-matrix of doubles
+// this function will concat rows of nCol doubles to a 2d-matrix
     UNUSED(argc);
     // pp - init
     JsonString *pp =
@@ -1131,7 +1131,7 @@ SQLMATH_FNC static void sql_matrix2d_step(
     }
 }
 
-// SQLMATH_FNC sql_matrix2d_func - end
+// SQLMATH_FNC sql_matrix2d_concat_func - end
 
 // SQLMATH_FNC sql_marginoferror95_func - end
 
@@ -1397,7 +1397,7 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(tobase64, 1);
     SQLITE3_CREATE_FUNCTION1(tostring, 1);
     SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
-    SQLITE3_CREATE_FUNCTION2(matrix2d, -1);
+    SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
