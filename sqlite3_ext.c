@@ -233,7 +233,17 @@ shRawLibFetch
 -  int nData,
 -  int mFlags,
 -  void (*xDestroy)(void*)
+-){
 +// hack-sqlite - custom sqlite3_carray_bind
++SQLITE_API int sqlite3_carray_bind2(
++  sqlite3_stmt *pStmt,
++  int idx,
++  void *aData,
++  int nData,
++  int mFlags,
++  void (*xDestroy)(void*),
++  carray_bind **pBind
++);
 +SQLITE_API int sqlite3_carray_bind(
 +  sqlite3_stmt *pStmt,
 +  int idx,
@@ -244,7 +254,6 @@ shRawLibFetch
 +){
 +  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
 +}
-+// hack-sqlite - custom sqlite3_carray_bind
 +SQLITE_API int sqlite3_carray_bind2(
 +  sqlite3_stmt *pStmt,
 +  int idx,
@@ -253,6 +262,12 @@ shRawLibFetch
 +  int mFlags,
 +  void (*xDestroy)(void*),
 +  carray_bind **pBind
++){
+
+-  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
++// hack-sqlite - custom sqlite3_carray_bind
++  if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
++  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
 
 -static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
 +// hack-sqlite - fix warning
@@ -716,6 +731,15 @@ static void carrayBindDel(void *pPtr){
 ** version of CARRAY().
 */
 // hack-sqlite - custom sqlite3_carray_bind
+SQLITE_API int sqlite3_carray_bind2(
+  sqlite3_stmt *pStmt,
+  int idx,
+  void *aData,
+  int nData,
+  int mFlags,
+  void (*xDestroy)(void*),
+  carray_bind **pBind
+);
 SQLITE_API int sqlite3_carray_bind(
   sqlite3_stmt *pStmt,
   int idx,
@@ -726,7 +750,6 @@ SQLITE_API int sqlite3_carray_bind(
 ){
   return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
 }
-// hack-sqlite - custom sqlite3_carray_bind
 SQLITE_API int sqlite3_carray_bind2(
   sqlite3_stmt *pStmt,
   int idx,
@@ -789,6 +812,7 @@ SQLITE_API int sqlite3_carray_bind2(
     pNew->aData = aData;
     pNew->xDel = xDestroy;
   }
+  if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
   return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
 }
 
@@ -4031,7 +4055,7 @@ UNUSED(pzErrMsg);
 
 /*
 repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed 2022-05-06T15:25:27Z
+committed
 */
 
 
