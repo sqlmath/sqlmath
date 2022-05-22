@@ -825,6 +825,42 @@ SQLMATH_FNC static void sql_jenks_func(
 
 
 // file sqlmath_ext - SQLMATH_FNC
+SQLMATH_FNC static void sql_blob_copy_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will copy blob <argv>[0]
+    UNUSED(argc);
+    const void *buf = sqlite3_value_blob(argv[0]);
+    if (buf == NULL) {
+        sqlite3_result_null(context);
+        return;
+    }
+    sqlite3_result_blob(context, buf, sqlite3_value_bytes(argv[0]),
+        SQLITE_TRANSIENT);
+}
+
+SQLMATH_FNC static void sql_blob_create_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will create blob of size <argv>[0]
+    UNUSED(argc);
+    const int nn = sqlite3_value_int(argv[0]);
+    if (nn <= 0) {
+        sqlite3_result_null(context);
+        return;
+    }
+    const void *buf = sqlite3_malloc(nn);
+    if (buf == NULL) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
+    sqlite3_result_blob(context, buf, nn, sqlite3_free);
+}
+
 SQLMATH_FNC static void sql_castrealorzero_func(
     sqlite3_context * context,
     int argc,
@@ -1385,6 +1421,8 @@ int sqlite3_sqlmath_ext_base_init(
     int errcode = 0;
     // init sqlite3_api
     sqlite3_api = pApi;
+    SQLITE3_CREATE_FUNCTION1(blob_copy, 1);
+    SQLITE3_CREATE_FUNCTION1(blob_create, 1);
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
