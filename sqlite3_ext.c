@@ -5622,7 +5622,7 @@ file none
 ** This following structure defines all the methods for the
 ** blob_each virtual table.
 */
-static sqlite3_module blobEachModule = {
+static sqlite3_module carrayblobModule = {
     0,                          /* iVersion */
     0,                          /* xCreate */
     carrayConnect,              /* xConnect */
@@ -5645,9 +5645,9 @@ static sqlite3_module blobEachModule = {
     0,                          /* xRename */
 };
 
-SQLITE_API sqlite3_module *blobEachModuleGet(
+SQLITE_API sqlite3_module *carrayblobModuleGet(
 ) {
-    return &blobEachModule;
+    return &carrayblobModule;
 }
 
 int sqlite3_ext_init(
