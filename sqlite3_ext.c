@@ -126,10 +126,6 @@ shRawLibFetch
         }
     ]
 }
--      carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
-+      // hack-sqlite - custom carray
-+      // carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
-
 -    /\\* math.h *\\/
 -    { "acos",               1, 0, SQLITE_UTF8,    0, acosFunc  },
 -    { "asin",               1, 0, SQLITE_UTF8,    0, asinFunc  },
@@ -218,23 +214,6 @@ shRawLibFetch
 +  if (pIn == NULL) { sqlite3_result_error(context, "Cannot uncompress() NULL blob", -1); return; }
 +  nIn = sqlite3_value_bytes(argv[0]);
 
--  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
--}
-+  // hack-sqlite - custom carray
-+  if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
-+  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
-+}
-+SQLITE_API int sqlite3_carray_bind(
-+  sqlite3_stmt *pStmt,
-+  int idx,
-+  void *aData,
-+  int nData,
-+  int mFlags,
-+  void (*xDestroy)(void*)
-+){
-+  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
-+}
-
 -  unsigned int nIn;
 +// hack-sqlite - fix warning
 +  int nIn;
@@ -252,56 +231,10 @@ shRawLibFetch
 +// hack-sqlite - inline zlib.h
 +// #include <zlib.h>
 
--SQLITE_API int carrayFilter(
--  sqlite3_vtab_cursor *pVtabCursor,
--  int idxNum, const char *idxStr,
--  int argc, sqlite3_value **argv
--){
-+// hack-sqlite - custom carray
-+SQLITE_API int carrayFilter2(
-+  sqlite3_vtab_cursor *pVtabCursor,
-+  int idxNum, const char *idxStr,
-+  int argc, sqlite3_value **argv,
-+  carray_bind *pBind
-+);
-+SQLITE_API int carrayFilter(
-+  sqlite3_vtab_cursor *pVtabCursor,
-+  int idxNum, const char *idxStr,
-+  int argc, sqlite3_value **argv
-+){
-+  return carrayFilter2(pVtabCursor, idxNum, idxStr, argc, argv,
-+    idxNum == 1 ? sqlite3_value_pointer(argv[0], "carray-bind") : NULL);
-+}
-+SQLITE_API int carrayFilter2(
-+  sqlite3_vtab_cursor *pVtabCursor,
-+  int idxNum, const char *idxStr,
-+  int argc, sqlite3_value **argv,
-+  carray_bind *pBind
-+){
-
 -SQLITE_API int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
 +// hack-sqlite - fix warning
 +SQLITE_API int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
 +  UNUSED(p);
-
--SQLITE_API int sqlite3_carray_bind(
--  sqlite3_stmt *pStmt,
--  int idx,
--  void *aData,
--  int nData,
--  int mFlags,
--  void (*xDestroy)(void*)
--){
-+// hack-sqlite - custom carray
-+SQLITE_API int sqlite3_carray_bind2(
-+  sqlite3_stmt *pStmt,
-+  int idx,
-+  void *aData,
-+  int nData,
-+  int mFlags,
-+  void (*xDestroy)(void*),
-+  carray_bind **pBind
-+){
 
 -static void print_elem(void *e, int64_t c, void* p){
 -UNUSED(p);
@@ -598,26 +531,10 @@ SQLITE_API int carrayEof(sqlite3_vtab_cursor *cur){
 ** This method is called to "rewind" the carray_cursor object back
 ** to the first row of output.
 */
-// hack-sqlite - custom carray
-SQLITE_API int carrayFilter2(
-  sqlite3_vtab_cursor *pVtabCursor,
-  int idxNum, const char *idxStr,
-  int argc, sqlite3_value **argv,
-  carray_bind *pBind
-);
 SQLITE_API int carrayFilter(
   sqlite3_vtab_cursor *pVtabCursor,
   int idxNum, const char *idxStr,
   int argc, sqlite3_value **argv
-){
-  return carrayFilter2(pVtabCursor, idxNum, idxStr, argc, argv,
-    idxNum == 1 ? sqlite3_value_pointer(argv[0], "carray-bind") : NULL);
-}
-SQLITE_API int carrayFilter2(
-  sqlite3_vtab_cursor *pVtabCursor,
-  int idxNum, const char *idxStr,
-  int argc, sqlite3_value **argv,
-  carray_bind *pBind
 ){
 UNUSED(argv);
 UNUSED(idxNum);
@@ -628,8 +545,7 @@ UNUSED(idxStr);
   pCur->iCnt = 0;
   switch( idxNum ){
     case 1: {
-      // hack-sqlite - custom carray
-      // carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
+      carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
       if( pBind==0 ) break;
       pCur->pPtr = pBind->aData;
       pCur->iCnt = pBind->nData;
@@ -776,15 +692,13 @@ static void carrayBindDel(void *pPtr){
 ** Invoke this interface in order to bind to the single-argument
 ** version of CARRAY().
 */
-// hack-sqlite - custom carray
-SQLITE_API int sqlite3_carray_bind2(
+SQLITE_API int sqlite3_carray_bind(
   sqlite3_stmt *pStmt,
   int idx,
   void *aData,
   int nData,
   int mFlags,
-  void (*xDestroy)(void*),
-  carray_bind **pBind
+  void (*xDestroy)(void*)
 ){
   carray_bind *pNew;
   int i;
@@ -839,19 +753,7 @@ SQLITE_API int sqlite3_carray_bind2(
     pNew->aData = aData;
     pNew->xDel = xDestroy;
   }
-  // hack-sqlite - custom carray
-  if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
   return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
-}
-SQLITE_API int sqlite3_carray_bind(
-  sqlite3_stmt *pStmt,
-  int idx,
-  void *aData,
-  int nData,
-  int mFlags,
-  void (*xDestroy)(void*)
-){
-  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
 }
 
 

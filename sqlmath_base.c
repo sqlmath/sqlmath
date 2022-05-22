@@ -149,92 +149,6 @@ struct sqlite3_context {
 };
 
 
-// file sqlmath_h - carray
-/*
-** Structure used to hold the sqlite3_carray_bind() information
-*/
-typedef struct carray_bind carray_bind;
-struct carray_bind {
-  void *aData;                /* The data */
-  int nData;                  /* Number of elements */
-  int mFlags;                 /* Control flags */
-  void (*xDel)(void*);        /* Destructor for aData */
-};
-
-SQLITE_API int carrayBestIndex(
-    sqlite3_vtab * tab,
-    sqlite3_index_info * pIdxInfo
-);
-
-SQLITE_API int carrayClose(
-    sqlite3_vtab_cursor * cur
-);
-
-SQLITE_API int carrayColumn(
-    sqlite3_vtab_cursor * cur,  /* The cursor */
-    sqlite3_context * ctx,      /* First argument to sqlite3_result_...() */
-    int i                       /* Which column to return */
-);
-
-SQLITE_API int carrayConnect(
-    sqlite3 * db,
-    void *pAux,
-    int argc,
-    const char *const *argv,
-    sqlite3_vtab ** ppVtab,
-    char **pzErr
-);
-
-SQLITE_API int carrayDisconnect(
-    sqlite3_vtab * pVtab
-);
-
-SQLITE_API int carrayEof(
-    sqlite3_vtab_cursor * cur
-);
-
-SQLITE_API int carrayFilter(
-    sqlite3_vtab_cursor * pVtabCursor,
-    int idxNum,
-    const char *idxStr,
-    int argc,
-    sqlite3_value ** argv
-);
-
-SQLITE_API int carrayFilter2(
-    sqlite3_vtab_cursor * pVtabCursor,
-    int idxNum,
-    const char *idxStr,
-    int argc,
-    sqlite3_value ** argv,
-    carray_bind *pBind
-);
-
-SQLITE_API int carrayNext(
-    sqlite3_vtab_cursor * cur
-);
-
-SQLITE_API int carrayOpen(
-    sqlite3_vtab * p,
-    sqlite3_vtab_cursor ** ppCursor
-);
-
-SQLITE_API int carrayRowid(
-    sqlite3_vtab_cursor * cur,
-    sqlite_int64 * pRowid
-);
-
-SQLITE_API int sqlite3_carray_bind2(
-    sqlite3_stmt * pStmt,
-    int idx,
-    void *aData,
-    int nData,
-    int mFlags,
-    void (*xDestroy) (void *),  // NOLINT
-    carray_bind ** pBind
-);
-
-
 // file sqlmath_h - JsonString
 /* An instance of this object represents a JSON string
 ** under construction.  Really, this is a generic string accumulator
@@ -1258,88 +1172,6 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 // SQLMATH_FNC sql_matrix2d_concat_func - end
 
 // SQLMATH_FNC sql_blob_each_func - start
-//!! /*
-//!! ** This method is called to "rewind" the carray_cursor object back
-//!! ** to the first row of output.
-//!! */
-//!! SQLITE_API int blobEachFilter(
-    //!! sqlite3_vtab_cursor * pVtabCursor,
-    //!! int idxNum,
-    //!! const char *idxStr,
-    //!! int argc,
-    //!! sqlite3_value ** argv
-//!! ) {
-    //!! UNUSED(argv);
-    //!! UNUSED(idxNum);
-    //!! UNUSED(argc);
-    //!! UNUSED(idxStr);
-    //!! carray_cursor *pCur = (carray_cursor *) pVtabCursor;
-    //!! pCur->pPtr = 0;
-    //!! pCur->iCnt = 0;
-    //!! switch (idxNum) {
-    //!! case 1:
-        //!! carray_bind * pBind = sqlite3_value_pointer(argv[0],
-        //!! "carray-bind");
-        //!! if (pBind == 0)
-            //!! break;
-        //!! pCur->pPtr = pBind->aData;
-        //!! pCur->iCnt = pBind->nData;
-        //!! pCur->eType = pBind->mFlags & 0x03;
-        //!! break;
-    //!! case 2:
-    //!! case 3:
-        //!! pCur->pPtr = sqlite3_value_pointer(argv[0], "carray");
-        //!! pCur->iCnt = pCur->pPtr ? sqlite3_value_int64(argv[1]) : 0;
-        //!! if (idxNum < 3) {
-            //!! pCur->eType = CARRAY_INT32;
-        //!! } else {
-            //!! unsigned char i;
-            //!! const char *zType = (const char *) sqlite3_value_text(argv[2]);
-            //!! for (i = 0; i < sizeof(azType) / sizeof(azType[0]); i++) {
-                //!! if (sqlite3_stricmp(zType, azType[i]) == 0)
-                    //!! break;
-            //!! }
-            //!! if (i >= sizeof(azType) / sizeof(azType[0])) {
-                //!! pVtabCursor->pVtab->zErrMsg =
-                    //!! sqlite3_mprintf("unknown datatype: %Q", zType);
-                //!! return SQLITE_ERROR;
-            //!! } else {
-                //!! pCur->eType = i;
-            //!! }
-        //!! }
-        //!! break;
-    //!! }
-    //!! pCur->iRowid = 1;
-    //!! return SQLITE_OK;
-//!! }
-
-/*
-** This following structure defines all the methods for the
-** carray virtual table.
-*/
-static sqlite3_module blobEachModule = { 0 };
-
-    //!! 0,                          /* iVersion */
-    //!! 0,                          /* xCreate */
-    //!! carrayConnect,              /* xConnect */
-    //!! carrayBestIndex,            /* xBestIndex */
-    //!! carrayDisconnect,           /* xDisconnect */
-    //!! 0,                          /* xDestroy */
-    //!! carrayOpen,                 /* xOpen - open a cursor */
-    //!! carrayClose,                /* xClose - close a cursor */
-    //!! carrayFilter,               /* xFilter - configure scan constraints */
-    //!! carrayNext,                 /* xNext - advance a cursor */
-    //!! carrayEof,                  /* xEof - check for end of scan */
-    //!! carrayColumn,               /* xColumn - read data */
-    //!! carrayRowid,                /* xRowid - read data */
-    //!! 0,                          /* xUpdate */
-    //!! 0,                          /* xBegin */
-    //!! 0,                          /* xSync */
-    //!! 0,                          /* xCommit */
-    //!! 0,                          /* xRollback */
-    //!! 0,                          /* xFindMethod */
-    //!! 0,                          /* xRename */
-//!! };
 
 // SQLMATH_FNC sql_blob_each_func - end
 
@@ -1583,9 +1415,6 @@ SQLMATH_API int noop(
 
 
 // file sqlmath_ext - init
-SQLITE_API sqlite3_module *carrayModuleGet(
-);
-
 int sqlite3_sqlmath_ext_base_init(
     sqlite3 * db,
     char **pzErrMsg,
@@ -1593,7 +1422,6 @@ int sqlite3_sqlmath_ext_base_init(
 ) {
     UNUSED(pzErrMsg);
     // declare var
-    const sqlite3_module *carrayModule = carrayModuleGet();
     int errcode = 0;
     // init sqlite3_api
     sqlite3_api = pApi;
