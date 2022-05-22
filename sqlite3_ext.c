@@ -126,18 +126,6 @@ shRawLibFetch
         }
     ]
 }
-+SQLITE_API int carrayFilter(
-+  sqlite3_vtab_cursor *pVtabCursor,
-+  int idxNum, const char *idxStr,
-+  int argc, sqlite3_value **argv
-+){
-+// hack-sqlite - custom carray
-+SQLITE_API int carrayFilter2(
-+  sqlite3_vtab_cursor *pVtabCursor,
-+  int idxNum, const char *idxStr,
-+  int argc, sqlite3_value **argv
-+){
-
 -    /\\* math.h *\\/
 -    { "acos",               1, 0, SQLITE_UTF8,    0, acosFunc  },
 -    { "asin",               1, 0, SQLITE_UTF8,    0, asinFunc  },
@@ -259,6 +247,18 @@ shRawLibFetch
 -#include <zlib.h>
 +// hack-sqlite - inline zlib.h
 +// #include <zlib.h>
+
+-SQLITE_API int carrayFilter(
+-  sqlite3_vtab_cursor *pVtabCursor,
+-  int idxNum, const char *idxStr,
+-  int argc, sqlite3_value **argv
+-){
++// hack-sqlite - custom carray
++SQLITE_API int carrayFilter2(
++  sqlite3_vtab_cursor *pVtabCursor,
++  int idxNum, const char *idxStr,
++  int argc, sqlite3_value **argv
++){
 
 -SQLITE_API int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
 +// hack-sqlite - fix warning
@@ -579,7 +579,8 @@ SQLITE_API int carrayEof(sqlite3_vtab_cursor *cur){
 ** This method is called to "rewind" the carray_cursor object back
 ** to the first row of output.
 */
-SQLITE_API int carrayFilter(
+// hack-sqlite - custom carray
+SQLITE_API int carrayFilter2(
   sqlite3_vtab_cursor *pVtabCursor,
   int idxNum, const char *idxStr,
   int argc, sqlite3_value **argv
