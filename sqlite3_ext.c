@@ -3972,7 +3972,7 @@ UNUSED(pzErrMsg);
 
 /*
 repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed
+committed 2022-05-06T15:25:27Z
 */
 
 
@@ -5601,6 +5601,8 @@ int sqlite3_ext_init(
 ) {
     int errcode = 0;
     sqlite3_api = pApi;
+    errcode = sqlite3_carray_init(db, pzErrMsg, pApi);
+    SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_compress_init(db, pzErrMsg, pApi);
     SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_csv_init(db, pzErrMsg, pApi);
