@@ -149,6 +149,98 @@ struct sqlite3_context {
 };
 
 
+// file sqlmath_h - carray
+/*
+** Structure used to hold the sqlite3_carray_bind() information
+*/
+typedef struct carray_bind carray_bind;
+struct carray_bind {
+  void *aData;                /* The data */
+  int nData;                  /* Number of elements */
+  int mFlags;                 /* Control flags */
+  void (*xDel)(void*);        /* Destructor for aData */
+};
+
+SQLITE_API int carrayBestIndex(
+    sqlite3_vtab * tab,
+    sqlite3_index_info * pIdxInfo
+);
+
+SQLITE_API int carrayClose(
+    sqlite3_vtab_cursor * cur
+);
+
+SQLITE_API int carrayColumn(
+    sqlite3_vtab_cursor * cur,  /* The cursor */
+    sqlite3_context * ctx,      /* First argument to sqlite3_result_...() */
+    int i                       /* Which column to return */
+);
+
+SQLITE_API int carrayConnect(
+    sqlite3 * db,
+    void *pAux,
+    int argc,
+    const char *const *argv,
+    sqlite3_vtab ** ppVtab,
+    char **pzErr
+);
+
+SQLITE_API int carrayDisconnect(
+    sqlite3_vtab * pVtab
+);
+
+SQLITE_API int carrayEof(
+    sqlite3_vtab_cursor * cur
+);
+
+SQLITE_API int carrayFilter(
+    sqlite3_vtab_cursor * pVtabCursor,
+    int idxNum,
+    const char *idxStr,
+    int argc,
+    sqlite3_value ** argv
+);
+
+SQLITE_API int carrayNext(
+    sqlite3_vtab_cursor * cur
+);
+
+SQLITE_API int carrayOpen(
+    sqlite3_vtab * p,
+    sqlite3_vtab_cursor ** ppCursor
+);
+
+SQLITE_API int carrayRowid(
+    sqlite3_vtab_cursor * cur,
+    sqlite_int64 * pRowid
+);
+
+SQLITE_API int sqlite3_carray_bind2(
+    sqlite3_stmt * pStmt,
+    int idx,
+    void *aData,
+    int nData,
+    int mFlags,
+    void (*xDestroy) (void *),  // NOLINT
+    carray_bind ** pBind
+);
+
+SQLITE_API int sqlite3_carray_bind(
+    sqlite3_stmt * pStmt,
+    int idx,
+    void *aData,
+    int nData,
+    int mFlags,
+    void (*xDestroy) (void *)   // NOLINT
+);
+
+SQLITE_API int sqlite3_carray_init(
+    sqlite3 * db,
+    char **pzErrMsg,
+    const sqlite3_api_routines * pApi
+);
+
+
 // file sqlmath_h - JsonString
 /* An instance of this object represents a JSON string
 ** under construction.  Really, this is a generic string accumulator
