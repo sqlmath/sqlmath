@@ -5715,7 +5715,7 @@ file none
 
 
 // *INDENT-ON*
-sqlite3_module *carrayModuleGet(
+SQLITE_API sqlite3_module *carrayModuleGet(
 ) {
     return &carrayModule;
 }

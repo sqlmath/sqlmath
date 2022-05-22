@@ -198,8 +198,7 @@ SQLITE_API int carrayFilter(
     int idxNum,
     const char *idxStr,
     int argc,
-    sqlite3_value ** argv,
-    carray_bind *pBind
+    sqlite3_value ** argv
 );
 
 SQLITE_API int carrayFilter2(
@@ -207,7 +206,8 @@ SQLITE_API int carrayFilter2(
     int idxNum,
     const char *idxStr,
     int argc,
-    sqlite3_value ** argv
+    sqlite3_value ** argv,
+    carray_bind *pBind
 );
 
 SQLITE_API int carrayNext(
@@ -1582,6 +1582,8 @@ SQLMATH_API int noop(
 
 
 // file sqlmath_ext - init
+SQLITE_API sqlite3_module *carrayModuleGet();
+
 int sqlite3_sqlmath_ext_base_init(
     sqlite3 * db,
     char **pzErrMsg,
@@ -1590,6 +1592,7 @@ int sqlite3_sqlmath_ext_base_init(
     UNUSED(pzErrMsg);
     // declare var
     int errcode = 0;
+    //!! static sqlite3_module *carrayModule = carrayModuleGet()
     // init sqlite3_api
     sqlite3_api = pApi;
     SQLITE3_CREATE_FUNCTION1(blob_copy, 1);
