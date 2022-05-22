@@ -115,6 +115,11 @@ shRawLibFetch
             "flags": "g"
         },
         {
+            "aa": "static int carray",
+            "bb": "SQLITE_API int carray",
+            "flags": "g"
+        },
+        {
             "aa": "unused\\(idxnum\\);",
             "bb": "UNUSED(argv);\n$&",
             "flags": "ig"
@@ -243,6 +248,11 @@ shRawLibFetch
 +// hack-sqlite - inline zlib.h
 +// #include <zlib.h>
 
+-SQLITE_API int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
++// hack-sqlite - fix warning
++SQLITE_API int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
++  UNUSED(p);
+
 -SQLITE_API int sqlite3_carray_bind(
 -  sqlite3_stmt *pStmt,
 -  int idx,
@@ -261,11 +271,6 @@ shRawLibFetch
 +  void (*xDestroy)(void*),
 +  carray_bind **pBind
 +){
-
--static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
-+// hack-sqlite - fix warning
-+static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
-+  UNUSED(p);
 
 -static void print_elem(void *e, int64_t c, void* p){
 -UNUSED(p);
@@ -422,7 +427,7 @@ struct carray_cursor {
 **    (2) Tell SQLite (via the sqlite3_declare_vtab() interface) what the
 **        result set of queries against carray will look like.
 */
-static int carrayConnect(
+SQLITE_API int carrayConnect(
   sqlite3 *db,
   void *pAux,
   int argc, const char *const*argv,
@@ -455,7 +460,7 @@ UNUSED(pAux);
 /*
 ** This method is the destructor for carray_cursor objects.
 */
-static int carrayDisconnect(sqlite3_vtab *pVtab){
+SQLITE_API int carrayDisconnect(sqlite3_vtab *pVtab){
   sqlite3_free(pVtab);
   return SQLITE_OK;
 }
@@ -464,7 +469,7 @@ static int carrayDisconnect(sqlite3_vtab *pVtab){
 ** Constructor for a new carray_cursor object.
 */
 // hack-sqlite - fix warning
-static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
+SQLITE_API int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
   UNUSED(p);
   carray_cursor *pCur;
   pCur = sqlite3_malloc( sizeof(*pCur) );
@@ -477,7 +482,7 @@ static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
 /*
 ** Destructor for a carray_cursor.
 */
-static int carrayClose(sqlite3_vtab_cursor *cur){
+SQLITE_API int carrayClose(sqlite3_vtab_cursor *cur){
   sqlite3_free(cur);
   return SQLITE_OK;
 }
@@ -486,7 +491,7 @@ static int carrayClose(sqlite3_vtab_cursor *cur){
 /*
 ** Advance a carray_cursor to its next row of output.
 */
-static int carrayNext(sqlite3_vtab_cursor *cur){
+SQLITE_API int carrayNext(sqlite3_vtab_cursor *cur){
   carray_cursor *pCur = (carray_cursor*)cur;
   pCur->iRowid++;
   return SQLITE_OK;
@@ -496,7 +501,7 @@ static int carrayNext(sqlite3_vtab_cursor *cur){
 ** Return values of columns for the row at which the carray_cursor
 ** is currently pointing.
 */
-static int carrayColumn(
+SQLITE_API int carrayColumn(
   sqlite3_vtab_cursor *cur,   /* The cursor */
   sqlite3_context *ctx,       /* First argument to sqlite3_result_...() */
   int i                       /* Which column to return */
@@ -543,7 +548,7 @@ static int carrayColumn(
 ** Return the rowid for the current row.  In this implementation, the
 ** rowid is the same as the output value.
 */
-static int carrayRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
+SQLITE_API int carrayRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
   carray_cursor *pCur = (carray_cursor*)cur;
   *pRowid = pCur->iRowid;
   return SQLITE_OK;
@@ -553,7 +558,7 @@ static int carrayRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
 ** Return TRUE if the cursor has been moved off of the last
 ** row of output.
 */
-static int carrayEof(sqlite3_vtab_cursor *cur){
+SQLITE_API int carrayEof(sqlite3_vtab_cursor *cur){
   carray_cursor *pCur = (carray_cursor*)cur;
   return pCur->iRowid>pCur->iCnt;
 }
@@ -562,7 +567,7 @@ static int carrayEof(sqlite3_vtab_cursor *cur){
 ** This method is called to "rewind" the carray_cursor object back
 ** to the first row of output.
 */
-static int carrayFilter(
+SQLITE_API int carrayFilter(
   sqlite3_vtab_cursor *pVtabCursor,
   int idxNum, const char *idxStr,
   int argc, sqlite3_value **argv
@@ -630,7 +635,7 @@ UNUSED(idxStr);
 **
 ** idxNum is 0 otherwise and carray becomes an empty table.
 */
-static int carrayBestIndex(
+SQLITE_API int carrayBestIndex(
   sqlite3_vtab *tab,
   sqlite3_index_info *pIdxInfo
 ){
@@ -4040,7 +4045,7 @@ UNUSED(pzErrMsg);
 
 /*
 repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed
+committed 2022-05-06T15:25:27Z
 */
 
 
