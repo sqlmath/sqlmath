@@ -211,7 +211,7 @@ shRawLibFetch
 
 -  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
 -}
-+// hack-sqlite - custom sqlite3_carray_bind
++  // hack-sqlite - custom sqlite3_carray_bind
 +  if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
 +  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
 +}
@@ -786,7 +786,7 @@ SQLITE_API int sqlite3_carray_bind2(
     pNew->aData = aData;
     pNew->xDel = xDestroy;
   }
-// hack-sqlite - custom sqlite3_carray_bind
+  // hack-sqlite - custom sqlite3_carray_bind
   if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
   return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
 }
