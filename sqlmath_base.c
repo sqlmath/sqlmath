@@ -1172,6 +1172,33 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 // SQLMATH_FNC sql_matrix2d_concat_func - end
 
 // SQLMATH_FNC sql_blob_each_func - start
+/*
+** This following structure defines all the methods for the
+** carray virtual table.
+*/
+static sqlite3_module blobEachModule = {
+    0,                          /* iVersion */
+    0,                          /* xCreate */
+    carrayConnect,              /* xConnect */
+    carrayBestIndex,            /* xBestIndex */
+    carrayDisconnect,           /* xDisconnect */
+    0,                          /* xDestroy */
+    carrayOpen,                 /* xOpen - open a cursor */
+    carrayClose,                /* xClose - close a cursor */
+    carrayFilter,               /* xFilter - configure scan constraints */
+    carrayNext,                 /* xNext - advance a cursor */
+    carrayEof,                  /* xEof - check for end of scan */
+    carrayColumn,               /* xColumn - read data */
+    carrayRowid,                /* xRowid - read data */
+    0,                          /* xUpdate */
+    0,                          /* xBegin */
+    0,                          /* xSync */
+    0,                          /* xCommit */
+    0,                          /* xRollback */
+    0,                          /* xFindMethod */
+    0,                          /* xRename */
+};
+
 // SQLMATH_FNC sql_blob_each_func - end
 
 SQLMATH_FNC static void sql_roundorzero_func(
