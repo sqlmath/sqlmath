@@ -198,6 +198,15 @@ SQLITE_API int carrayFilter(
     int idxNum,
     const char *idxStr,
     int argc,
+    sqlite3_value ** argv,
+    carray_bind *pBind
+);
+
+SQLITE_API int carrayFilter2(
+    sqlite3_vtab_cursor * pVtabCursor,
+    int idxNum,
+    const char *idxStr,
+    int argc,
     sqlite3_value ** argv
 );
 

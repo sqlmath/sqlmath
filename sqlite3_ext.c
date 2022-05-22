@@ -5715,6 +5715,11 @@ file none
 
 
 // *INDENT-ON*
+sqlite3_module *carrayModuleGet(
+) {
+    return &carrayModule;
+}
+
 int sqlite3_ext_init(
     sqlite3 * db,
     char **pzErrMsg,
