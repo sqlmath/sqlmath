@@ -257,20 +257,27 @@ shRawLibFetch
 +SQLITE_API int carrayFilter2(
 +  sqlite3_vtab_cursor *pVtabCursor,
 +  int idxNum, const char *idxStr,
-+  int argc, sqlite3_value **argv
++  int argc, sqlite3_value **argv,
++  carray_bind *pBind
 +);
 +SQLITE_API int carrayFilter(
 +  sqlite3_vtab_cursor *pVtabCursor,
 +  int idxNum, const char *idxStr,
 +  int argc, sqlite3_value **argv
 +){
-+  return carrayFilter2(pVtabCursor, idxNum, idxStr, argc, argv);
++  return carrayFilter2(pVtabCursor, idxNum, idxStr, argc, argv,
++    idxNum == 1 ? sqlite3_value_pointer(argv[0], "carray-bind") : NULL);
 +}
 +SQLITE_API int carrayFilter2(
 +  sqlite3_vtab_cursor *pVtabCursor,
 +  int idxNum, const char *idxStr,
-+  int argc, sqlite3_value **argv
++  int argc, sqlite3_value **argv,
++  carray_bind *pBind
 +){
+
+-      carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
++      // hack-sqlite - custom carray
++      // carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
 
 -SQLITE_API int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
 +// hack-sqlite - fix warning
@@ -595,19 +602,22 @@ SQLITE_API int carrayEof(sqlite3_vtab_cursor *cur){
 SQLITE_API int carrayFilter2(
   sqlite3_vtab_cursor *pVtabCursor,
   int idxNum, const char *idxStr,
-  int argc, sqlite3_value **argv
+  int argc, sqlite3_value **argv,
+  carray_bind *pBind
 );
 SQLITE_API int carrayFilter(
   sqlite3_vtab_cursor *pVtabCursor,
   int idxNum, const char *idxStr,
   int argc, sqlite3_value **argv
 ){
-  return carrayFilter2(pVtabCursor, idxNum, idxStr, argc, argv);
+  return carrayFilter2(pVtabCursor, idxNum, idxStr, argc, argv,
+    idxNum == 1 ? sqlite3_value_pointer(argv[0], "carray-bind") : NULL);
 }
 SQLITE_API int carrayFilter2(
   sqlite3_vtab_cursor *pVtabCursor,
   int idxNum, const char *idxStr,
-  int argc, sqlite3_value **argv
+  int argc, sqlite3_value **argv,
+  carray_bind *pBind
 ){
 UNUSED(argv);
 UNUSED(idxNum);
@@ -618,7 +628,7 @@ UNUSED(idxStr);
   pCur->iCnt = 0;
   switch( idxNum ){
     case 1: {
-      carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
+      // carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
       if( pBind==0 ) break;
       pCur->pPtr = pBind->aData;
       pCur->iCnt = pBind->nData;
