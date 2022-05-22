@@ -832,13 +832,17 @@ SQLMATH_FNC static void sql_blob_copy_func(
 ) {
 // this function will copy blob <argv>[0]
     UNUSED(argc);
+    const int nn = sqlite3_value_bytes(argv[0]);
+    if (nn <= 0) {
+        sqlite3_result_null(context);
+        return;
+    }
     const void *buf = sqlite3_value_blob(argv[0]);
     if (buf == NULL) {
         sqlite3_result_null(context);
         return;
     }
-    sqlite3_result_blob(context, buf, sqlite3_value_bytes(argv[0]),
-        SQLITE_TRANSIENT);
+    sqlite3_result_blob(context, buf, nn, SQLITE_TRANSIENT);
 }
 
 SQLMATH_FNC static void sql_blob_create_func(
