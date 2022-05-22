@@ -86,7 +86,7 @@ shRawLibFetch
         },
         {
             "aa": "\\*(pzErr)[\n,][^\\)]*\\n?\\)\\{",
-            "bb": "$&\nUNUSED($1);",
+            "bb": "$&\nUNUSED($1);\nUNUSED(argv);",
             "flags": "g"
         },
         {
@@ -390,6 +390,7 @@ static int carrayConnect(
 ){
 UNUSED(argc);
 UNUSED(pzErr);
+UNUSED(argv);
 UNUSED(pAux);
   sqlite3_vtab *pNew;
   int rc;
@@ -1439,6 +1440,7 @@ static int csvtabConnect(
 ){
 UNUSED(argc);
 UNUSED(pzErr);
+UNUSED(argv);
 UNUSED(pAux);
   CsvTable *pNew = 0;        /* The CsvTable object to construct */
   int bHeader = -1;          /* header= flags.  -1 means not seen yet */
@@ -1639,6 +1641,7 @@ static int csvtabCreate(
 ){
 UNUSED(argc);
 UNUSED(pzErr);
+UNUSED(argv);
 UNUSED(pAux);
  return csvtabConnect(db, pAux, argc, argv, ppVtab, pzErr);
 }
@@ -3980,7 +3983,7 @@ UNUSED(pzErrMsg);
 
 /*
 repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed 2022-05-06T15:25:27Z
+committed
 */
 
 
