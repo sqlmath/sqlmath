@@ -5645,9 +5645,9 @@ static sqlite3_module blobEachModule = {
     0,                          /* xRename */
 };
 
-SQLITE_API const sqlite3_module *carrayModuleGet(
+SQLITE_API sqlite3_module *blobEachModuleGet(
 ) {
-    return &carrayModule;
+    return &blobEachModule;
 }
 
 int sqlite3_ext_init(

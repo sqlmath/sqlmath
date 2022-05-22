@@ -1415,6 +1415,9 @@ SQLMATH_API int noop(
 
 
 // file sqlmath_ext - init
+SQLITE_API sqlite3_module *blobEachModuleGet(
+);
+
 int sqlite3_sqlmath_ext_base_init(
     sqlite3 * db,
     char **pzErrMsg,
@@ -1422,6 +1425,7 @@ int sqlite3_sqlmath_ext_base_init(
 ) {
     UNUSED(pzErrMsg);
     // declare var
+    sqlite3_module *blobEachModule = blobEachModuleGet();
     int errcode = 0;
     // init sqlite3_api
     sqlite3_api = pApi;
