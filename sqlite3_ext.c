@@ -121,49 +121,6 @@ shRawLibFetch
         }
     ]
 }
-
-
--static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
-+// hack-sqlite - fix warning
-+static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
-+  UNUSED(p);
-
--SQLITE_API int sqlite3_carray_bind(
-+// hack-sqlite - custom sqlite3_carray_bind
-+SQLITE_API int sqlite3_carray_bind2(
-
--SQLITE_API int sqlite3_carray_bind(
--  sqlite3_stmt *pStmt,
--  int idx,
--  void *aData,
--  int nData,
--  int mFlags,
--  void (*xDestroy)(void*)
-+// hack-sqlite - custom sqlite3_carray_bind
-+SQLITE_API int sqlite3_carray_bind2(
-+  sqlite3_stmt *pStmt,
-+  int idx,
-+  void *aData,
-+  int nData,
-+  int mFlags,
-+  void (*xDestroy)(void*),
-+  carray_bind **pBind
-
--  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
--}
-+  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
-+}
-+SQLITE_API int sqlite3_carray_bind(
-+  sqlite3_stmt *pStmt,
-+  int idx,
-+  void *aData,
-+  int nData,
-+  int mFlags,
-+  void (*xDestroy)(void*)
-+){
-+  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
-+}
-
 -    /\\* math.h *\\/
 -    { "acos",               1, 0, SQLITE_UTF8,    0, acosFunc  },
 -    { "asin",               1, 0, SQLITE_UTF8,    0, asinFunc  },
@@ -268,6 +225,39 @@ shRawLibFetch
 -#include <zlib.h>
 +// hack-sqlite - inline zlib.h
 +// #include <zlib.h>
+
+-SQLITE_API int sqlite3_carray_bind(
+-  sqlite3_stmt *pStmt,
+-  int idx,
+-  void *aData,
+-  int nData,
+-  int mFlags,
+-  void (*xDestroy)(void*)
++// hack-sqlite - custom sqlite3_carray_bind
++SQLITE_API int sqlite3_carray_bind(
++  sqlite3_stmt *pStmt,
++  int idx,
++  void *aData,
++  int nData,
++  int mFlags,
++  void (*xDestroy)(void*)
++){
++  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
++}
++// hack-sqlite - custom sqlite3_carray_bind
++SQLITE_API int sqlite3_carray_bind2(
++  sqlite3_stmt *pStmt,
++  int idx,
++  void *aData,
++  int nData,
++  int mFlags,
++  void (*xDestroy)(void*),
++  carray_bind **pBind
+
+-static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
++// hack-sqlite - fix warning
++static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
++  UNUSED(p);
 
 -static void print_elem(void *e, int64_t c, void* p){
 -UNUSED(p);
@@ -465,6 +455,7 @@ static int carrayDisconnect(sqlite3_vtab *pVtab){
 /*
 ** Constructor for a new carray_cursor object.
 */
+// hack-sqlite - fix warning
 static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
   UNUSED(p);
   carray_cursor *pCur;
@@ -724,6 +715,18 @@ static void carrayBindDel(void *pPtr){
 ** Invoke this interface in order to bind to the single-argument
 ** version of CARRAY().
 */
+// hack-sqlite - custom sqlite3_carray_bind
+SQLITE_API int sqlite3_carray_bind(
+  sqlite3_stmt *pStmt,
+  int idx,
+  void *aData,
+  int nData,
+  int mFlags,
+  void (*xDestroy)(void*)
+){
+  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
+}
+// hack-sqlite - custom sqlite3_carray_bind
 SQLITE_API int sqlite3_carray_bind2(
   sqlite3_stmt *pStmt,
   int idx,
@@ -787,16 +790,6 @@ SQLITE_API int sqlite3_carray_bind2(
     pNew->xDel = xDestroy;
   }
   return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
-}
-SQLITE_API int sqlite3_carray_bind(
-  sqlite3_stmt *pStmt,
-  int idx,
-  void *aData,
-  int nData,
-  int mFlags,
-  void (*xDestroy)(void*)
-){
-  return sqlite3_carray_bind2(pStmt, idx, aData, nData, mFlags, xDestroy, NULL);
 }
 
 
@@ -4038,7 +4031,7 @@ UNUSED(pzErrMsg);
 
 /*
 repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed
+committed 2022-05-06T15:25:27Z
 */
 
 
