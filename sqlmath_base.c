@@ -1084,6 +1084,55 @@ SQLMATH_FNC static void sql_marginoferror95_func(
     sqlite3_result_double(context, marginoferror95(nn, pp));
 }
 
+// SQLMATH_FNC sql_matrix2d_func - start
+SQLMATH_FNC static void sql_matrix2d_final(
+    sqlite3_context * context
+) {
+// this function will aggregate rows of nCol values into 2d-matrix of doubles
+    // pp - init
+    JsonString *pp = (JsonString *) sqlite3_aggregate_context(context, 0);
+    if (pp == NULL) {
+        sqlite3_result_null(context);
+        return;
+    }
+    if (pp->nUsed <= 0) {
+        sqlite3_result_null(context);
+    } else {
+        double *arr = (double *) pp->zBuf;
+        arr[0] = (0.125 * ((double) pp->nUsed) - 2) / arr[1];
+        sqlite3_result_blob(context, arr, pp->nUsed,
+            pp->bStatic ? SQLITE_TRANSIENT : sqlite3_free);
+    }
+    // jsonReset(pp);
+}
+
+SQLMATH_FNC static void sql_matrix2d_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will aggregate rows of nCol values into 2d-matrix of doubles
+    UNUSED(argc);
+    // pp - init
+    JsonString *pp =
+        (JsonString *) sqlite3_aggregate_context(context, sizeof(*pp));
+    if (pp == NULL) {
+        return;
+    }
+    // pp - jsonInit
+    if (pp->zBuf == 0) {
+        jsonInit(pp, context);
+        jsonVectorDoubleAppend(pp, 0);
+        jsonVectorDoubleAppend(pp, (double) argc);
+    }
+    // pp - append double
+    for (int ii = 0; ii < argc; ii += 1) {
+        jsonVectorDoubleAppend(pp, sqlite3_value_double(argv[ii]));
+    }
+}
+
+// SQLMATH_FNC sql_matrix2d_func - end
+
 // SQLMATH_FNC sql_marginoferror95_func - end
 
 SQLMATH_FNC static void sql_roundorzero_func(
@@ -1348,6 +1397,7 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(tobase64, 1);
     SQLITE3_CREATE_FUNCTION1(tostring, 1);
     SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
+    SQLITE3_CREATE_FUNCTION2(matrix2d, -1);
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
