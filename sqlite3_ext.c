@@ -209,6 +209,11 @@ shRawLibFetch
 +  if (pIn == NULL) { sqlite3_result_error(context, "Cannot uncompress() NULL blob", -1); return; }
 +  nIn = sqlite3_value_bytes(argv[0]);
 
+-  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
++// hack-sqlite - custom sqlite3_carray_bind
++  if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
++  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
+
 -  unsigned int nIn;
 +// hack-sqlite - fix warning
 +  int nIn;
@@ -263,11 +268,6 @@ shRawLibFetch
 +  void (*xDestroy)(void*),
 +  carray_bind **pBind
 +){
-
--  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
-+// hack-sqlite - custom sqlite3_carray_bind
-+  if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
-+  return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
 
 -static int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
 +// hack-sqlite - fix warning
@@ -812,6 +812,7 @@ SQLITE_API int sqlite3_carray_bind2(
     pNew->aData = aData;
     pNew->xDel = xDestroy;
   }
+// hack-sqlite - custom sqlite3_carray_bind
   if (pBind != NULL) { *pBind = pNew; return SQLITE_OK; }
   return sqlite3_bind_pointer(pStmt, idx, pNew, "carray-bind", carrayBindDel);
 }
