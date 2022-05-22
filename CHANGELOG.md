@@ -1,7 +1,12 @@
 # Changelog
 
 # Todo
+- sqlmath - add sql-extension carrayblob()
 - none
+
+# v2022.6.1-beta
+- sqlmath - add sql-extension copyblob(), matrix2d_concat()
+- sqlmath - re-include carray-extension
 
 # v2022.5.20
 - sqlite - update to sqlite v3.38.5

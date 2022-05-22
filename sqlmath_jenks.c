@@ -56,8 +56,6 @@ file sqlmath_h - start
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#define ALLOCF free
-#define ALLOCM malloc
 #define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
 SQLMATH_API int doubleSortCompare(
@@ -150,10 +148,10 @@ inline static void jenksCalcRange(
 
 SQLMATH_API JenksObject *jenksCreate(
     size_t nn,
-    size_t kk
+    size_t kk,
+    void *(*malloc) (size_t)
 ) {
 // This function will allocate memory for and initialize new Jenks object.
-#define jenksDestroy ALLOCF
     // declare var
     JenksObject *self;
     char *pTmp = NULL;
@@ -169,7 +167,7 @@ SQLMATH_API JenksObject *jenksCreate(
         + nn * 8                // ssmPrv
         + nn * 8                // tmp
         + 0);
-    self = (JenksObject *) ALLOCM(byteLength);
+    self = (JenksObject *) malloc(byteLength);
     if (self == NULL) {
         return NULL;
     }
@@ -799,7 +797,7 @@ int main(int c, char** argv) {
     char ch;
     std::cin >> ch; // wait for user to enter a key
 */
-    JenksObject *self = jenksCreate(1 << 20, 4);
+    JenksObject *self = jenksCreate(1 << 20, 4, malloc);
     assert(self != NULL);
     double aa_3_2[] = { 2, 1, 0 };
     test(aa_3_2, 3, 2,
@@ -867,7 +865,7 @@ int main(int c, char** argv) {
     // test aa_big_4
     {
         size_t nn = 1 << 20;
-        double *aa_big_4 = (double *) ALLOCM((size_t) nn * 8);
+        double *aa_big_4 = (double *) malloc((size_t) nn * 8);
         size_t ii = nn;
         while (ii > 0) {
             ii -= 1;
@@ -877,9 +875,9 @@ int main(int c, char** argv) {
             0, 262144, 524288, 786432,
             262144, 262144, 262144, 262144,
             self);
-        ALLOCF(aa_big_4);
+        free(aa_big_4);
     }
-    jenksDestroy(self);
+    free(self);
 } // main
 // *INDENT-ON*
 #endif                          // SQLITE3_EXT_C2

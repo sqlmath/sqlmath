@@ -1236,4 +1236,32 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
             });
         });
     });
+    /*
+    jstestIt((
+        "test sqlite-extension-matrix2d handling-behavior"
+    ), async function testSqliteExtensionMatrix2d() {
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        debugInline(
+            await dbExecAsync({
+            //!! await dbGetLastBlobAsync({
+                db,
+                sql: (`
+select * FROM blob_each(blob_create(16));
+--!! SELECT
+        --!! *
+    --!! FROM (
+        --!! SELECT
+            --!! matrix2d_concat(1, 2) AS foo
+        --!! FROM (
+            --!! SELECT 1
+        --!! )
+    --!! )
+--!! ;
+                `)
+            })
+        );
+    });
+    */
 });

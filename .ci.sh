@@ -884,11 +884,11 @@ shSyncSqlmath() {(set -e
     local FILE
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
-        git grep '3.38.[^5]'
-        git grep '3380[^5]00'
         shRawLibFetch sqlite3.c
         shRawLibFetch sqlite3_ext.c
         shRawLibFetch sqlite3_shell.c
+        git grep '3.38.[^5]' || true
+        git grep '3380[^5]00' || true
         return
     fi
     if [ -d "$HOME/Documents/sqlmath/" ]
