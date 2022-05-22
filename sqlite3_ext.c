@@ -258,6 +258,18 @@ shRawLibFetch
 +  sqlite3_vtab_cursor *pVtabCursor,
 +  int idxNum, const char *idxStr,
 +  int argc, sqlite3_value **argv
++);
++SQLITE_API int carrayFilter(
++  sqlite3_vtab_cursor *pVtabCursor,
++  int idxNum, const char *idxStr,
++  int argc, sqlite3_value **argv
++){
++  return carrayFilter2(pVtabCursor, idxNum, idxStr, argc, argv);
++}
++SQLITE_API int carrayFilter2(
++  sqlite3_vtab_cursor *pVtabCursor,
++  int idxNum, const char *idxStr,
++  int argc, sqlite3_value **argv
 +){
 
 -SQLITE_API int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
@@ -580,6 +592,18 @@ SQLITE_API int carrayEof(sqlite3_vtab_cursor *cur){
 ** to the first row of output.
 */
 // hack-sqlite - custom carray
+SQLITE_API int carrayFilter2(
+  sqlite3_vtab_cursor *pVtabCursor,
+  int idxNum, const char *idxStr,
+  int argc, sqlite3_value **argv
+);
+SQLITE_API int carrayFilter(
+  sqlite3_vtab_cursor *pVtabCursor,
+  int idxNum, const char *idxStr,
+  int argc, sqlite3_value **argv
+){
+  return carrayFilter2(pVtabCursor, idxNum, idxStr, argc, argv);
+}
 SQLITE_API int carrayFilter2(
   sqlite3_vtab_cursor *pVtabCursor,
   int idxNum, const char *idxStr,
@@ -4058,7 +4082,7 @@ UNUSED(pzErrMsg);
 
 /*
 repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed
+committed 2022-05-06T15:25:27Z
 */
 
 
