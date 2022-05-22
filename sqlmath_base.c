@@ -1172,6 +1172,92 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 // SQLMATH_FNC sql_matrix2d_concat_func - end
 
 // SQLMATH_FNC sql_blob_each_func - start
+/* Allowed values for the mFlags parameter to sqlite3_carray_bind().
+** Must exactly match the definitions in carray.h.
+*/
+#ifndef CARRAY_INT32
+# define CARRAY_INT32     0     /* Data is 32-bit signed integers */
+# define CARRAY_INT64     1     /* Data is 64-bit signed integers */
+# define CARRAY_DOUBLE    2     /* Data is doubles */
+# define CARRAY_TEXT      3     /* Data is char* */
+#endif
+
+/*
+** Names of allowed datatypes
+*/
+static const char *azType[] = { "int32", "int64", "double", "char*" };
+
+//!! /*
+//!! ** Structure used to hold the sqlite3_carray_bind() information
+//!! */
+//!! typedef struct carray_bind carray_bind;
+//!! struct carray_bind {
+    //!! void *aData;                /* The data */
+    //!! int nData;                  /* Number of elements */
+    //!! int mFlags;                 /* Control flags */
+//!! // *INDENT-OFF*
+    //!! void (*xDel)(void*);        /* Destructor for aData */
+//!! // *INDENT-ON*
+//!! };
+
+/* carray_cursor is a subclass of sqlite3_vtab_cursor which will
+** serve as the underlying representation of a cursor that scans
+** over rows of the result
+*/
+typedef struct carray_cursor carray_cursor;
+struct carray_cursor {
+    sqlite3_vtab_cursor base;   /* Base class - must be first */
+    sqlite3_int64 iRowid;       /* The rowid */
+    void *pPtr;                 /* Pointer to the array of values */
+    sqlite3_int64 iCnt;         /* Number of integers in the array */
+    unsigned char eType;        /* One of the CARRAY_type values */
+};
+
+/*
+** This method is called to "rewind" the carray_cursor object back
+** to the first row of output.
+*/
+SQLITE_API int blobEachFilter(
+    sqlite3_vtab_cursor * pVtabCursor,
+    int idxNum,
+    const char *idxStr,
+    int argc,
+    sqlite3_value ** argv
+) {
+    UNUSED(argc);
+    UNUSED(idxStr);
+    // declare var
+    carray_cursor *pCur = (carray_cursor *) pVtabCursor;
+    // init var
+    pCur->iCnt = sqlite3_value_bytes(argv[0]);
+    pCur->pPtr = (void *) sqlite3_value_blob(argv[0]);
+    pCur->eType = CARRAY_INT32;
+    switch (idxNum) {
+    case 1:
+        break;
+    case 2:
+    case 3:
+        pCur->iCnt = MIN(pCur->iCnt, sqlite3_value_int64(argv[1]));
+        if (idxNum >= 3) {
+            unsigned char i;
+            const char *zType = (const char *) sqlite3_value_text(argv[2]);
+            for (i = 0; i < sizeof(azType) / sizeof(azType[0]); i++) {
+                if (sqlite3_stricmp(zType, azType[i]) == 0)
+                    break;
+            }
+            if (i >= sizeof(azType) / sizeof(azType[0])) {
+                pVtabCursor->pVtab->zErrMsg =
+                    sqlite3_mprintf("unknown datatype: %Q", zType);
+                return SQLITE_ERROR;
+            } else {
+                pCur->eType = i;
+            }
+        }
+        break;
+    }
+    pCur->iRowid = 1;
+    return SQLITE_OK;
+}
 
 // SQLMATH_FNC sql_blob_each_func - end
 
@@ -1448,7 +1534,9 @@ int sqlite3_sqlmath_ext_base_init(
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
     SQLMATH_IS_OK_OR_RETURN_RC(errcode);
-    errcode = sqlite3_create_module(db, "blob_each", &blobEachModule, 0);
+    errcode =
+        sqlite3_create_module(db, "blob_each",
+        (const sqlite3_module *) &blobEachModule, 0);
     SQLMATH_IS_OK_OR_RETURN_RC(errcode);
     return 0;
 }
