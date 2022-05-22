@@ -126,6 +126,10 @@ shRawLibFetch
         }
     ]
 }
+-      carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
++      // hack-sqlite - custom carray
++      // carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
+
 -    /\\* math.h *\\/
 -    { "acos",               1, 0, SQLITE_UTF8,    0, acosFunc  },
 -    { "asin",               1, 0, SQLITE_UTF8,    0, asinFunc  },
@@ -274,10 +278,6 @@ shRawLibFetch
 +  int argc, sqlite3_value **argv,
 +  carray_bind *pBind
 +){
-
--      carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
-+      // hack-sqlite - custom carray
-+      // carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
 
 -SQLITE_API int carrayOpen(sqlite3_vtab *p, sqlite3_vtab_cursor **ppCursor){
 +// hack-sqlite - fix warning
@@ -628,6 +628,7 @@ UNUSED(idxStr);
   pCur->iCnt = 0;
   switch( idxNum ){
     case 1: {
+      // hack-sqlite - custom carray
       // carray_bind *pBind = sqlite3_value_pointer(argv[0], "carray-bind");
       if( pBind==0 ) break;
       pCur->pPtr = pBind->aData;
@@ -4092,7 +4093,7 @@ UNUSED(pzErrMsg);
 
 /*
 repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed 2022-05-06T15:25:27Z
+committed
 */
 
 
