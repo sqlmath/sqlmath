@@ -846,7 +846,7 @@ SQLMATH_FNC static void sql_blob_create_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will create blob of size <argv>[0]
+// this function will create zeroed blob of size <argv>[0]
     UNUSED(argc);
     const int nn = sqlite3_value_int(argv[0]);
     if (nn <= 0) {
@@ -858,6 +858,7 @@ SQLMATH_FNC static void sql_blob_create_func(
         sqlite3_result_error_nomem(context);
         return;
     }
+    memset(buf, 0, (size_t) nn);
     sqlite3_result_blob(context, buf, nn, sqlite3_free);
 }
 
