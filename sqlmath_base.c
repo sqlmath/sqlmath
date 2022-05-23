@@ -117,6 +117,9 @@ extern "C" {
         NULL, sql_##func##_step, sql_##func##_final); \
     SQLMATH_IS_OK_OR_RETURN_ERRCODE();
 
+#define SQLITE3_RESULT_ERROR_NOMEM_IF_JSONSTRING_BERR(pp) \
+    if (pp->bErr != 0) { sqlite3_result_error_nomem(context); return; }
+
 #define SQLMATH_IS_OK() \
     (errcode == 0 || errcode == SQLITE_ROW || errcode == SQLITE_DONE)
 
@@ -172,8 +175,6 @@ struct JsonString {
   u8 bStatic;              /* True if zBuf is static space */
   u8 bErr;                 /* True if an error has been encountered */
   char zSpace[100];        /* Initial static space */
-  //
-  double kk;
 };
 
 /* Enlarge pJson->zBuf so that it can hold at least N more bytes.
@@ -269,6 +270,10 @@ SQLMATH_API double kthpercentile(
 SQLMATH_API int noop(
 );
 
+SQLMATH_API void *sqlite3MallocSizeT(
+    size_t size
+);
+
 SQLMATH_API const char *sqlmathSnprintfTrace(
     char *buf,
     const char *prefix,
@@ -297,8 +302,6 @@ file sqlmath_ext - start
 
 
 // file sqlmath_ext - dbExec - start
-typedef struct DbExecBindElem DbExecBindElem;
-
 typedef struct DbExecBindElem {
     const char *buf;
     char *key;
@@ -796,12 +799,12 @@ SQLMATH_FNC static void sql_jenks_func(
     UNUSED(argc);
     // declare var
     JenksObject *self = NULL;
-    const int kk = sqlite3_value_int(argv[2]);
-    const int nn = sqlite3_value_int(argv[1]);
+    const int kk = sqlite3_value_int(argv[1]);
+    const int nn = sqlite3_value_bytes(argv[0]) / 8;
     double *input = (double *) sqlite3_value_blob(argv[0]);
-    double *output = (double *) sqlite3_value_blob(argv[3]);
+    double *output = (double *) sqlite3_value_blob(argv[2]);
     // jenks init
-    self = jenksCreate(nn, kk, sqlite3_malloc);
+    self = jenksCreate(nn, kk, sqlite3MallocSizeT);
     if (self == NULL) {
         sqlite3_result_error_nomem(context);
         return;
@@ -1023,13 +1026,14 @@ SQLMATH_FNC static void sql_kthpercentile_final(
         sqlite3_result_null(context);
         return;
     }
-    int nn = pp->nUsed / 8;
+    int nn = pp->nUsed / 8 - 1;
     if (nn <= 0) {
+        jsonReset(pp);
         sqlite3_result_null(context);
-    } else {
-        sqlite3_result_double(context, kthpercentile((double *) pp->zBuf, nn,
-                pp->kk));
+        return;
     }
+    sqlite3_result_double(context, kthpercentile(((double *) pp->zBuf) + 1,
+            nn, ((double *) pp->zBuf)[0]));
     jsonReset(pp);
 }
 
@@ -1049,7 +1053,8 @@ SQLMATH_FNC static void sql_kthpercentile_step(
     // pp - jsonInit
     if (pp->zBuf == 0) {
         jsonInit(pp, context);
-        pp->kk = sqlite3_value_double(argv[1]);
+        jsonVectorDoubleAppend(pp, sqlite3_value_double(argv[1]));
+        SQLITE3_RESULT_ERROR_NOMEM_IF_JSONSTRING_BERR(pp);
     }
     // pp - handle null-case
     if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
@@ -1057,6 +1062,7 @@ SQLMATH_FNC static void sql_kthpercentile_step(
     }
     // pp - append double
     jsonVectorDoubleAppend(pp, sqlite3_value_double(argv[0]));
+    SQLITE3_RESULT_ERROR_NOMEM_IF_JSONSTRING_BERR(pp);
 }
 
 // SQLMATH_FNC sql_kthpercentile_func - end
@@ -1101,16 +1107,17 @@ SQLMATH_FNC static void sql_matrix2d_concat_final(
         sqlite3_result_null(context);
         return;
     }
-    if (pp->nUsed <= 0) {
+    if (pp->nUsed <= 2 * 8) {
+        jsonReset(pp);
         sqlite3_result_null(context);
-    } else {
-        double *arr = (double *) pp->zBuf;
-        arr[0] = (0.125 * ((double) pp->nUsed) - 2) / arr[1];
-        sqlite3_result_blob(context, arr, pp->nUsed,
-            pp->bStatic ? SQLITE_TRANSIENT :
-            // cleanup jsonVectorDoubleAppend
-            sqlite3_free);
+        return;
     }
+    double *arr = (double *) pp->zBuf;
+    arr[0] = (0.125 * ((double) pp->nUsed) - 2) / arr[1];
+    sqlite3_result_blob(context, arr, pp->nUsed,
+        pp->bStatic ? SQLITE_TRANSIENT :
+        // cleanup jsonVectorDoubleAppend
+        sqlite3_free);
     // jsonReset(pp);
 }
 
@@ -1132,11 +1139,13 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
         jsonInit(pp, context);
         jsonVectorDoubleAppend(pp, 0);
         jsonVectorDoubleAppend(pp, (double) argc);
+        SQLITE3_RESULT_ERROR_NOMEM_IF_JSONSTRING_BERR(pp);
     }
     // pp - append double
     for (int ii = 0; ii < argc; ii += 1) {
         jsonVectorDoubleAppend(pp, sqlite3_value_double(argv[ii]));
     }
+    SQLITE3_RESULT_ERROR_NOMEM_IF_JSONSTRING_BERR(pp);
 }
 
 // SQLMATH_FNC sql_matrix2d_concat_func - end
@@ -1316,7 +1325,7 @@ SQLMATH_FNC static void sql_tobase64_func(
     // base64-encode blob to text
     text =
         base64Encode((const unsigned char *) sqlite3_value_blob(argv[0]), &nn,
-        sqlite3_malloc);
+        sqlite3MallocSizeT);
     // handle nomem
     if (text == NULL) {
         sqlite3_result_error_nomem(context);
@@ -1373,6 +1382,13 @@ SQLMATH_API void jsonVectorDoubleAppend(
     pp->nUsed += NN;
 }
 
+SQLMATH_API void *sqlite3MallocSizeT(
+    size_t size
+) {
+// this function wraps sqlite3_malloc() with function signature of malloc
+    return sqlite3_malloc((int) size);
+}
+
 SQLMATH_API int noop(
 ) {
 // this function will do nothing except return 0
@@ -1396,7 +1412,7 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(copyblob, 1);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
-    SQLITE3_CREATE_FUNCTION1(jenks, 4);
+    SQLITE3_CREATE_FUNCTION1(jenks, 3);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);

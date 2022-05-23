@@ -97,25 +97,61 @@ typedef struct JenksObject {
     int completedRows;
 } JenksObject;
 
-inline static double jenksGetSsm(
-    JenksObject * self,
-    int iiBeg,
-    int iiEnd
-);
-
 inline static int jenksFindMaxBreakIndex(
-    JenksObject * self,
-    int ii,
-    int ppBeg,
-    int ppEnd
-);
+    JenksHistogramElem * histogram,
+    double *ssmNow,
+    const double *ssmPrv,
+    const int completedRows,
+    const int iiMid,
+    const int ppBeg,
+    const int ppEnd2
+) {
+// finds classBreaks[iiMid+completedRows] given that
+// the result is at least ppBeg+(completedRows-1)
+// and less than          ppEnd2+(completedRows-1)
+// Complexity: O(ppEnd2-ppBeg) <= O(mm)
+    int foundP = ppBeg;
+// Get the Squared Mean for elements iiBeg2..iiEnd2, multiplied by weight.
+// Note that nn*mean^2 = sum^2/nn when mean := sum/nn
+    int iiBeg2 = ppBeg + completedRows - 1;
+    int iiEnd2 = iiMid + completedRows;
+    double ssmMin =
+        ssmPrv[ppBeg] + pow(histogram[iiEnd2].cvw - histogram[iiBeg2].cvw,
+        2) / (histogram[iiEnd2].cww - histogram[iiBeg2].cww);
+    int ppBeg2 = ppBeg;
+    while (1) {
+        ppBeg2 += 1;
+        if (ppBeg2 >= ppEnd2) {
+            break;
+        }
+// Get the Squared Mean for elements iiBeg2..iiEnd2, multiplied by weight.
+// Note that nn*mean^2 = sum^2/nn when mean := sum/nn
+        iiBeg2 = ppBeg2 + completedRows - 1;
+        iiEnd2 = iiMid + completedRows;
+        double currSSM =
+            ssmPrv[ppBeg2] + pow(histogram[iiEnd2].cvw -
+            histogram[iiBeg2].cvw,
+            2) / (histogram[iiEnd2].cww - histogram[iiBeg2].cww);
+        if (currSSM > ssmMin) {
+            ssmMin = currSSM;
+            foundP = ppBeg2;
+        }
+    }
+    ssmNow[iiMid] = ssmMin;
+    return foundP;
+}
 
 inline static void jenksCalcRange(
-    JenksObject * self,
-    int iiBeg,
-    int iiEnd,
-    int ppBeg,
-    int ppEnd
+    JenksHistogramElem * histogram,
+    double *ssmNow,
+    const double *ssmPrv,
+    const int classBreaksIndex,
+    const int completedRows,
+    const int iiBeg,
+    const int iiEnd,
+    const int ppBeg,
+    const int ppEnd,
+    int *classBreaks
 ) {
 // find classBreaks[ii+completedRows]
 // for all ii>=iiBeg and ii<iiEnd given that
@@ -131,19 +167,23 @@ inline static void jenksCalcRange(
     }
     assert(ppBeg < ppEnd);
     int iiMid = (iiBeg + iiEnd) / 2;
+    int ppEnd2 = MIN(ppEnd, iiMid + 1);
     int ppMid =
-        jenksFindMaxBreakIndex(self, iiMid, ppBeg, MIN(ppEnd, iiMid + 1));
+        jenksFindMaxBreakIndex(histogram, ssmNow, ssmPrv, completedRows,
+        iiMid, ppBeg, ppEnd2);
     assert(ppBeg <= ppMid);
     assert(ppMid < ppEnd);
     assert(ppMid <= iiMid);
     // Recurse - solve first half of the sub-problems with lower 'half' of
     // possible outcomes.
-    jenksCalcRange(self, iiBeg, iiMid, ppBeg, MIN(iiMid, ppMid + 1));
+    jenksCalcRange(histogram, ssmNow, ssmPrv, classBreaksIndex, completedRows,
+        iiBeg, iiMid, ppBeg, MIN(iiMid, ppMid + 1), classBreaks);
     // store result for the middle element.
-    self->classBreaks[self->classBreaksIndex + iiMid] = ppMid;
+    classBreaks[classBreaksIndex + iiMid] = ppMid;
     // Recurse - solve second half of the sub-problems with upper 'half' of
     // possible outcomes.
-    jenksCalcRange(self, iiMid + 1, iiEnd, ppMid, ppEnd);
+    jenksCalcRange(histogram, ssmNow, ssmPrv, classBreaksIndex, completedRows,
+        iiMid + 1, iiEnd, ppMid, ppEnd, classBreaks);
 }
 
 SQLMATH_API JenksObject *jenksCreate(
@@ -192,46 +232,6 @@ SQLMATH_API JenksObject *jenksCreate(
     return self;
 }
 
-inline static int jenksFindMaxBreakIndex(
-    JenksObject * self,
-    int ii,
-    int ppBeg,
-    int ppEnd
-) {
-// finds classBreaks[ii+completedRows] given that
-// the result is at least ppBeg+(completedRows-1)
-// and less than          ppEnd+(completedRows-1)
-// Complexity: O(ppEnd-ppBeg) <= O(mm)
-    int foundP = ppBeg;
-    double ssmMin = self->ssmPrv[ppBeg] + jenksGetSsm(self, ppBeg, ii);
-    while (1) {
-        ppBeg += 1;
-        if (ppBeg >= ppEnd) {
-            break;
-        }
-        double currSSM = self->ssmPrv[ppBeg] + jenksGetSsm(self, ppBeg, ii);
-        if (currSSM > ssmMin) {
-            ssmMin = currSSM;
-            foundP = ppBeg;
-        }
-    }
-    self->ssmNow[ii] = ssmMin;
-    return foundP;
-}
-
-inline static double jenksGetSsm(
-    JenksObject * self,
-    int iiBeg,
-    int iiEnd
-) {
-// Get the Squared Mean for elements iiBeg..iiEnd, multiplied by weight.
-// Note that nn*mean^2 = sum^2/nn when mean := sum/nn
-    iiBeg += self->completedRows - 1;
-    iiEnd += self->completedRows;
-    return pow(self->histogram[iiEnd].cvw - self->histogram[iiBeg].cvw, 2)
-        / (self->histogram[iiEnd].cww - self->histogram[iiBeg].cww);
-}
-
 SQLMATH_FNC void jenks(
     JenksObject * self,
     const int nn,
@@ -239,7 +239,16 @@ SQLMATH_FNC void jenks(
     const double *values
 ) {
     // declare var
+    JenksHistogramElem *histogram = self->histogram;
+    double *resultBreaks = self->resultBreaks;
+    double *resultCounts = self->resultCounts;
+    double *ssmNow = self->ssmNow;
+    double *ssmPrv = self->ssmPrv;
+    double *tmp = self->tmp;
+    int *classBreaks = self->classBreaks;
     int bufSize = 0;
+    int classBreaksIndex = 0;
+    int completedRows = 0;
     int ii = 0;
     int lastClassBreakIndex;
     int mm = 0;
@@ -253,12 +262,12 @@ SQLMATH_FNC void jenks(
     // handle if kk == 1, then return min-value of values
     if (kk == 1) {
         ii = nn - 1;
-        self->resultBreaks[0] = values[ii];
-        self->resultCounts[0] = nn;
+        resultBreaks[0] = values[ii];
+        resultCounts[0] = nn;
         while (ii > 0) {
             ii -= 1;
-            if (self->resultBreaks[0] > values[ii]) {
-                self->resultBreaks[0] = values[ii];
+            if (resultBreaks[0] > values[ii]) {
+                resultBreaks[0] = values[ii];
             }
         }
         return;
@@ -276,32 +285,31 @@ SQLMATH_FNC void jenks(
         ii = nn;
         while (ii > 0) {
             ii -= 1;
-            self->tmp[ii] = values[ii];
+            tmp[ii] = values[ii];
         }
-        qsort(self->tmp, nn, 8, doubleSortCompare);
+        qsort(tmp, nn, 8, doubleSortCompare);
         // init histogram
-        val = self->tmp[0];
+        val = tmp[0];
         ii = 1;
         while (1) {
-            if (ii < nn && self->tmp[ii] == val) {
+            if (ii < nn && tmp[ii] == val) {
                 cnt += 1;
                 ii += 1;
                 continue;
             }
             cww += cnt;
             cvw += val * cnt;
-            self->histogram[mm].cnt = cnt;
-            self->histogram[mm].cvw = cvw;
-            self->histogram[mm].cww = cww;
-            self->histogram[mm].val = val;
+            histogram[mm].cnt = cnt;
+            histogram[mm].cvw = cvw;
+            histogram[mm].cww = cww;
+            histogram[mm].val = val;
             // prepare SSM for first class. Last (kk-1) values are omitted
-            self->ssmPrv[mm] =
-                pow(self->histogram[mm].cvw, 2) / self->histogram[mm].cww;
+            ssmPrv[mm] = pow(histogram[mm].cvw, 2) / histogram[mm].cww;
             mm += 1;
             if (ii >= nn) {
                 break;
             }
-            val = self->tmp[ii];
+            val = tmp[ii];
             cnt = 1;
             ii += 1;
         }
@@ -313,54 +321,54 @@ SQLMATH_FNC void jenks(
         ii = mm;
         while (ii > 0) {
             ii -= 1;
-            self->resultBreaks[ii] = self->histogram[ii].val;
-            self->resultCounts[ii] = self->histogram[ii].cnt;
+            resultBreaks[ii] = histogram[ii].val;
+            resultCounts[ii] = histogram[ii].cnt;
         }
         return;
     }
     // Starting point of calculation of breaks.
     // complexity: O(mm*log(mm)*kk)
-    self->classBreaksIndex = 0;
-    self->completedRows = 1;
     bufSize = mm - (kk - 1);
-    while (self->completedRows < kk - 1) {
+    classBreaksIndex = 0;
+    completedRows = 1;
+    while (completedRows < kk - 1) {
         // complexity: O(mm*log(mm))
-        jenksCalcRange(self, 0, bufSize, 0, bufSize);
+        jenksCalcRange(histogram, ssmNow, ssmPrv, classBreaksIndex,
+            completedRows, 0, bufSize, 0, bufSize, classBreaks);
         // swap arrays ssmNow and ssmPrv.
-        memcpy(self->tmp, self->ssmPrv, (size_t) bufSize * 8);
-        memcpy(self->ssmPrv, self->ssmNow, (size_t) bufSize * 8);
-        memcpy(self->ssmNow, self->tmp, (size_t) bufSize * 8);
+        memcpy(tmp, ssmPrv, (size_t) bufSize * 8);
+        memcpy(ssmPrv, ssmNow, (size_t) bufSize * 8);
+        memcpy(ssmNow, tmp, (size_t) bufSize * 8);
         // update classBreaksIndex.
-        self->classBreaksIndex += bufSize;
-        self->completedRows += 1;
+        classBreaksIndex += bufSize;
+        completedRows += 1;
     }
     lastClassBreakIndex =
-        jenksFindMaxBreakIndex(self, bufSize - 1, 0, bufSize);
+        jenksFindMaxBreakIndex(histogram, ssmNow, ssmPrv, completedRows,
+        bufSize - 1, 0, bufSize);
     ii = kk;
     while (ii > 0) {
         ii -= 1;
         // assign the break values to the result
-        self->resultBreaks[ii] =
-            self->histogram[lastClassBreakIndex + ii].val;
+        resultBreaks[ii] = histogram[lastClassBreakIndex + ii].val;
         // assign the bucket count to the result
         if (ii > 0) {
-            self->resultCounts[ii - 1] =
-                self->histogram[lastClassBreakIndex + ii - 1].cww;
+            resultCounts[ii - 1] =
+                histogram[lastClassBreakIndex + ii - 1].cww;
         }
         if (ii > 1) {
-            self->classBreaksIndex -= bufSize;
+            classBreaksIndex -= bufSize;
             lastClassBreakIndex =
-                self->classBreaks[self->classBreaksIndex +
-                lastClassBreakIndex];
+                classBreaks[classBreaksIndex + lastClassBreakIndex];
         }
     }
     // break for the first class is the minimum of the dataset.
-    self->resultBreaks[0] = self->histogram[0].val;
-    self->resultCounts[kk - 1] = nn;
+    resultBreaks[0] = histogram[0].val;
+    resultCounts[kk - 1] = nn;
     ii = kk;
     while (ii > 1) {
         ii -= 1;
-        self->resultCounts[ii] -= self->resultCounts[ii - 1];
+        resultCounts[ii] -= resultCounts[ii - 1];
     }
 }
 

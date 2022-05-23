@@ -1048,11 +1048,10 @@ jstestDescribe((
                     bindList: {
                         input: new Float64Array(input),
                         kk,
-                        nn: input.length,
                         output: output.buffer
                     },
                     db,
-                    sql: "SELECT jenks($input, $nn, $kk, $output);"
+                    sql: "SELECT jenks($input, $kk, $output);"
                 });
                 kk = output[1];
                 assertJsonEqual(
@@ -1168,66 +1167,219 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
             filename: ":memory:"
         });
         // test sqlmath-defined-func handling-behavior
+        Object.entries({
+            "''": {
+                "castrealorzero": 0,
+                "casttextorempty": "",
+                "copyblob": ""
+            },
+            "'-0.5'": {
+                "castrealorzero": -0.5,
+                "casttextorempty": "-0.5",
+                "copyblob": "-0.5"
+            },
+            "'-1'": {
+                "castrealorzero": -1,
+                "casttextorempty": "-1",
+                "copyblob": "-1",
+                "cot": -0.642092615934331,
+                "coth": -1.31303528549933,
+                "sign": -1
+            },
+            "'0'": {
+                "castrealorzero": 0,
+                "casttextorempty": "0",
+                "copyblob": "0",
+                "cot": null,
+                "coth": null,
+                "sign": 0
+            },
+            "'0.5'": {
+                "castrealorzero": 0.5,
+                "casttextorempty": "0.5",
+                "copyblob": "0.5"
+            },
+            "'1'": {
+                "castrealorzero": 1,
+                "casttextorempty": "1",
+                "copyblob": "1",
+                "cot": 0.642092615934331,
+                "coth": 1.31303528549933,
+                "sign": 1
+            },
+            "'aa'": {
+                "castrealorzero": 0,
+                "casttextorempty": "aa",
+                "copyblob": "aa"
+            },
+            "'hello'": {
+                "castrealorzero": 0,
+                "casttextorempty": "hello",
+                "copyblob": "hello"
+            },
+            "-0.5": {
+                "castrealorzero": -0.5,
+                "casttextorempty": "-0.5",
+                "copyblob": -0.5
+            },
+            "-0x7fffffffffffffff": {
+                "sign": -1
+            },
+            "-1": {
+                "castrealorzero": -1,
+                "casttextorempty": "-1",
+                "copyblob": -1,
+                "cot": -0.642092615934331,
+                "coth": -1.31303528549933,
+                "sign": -1
+            },
+            "-1e999": {
+                "sign": -1
+            },
+            "0": {
+                "castrealorzero": 0,
+                "casttextorempty": "0",
+                "copyblob": 0,
+                "cot": null,
+                "coth": null,
+                "sign": 0
+            },
+            "0.5": {
+                "castrealorzero": 0.5,
+                "casttextorempty": "0.5",
+                "copyblob": 0.5
+            },
+            "0.5, 0.5": {
+                "roundorzero": 1
+            },
+            "0.5, 1": {
+                "roundorzero": 0.5
+            },
+            "0.5, NULL": {
+                "roundorzero": 1
+            },
+            "0x7fffffffffffffff": {
+                "sign": 1
+            },
+            "0x8000000000000000": {
+                "sign": -1
+            },
+            "0xffffffffffffffff": {
+                "sign": -1
+            },
+            "1": {
+                "castrealorzero": 1,
+                "casttextorempty": "1",
+                "copyblob": 1,
+                "cot": 0.642092615934331,
+                "coth": 1.31303528549933,
+                "sign": 1
+            },
+            "1e999": {
+                "sign": 1
+            },
+            "null": {
+                "castrealorzero": 0,
+                "casttextorempty": "",
+                "copyblob": null,
+                "cot": null,
+                "coth": null,
+                "sign": null
+            },
+            "null, 0": {
+                "roundorzero": 0
+            },
+            "null, 0.5": {
+                "roundorzero": 0
+            },
+            "null, null": {
+                "roundorzero": 0
+            },
+            "zeroblob(0)": {
+                "castrealorzero": 0,
+                "casttextorempty": "",
+                "copyblob": null
+            },
+            "zeroblob(1)": {
+                "castrealorzero": 0,
+                "casttextorempty": "",
+                "copyblob": null
+            }
+        }).forEach(function ([
+            arg, funcDict
+        ]) {
+            Object.entries(funcDict).forEach(async function ([
+                func, valExpected
+            ]) {
+                let sql = `SELECT ${func}(${arg}) AS val`;
+                let valActual = noop(
+                    await dbExecAsync({
+                        db,
+                        sql
+                    })
+                )[0][0].val;
+                assertJsonEqual(valActual, valExpected, {
+                    sql,
+                    valActual,
+                    valExpected
+                });
+            });
+        });
+    });
+    jstestIt((
+        "test sqlite-extension-matrix2d_concat handling-behavior"
+    ), async function testSqliteExtensionMatrix2dConcat() {
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
         [
-            ["CASTREALORZERO('')", 0],
-            ["CASTREALORZERO('-0.5')", -0.5],
-            ["CASTREALORZERO('0.5')", 0.5],
-            ["CASTREALORZERO('hello')", 0],
-            ["CASTREALORZERO(-0.5)", -0.5],
-            ["CASTREALORZERO(0.5)", 0.5],
-            ["CASTREALORZERO(NULL)", 0],
-            ["CASTTEXTOREMPTY('')", ""],
-            ["CASTTEXTOREMPTY('-0.5')", "-0.5"],
-            ["CASTTEXTOREMPTY('0.5')", "0.5"],
-            ["CASTTEXTOREMPTY('hello')", "hello"],
-            ["CASTTEXTOREMPTY(-0.5)", "-0.5"],
-            ["CASTTEXTOREMPTY(0.5)", "0.5"],
-            ["CASTTEXTOREMPTY(NULL)", ""],
-            ["COT('-1')", -0.642092615934331],
-            ["COT('0')", null],
-            ["COT('1')", 0.642092615934331],
-            ["COT(-1)", -0.642092615934331],
-            ["COT(0)", null],
-            ["COT(1)", 0.642092615934331],
-            ["COT(NULL)", null],
-            ["COTH('-1')", -1.31303528549933],
-            ["COTH('0')", null],
-            ["COTH('1')", 1.31303528549933],
-            ["COTH(-1)", -1.31303528549933],
-            ["COTH(0)", null],
-            ["COTH(1)", 1.31303528549933],
-            ["COTH(NULL)", null],
-            ["ROUNDORZERO(0.5, 0.5)", 1],
-            ["ROUNDORZERO(0.5, 1)", 0.5],
-            ["ROUNDORZERO(0.5, NULL)", 1],
-            ["ROUNDORZERO(NULL, 0)", 0],
-            ["ROUNDORZERO(NULL, 0.5)", 0],
-            ["ROUNDORZERO(NULL, NULL)", 0],
-            ["SIGN('-1')", -1],
-            ["SIGN('0')", 0],
-            ["SIGN('1')", 1],
-            ["SIGN(-0x7fffffffffffffff)", -1],
-            ["SIGN(-1)", -1],
-            ["SIGN(-1e999)", -1],
-            ["SIGN(0)", 0],
-            ["SIGN(0x7fffffffffffffff)", 1],
-            ["SIGN(0x8000000000000000)", -1],
-            ["SIGN(0xffffffffffffffff)", -1],
-            ["SIGN(1)", 1],
-            ["SIGN(1e999)", 1],
-            ["SIGN(NULL)", null],
-            // sentinel
-            ["NULL", null]
+            [
+                (`
+SELECT matrix2d_concat();
+                `),
+                []
+            ],
+            [
+                (`
+SELECT matrix2d_concat() FROM (SELECT 1 UNION ALL SELECT 2);
+                `),
+                []
+            ],
+            [
+                (`
+SELECT
+        matrix2d_concat(aa, aa)
+    FROM (
+        SELECT NULL AS aa
+        UNION ALL SELECT '12.34'
+        UNION ALL SELECT 'abcd'
+        UNION ALL SELECT 12.34
+        UNION ALL SELECT zeroblob(0)
+        UNION ALL SELECT zeroblob(1)
+        UNION ALL SELECT NULL
+    );
+
+                `),
+                [
+                    7, 2,
+                    0, 0,
+                    12.34, 12.34,
+                    0, 0,
+                    12.34, 12.34,
+                    0, 0,
+                    0, 0,
+                    0, 0
+                ]
+            ]
         ].forEach(async function ([
             sql, valExpected
         ], ii) {
-            let valActual = noop(
-                await dbExecAsync({
+            let valActual = Array.from(new Float64Array(
+                await dbGetLastBlobAsync({
                     db,
-                    responseType: "dict",
-                    sql: `SELECT ${sql} AS val`
+                    sql
                 })
-            )[0][0].val;
+            ));
             assertJsonEqual(valActual, valExpected, {
                 ii,
                 sql,
@@ -1236,32 +1388,4 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
             });
         });
     });
-    /*
-    jstestIt((
-        "test sqlite-extension-matrix2d handling-behavior"
-    ), async function testSqliteExtensionMatrix2d() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
-        debugInline(
-            await dbExecAsync({
-            //!! await dbGetLastBlobAsync({
-                db,
-                sql: (`
-select * FROM blob_each(blob_create(16));
---!! SELECT
-        --!! *
-    --!! FROM (
-        --!! SELECT
-            --!! matrix2d_concat(1, 2) AS foo
-        --!! FROM (
-            --!! SELECT 1
-        --!! )
-    --!! )
---!! ;
-                `)
-            })
-        );
-    });
-    */
 });
