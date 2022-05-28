@@ -9805,6 +9805,7 @@ async function jstestDescribe(description, testFunction) {
 
     let message;
     let result;
+    let timerTimeout;
 
 // Init jstestTimeStart.
 
@@ -9820,7 +9821,9 @@ async function jstestDescribe(description, testFunction) {
 
 // Wait for jstestItList to resolve.
 
+    timerTimeout = setTimeout(noop, 0x40000000);
     result = await Promise.all(jstestItList);
+    clearTimeout(timerTimeout);
 
 // Print test results.
 

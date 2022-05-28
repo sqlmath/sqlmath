@@ -1949,51 +1949,6 @@ SQLMATH_API int dbTableInsert(sqlite3 *, Jsbaton *);
     return 0;
 }
 
-static void __dbFinalizer(
-    napi_env env,
-    void *finalize_data,
-    void *finalize_hint
-) {
-// this function will finalize <finalize_data>
-    UNUSED(env);
-    UNUSED(finalize_hint);
-    // declare var
-    int errcode = 0;
-    sqlite3 *db = *(sqlite3 **) finalize_data;
-    // fprintf(stderr, "\n[napi autoclose db=%p]\n", db);
-    // close db
-    errcode = sqlite3_close_v2(db);
-    if (db != NULL) {
-        dbCount -= 1;
-        // fprintf(stderr, "\nsqlite - __dbFinalizer(%d)\n", dbCount);
-    }
-    NAPI_ASSERT_FATAL(errcode == 0, "sqlite3_close_v2");
-    // cleanup aDb
-    free(finalize_data);
-}
-
-static napi_value __dbFinalizerCreate(
-    napi_env env,
-    napi_callback_info info
-) {
-// this function will create empty finalizer for db
-    UNUSED(info);
-    // declare var
-    int errcode = 0;
-    napi_value val = NULL;
-    // init aDb
-    int64_t *aDb = (int64_t *) malloc(sizeof(int64_t));
-    NAPI_ASSERT_FATAL(aDb != NULL, "out of memory");
-    errcode = napi_create_external_arraybuffer(env,     // napi_env env,
-        (void *) aDb,           // void* external_data,
-        sizeof(int64_t),        // size_t byte_length,
-        __dbFinalizer,          // napi_finalize finalize_cb,
-        NULL,                   // void* finalize_hint,
-        &val);                  // napi_value* result
-    NAPI_ASSERT_OK();
-    return val;
-}
-
 
 // file sqlmath_napi - init
 napi_value napi_module_sqlmath_init(
@@ -2022,7 +1977,6 @@ napi_value napi_module_sqlmath_init(
     const napi_property_descriptor propList[] = {
         NAPI_EXPORT_MEMBER(__dbCloseAsync),
         NAPI_EXPORT_MEMBER(__dbExecAsync),
-        NAPI_EXPORT_MEMBER(__dbFinalizerCreate),
         NAPI_EXPORT_MEMBER(__dbMemoryLoadOrSave),
         NAPI_EXPORT_MEMBER(__dbOpenAsync),
         NAPI_EXPORT_MEMBER(__dbTableInsertAsync),

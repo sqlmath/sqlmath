@@ -43,8 +43,97 @@
     stringToUTF8
     lengthBytesUTF8
 */
-
 "use strict";
+var db;
+var onModulePostRun;
+var sqlmath;
+function onModuleReady(msg) {
+    function createDb(data) {
+        if (db != null) db.close();
+        db = new sqlmath.Database(data);
+        return db;
+    }
+    var buff; var data; var result;
+    data = msg["data"];
+    var config = data["config"] ? data["config"] : {};
+    switch (data && data["action"]) {
+        case "open":
+            buff = data["buffer"];
+            createDb(buff && new Uint8Array(buff));
+            return postMessage({
+                id: data["id"],
+                ready: true
+            });
+        case "exec":
+            if (db === null) {
+                createDb();
+            }
+            if (!data["sql"]) {
+                throw "exec: Missing query string";
+            }
+            return postMessage({
+                id: data["id"],
+                results: db.exec(data["sql"], data["params"], config)
+            });
+        case "each":
+            if (db === null) {
+                createDb();
+            }
+            var callback = function callback(row) {
+                return postMessage({
+                    id: data["id"],
+                    row: row,
+                    finished: false
+                });
+            };
+            var done = function done() {
+                return postMessage({
+                    id: data["id"],
+                    finished: true
+                });
+            };
+            return db.each(data["sql"], data["params"], callback, done, config);
+        case "export":
+            buff = db["export"]();
+            result = {
+                id: data["id"],
+                buffer: buff
+            };
+            try {
+                return postMessage(result, [result]);
+            } catch (error) {
+                return postMessage(result);
+            }
+        case "close":
+            if (db) {
+                db.close();
+            }
+            return postMessage({
+                id: data["id"]
+            });
+        default:
+            throw new Error("Invalid action : " + (data && data["action"]));
+    }
+}
+async function onmessage(event) {
+    sqlmath = sqlmath || await onModulePostRun;
+    return Promise.resolve()
+        .then(function () {
+            onModuleReady(event);
+        })
+        .catch(function (err) {
+            postMessage({
+                id: event["data"]["id"],
+                error: err["message"]
+            });
+        });
+};
+onModulePostRun = new Promise(function (resolve) {
+    Module["postRun"] = resolve;
+});
+self.onmessage = onmessage;
+
+
 
 /**
  * @typedef {{Database:Database, Statement:Statement}} SqlJs

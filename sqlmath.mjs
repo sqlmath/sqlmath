@@ -22,6 +22,7 @@
 
 
 /*jslint beta, bitwise, name, node*/
+/*global FinalizationRegistry*/
 "use strict";
 import {createRequire} from "module";
 import jslint from "./jslint.mjs";
@@ -81,6 +82,7 @@ file sqlmath.js
     let addon;
     let consoleError = console.error;
     let dbDict = new WeakMap(); // private map of sqlite-database-connections
+    let dbFinalizationRegistry;
     let requireCjs = createRequire(import.meta.url);
 
     function cCall(func, argList) {
@@ -315,6 +317,7 @@ file sqlmath.js
     }
 
     async function dbOpenAsync({
+        afterFinalization,
         filename,
         flags,
         threadCount = 1
@@ -337,7 +340,6 @@ file sqlmath.js
         connPool = await Promise.all(Array.from(new Array(
             threadCount
         ), async function () {
-            let finalizer;
             let ptr = await cCall("__dbOpenAsync", [
                 String(filename),
                 undefined,
@@ -346,17 +348,19 @@ file sqlmath.js
                 ),
                 undefined
             ]);
-            ptr = ptr[0][0];
-            finalizer = new BigInt64Array(addon.__dbFinalizerCreate());
-            finalizer[0] = BigInt(ptr);
-            return finalizer;
+            ptr = new BigInt64Array([
+                ptr[0][0]
+            ]);
+            dbFinalizationRegistry.register(db, {
+                afterFinalization,
+                ptr
+            });
+            return ptr;
         }));
         dbDict.set(db, {
             busy: 0,
             connPool,
-            filename,
-            ii: 0,
-            ptr: 0n
+            ii: 0
         });
         return db;
     }
@@ -869,6 +873,19 @@ Definition of the CSV Format
         + "_" + process.arch
         + ".node"
     );
+    dbFinalizationRegistry = new FinalizationRegistry(function ({
+        afterFinalization,
+        ptr
+    }) {
+// This function will auto-close any open sqlite3-db-pointer,
+// after its js-wrapper has been garbage-collected
+        cCall("__dbCloseAsync", [
+            ptr[0]
+        ]);
+        if (afterFinalization) {
+            afterFinalization();
+        }
+    });
     Object.assign(local, jslint, {
         SQLITE_MAX_LENGTH2,
         SQLITE_OPEN_AUTOPROXY,

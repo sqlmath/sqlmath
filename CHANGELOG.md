@@ -1,10 +1,13 @@
 # Changelog
 
 # Todo
+- jenks - replace class-based api with static-function
+- wasm - replace sqljs-api with sqlmath-api in wasm
 - sqlmath - add sql-extension carrayblob()
 - none
 
 # v2022.6.1-beta
+- gc - replace node-specific-gc __dbFinalizerCreate() with more-webassembly-friendly FinalizationRegistry()
 - sqlmath - add sql-extension copyblob(), matrix2d_concat()
 - sqlmath - re-include carray-extension
 

@@ -615,7 +615,14 @@ SELECT * FROM testDbExecAsync2;
     });
     jstestIt((
         "test dbOpenAsync handling-behavior"
-    ), function testDbOpenAsync() {
+    ), async function testDbOpenAsync() {
+        // test auto-finalization handling-behavior
+        await new Promise(function (resolve) {
+            dbOpenAsync({
+                afterFinalization: resolve,
+                filename: ":memory:"
+            });
+        });
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbOpenAsync({});
