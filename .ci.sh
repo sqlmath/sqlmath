@@ -500,7 +500,6 @@ shCiBuildWasm() {(set -e
             -DSQLITE_THREADSAFE=0 \
             \
             -DEMSCRIPTEN \
-            -DSQLMATH_C_DISABLE \
             -I.tmp \
             \
             -O3 \
@@ -510,8 +509,9 @@ shCiBuildWasm() {(set -e
             \
             -c "$FILE" -o "$FILE2"
     done
-	emcc \
+    emcc \
         -s EXPORTED_FUNCTIONS='[
+"_dbExec",
 "_free",
 "_malloc",
 "_sqlite3_bind_blob",
@@ -577,11 +577,11 @@ shCiBuildWasm() {(set -e
         .tmp/sqlite3_ext.c.wasm.o \
         .tmp/sqlmath_custom.c.wasm.o \
         \
-	    --pre-js sqlmath_wrapper_wasm.js \
+        --pre-js sqlmath_wrapper_wasm.js \
         \
         -o sqlmath_wasm.js
     printf '' > .tmp.js
-	printf '
+    printf '
 /*jslint-disable*/
 (function () {
     "use strict";
@@ -591,127 +591,7 @@ shCiBuildWasm() {(set -e
 }());
 /*jslint-enable*/
 ' >> .tmp.js
-	mv .tmp.js sqlmath_wasm.js
-)}
-
-shCiBuildWasm2() {(set -e
-# this function will build binaries in wasm
-    shCiEmsdkExport
-    # install emsdk
-    shCiEmsdkInstall
-    # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
-    # build wasm
-    local OPTION
-    local FILE
-    local FILE2
-    for FILE in \
-        sqlite3.c \
-        sqlite3_ext.c \
-        sqlmath_custom.c
-    do
-        FILE2=".tmp/$(basename "$FILE").wasm.o"
-        # optimization - skip rebuild of sqlite3.c if possible
-        if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite3.c ]
-        then
-            continue
-        fi
-        OPTION=""
-        case "$FILE" in
-        sqlite3.c)
-            OPTION="$OPTION -DSQLITE3_C2"
-            ;;
-        *)
-            OPTION="$OPTION -DSQLITE3_EXT_C2"
-            ;;
-        esac
-        emcc $OPTION \
-            -DSQLITE_DISABLE_LFS \
-            -DSQLITE_ENABLE_FTS3 \
-            -DSQLITE_ENABLE_FTS3_PARENTHESIS \
-            -DSQLITE_ENABLE_MATH_FUNCTIONS \
-            -DSQLITE_ENABLE_NORMALIZE \
-            -DSQLITE_HAVE_ZLIB \
-            -DSQLITE_THREADSAFE=0 \
-            \
-            -DEMSCRIPTEN \
-            -DSQLMATH_C_DISABLE \
-            -I.tmp \
-            \
-            -O3 \
-            -Wall \
-            -flto \
-            -s INLINING_LIMIT=50 \
-            \
-            -c "$FILE" -o "$FILE2"
-    done
-	emcc \
-        -s EXPORTED_FUNCTIONS='[
-"_free",
-"_malloc",
-"_sqlite3_bind_blob",
-"_sqlite3_bind_double",
-"_sqlite3_bind_int",
-"_sqlite3_bind_parameter_index",
-"_sqlite3_bind_text",
-"_sqlite3_changes",
-"_sqlite3_clear_bindings",
-"_sqlite3_close_v2",
-"_sqlite3_column_blob",
-"_sqlite3_column_bytes",
-"_sqlite3_column_count",
-"_sqlite3_column_double",
-"_sqlite3_column_name",
-"_sqlite3_column_text",
-"_sqlite3_column_type",
-"_sqlite3_create_function_v2",
-"_sqlite3_data_count",
-"_sqlite3_errmsg",
-"_sqlite3_exec",
-"_sqlite3_finalize",
-"_sqlite3_free",
-"_sqlite3_normalized_sql",
-"_sqlite3_open",
-"_sqlite3_prepare_v2",
-"_sqlite3_reset",
-"_sqlite3_result_blob",
-"_sqlite3_result_double",
-"_sqlite3_result_error",
-"_sqlite3_result_int",
-"_sqlite3_result_int64",
-"_sqlite3_result_null",
-"_sqlite3_result_text",
-"_sqlite3_sql",
-"_sqlite3_step",
-"_sqlite3_value_blob",
-"_sqlite3_value_bytes",
-"_sqlite3_value_double",
-"_sqlite3_value_int",
-"_sqlite3_value_text",
-"_sqlite3_value_type"
-        ]' \
-        -s EXPORTED_RUNTIME_METHODS='[
-"UTF8ToString",
-"cwrap",
-"stackAlloc",
-"stackRestore",
-"stackSave"
-        ]' \
-        --memory-init-file 0 \
-        -Wall \
-        -s ALLOW_MEMORY_GROWTH=1 \
-        -s ALLOW_TABLE_GROWTH=1 \
-        -s NODEJS_CATCH_EXIT=0 \
-        -s NODEJS_CATCH_REJECTION=0 \
-        -s RESERVED_FUNCTION_POINTERS=64 \
-        -s SINGLE_FILE=0 \
-        -s USE_ZLIB \
-        -s WASM=1 \
-        \
-        .tmp/sqlite3.c.wasm.o \
-        .tmp/sqlite3_ext.c.wasm.o \
-        .tmp/sqlmath_custom.c.wasm.o \
-        \
-        -o sqlmath_wasm2.js
+    mv .tmp.js sqlmath_wasm.js
 )}
 
 shCiEmsdkExport() {

@@ -142,15 +142,15 @@ file sqlmath.js
 
     function dbCallAsync(func, db, argList) {
 // this function will call <func> using <db>
-        db = dbDeref(db);
-        // increment db.busy
-        db.busy += 1;
+        let __db = dbDeref(db);
+        // increment __db.busy
+        __db.busy += 1;
         return cCall(func, [
-            db.ptr
+            __db.ptr
         ].concat(argList)).finally(function () {
-            // decrement db.busy
-            db.busy -= 1;
-            assertOrThrow(db.busy >= 0, "invalid db.busy " + db.busy);
+            // decrement __db.busy
+            __db.busy -= 1;
+            assertOrThrow(__db.busy >= 0, "invalid __db.busy " + __db.busy);
         });
     }
 

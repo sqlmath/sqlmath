@@ -7,6 +7,7 @@
 - none
 
 # v2022.6.1-beta
+- wasm - migrate from sqljs-api to sqlmath-api in wasm - part1
 - gc - replace node-specific-gc __dbFinalizerCreate() with more-webassembly-friendly FinalizationRegistry()
 - sqlmath - add sql-extension copyblob(), matrix2d_concat()
 - sqlmath - re-include carray-extension

@@ -326,11 +326,11 @@ SQLMATH_API int dbExec(
     // coverage-hack
     noop();
     // declare var0
-    JsonString _str99 = { 0 };
+    JsonString __str99 = { 0 };
     // declare var
     DbExecBindElem *bindElem = NULL;
     DbExecBindElem *bindList = NULL;
-    JsonString *str99 = &_str99;
+    JsonString *str99 = &__str99;
     const char **pzShared = baton->bufin + 6;
     const char *zBind = baton->bufin[3];
     const char *zSql = baton->bufin[1];
@@ -1437,18 +1437,24 @@ file sqlmath_ext - end
 file sqlmath_napi - start
 */
 #ifdef SQLMATH_NAPI
+// #if defined SQLMATH_NAPI || defined EMSCRIPTEN
 
 
-#ifdef WIN32
-#include <windows.h>
+// *INDENT-OFF*
+#ifdef SQLMATH_NAPI
+    #ifdef WIN32
+    #include <windows.h>
+    #endif
+    #include <node_api.h>
+// #else
+//     #define napi_ok (0)
+//     #include <stdbool.h>
+//     typedef uint8_t napi_env;
 #endif
+// *INDENT-ON*
 
-#include <node_api.h>
 
 #define NAPI_VERSION 8
-
-static int dbCount = 0;
-
 
 // file sqlmath_napi - assert
 // this function will if <cond> is falsy, terminate process with <msg>
@@ -1462,6 +1468,27 @@ static int dbCount = 0;
     if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) { \
         return 0; \
     }
+
+#define NAPI_EXPORT_MEMBER(name) \
+    {#name, NULL, name, NULL, NULL, NULL, napi_default, NULL}
+
+#define NAPI_JSBATON_CREATE() \
+    jsbatonCreate(env, info); if (baton == NULL) {return NULL;}
+
+#define NAPI_JSPROMISE_CREATE(func) \
+    __##func(void *data); \
+    static void _##func(napi_env env, void *data) { \
+        UNUSED(env); \
+        __##func(data); \
+    } \
+    static napi_value func(napi_env env, napi_callback_info info) { \
+        return jspromiseCreate(env, info, _##func); \
+    } \
+    static int __##func(void *data)
+
+
+// track how many sqlite-db open
+static int dbCount = 0;
 
 static int napiAssertOk(
     napi_env env,
@@ -1517,20 +1544,6 @@ static int napiAssertOk(
 
 
 // file sqlmath_napi - promise
-#define NAPI_JSBATON_CREATE() \
-    jsbatonCreate(env, info); if (baton == NULL) {return NULL;}
-
-#define NAPI_JSPROMISE_CREATE(func) \
-    __##func(void *data); \
-    static void _##func(napi_env env, void *data) { \
-        UNUSED(env); \
-        __##func(data); \
-    } \
-    static napi_value func(napi_env env, napi_callback_info info) { \
-        return jspromiseCreate(env, info, _##func); \
-    } \
-    static int __##func(void *data)
-
 static void jsbatonBufferFinalize(
     napi_env env,
     void *finalize_data,
@@ -1968,8 +1981,6 @@ napi_value napi_module_sqlmath_init(
 //   napi_property_attributes attributes;
 //   void* data;
 // } napi_property_descriptor;
-#define NAPI_EXPORT_MEMBER(name) \
-    {#name, NULL, name, NULL, NULL, NULL, napi_default, NULL}
     // coverage-hack
     noop();
     // declare var
