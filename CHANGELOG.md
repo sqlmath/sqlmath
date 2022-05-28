@@ -7,6 +7,9 @@
 - none
 
 # v2022.6.1-beta
+- perf - reduce unnecessary copying, replacing SQLITE_TRANSIENT with SQLITE_STATIC
+- sqlmath - wrap c-functions jsonInit(), jsonInitNoContext() with jsonInit2() that auto jsonGrow/malloc str99->zBuf
+- sqlmath - streamline function cCall() to cCallAsync(), which only returns a promise
 - wasm - migrate from sqljs-api to sqlmath-api in wasm - part1
 - gc - replace node-specific-gc __dbFinalizerCreate() with more-webassembly-friendly FinalizationRegistry()
 - sqlmath - add sql-extension copyblob(), matrix2d_concat()

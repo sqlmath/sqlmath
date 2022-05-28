@@ -28,7 +28,7 @@ let {
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
-    cCall,
+    cCallAsync,
     dbCloseAsync,
     dbExecAsync,
     dbExecWithRetryAsync,
@@ -64,10 +64,10 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test cCall handling-behavior"
+    "test cCallAsync handling-behavior"
 ), function testCcall() {
     jstestIt((
-        "test cCall handling-behavior"
+        "test cCallAsync handling-behavior"
     ), function () {
         [
             [-0, "0"],
@@ -85,18 +85,10 @@ jstestDescribe((
         ]) {
             let valActual;
             valActual = String(
-                await cCall("noopAsync", [
+                await cCallAsync("noopAsync", [
                     valInput
                 ])
             )[0][0];
-            assertJsonEqual(valActual, valExpected, {
-                valActual,
-                valExpected,
-                valInput
-            });
-            valActual = String(cCall("noopSync", [
-                valInput
-            ]))[0][0];
             assertJsonEqual(valActual, valExpected, {
                 valActual,
                 valExpected,
@@ -741,6 +733,15 @@ jstestDescribe((
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
+        assertJsonEqual(
+            "not an error",
+            noop(
+                await dbExecAsync({
+                    db,
+                    sql: `SELECT throwerror(0) AS val`
+                })
+            )[0][0].val
+        );
         [
             [1, "SQL logic error"],
             [2, "unknown error"],

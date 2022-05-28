@@ -85,12 +85,11 @@ file sqlmath.js
     let dbFinalizationRegistry;
     let requireCjs = createRequire(import.meta.url);
 
-    function cCall(func, argList) {
+    async function cCallAsync(cFuncName, argList) {
 // this function will serialize <argList> to a c <baton>,
 // suitable for passing into napi
         let baton = new BigInt64Array(2048);
         let errStack;
-        let result;
         // serialize js-args to c-args
         argList = argList.map(function (arg, ii) {
             switch (typeof arg) {
@@ -126,26 +125,25 @@ file sqlmath.js
         ).slice(0, JSBATON_ARGC);
         // prepend baton to argList
         argList.unshift(baton);
-        // call napi with func and argList
-        result = addon[func](argList);
-        if (typeof result?.catch === "function") {
-            errStack = new Error().stack.replace((
-                /.*$/m
-            ), "");
-            return result.catch(function (err) {
-                err.stack += errStack;
-                throw err;
-            });
+        // preserve stack-trace
+        errStack = new Error().stack.replace((
+            /.*$/m
+        ), "");
+        try {
+            // call napi with cFuncName and argList
+            return await addon[cFuncName](argList);
+        } catch (err) {
+            err.stack += errStack;
+            assertOrThrow(undefined, err);
         }
-        return result;
     }
 
-    function dbCallAsync(func, db, argList) {
-// this function will call <func> using <db>
+    function dbCallAsync(cFuncName, db, argList) {
+// this function will call <cFuncName> using <db>
         let __db = dbDeref(db);
         // increment __db.busy
         __db.busy += 1;
-        return cCall(func, [
+        return cCallAsync(cFuncName, [
             __db.ptr
         ].concat(argList)).finally(function () {
             // decrement __db.busy
@@ -168,7 +166,7 @@ file sqlmath.js
         await Promise.all(__db.connPool.map(async function (ptr) {
             let val = ptr[0];
             ptr[0] = 0n;
-            await cCall("__dbCloseAsync", [
+            await cCallAsync("__dbCloseAsync", [
                 val
             ]);
         }));
@@ -340,7 +338,7 @@ file sqlmath.js
         connPool = await Promise.all(Array.from(new Array(
             threadCount
         ), async function () {
-            let ptr = await cCall("__dbOpenAsync", [
+            let ptr = await cCallAsync("__dbOpenAsync", [
                 String(filename),
                 undefined,
                 flags ?? (
@@ -879,7 +877,7 @@ Definition of the CSV Format
     }) {
 // This function will auto-close any open sqlite3-db-pointer,
 // after its js-wrapper has been garbage-collected
-        cCall("__dbCloseAsync", [
+        cCallAsync("__dbCloseAsync", [
             ptr[0]
         ]);
         if (afterFinalization) {
@@ -910,7 +908,7 @@ Definition of the CSV Format
         SQLITE_OPEN_URI,
         SQLITE_OPEN_WAL,
         assertNumericalEqual,
-        cCall,
+        cCallAsync,
         dbCloseAsync,
         dbExecAsync,
         dbExecWithRetryAsync,

@@ -100,7 +100,7 @@ extern "C" {
 // this function will exec <sql> and if <errcode> is not ok,
 // throw <baton->errmsg>
 #define JSBATON_ASSERT_OK() \
-    if (!SQLMATH_IS_OK()) { JSBATON_ERRCODE_SAVE(); goto catch_error; }
+    if (errcode != 0) { JSBATON_ERRCODE_SAVE(); goto catch_error; }
 
 #define JSBATON_ERRCODE_SAVE() \
     jsbatonErrcodeSave(baton, db, errcode, __func__, __FILE__, __LINE__);
@@ -117,14 +117,11 @@ extern "C" {
         NULL, sql_##func##_step, sql_##func##_final); \
     SQLMATH_IS_OK_OR_RETURN_ERRCODE();
 
-#define SQLITE3_RESULT_ERROR_NOMEM_IF_JSONSTRING_BERR(pp) \
-    if (pp->bErr != 0) { sqlite3_result_error_nomem(context); return; }
-
-#define SQLMATH_IS_OK() \
-    (errcode == 0 || errcode == SQLITE_ROW || errcode == SQLITE_DONE)
-
 #define SQLMATH_IS_OK_OR_RETURN_ERRCODE() \
     if (errcode != SQLITE_OK) {return errcode;}
+
+#define STR99_RESULT_ERROR_NOMEM_IF_BERR() \
+    if (str99->bErr != 0) { sqlite3_result_error_nomem(context); return; }
 
 
 // file sqlmath_h - sqlite3
@@ -254,6 +251,11 @@ SQLMATH_API int doubleSign(
 SQLMATH_API int doubleSortCompare(
     const void *aa,
     const void *bb
+);
+
+SQLMATH_API void jsonInit2(
+    JsonString * pp,
+    sqlite3_context * context
 );
 
 SQLMATH_API void jsonVectorDoubleAppend(
@@ -404,7 +406,7 @@ SQLMATH_API int dbExec(
         ii += 1;
     }
     // init str99
-    jsonInitNoContext(str99);
+    jsonInit2(str99, NULL);
     // bracket database [
     STR99_APPEND_CHAR2('[');
     // loop over each table
@@ -437,7 +439,7 @@ SQLMATH_API int dbExec(
                     case SQLITE_DATATYPE_BLOB:
                         errcode =
                             sqlite3_bind_blob(pStmt, bindIdx, bindElem->buf,
-                            bindElem->buflen, SQLITE_TRANSIENT);
+                            bindElem->buflen, SQLITE_STATIC);
                         break;
                     case SQLITE_DATATYPE_FLOAT:
                         errcode =
@@ -471,7 +473,7 @@ SQLMATH_API int dbExec(
                     case SQLITE_DATATYPE_TEXT:
                         errcode =
                             sqlite3_bind_text(pStmt, bindIdx, bindElem->buf,
-                            bindElem->buflen, SQLITE_TRANSIENT);
+                            bindElem->buflen, SQLITE_STATIC);
                         break;
                     default:
                         fprintf(stderr, "\n[ii=%d  datatype=%d  len=%d]\n",
@@ -495,14 +497,17 @@ SQLMATH_API int dbExec(
         // loop over each row
         while (1) {
             errcode = sqlite3_step(pStmt);
+            if (errcode == SQLITE_DONE) {
+                errcode = SQLITE_OK;
+            }
             // if no next row, then break
             if (errcode != SQLITE_ROW) {
                 sqlite3_finalize(pStmt);
                 pStmt = NULL;
-                if (SQLMATH_IS_OK()) {
-                    break;
+                if (errcode != SQLITE_OK) {
+                    goto catch_error;
                 }
-                goto catch_error;
+                break;
             }
             // insert row of column-names
             if (nCol == -1) {
@@ -589,9 +594,6 @@ SQLMATH_API int dbExec(
             }
             // bracket row ]
             STR99_APPEND_CHAR2(']');
-            if (errcode != SQLITE_ROW) {
-                break;
-            }
         }
         if (nCol != -1) {
             // bracket table ]
@@ -602,8 +604,6 @@ SQLMATH_API int dbExec(
     STR99_APPEND_CHAR2(']');
     STR99_APPEND_CHAR2('\n');
     // copy str99 to baton
-    // force bStatic -> 0
-    jsonGrow(str99, sizeof(str99->zSpace) + 1);
     baton->argint64[0] = (int64_t) str99->nUsed;
     baton->bufout[0] = str99->zBuf;
   catch_error:
@@ -611,7 +611,8 @@ SQLMATH_API int dbExec(
     sqlite3_finalize(pStmt);
     // cleanup bindList
     sqlite3_free(bindList);
-    if (!SQLMATH_IS_OK()) {
+    if (errcode != SQLITE_OK) {
+        jsonReset(str99);
         // handle errcode
         JSBATON_ERRCODE_SAVE();
     }
@@ -668,7 +669,7 @@ SQLMATH_API int dbTableInsert(
             case SQLITE_DATATYPE_BLOB:
                 nLen = *(int *) pp;
                 errcode = sqlite3_bind_blob(pStmt, jj, pp + 8, (int) nLen,
-                    SQLITE_TRANSIENT);
+                    SQLITE_STATIC);
                 JSBATON_ASSERT_OK();
                 pp += 8 + nLen;
                 break;
@@ -701,7 +702,7 @@ SQLMATH_API int dbTableInsert(
             case SQLITE_DATATYPE_TEXT:
                 nLen = *(int *) pp;
                 errcode = sqlite3_bind_text(pStmt, jj, pp + 8, (int) nLen,
-                    SQLITE_TRANSIENT);
+                    SQLITE_STATIC);
                 JSBATON_ASSERT_OK();
                 pp += 8 + nLen;
                 break;
@@ -714,6 +715,9 @@ SQLMATH_API int dbTableInsert(
             jj += 1;
         }
         errcode = sqlite3_step(pStmt);
+        if (errcode == SQLITE_DONE || errcode == SQLITE_ROW) {
+            errcode = SQLITE_OK;
+        }
         JSBATON_ASSERT_OK();
         errcode = sqlite3_clear_bindings(pStmt);
         JSBATON_ASSERT_OK();
@@ -743,10 +747,7 @@ SQLMATH_API SQLITE_NOINLINE void jsbatonErrcodeSave(
     int line
 ) {
 // this function will if errcode != 0, set baton->errmsg
-    switch (errcode) {
-    case SQLITE_DONE:
-    case SQLITE_OK:
-    case SQLITE_ROW:
+    if (errcode == SQLITE_OK) {
         return;
     }
     if (baton == NULL || baton->errmsg[0] != '\x00') {
@@ -870,10 +871,10 @@ SQLMATH_FNC static void sql_casttextorempty_func(
 // parameter, then the resulting string will contain embedded NULs and the
 // result of expressions operating on strings with embedded NULs is undefined.
         -1,
-        // If you insist on round-tripping through sqlite3_value_text,
-        // then you must pass SQLITE_TRANSIENT for the last parameter
-        // - the pointer returned by sqlite3_value_text is only guaranteed
-        // to be valid until the custom function returns.
+// If you insist on round-tripping through sqlite3_value_text,
+// then you must pass SQLITE_TRANSIENT for the last parameter
+// - the pointer returned by sqlite3_value_text is only guaranteed
+// to be valid until the custom function returns.
         SQLITE_TRANSIENT);
 }
 
@@ -1020,21 +1021,22 @@ SQLMATH_FNC static void sql_kthpercentile_final(
     sqlite3_context * context
 ) {
 // this function will aggregate kth-percentile element
-    // pp - init
-    JsonString *pp = (JsonString *) sqlite3_aggregate_context(context, 0);
-    if (pp == NULL) {
+    // str99 - init
+    JsonString *str99 = (JsonString *) sqlite3_aggregate_context(context, 0);
+    if (str99 == NULL) {
         sqlite3_result_null(context);
         return;
     }
-    int nn = pp->nUsed / 8 - 1;
+    STR99_RESULT_ERROR_NOMEM_IF_BERR();
+    int nn = str99->nUsed / 8 - 1;
     if (nn <= 0) {
-        jsonReset(pp);
+        jsonReset(str99);
         sqlite3_result_null(context);
         return;
     }
-    sqlite3_result_double(context, kthpercentile(((double *) pp->zBuf) + 1,
-            nn, ((double *) pp->zBuf)[0]));
-    jsonReset(pp);
+    sqlite3_result_double(context, kthpercentile(((double *) str99->zBuf) + 1,
+            nn, ((double *) str99->zBuf)[0]));
+    jsonReset(str99);
 }
 
 SQLMATH_FNC static void sql_kthpercentile_step(
@@ -1044,25 +1046,25 @@ SQLMATH_FNC static void sql_kthpercentile_step(
 ) {
 // this function will aggregate kth-percentile element
     UNUSED(argc);
-    // pp - init
-    JsonString *pp =
-        (JsonString *) sqlite3_aggregate_context(context, sizeof(*pp));
-    if (pp == NULL) {
+    // str99 - init
+    JsonString *str99 =
+        (JsonString *) sqlite3_aggregate_context(context, sizeof(*str99));
+    if (str99 == NULL) {
         return;
     }
-    // pp - jsonInit
-    if (pp->zBuf == 0) {
-        jsonInit(pp, context);
-        jsonVectorDoubleAppend(pp, sqlite3_value_double(argv[1]));
-        SQLITE3_RESULT_ERROR_NOMEM_IF_JSONSTRING_BERR(pp);
+    // str99 - init zBuf
+    if (str99->zBuf == 0) {
+        jsonInit2(str99, context);
+        jsonVectorDoubleAppend(str99, sqlite3_value_double(argv[1]));
+        STR99_RESULT_ERROR_NOMEM_IF_BERR();
     }
-    // pp - handle null-case
+    // str99 - handle null-case
     if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
         return;
     }
-    // pp - append double
-    jsonVectorDoubleAppend(pp, sqlite3_value_double(argv[0]));
-    SQLITE3_RESULT_ERROR_NOMEM_IF_JSONSTRING_BERR(pp);
+    // str99 - append double
+    jsonVectorDoubleAppend(str99, sqlite3_value_double(argv[0]));
+    STR99_RESULT_ERROR_NOMEM_IF_BERR();
 }
 
 // SQLMATH_FNC sql_kthpercentile_func - end
@@ -1101,24 +1103,24 @@ SQLMATH_FNC static void sql_matrix2d_concat_final(
     sqlite3_context * context
 ) {
 // this function will concat rows of nCol doubles to a 2d-matrix
-    // pp - init
-    JsonString *pp = (JsonString *) sqlite3_aggregate_context(context, 0);
-    if (pp == NULL) {
+    // str99 - init
+    JsonString *str99 = (JsonString *) sqlite3_aggregate_context(context, 0);
+    if (str99 == NULL) {
         sqlite3_result_null(context);
         return;
     }
-    if (pp->nUsed <= 2 * 8) {
-        jsonReset(pp);
+    STR99_RESULT_ERROR_NOMEM_IF_BERR();
+    if (str99->nUsed <= 2 * 8) {
+        jsonReset(str99);
         sqlite3_result_null(context);
         return;
     }
-    double *arr = (double *) pp->zBuf;
-    arr[0] = (0.125 * ((double) pp->nUsed) - 2) / arr[1];
-    sqlite3_result_blob(context, arr, pp->nUsed,
-        pp->bStatic ? SQLITE_TRANSIENT :
+    double *arr = (double *) str99->zBuf;
+    arr[0] = (0.125 * ((double) str99->nUsed) - 2) / arr[1];
+    sqlite3_result_blob(context, arr, str99->nUsed,
         // cleanup jsonVectorDoubleAppend
         sqlite3_free);
-    // jsonReset(pp);
+    // jsonReset();
 }
 
 SQLMATH_FNC static void sql_matrix2d_concat_step(
@@ -1128,24 +1130,24 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 ) {
 // this function will concat rows of nCol doubles to a 2d-matrix
     UNUSED(argc);
-    // pp - init
-    JsonString *pp =
-        (JsonString *) sqlite3_aggregate_context(context, sizeof(*pp));
-    if (pp == NULL) {
+    // str99 - init
+    JsonString *str99 =
+        (JsonString *) sqlite3_aggregate_context(context, sizeof(*str99));
+    if (str99 == NULL) {
         return;
     }
-    // pp - jsonInit
-    if (pp->zBuf == 0) {
-        jsonInit(pp, context);
-        jsonVectorDoubleAppend(pp, 0);
-        jsonVectorDoubleAppend(pp, (double) argc);
-        SQLITE3_RESULT_ERROR_NOMEM_IF_JSONSTRING_BERR(pp);
+    // str99 - init zBuf
+    if (str99->zBuf == 0) {
+        jsonInit2(str99, context);
+        jsonVectorDoubleAppend(str99, 0);
+        jsonVectorDoubleAppend(str99, (double) argc);
+        STR99_RESULT_ERROR_NOMEM_IF_BERR();
     }
-    // pp - append double
+    // str99 - append double
     for (int ii = 0; ii < argc; ii += 1) {
-        jsonVectorDoubleAppend(pp, sqlite3_value_double(argv[ii]));
+        jsonVectorDoubleAppend(str99, sqlite3_value_double(argv[ii]));
     }
-    SQLITE3_RESULT_ERROR_NOMEM_IF_JSONSTRING_BERR(pp);
+    STR99_RESULT_ERROR_NOMEM_IF_BERR();
 }
 
 // SQLMATH_FNC sql_matrix2d_concat_func - end
@@ -1234,17 +1236,11 @@ SQLMATH_FNC static void sql_throwerror_func(
     UNUSED(argc);
     // declare var
     int errcode = sqlite3_value_int(argv[0]);
-    switch (errcode) {
-    case SQLITE_DONE:
-    case SQLITE_ROW:
-        sqlite3_result_error_code(context, 2);
-        break;
-    case SQLITE_NOMEM:
-        sqlite3_result_error_nomem(context);
-        break;
-    default:
+    if (0 <= errcode && errcode <= 28) {
         sqlite3_result_error_code(context, errcode);
+        return;
     }
+    sqlite3_result_error_code(context, SQLITE_INTERNAL);
 }
 
 
@@ -1367,6 +1363,20 @@ SQLMATH_API int doubleSortCompare(
     return cc < 0 ? -1 : cc > 0 ? 1 : 0;
 }
 
+SQLMATH_API void jsonInit2(
+    JsonString * pp,
+    sqlite3_context * context
+) {
+// this function will initialize JsonString <pp> with sqlite3_context <context>
+    if (context == NULL) {
+        jsonInitNoContext(pp);
+    } else {
+        jsonInit(pp, context);
+    }
+    // force pp.bStatic = 0
+    jsonGrow(pp, sizeof(pp->zSpace));
+}
+
 SQLMATH_API void jsonVectorDoubleAppend(
     JsonString * pp,
     double val
@@ -1471,9 +1481,6 @@ file sqlmath_napi - start
 
 #define NAPI_EXPORT_MEMBER(name) \
     {#name, NULL, name, NULL, NULL, NULL, napi_default, NULL}
-
-#define NAPI_JSBATON_CREATE() \
-    jsbatonCreate(env, info); if (baton == NULL) {return NULL;}
 
 #define NAPI_JSPROMISE_CREATE(func) \
     __##func(void *data); \
@@ -1710,7 +1717,10 @@ static napi_value jspromiseCreate(
 ) {
 // Create a deferred promise and an async queue work item.
     // init baton
-    Jsbaton *baton = NAPI_JSBATON_CREATE();
+    Jsbaton *baton = jsbatonCreate(env, info);
+    if (baton == NULL) {
+        return NULL;
+    }
     // declare var
     char buf[SIZEOF_MESSAGE_DEFAULT] = { 0 };
     int errcode = 0;
@@ -1772,16 +1782,6 @@ static napi_value noopAsync(
 ) {
 // Create a deferred promise and an async queue work item.
     return jspromiseCreate(env, info, noopAsyncExecute);
-}
-
-static napi_value noopSync(
-    napi_env env,
-    napi_callback_info info
-) {
-// this function will do nothing
-    // init baton
-    Jsbaton *baton = NAPI_JSBATON_CREATE();
-    return jsbatonExport(env, baton);
 }
 
 
@@ -1992,7 +1992,6 @@ napi_value napi_module_sqlmath_init(
         NAPI_EXPORT_MEMBER(__dbOpenAsync),
         NAPI_EXPORT_MEMBER(__dbTableInsertAsync),
         NAPI_EXPORT_MEMBER(noopAsync),
-        NAPI_EXPORT_MEMBER(noopSync),
     };
     errcode = napi_define_properties(env, exports,
         sizeof(propList) / sizeof(napi_property_descriptor), propList);
