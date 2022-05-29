@@ -68,11 +68,11 @@ extern "C" {
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
 #define NAPI_VERSION 8
 #define SGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
-#define SIZEOF_MESSAGE_DEFAULT 1024
+#define SIZEOF_MESSAGE_DEFAULT 512
 #define SQLITE_DATATYPE_BLOB            0x04
-#define SQLITE_DATATYPE_BLOB_0          0x14
+// #define SQLITE_DATATYPE_BLOB_0          0x14
 #define SQLITE_DATATYPE_FLOAT           0x02
-#define SQLITE_DATATYPE_FLOAT_0         0x12
+// #define SQLITE_DATATYPE_FLOAT_0         0x12
 #define SQLITE_DATATYPE_INTEGER         0x01
 #define SQLITE_DATATYPE_INTEGER_0       0x11
 #define SQLITE_DATATYPE_INTEGER_1       0x21
@@ -243,9 +243,11 @@ typedef struct napi_value__ *napi_value;
 
 typedef struct Jsbaton {
     // data
-    int64_t argint64[JSBATON_ARGC];
-    const char *bufin[JSBATON_ARGC];
-    char *bufout[JSBATON_ARGC];
+    //!! int32_t nalloc;
+    //!! int32_t nused;
+    int64_t innint64[JSBATON_ARGC];
+    const char *innbuf[JSBATON_ARGC];
+    char *ottbuf[JSBATON_ARGC];
     char errmsg[SIZEOF_MESSAGE_DEFAULT];
     napi_value result;
     // async
@@ -263,7 +265,7 @@ SQLMATH_API SQLITE_NOINLINE void jsbatonErrcodeSave(
 );
 
 
-// file sqlmath_h - misc
+// file sqlmath_h - SQLMATH_API
 SQLMATH_API void dbClose(
     Jsbaton * baton
 );
@@ -347,24 +349,25 @@ file sqlmath_ext - start
 #ifdef SQLITE3_EXT_C2
 
 
-// file sqlmath_ext - dbXxx - start
+#include "sqlmath_jenks.c"
 typedef struct DbExecBindElem {
     const char *buf;
     char *key;
     int buflen;
     char datatype;
 } DbExecBindElem;
-
 // track how many sqlite-db open
 static int dbCount = 0;
 
+
+// file sqlmath_ext - SQLMATH_API
 SQLMATH_API void dbClose(
     Jsbaton * baton
 ) {
 // int sqlite3_close_v2(sqlite3*);
     // declare var
     int errcode = 0;
-    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->innint64[0];
     // call c-function
     errcode = sqlite3_close_v2(db);
     JSBATON_ASSERT_OK();
@@ -376,6 +379,7 @@ SQLMATH_API void dbClose(
     (void) 0;
 }
 
+// SQLMATH_API dbexec - start
 SQLMATH_API void dbExec(
     Jsbaton * baton
 ) {
@@ -389,22 +393,21 @@ SQLMATH_API void dbExec(
     DbExecBindElem *bindElem = NULL;
     DbExecBindElem *bindList = NULL;
     JsonString *str99 = &__str99;
-    const char **pzShared = baton->bufin + 6;
-    const char *zBind = baton->bufin[3];
-    const char *zSql = baton->bufin[1];
+    const char **pzShared = baton->innbuf + 6;
+    const char *zBind = baton->innbuf[3] + 2 * 4;
+    const char *zSql = baton->innbuf[1];
     const char *zTmp = NULL;
     double rTmp = 0;
-    int bindByKey = (int) baton->argint64[4];
+    int bindByKey = (int) baton->innint64[4];
     int bindIdx = 0;
-    int bindListLength = (int) baton->argint64[2];
+    int bindListLength = (int) baton->innint64[2];
     int errcode = 0;
     int ii = 0;
     int jj = 0;
     int nCol = 0;
-    int responseType = (int) baton->argint64[5];
-    int64_t *pnShared = baton->argint64 + 6;
+    int responseType = (int) baton->innint64[5];
     int64_t iTmp = 0;
-    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->innint64[0];
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
     static const char bindPrefix[] = "$:@";
     // mutext enter
@@ -424,8 +427,8 @@ SQLMATH_API void dbExec(
         // init key and
         if (bindByKey) {
             zBind += 1;
-            bindElem->key = (char *) zBind + 8;
-            zBind += 8 + *(int *) zBind;
+            bindElem->key = (char *) zBind + 4;
+            zBind += 4 + *(int32_t *) zBind;
         }
         // init datatype
         bindElem->datatype = zBind[0];
@@ -433,9 +436,9 @@ SQLMATH_API void dbExec(
         switch (bindElem->datatype) {
         case SQLITE_DATATYPE_BLOB:
         case SQLITE_DATATYPE_TEXT:
-            bindElem->buflen = *(int *) zBind;
-            bindElem->buf = zBind + 8;
-            zBind += 8 + bindElem->buflen;
+            bindElem->buflen = *(int32_t *) zBind;
+            bindElem->buf = zBind + 4;
+            zBind += 4 + bindElem->buflen;
             break;
         case SQLITE_DATATYPE_FLOAT:
         case SQLITE_DATATYPE_INTEGER:
@@ -448,10 +451,10 @@ SQLMATH_API void dbExec(
         case SQLITE_DATATYPE_TEXT_0:
             break;
         case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
-            bindElem->buflen = *(int *) pnShared;
+            bindElem->buflen = *(int32_t *) zBind;
             bindElem->buf = *pzShared;
-            pnShared += 1;
             pzShared += 1;
+            zBind += 4;
             break;
         default:
             fprintf(stderr, "\n[ii=%d  datatype=%d  len=%d]\n", ii,
@@ -661,8 +664,8 @@ SQLMATH_API void dbExec(
     STR99_APPEND_CHAR2(']');
     STR99_APPEND_CHAR2('\n');
     // copy str99 to baton
-    baton->argint64[0] = (int64_t) str99->nUsed;
-    baton->bufout[0] = str99->zBuf;
+    baton->innint64[0] = (int64_t) str99->nUsed;
+    baton->ottbuf[0] = str99->zBuf;
   catch_error:
     // cleanup pStmt
     sqlite3_finalize(pStmt);
@@ -675,17 +678,19 @@ SQLMATH_API void dbExec(
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
 }
 
+// SQLMATH_API dbexec - end
+
 SQLMATH_API void dbMemoryLoadOrSave(
     Jsbaton * baton
 ) {
-// This function will load/save filename <bufin[0]> to/from <db>
+// This function will load/save filename <innbuf[0]> to/from <db>
     // declare var0
     int errcode = 0;
-    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->innint64[0];
     // declare var
     sqlite3 *pInMemory = db;
-    const char *zFilename = baton->bufin[1];
-    int isSave = baton->argint64[2];
+    const char *zFilename = baton->innbuf[1];
+    int isSave = baton->innint64[2];
 /*
 ** https://www.sqlite.org/backup.html
 ** This function is used to load the contents of a database file on disk
@@ -770,15 +775,15 @@ SQLMATH_API void dbOpen(
     int errcode = 0;
     sqlite3 *db = NULL;
     // call c-function
-    errcode = sqlite3ApiGet()->open_v2(baton->bufin[0], // filename
+    errcode = sqlite3ApiGet()->open_v2(baton->innbuf[0],        // filename
         &db,                    // db
-        (int) baton->argint64[2],       // flags
+        (int) baton->innint64[2],       // flags
         NULL);
     JSBATON_ASSERT_OK();
     dbCount += 1;
     // fprintf(stderr, "\nsqlite - __dbOpenAsync(%d)\n", dbCount);
     // save result
-    baton->argint64[0] = (int64_t) (intptr_t) db;
+    baton->innint64[0] = (int64_t) (intptr_t) db;
   catch_error:
     (void) 0;
 }
@@ -786,32 +791,32 @@ SQLMATH_API void dbOpen(
 SQLMATH_API void dbTableInsert(
     Jsbaton * baton
 ) {
-// This function will run <baton>->bufin[1] in <db> and insert rows
-// <baton>->bufin[2] to given table.
+// This function will run <baton>->innbuf[1] in <db> and insert rows
+// <baton>->innbuf[2] to given table.
     // declare var
     char datatype = 0;
-    const char *pp = baton->bufin[3];
+    const char *zBind = baton->innbuf[3] + 2 * 4;
     const char *zTmp = NULL;
     int bTxn = 0;
     int errcode = 0;
     int ii = 0;
     int jj = 0;
-    int nCol = (int) baton->argint64[4];
-    int nRow = (int) baton->argint64[5];
+    int nCol = (int) baton->innint64[4];
+    int nRow = (int) baton->innint64[5];
     size_t nLen = 0;
-    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->innint64[0];
     sqlite3_stmt *pStmt = NULL;
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
     // create temp table
-    errcode = sqlite3_exec(db, baton->bufin[1], NULL, NULL, NULL);
+    errcode = sqlite3_exec(db, baton->innbuf[1], NULL, NULL, NULL);
     JSBATON_ASSERT_OK();
     // begin transaction
     errcode = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
     JSBATON_ASSERT_OK();
     bTxn = 1;
     // init pStmt
-    errcode = sqlite3_prepare_v2(db, baton->bufin[2], -1, &pStmt, &zTmp);
+    errcode = sqlite3_prepare_v2(db, baton->innbuf[2], -1, &pStmt, &zTmp);
     JSBATON_ASSERT_OK();
     while (ii < nRow) {
         jj = 1;
@@ -825,25 +830,25 @@ SQLMATH_API void dbTableInsert(
         // 7. symbol
         // 8. undefined
         while (jj <= nCol) {
-            datatype = pp[0];
-            pp += 1;
+            datatype = zBind[0];
+            zBind += 1;
             switch (datatype) {
             case SQLITE_DATATYPE_BLOB:
-                nLen = *(int *) pp;
-                errcode = sqlite3_bind_blob(pStmt, jj, pp + 8, (int) nLen,
+                nLen = *(int32_t *) zBind;
+                errcode = sqlite3_bind_blob(pStmt, jj, zBind + 4, (int) nLen,
                     SQLITE_STATIC);
                 JSBATON_ASSERT_OK();
-                pp += 8 + nLen;
+                zBind += 4 + nLen;
                 break;
             case SQLITE_DATATYPE_FLOAT:
-                errcode = sqlite3_bind_double(pStmt, jj, *(double *) pp);
+                errcode = sqlite3_bind_double(pStmt, jj, *(double *) zBind);
                 JSBATON_ASSERT_OK();
-                pp += 8;
+                zBind += 8;
                 break;
             case SQLITE_DATATYPE_INTEGER:
-                errcode = sqlite3_bind_int64(pStmt, jj, *(int64_t *) pp);
+                errcode = sqlite3_bind_int64(pStmt, jj, *(int64_t *) zBind);
                 JSBATON_ASSERT_OK();
-                pp += 8;
+                zBind += 8;
                 break;
             case SQLITE_DATATYPE_INTEGER_0:
                 errcode = sqlite3_bind_int(pStmt, jj, 0);
@@ -862,15 +867,15 @@ SQLMATH_API void dbTableInsert(
                 JSBATON_ASSERT_OK();
                 break;
             case SQLITE_DATATYPE_TEXT:
-                nLen = *(int *) pp;
-                errcode = sqlite3_bind_text(pStmt, jj, pp + 8, (int) nLen,
+                nLen = *(int32_t *) zBind;
+                errcode = sqlite3_bind_text(pStmt, jj, zBind + 4, (int) nLen,
                     SQLITE_STATIC);
                 JSBATON_ASSERT_OK();
-                pp += 8 + nLen;
+                zBind += 4 + nLen;
                 break;
             default:
                 fprintf(stderr, "\n[ii=%d  jj=%d  datatype=%d  len=%d]\n", ii,
-                    jj, datatype, *(int *) pp);
+                    jj, datatype, *(int32_t *) zBind);
                 errcode = SQLITE_ERROR_DATATYPE_INVALID;
                 JSBATON_ASSERT_OK();
             }
@@ -897,6 +902,22 @@ SQLMATH_API void dbTableInsert(
     sqlite3_finalize(pStmt);
     // mutext leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
+}
+
+SQLMATH_API int doubleSign(
+    const double aa
+) {
+// this function will return sign of <aa>
+    return aa < 0 ? -1 : aa > 0 ? 1 : 0;
+}
+
+SQLMATH_API int doubleSortCompare(
+    const void *aa,
+    const void *bb
+) {
+// this function will compare <aa> with <bb>
+    const double cc = *(double *) aa - *(double *) bb;
+    return cc < 0 ? -1 : cc > 0 ? 1 : 0;
 }
 
 SQLMATH_API SQLITE_NOINLINE void jsbatonErrcodeSave(
@@ -931,6 +952,48 @@ SQLMATH_API SQLITE_NOINLINE void jsbatonErrcodeSave(
     }
 }
 
+SQLMATH_API void jsonInit2(
+    JsonString * pp,
+    sqlite3_context * context
+) {
+// this function will initialize JsonString <pp> with sqlite3_context <context>
+    if (context == NULL) {
+        jsonInitNoContext(pp);
+    } else {
+        jsonInit(pp, context);
+    }
+    // force pp.bStatic = 0
+    jsonGrow(pp, sizeof(pp->zSpace));
+}
+
+SQLMATH_API void jsonVectorDoubleAppend(
+    JsonString * pp,
+    double val
+) {
+// this function will append double <val> to <pp>
+    static const uint64_t NN = 8;
+    if ((NN + pp->nUsed >= pp->nAlloc) && jsonGrow(pp, NN) != 0) {
+        return;
+    }
+    // pp - append double
+    double *arr = (double *) &pp->zBuf[pp->nUsed];
+    *arr = val;
+    pp->nUsed += NN;
+}
+
+SQLMATH_API int noop(
+) {
+// this function will do nothing except return 0
+    return 0;
+}
+
+SQLMATH_API void *sqlite3MallocSizeT(
+    size_t size
+) {
+// this function wraps sqlite3_malloc() with function signature of malloc
+    return sqlite3_malloc((int) size);
+}
+
 SQLMATH_API const char *sqlmathSnprintfTrace(
     char *buf,
     const char *prefix,
@@ -946,43 +1009,6 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
     }
     return (const char *) buf;
 }
-
-// file sqlmath_ext - dbXxx - end
-
-
-// file sqlmath_ext - jenks - start
-#include "sqlmath_jenks.c"
-SQLMATH_FNC static void sql_jenks_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will calculate jenks natural breaks
-    UNUSED(argc);
-    // declare var
-    JenksObject *self = NULL;
-    const int kk = sqlite3_value_int(argv[1]);
-    const int nn = sqlite3_value_bytes(argv[0]) / 8;
-    double *input = (double *) sqlite3_value_blob(argv[0]);
-    double *output = (double *) sqlite3_value_blob(argv[2]);
-    // jenks init
-    self = jenksCreate(nn, kk, sqlite3MallocSizeT);
-    if (self == NULL) {
-        sqlite3_result_error_nomem(context);
-        return;
-    }
-    // jenks exec
-    jenks(self, nn, kk, input);
-    memcpy(output, self, 2 * 8);
-    memcpy(output + 2, self->resultBreaks, (size_t) self->kk * 8);
-    memcpy(output + 2 + (size_t) self->kk, self->resultCounts,
-        (size_t) self->kk * 8);
-    // jenks cleanup
-    sqlite3_free(self);
-    sqlite3_result_null(context);
-}
-
-// file sqlmath_ext - jenks - end
 
 
 // file sqlmath_ext - SQLMATH_FNC
@@ -1085,6 +1111,36 @@ SQLMATH_FNC static void sql_coth_func(
         sqlite3_result_double(context,
             1.0 / tanh(sqlite3_value_double(argv[0])));
     }
+}
+
+SQLMATH_FNC static void sql_jenks_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will calculate jenks natural breaks
+    UNUSED(argc);
+    // declare var
+    JenksObject *self = NULL;
+    const int kk = sqlite3_value_int(argv[1]);
+    const int nn = sqlite3_value_bytes(argv[0]) / 8;
+    double *input = (double *) sqlite3_value_blob(argv[0]);
+    double *output = (double *) sqlite3_value_blob(argv[2]);
+    // jenks init
+    self = jenksCreate(nn, kk, sqlite3MallocSizeT);
+    if (self == NULL) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
+    // jenks exec
+    jenks(self, nn, kk, input);
+    memcpy(output, self, 2 * 8);
+    memcpy(output + 2, self->resultBreaks, (size_t) self->kk * 8);
+    memcpy(output + 2 + (size_t) self->kk, self->resultCounts,
+        (size_t) self->kk * 8);
+    // jenks cleanup
+    sqlite3_free(self);
+    sqlite3_result_null(context);
 }
 
 // SQLMATH_FNC sql_kthpercentile_func - start
@@ -1405,7 +1461,7 @@ SQLMATH_FNC static void sql_throwerror_func(
 }
 
 
-// SQLMATH_FNC  sql_tobase64_func - start
+// SQLMATH_FNC sql_tobase64_func - start
 static char *base64Encode(
     const unsigned char *blob,
     int *nn,
@@ -1493,7 +1549,7 @@ SQLMATH_FNC static void sql_tobase64_func(
         sqlite3_free);
 }
 
-// SQLMATH_FNC  sql_tobase64_func - end
+// SQLMATH_FNC sql_tobase64_func - end
 
 SQLMATH_FNC static void sql_tostring_func(
     sqlite3_context * context,
@@ -1504,66 +1560,6 @@ SQLMATH_FNC static void sql_tostring_func(
     UNUSED(argc);
     sqlite3_result_text(context, (const char *) sqlite3_value_text(argv[0]),
         -1, SQLITE_TRANSIENT);
-}
-
-
-// file sqlmath_ext - misc
-SQLMATH_API int doubleSign(
-    const double aa
-) {
-// this function will return sign of <aa>
-    return aa < 0 ? -1 : aa > 0 ? 1 : 0;
-}
-
-SQLMATH_API int doubleSortCompare(
-    const void *aa,
-    const void *bb
-) {
-// this function will compare <aa> with <bb>
-    const double cc = *(double *) aa - *(double *) bb;
-    return cc < 0 ? -1 : cc > 0 ? 1 : 0;
-}
-
-SQLMATH_API void jsonInit2(
-    JsonString * pp,
-    sqlite3_context * context
-) {
-// this function will initialize JsonString <pp> with sqlite3_context <context>
-    if (context == NULL) {
-        jsonInitNoContext(pp);
-    } else {
-        jsonInit(pp, context);
-    }
-    // force pp.bStatic = 0
-    jsonGrow(pp, sizeof(pp->zSpace));
-}
-
-SQLMATH_API void jsonVectorDoubleAppend(
-    JsonString * pp,
-    double val
-) {
-// this function will append double <val> to <pp>
-    static const uint64_t NN = 8;
-    if ((NN + pp->nUsed >= pp->nAlloc) && jsonGrow(pp, NN) != 0) {
-        return;
-    }
-    // pp - append double
-    double *arr = (double *) &pp->zBuf[pp->nUsed];
-    *arr = val;
-    pp->nUsed += NN;
-}
-
-SQLMATH_API void *sqlite3MallocSizeT(
-    size_t size
-) {
-// this function wraps sqlite3_malloc() with function signature of malloc
-    return sqlite3_malloc((int) size);
-}
-
-SQLMATH_API int noop(
-) {
-// this function will do nothing except return 0
-    return 0;
 }
 
 
@@ -1679,7 +1675,7 @@ static void jsbatonBufferFinalize(
 // this function will finalize <finalize_data>
     UNUSED(env);
     UNUSED(finalize_hint);
-    // cleanup baton->bufout[ii]
+    // cleanup baton->ottbuf[ii]
     free(finalize_data);
 }
 
@@ -1706,7 +1702,7 @@ static Jsbaton *jsbatonCreate(
     NAPI_ASSERT_OK();
     // save argv
     baton->result = argv;
-    // init bufin
+    // init innbuf
     ii = 0;
     while (ii < JSBATON_ARGC) {
         errcode = napi_get_element(env, baton->result, ii + 1, &argv);
@@ -1716,7 +1712,7 @@ static Jsbaton *jsbatonCreate(
         if (is_dataview) {
             errcode =
                 napi_get_dataview_info(env, argv, NULL,
-                (void **) &baton->bufin[ii], NULL, NULL);
+                (void **) &baton->innbuf[ii], NULL, NULL);
             NAPI_ASSERT_OK();
         }
         ii += 1;
@@ -1733,17 +1729,17 @@ static napi_value jsbatonExport(
     int errcode = 0;
     napi_value val;
     size_t ii = 0;
-    // export baton->argint64 and baton->bufout to baton->result
+    // export baton->innint64 and baton->ottbuf to baton->result
     while (ii < JSBATON_ARGC) {
-        if (baton->bufout[ii] == NULL) {
+        if (baton->ottbuf[ii] == NULL) {
             errcode =
-                napi_create_double(env, (double) baton->argint64[ii], &val);
+                napi_create_double(env, (double) baton->innint64[ii], &val);
             NAPI_ASSERT_OK();
         } else {
-            // init baton->bufout[ii]
+            // init baton->ottbuf[ii]
             errcode = napi_create_external_arraybuffer(env,     // napi_env env,
-                (void *) baton->bufout[ii],     // void* external_data,
-                (size_t) baton->argint64[ii],   // size_t byte_length,
+                (void *) baton->ottbuf[ii],     // void* external_data,
+                (size_t) baton->innint64[ii],   // size_t byte_length,
                 jsbatonBufferFinalize,  // napi_finalize finalize_cb,
                 NULL,           // void* finalize_hint,
                 &val);          // napi_value* result
@@ -1771,7 +1767,7 @@ static napi_value jsstringCreate(
     return result;
 }
 
-static int __jspromiseResolve(
+static void jspromiseResolve(
     napi_env env,
     napi_status errcode,
     void *data
@@ -1796,7 +1792,7 @@ static int __jspromiseResolve(
     if (baton->errmsg[0] == 0) {
         // resolve promise with result
         if (jsbatonExport(env, baton) == NULL) {
-            return 0;
+            return;
         }
         errcode = napi_resolve_deferred(env, baton->deferred, baton->result);
         NAPI_ASSERT_FATAL(errcode == 0, "napi_resolve_deferred");
@@ -1818,16 +1814,6 @@ static int __jspromiseResolve(
     // Set both values to NULL so JavaScript can order a new run of the thread.
     baton->work = NULL;
     baton->deferred = NULL;
-    return 0;
-}
-
-static void jspromiseResolve(
-    napi_env env,
-    napi_status errcode,
-    void *data
-) {
-// This function runs on the main thread after `jspromiseExecute` exits.
-    __jspromiseResolve(env, errcode, data);
 }
 
 static napi_value jspromiseCreate(

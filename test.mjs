@@ -118,7 +118,7 @@ jstestDescribe((
         }
         // test bigint-error handling-behavior
         noop([
-            -(2n ** 63n),
+            -(2n ** 63n + 1n),
             2n ** 63n
         ]).forEach(function (val) {
             assertErrorThrownAsync(testDbGetLastBlobAsync.bind(undefined, val));
@@ -127,7 +127,7 @@ jstestDescribe((
         [
             // 1. bigint
             [-0n, -0],
-            [-0x7fffffffffffffffn, "-9223372036854775807"],
+            [-0x8000000000000000n, "-9223372036854775808"],
             [-1n, -1],
             [-2n, -2],
             [0n, 0],

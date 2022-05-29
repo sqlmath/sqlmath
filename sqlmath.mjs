@@ -27,12 +27,52 @@
 import {createRequire} from "module";
 import jslint from "./jslint.mjs";
 
+let JSBATON_ARGC = 16;
+// let SIZEOF_MESSAGE_DEFAULT = 512;
+let SQLITE_DATATYPE_BLOB = 0x04;
+// let SQLITE_DATATYPE_BLOB_0 = 0x14;
+let SQLITE_DATATYPE_FLOAT = 0x02;
+// let SQLITE_DATATYPE_FLOAT_0 = 0x12;
+let SQLITE_DATATYPE_INTEGER = 0x01;
+let SQLITE_DATATYPE_INTEGER_0 = 0x11;
+let SQLITE_DATATYPE_INTEGER_1 = 0x21;
+let SQLITE_DATATYPE_NULL = 0x05;
+let SQLITE_DATATYPE_SHAREDARRAYBUFFER = -0x01;
+let SQLITE_DATATYPE_TEXT = 0x03;
+let SQLITE_DATATYPE_TEXT_0 = 0x13;
+let SQLITE_MAX_LENGTH2 = 1_000_000_000;
+let SQLITE_OPEN_AUTOPROXY = 0x00000020;     /* VFS only */
+let SQLITE_OPEN_CREATE = 0x00000004;        /* Ok for sqlite3_open_v2() */
+let SQLITE_OPEN_DELETEONCLOSE = 0x00000008; /* VFS only */
+let SQLITE_OPEN_EXCLUSIVE = 0x00000010;     /* VFS only */
+let SQLITE_OPEN_FULLMUTEX = 0x00010000;     /* Ok for sqlite3_open_v2() */
+let SQLITE_OPEN_MAIN_DB = 0x00000100;       /* VFS only */
+let SQLITE_OPEN_MAIN_JOURNAL = 0x00000800;  /* VFS only */
+let SQLITE_OPEN_MEMORY = 0x00000080;        /* Ok for sqlite3_open_v2() */
+let SQLITE_OPEN_NOFOLLOW = 0x01000000;      /* Ok for sqlite3_open_v2() */
+let SQLITE_OPEN_NOMUTEX = 0x00008000;       /* Ok for sqlite3_open_v2() */
+let SQLITE_OPEN_PRIVATECACHE = 0x00040000;  /* Ok for sqlite3_open_v2() */
+let SQLITE_OPEN_READONLY = 0x00000001;      /* Ok for sqlite3_open_v2() */
+let SQLITE_OPEN_READWRITE = 0x00000002;     /* Ok for sqlite3_open_v2() */
+let SQLITE_OPEN_SHAREDCACHE = 0x00020000;   /* Ok for sqlite3_open_v2() */
+let SQLITE_OPEN_SUBJOURNAL = 0x00002000;    /* VFS only */
+let SQLITE_OPEN_SUPER_JOURNAL = 0x00004000; /* VFS only */
+let SQLITE_OPEN_TEMP_DB = 0x00000200;       /* VFS only */
+let SQLITE_OPEN_TEMP_JOURNAL = 0x00001000;  /* VFS only */
+let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
+let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
+let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
+let addon;
 let {
     assertOrThrow,
     debugInline,
     noop
 } = jslint;
+let consoleError = console.error;
+let dbDict = new WeakMap(); // private map of sqlite-database-connections
+let dbFinalizationRegistry;
 let local = Object.assign({}, jslint);
+let requireCjs = createRequire(import.meta.url);
 
 function assertNumericalEqual(aa, bb, message) {
 
@@ -50,46 +90,26 @@ function assertNumericalEqual(aa, bb, message) {
     }
 }
 
-
-/*
-file sqlmath.js
-*/
 (function () {
-    let JSBATON_ARGC = 16;
-    // let SIZEOF_MESSAGE_DEFAULT = 768;
-    let SQLITE_MAX_LENGTH2 = 1000000000;
-    let SQLITE_OPEN_AUTOPROXY = 0x00000020;     /* VFS only */
-    let SQLITE_OPEN_CREATE = 0x00000004;        /* Ok for sqlite3_open_v2() */
-    let SQLITE_OPEN_DELETEONCLOSE = 0x00000008; /* VFS only */
-    let SQLITE_OPEN_EXCLUSIVE = 0x00000010;     /* VFS only */
-    let SQLITE_OPEN_FULLMUTEX = 0x00010000;     /* Ok for sqlite3_open_v2() */
-    let SQLITE_OPEN_MAIN_DB = 0x00000100;       /* VFS only */
-    let SQLITE_OPEN_MAIN_JOURNAL = 0x00000800;  /* VFS only */
-    let SQLITE_OPEN_MEMORY = 0x00000080;        /* Ok for sqlite3_open_v2() */
-    let SQLITE_OPEN_NOFOLLOW = 0x01000000;      /* Ok for sqlite3_open_v2() */
-    let SQLITE_OPEN_NOMUTEX = 0x00008000;       /* Ok for sqlite3_open_v2() */
-    let SQLITE_OPEN_PRIVATECACHE = 0x00040000;  /* Ok for sqlite3_open_v2() */
-    let SQLITE_OPEN_READONLY = 0x00000001;      /* Ok for sqlite3_open_v2() */
-    let SQLITE_OPEN_READWRITE = 0x00000002;     /* Ok for sqlite3_open_v2() */
-    let SQLITE_OPEN_SHAREDCACHE = 0x00020000;   /* Ok for sqlite3_open_v2() */
-    let SQLITE_OPEN_SUBJOURNAL = 0x00002000;    /* VFS only */
-    let SQLITE_OPEN_SUPER_JOURNAL = 0x00004000; /* VFS only */
-    let SQLITE_OPEN_TEMP_DB = 0x00000200;       /* VFS only */
-    let SQLITE_OPEN_TEMP_JOURNAL = 0x00001000;  /* VFS only */
-    let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
-    let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
-    let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
-    let addon;
-    let consoleError = console.error;
-    let dbDict = new WeakMap(); // private map of sqlite-database-connections
-    let dbFinalizationRegistry;
-    let requireCjs = createRequire(import.meta.url);
-
     async function cCallAsync(cFuncName, argList) {
 // this function will serialize <argList> to a c <baton>,
 // suitable for passing into napi
-        let baton = new BigInt64Array(2048);
+        let baton;
         let errStack;
+        assertOrThrow(
+            argList.length < JSBATON_ARGC,
+            `cCallAsync - argList.length cannot be greater than ${JSBATON_ARGC}`
+        );
+        baton = new BigInt64Array(256);
+        //!! debugInline(baton.length);
+        //!! baton = jsbatonCreate(1024 * 8);
+        //!! baton = new ArrayBuffer(8 * 1024);
+        //!! baton = new BigInt64Array(
+            //!! baton.buffer,
+            //!! baton.byteOffset,
+            //!! baton.byteLength / 8
+        //!! );
+        //!! debugInline(baton.length);
         // serialize js-args to c-args
         argList = argList.map(function (arg, ii) {
             switch (typeof arg) {
@@ -119,10 +139,10 @@ file sqlmath.js
             }
             return arg;
         });
-        // pad argList to length = JSBATON_ARGC
-        argList = argList.concat(
-            Array.from(new Array(JSBATON_ARGC))
-        ).slice(0, JSBATON_ARGC);
+        // pad argList to length JSBATON_ARGC
+        while (argList.length < JSBATON_ARGC) {
+            argList.push(0n);
+        }
         // prepend baton to argList
         argList.unshift(baton);
         // preserve stack-trace
@@ -202,8 +222,9 @@ file sqlmath.js
             ? bindList.length
             : Object.keys(bindList).length
         );
+        let bufSharedList = [];
+        let jsbaton2 = jsbatonCreate();
         let result;
-        let serialize = jsToSqlSerializer();
         if (tmpCsv || tmpRowList) {
             await dbTableInsertAsync({
                 colList: tmpColList,
@@ -218,21 +239,21 @@ file sqlmath.js
             key, val
         ]) {
             if (bindByKey) {
-                serialize(":" + key + "\u0000");
+                jsbaton2 = jsbatonPushValue(jsbaton2, ":" + key + "\u0000");
             }
-            serialize(val);
+            jsbaton2 = jsbatonPushValue(jsbaton2, val, bufSharedList);
         });
         result = await dbCallAsync("__dbExecAsync", db, [
             String(sql) + "\n;\nPRAGMA noop",
             bindListLength,
-            serialize.bufResult,
+            jsbaton2,
             bindByKey,
             (
                 responseType === "lastBlob"
                 ? 1
                 : 0
             )
-        ].concat(serialize.bufSharedList));
+        ].concat(bufSharedList));
         result = result[1];
         switch (responseType) {
         case "arraybuffer":
@@ -372,7 +393,8 @@ file sqlmath.js
         tableName
     }) {
 // this function will create-or-replace temp <tablename> with <rowList>
-        let serialize = jsToSqlSerializer();
+        let bufSharedList = [];
+        let jsbaton2 = jsbatonCreate();
         let sqlCreateTable;
         let sqlInsertRow;
         // normalize and validate tableName
@@ -404,214 +426,230 @@ file sqlmath.js
             + ",?".repeat(colList.length).slice(1) + ");"
         );
         rowList.forEach(function (row) {
-            row.forEach(serialize);
+            row.forEach(function (val) {
+                jsbaton2 = jsbatonPushValue(jsbaton2, val, bufSharedList);
+            });
         });
         await dbCallAsync("__dbTableInsertAsync", db, [
             String(sqlCreateTable),
             String(sqlInsertRow),
-            serialize.bufResult,
+            jsbaton2,
             colList.length,
             rowList.length
         ]);
     }
 
-    function jsToSqlSerializer() {
-// this function will return another function that serializes javascript <val>
-// to <bufResult> as sqlite-values
-        let BIGINT64_MAX = 2n ** 63n - 1n;
-        let BIGINT64_MIN = -(2n ** 63n - 1n);
-        let SQLITE_DATATYPE_BLOB = 0x04;
-        // let SQLITE_DATATYPE_BLOB_0 = 0x14;
-        let SQLITE_DATATYPE_FLOAT = 0x02;
-        // let SQLITE_DATATYPE_FLOAT_0 = 0x12;
-        let SQLITE_DATATYPE_INTEGER = 0x01;
-        let SQLITE_DATATYPE_INTEGER_0 = 0x11;
-        let SQLITE_DATATYPE_INTEGER_1 = 0x21;
-        let SQLITE_DATATYPE_NULL = 0x05;
-        let SQLITE_DATATYPE_SHAREDARRAYBUFFER = -0x01;
-        let SQLITE_DATATYPE_TEXT = 0x03;
-        let SQLITE_DATATYPE_TEXT_0 = 0x13;
-        let bufResult = new DataView(new ArrayBuffer(2048));
-        let bufSharedList = [];
-        let offset = 0;
-        function bufferAppendDatatype(datatype, byteLength) {
-// this function will grow <bufResult> by <bytelength> and append <datatype>
-            let nn = offset + 1 + byteLength;
-            let tmp;
-            // exponentially grow bufResult as needed
-            if (bufResult.byteLength < nn) {
-                assertOrThrow(nn <= SQLITE_MAX_LENGTH2, (
-                    "sqlite - string or blob exceeds size limit of "
-                    + SQLITE_MAX_LENGTH2 + " bytes"
-                ));
-                tmp = bufResult;
-                bufResult = new DataView(new ArrayBuffer(
-                    Math.min(2 ** Math.ceil(Math.log2(nn)), SQLITE_MAX_LENGTH2)
-                ));
-                // copy tmp to bufResult with offset
-                bufferSetBuffer(bufResult, tmp, 0);
-                // save bufResult
-                serialize.bufResult = bufResult;
-            }
-            bufResult.setUint8(offset, datatype);
-            offset += 1;
+    function jsbatonCreate(nalloc = 1024) {
+// this function will create buffer <jsbaton2>
+        let jsbaton2 = new DataView(new SharedArrayBuffer(nalloc));
+        // offset include nalloc, nused
+        jsbaton2.setInt32(4, 2 * 4, true);
+        return jsbaton2;
+    }
+
+    function jsbatonPushValue(jsbaton2, value, bufSharedList) {
+// this function will push <value> to buffer <jsbaton2>
+        let nn;
+        let nused;
+        let tmp;
+        let vsize;
+        let vtype;
+    /*
+    #define SQLITE_DATATYPE_BLOB            0x04
+    // #define SQLITE_DATATYPE_BLOB_0          0x14
+    #define SQLITE_DATATYPE_FLOAT           0x02
+    // #define SQLITE_DATATYPE_FLOAT_0         0x12
+    #define SQLITE_DATATYPE_INTEGER         0x01
+    #define SQLITE_DATATYPE_INTEGER_0       0x11
+    #define SQLITE_DATATYPE_INTEGER_1       0x21
+    #define SQLITE_DATATYPE_NULL            0x05
+    #define SQLITE_DATATYPE_SHAREDARRAYBUFFER       -0x01
+    #define SQLITE_DATATYPE_TEXT            0x03
+    #define SQLITE_DATATYPE_TEXT_0          0x13
+        //  1. false.bigint
+        //  2. false.boolean
+        //  3. false.function
+        //  4. false.null
+        //  5. false.number
+        //  6. false.objects
+        //  7. false.string
+        //  8. false.symbol
+        //  9. false.undefined
+        // 10. true.bigint
+        // 11. true.boolean
+        // 12. true.function
+        // 13. true.null
+        // 14. true.number
+        // 15. true.objects
+        // 16. true.string
+        // 17. true.symbol
+        // 18. true.undefined
+        // 19. true.buffer
+        // 20. true.SharedArrayBuffer
+    */
+        // 11. true.boolean
+        if (value === 1 || value === 1n) {
+            value = true;
         }
-        function bufferSetBigint64(offset, val) {
-// this function will set bigint <val> to buffer <bufResult> at <offset>
-            assertOrThrow(
-                BIGINT64_MIN <= val && val <= BIGINT64_MAX,
-                (
-                    "The value of \"value\" is out of range."
-                    + " It must be >= -(2n ** 63n) and < 2n ** 63n."
-                )
-            );
-            bufResult.setBigInt64(offset, val, true);
-        }
-        function bufferSetBuffer(aa, bb, offset) {
-// this function will set buffer <bb> to buffer <aa> at <offset>
-            aa = new Uint8Array(aa.buffer, aa.byteOffset, aa.byteLength);
-            bb = new Uint8Array(bb.buffer, bb.byteOffset, bb.byteLength);
-            aa.set(bb, offset);
-            return bb.byteLength;
-        }
-        function serialize(val) {
-// this function will write to <bufResult>, <val> at given <offset>
-/*
-#define SQLITE_DATATYPE_BLOB            0x04
-#define SQLITE_DATATYPE_BLOB_0          0x14
-#define SQLITE_DATATYPE_FLOAT           0x02
-#define SQLITE_DATATYPE_FLOAT_0         0x12
-#define SQLITE_DATATYPE_INTEGER         0x01
-#define SQLITE_DATATYPE_INTEGER_0       0x11
-#define SQLITE_DATATYPE_INTEGER_1       0x21
-#define SQLITE_DATATYPE_NULL            0x05
-#define SQLITE_DATATYPE_TEXT            0x03
-#define SQLITE_DATATYPE_TEXT_0          0x13
-            // 1. false.bigint
-            // 2. false.boolean
-            // 3. false.function
-            // 4. false.number
-            // 5. false.object
-            // 6. false.string
-            // 7. false.symbol
-            // 8. false.undefined
-            // 11. true.bigint
-            // 12. true.boolean
-            // 13. true.function
-            // 14. true.number
-            // 15. true.object
-            // 16. true.string
-            // 17. true.symbol
-            // 18. true.undefined
-*/
-            // -1. SharedArrayBuffer
-            if (val && val.constructor === SharedArrayBuffer) {
+        switch (!vtype && Boolean(value) + "." + typeof(value)) {
+        //  1. false.bigint
+        case "false.bigint":
+        //  2. false.boolean
+        case "false.boolean":
+        //  5. false.number
+        case "false.number":
+            vtype = SQLITE_DATATYPE_INTEGER_0;
+            vsize = 0;
+            break;
+        //  3. false.function
+        case "false.function":
+        //  4. false.null
+        case "false.null":
+        //  6. false.object
+        case "false.object":
+        //  8. false.symbol
+        case "false.symbol":
+        //  9. false.undefined
+        case "false.undefined":
+        // 12. true.function
+        case "true.function":
+        // 13. true.null
+        case "true.null":
+        // 17. true.symbol
+        case "true.symbol":
+        // 18. true.undefined
+        case "true.undefined":
+            vtype = SQLITE_DATATYPE_NULL;
+            vsize = 0;
+            break;
+        //  7. false.string
+        case "false.string":
+            vtype = SQLITE_DATATYPE_TEXT_0;
+            vsize = 0;
+            break;
+        // 10. true.bigint
+        case "true.bigint":
+            vtype = SQLITE_DATATYPE_INTEGER;
+            vsize = 8;
+            break;
+        // 11. true.boolean
+        case "true.boolean":
+            vtype = SQLITE_DATATYPE_INTEGER_1;
+            vsize = 0;
+            break;
+        // 14. true.number
+        case "true.number":
+            vtype = SQLITE_DATATYPE_FLOAT;
+            vsize = 8;
+            break;
+        // 15. true.object
+        // 16. true.string
+        default:
+            // 20. true.SharedArrayBuffer
+            if (value && value.constructor === SharedArrayBuffer) {
                 assertOrThrow(
                     bufSharedList.length <= 0.5 * JSBATON_ARGC,
                     (
-                        "too many SharedArrayBuffer's " + bufSharedList.length
-                        + " > " + (0.5 * JSBATON_ARGC)
+                        "too many SharedArrayBuffers "
+                        + `${bufSharedList.length} > ${0.5 * JSBATON_ARGC}`
                     )
                 );
-                bufferAppendDatatype(SQLITE_DATATYPE_SHAREDARRAYBUFFER, 0);
-                bufSharedList.push(new DataView(val));
-                return;
+                bufSharedList.push(new DataView(value));
+                vtype = SQLITE_DATATYPE_SHAREDARRAYBUFFER;
+                vsize = 4;
+                break;
             }
-            // 12. true.boolean
-            if (val === 1 || val === 1n || val === true) {
-                bufferAppendDatatype(SQLITE_DATATYPE_INTEGER_1, 0);
-                return;
-            }
-            switch (Boolean(val) + "." + typeof(val)) {
-            // 1. false.bigint
-            case "false.bigint":
-            // 2. false.boolean
-            case "false.boolean":
-            // 4. false.number
-            case "false.number":
-                bufferAppendDatatype(SQLITE_DATATYPE_INTEGER_0, 0);
-                return;
-            // 3. false.function
-            // case "false.function":
-            // 5. false.object
-            case "false.object":
-            // 7. false.symbol
-            // case "false.symbol":
-            // 8. false.undefined
-            case "false.undefined":
-            // 13. true.function
-            case "true.function":
-            // 17. true.symbol
-            case "true.symbol":
-            // 18. true.undefined
-            // case "true.undefined":
-                bufferAppendDatatype(SQLITE_DATATYPE_NULL, 0);
-                return;
-            // 6. false.string
-            case "false.string":
-                bufferAppendDatatype(SQLITE_DATATYPE_TEXT_0, 0);
-                return;
-            // 11. true.bigint
-            case "true.bigint":
-                bufferAppendDatatype(SQLITE_DATATYPE_INTEGER, 8);
-                bufferSetBigint64(offset, val);
-                offset += 8;
-                return;
-            // 14. true.number
-            case "true.number":
-                bufferAppendDatatype(SQLITE_DATATYPE_FLOAT, 8);
-                bufResult.setFloat64(offset, val, true);
-                offset += 8;
-                return;
-            // 16. true.string
-            case "true.string":
-                val = new TextEncoder().encode(val);
-                bufferAppendDatatype(SQLITE_DATATYPE_TEXT, 8 + val.byteLength);
-                bufferSetBigint64(offset, BigInt(val.byteLength));
-                offset += 8;
-                offset += bufferSetBuffer(bufResult, val, offset);
-                return;
-            // 15. true.object
-            default:
-                assertOrThrow(
-                    val && typeof val === "object",
-                    "invalid data " + (typeof val) + " " + val
-                );
-                // write buffer
-                if (ArrayBuffer.isView(val)) {
-                    if (val.byteLength === 0) {
-                        bufferAppendDatatype(SQLITE_DATATYPE_NULL, 0);
-                        return;
-                    }
-                    bufferAppendDatatype(
-                        SQLITE_DATATYPE_BLOB,
-                        8 + val.byteLength
-                    );
-                    bufferSetBigint64(offset, BigInt(val.byteLength));
-                    offset += 8;
-                    // copy val to bufResult with offset
-                    bufferSetBuffer(bufResult, val, offset);
-                    offset += val.byteLength;
-                    return;
+            // 19. true.buffer
+            if (ArrayBuffer.isView(value)) {
+                if (value.byteLength === 0) {
+                    vtype = SQLITE_DATATYPE_NULL;
+                    vsize = 0;
+                    break;
                 }
-                // write JSON.stringify(val)
-                val = String(
-                    typeof val.toJSON === "function"
-                    ? val.toJSON()
-                    : JSON.stringify(val)
-                );
-                val = new TextEncoder().encode(val);
-                bufferAppendDatatype(SQLITE_DATATYPE_TEXT, 8 + val.byteLength);
-                bufferSetBigint64(offset, BigInt(val.byteLength));
-                offset += 8;
-                offset += bufferSetBuffer(bufResult, val, offset);
+                vtype = SQLITE_DATATYPE_BLOB;
+                vsize = 4 + value.byteLength;
+                break;
             }
+            // 15. true.object
+            value = String(
+                typeof value === "string"
+                ? value
+                : typeof value.toJSON === "function"
+                ? value.toJSON()
+                : JSON.stringify(value)
+            );
+            // 16. true.string
+            value = new TextEncoder().encode(value);
+            vtype = SQLITE_DATATYPE_TEXT;
+            vsize = 4 + value.byteLength;
         }
-        // save bufResult
-        serialize.bufResult = bufResult;
-        // save bufSharedList
-        serialize.bufSharedList = bufSharedList;
-        return serialize;
+        nused = jsbaton2.getInt32(4, true);
+        nn = nused + 1 + vsize;
+        assertOrThrow(
+            nn <= 0xffff_ffff,
+            "jsbaton cannot exceed 0xffff_ffff / 2,147,483,647 bytes"
+        );
+        // exponentially grow jsbaton2 as needed
+        if (jsbaton2.byteLength < nn) {
+            tmp = jsbaton2;
+            jsbaton2 = new DataView(new SharedArrayBuffer(
+                Math.min(2 ** Math.ceil(Math.log2(nn)), 0x7fff_ffff)
+            ));
+            // update nAlloc
+            jsbaton2.setInt32(0, jsbaton2.byteLength, true);
+            // copy tmp to jsbaton2
+            new Uint8Array(
+                jsbaton2.buffer,
+                jsbaton2.byteOffset,
+                nused
+            ).set(new Uint8Array(tmp.buffer, tmp.byteOffset, nused), 0);
+        }
+        // append vtype
+        jsbaton2.setUint8(nused, vtype);
+        // update nused
+        jsbaton2.setInt32(4, nused + 1 + vsize, true);
+        // handle blob-value
+        switch (vtype) {
+        case SQLITE_DATATYPE_BLOB:
+        case SQLITE_DATATYPE_TEXT:
+            vsize -= 4;
+            // append vsize
+            assertOrThrow(
+                0 <= vsize && vsize <= 1_000_000_000,
+                "sqlite-blob must be within 0 to 1,000,000,000 inclusive bytes"
+            );
+            jsbaton2.setInt32(nused + 1, vsize, true);
+            // append blob-value
+            new Uint8Array(
+                jsbaton2.buffer,
+                nused + 1 + 4,
+                vsize
+            ).set(new Uint8Array(value.buffer, value.byteOffset, vsize), 0);
+            break;
+        case SQLITE_DATATYPE_FLOAT:
+            jsbaton2.setFloat64(nused + 1, value, true);
+            break;
+        case SQLITE_DATATYPE_INTEGER:
+            assertOrThrow(
+                -9223372036854775808n <= value && value <= 9223372036854775807n,
+                (
+                    "sqlite-integer must be within inclusive range "
+                    + "-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
+                )
+            );
+            jsbaton2.setBigInt64(nused + 1, value, true);
+            break;
+        case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
+            vsize = value.byteLength;
+            // append vsize
+            assertOrThrow(
+                0 <= vsize && vsize <= 1_000_000_000,
+                "sqlite-blob must be within 0 to 1,000,000,000 inclusive bytes"
+            );
+            jsbaton2.setInt32(nused + 1, vsize, true);
+            break;
+        }
+        return jsbaton2;
     }
 
     function jsonRowListFromCsv({
