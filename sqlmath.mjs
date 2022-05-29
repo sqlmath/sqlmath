@@ -90,257 +90,256 @@ function assertNumericalEqual(aa, bb, message) {
     }
 }
 
-(function () {
-    async function cCallAsync(cFuncName, argList) {
+async function cCallAsync(cFuncName, argList) {
 // this function will serialize <argList> to a c <baton>,
 // suitable for passing into napi
-        let baton;
-        let errStack;
-        assertOrThrow(
-            argList.length < JSBATON_ARGC,
-            `cCallAsync - argList.length cannot be greater than ${JSBATON_ARGC}`
-        );
-        baton = new BigInt64Array(256);
-        //!! debugInline(baton.length);
-        //!! baton = jsbatonCreate(1024 * 8);
-        //!! baton = new ArrayBuffer(8 * 1024);
-        //!! baton = new BigInt64Array(
-            //!! baton.buffer,
-            //!! baton.byteOffset,
-            //!! baton.byteLength / 8
-        //!! );
-        //!! debugInline(baton.length);
-        // serialize js-args to c-args
-        argList = argList.map(function (arg, ii) {
-            switch (typeof arg) {
-            case "bigint":
-            case "boolean":
-            case "number":
-                try {
-                    baton[ii] = BigInt(arg);
-                } catch (ignore) {
-                    return;
-                }
-                break;
-            // case "object":
-            //     break;
-            case "string":
-                // append null-terminator to string
-                arg = new TextEncoder().encode(arg + "\u0000");
-                break;
-            }
-            if (ArrayBuffer.isView(arg)) {
-                baton[ii] = BigInt(arg.byteLength);
-                return new DataView(
-                    arg.buffer,
-                    arg.byteOffset,
-                    arg.byteLength
-                );
-            }
-            return arg;
-        });
-        // pad argList to length JSBATON_ARGC
-        while (argList.length < JSBATON_ARGC) {
-            argList.push(0n);
-        }
-        // prepend baton to argList
-        argList.unshift(baton);
-        // preserve stack-trace
-        errStack = new Error().stack.replace((
-            /.*$/m
-        ), "");
-        try {
-            // call napi with cFuncName and argList
-            return await addon[cFuncName](argList);
-        } catch (err) {
-            err.stack += errStack;
-            assertOrThrow(undefined, err);
-        }
-    }
-
-    function dbCallAsync(cFuncName, db, argList) {
-// this function will call <cFuncName> using <db>
-        let __db = dbDeref(db);
-        // increment __db.busy
-        __db.busy += 1;
-        return cCallAsync(cFuncName, [
-            __db.ptr
-        ].concat(argList)).finally(function () {
-            // decrement __db.busy
-            __db.busy -= 1;
-            assertOrThrow(__db.busy >= 0, "invalid __db.busy " + __db.busy);
-        });
-    }
-
-    async function dbCloseAsync({
-        db
-    }) {
-// this function will close sqlite-database-connection <db>
-        let __db = dbDeref(db);
-        // prevent segfault - do not close db if actions are pending
-        assertOrThrow(
-            __db.busy === 0,
-            "db cannot close with " + __db.busy + " actions pending"
-        );
-        // cleanup connPool
-        await Promise.all(__db.connPool.map(async function (ptr) {
-            let val = ptr[0];
-            ptr[0] = 0n;
-            await cCallAsync("__dbCloseAsync", [
-                val
-            ]);
-        }));
-        dbDict.delete(db);
-    }
-
-    function dbDeref(db) {
-// this function will get private-object mapped to <db>
-        let __db = dbDict.get(db);
-        assertOrThrow(__db?.connPool[0] > 0, "invalid or closed db");
-        assertOrThrow(__db.busy >= 0, "invalid db.busy " + __db.busy);
-        __db.ii = (__db.ii + 1) % __db.connPool.length;
-        __db.ptr = __db.connPool[__db.ii][0];
-        assertOrThrow(__db.ptr > 0n, "invalid or closed db");
-        return __db;
-    }
-
-    async function dbExecAsync({
-        bindList = [],
-        db,
-        responseType,
-        sql,
-        tmpColList,
-        tmpColListPriority,
-        tmpCsv,
-        tmpRowList,
-        tmpTableName
-    }) {
-// this function will exec <sql> in <db> and return <result>
-        let bindByKey = !Array.isArray(bindList);
-        let bindListLength = (
-            Array.isArray(bindList)
-            ? bindList.length
-            : Object.keys(bindList).length
-        );
-        let bufSharedList = [];
-        let jsbaton2 = jsbatonCreate();
-        let result;
-        if (tmpCsv || tmpRowList) {
-            await dbTableInsertAsync({
-                colList: tmpColList,
-                colListPriority: tmpColListPriority,
-                csv: tmpCsv,
-                db,
-                rowList: tmpRowList,
-                tableName: tmpTableName
-            });
-        }
-        Object.entries(bindList).forEach(function ([
-            key, val
-        ]) {
-            if (bindByKey) {
-                jsbaton2 = jsbatonPushValue(jsbaton2, ":" + key + "\u0000");
-            }
-            jsbaton2 = jsbatonPushValue(jsbaton2, val, bufSharedList);
-        });
-        result = await dbCallAsync("__dbExecAsync", db, [
-            String(sql) + "\n;\nPRAGMA noop",
-            bindListLength,
-            jsbaton2,
-            bindByKey,
-            (
-                responseType === "lastBlob"
-                ? 1
-                : 0
-            )
-        ].concat(bufSharedList));
-        result = result[1];
-        switch (responseType) {
-        case "arraybuffer":
-        case "lastBlob":
-            return result;
-        case "list":
-            return JSON.parse(new TextDecoder().decode(result));
-        default:
-            result = JSON.parse(new TextDecoder().decode(result));
-            return result.map(function (rowList) {
-                let colList = rowList.shift();
-                return rowList.map(function (row) {
-                    let dict = {};
-                    colList.forEach(function (key, ii) {
-                        dict[key] = row[ii];
-                    });
-                    return dict;
-                });
-            });
-        }
-    }
-
-    async function dbExecWithRetryAsync(option) {
-// this function will exec <sql> in <db> and return <result> with <retryLimit>
-        let retry = option.retryLimit || 1;
-        while (true) {
+    let baton;
+    let errStack;
+    assertOrThrow(
+        argList.length < JSBATON_ARGC,
+        `cCallAsync - argList.length cannot be greater than ${JSBATON_ARGC}`
+    );
+    baton = new BigInt64Array(256);
+    //!! debugInline(baton.length);
+    //!! baton = jsbatonCreate(1024 * 8);
+    //!! baton = new ArrayBuffer(8 * 1024);
+    //!! baton = new BigInt64Array(
+        //!! baton.buffer,
+        //!! baton.byteOffset,
+        //!! baton.byteLength / 8
+    //!! );
+    //!! debugInline(baton.length);
+    // serialize js-args to c-args
+    argList = argList.map(function (arg, ii) {
+        switch (typeof arg) {
+        case "bigint":
+        case "boolean":
+        case "number":
             try {
-                return await dbExecAsync(option);
-            } catch (err) {
-                assertOrThrow(retry > 0, err);
-                consoleError(err);
-                consoleError(
-                    "dbExecWithRetryAsync - retry failed sql-query with "
-                    + retry
-                    + " remaining retry"
-                );
-                retry -= 1;
-                await new Promise(function (resolve) {
-                    setTimeout(resolve, 50);
-                });
+                baton[ii] = BigInt(arg);
+            } catch (ignore) {
+                return;
             }
+            break;
+        // case "object":
+        //     break;
+        case "string":
+            // append null-terminator to string
+            arg = new TextEncoder().encode(arg + "\u0000");
+            break;
+        }
+        if (ArrayBuffer.isView(arg)) {
+            baton[ii] = BigInt(arg.byteLength);
+            return new DataView(
+                arg.buffer,
+                arg.byteOffset,
+                arg.byteLength
+            );
+        }
+        return arg;
+    });
+    // pad argList to length JSBATON_ARGC
+    while (argList.length < JSBATON_ARGC) {
+        argList.push(0n);
+    }
+    // prepend baton to argList
+    argList.unshift(baton);
+    // preserve stack-trace
+    errStack = new Error().stack.replace((
+        /.*$/m
+    ), "");
+    try {
+        // call napi with cFuncName and argList
+        return await addon[cFuncName](argList);
+    } catch (err) {
+        err.stack += errStack;
+        assertOrThrow(undefined, err);
+    }
+}
+
+function dbCallAsync(cFuncName, db, argList) {
+// this function will call <cFuncName> using <db>
+    let __db = dbDeref(db);
+    // increment __db.busy
+    __db.busy += 1;
+    return cCallAsync(cFuncName, [
+        __db.ptr
+    ].concat(argList)).finally(function () {
+        // decrement __db.busy
+        __db.busy -= 1;
+        assertOrThrow(__db.busy >= 0, "invalid __db.busy " + __db.busy);
+    });
+}
+
+async function dbCloseAsync({
+    db
+}) {
+// this function will close sqlite-database-connection <db>
+    let __db = dbDeref(db);
+    // prevent segfault - do not close db if actions are pending
+    assertOrThrow(
+        __db.busy === 0,
+        "db cannot close with " + __db.busy + " actions pending"
+    );
+    // cleanup connPool
+    await Promise.all(__db.connPool.map(async function (ptr) {
+        let val = ptr[0];
+        ptr[0] = 0n;
+        await cCallAsync("__dbCloseAsync", [
+            val
+        ]);
+    }));
+    dbDict.delete(db);
+}
+
+function dbDeref(db) {
+// this function will get private-object mapped to <db>
+    let __db = dbDict.get(db);
+    assertOrThrow(__db?.connPool[0] > 0, "invalid or closed db");
+    assertOrThrow(__db.busy >= 0, "invalid db.busy " + __db.busy);
+    __db.ii = (__db.ii + 1) % __db.connPool.length;
+    __db.ptr = __db.connPool[__db.ii][0];
+    assertOrThrow(__db.ptr > 0n, "invalid or closed db");
+    return __db;
+}
+
+async function dbExecAsync({
+    bindList = [],
+    db,
+    responseType,
+    sql,
+    tmpColList,
+    tmpColListPriority,
+    tmpCsv,
+    tmpRowList,
+    tmpTableName
+}) {
+// this function will exec <sql> in <db> and return <result>
+    let bindByKey = !Array.isArray(bindList);
+    let bindListLength = (
+        Array.isArray(bindList)
+        ? bindList.length
+        : Object.keys(bindList).length
+    );
+    let bufSharedList = [];
+    let jsbaton2 = jsbatonCreate();
+    let result;
+    if (tmpCsv || tmpRowList) {
+        await dbTableInsertAsync({
+            colList: tmpColList,
+            colListPriority: tmpColListPriority,
+            csv: tmpCsv,
+            db,
+            rowList: tmpRowList,
+            tableName: tmpTableName
+        });
+    }
+    Object.entries(bindList).forEach(function ([
+        key, val
+    ]) {
+        if (bindByKey) {
+            jsbaton2 = jsbatonPushValue(jsbaton2, ":" + key + "\u0000");
+        }
+        jsbaton2 = jsbatonPushValue(jsbaton2, val, bufSharedList);
+    });
+    result = await dbCallAsync("__dbExecAsync", db, [
+        String(sql) + "\n;\nPRAGMA noop",
+        bindListLength,
+        jsbaton2,
+        bindByKey,
+        (
+            responseType === "lastBlob"
+            ? 1
+            : 0
+        )
+    ].concat(bufSharedList));
+    result = result[1];
+    switch (responseType) {
+    case "arraybuffer":
+    case "lastBlob":
+        return result;
+    case "list":
+        return JSON.parse(new TextDecoder().decode(result));
+    default:
+        result = JSON.parse(new TextDecoder().decode(result));
+        return result.map(function (rowList) {
+            let colList = rowList.shift();
+            return rowList.map(function (row) {
+                let dict = {};
+                colList.forEach(function (key, ii) {
+                    dict[key] = row[ii];
+                });
+                return dict;
+            });
+        });
+    }
+}
+
+async function dbExecWithRetryAsync(option) {
+// this function will exec <sql> in <db> and return <result> with <retryLimit>
+    let retry = option.retryLimit || 1;
+    while (true) {
+        try {
+            return await dbExecAsync(option);
+        } catch (err) {
+            assertOrThrow(retry > 0, err);
+            consoleError(err);
+            consoleError(
+                "dbExecWithRetryAsync - retry failed sql-query with "
+                + retry
+                + " remaining retry"
+            );
+            retry -= 1;
+            await new Promise(function (resolve) {
+                setTimeout(resolve, 50);
+            });
         }
     }
+}
 
-    function dbGetLastBlobAsync({
-        bindList = [],
-        db,
-        sql
-    }) {
+function dbGetLastBlobAsync({
+    bindList = [],
+    db,
+    sql
+}) {
 // this function will exec <sql> in <db> and return last value retrieved
 // from execution as raw blob/buffer
-        return dbExecAsync({
-            bindList,
-            db,
-            responseType: "lastBlob",
-            sql
-        });
-    }
-
-    async function dbMemoryLoadAsync({
+    return dbExecAsync({
+        bindList,
         db,
-        filename
-    }) {
+        responseType: "lastBlob",
+        sql
+    });
+}
+
+async function dbMemoryLoadAsync({
+    db,
+    filename
+}) {
 // This function will load <filename> to <db>
-        assertOrThrow(filename, "invalid filename " + filename);
-        await dbCallAsync("__dbMemoryLoadOrSaveAsync", db, [
-            String(filename), 0
-        ]);
-    }
+    assertOrThrow(filename, "invalid filename " + filename);
+    await dbCallAsync("__dbMemoryLoadOrSaveAsync", db, [
+        String(filename), 0
+    ]);
+}
 
-    async function dbMemorySaveAsync({
-        db,
-        filename
-    }) {
+async function dbMemorySaveAsync({
+    db,
+    filename
+}) {
 // This function will save <db> to <filename>
-        assertOrThrow(filename, "invalid filename " + filename);
-        await dbCallAsync("__dbMemoryLoadOrSaveAsync", db, [
-            String(filename), 1
-        ]);
-    }
+    assertOrThrow(filename, "invalid filename " + filename);
+    await dbCallAsync("__dbMemoryLoadOrSaveAsync", db, [
+        String(filename), 1
+    ]);
+}
 
-    async function dbOpenAsync({
-        afterFinalization,
-        filename,
-        flags,
-        threadCount = 1
-    }) {
+async function dbOpenAsync({
+    afterFinalization,
+    filename,
+    flags,
+    threadCount = 1
+}) {
 // this function will open and return sqlite-database-connection <db>
 // int sqlite3_open_v2(
 //   const char *filename,   /* Database filename (UTF-8) */
@@ -348,313 +347,313 @@ function assertNumericalEqual(aa, bb, message) {
 //   int flags,              /* Flags */
 //   const char *zVfs        /* Name of VFS module to use */
 // );
-        let connPool;
-        let db = {
-            filename
-        };
-        assertOrThrow(
-            typeof filename === "string",
-            "invalid filename " + filename
-        );
-        connPool = await Promise.all(Array.from(new Array(
-            threadCount
-        ), async function () {
-            let ptr = await cCallAsync("__dbOpenAsync", [
-                String(filename),
-                undefined,
-                flags ?? (
-                    SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
-                ),
-                undefined
-            ]);
-            ptr = new BigInt64Array([
-                ptr[0][0]
-            ]);
-            dbFinalizationRegistry.register(db, {
-                afterFinalization,
-                ptr
-            });
-            return ptr;
-        }));
-        dbDict.set(db, {
-            busy: 0,
-            connPool,
-            ii: 0
+    let connPool;
+    let db = {
+        filename
+    };
+    assertOrThrow(
+        typeof filename === "string",
+        "invalid filename " + filename
+    );
+    connPool = await Promise.all(Array.from(new Array(
+        threadCount
+    ), async function () {
+        let ptr = await cCallAsync("__dbOpenAsync", [
+            String(filename),
+            undefined,
+            flags ?? (
+                SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
+            ),
+            undefined
+        ]);
+        ptr = new BigInt64Array([
+            ptr[0][0]
+        ]);
+        dbFinalizationRegistry.register(db, {
+            afterFinalization,
+            ptr
         });
-        return db;
-    }
+        return ptr;
+    }));
+    dbDict.set(db, {
+        busy: 0,
+        connPool,
+        ii: 0
+    });
+    return db;
+}
 
-    async function dbTableInsertAsync({
+async function dbTableInsertAsync({
+    colList,
+    colListPriority,
+    csv,
+    db,
+    rowList,
+    tableName
+}) {
+// this function will create-or-replace temp <tablename> with <rowList>
+    let bufSharedList = [];
+    let jsbaton2 = jsbatonCreate();
+    let sqlCreateTable;
+    let sqlInsertRow;
+    // normalize and validate tableName
+    tableName = tableName || "__tmp1";
+    tableName = "temp." + JSON.stringify(tableName.replace((
+        /^temp\./
+    ), ""));
+    assertOrThrow((
+        /^temp\."[A-Z_a-z][0-9A-Z_a-z]*?"$/
+    ).test(tableName), "invalid tableName " + tableName);
+    // parse csv
+    if (!rowList && csv) {
+        rowList = jsonRowListFromCsv({
+            csv
+        });
+    }
+    rowList = jsonRowListNormalize({
         colList,
         colListPriority,
-        csv,
-        db,
-        rowList,
-        tableName
-    }) {
-// this function will create-or-replace temp <tablename> with <rowList>
-        let bufSharedList = [];
-        let jsbaton2 = jsbatonCreate();
-        let sqlCreateTable;
-        let sqlInsertRow;
-        // normalize and validate tableName
-        tableName = tableName || "__tmp1";
-        tableName = "temp." + JSON.stringify(tableName.replace((
-            /^temp\./
-        ), ""));
-        assertOrThrow((
-            /^temp\."[A-Z_a-z][0-9A-Z_a-z]*?"$/
-        ).test(tableName), "invalid tableName " + tableName);
-        // parse csv
-        if (!rowList && csv) {
-            rowList = jsonRowListFromCsv({
-                csv
-            });
-        }
-        rowList = jsonRowListNormalize({
-            colList,
-            colListPriority,
-            rowList
+        rowList
+    });
+    colList = rowList.shift();
+    sqlCreateTable = (
+        "DROP TABLE IF EXISTS " + tableName + ";"
+        + "CREATE TEMP TABLE " + tableName + "(" + colList.join(",") + ");"
+    );
+    sqlInsertRow = (
+        "INSERT INTO " + tableName + " VALUES("
+        + ",?".repeat(colList.length).slice(1) + ");"
+    );
+    rowList.forEach(function (row) {
+        row.forEach(function (val) {
+            jsbaton2 = jsbatonPushValue(jsbaton2, val, bufSharedList);
         });
-        colList = rowList.shift();
-        sqlCreateTable = (
-            "DROP TABLE IF EXISTS " + tableName + ";"
-            + "CREATE TEMP TABLE " + tableName + "(" + colList.join(",") + ");"
-        );
-        sqlInsertRow = (
-            "INSERT INTO " + tableName + " VALUES("
-            + ",?".repeat(colList.length).slice(1) + ");"
-        );
-        rowList.forEach(function (row) {
-            row.forEach(function (val) {
-                jsbaton2 = jsbatonPushValue(jsbaton2, val, bufSharedList);
-            });
-        });
-        await dbCallAsync("__dbTableInsertAsync", db, [
-            String(sqlCreateTable),
-            String(sqlInsertRow),
-            jsbaton2,
-            colList.length,
-            rowList.length
-        ]);
-    }
+    });
+    await dbCallAsync("__dbTableInsertAsync", db, [
+        String(sqlCreateTable),
+        String(sqlInsertRow),
+        jsbaton2,
+        colList.length,
+        rowList.length
+    ]);
+}
 
-    function jsbatonCreate(nalloc = 1024) {
+function jsbatonCreate(nalloc = 1024) {
 // this function will create buffer <jsbaton2>
-        let jsbaton2 = new DataView(new SharedArrayBuffer(nalloc));
-        // offset include nalloc, nused
-        jsbaton2.setInt32(4, 2 * 4, true);
-        return jsbaton2;
-    }
+    let jsbaton2 = new DataView(new SharedArrayBuffer(nalloc));
+    // offset include nalloc, nused
+    jsbaton2.setInt32(4, 2 * 4, true);
+    return jsbaton2;
+}
 
-    function jsbatonPushValue(jsbaton2, value, bufSharedList) {
+function jsbatonPushValue(jsbaton2, value, bufSharedList) {
 // this function will push <value> to buffer <jsbaton2>
-        let nn;
-        let nused;
-        let tmp;
-        let vsize;
-        let vtype;
-    /*
-    #define SQLITE_DATATYPE_BLOB            0x04
-    // #define SQLITE_DATATYPE_BLOB_0          0x14
-    #define SQLITE_DATATYPE_FLOAT           0x02
-    // #define SQLITE_DATATYPE_FLOAT_0         0x12
-    #define SQLITE_DATATYPE_INTEGER         0x01
-    #define SQLITE_DATATYPE_INTEGER_0       0x11
-    #define SQLITE_DATATYPE_INTEGER_1       0x21
-    #define SQLITE_DATATYPE_NULL            0x05
-    #define SQLITE_DATATYPE_SHAREDARRAYBUFFER       -0x01
-    #define SQLITE_DATATYPE_TEXT            0x03
-    #define SQLITE_DATATYPE_TEXT_0          0x13
-        //  1. false.bigint
-        //  2. false.boolean
-        //  3. false.function
-        //  4. false.null
-        //  5. false.number
-        //  6. false.objects
-        //  7. false.string
-        //  8. false.symbol
-        //  9. false.undefined
-        // 10. true.bigint
-        // 11. true.boolean
-        // 12. true.function
-        // 13. true.null
-        // 14. true.number
-        // 15. true.objects
-        // 16. true.string
-        // 17. true.symbol
-        // 18. true.undefined
-        // 19. true.buffer
+    let nn;
+    let nused;
+    let tmp;
+    let vsize;
+    let vtype;
+/*
+#define SQLITE_DATATYPE_BLOB            0x04
+// #define SQLITE_DATATYPE_BLOB_0          0x14
+#define SQLITE_DATATYPE_FLOAT           0x02
+// #define SQLITE_DATATYPE_FLOAT_0         0x12
+#define SQLITE_DATATYPE_INTEGER         0x01
+#define SQLITE_DATATYPE_INTEGER_0       0x11
+#define SQLITE_DATATYPE_INTEGER_1       0x21
+#define SQLITE_DATATYPE_NULL            0x05
+#define SQLITE_DATATYPE_SHAREDARRAYBUFFER       -0x01
+#define SQLITE_DATATYPE_TEXT            0x03
+#define SQLITE_DATATYPE_TEXT_0          0x13
+    //  1. false.bigint
+    //  2. false.boolean
+    //  3. false.function
+    //  4. false.null
+    //  5. false.number
+    //  6. false.objects
+    //  7. false.string
+    //  8. false.symbol
+    //  9. false.undefined
+    // 10. true.bigint
+    // 11. true.boolean
+    // 12. true.function
+    // 13. true.null
+    // 14. true.number
+    // 15. true.objects
+    // 16. true.string
+    // 17. true.symbol
+    // 18. true.undefined
+    // 19. true.buffer
+    // 20. true.SharedArrayBuffer
+*/
+    // 11. true.boolean
+    if (value === 1 || value === 1n) {
+        value = true;
+    }
+    switch (!vtype && Boolean(value) + "." + typeof(value)) {
+    //  1. false.bigint
+    case "false.bigint":
+    //  2. false.boolean
+    case "false.boolean":
+    //  5. false.number
+    case "false.number":
+        vtype = SQLITE_DATATYPE_INTEGER_0;
+        vsize = 0;
+        break;
+    //  3. false.function
+    case "false.function":
+    //  4. false.null
+    case "false.null":
+    //  6. false.object
+    case "false.object":
+    //  8. false.symbol
+    case "false.symbol":
+    //  9. false.undefined
+    case "false.undefined":
+    // 12. true.function
+    case "true.function":
+    // 13. true.null
+    case "true.null":
+    // 17. true.symbol
+    case "true.symbol":
+    // 18. true.undefined
+    case "true.undefined":
+        vtype = SQLITE_DATATYPE_NULL;
+        vsize = 0;
+        break;
+    //  7. false.string
+    case "false.string":
+        vtype = SQLITE_DATATYPE_TEXT_0;
+        vsize = 0;
+        break;
+    // 10. true.bigint
+    case "true.bigint":
+        vtype = SQLITE_DATATYPE_INTEGER;
+        vsize = 8;
+        break;
+    // 11. true.boolean
+    case "true.boolean":
+        vtype = SQLITE_DATATYPE_INTEGER_1;
+        vsize = 0;
+        break;
+    // 14. true.number
+    case "true.number":
+        vtype = SQLITE_DATATYPE_FLOAT;
+        vsize = 8;
+        break;
+    // 15. true.object
+    // 16. true.string
+    default:
         // 20. true.SharedArrayBuffer
-    */
-        // 11. true.boolean
-        if (value === 1 || value === 1n) {
-            value = true;
-        }
-        switch (!vtype && Boolean(value) + "." + typeof(value)) {
-        //  1. false.bigint
-        case "false.bigint":
-        //  2. false.boolean
-        case "false.boolean":
-        //  5. false.number
-        case "false.number":
-            vtype = SQLITE_DATATYPE_INTEGER_0;
-            vsize = 0;
-            break;
-        //  3. false.function
-        case "false.function":
-        //  4. false.null
-        case "false.null":
-        //  6. false.object
-        case "false.object":
-        //  8. false.symbol
-        case "false.symbol":
-        //  9. false.undefined
-        case "false.undefined":
-        // 12. true.function
-        case "true.function":
-        // 13. true.null
-        case "true.null":
-        // 17. true.symbol
-        case "true.symbol":
-        // 18. true.undefined
-        case "true.undefined":
-            vtype = SQLITE_DATATYPE_NULL;
-            vsize = 0;
-            break;
-        //  7. false.string
-        case "false.string":
-            vtype = SQLITE_DATATYPE_TEXT_0;
-            vsize = 0;
-            break;
-        // 10. true.bigint
-        case "true.bigint":
-            vtype = SQLITE_DATATYPE_INTEGER;
-            vsize = 8;
-            break;
-        // 11. true.boolean
-        case "true.boolean":
-            vtype = SQLITE_DATATYPE_INTEGER_1;
-            vsize = 0;
-            break;
-        // 14. true.number
-        case "true.number":
-            vtype = SQLITE_DATATYPE_FLOAT;
-            vsize = 8;
-            break;
-        // 15. true.object
-        // 16. true.string
-        default:
-            // 20. true.SharedArrayBuffer
-            if (value && value.constructor === SharedArrayBuffer) {
-                assertOrThrow(
-                    bufSharedList.length <= 0.5 * JSBATON_ARGC,
-                    (
-                        "too many SharedArrayBuffers "
-                        + `${bufSharedList.length} > ${0.5 * JSBATON_ARGC}`
-                    )
-                );
-                bufSharedList.push(new DataView(value));
-                vtype = SQLITE_DATATYPE_SHAREDARRAYBUFFER;
-                vsize = 4;
-                break;
-            }
-            // 19. true.buffer
-            if (ArrayBuffer.isView(value)) {
-                if (value.byteLength === 0) {
-                    vtype = SQLITE_DATATYPE_NULL;
-                    vsize = 0;
-                    break;
-                }
-                vtype = SQLITE_DATATYPE_BLOB;
-                vsize = 4 + value.byteLength;
-                break;
-            }
-            // 15. true.object
-            value = String(
-                typeof value === "string"
-                ? value
-                : typeof value.toJSON === "function"
-                ? value.toJSON()
-                : JSON.stringify(value)
-            );
-            // 16. true.string
-            value = new TextEncoder().encode(value);
-            vtype = SQLITE_DATATYPE_TEXT;
-            vsize = 4 + value.byteLength;
-        }
-        nused = jsbaton2.getInt32(4, true);
-        nn = nused + 1 + vsize;
-        assertOrThrow(
-            nn <= 0xffff_ffff,
-            "jsbaton cannot exceed 0xffff_ffff / 2,147,483,647 bytes"
-        );
-        // exponentially grow jsbaton2 as needed
-        if (jsbaton2.byteLength < nn) {
-            tmp = jsbaton2;
-            jsbaton2 = new DataView(new SharedArrayBuffer(
-                Math.min(2 ** Math.ceil(Math.log2(nn)), 0x7fff_ffff)
-            ));
-            // update nAlloc
-            jsbaton2.setInt32(0, jsbaton2.byteLength, true);
-            // copy tmp to jsbaton2
-            new Uint8Array(
-                jsbaton2.buffer,
-                jsbaton2.byteOffset,
-                nused
-            ).set(new Uint8Array(tmp.buffer, tmp.byteOffset, nused), 0);
-        }
-        // append vtype
-        jsbaton2.setUint8(nused, vtype);
-        // update nused
-        jsbaton2.setInt32(4, nused + 1 + vsize, true);
-        // handle blob-value
-        switch (vtype) {
-        case SQLITE_DATATYPE_BLOB:
-        case SQLITE_DATATYPE_TEXT:
-            vsize -= 4;
-            // append vsize
+        if (value && value.constructor === SharedArrayBuffer) {
             assertOrThrow(
-                0 <= vsize && vsize <= 1_000_000_000,
-                "sqlite-blob must be within 0 to 1,000,000,000 inclusive bytes"
-            );
-            jsbaton2.setInt32(nused + 1, vsize, true);
-            // append blob-value
-            new Uint8Array(
-                jsbaton2.buffer,
-                nused + 1 + 4,
-                vsize
-            ).set(new Uint8Array(value.buffer, value.byteOffset, vsize), 0);
-            break;
-        case SQLITE_DATATYPE_FLOAT:
-            jsbaton2.setFloat64(nused + 1, value, true);
-            break;
-        case SQLITE_DATATYPE_INTEGER:
-            assertOrThrow(
-                -9223372036854775808n <= value && value <= 9223372036854775807n,
+                bufSharedList.length <= 0.5 * JSBATON_ARGC,
                 (
-                    "sqlite-integer must be within inclusive range "
-                    + "-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
+                    "too many SharedArrayBuffers "
+                    + `${bufSharedList.length} > ${0.5 * JSBATON_ARGC}`
                 )
             );
-            jsbaton2.setBigInt64(nused + 1, value, true);
-            break;
-        case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
-            vsize = value.byteLength;
-            // append vsize
-            assertOrThrow(
-                0 <= vsize && vsize <= 1_000_000_000,
-                "sqlite-blob must be within 0 to 1,000,000,000 inclusive bytes"
-            );
-            jsbaton2.setInt32(nused + 1, vsize, true);
+            bufSharedList.push(new DataView(value));
+            vtype = SQLITE_DATATYPE_SHAREDARRAYBUFFER;
+            vsize = 4;
             break;
         }
-        return jsbaton2;
+        // 19. true.buffer
+        if (ArrayBuffer.isView(value)) {
+            if (value.byteLength === 0) {
+                vtype = SQLITE_DATATYPE_NULL;
+                vsize = 0;
+                break;
+            }
+            vtype = SQLITE_DATATYPE_BLOB;
+            vsize = 4 + value.byteLength;
+            break;
+        }
+        // 15. true.object
+        value = String(
+            typeof value === "string"
+            ? value
+            : typeof value.toJSON === "function"
+            ? value.toJSON()
+            : JSON.stringify(value)
+        );
+        // 16. true.string
+        value = new TextEncoder().encode(value);
+        vtype = SQLITE_DATATYPE_TEXT;
+        vsize = 4 + value.byteLength;
     }
+    nused = jsbaton2.getInt32(4, true);
+    nn = nused + 1 + vsize;
+    assertOrThrow(
+        nn <= 0xffff_ffff,
+        "jsbaton cannot exceed 0xffff_ffff / 2,147,483,647 bytes"
+    );
+    // exponentially grow jsbaton2 as needed
+    if (jsbaton2.byteLength < nn) {
+        tmp = jsbaton2;
+        jsbaton2 = new DataView(new SharedArrayBuffer(
+            Math.min(2 ** Math.ceil(Math.log2(nn)), 0x7fff_ffff)
+        ));
+        // update nAlloc
+        jsbaton2.setInt32(0, jsbaton2.byteLength, true);
+        // copy tmp to jsbaton2
+        new Uint8Array(
+            jsbaton2.buffer,
+            jsbaton2.byteOffset,
+            nused
+        ).set(new Uint8Array(tmp.buffer, tmp.byteOffset, nused), 0);
+    }
+    // append vtype
+    jsbaton2.setUint8(nused, vtype);
+    // update nused
+    jsbaton2.setInt32(4, nused + 1 + vsize, true);
+    // handle blob-value
+    switch (vtype) {
+    case SQLITE_DATATYPE_BLOB:
+    case SQLITE_DATATYPE_TEXT:
+        vsize -= 4;
+        // append vsize
+        assertOrThrow(
+            0 <= vsize && vsize <= 1_000_000_000,
+            "sqlite-blob must be within 0 to 1,000,000,000 inclusive bytes"
+        );
+        jsbaton2.setInt32(nused + 1, vsize, true);
+        // append blob-value
+        new Uint8Array(
+            jsbaton2.buffer,
+            nused + 1 + 4,
+            vsize
+        ).set(new Uint8Array(value.buffer, value.byteOffset, vsize), 0);
+        break;
+    case SQLITE_DATATYPE_FLOAT:
+        jsbaton2.setFloat64(nused + 1, value, true);
+        break;
+    case SQLITE_DATATYPE_INTEGER:
+        assertOrThrow(
+            -9223372036854775808n <= value && value <= 9223372036854775807n,
+            (
+                "sqlite-integer must be within inclusive range "
+                + "-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
+            )
+        );
+        jsbaton2.setBigInt64(nused + 1, value, true);
+        break;
+    case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
+        vsize = value.byteLength;
+        // append vsize
+        assertOrThrow(
+            0 <= vsize && vsize <= 1_000_000_000,
+            "sqlite-blob must be within 0 to 1,000,000,000 inclusive bytes"
+        );
+        jsbaton2.setInt32(nused + 1, vsize, true);
+        break;
+    }
+    return jsbaton2;
+}
 
-    function jsonRowListFromCsv({
-        csv
-    }) {
+function jsonRowListFromCsv({
+    csv
+}) {
 // this function will convert <csv>-text to json list-of-list
 /*
 https://tools.ietf.org/html/rfc4180#section-2
@@ -704,37 +703,37 @@ Definition of the CSV Format
     another double quote.  For example:
     "aaa","b""bb","ccc"
 */
-        let match;
-        let quote = false;
-        let rgx = (
-            /(.*?)(""|"|,|\n)/g
-        );
-        let row = [];
-        let rowList = [];
-        let val = "";
-        // normalize "\r\n" to "\n"
-        csv = csv.replace((
-            /\r\n?/g
-        ), "\n");
+    let match;
+    let quote = false;
+    let rgx = (
+        /(.*?)(""|"|,|\n)/g
+    );
+    let row = [];
+    let rowList = [];
+    let val = "";
+    // normalize "\r\n" to "\n"
+    csv = csv.replace((
+        /\r\n?/g
+    ), "\n");
 /*
 2.  The last record in the file may or may not have an ending line
     break.  For example:
     aaa,bbb,ccc CRLF
     zzz,yyy,xxx
 */
-        if (csv[csv.length - 1] !== "\n") {
-            csv += "\n";
+    if (csv[csv.length - 1] !== "\n") {
+        csv += "\n";
+    }
+    while (true) {
+        match = rgx.exec(csv);
+        if (!match) {
+            return rowList;
         }
-        while (true) {
-            match = rgx.exec(csv);
-            if (!match) {
-                return rowList;
-            }
-            // build val
-            val += match[1];
-            match = match[2];
-            switch (quote + "." + match) {
-            case "false.,":
+        // build val
+        val += match[1];
+        match = match[2];
+        switch (quote + "." + match) {
+        case "false.,":
 /*
 4.  Within the header and each record, there may be one or more
     fields, separated by commas.  Each line should contain the same
@@ -743,12 +742,12 @@ Definition of the CSV Format
     record must not be followed by a comma.  For example:
     aaa,bbb,ccc
 */
-                // delimit val
-                row.push(val);
-                val = "";
-                break;
-            case "false.\"":
-            case "true.\"":
+            // delimit val
+            row.push(val);
+            val = "";
+            break;
+        case "false.\"":
+        case "true.\"":
 /*
 5.  Each field may or may not be enclosed in double quotes (however
     some programs, such as Microsoft Excel, do not use double quotes
@@ -757,43 +756,43 @@ Definition of the CSV Format
     "aaa","bbb","ccc" CRLF
     zzz,yyy,xxx
 */
-                assertOrThrow(quote || val === "", (
-                    "invalid csv - naked double-quote in unquoted-string "
-                    + JSON.stringify(val + "\"")
-                ));
-                quote = !quote;
-                break;
-            // backtrack for naked-double-double-quote
-            case "false.\"\"":
-                quote = true;
-                rgx.lastIndex -= 1;
-                break;
-            case "false.\n":
-            case "false.\r\n":
+            assertOrThrow(quote || val === "", (
+                "invalid csv - naked double-quote in unquoted-string "
+                + JSON.stringify(val + "\"")
+            ));
+            quote = !quote;
+            break;
+        // backtrack for naked-double-double-quote
+        case "false.\"\"":
+            quote = true;
+            rgx.lastIndex -= 1;
+            break;
+        case "false.\n":
+        case "false.\r\n":
 /*
 1.  Each record is located on a separate line, delimited by a line
     break (CRLF).  For example:
     aaa,bbb,ccc CRLF
     zzz,yyy,xxx CRLF
 */
-                // delimit val
-                row.push(val);
-                val = "";
-                // append row
-                rowList.push(row);
-                // reset row
-                row = [];
-                break;
-            case "true.\"\"":
+            // delimit val
+            row.push(val);
+            val = "";
+            // append row
+            rowList.push(row);
+            // reset row
+            row = [];
+            break;
+        case "true.\"\"":
 /*
 7.  If double-quotes are used to enclose fields, then a double-quote
     appearing inside a field must be escaped by preceding it with
     another double quote.  For example:
     "aaa","b""bb","ccc"
 */
-                val += "\"";
-                break;
-            default:
+            val += "\"";
+            break;
+        default:
 /*
 6.  Fields containing line breaks (CRLF), double quotes, and commas
     should be enclosed in double-quotes.  For example:
@@ -801,166 +800,165 @@ Definition of the CSV Format
     bb","ccc" CRLF
     zzz,yyy,xxx
 */
-                assertOrThrow(quote, (
-                    "invalid csv - illegal character in unquoted-string "
-                    + JSON.stringify(match)
-                ));
-                val += match;
-            }
+            assertOrThrow(quote, (
+                "invalid csv - illegal character in unquoted-string "
+                + JSON.stringify(match)
+            ));
+            val += match;
         }
     }
+}
 
-    function jsonRowListNormalize({
-        colList,
-        colListPriority,
-        rowList
-    }) {
+function jsonRowListNormalize({
+    colList,
+    colListPriority,
+    rowList
+}) {
 // this function will normalize <rowList> with given <colList>
-        let colDict = {};
-        if (!(rowList?.length > 0)) {
-            throw new Error("invalid rowList " + JSON.stringify(rowList));
-        }
-        // convert list-of-dict to list-of-list
-        if (!Array.isArray(rowList[0])) {
-            colList = new Map(Array.from(
-                colList || []
-            ).map(function (key, ii) {
-                return [
-                    key, ii
-                ];
-            }));
-            rowList = rowList.map(function (row) {
-                Object.keys(row).forEach(function (key) {
-                    if (!colList.has(key)) {
-                        colList.set(key, colList.size);
-                    }
-                });
-                return Array.from(colList.keys()).map(function (key) {
-                    return row[key];
-                });
-            });
-            colList = Array.from(colList.keys());
-        }
-        if (!colList) {
-            colList = rowList[0];
-            rowList = rowList.slice(1);
-        }
-        if (!(colList?.length > 0)) {
-            throw new Error("invalid colList " + JSON.stringify(colList));
-        }
-        colList = colList.map(function (key) {
-            // sanitize column-name
-            key = String(key).replace((
-                /^[^A-Z_a-z]/
-            ), "c_" + key);
-            key = key.replace((
-                /[^0-9A-Z_a-z]/g
-            ), "_");
-            // for duplicate column-name, add ordinal _2, _3, _4, ...
-            colDict[key] = colDict[key] || 0;
-            colDict[key] += 1;
-            if (colDict[key] > 1) {
-                key += "_" + colDict[key];
-            }
-            return key;
-        });
-        // normalize rowList
-        rowList = rowList.map(function (row) {
-            return (
-                row.length === colList.length
-                ? row
-                : colList.map(function (ignore, ii) {
-                    return row[ii];
-                })
-            );
-        });
-        if (!colListPriority) {
-            rowList.unshift(colList);
-            return rowList;
-        }
-        // sort colList by colListPriority
-        colListPriority = new Map([].concat(
-            colListPriority,
-            colList
-        ).map(function (key) {
+    let colDict = {};
+    if (!(rowList?.length > 0)) {
+        throw new Error("invalid rowList " + JSON.stringify(rowList));
+    }
+    // convert list-of-dict to list-of-list
+    if (!Array.isArray(rowList[0])) {
+        colList = new Map(Array.from(
+            colList || []
+        ).map(function (key, ii) {
             return [
-                key, colList.indexOf(key)
+                key, ii
             ];
-        }).filter(function ([
-            ignore, ii
-        ]) {
-            return ii >= 0;
         }));
-        colList = Array.from(colListPriority.keys());
-        colListPriority = Array.from(colListPriority.values());
         rowList = rowList.map(function (row) {
-            return colListPriority.map(function (ii) {
-                return row[ii];
+            Object.keys(row).forEach(function (key) {
+                if (!colList.has(key)) {
+                    colList.set(key, colList.size);
+                }
+            });
+            return Array.from(colList.keys()).map(function (key) {
+                return row[key];
             });
         });
+        colList = Array.from(colList.keys());
+    }
+    if (!colList) {
+        colList = rowList[0];
+        rowList = rowList.slice(1);
+    }
+    if (!(colList?.length > 0)) {
+        throw new Error("invalid colList " + JSON.stringify(colList));
+    }
+    colList = colList.map(function (key) {
+        // sanitize column-name
+        key = String(key).replace((
+            /^[^A-Z_a-z]/
+        ), "c_" + key);
+        key = key.replace((
+            /[^0-9A-Z_a-z]/g
+        ), "_");
+        // for duplicate column-name, add ordinal _2, _3, _4, ...
+        colDict[key] = colDict[key] || 0;
+        colDict[key] += 1;
+        if (colDict[key] > 1) {
+            key += "_" + colDict[key];
+        }
+        return key;
+    });
+    // normalize rowList
+    rowList = rowList.map(function (row) {
+        return (
+            row.length === colList.length
+            ? row
+            : colList.map(function (ignore, ii) {
+                return row[ii];
+            })
+        );
+    });
+    if (!colListPriority) {
         rowList.unshift(colList);
         return rowList;
     }
+    // sort colList by colListPriority
+    colListPriority = new Map([].concat(
+        colListPriority,
+        colList
+    ).map(function (key) {
+        return [
+            key, colList.indexOf(key)
+        ];
+    }).filter(function ([
+        ignore, ii
+    ]) {
+        return ii >= 0;
+    }));
+    colList = Array.from(colListPriority.keys());
+    colListPriority = Array.from(colListPriority.values());
+    rowList = rowList.map(function (row) {
+        return colListPriority.map(function (ii) {
+            return row[ii];
+        });
+    });
+    rowList.unshift(colList);
+    return rowList;
+}
 
-    addon = requireCjs(
-        "./_binary_sqlmath"
-        + "_napi8"
-        + "_" + process.platform
-        + "_" + process.arch
-        + ".node"
-    );
-    dbFinalizationRegistry = new FinalizationRegistry(function ({
-        afterFinalization,
-        ptr
-    }) {
+addon = requireCjs(
+    "./_binary_sqlmath"
+    + "_napi8"
+    + "_" + process.platform
+    + "_" + process.arch
+    + ".node"
+);
+dbFinalizationRegistry = new FinalizationRegistry(function ({
+    afterFinalization,
+    ptr
+}) {
 // This function will auto-close any open sqlite3-db-pointer,
 // after its js-wrapper has been garbage-collected
-        cCallAsync("__dbCloseAsync", [
-            ptr[0]
-        ]);
-        if (afterFinalization) {
-            afterFinalization();
-        }
-    });
-    Object.assign(local, jslint, {
-        SQLITE_MAX_LENGTH2,
-        SQLITE_OPEN_AUTOPROXY,
-        SQLITE_OPEN_CREATE,
-        SQLITE_OPEN_DELETEONCLOSE,
-        SQLITE_OPEN_EXCLUSIVE,
-        SQLITE_OPEN_FULLMUTEX,
-        SQLITE_OPEN_MAIN_DB,
-        SQLITE_OPEN_MAIN_JOURNAL,
-        SQLITE_OPEN_MEMORY,
-        SQLITE_OPEN_NOFOLLOW,
-        SQLITE_OPEN_NOMUTEX,
-        SQLITE_OPEN_PRIVATECACHE,
-        SQLITE_OPEN_READONLY,
-        SQLITE_OPEN_READWRITE,
-        SQLITE_OPEN_SHAREDCACHE,
-        SQLITE_OPEN_SUBJOURNAL,
-        SQLITE_OPEN_SUPER_JOURNAL,
-        SQLITE_OPEN_TEMP_DB,
-        SQLITE_OPEN_TEMP_JOURNAL,
-        SQLITE_OPEN_TRANSIENT_DB,
-        SQLITE_OPEN_URI,
-        SQLITE_OPEN_WAL,
-        assertNumericalEqual,
-        cCallAsync,
-        dbCloseAsync,
-        dbExecAsync,
-        dbExecWithRetryAsync,
-        dbGetLastBlobAsync,
-        dbMemoryLoadAsync,
-        dbMemorySaveAsync,
-        dbOpenAsync,
-        dbTableInsertAsync,
-        debugInline
-    });
-    if (process.env.npm_config_mode_test) {
-        // mock consoleError
-        consoleError = noop;
+    cCallAsync("__dbCloseAsync", [
+        ptr[0]
+    ]);
+    if (afterFinalization) {
+        afterFinalization();
     }
-}());
+});
+Object.assign(local, jslint, {
+    SQLITE_MAX_LENGTH2,
+    SQLITE_OPEN_AUTOPROXY,
+    SQLITE_OPEN_CREATE,
+    SQLITE_OPEN_DELETEONCLOSE,
+    SQLITE_OPEN_EXCLUSIVE,
+    SQLITE_OPEN_FULLMUTEX,
+    SQLITE_OPEN_MAIN_DB,
+    SQLITE_OPEN_MAIN_JOURNAL,
+    SQLITE_OPEN_MEMORY,
+    SQLITE_OPEN_NOFOLLOW,
+    SQLITE_OPEN_NOMUTEX,
+    SQLITE_OPEN_PRIVATECACHE,
+    SQLITE_OPEN_READONLY,
+    SQLITE_OPEN_READWRITE,
+    SQLITE_OPEN_SHAREDCACHE,
+    SQLITE_OPEN_SUBJOURNAL,
+    SQLITE_OPEN_SUPER_JOURNAL,
+    SQLITE_OPEN_TEMP_DB,
+    SQLITE_OPEN_TEMP_JOURNAL,
+    SQLITE_OPEN_TRANSIENT_DB,
+    SQLITE_OPEN_URI,
+    SQLITE_OPEN_WAL,
+    assertNumericalEqual,
+    cCallAsync,
+    dbCloseAsync,
+    dbExecAsync,
+    dbExecWithRetryAsync,
+    dbGetLastBlobAsync,
+    dbMemoryLoadAsync,
+    dbMemorySaveAsync,
+    dbOpenAsync,
+    dbTableInsertAsync,
+    debugInline
+});
+if (process.env.npm_config_mode_test) {
+    // mock consoleError
+    consoleError = noop;
+}
 
 export default Object.freeze(local);
