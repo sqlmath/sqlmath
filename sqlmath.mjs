@@ -298,7 +298,7 @@ file sqlmath.js
     }) {
 // This function will load <filename> to <db>
         assertOrThrow(filename, "invalid filename " + filename);
-        await dbCallAsync("__dbMemoryLoadOrSave", db, [
+        await dbCallAsync("__dbMemoryLoadOrSaveAsync", db, [
             String(filename), 0
         ]);
     }
@@ -309,7 +309,7 @@ file sqlmath.js
     }) {
 // This function will save <db> to <filename>
         assertOrThrow(filename, "invalid filename " + filename);
-        await dbCallAsync("__dbMemoryLoadOrSave", db, [
+        await dbCallAsync("__dbMemoryLoadOrSaveAsync", db, [
             String(filename), 1
         ]);
     }

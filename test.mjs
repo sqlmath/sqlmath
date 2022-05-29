@@ -85,7 +85,7 @@ jstestDescribe((
         ]) {
             let valActual;
             valActual = String(
-                await cCallAsync("noopAsync", [
+                await cCallAsync("__dbNoopAsync", [
                     valInput
                 ])
             )[0][0];

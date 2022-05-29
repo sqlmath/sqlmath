@@ -225,7 +225,7 @@ shRawLibFetch
 -#include "sqlite3ext.h"
 +#include "sqlite3ext.h"
 +// hack-sqlite - init sqlite3_api
-+static const sqlite3_api_routines *sqlite3_api;
++static const sqlite3_api_routines *sqlite3_api = NULL;
 
 -#include <zlib.h>
 +// hack-sqlite - inline zlib.h
@@ -323,7 +323,7 @@ file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/carray.c
 */
 #include "sqlite3ext.h"
 // hack-sqlite - init sqlite3_api
-static const sqlite3_api_routines *sqlite3_api;
+static const sqlite3_api_routines *sqlite3_api = NULL;
 // SQLITE_EXTENSION_INIT1
 #include <assert.h>
 #include <string.h>

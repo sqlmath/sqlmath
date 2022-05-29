@@ -38,19 +38,10 @@ extern "C" {
 #define SQLMATH_H
 
 
-// *INDENT-OFF*
-#ifdef SQLMATH_NAPI
-    #include <sqlite3.h>
-#else // SQLMATH_NAPI
-    #include <sqlite3ext.h>
-    static const sqlite3_api_routines *sqlite3_api;
-#endif // SQLMATH_NAPI
-// *INDENT-ON*
-
-
 #include <assert.h>
 #include <float.h>
 #include <math.h>
+#include <sqlite3ext.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,6 +66,7 @@ extern "C" {
 #define JS_MIN_SAFE_INTEGER -0x1fffffffffffff
 #define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
+#define NAPI_VERSION 8
 #define SGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
 #define SIZEOF_MESSAGE_DEFAULT 1024
 #define SQLITE_DATATYPE_BLOB            0x04
@@ -100,10 +92,34 @@ extern "C" {
 // this function will exec <sql> and if <errcode> is not ok,
 // throw <baton->errmsg>
 #define JSBATON_ASSERT_OK() \
-    if (errcode != 0) { JSBATON_ERRCODE_SAVE(); goto catch_error; }
+    if (errcode != 0) { \
+        jsbatonErrcodeSave(baton, db, errcode, __func__, __FILE__, __LINE__); \
+        goto catch_error; \
+    }
 
-#define JSBATON_ERRCODE_SAVE() \
-    jsbatonErrcodeSave(baton, db, errcode, __func__, __FILE__, __LINE__);
+// this function will if <cond> is falsy, terminate process with <msg>
+#define NAPI_ASSERT_FATAL(cond, msg) \
+    if (!(cond)) { \
+        napi_fatal_error(__func__, NAPI_AUTO_LENGTH , msg, NAPI_AUTO_LENGTH); \
+    }
+
+// this function will assert <errcode> == napi_ok in <env>
+#define NAPI_ASSERT_OK() \
+    if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) { \
+        return 0; \
+    }
+
+#define NAPI_EXPORT_MEMBER(name) \
+    {#name, NULL, name, NULL, NULL, NULL, napi_default, NULL}
+
+#define NAPI_JSPROMISE_CREATE(func) \
+    static void __##napi##_##func(napi_env env, void *data) { \
+        UNUSED(env); \
+        func((Jsbaton *) data); \
+    } \
+    static napi_value __##func##Async(napi_env env, napi_callback_info info) { \
+        return jspromiseCreate(env, info, __##napi##_##func); \
+    } \
 
 #define SQLITE3_CREATE_FUNCTION1(func, argc) \
     errcode = sqlite3_create_function(db, #func, argc, \
@@ -120,12 +136,26 @@ extern "C" {
 #define SQLMATH_IS_OK_OR_RETURN_ERRCODE() \
     if (errcode != SQLITE_OK) {return errcode;}
 
+#define STR99_APPEND_CHAR2(cc) \
+    if (!responseType) { jsonAppendChar(str99, cc); STR99_ASSERT_NOT_NOMEM(); }
+
+#define STR99_APPEND_JSON(zz, nn) \
+    jsonAppendString(str99, zz, nn); STR99_ASSERT_NOT_NOMEM();
+
+#define STR99_APPEND_RAW(zz, nn) \
+    jsonAppendRaw(str99, zz, nn); STR99_ASSERT_NOT_NOMEM();
+
+#define STR99_ASSERT_NOT_NOMEM() \
+    if (str99->bErr != 0) { errcode = SQLITE_NOMEM; JSBATON_ASSERT_OK(); }
+
 #define STR99_RESULT_ERROR_NOMEM_IF_BERR() \
     if (str99->bErr != 0) { sqlite3_result_error_nomem(context); return; }
 
 
 // file sqlmath_h - sqlite3
 // *INDENT-OFF*
+SQLITE_API const sqlite3_api_routines *sqlite3ApiGet();
+static const sqlite3_api_routines *sqlite3_api = NULL;
 typedef struct FuncDef FuncDef;
 typedef struct JsonString JsonString;
 typedef struct Vdbe Vdbe;
@@ -234,13 +264,27 @@ SQLMATH_API SQLITE_NOINLINE void jsbatonErrcodeSave(
 
 
 // file sqlmath_h - misc
-SQLMATH_API int dbExec(
-    sqlite3 * db,               /* The database on which the SQL executes */
+SQLMATH_API void dbClose(
     Jsbaton * baton
 );
 
-SQLMATH_API int dbTableInsert(
-    sqlite3 * db,               /* The database on which the SQL executes */
+SQLMATH_API void dbExec(
+    Jsbaton * baton
+);
+
+SQLMATH_API void dbMemoryLoadOrSave(
+    Jsbaton * baton
+);
+
+SQLMATH_API void dbNoop(
+    Jsbaton * baton
+);
+
+SQLMATH_API void dbOpen(
+    Jsbaton * baton
+);
+
+SQLMATH_API void dbTableInsert(
     Jsbaton * baton
 );
 
@@ -303,7 +347,7 @@ file sqlmath_ext - start
 #ifdef SQLITE3_EXT_C2
 
 
-// file sqlmath_ext - dbExec - start
+// file sqlmath_ext - dbXxx - start
 typedef struct DbExecBindElem {
     const char *buf;
     char *key;
@@ -311,20 +355,32 @@ typedef struct DbExecBindElem {
     char datatype;
 } DbExecBindElem;
 
-SQLMATH_API int dbExec(
-    sqlite3 * db,               /* The database on which the SQL executes */
+// track how many sqlite-db open
+static int dbCount = 0;
+
+SQLMATH_API void dbClose(
+    Jsbaton * baton
+) {
+// int sqlite3_close_v2(sqlite3*);
+    // declare var
+    int errcode = 0;
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
+    // call c-function
+    errcode = sqlite3_close_v2(db);
+    JSBATON_ASSERT_OK();
+    if (db != NULL) {
+        dbCount -= 1;
+        // fprintf(stderr, "\nsqlite - __dbCloseAsync(%d)\n", dbCount);
+    }
+  catch_error:
+    (void) 0;
+}
+
+SQLMATH_API void dbExec(
     Jsbaton * baton
 ) {
 // This function will run <zSql> in <db> and save any result (list of tables
 // containing rows from SELECT/pragma/etc) as serialized json-string in <str99>.
-#define STR99_APPEND_CHAR2(cc) \
-    if (!responseType) { jsonAppendChar(str99, cc); STR99_ASSERT_NOT_NOMEM(); }
-#define STR99_APPEND_JSON(zz, nn) \
-    jsonAppendString(str99, zz, nn); STR99_ASSERT_NOT_NOMEM();
-#define STR99_APPEND_RAW(zz, nn) \
-    jsonAppendRaw(str99, zz, nn); STR99_ASSERT_NOT_NOMEM();
-#define STR99_ASSERT_NOT_NOMEM() \
-    if (str99->bErr != 0) { errcode = SQLITE_NOMEM; goto catch_error; }
     // coverage-hack
     noop();
     // declare var0
@@ -348,6 +404,7 @@ SQLMATH_API int dbExec(
     int responseType = (int) baton->argint64[5];
     int64_t *pnShared = baton->argint64 + 6;
     int64_t iTmp = 0;
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
     static const char bindPrefix[] = "$:@";
     // mutext enter
@@ -417,6 +474,7 @@ SQLMATH_API int dbExec(
             zSql += 1;
         }
         errcode = sqlite3_prepare_v2(db, zSql, -1, &pStmt, &zTmp);
+        JSBATON_ASSERT_OK();
         if (errcode != 0 || *zSql == '\x00') {
             break;
         }
@@ -502,11 +560,10 @@ SQLMATH_API int dbExec(
             }
             // if no next row, then break
             if (errcode != SQLITE_ROW) {
+                // cleanup pStmt
                 sqlite3_finalize(pStmt);
                 pStmt = NULL;
-                if (errcode != SQLITE_OK) {
-                    goto catch_error;
-                }
+                JSBATON_ASSERT_OK();
                 break;
             }
             // insert row of column-names
@@ -613,16 +670,120 @@ SQLMATH_API int dbExec(
     sqlite3_free(bindList);
     if (errcode != SQLITE_OK) {
         jsonReset(str99);
-        // handle errcode
-        JSBATON_ERRCODE_SAVE();
     }
     // mutext leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
-    return errcode;
 }
 
-SQLMATH_API int dbTableInsert(
-    sqlite3 * db,               /* The database on which the SQL executes */
+SQLMATH_API void dbMemoryLoadOrSave(
+    Jsbaton * baton
+) {
+// This function will load/save filename <bufin[0]> to/from <db>
+    // declare var0
+    int errcode = 0;
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
+    // declare var
+    sqlite3 *pInMemory = db;
+    const char *zFilename = baton->bufin[1];
+    int isSave = baton->argint64[2];
+/*
+** https://www.sqlite.org/backup.html
+** This function is used to load the contents of a database file on disk
+** into the "main" database of open database connection pInMemory, or
+** to save the current contents of the database opened by pInMemory into
+** a database file on disk. pInMemory is probably an in-memory database,
+** but this function will also work fine if it is not.
+**
+** Parameter zFilename points to a nul-terminated string containing the
+** name of the database file on disk to load from or save to. If parameter
+** isSave is non-zero, then the contents of the file zFilename are
+** overwritten with the contents of the database opened by pInMemory. If
+** parameter isSave is zero, then the contents of the database opened by
+** pInMemory are replaced by data loaded from the file zFilename.
+**
+** If the operation is successful, SQLITE_OK is returned. Otherwise, if
+** an error occurs, an SQLite error code is returned.
+*/
+    int rc;                     /* Function return code */
+    sqlite3 *pFile;             /* Database connection opened on zFilename */
+    sqlite3_backup *pBackup;    /* Backup object used to copy data */
+    sqlite3 *pTo;               /* Database to copy to (pFile or pInMemory) */
+    sqlite3 *pFrom;             /* Database to copy from (pFile or pInMemory) */
+    /* Open the database file identified by zFilename. Exit early if this fails
+     ** for any reason. */
+    rc = sqlite3ApiGet()->open(zFilename, &pFile);
+    if (rc == SQLITE_OK) {
+        /* If this is a 'load' operation (isSave==0), then data is copied
+         ** from the database file just opened to database pInMemory.
+         ** Otherwise, if this is a 'save' operation (isSave==1), then data
+         ** is copied from pInMemory to pFile.  Set the variables pFrom and
+         ** pTo accordingly. */
+        pFrom = (isSave ? pInMemory : pFile);
+        pTo = (isSave ? pFile : pInMemory);
+
+        /* Set up the backup procedure to copy from the "main" database of
+         ** connection pFile to the main database of connection pInMemory.
+         ** If something goes wrong, pBackup will be set to NULL and an error
+         ** code and message left in connection pTo.
+         **
+         ** If the backup object is successfully created, call backup_step()
+         ** to copy data from pFile to pInMemory. Then call backup_finish()
+         ** to release resources associated with the pBackup object.  If an
+         ** error occurred, then an error code and message will be left in
+         ** connection pTo. If no error occurred, then the error code belonging
+         ** to pTo is set to SQLITE_OK.
+         */
+        pBackup = sqlite3_backup_init(pTo, "main", pFrom, "main");
+        if (pBackup) {
+            (void) sqlite3_backup_step(pBackup, -1);
+            (void) sqlite3_backup_finish(pBackup);
+        }
+        rc = sqlite3_errcode(pTo);
+    }
+    /* Close the database connection opened on database file zFilename
+     ** and return the result of this function. */
+    (void) sqlite3_close(pFile);
+    // return rc;
+    errcode = rc;
+    JSBATON_ASSERT_OK();
+  catch_error:
+    (void) 0;
+}
+
+SQLMATH_API void dbNoop(
+    Jsbaton * baton
+) {
+// this function will do nothing
+    UNUSED(baton);
+}
+
+SQLMATH_API void dbOpen(
+    Jsbaton * baton
+) {
+// int sqlite3_open_v2(
+//   const char *filename,   /* Database filename (UTF-8) */
+//   sqlite3 **ppDb,         /* OUT: SQLite db handle */
+//   int flags,              /* Flags */
+//   const char *zVfs        /* Name of VFS module to use */
+// );
+    // declare var
+    int errcode = 0;
+    sqlite3 *db = NULL;
+    // call c-function
+    errcode = sqlite3ApiGet()->open_v2(baton->bufin[0], // filename
+        &db,                    // db
+        (int) baton->argint64[2],       // flags
+        NULL);
+    JSBATON_ASSERT_OK();
+    dbCount += 1;
+    // fprintf(stderr, "\nsqlite - __dbOpenAsync(%d)\n", dbCount);
+    // save result
+    baton->argint64[0] = (int64_t) (intptr_t) db;
+  catch_error:
+    (void) 0;
+}
+
+SQLMATH_API void dbTableInsert(
     Jsbaton * baton
 ) {
 // This function will run <baton>->bufin[1] in <db> and insert rows
@@ -638,6 +799,7 @@ SQLMATH_API int dbTableInsert(
     int nCol = (int) baton->argint64[4];
     int nRow = (int) baton->argint64[5];
     size_t nLen = 0;
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
     sqlite3_stmt *pStmt = NULL;
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
@@ -735,7 +897,6 @@ SQLMATH_API int dbTableInsert(
     sqlite3_finalize(pStmt);
     // mutext leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
-    return errcode;
 }
 
 SQLMATH_API SQLITE_NOINLINE void jsbatonErrcodeSave(
@@ -786,7 +947,7 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
     return (const char *) buf;
 }
 
-// file sqlmath_ext - dbExec - end
+// file sqlmath_ext - dbXxx - end
 
 
 // file sqlmath_ext - jenks - start
@@ -1447,56 +1608,15 @@ file sqlmath_ext - end
 file sqlmath_napi - start
 */
 #ifdef SQLMATH_NAPI
-// #if defined SQLMATH_NAPI || defined EMSCRIPTEN
 
 
-// *INDENT-OFF*
-#ifdef SQLMATH_NAPI
-    #ifdef WIN32
-    #include <windows.h>
-    #endif
-    #include <node_api.h>
-// #else
-//     #define napi_ok (0)
-//     #include <stdbool.h>
-//     typedef uint8_t napi_env;
+#ifdef WIN32
+#include <windows.h>
 #endif
-// *INDENT-ON*
+#include <node_api.h>
 
-
-#define NAPI_VERSION 8
 
 // file sqlmath_napi - assert
-// this function will if <cond> is falsy, terminate process with <msg>
-#define NAPI_ASSERT_FATAL(cond, msg) \
-    if (!(cond)) { \
-        napi_fatal_error(__func__, NAPI_AUTO_LENGTH , msg, NAPI_AUTO_LENGTH); \
-    }
-
-// this function will assert <errcode> == napi_ok in <env>
-#define NAPI_ASSERT_OK() \
-    if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) { \
-        return 0; \
-    }
-
-#define NAPI_EXPORT_MEMBER(name) \
-    {#name, NULL, name, NULL, NULL, NULL, napi_default, NULL}
-
-#define NAPI_JSPROMISE_CREATE(func) \
-    __##func(void *data); \
-    static void _##func(napi_env env, void *data) { \
-        UNUSED(env); \
-        __##func(data); \
-    } \
-    static napi_value func(napi_env env, napi_callback_info info) { \
-        return jspromiseCreate(env, info, _##func); \
-    } \
-    static int __##func(void *data)
-
-
-// track how many sqlite-db open
-static int dbCount = 0;
-
 static int napiAssertOk(
     napi_env env,
     const char *func,
@@ -1762,208 +1882,14 @@ static napi_value jspromiseCreate(
 }
 
 
-// file sqlmath_napi - noop
-static void noopAsyncExecute(
-    napi_env env,
-    void *data
-) {
-// This function runs on a worker thread. It has no access to the JavaScript.
-    // coverage-hack
-    noop();
-    UNUSED(env);
-    // init baton
-    Jsbaton *baton = (Jsbaton *) data;
-    UNUSED(baton);
-}
-
-static napi_value noopAsync(
-    napi_env env,
-    napi_callback_info info
-) {
-// Create a deferred promise and an async queue work item.
-    return jspromiseCreate(env, info, noopAsyncExecute);
-}
-
-
-// file sqlmath_napi - dbXxx
-static int NAPI_JSPROMISE_CREATE(
-    __dbCloseAsync
-) {
-// int sqlite3_close_v2(sqlite3*);
-    // init baton
-    Jsbaton *baton = (Jsbaton *) data;
-    // declare var
-    int errcode = 0;
-    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
-    // call c-function
-    errcode = sqlite3_close_v2(db);
-    if (db != NULL) {
-        dbCount -= 1;
-        // fprintf(stderr, "\nsqlite - __dbCloseAsync(%d)\n", dbCount);
-    }
-    JSBATON_ASSERT_OK();
-    // save result
-    baton->argint64[0] = (int64_t) (intptr_t) db;
-  catch_error:
-    return 0;
-}
-
-static int NAPI_JSPROMISE_CREATE(
-    __dbExecAsync
-) {
-// This function will run <bufin[1]> in <db> and save any result
-// (list of tables containing rows from SELECT/pragma/etc) as serialized
-// json-string in <pResult>.
-// *INDENT-OFF*
-SQLMATH_API int dbExec(sqlite3 *, Jsbaton *);
-// *INDENT-ON*
-    // init baton
-    Jsbaton *baton = (Jsbaton *) data;
-    // declare var
-    int errcode = 0;
-    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
-    // call c-function
-    errcode = dbExec(db, baton);
-    JSBATON_ASSERT_OK();
-  catch_error:
-    return 0;
-}
-
-static int loadOrSaveDb(
-    sqlite3 * pInMemory,
-    const char *zFilename,
-    int isSave
-) {
-/*
-** https://www.sqlite.org/backup.html
-** This function is used to load the contents of a database file on disk
-** into the "main" database of open database connection pInMemory, or
-** to save the current contents of the database opened by pInMemory into
-** a database file on disk. pInMemory is probably an in-memory database,
-** but this function will also work fine if it is not.
-**
-** Parameter zFilename points to a nul-terminated string containing the
-** name of the database file on disk to load from or save to. If parameter
-** isSave is non-zero, then the contents of the file zFilename are
-** overwritten with the contents of the database opened by pInMemory. If
-** parameter isSave is zero, then the contents of the database opened by
-** pInMemory are replaced by data loaded from the file zFilename.
-**
-** If the operation is successful, SQLITE_OK is returned. Otherwise, if
-** an error occurs, an SQLite error code is returned.
-*/
-    int rc;                     /* Function return code */
-    sqlite3 *pFile;             /* Database connection opened on zFilename */
-    sqlite3_backup *pBackup;    /* Backup object used to copy data */
-    sqlite3 *pTo;               /* Database to copy to (pFile or pInMemory) */
-    sqlite3 *pFrom;             /* Database to copy from (pFile or pInMemory) */
-    /* Open the database file identified by zFilename. Exit early if this fails
-     ** for any reason. */
-    rc = sqlite3_open(zFilename, &pFile);
-    if (rc == SQLITE_OK) {
-        /* If this is a 'load' operation (isSave==0), then data is copied
-         ** from the database file just opened to database pInMemory.
-         ** Otherwise, if this is a 'save' operation (isSave==1), then data
-         ** is copied from pInMemory to pFile.  Set the variables pFrom and
-         ** pTo accordingly. */
-        pFrom = (isSave ? pInMemory : pFile);
-        pTo = (isSave ? pFile : pInMemory);
-
-        /* Set up the backup procedure to copy from the "main" database of
-         ** connection pFile to the main database of connection pInMemory.
-         ** If something goes wrong, pBackup will be set to NULL and an error
-         ** code and message left in connection pTo.
-         **
-         ** If the backup object is successfully created, call backup_step()
-         ** to copy data from pFile to pInMemory. Then call backup_finish()
-         ** to release resources associated with the pBackup object.  If an
-         ** error occurred, then an error code and message will be left in
-         ** connection pTo. If no error occurred, then the error code belonging
-         ** to pTo is set to SQLITE_OK.
-         */
-        pBackup = sqlite3_backup_init(pTo, "main", pFrom, "main");
-        if (pBackup) {
-            (void) sqlite3_backup_step(pBackup, -1);
-            (void) sqlite3_backup_finish(pBackup);
-        }
-        rc = sqlite3_errcode(pTo);
-    }
-    /* Close the database connection opened on database file zFilename
-     ** and return the result of this function. */
-    (void) sqlite3_close(pFile);
-    return rc;
-}
-
-static int NAPI_JSPROMISE_CREATE(
-    __dbMemoryLoadOrSave
-) {
-// This function will load/save filename <bufin[0]> to/from <db>
-// *INDENT-OFF*
-SQLMATH_API int dbMemoryLoadOrSave(sqlite3 *, Jsbaton *);
-// *INDENT-ON*
-    // init baton
-    Jsbaton *baton = (Jsbaton *) data;
-    // declare var
-    int errcode = 0;
-    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
-    // call c-function
-    errcode = loadOrSaveDb(db,  //
-        baton->bufin[1],        // filename
-        baton->argint64[2]);    // isSave
-    JSBATON_ASSERT_OK();
-  catch_error:
-    return 0;
-}
-
-static int NAPI_JSPROMISE_CREATE(
-    __dbOpenAsync
-) {
-// int sqlite3_open_v2(
-//   const char *filename,   /* Database filename (UTF-8) */
-//   sqlite3 **ppDb,         /* OUT: SQLite db handle */
-//   int flags,              /* Flags */
-//   const char *zVfs        /* Name of VFS module to use */
-// );
-    // init baton
-    Jsbaton *baton = (Jsbaton *) data;
-    // declare var
-    int errcode = 0;
-    sqlite3 *db = NULL;
-    // call c-function
-    errcode = sqlite3_open_v2(baton->bufin[0],  // filename
-        &db,                    // db
-        (int) baton->argint64[2],       // flags // NOLINT
-        NULL);
-    dbCount += 1;
-    // fprintf(stderr, "\nsqlite - __dbOpenAsync(%d)\n", dbCount);
-    JSBATON_ASSERT_OK();
-    // save result
-    baton->argint64[0] = (int64_t) (intptr_t) db;
-  catch_error:
-    return 0;
-}
-
-static int NAPI_JSPROMISE_CREATE(
-    __dbTableInsertAsync
-) {
-// this function will bulk-insert <bufin[1]> to table <bufin[2]>
-// *INDENT-OFF*
-SQLMATH_API int dbTableInsert(sqlite3 *, Jsbaton *);
-// *INDENT-ON*
-    // init baton
-    Jsbaton *baton = (Jsbaton *) data;
-    // declare var
-    int errcode = 0;
-    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argint64[0];
-    // call c-function
-    errcode = dbTableInsert(db, baton);
-    JSBATON_ASSERT_OK();
-  catch_error:
-    return 0;
-}
-
-
 // file sqlmath_napi - init
+NAPI_JSPROMISE_CREATE(dbClose);
+NAPI_JSPROMISE_CREATE(dbExec);
+NAPI_JSPROMISE_CREATE(dbMemoryLoadOrSave);
+NAPI_JSPROMISE_CREATE(dbNoop);
+NAPI_JSPROMISE_CREATE(dbOpen);
+NAPI_JSPROMISE_CREATE(dbTableInsert);
+
 napi_value napi_module_sqlmath_init(
     napi_env env,
     napi_value exports
@@ -1988,10 +1914,10 @@ napi_value napi_module_sqlmath_init(
     const napi_property_descriptor propList[] = {
         NAPI_EXPORT_MEMBER(__dbCloseAsync),
         NAPI_EXPORT_MEMBER(__dbExecAsync),
-        NAPI_EXPORT_MEMBER(__dbMemoryLoadOrSave),
+        NAPI_EXPORT_MEMBER(__dbMemoryLoadOrSaveAsync),
         NAPI_EXPORT_MEMBER(__dbOpenAsync),
         NAPI_EXPORT_MEMBER(__dbTableInsertAsync),
-        NAPI_EXPORT_MEMBER(noopAsync),
+        NAPI_EXPORT_MEMBER(__dbNoopAsync),
     };
     errcode = napi_define_properties(env, exports,
         sizeof(propList) / sizeof(napi_property_descriptor), propList);
