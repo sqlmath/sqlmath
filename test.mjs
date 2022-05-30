@@ -24,6 +24,7 @@
 /*jslint beta, node*/
 import sqlmath from "./sqlmath.mjs";
 let {
+    SQLITE_DATATYPE_OFFSET,
     assertErrorThrownAsync,
     assertJsonEqual,
     assertNumericalEqual,
@@ -71,8 +72,9 @@ jstestDescribe((
         "test cCallAsync handling-behavior"
     ), function () {
         [
-            ["", 776],
-            ["aa", 776],
+            ["", SQLITE_DATATYPE_OFFSET],
+            ["\u0000", SQLITE_DATATYPE_OFFSET],
+            ["aa", SQLITE_DATATYPE_OFFSET],
             [-0, 0],
             [0, 0],
             [0n, 0],
@@ -93,12 +95,14 @@ jstestDescribe((
                 valExpected,
                 valInput
             });
-            if (typeof valInput === "string" && valActual) {
+            if (typeof valInput === "string") {
                 valActual = jsbatonValueString({
                     baton,
                     ii: 1
                 });
-                assertJsonEqual(valActual, valInput, {
+                assertJsonEqual(valActual, valInput.replace((
+                    /\u0000$/
+                ), ""), {
                     valActual,
                     valExpected,
                     valInput
