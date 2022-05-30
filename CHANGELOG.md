@@ -7,6 +7,7 @@
 - none
 
 # v2022.6.1-beta
+- jsbaton - migrate functions dbClose(), dbMemoryLoadOrSave(), dbNoop(), dbOpen() to new, streamlined jsbaton2
 - add js-function jsbatonPushValue() to dynamically push value to jsbaton
 - napi - decouple c-functions dbClose(), dbExec(), dbMemoryLoadOrSave(), dbNoop(), dbOpen(), dbTableInsert() from napi
 - perf - reduce unnecessary copying, replacing SQLITE_TRANSIENT with SQLITE_STATIC

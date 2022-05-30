@@ -28,7 +28,8 @@ import {createRequire} from "module";
 import jslint from "./jslint.mjs";
 
 let JSBATON_ARGC = 16;
-// let SIZEOF_MESSAGE_DEFAULT = 512;
+// let SIZEOF_MESSAGE_DEFAULT = 256;
+let SQLITE_DATATYPE_BLANK = 0x00;
 let SQLITE_DATATYPE_BLOB = 0x04;
 // let SQLITE_DATATYPE_BLOB_0 = 0x14;
 let SQLITE_DATATYPE_FLOAT = 0x02;
@@ -97,18 +98,13 @@ async function cCallAsync(cFuncName, argList) {
     let errStack;
     assertOrThrow(
         argList.length < JSBATON_ARGC,
-        `cCallAsync - argList.length cannot be greater than ${JSBATON_ARGC}`
+        (
+            `cCallAsync - argList.length=${argList.length}`
+            + ` cannot be greater than ${JSBATON_ARGC}`
+        )
     );
-    baton = new BigInt64Array(256);
-    //!! debugInline(baton.length);
-    //!! baton = jsbatonCreate(1024 * 8);
-    //!! baton = new ArrayBuffer(8 * 1024);
-    //!! baton = new BigInt64Array(
-        //!! baton.buffer,
-        //!! baton.byteOffset,
-        //!! baton.byteLength / 8
-    //!! );
-    //!! debugInline(baton.length);
+    baton = new BigInt64Array(jsbatonCreate(256 * 8).buffer);
+    baton[0] = 0n;
     // serialize js-args to c-args
     argList = argList.map(function (arg, ii) {
         switch (typeof arg) {
@@ -116,7 +112,7 @@ async function cCallAsync(cFuncName, argList) {
         case "boolean":
         case "number":
             try {
-                baton[ii] = BigInt(arg);
+                baton[ii + 1] = BigInt(arg);
             } catch (ignore) {
                 return;
             }
@@ -129,7 +125,7 @@ async function cCallAsync(cFuncName, argList) {
             break;
         }
         if (ArrayBuffer.isView(arg)) {
-            baton[ii] = BigInt(arg.byteLength);
+            baton[ii + 1] = BigInt(arg.byteLength);
             return new DataView(
                 arg.buffer,
                 arg.byteOffset,
@@ -157,6 +153,64 @@ async function cCallAsync(cFuncName, argList) {
     }
 }
 
+async function cCallAsync2(cFuncName, argList) {
+// this function will serialize <argList> to a c <baton>,
+// suitable for passing into napi
+    let baton;
+    let errStack;
+    assertOrThrow(
+        argList.length < JSBATON_ARGC,
+        `cCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
+    );
+    baton = jsbatonCreate(256 * 8);
+    jsbatonValuePush({
+        baton,
+        mode: "blank",
+        value: 768
+    });
+    // serialize js-arg to c-arg
+    argList.forEach(function (value, ii) {
+        let argi = 8 + ii * 8;
+        switch (typeof value) {
+        case "bigint":
+        case "boolean":
+        case "number":
+            baton.setBigInt64(argi, BigInt(value), true);
+            break;
+        // case "object":
+        //     break;
+        case "string":
+            // append null-terminator to string
+            value = new TextEncoder().encode(
+                value.endsWith("\u0000")
+                ? value
+                : value + "\u0000"
+            );
+            break;
+        }
+        if (ArrayBuffer.isView(value)) {
+            jsbatonValuePush({
+                argi,
+                baton,
+                value
+            });
+        }
+    });
+    // preserve stack-trace
+    errStack = new Error().stack.replace((
+        /.*$/m
+    ), "");
+    try {
+        // call napi with cFuncName and argList
+        return await addon[cFuncName]([
+            new BigInt64Array(baton.buffer)
+        ]);
+    } catch (err) {
+        err.stack += errStack;
+        assertOrThrow(undefined, err);
+    }
+}
+
 function dbCallAsync(cFuncName, db, argList) {
 // this function will call <cFuncName> using <db>
     let __db = dbDeref(db);
@@ -168,6 +222,20 @@ function dbCallAsync(cFuncName, db, argList) {
         // decrement __db.busy
         __db.busy -= 1;
         assertOrThrow(__db.busy >= 0, "invalid __db.busy " + __db.busy);
+    });
+}
+
+function dbCallAsync2(cFuncName, argList) {
+// this function will call <cFuncName> using db <argList>[0]
+    let __db = dbDeref(argList[0]);
+    // increment __db.busy
+    __db.busy += 1;
+    return cCallAsync2(cFuncName, [
+        __db.ptr, argList.slice(1)
+    ].flat()).finally(function () {
+        // decrement __db.busy
+        __db.busy -= 1;
+        assertOrThrow(__db.busy >= 0, `invalid __db.busy ${__db.busy}`);
     });
 }
 
@@ -185,7 +253,7 @@ async function dbCloseAsync({
     await Promise.all(__db.connPool.map(async function (ptr) {
         let val = ptr[0];
         ptr[0] = 0n;
-        await cCallAsync("__dbCloseAsync", [
+        await cCallAsync2("__dbCloseAsync", [
             val
         ]);
     }));
@@ -238,9 +306,16 @@ async function dbExecAsync({
         key, val
     ]) {
         if (bindByKey) {
-            jsbaton2 = jsbatonPushValue(jsbaton2, ":" + key + "\u0000");
+            jsbaton2 = jsbatonValuePush({
+                baton: jsbaton2,
+                value: ":" + key + "\u0000"
+            });
         }
-        jsbaton2 = jsbatonPushValue(jsbaton2, val, bufSharedList);
+        jsbaton2 = jsbatonValuePush({
+            baton: jsbaton2,
+            bufSharedList,
+            value: val
+        });
     });
     result = await dbCallAsync("__dbExecAsync", db, [
         String(sql) + "\n;\nPRAGMA noop",
@@ -318,8 +393,8 @@ async function dbMemoryLoadAsync({
 }) {
 // This function will load <filename> to <db>
     assertOrThrow(filename, "invalid filename " + filename);
-    await dbCallAsync("__dbMemoryLoadOrSaveAsync", db, [
-        String(filename), 0
+    await dbCallAsync2("__dbMemoryLoadOrSaveAsync", [
+        db, String(filename), 0
     ]);
 }
 
@@ -329,9 +404,14 @@ async function dbMemorySaveAsync({
 }) {
 // This function will save <db> to <filename>
     assertOrThrow(filename, "invalid filename " + filename);
-    await dbCallAsync("__dbMemoryLoadOrSaveAsync", db, [
-        String(filename), 1
+    await dbCallAsync2("__dbMemoryLoadOrSaveAsync", [
+        db, String(filename), 1
     ]);
+}
+
+async function dbNoopAsync(...argList) {
+// this function will do nothing except return argList
+    return await cCallAsync2("__dbNoopAsync", argList);
 }
 
 async function dbOpenAsync({
@@ -358,16 +438,20 @@ async function dbOpenAsync({
     connPool = await Promise.all(Array.from(new Array(
         threadCount
     ), async function () {
-        let ptr = await cCallAsync("__dbOpenAsync", [
+        let ptr = await cCallAsync2("__dbOpenAsync", [
+            // const char *filename,   Database filename (UTF-8)
             String(filename),
+            // sqlite3 **ppDb,         OUT: SQLite db handle
             undefined,
+            // int flags,              Flags
             flags ?? (
                 SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
             ),
+            // const char *zVfs        Name of VFS module to use
             undefined
         ]);
         ptr = new BigInt64Array([
-            ptr[0][0]
+            ptr[0][1]
         ]);
         dbFinalizationRegistry.register(db, {
             afterFinalization,
@@ -426,7 +510,11 @@ async function dbTableInsertAsync({
     );
     rowList.forEach(function (row) {
         row.forEach(function (val) {
-            jsbaton2 = jsbatonPushValue(jsbaton2, val, bufSharedList);
+            jsbaton2 = jsbatonValuePush({
+                baton: jsbaton2,
+                bufSharedList,
+                value: val
+            });
         });
     });
     await dbCallAsync("__dbTableInsertAsync", db, [
@@ -438,22 +526,29 @@ async function dbTableInsertAsync({
     ]);
 }
 
-function jsbatonCreate(nalloc = 1024) {
-// this function will create buffer <jsbaton2>
-    let jsbaton2 = new DataView(new SharedArrayBuffer(nalloc));
-    // offset include nalloc, nused
-    jsbaton2.setInt32(4, 2 * 4, true);
-    return jsbaton2;
+function jsbatonCreate() {
+// this function will create buffer <baton>
+    let baton = new DataView(new ArrayBuffer(1024));
+    // offset nalloc, nused
+    baton.setInt32(4, 2 * 4, true);
+    return baton;
 }
 
-function jsbatonPushValue(jsbaton2, value, bufSharedList) {
-// this function will push <value> to buffer <jsbaton2>
+function jsbatonValuePush({
+    argi,
+    baton,
+    bufSharedList,
+    mode,
+    value
+}) {
+// this function will push <value> to buffer <baton>
     let nn;
     let nused;
     let tmp;
     let vsize;
     let vtype;
 /*
+#define SQLITE_DATATYPE_BLANK           0x00
 #define SQLITE_DATATYPE_BLOB            0x04
 // #define SQLITE_DATATYPE_BLOB_0          0x14
 #define SQLITE_DATATYPE_FLOAT           0x02
@@ -486,11 +581,17 @@ function jsbatonPushValue(jsbaton2, value, bufSharedList) {
     // 19. true.buffer
     // 20. true.SharedArrayBuffer
 */
+    switch (mode) {
+    case "blank":
+        vtype = SQLITE_DATATYPE_BLANK;
+        vsize = value - 1;
+        break;
+    }
     // 11. true.boolean
     if (value === 1 || value === 1n) {
         value = true;
     }
-    switch (!vtype && Boolean(value) + "." + typeof(value)) {
+    switch (vtype === undefined && (Boolean(value) + "." + typeof(value))) {
     //  1. false.bigint
     case "false.bigint":
     //  2. false.boolean
@@ -501,7 +602,7 @@ function jsbatonPushValue(jsbaton2, value, bufSharedList) {
         vsize = 0;
         break;
     //  3. false.function
-    case "false.function":
+    // case "false.function":
     //  4. false.null
     case "false.null":
     //  6. false.object
@@ -513,11 +614,11 @@ function jsbatonPushValue(jsbaton2, value, bufSharedList) {
     // 12. true.function
     case "true.function":
     // 13. true.null
-    case "true.null":
+    // case "true.null":
     // 17. true.symbol
     case "true.symbol":
     // 18. true.undefined
-    case "true.undefined":
+    // case "true.undefined":
         vtype = SQLITE_DATATYPE_NULL;
         vsize = 0;
         break;
@@ -540,6 +641,8 @@ function jsbatonPushValue(jsbaton2, value, bufSharedList) {
     case "true.number":
         vtype = SQLITE_DATATYPE_FLOAT;
         vsize = 8;
+        break;
+    case false:
         break;
     // 15. true.object
     // 16. true.string
@@ -582,51 +685,54 @@ function jsbatonPushValue(jsbaton2, value, bufSharedList) {
         vtype = SQLITE_DATATYPE_TEXT;
         vsize = 4 + value.byteLength;
     }
-    nused = jsbaton2.getInt32(4, true);
+    nused = baton.getInt32(4, true);
     nn = nused + 1 + vsize;
     assertOrThrow(
         nn <= 0xffff_ffff,
         "jsbaton cannot exceed 0xffff_ffff / 2,147,483,647 bytes"
     );
-    // exponentially grow jsbaton2 as needed
-    if (jsbaton2.byteLength < nn) {
-        tmp = jsbaton2;
-        jsbaton2 = new DataView(new SharedArrayBuffer(
+    // exponentially grow baton as needed
+    if (baton.byteLength < nn) {
+        tmp = baton;
+        baton = new DataView(new SharedArrayBuffer(
             Math.min(2 ** Math.ceil(Math.log2(nn)), 0x7fff_ffff)
         ));
-        // update nAlloc
-        jsbaton2.setInt32(0, jsbaton2.byteLength, true);
-        // copy tmp to jsbaton2
+        // update nalloc
+        baton.setInt32(0, baton.byteLength, true);
+        // copy tmp to baton
         new Uint8Array(
-            jsbaton2.buffer,
-            jsbaton2.byteOffset,
+            baton.buffer,
+            baton.byteOffset,
             nused
         ).set(new Uint8Array(tmp.buffer, tmp.byteOffset, nused), 0);
     }
-    // append vtype
-    jsbaton2.setUint8(nused, vtype);
+    // push vtype
+    baton.setUint8(nused, vtype);
     // update nused
-    jsbaton2.setInt32(4, nused + 1 + vsize, true);
+    baton.setInt32(4, nused + 1 + vsize, true);
     // handle blob-value
     switch (vtype) {
     case SQLITE_DATATYPE_BLOB:
     case SQLITE_DATATYPE_TEXT:
+        // set argi to blob/text location
+        if (argi) {
+            baton.setInt32(argi, nused, true);
+        }
         vsize -= 4;
-        // append vsize
+        // push vsize
         assertOrThrow(
             0 <= vsize && vsize <= 1_000_000_000,
             "sqlite-blob must be within 0 to 1,000,000,000 inclusive bytes"
         );
-        jsbaton2.setInt32(nused + 1, vsize, true);
-        // append blob-value
+        baton.setInt32(nused + 1, vsize, true);
         new Uint8Array(
-            jsbaton2.buffer,
+            baton.buffer,
             nused + 1 + 4,
             vsize
         ).set(new Uint8Array(value.buffer, value.byteOffset, vsize), 0);
         break;
     case SQLITE_DATATYPE_FLOAT:
-        jsbaton2.setFloat64(nused + 1, value, true);
+        baton.setFloat64(nused + 1, value, true);
         break;
     case SQLITE_DATATYPE_INTEGER:
         assertOrThrow(
@@ -636,19 +742,37 @@ function jsbatonPushValue(jsbaton2, value, bufSharedList) {
                 + "-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
             )
         );
-        jsbaton2.setBigInt64(nused + 1, value, true);
+        baton.setBigInt64(nused + 1, value, true);
         break;
     case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
         vsize = value.byteLength;
-        // append vsize
+        // push vsize
         assertOrThrow(
             0 <= vsize && vsize <= 1_000_000_000,
             "sqlite-blob must be within 0 to 1,000,000,000 inclusive bytes"
         );
-        jsbaton2.setInt32(nused + 1, vsize, true);
+        baton.setInt32(nused + 1, vsize, true);
         break;
     }
-    return jsbaton2;
+    return baton;
+}
+
+function jsbatonValueString({
+    baton,
+    ii,
+    offset
+}) {
+// this function will return string-value from <baton> at given <offset>
+    baton = new DataView(baton.buffer);
+    if (ii !== undefined) {
+        offset = baton.getInt32(8 + ii * 8, true);
+    }
+    return new TextDecoder().decode(new Uint8Array(
+        baton.buffer,
+        offset + 1 + 4,
+        // remove null-terminator from string
+        baton.getInt32(offset + 1, true) - 1
+    ));
 }
 
 function jsonRowListFromCsv({
@@ -952,9 +1076,11 @@ Object.assign(local, jslint, {
     dbGetLastBlobAsync,
     dbMemoryLoadAsync,
     dbMemorySaveAsync,
+    dbNoopAsync,
     dbOpenAsync,
     dbTableInsertAsync,
-    debugInline
+    debugInline,
+    jsbatonValueString
 });
 if (process.env.npm_config_mode_test) {
     // mock consoleError

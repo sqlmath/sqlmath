@@ -68,7 +68,7 @@ extern "C" {
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
 #define NAPI_VERSION 8
 #define SGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
-#define SIZEOF_MESSAGE_DEFAULT 512
+#define SIZEOF_MESSAGE_DEFAULT 256
 #define SQLITE_DATATYPE_BLOB            0x04
 // #define SQLITE_DATATYPE_BLOB_0          0x14
 #define SQLITE_DATATYPE_FLOAT           0x02
@@ -92,8 +92,13 @@ extern "C" {
 // this function will exec <sql> and if <errcode> is not ok,
 // throw <baton->errmsg>
 #define JSBATON_ASSERT_OK() \
-    if (errcode != 0) { \
-        jsbatonErrcodeSave(baton, db, errcode, __func__, __FILE__, __LINE__); \
+    if (errcode != SQLITE_OK) { \
+        if (baton != NULL && baton->errmsg[0] == '\x00') { \
+            sqlmathSnprintfTrace(baton->errmsg, "sqlite - ", ( \
+                errcode == SQLITE_ERROR_DATATYPE_INVALID ? "invalid datatype" \
+                : db == NULL ? sqlite3_errstr(errcode) \
+                : sqlite3_errmsg(db)), __func__, __FILE__, __LINE__); \
+        } \
         goto catch_error; \
     }
 
@@ -116,6 +121,15 @@ extern "C" {
     static void __##napi##_##func(napi_env env, void *data) { \
         UNUSED(env); \
         func((Jsbaton *) data); \
+    } \
+    static napi_value __##func##Async(napi_env env, napi_callback_info info) { \
+        return jspromiseCreate(env, info, __##napi##_##func); \
+    } \
+
+#define NAPI_JSPROMISE_CREATE2(func) \
+    static void __##napi##_##func(napi_env env, void *data) { \
+        UNUSED(env); \
+        func((Jsbaton2 *) data); \
     } \
     static napi_value __##func##Async(napi_env env, napi_callback_info info) { \
         return jspromiseCreate(env, info, __##napi##_##func); \
@@ -242,32 +256,41 @@ typedef struct napi_deferred__ *napi_deferred;
 typedef struct napi_value__ *napi_value;
 
 typedef struct Jsbaton {
-    // data
-    //!! int32_t nalloc;
-    //!! int32_t nused;
+    // offset - 0 - nallc/nused
+    int32_t nallc;
+    int32_t nused;
+    // offset - 8 - inn/ott
     int64_t innint64[JSBATON_ARGC];
     const char *innbuf[JSBATON_ARGC];
     char *ottbuf[JSBATON_ARGC];
+    // offset - 392 - errmsg
     char errmsg[SIZEOF_MESSAGE_DEFAULT];
+    // offset - 648 - napi
     napi_value result;
-    // async
     napi_async_work work;
     napi_deferred deferred;
+    // offset - 768 - misc
 } Jsbaton;
 
-SQLMATH_API SQLITE_NOINLINE void jsbatonErrcodeSave(
-    Jsbaton * baton,
-    sqlite3 * db,
-    int errcode,
-    const char *func,
-    const char *file,
-    int line
-);
+typedef struct Jsbaton2 {
+    // offset - 0 - nallc/nused
+    int32_t nallc;
+    int32_t nused;
+    // offset - 8 - argv
+    int64_t argv[48];
+    // offset - 392 - errmsg
+    char errmsg[SIZEOF_MESSAGE_DEFAULT];
+    // offset - 648 - napi
+    napi_value result;
+    napi_async_work work;
+    napi_deferred deferred;
+    // offset - 768 - misc
+} Jsbaton2;
 
 
 // file sqlmath_h - SQLMATH_API
 SQLMATH_API void dbClose(
-    Jsbaton * baton
+    Jsbaton2 * baton
 );
 
 SQLMATH_API void dbExec(
@@ -275,15 +298,15 @@ SQLMATH_API void dbExec(
 );
 
 SQLMATH_API void dbMemoryLoadOrSave(
-    Jsbaton * baton
+    Jsbaton2 * baton
 );
 
 SQLMATH_API void dbNoop(
-    Jsbaton * baton
+    Jsbaton2 * baton
 );
 
 SQLMATH_API void dbOpen(
-    Jsbaton * baton
+    Jsbaton2 * baton
 );
 
 SQLMATH_API void dbTableInsert(
@@ -302,6 +325,16 @@ SQLMATH_API int doubleSortCompare(
 SQLMATH_API void jsonInit2(
     JsonString * pp,
     sqlite3_context * context
+);
+
+SQLMATH_API int jsbatonValueBytes(
+    Jsbaton2 * baton,
+    int64_t ptr
+);
+
+SQLMATH_API const char *jsbatonValueString(
+    Jsbaton2 * baton,
+    int64_t ptr
 );
 
 SQLMATH_API void jsonVectorDoubleAppend(
@@ -362,12 +395,12 @@ static int dbCount = 0;
 
 // file sqlmath_ext - SQLMATH_API
 SQLMATH_API void dbClose(
-    Jsbaton * baton
+    Jsbaton2 * baton
 ) {
 // int sqlite3_close_v2(sqlite3*);
     // declare var
     int errcode = 0;
-    sqlite3 *db = (sqlite3 *) (intptr_t) baton->innint64[0];
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argv[0];
     // call c-function
     errcode = sqlite3_close_v2(db);
     JSBATON_ASSERT_OK();
@@ -681,16 +714,17 @@ SQLMATH_API void dbExec(
 // SQLMATH_API dbexec - end
 
 SQLMATH_API void dbMemoryLoadOrSave(
-    Jsbaton * baton
+    Jsbaton2 * baton
 ) {
 // This function will load/save filename <innbuf[0]> to/from <db>
     // declare var0
     int errcode = 0;
-    sqlite3 *db = (sqlite3 *) (intptr_t) baton->innint64[0];
+    sqlite3 *db = (sqlite3 *) (intptr_t) baton->argv[0];
     // declare var
     sqlite3 *pInMemory = db;
-    const char *zFilename = baton->innbuf[1];
-    int isSave = baton->innint64[2];
+    const char *zFilename = jsbatonValueString(baton, baton->argv[1]);
+    int isSave = baton->argv[2];
+    // fprintf(stderr, "\n[sqlite - dbMemoryLoadOrSave(%s)]\n", zFilename);
 /*
 ** https://www.sqlite.org/backup.html
 ** This function is used to load the contents of a database file on disk
@@ -756,14 +790,14 @@ SQLMATH_API void dbMemoryLoadOrSave(
 }
 
 SQLMATH_API void dbNoop(
-    Jsbaton * baton
+    Jsbaton2 * baton
 ) {
 // this function will do nothing
     UNUSED(baton);
 }
 
 SQLMATH_API void dbOpen(
-    Jsbaton * baton
+    Jsbaton2 * baton
 ) {
 // int sqlite3_open_v2(
 //   const char *filename,   /* Database filename (UTF-8) */
@@ -773,17 +807,20 @@ SQLMATH_API void dbOpen(
 // );
     // declare var
     int errcode = 0;
-    sqlite3 *db = NULL;
+    sqlite3 *db;
+    const char *filename = jsbatonValueString(baton, baton->argv[0]);
     // call c-function
-    errcode = sqlite3ApiGet()->open_v2(baton->innbuf[0],        // filename
+    errcode = sqlite3ApiGet()->open_v2( //
+        filename,               // filename
         &db,                    // db
-        (int) baton->innint64[2],       // flags
+        (int) baton->argv[2],   // flags
         NULL);
     JSBATON_ASSERT_OK();
     dbCount += 1;
-    // fprintf(stderr, "\nsqlite - __dbOpenAsync(%d)\n", dbCount);
+    // fprintf(stderr, "\n[sqlite - dbOpen(%s) dbCount=%d]\n", filename,
+    //     dbCount);
     // save result
-    baton->innint64[0] = (int64_t) (intptr_t) db;
+    baton->argv[0] = (int64_t) (intptr_t) db;
   catch_error:
     (void) 0;
 }
@@ -920,36 +957,24 @@ SQLMATH_API int doubleSortCompare(
     return cc < 0 ? -1 : cc > 0 ? 1 : 0;
 }
 
-SQLMATH_API SQLITE_NOINLINE void jsbatonErrcodeSave(
-    Jsbaton * baton,
-    sqlite3 * db,
-    int errcode,
-    const char *func,
-    const char *file,
-    int line
+SQLMATH_API int jsbatonValueBytes(
+    Jsbaton2 * baton,
+    int64_t offset
 ) {
-// this function will if errcode != 0, set baton->errmsg
-    if (errcode == SQLITE_OK) {
-        return;
+// this function will return bytelength of string-value from <baton>
+// at given <offset>
+    return *(int *) (((const char *) baton) + (size_t) offset + 1);
+}
+
+SQLMATH_API const char *jsbatonValueString(
+    Jsbaton2 * baton,
+    int64_t offset
+) {
+// this function will return string-value from <baton> at given <offset>
+    if (offset == 0) {
+        return NULL;
     }
-    if (baton == NULL || baton->errmsg[0] != '\x00') {
-        return;
-    }
-    switch (errcode) {
-    case SQLITE_ERROR_DATATYPE_INVALID:
-        sqlmathSnprintfTrace(baton->errmsg, "sqlite - ", "invalid datatype",
-            func, file, line);
-        return;
-    case SQLITE_NOMEM:
-        sqlmathSnprintfTrace(baton->errmsg, "sqlite - ", "out of memory",
-            func, file, line);
-        return;
-    default:
-        sqlmathSnprintfTrace(baton->errmsg, "sqlite - ",
-            db == NULL ? sqlite3_errstr(errcode) : sqlite3_errmsg(db), func,
-            file, line);
-        return;
-    }
+    return ((const char *) baton) + (size_t) offset + 1 + 4;
 }
 
 SQLMATH_API void jsonInit2(
@@ -1702,6 +1727,10 @@ static Jsbaton *jsbatonCreate(
     NAPI_ASSERT_OK();
     // save argv
     baton->result = argv;
+    // jsbaton2
+    if (((Jsbaton *) baton)->nallc > 0) {
+        return baton;
+    }
     // init innbuf
     ii = 0;
     while (ii < JSBATON_ARGC) {
@@ -1869,11 +1898,11 @@ static napi_value jspromiseCreate(
 
 
 // file sqlmath_napi - init
-NAPI_JSPROMISE_CREATE(dbClose);
+NAPI_JSPROMISE_CREATE2(dbClose);
 NAPI_JSPROMISE_CREATE(dbExec);
-NAPI_JSPROMISE_CREATE(dbMemoryLoadOrSave);
-NAPI_JSPROMISE_CREATE(dbNoop);
-NAPI_JSPROMISE_CREATE(dbOpen);
+NAPI_JSPROMISE_CREATE2(dbMemoryLoadOrSave);
+NAPI_JSPROMISE_CREATE2(dbNoop);
+NAPI_JSPROMISE_CREATE2(dbOpen);
 NAPI_JSPROMISE_CREATE(dbTableInsert);
 
 napi_value napi_module_sqlmath_init(

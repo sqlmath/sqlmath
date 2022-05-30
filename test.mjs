@@ -28,16 +28,17 @@ let {
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
-    cCallAsync,
     dbCloseAsync,
     dbExecAsync,
     dbExecWithRetryAsync,
     dbGetLastBlobAsync,
     dbMemoryLoadAsync,
     dbMemorySaveAsync,
+    dbNoopAsync,
     dbOpenAsync,
     dbTableInsertAsync,
     debugInline,
+    jsbatonValueString,
     jstestDescribe,
     jstestIt,
     noop
@@ -70,29 +71,47 @@ jstestDescribe((
         "test cCallAsync handling-behavior"
     ), function () {
         [
-            [-0, "0"],
-            [-Infinity, "0"],
-            [0, "0"],
-            [1 / 0, "0"],
-            [Infinity, "0"],
-            [false, "0"],
-            [null, "0"],
-            [true, "1"],
-            [undefined, "0"],
-            [{}, "0"]
+            ["", 776],
+            ["aa", 776],
+            [-0, 0],
+            [0, 0],
+            [0n, 0],
+            [false, 0],
+            [null, 0],
+            [true, 1],
+            [undefined, 0],
+            [{}, 0]
         ].forEach(async function ([
             valInput, valExpected
         ]) {
-            let valActual;
-            valActual = String(
-                await cCallAsync("__dbNoopAsync", [
-                    valInput
-                ])
-            )[0][0];
+            let baton = noop(
+                await dbNoopAsync(undefined, valInput)
+            )[0];
+            let valActual = Number(baton[2]);
             assertJsonEqual(valActual, valExpected, {
                 valActual,
                 valExpected,
                 valInput
+            });
+            if (typeof valInput === "string" && valActual) {
+                valActual = jsbatonValueString({
+                    baton,
+                    ii: 1
+                });
+                assertJsonEqual(valActual, valInput, {
+                    valActual,
+                    valExpected,
+                    valInput
+                });
+            }
+        });
+        [
+            -Infinity,
+            1 / 0,
+            Infinity
+        ].forEach(function (val) {
+            assertErrorThrownAsync(function () {
+                return dbNoopAsync(val);
             });
         });
     });

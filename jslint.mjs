@@ -4487,6 +4487,8 @@ function jslint_phase3_parse(state) {
                 left.id !== "["
                 || (
                     name.id !== "concat"
+                    && name.id !== "flat"
+                    && name.id !== "flatMap"
                     && name.id !== "forEach"
                     && name.id !== "join"
                     && name.id !== "map"
