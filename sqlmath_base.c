@@ -82,6 +82,7 @@ extern "C" {
 #define SQLITE_DATATYPE_TEXT            0x03
 #define SQLITE_DATATYPE_TEXT_0          0x13
 #define SQLITE_ERROR_DATATYPE_INVALID 0x10003
+#define SQLITE_ERROR_ZSQL_NULL        0x10004
 #define SQLITE_MAX_LENGTH2 1000000000
 #define SQLITE_RESPONSETYPE_LAST_VALUE 1
 #define SQLMATH_API
@@ -97,6 +98,8 @@ extern "C" {
         if (baton != NULL && baton->errmsg[0] == '\x00') { \
             sqlmathSnprintfTrace(baton->errmsg, "sqlite - ", ( \
                 errcode == SQLITE_ERROR_DATATYPE_INVALID ? "invalid datatype" \
+                : errcode == SQLITE_ERROR_ZSQL_NULL \
+                    ? "sqlite - cannot execute null sql-string" \
                 : db == NULL ? sqlite3_errstr(errcode) \
                 : sqlite3_errmsg(db)), __func__, __FILE__, __LINE__); \
         } \
@@ -401,14 +404,7 @@ SQLMATH_API void dbExec(
     const char **pzShared =
         (((const char **) baton->argv) + JSBATON_ARGC + 5);
     const char *zBind = (const char *) baton + SQLITE_DATATYPE_OFFSET;
-    //!! const char *zSql = baton->bffin[1];
-    const char *zSql = *(((const char **) baton->argv) + JSBATON_ARGC + 1);
-    //!! const char *zSql = JSBATON_VALUE_STRING_ARGI(1);
-    //!! debug
-    //!! fprintf(stderr, "\n[dbExec  sql=%s]\n", zSql);
-    if (zSql == NULL) {
-        zSql = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    }
+    const char *zSql = JSBATON_VALUE_STRING_ARGI(1);
     const char *zTmp = NULL;
     double rTmp = 0;
     int bindByKey = (int) baton->argv[3];
@@ -425,6 +421,10 @@ SQLMATH_API void dbExec(
     static const char bindPrefix[] = "$:@";
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
+    if (zSql == NULL) {
+        errcode = SQLITE_ERROR_ZSQL_NULL;
+        JSBATON_ASSERT_OK();
+    }
     // init bindList
     bindList =
         (DbExecBindElem *) sqlite3_malloc(bindListLength *
@@ -828,6 +828,10 @@ SQLMATH_API void dbTableInsert(
     sqlite3_stmt *pStmt = NULL;
     // mutext enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
+    if (zSqlCreateTable == NULL || zSqlInsertRow == NULL) {
+        errcode = SQLITE_ERROR_ZSQL_NULL;
+        JSBATON_ASSERT_OK();
+    }
     // begin transaction
     errcode = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
     JSBATON_ASSERT_OK();

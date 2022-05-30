@@ -100,14 +100,18 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         `cCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
     );
     baton = baton || jsbatonCreate();
+    // pad argList to length JSBATON_ARGC
+    while (argList.length < JSBATON_ARGC) {
+        argList.push(0n);
+    }
     // serialize js-value to c-value
-    argList = argList.map(function (value, ii) {
-        let argi = 8 + ii * 8;
+    argList = argList.map(function (value, argi) {
+        let offset = 8 + argi * 8;
         switch (typeof value) {
         case "bigint":
         case "boolean":
         case "number":
-            baton.setBigInt64(argi, BigInt(value), true);
+            baton.setBigInt64(offset, BigInt(value), true);
             break;
         // case "object":
         //     break;
@@ -124,11 +128,10 @@ async function cCallAsync(baton, cFuncName, ...argList) {
             ArrayBuffer.isView(value)
             && (
                 cFuncName === "__dbExecAsync"
-                //!! && ii > 2
+                && argi > 2
             )
         ) {
-            //!! debugInline(ii, value);
-            baton.setBigInt64(argi, BigInt(value.byteLength), true);
+            baton.setBigInt64(offset, BigInt(value.byteLength), true);
             return new DataView(
                 value.buffer,
                 value.byteOffset,
@@ -136,7 +139,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
             );
         }
         if (ArrayBuffer.isView(value)) {
-            jsbatonValuePush({
+            baton = jsbatonValuePush({
                 argi,
                 baton,
                 value
@@ -144,36 +147,15 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         }
         return value;
     });
-    switch (cFuncName) {
-    case "__dbExecAsync":
-        // pad argList to length JSBATON_ARGC
-        while (argList.length < JSBATON_ARGC) {
-            argList.push(0n);
-        }
-        // prepend baton to argList
-        argList.unshift(new BigInt64Array(baton.buffer));
-        // preserve stack-trace
-        errStack = new Error().stack.replace((
-            /.*$/m
-        ), "");
-        try {
-            // call napi with cFuncName and argList
-            return await addon[cFuncName](argList);
-        } catch (err) {
-            err.stack += errStack;
-            assertOrThrow(undefined, err);
-        }
-        break;
-    }
+    // prepend baton to argList
+    argList.unshift(new BigInt64Array(baton.buffer));
     // preserve stack-trace
     errStack = new Error().stack.replace((
         /.*$/m
     ), "");
     try {
         // call napi with cFuncName and argList
-        return await addon[cFuncName]([
-            new BigInt64Array(baton.buffer)
-        ]);
+        return await addon[cFuncName](argList);
     } catch (err) {
         err.stack += errStack;
         assertOrThrow(undefined, err);
@@ -545,7 +527,7 @@ function jsbatonValuePush({
     // 10. true.boolean
     // 11. true.function
     // 12. true.number
-    // 13. true.objects
+    // 13. true.object
     // 14. true.string
     // 15. true.symbol
     // 16. true.undefined
@@ -603,7 +585,7 @@ function jsbatonValuePush({
         vtype = SQLITE_DATATYPE_FLOAT;
         vsize = 8;
         break;
-    // 13. true.objects
+    // 13. true.object
     // 14. true.string
     default:
         // 18. true.SharedArrayBuffer
@@ -631,7 +613,7 @@ function jsbatonValuePush({
             vsize = 4 + value.byteLength;
             break;
         }
-        // 13. true.objects
+        // 13. true.object
         value = String(
             typeof value === "string"
             ? value
@@ -675,7 +657,7 @@ function jsbatonValuePush({
     case SQLITE_DATATYPE_TEXT:
         // set argi to blob/text location
         if (argi) {
-            baton.setInt32(argi, nused, true);
+            baton.setInt32(8 + argi * 8, nused, true);
         }
         vsize -= 4;
         // push vsize
@@ -717,15 +699,13 @@ function jsbatonValuePush({
 }
 
 function jsbatonValueString({
-    baton,
-    ii,
-    offset
+    argi,
+    baton
 }) {
 // this function will return string-value from <baton> at given <offset>
+    let offset;
     baton = new DataView(baton.buffer);
-    if (ii !== undefined) {
-        offset = baton.getInt32(8 + ii * 8, true);
-    }
+    offset = baton.getInt32(8 + argi * 8, true);
     return new TextDecoder().decode(new Uint8Array(
         baton.buffer,
         offset + 1 + 4,

@@ -97,8 +97,8 @@ jstestDescribe((
             });
             if (typeof valInput === "string") {
                 valActual = jsbatonValueString({
-                    baton,
-                    ii: 1
+                    argi: 1,
+                    baton
                 });
                 assertJsonEqual(valActual, valInput.replace((
                     /\u0000$/
