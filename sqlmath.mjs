@@ -28,7 +28,6 @@ import {createRequire} from "module";
 import jslint from "./jslint.mjs";
 
 let JSBATON_ARGC = 16;
-// let SIZEOF_MESSAGE_DEFAULT = 256;
 let SQLITE_DATATYPE_BLOB = 0x04;
 // let SQLITE_DATATYPE_BLOB_0 = 0x14;
 let SQLITE_DATATYPE_FLOAT = 0x02;
@@ -123,20 +122,6 @@ async function cCallAsync(baton, cFuncName, ...argList) {
                 : value + "\u0000"
             );
             break;
-        }
-        if (
-            ArrayBuffer.isView(value)
-            && (
-                cFuncName === "__dbExecAsync"
-                && argi > 2
-            )
-        ) {
-            baton.setBigInt64(offset, BigInt(value.byteLength), true);
-            return new DataView(
-                value.buffer,
-                value.byteOffset,
-                value.byteLength
-            );
         }
         if (ArrayBuffer.isView(value)) {
             baton = jsbatonValuePush({
@@ -479,7 +464,8 @@ async function dbTableInsertAsync({
         colList.length,
         rowList.length,
         String(sqlCreateTable),
-        String(sqlInsertRow)
+        String(sqlInsertRow),
+        ...bufSharedList
     );
 }
 
@@ -589,7 +575,10 @@ function jsbatonValuePush({
     // 14. true.string
     default:
         // 18. true.SharedArrayBuffer
-        if (value && value.constructor === SharedArrayBuffer) {
+        if (
+            value?.constructor === ArrayBuffer
+            || value?.constructor === SharedArrayBuffer
+        ) {
             assertOrThrow(
                 bufSharedList.length <= 0.5 * JSBATON_ARGC,
                 (

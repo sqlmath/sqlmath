@@ -256,19 +256,14 @@ typedef struct napi_deferred__ *napi_deferred;
 typedef struct napi_value__ *napi_value;
 
 typedef struct Jsbaton {
-    // offset - 0 - nallc/nused
-    int32_t nallc;
-    int32_t nused;
-    // offset - 8 - argv
-    int64_t argv[32];
-    char *bffout[JSBATON_ARGC];
-    // offset - 392 - errmsg
-    char errmsg[SIZEOF_MESSAGE_DEFAULT];
-    // offset - 648 - napi
-    napi_value result;
-    napi_async_work work;
-    napi_deferred deferred;
-    // offset - 768 - misc
+    int32_t nallc;              // offset - 0-4
+    int32_t nused;              // offset - 4-8
+    int64_t argv[JSBATON_ARGC]; // offset - 8-136
+    char *bffout[JSBATON_ARGC]; // offset - 136-264
+    char errmsg[SIZEOF_MESSAGE_DEFAULT];        // offset 264-520
+    napi_value result;          // offset 520-528
+    napi_async_work work;       // offset 528-536
+    napi_deferred deferred;     // offset 536-544
 } Jsbaton;
 
 
@@ -400,9 +395,7 @@ SQLMATH_API void dbExec(
     DbExecBindElem *bindElem = NULL;
     DbExecBindElem *bindList = NULL;
     JsonString *str99 = &__str99;
-    //!! const char **pzShared = baton->bffin + 5;
-    const char **pzShared =
-        (((const char **) baton->argv) + JSBATON_ARGC + 5);
+    const char **pzShared = ((const char **) baton->argv) + 5;
     const char *zBind = (const char *) baton + SQLITE_DATATYPE_OFFSET;
     const char *zSql = JSBATON_VALUE_STRING_ARGI(1);
     const char *zTmp = NULL;
@@ -1687,7 +1680,7 @@ static Jsbaton *jsbatonCreate(
     NAPI_ASSERT_OK();
     // save argv
     baton->result = argv;
-    //!! // init bffin
+    // init argv - external dataview
     ii = 0;
     while (ii < JSBATON_ARGC) {
         errcode = napi_get_element(env, baton->result, ii + 1, &argv);
@@ -1695,9 +1688,9 @@ static Jsbaton *jsbatonCreate(
         errcode = napi_is_dataview(env, argv, &is_dataview);
         NAPI_ASSERT_OK();
         if (is_dataview) {
-            errcode = napi_get_dataview_info(env, argv, NULL,
-                //!! (void **) &baton->bffin[ii], NULL, NULL);
-                (void **) &baton->argv[JSBATON_ARGC + ii], NULL, NULL);
+            errcode =
+                napi_get_dataview_info(env, argv, NULL,
+                (void **) baton->argv + ii, NULL, NULL);
             NAPI_ASSERT_OK();
         }
         ii += 1;
@@ -1717,10 +1710,11 @@ static napi_value jsbatonExport(
     // export baton->argv and baton->bffout to baton->result
     while (ii < JSBATON_ARGC) {
         if (baton->bffout[ii] == NULL) {
-            errcode = napi_create_double(env, (double) baton->argv[ii], &val);
+            // init result[ii] = undefined
+            errcode = napi_get_undefined(env, &val);
             NAPI_ASSERT_OK();
         } else {
-            // init baton->bffout[ii]
+            // init result[ii] = bffout[ii]
             errcode = napi_create_external_arraybuffer(env,     // napi_env env,
                 (void *) baton->bffout[ii],     // void* external_data,
                 (size_t) baton->argv[ii],       // size_t byte_length,
