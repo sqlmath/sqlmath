@@ -106,6 +106,11 @@ extern "C" {
         goto catch_error; \
     }
 
+// this function will return string-value from <baton> at given <argi>
+#define JSBATON_VALUE_STRING_ARGI(argi) \
+    (baton->argv[argi] == 0 ? NULL \
+        : ((const char *) baton) + ((size_t) baton->argv[argi] + 1 + 4))
+
 // this function will if <cond> is falsy, terminate process with <msg>
 #define NAPI_ASSERT_FATAL(cond, msg) \
     if (!(cond)) { \
@@ -392,7 +397,7 @@ SQLMATH_API void dbExec(
     JsonString *str99 = &__str99;
     const char **pzShared = ((const char **) baton->argv) + 5;
     const char *zBind = (const char *) baton + SQLITE_DATATYPE_OFFSET;
-    const char *zSql = ((const char **) baton->argv)[1];
+    const char *zSql = JSBATON_VALUE_STRING_ARGI(1);
     const char *zTmp = NULL;
     double rTmp = 0;
     int bindByKey = (int) baton->argv[3];
@@ -691,7 +696,7 @@ SQLMATH_API void dbMemoryLoadOrSave(
     sqlite3 *db = (sqlite3 *) (intptr_t) baton->argv[0];
     // declare var
     sqlite3 *pInMemory = db;
-    const char *zFilename = ((const char **) baton->argv)[1];
+    const char *zFilename = JSBATON_VALUE_STRING_ARGI(1);
     int isSave = baton->argv[2];
     // fprintf(stderr, "\n[sqlite - dbMemoryLoadOrSave(%s)]\n", zFilename);
 /*
@@ -777,7 +782,7 @@ SQLMATH_API void dbOpen(
     // declare var
     int errcode = 0;
     sqlite3 *db;
-    const char *filename = ((const char **) baton->argv)[0];
+    const char *filename = JSBATON_VALUE_STRING_ARGI(0);
     // call c-function
     errcode = sqlite3ApiGet()->open_v2( //
         filename,               // filename
@@ -802,8 +807,8 @@ SQLMATH_API void dbTableInsert(
     // declare var
     char datatype = 0;
     const char *zBind = (const char *) baton + SQLITE_DATATYPE_OFFSET;
-    const char *zSqlCreateTable = ((const char **) baton->argv)[3];
-    const char *zSqlInsertRow = ((const char **) baton->argv)[4];
+    const char *zSqlCreateTable = JSBATON_VALUE_STRING_ARGI(3);
+    const char *zSqlInsertRow = JSBATON_VALUE_STRING_ARGI(4);
     const char *zTmp = NULL;
     int bTxn = 0;
     int errcode = 0;
@@ -1670,7 +1675,7 @@ static Jsbaton *jsbatonCreate(
     errcode = napi_get_element(env, argv, 0, (napi_value *) & baton);
     NAPI_ASSERT_OK();
     errcode =
-        napi_get_typedarray_info(env, (napi_value) baton, NULL, NULL,
+        napi_get_dataview_info(env, (napi_value) baton, NULL,
         (void **) &baton, NULL, NULL);
     NAPI_ASSERT_OK();
     // save argv

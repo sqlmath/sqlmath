@@ -38,6 +38,7 @@ let {
     dbOpenAsync,
     dbTableInsertAsync,
     debugInline,
+    jsbatonValueString,
     jstestDescribe,
     jstestIt,
     noop
@@ -69,46 +70,37 @@ jstestDescribe((
     jstestIt((
         "test cCallAsync handling-behavior"
     ), function () {
-        // test bigint-error handling-behavior
-        [
-            [-0.5, null],
-            [-1 / 0, null],
-            [-1e999, null],
-            [-Infinity, null],
-            [-NaN, null],
-            [0.5, null],
-            [1 / 0, null],
-            [1e999, null],
-            [Infinity, null],
-            [NaN, null]
-        ].forEach(function ([
-            val
-        ]) {
-            assertErrorThrownAsync(function () {
-                return dbNoopAsync(undefined, val, undefined);
-            });
-        });
         // test datatype handling-behavior
         [
             ["", ""],
             ["\u0000", ""],
-            ["aa", ""],
+            ["aa", "aa"],
             [-0, 0],
+            [-0.5, undefined],
             [-0n, -0],
             [-0x8000000000000000n, -0x8000000000000000n],
             [-0x8000000000000001n, 0x7fffffffffffffffn],
+            [-1 / 0, undefined],
             [-1e-999, 0],
+            [-1e999, undefined],
             [-1n, -1],
             [-2, -2],
             [-2n, -2],
+            [-Infinity, undefined],
+            [-NaN, undefined],
             [0, 0],
+            [0.5, undefined],
             [0n, 0],
             [0x7fffffffffffffffn, 0x7fffffffffffffffn],
             [0x8000000000000000n, -0x8000000000000000n],
+            [1 / 0, undefined],
             [1e-999, 0],
+            [1e999, undefined],
             [1n, 1],
             [2, 2],
             [2n, 2],
+            [Infinity, undefined],
+            [NaN, undefined],
             [Symbol(), 0],
             [false, 0],
             [noop, 0],
@@ -119,13 +111,25 @@ jstestDescribe((
         ].forEach(async function ([
             valInput, valExpected
         ]) {
-            let valActual = noop(
-                await dbNoopAsync(undefined, valInput, undefined)
-            )[2];
-            if (typeof valInput === "string") {
+            let baton;
+            let valActual;
+            if (valExpected === undefined) {
+                assertErrorThrownAsync(function () {
+                    return dbNoopAsync(undefined, valInput, undefined);
+                });
                 return;
             }
-            valActual = String(valActual);
+            baton = noop(
+                await dbNoopAsync(undefined, valInput, undefined)
+            )[0];
+            valActual = (
+                typeof valInput === "string"
+                ? jsbatonValueString({
+                    argi: 1,
+                    baton
+                })
+                : String(baton.getBigInt64(8 + 8, true))
+            );
             valExpected = String(valExpected);
             if (typeof valInput === "bigint") {
                 valInput = String(valInput);
