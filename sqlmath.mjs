@@ -104,33 +104,30 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         argList.push(0n);
     }
     // serialize js-value to c-value
-    argList = argList.map(function (value, argi) {
-        let offset = 8 + argi * 8;
+    argList = argList.map(function (value, ii) {
         switch (typeof value) {
         case "bigint":
         case "boolean":
         case "number":
-            baton.setBigInt64(offset, BigInt(value), true);
-            break;
+            baton.setBigInt64(8 + ii * 8, BigInt(value), true);
+            return;
         // case "object":
         //     break;
         case "string":
             // append null-terminator to string
-            value = new TextEncoder().encode(
+            return new DataView(new TextEncoder().encode(
                 value.endsWith("\u0000")
                 ? value
                 : value + "\u0000"
-            );
-            break;
+            ).buffer);
         }
         if (ArrayBuffer.isView(value)) {
-            baton = jsbatonValuePush({
-                argi,
-                baton,
-                value
-            });
+            return new DataView(
+                value.buffer,
+                value.byteOffset,
+                value.byteLength
+            );
         }
-        return value;
     });
     // prepend baton to argList
     argList.unshift(new BigInt64Array(baton.buffer));
@@ -478,7 +475,6 @@ function jsbatonCreate() {
 }
 
 function jsbatonValuePush({
-    argi,
     baton,
     bufSharedList,
     value
@@ -644,10 +640,6 @@ function jsbatonValuePush({
     switch (vtype) {
     case SQLITE_DATATYPE_BLOB:
     case SQLITE_DATATYPE_TEXT:
-        // set argi to blob/text location
-        if (argi) {
-            baton.setInt32(8 + argi * 8, nused, true);
-        }
         vsize -= 4;
         // push vsize
         assertOrThrow(
@@ -685,22 +677,6 @@ function jsbatonValuePush({
         break;
     }
     return baton;
-}
-
-function jsbatonValueString({
-    argi,
-    baton
-}) {
-// this function will return string-value from <baton> at given <offset>
-    let offset;
-    baton = new DataView(baton.buffer);
-    offset = baton.getInt32(8 + argi * 8, true);
-    return new TextDecoder().decode(new Uint8Array(
-        baton.buffer,
-        offset + 1 + 4,
-        // remove null-terminator from string
-        baton.getInt32(offset + 1, true) - 1
-    ));
 }
 
 function jsonRowListFromCsv({
@@ -972,7 +948,6 @@ dbFinalizationRegistry = new FinalizationRegistry(function ({
     }
 });
 Object.assign(local, jslint, {
-    SQLITE_DATATYPE_OFFSET,
     SQLITE_MAX_LENGTH2,
     SQLITE_OPEN_AUTOPROXY,
     SQLITE_OPEN_CREATE,
@@ -1005,8 +980,7 @@ Object.assign(local, jslint, {
     dbNoopAsync,
     dbOpenAsync,
     dbTableInsertAsync,
-    debugInline,
-    jsbatonValueString
+    debugInline
 });
 if (process.env.npm_config_mode_test) {
     // mock consoleError

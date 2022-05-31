@@ -24,7 +24,6 @@
 /*jslint beta, node*/
 import sqlmath from "./sqlmath.mjs";
 let {
-    SQLITE_DATATYPE_OFFSET,
     assertErrorThrownAsync,
     assertJsonEqual,
     assertNumericalEqual,
@@ -39,7 +38,6 @@ let {
     dbOpenAsync,
     dbTableInsertAsync,
     debugInline,
-    jsbatonValueString,
     jstestDescribe,
     jstestIt,
     noop
@@ -71,14 +69,49 @@ jstestDescribe((
     jstestIt((
         "test cCallAsync handling-behavior"
     ), function () {
+        // test bigint-error handling-behavior
         [
-            ["", SQLITE_DATATYPE_OFFSET],
-            ["\u0000", SQLITE_DATATYPE_OFFSET],
-            ["aa", SQLITE_DATATYPE_OFFSET],
+            [-0.5, null],
+            [-1 / 0, null],
+            [-1e999, null],
+            [-Infinity, null],
+            [-NaN, null],
+            [0.5, null],
+            [1 / 0, null],
+            [1e999, null],
+            [Infinity, null],
+            [NaN, null]
+        ].forEach(function ([
+            val
+        ]) {
+            assertErrorThrownAsync(function () {
+                return dbNoopAsync(undefined, val, undefined);
+            });
+        });
+        // test datatype handling-behavior
+        [
+            ["", ""],
+            ["\u0000", ""],
+            ["aa", ""],
             [-0, 0],
+            [-0n, -0],
+            [-0x8000000000000000n, -0x8000000000000000n],
+            [-0x8000000000000001n, 0x7fffffffffffffffn],
+            [-1e-999, 0],
+            [-1n, -1],
+            [-2, -2],
+            [-2n, -2],
             [0, 0],
             [0n, 0],
+            [0x7fffffffffffffffn, 0x7fffffffffffffffn],
+            [0x8000000000000000n, -0x8000000000000000n],
+            [1e-999, 0],
+            [1n, 1],
+            [2, 2],
+            [2n, 2],
+            [Symbol(), 0],
             [false, 0],
+            [noop, 0],
             [null, 0],
             [true, 1],
             [undefined, 0],
@@ -86,36 +119,21 @@ jstestDescribe((
         ].forEach(async function ([
             valInput, valExpected
         ]) {
-            let baton = noop(
-                await dbNoopAsync(undefined, valInput)
-            )[0];
-            let valActual = Number(baton[2]);
+            let valActual = noop(
+                await dbNoopAsync(undefined, valInput, undefined)
+            )[2];
+            if (typeof valInput === "string") {
+                return;
+            }
+            valActual = String(valActual);
+            valExpected = String(valExpected);
+            if (typeof valInput === "bigint") {
+                valInput = String(valInput);
+            }
             assertJsonEqual(valActual, valExpected, {
                 valActual,
                 valExpected,
                 valInput
-            });
-            if (typeof valInput === "string") {
-                valActual = jsbatonValueString({
-                    argi: 1,
-                    baton
-                });
-                assertJsonEqual(valActual, valInput.replace((
-                    /\u0000$/
-                ), ""), {
-                    valActual,
-                    valExpected,
-                    valInput
-                });
-            }
-        });
-        [
-            -Infinity,
-            1 / 0,
-            Infinity
-        ].forEach(function (val) {
-            assertErrorThrownAsync(function () {
-                return dbNoopAsync(val);
             });
         });
     });
@@ -164,6 +182,7 @@ jstestDescribe((
             [noop, null],
             // 4. number
             [-0, 0],
+            [-0.5, -0.5],
             [-1 / 0, null],
             [-1e-999, 0],
             [-1e999, null],
@@ -171,6 +190,7 @@ jstestDescribe((
             [-Infinity, null],
             [-NaN, 0],
             [0, 0],
+            [0.5, 0.5],
             [1 / 0, null],
             [1e-999, 0],
             [1e999, null],

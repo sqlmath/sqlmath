@@ -134,7 +134,6 @@ onModulePostRun = new Promise(function (resolve) {
 self.onmessage = onmessage;
 
 
-
 /**
  * @typedef {{Database:Database, Statement:Statement}} SqlJs
  * @property {Database} Database A class that represents an SQLite database
