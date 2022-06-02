@@ -53,10 +53,12 @@ file sqlmath_h - start
 #define SQLMATH_H
 #include <assert.h>
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
+#define UNUSED(x) ((void)(x))
 SQLMATH_API int doubleSortCompare(
     const void *aa,
     const void *bb
@@ -74,20 +76,6 @@ file sqlmath_h - end
 /*
 file sqlmath_jenks - start
 */
-#define jenksCalcRangeStackPop() \
-    stackIi -= 1; \
-    const int iiAa = stackList[stackIi][0]; \
-    const int iiBb = stackList[stackIi][1]; \
-    const int ppAa = stackList[stackIi][2]; \
-    const int ppBb = stackList[stackIi][3];
-
-#define jenksCalcRangeStackPush(iiAa, iiBb, ppAa, ppBb) \
-    stackList[stackIi][0] = iiAa; \
-    stackList[stackIi][1] = iiBb; \
-    stackList[stackIi][2] = ppAa; \
-    stackList[stackIi][3] = ppBb; \
-    stackIi += 1;
-
 typedef struct JenksHistogramElem {
     double cvw;                 // cumulative value * weight
     double val;                 // value
@@ -101,7 +89,7 @@ typedef struct JenksObject {
 } JenksObject;
 
 inline static int jenksFindMaxBreakIndex(
-    JenksHistogramElem * histogram,
+    const JenksHistogramElem * histogram,
     double *ssmNow,
     const double *ssmPrv,
     const int completedRows,
@@ -131,7 +119,7 @@ inline static int jenksFindMaxBreakIndex(
 // Note that nn*mean^2 = sum^2/nn when mean := sum/nn
         iiBeg2 = ppBeg2 + completedRows - 1;
         iiEnd2 = iiMid + completedRows;
-        double currSSM =
+        const double currSSM =
             ssmPrv[ppBeg2] + pow(histogram[iiEnd2].cvw -
             histogram[iiBeg2].cvw,
             2) / (histogram[iiEnd2].cww - histogram[iiBeg2].cww);
@@ -142,108 +130,6 @@ inline static int jenksFindMaxBreakIndex(
     }
     ssmNow[iiMid] = ssmMin;
     return foundP;
-}
-
-/*
-// recursive version
-inline static void jenksCalcRange(
-    JenksHistogramElem * histogram,
-    double *ssmNow,
-    const double *ssmPrv,
-    const int completedRows,
-    const int iiBeg,
-    const int iiEnd,
-    const int ppBeg,
-    const int ppEnd,
-    const int classBreaksIndex,
-    int *classBreaks
-) {
-// find classBreaks[ii+completedRows]
-// for all ii>=iiBeg and ii<iiEnd given that
-// the results are at least ppBeg+(completedRows-1)
-// and less than            ppEnd+(completedRows-1)
-// Complexity:
-// O(log(iiEnd-iiBeg)*Max((iiEnd-iiBeg),(ppEnd-ppBeg))) <= O(mm*log(mm))
-    assert(iiBeg <= iiEnd);
-    assert(ppBeg <= iiBeg);
-    assert(ppEnd <= iiEnd);
-    if (iiBeg == iiEnd) {
-        return;
-    }
-    assert(ppBeg < ppEnd);
-    const int iiMid = (iiBeg + iiEnd) / 2;
-    const int ppEnd2 = MIN(ppEnd, iiMid + 1);
-    const int ppMid =
-        jenksFindMaxBreakIndex(histogram, ssmNow, ssmPrv, completedRows,
-        iiMid, ppBeg, ppEnd2);
-    assert(ppBeg <= ppMid);
-    assert(ppMid < ppEnd);
-    assert(ppMid <= iiMid);
-    // store result for the middle element.
-    classBreaks[classBreaksIndex + iiMid] = ppMid;
-    // Recurse - solve first half of the sub-problems with lower 'half' of
-    // possible outcomes.
-    jenksCalcRange(histogram, ssmNow, ssmPrv, completedRows, iiBeg, iiMid,
-        ppBeg, MIN(iiMid, ppMid + 1), classBreaksIndex, classBreaks);
-    // Recurse - solve second half of the sub-problems with upper 'half' of
-    // possible outcomes.
-    jenksCalcRange(histogram, ssmNow, ssmPrv, completedRows, iiMid + 1, iiEnd,
-        ppMid, ppEnd, classBreaksIndex, classBreaks);
-}
-*/
-
-// iterative version
-inline static void jenksCalcRange(
-    JenksHistogramElem * histogram,
-    double *ssmNow,
-    const double *ssmPrv,
-    const int completedRows,
-    const int iiBeg,
-    const int iiEnd,
-    const int ppBeg,
-    const int ppEnd,
-    const int classBreaksIndex,
-    int *classBreaks
-) {
-// find classBreaks[ii+completedRows]
-// for all ii>=iiBeg and ii<iiEnd given that
-// the results are at least ppBeg+(completedRows-1)
-// and less than            ppEnd+(completedRows-1)
-// Complexity:
-// O(log(iiEnd-iiBeg)*Max((iiEnd-iiBeg),(ppEnd-ppBeg))) <= O(mm*log(mm))
-    int stackIi = 0;
-    int stackList[64 * 2][4] = { 0 };
-    // stack-push
-    jenksCalcRangeStackPush(iiBeg, iiEnd, ppBeg, ppEnd);
-    while (stackIi != 0) {
-        // stack-pop
-        jenksCalcRangeStackPop();
-        assert(iiAa <= iiBb);
-        assert(ppAa <= iiAa);
-        assert(ppBb <= iiBb);
-        if (iiAa != iiBb) {
-            assert(ppAa < ppBb);
-            const int iiMid = (iiAa + iiBb) / 2;
-            const int ppBb2 = MIN(ppBb, iiMid + 1);
-            const int ppMid =
-                jenksFindMaxBreakIndex(histogram, ssmNow, ssmPrv,
-                completedRows,
-                iiMid, ppAa, ppBb2);
-            assert(ppAa <= ppMid);
-            assert(ppMid < ppBb);
-            assert(ppMid <= iiMid);
-            // store result for the middle element.
-            classBreaks[classBreaksIndex + iiMid] = ppMid;
-            // Recurse - solve first half of the sub-problems
-            // with lower 'half' of possible outcomes.
-            // stack-push
-            jenksCalcRangeStackPush(iiAa, iiMid, ppAa, MIN(iiMid, ppMid + 1));
-            // Recurse - solve second half of the sub-problems
-            // with upper 'half' of possible outcomes.
-            // stack-push
-            jenksCalcRangeStackPush(iiMid + 1, iiBb, ppMid, ppBb);
-        }
-    }
 }
 
 SQLMATH_API JenksObject *jenks(
@@ -270,6 +156,11 @@ SQLMATH_API JenksObject *jenks(
     int kk = 0;
     int lastClassBreakIndex = 0;
     int mm = 0;
+    int nnLog = log2(nn + 1) + 2;
+    int stackIi = 0;
+    int stackList[64][4] = { 0 };
+    // int stackList[nnLog][4] = { 0 };
+    UNUSED(nnLog);
     // Allocate pTmp.
     kk = MIN(nn, *__kk);
     nn = MAX(nn, kk);
@@ -335,7 +226,7 @@ SQLMATH_API JenksObject *jenks(
             ii -= 1;
             ssmTmp[ii] = values[ii];
         }
-        qsort(ssmTmp, nn, 8, doubleSortCompare);
+        qsort(ssmTmp, nn, sizeof(double), doubleSortCompare);
         // init histogram
         val = ssmTmp[0];
         ii = 1;
@@ -380,12 +271,74 @@ SQLMATH_API JenksObject *jenks(
     completedRows = 1;
     while (completedRows < kk - 1) {
         // complexity: O(mm*log(mm))
-        jenksCalcRange(histogram, ssmNow, ssmPrv, completedRows, 0, bufSize,
-            0, bufSize, classBreaksIndex, classBreaks);
+        // jenksCalcRange(histogram, ssmNow, ssmPrv, completedRows, 0, bufSize,
+        //     0, bufSize, classBreaksIndex, classBreaks);
+// find classBreaks[ii+completedRows]
+// for all ii>=iiBeg and ii<iiEnd given that
+// the results are at least ppBeg+(completedRows-1)
+// and less than            ppEnd+(completedRows-1)
+// Complexity:
+// O(log(iiEnd-iiBeg)*Max((iiEnd-iiBeg),(ppEnd-ppBeg))) <= O(mm*log(mm))
+        // stack-push
+        stackList[stackIi][0] = 0;
+        stackList[stackIi][1] = bufSize;
+        stackList[stackIi][2] = 0;
+        stackList[stackIi][3] = bufSize;
+        stackIi += 1;
+        while (stackIi != 0) {
+            // stack-pop
+            stackIi -= 1;
+            const int iiBeg = stackList[stackIi][0];
+            const int iiEnd = stackList[stackIi][1];
+            const int ppBeg = stackList[stackIi][2];
+            const int ppEnd = stackList[stackIi][3];
+            assert(iiBeg <= iiEnd);
+            assert(ppBeg <= iiBeg);
+            assert(ppEnd <= iiEnd);
+            if (iiBeg != iiEnd) {
+                assert(ppBeg < ppEnd);
+                const int iiMid = (iiBeg + iiEnd) / 2;
+                const int ppEnd2 = MIN(ppEnd, iiMid + 1);
+                const int ppMid =
+                    jenksFindMaxBreakIndex(histogram, ssmNow, ssmPrv,
+                    completedRows, iiMid, ppBeg, ppEnd2);
+                assert(ppBeg <= ppMid);
+                assert(ppMid < ppEnd);
+                assert(ppMid <= iiMid);
+                // store result for the middle element.
+                classBreaks[classBreaksIndex + iiMid] = ppMid;
+                // Recurse - solve first half of the sub-problems
+                // with lower 'half' of possible outcomes.
+                // stack-push
+                stackList[stackIi][0] = iiBeg;
+                stackList[stackIi][1] = iiMid;
+                stackList[stackIi][2] = ppBeg;
+                stackList[stackIi][3] = MIN(iiMid, ppMid + 1);
+                stackIi += 1;
+                assert(stackIi < nnLog);
+                // if (stackIi >= nnLog) {
+                //     fprintf(stderr, "\n[jenks  nnLog=%d  stackIi=%d]\n",
+                //         nnLog, stackIi);
+                // }
+                // Recurse - solve second half of the sub-problems
+                // with upper 'half' of possible outcomes.
+                // stack-push
+                stackList[stackIi][0] = iiMid + 1;
+                stackList[stackIi][1] = iiEnd;
+                stackList[stackIi][2] = ppMid;
+                stackList[stackIi][3] = ppEnd;
+                stackIi += 1;
+                assert(stackIi < nnLog);
+                // if (stackIi >= nnLog) {
+                //     fprintf(stderr, "\n[jenks  nnLog=%d  stackIi=%d]\n",
+                //         nnLog, stackIi);
+                // }
+            }
+        }
         // swap arrays ssmNow and ssmPrv.
-        memcpy(ssmTmp, ssmPrv, (size_t) bufSize * 8);
-        memcpy(ssmPrv, ssmNow, (size_t) bufSize * 8);
-        memcpy(ssmNow, ssmTmp, (size_t) bufSize * 8);
+        memcpy(ssmTmp, ssmPrv, (size_t) bufSize * sizeof(double));
+        memcpy(ssmPrv, ssmNow, (size_t) bufSize * sizeof(double));
+        memcpy(ssmNow, ssmTmp, (size_t) bufSize * sizeof(double));
         // update classBreaksIndex.
         classBreaksIndex += bufSize;
         completedRows += 1;
@@ -424,9 +377,9 @@ SQLMATH_API JenksObject *jenks(
         return NULL;
     }
     // init self
-    byteLength = (2 * 8         // JenksObject
-        + kk * 8                // resultBreaks
-        + kk * 8                // resultCounts
+    byteLength = (sizeof(JenksObject)   // JenksObject
+        + kk * sizeof(double)   // resultBreaks
+        + kk * sizeof(double)   // resultCounts
         + 0);
     JenksObject *self = (JenksObject *) __malloc(byteLength);
     if (self == NULL) {
@@ -434,8 +387,10 @@ SQLMATH_API JenksObject *jenks(
         return NULL;
     }
     memset(self, 0, byteLength);
-    self->resultBreaks = (double *) self + 2;
-    self->resultCounts = (double *) self + 2 + kk;
+    self->resultBreaks = (double *) ((char *) self + sizeof(JenksObject));
+    self->resultCounts =
+        (double *) ((char *) self + sizeof(JenksObject) +
+        kk * sizeof(double));
     memcpy(self->resultBreaks, resultBreaks, kk * sizeof(double));
     memcpy(self->resultCounts, resultCounts, kk * sizeof(double));
     // cleanup pTmp

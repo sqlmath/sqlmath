@@ -65,6 +65,11 @@ shRawLibFetch
     ],
     "replaceList": [
         {
+            "aa": "0,? *?\\/. xRename .\\/\\n};",
+            "bb": "0, /\\\\* xRename *\\\\/ 0, 0, 0, 0\n};",
+            "flags": "g"
+        },
+        {
             "aa": "SQLITE_EXTENSION_INIT1",
             "bb": "// $&",
             "flags": "g"
@@ -173,14 +178,6 @@ shRawLibFetch
 +    /\\* fall through *\\/ \
 +    case 2: c = (c<<6) + *(zIn)++;                     \
 +    /\\* fall through *\\/ \
-
--  0,                       /\\* xRename *\\/
-+// hack-sqlite - fix warning
-+  0,                       /\\* xRename *\\/
-+  0,                       /\\* xSavepoint *\\/
-+  0,                       /\\* xRelease *\\/
-+  0,                       /\\* xRollbackTo *\\/
-+  0                        /\\* xShadowName *\\/
 
 -  for(i=3; i<argc; i++){
 +// hack-sqlite - fix warning
@@ -674,7 +671,7 @@ static sqlite3_module carrayModule = {
   0,                         /* xCommit */
   0,                         /* xRollback */
   0,                         /* xFindMethod */
-  0,                         /* xRename */
+  0, /* xRename */ 0, 0, 0, 0
 };
 
 /*
@@ -1864,12 +1861,7 @@ static sqlite3_module CsvModule = {
   0,                       /* xCommit */
   0,                       /* xRollback */
   0,                       /* xFindMethod */
-// hack-sqlite - fix warning
-  0,                       /* xRename */
-  0,                       /* xSavepoint */
-  0,                       /* xRelease */
-  0,                       /* xRollbackTo */
-  0                        /* xShadowName */
+  0, /* xRename */ 0, 0, 0, 0
 };
 
 #ifdef SQLITE_TEST
@@ -1901,7 +1893,7 @@ static sqlite3_module CsvModuleFauxWrite = {
   0,                       /* xCommit */
   0,                       /* xRollback */
   0,                       /* xFindMethod */
-  0,                       /* xRename */
+  0, /* xRename */ 0, 0, 0, 0
 };
 #endif /* SQLITE_TEST */
 
@@ -3995,7 +3987,7 @@ UNUSED(pzErrMsg);
 
 /*
 repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed 2022-05-06T15:25:27Z
+committed
 */
 
 

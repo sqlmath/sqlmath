@@ -169,7 +169,6 @@ extern "C" {
 // file sqlmath_h - sqlite3
 // *INDENT-OFF*
 SQLITE_API const sqlite3_api_routines *sqlite3ApiGet();
-static const sqlite3_api_routines *sqlite3_api = NULL;
 typedef struct FuncDef FuncDef;
 typedef struct JsonString JsonString;
 typedef struct Vdbe Vdbe;
@@ -358,6 +357,7 @@ typedef struct DbExecBindElem {
     int buflen;
     char datatype;
 } DbExecBindElem;
+static const sqlite3_api_routines *sqlite3_api = NULL;
 // track how many sqlite-db open
 static int dbCount = 0;
 
@@ -463,7 +463,7 @@ SQLMATH_API void dbExec(
             zBind += 4;
             break;
         default:
-            fprintf(stderr, "\n[dbExec ii=%d  datatype=%d  len=%d]\n", ii,
+            fprintf(stderr, "\n[dbExec  ii=%d  datatype=%d  len=%d]\n", ii,
                 bindElem->datatype, bindElem->buflen);
             errcode = SQLITE_ERROR_DATATYPE_INVALID;
             JSBATON_ASSERT_OK();
