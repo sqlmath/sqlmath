@@ -1100,22 +1100,20 @@ SQLMATH_FNC static void sql_jenks_func(
     UNUSED(argc);
     // declare var
     JenksObject *self = NULL;
-    const int kk = sqlite3_value_int(argv[1]);
     const int nn = sqlite3_value_bytes(argv[0]) / 8;
     double *input = (double *) sqlite3_value_blob(argv[0]);
     double *output = (double *) sqlite3_value_blob(argv[2]);
+    int kk = sqlite3_value_int(argv[1]);
     // jenks init
-    self = jenksCreate(nn, kk, sqlite3MallocSizeT);
+    // jenks exec
+    self = jenks(nn, &kk, input, sqlite3MallocSizeT);
     if (self == NULL) {
         sqlite3_result_error_nomem(context);
         return;
     }
-    // jenks exec
-    jenks(self, nn, kk, input);
     memcpy(output, self, 2 * 8);
-    memcpy(output + 2, self->resultBreaks, (size_t) self->kk * 8);
-    memcpy(output + 2 + (size_t) self->kk, self->resultCounts,
-        (size_t) self->kk * 8);
+    memcpy(output + 2, self->resultBreaks, (size_t) kk * 8);
+    memcpy(output + 2 + (size_t) kk, self->resultCounts, (size_t) kk * 8);
     // jenks cleanup
     sqlite3_free(self);
     sqlite3_result_null(context);

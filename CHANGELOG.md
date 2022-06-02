@@ -1,12 +1,12 @@
 # Changelog
 
 # Todo
-- jenks - replace class-based api with static-function
 - wasm - replace sqljs-api with sqlmath-api in wasm
 - sqlmath - add sql-extension carrayblob()
 - none
 
 # v2022.6.1-beta
+- jenks - replace class-based api with static-function
 - jsbaton - migrate function dbExec() to new unified jsbaton
 - error - add sqlite errcode SQLITE_ERROR_ZSQL_NULL
 - jsbaton - migrate function dbTableInsert() to new unified jsbaton

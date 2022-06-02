@@ -50,7 +50,6 @@ file sqlmath_h - start
 */
 #ifndef SQLMATH_H
 #define SQLMATH_API
-#define SQLMATH_FNC
 #define SQLMATH_H
 #include <assert.h>
 #include <math.h>
@@ -83,19 +82,15 @@ typedef struct JenksHistogramElem {
 } JenksHistogramElem;
 
 typedef struct JenksObject {
-    double rows;
-    double kk;
     double *resultBreaks;
     double *resultCounts;
-    JenksHistogramElem *histogram;      // nn * sizeof(JenksHistogramElem)
-    double *ssmNow;             // nn * 8
-    double *ssmPrv;             // nn * 8
-    double *tmp;                // nn * 8
-    int *classBreaks;           // nn * (kk - 1) * sizeof(int)
-    int byteLength;
-    int classBreaksIndex;
-    int completedRows;
 } JenksObject;
+
+typedef struct JenksResultElem {
+    double brk;
+    int cnt;
+    int ignore;                 // pad to 8-byte alignment
+} JenksResultElem;
 
 inline static int jenksFindMaxBreakIndex(
     JenksHistogramElem * histogram,
@@ -186,91 +181,75 @@ inline static void jenksCalcRange(
         iiMid + 1, iiEnd, ppMid, ppEnd, classBreaks);
 }
 
-SQLMATH_API JenksObject *jenksCreate(
-    size_t nn,
-    size_t kk,
-    void *(*malloc) (size_t)
+SQLMATH_API JenksObject *jenks(
+    int nn,
+    int *__kk,
+    const double *values,
+    void *(*__malloc) (size_t)
 ) {
 // This function will allocate memory for and initialize new Jenks object.
     // declare var
-    JenksObject *self;
+    JenksHistogramElem *histogram = NULL;
+    JenksResultElem *resultList = NULL;
     char *pTmp = NULL;
-    size_t byteLength = 0;
-    // Allocate self.
-    nn = MAX(nn, kk);
-    byteLength = (16 * 8        //
-        + kk * 8                // resultBreaks
-        + kk * 8                // resultCounts
-        + nn * sizeof(JenksHistogramElem)       // histogram
-        + nn * (kk - 1) * sizeof(int)   // classBreaks
-        + nn * 8                // ssmNow
-        + nn * 8                // ssmPrv
-        + nn * 8                // tmp
-        + 0);
-    self = (JenksObject *) malloc(byteLength);
-    if (self == NULL) {
-        return NULL;
-    }
-    // Initialize self.
-    self->rows = 2;
-    pTmp = (char *) self + 16 * 8;
-    self->resultBreaks = (double *) pTmp;
-    pTmp += kk * 8;
-    self->resultCounts = (double *) pTmp;
-    pTmp += kk * 8;
-    self->histogram = (JenksHistogramElem *) pTmp;
-    pTmp += nn * sizeof(JenksHistogramElem);
-    self->classBreaks = (int *) pTmp;
-    pTmp += nn * (kk - 1) * sizeof(int);
-    self->ssmNow = (double *) pTmp;
-    pTmp += nn * 8;
-    self->ssmPrv = (double *) pTmp;
-    pTmp += nn * 8;
-    self->tmp = (double *) pTmp;
-    pTmp += nn * 8;
-    assert((size_t) (pTmp - (char *) self) == byteLength);
-    return self;
-}
-
-SQLMATH_FNC void jenks(
-    JenksObject * self,
-    const int nn,
-    int kk,
-    const double *values
-) {
-    // declare var
-    JenksHistogramElem *histogram = self->histogram;
-    double *resultBreaks = self->resultBreaks;
-    double *resultCounts = self->resultCounts;
-    double *ssmNow = self->ssmNow;
-    double *ssmPrv = self->ssmPrv;
-    double *tmp = self->tmp;
-    int *classBreaks = self->classBreaks;
+    double *ssmNow = NULL;
+    double *ssmPrv = NULL;
+    double *ssmTmp = NULL;
+    int *classBreaks = NULL;
     int bufSize = 0;
+    int byteLength = 0;
     int classBreaksIndex = 0;
     int completedRows = 0;
     int ii = 0;
-    int lastClassBreakIndex;
+    int kk = 0;
+    int lastClassBreakIndex = 0;
     int mm = 0;
-    // init var
-    kk = MIN(kk, nn);
-    self->kk = (double) kk;
+    // Allocate pTmp.
+    kk = MIN(nn, *__kk);
+    nn = MAX(nn, kk);
+    byteLength = (0             //
+        + kk * sizeof(JenksResultElem)  // resultList
+        + nn * sizeof(JenksHistogramElem)       // histogram
+        + nn * 8                // ssmNow
+        + nn * 8                // ssmPrv
+        + nn * 8                // ssmTmp
+        + nn * (kk - 1) * sizeof(int)   // classBreaks
+        + 0);
     // handle null-case
-    if (kk == 0) {
-        return;
+    if (byteLength <= 0 || kk <= 0 || nn <= 0) {
+        goto catch_error;
     }
+    pTmp = (char *) malloc(byteLength);
+    if (pTmp == NULL) {
+        goto catch_error;
+    }
+    // Initialize pTmp.
+    memset(pTmp, 0, byteLength);
+    resultList = (JenksResultElem *) pTmp;
+    pTmp += kk * sizeof(JenksResultElem);
+    histogram = (JenksHistogramElem *) pTmp;
+    pTmp += nn * sizeof(JenksHistogramElem);
+    ssmNow = (double *) pTmp;
+    pTmp += nn * 8;
+    ssmPrv = (double *) pTmp;
+    pTmp += nn * 8;
+    ssmTmp = (double *) pTmp;
+    pTmp += nn * 8;
+    classBreaks = (int *) pTmp;
+    pTmp += nn * (kk - 1) * sizeof(int);
+    pTmp -= byteLength;
     // handle if kk == 1, then return min-value of values
     if (kk == 1) {
         ii = nn - 1;
-        resultBreaks[0] = values[ii];
-        resultCounts[0] = nn;
+        resultList[0].brk = values[ii];
+        resultList[0].cnt = nn;
         while (ii > 0) {
             ii -= 1;
-            if (resultBreaks[0] > values[ii]) {
-                resultBreaks[0] = values[ii];
+            if (resultList[0].brk > values[ii]) {
+                resultList[0].brk = values[ii];
             }
         }
-        return;
+        goto catch_error;
     }
     // create pair of value->number of occurences (weight) which is input for
     // the JF- algorithm
@@ -285,14 +264,14 @@ SQLMATH_FNC void jenks(
         ii = nn;
         while (ii > 0) {
             ii -= 1;
-            tmp[ii] = values[ii];
+            ssmTmp[ii] = values[ii];
         }
-        qsort(tmp, nn, 8, doubleSortCompare);
+        qsort(ssmTmp, nn, 8, doubleSortCompare);
         // init histogram
-        val = tmp[0];
+        val = ssmTmp[0];
         ii = 1;
         while (1) {
-            if (ii < nn && tmp[ii] == val) {
+            if (ii < nn && ssmTmp[ii] == val) {
                 cnt += 1;
                 ii += 1;
                 continue;
@@ -309,22 +288,21 @@ SQLMATH_FNC void jenks(
             if (ii >= nn) {
                 break;
             }
-            val = tmp[ii];
+            val = ssmTmp[ii];
             cnt = 1;
             ii += 1;
         }
     }
     // handle if kk >= mm, then return sorted array of unique-values of input
     kk = MIN(kk, mm);
-    self->kk = (double) kk;
     if (kk >= mm) {
         ii = mm;
         while (ii > 0) {
             ii -= 1;
-            resultBreaks[ii] = histogram[ii].val;
-            resultCounts[ii] = histogram[ii].cnt;
+            resultList[ii].brk = histogram[ii].val;
+            resultList[ii].cnt = histogram[ii].cnt;
         }
-        return;
+        goto catch_error;
     }
     // Starting point of calculation of breaks.
     // complexity: O(mm*log(mm)*kk)
@@ -336,9 +314,9 @@ SQLMATH_FNC void jenks(
         jenksCalcRange(histogram, ssmNow, ssmPrv, classBreaksIndex,
             completedRows, 0, bufSize, 0, bufSize, classBreaks);
         // swap arrays ssmNow and ssmPrv.
-        memcpy(tmp, ssmPrv, (size_t) bufSize * 8);
+        memcpy(ssmTmp, ssmPrv, (size_t) bufSize * 8);
         memcpy(ssmPrv, ssmNow, (size_t) bufSize * 8);
-        memcpy(ssmNow, tmp, (size_t) bufSize * 8);
+        memcpy(ssmNow, ssmTmp, (size_t) bufSize * 8);
         // update classBreaksIndex.
         classBreaksIndex += bufSize;
         completedRows += 1;
@@ -350,10 +328,10 @@ SQLMATH_FNC void jenks(
     while (ii > 0) {
         ii -= 1;
         // assign the break values to the result
-        resultBreaks[ii] = histogram[lastClassBreakIndex + ii].val;
+        resultList[ii].brk = histogram[lastClassBreakIndex + ii].val;
         // assign the bucket count to the result
         if (ii > 0) {
-            resultCounts[ii - 1] =
+            resultList[ii - 1].cnt =
                 histogram[lastClassBreakIndex + ii - 1].cww;
         }
         if (ii > 1) {
@@ -363,13 +341,39 @@ SQLMATH_FNC void jenks(
         }
     }
     // break for the first class is the minimum of the dataset.
-    resultBreaks[0] = histogram[0].val;
-    resultCounts[kk - 1] = nn;
+    resultList[0].brk = histogram[0].val;
+    resultList[kk - 1].cnt = nn;
     ii = kk;
     while (ii > 1) {
         ii -= 1;
-        resultCounts[ii] -= resultCounts[ii - 1];
+        resultList[ii].cnt -= resultList[ii - 1].cnt;
     }
+  catch_error:
+    // update kk
+    *__kk = kk;
+    if (pTmp == NULL) {
+        return NULL;
+    }
+    // init self
+    byteLength = (2 * 8         // JenksObject
+        + kk * 8                // resultBreaks
+        + kk * 8                // resultCounts
+        + 0);
+    JenksObject *self = (JenksObject *) __malloc(byteLength);
+    if (self == NULL) {
+        free(pTmp);
+        return NULL;
+    }
+    memset(self, 0, byteLength);
+    self->resultBreaks = (double *) self + 2;
+    self->resultCounts = (double *) self + 2 + kk;
+    for (int ii = 0; ii < kk; ii += 1) {
+        self->resultBreaks[ii] = resultList[ii].brk;
+        self->resultCounts[ii] = resultList[ii].cnt;
+    }
+    // cleanup pTmp
+    free(pTmp);
+    return self;
 }
 
 /*
@@ -688,7 +692,7 @@ void ClassifyJenksFisherFromValueCountPairs(
 void test(
     const double *arr,
     const int nn,
-    const int kk,
+    int kk,
     const double aa,
     const double bb,
     const double cc,
@@ -696,8 +700,7 @@ void test(
     const double ee,
     const double ff,
     const double gg,
-    const double hh,
-    JenksObject *self
+    const double hh
 ) {
     // declare var
     LimitsContainer resultingbreaksArray;
@@ -719,7 +722,7 @@ void test(
         kk,
         sortedUniqueValueCounts);
     // jenks2
-    jenks(self, nn, kk, arr);
+    JenksObject *self = jenks(nn, &kk, arr, malloc);
     // print result
     std::cout << "breaks = [";
     ii = 0;
@@ -761,6 +764,7 @@ void test(
         ii += 1;
     }
     std::cout << std::endl << std::endl;
+    free(self);
 }
 int main(int c, char** argv) {
 /*
@@ -805,55 +809,46 @@ int main(int c, char** argv) {
     char ch;
     std::cin >> ch; // wait for user to enter a key
 */
-    JenksObject *self = jenksCreate(1 << 20, 4, malloc);
-    assert(self != NULL);
     double aa_3_2[] = { 2, 1, 0 };
     test(aa_3_2, 3, 2,
         0, 1, 0, 0,
-        1, 2, 0, 0,
-        self);
+        1, 2, 0, 0);
     // values = [2, 1, 0]
     // breaks = [0, 1]
     double aa_4_2[] = { 13.7, 0.1, 0.2, -0.4 };
     test(aa_4_2, 4, 3,
         -0.4, 0.1, 13.7, 0,
-        1, 2, 1, 0,
-        self);
+        1, 2, 1, 0);
     // values = [13.7, 0.1, 0.2, -0.4]
     // breaks = [-0.4, 0.1, 13.7]
     double aa_5_4[] = { 13.7, 0.1, 0.2, -0.4, 0.5 };
     test(aa_5_4, 5, 4,
         -0.4, 0.1, 0.5, 13.7,
-        1, 2, 1, 1,
-        self);
+        1, 2, 1, 1);
     // values = [13.7, 0.1, 0.2, -0.4, 0.5]
     // breaks = [-0.4, 0.1, 0.5, 13.7]
     double aa_6_4[] = { 13.7, 0.1, 0.2, -0.4, 0.5, 0.5 };
     test(aa_6_4, 6, 4,
         -0.4, 0.1, 0.5, 13.7,
-        1, 2, 2, 1,
-        self);
+        1, 2, 2, 1);
     // values = [13.7, 0.1, 0.2, -0.4, 0.5, 0.5]
     // breaks = [-0.4, 0.1, 0.5, 13.7]
     double aa_7_4[] = { 13.7, 0.1, 0.2, -0.4, 0.5, 0.5, 12.5 };
     test(aa_7_4, 7, 4,
         -0.4, 0.1, 12.5, 13.7,
-        1, 4, 1, 1,
-        self);
+        1, 4, 1, 1);
     // values = [13.7, 0.1, 0.2, -0.4, 0.5, 0.5, 12.5]
     // breaks = [-0.4, 0.1, 12.5, 13.7]
     double aa_8_4[] = { 13.7, 0.1, 0.2, -0.4, 0.5, 0.5, 12.5, 0 };
     test(aa_8_4, 8, 4,
         -0.4, 0.2, 12.5, 13.7,
-        3, 3, 1, 1,
-        self);
+        3, 3, 1, 1);
     // values = [13.7, 0.1, 0.2, -0.4, 0.5, 0.5, 12.5, -0.5]
     // breaks = [-0.4, 0.2, 12.5, 13.7]
     double aa_11_4[] = { 7.1, 3.1, 3, 2.8, 2.7, 2.5, 2.2, 1.6, 1.2, 1.1, 0.1 };
     test(aa_11_4, 11, 4,
         0.1, 1.1, 2.2, 7.1,
-        1, 3, 6, 1,
-        self);
+        1, 3, 6, 1);
     // values = [7.1, 3.1, 3, 2.8, 2.7, 2.5, 2.2, 1.6, 1.2, 1.1, 0.1]
     // breaks = [0.1, 1.1, 2.2, 7.1]
     double aa_104_4[] = {
@@ -867,8 +862,7 @@ int main(int c, char** argv) {
     };
     test(aa_104_4, 104, 4,
         -9, 18, 41, 64,
-        35, 30, 28, 11,
-        self);
+        35, 30, 28, 11);
     // breaks = [-9, 18, 41, 64]
     // test aa_big_4
     {
@@ -881,11 +875,9 @@ int main(int c, char** argv) {
         }
         test(aa_big_4, nn, 4,
             0, 262144, 524288, 786432,
-            262144, 262144, 262144, 262144,
-            self);
+            262144, 262144, 262144, 262144);
         free(aa_big_4);
     }
-    free(self);
 } // main
 // *INDENT-ON*
 #endif                          // SQLITE3_EXT_C2
