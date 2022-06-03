@@ -1095,26 +1095,28 @@ jstestDescribe((
             [
                 input, input.slice().reverse()
             ].forEach(async function (input) {
-                let output = new Float64Array(new SharedArrayBuffer(
-                    (2 + 2 * kk) * 8
+                let result = Array.from(new Float64Array(
+                    await dbGetLastBlobAsync({
+                        bindList: {
+                            input: new Float64Array(input),
+                            kk
+                        },
+                        db,
+                        sql: "SELECT jenks($kk, $input) AS result;"
+                    })
                 ));
-                input = new Float64Array(input);
-                await dbExecAsync({
-                    bindList: {
-                        input: new Float64Array(input),
-                        kk,
-                        output: output.buffer
-                    },
-                    db,
-                    sql: "SELECT jenks($input, $kk, $output);"
-                });
-                kk = output[1];
+                kk = result[0];
+                assertJsonEqual(kk, expected.length / 2);
                 assertJsonEqual(
-                    Array.from(output.slice(2, 2 + kk)),
+                    result.slice(1).filter(function (ignore, ii) {
+                        return ii % 2 === 0;
+                    }),
                     expected.slice(0, kk)
                 );
                 assertJsonEqual(
-                    Array.from(output.slice(2 + kk, 2 + kk + kk)),
+                    result.slice(1).filter(function (ignore, ii) {
+                        return ii % 2 === 1;
+                    }),
                     expected.slice(kk, kk + kk)
                 );
             });

@@ -319,10 +319,6 @@ SQLMATH_API double kthpercentile(
 SQLMATH_API int noop(
 );
 
-SQLMATH_API void *sqlite3MallocSizeT(
-    size_t size
-);
-
 SQLMATH_API const char *sqlmathSnprintfTrace(
     char *buf,
     const char *prefix,
@@ -350,6 +346,7 @@ file sqlmath_ext - start
 #ifdef SQLITE3_EXT_C2
 
 
+static const sqlite3_api_routines *sqlite3_api = NULL;
 #include "sqlmath_jenks.c"
 typedef struct DbExecBindElem {
     const char *buf;
@@ -357,7 +354,6 @@ typedef struct DbExecBindElem {
     int buflen;
     char datatype;
 } DbExecBindElem;
-static const sqlite3_api_routines *sqlite3_api = NULL;
 // track how many sqlite-db open
 static int dbCount = 0;
 
@@ -965,13 +961,6 @@ SQLMATH_API int noop(
     return 0;
 }
 
-SQLMATH_API void *sqlite3MallocSizeT(
-    size_t size
-) {
-// this function wraps sqlite3_malloc() with function signature of malloc
-    return sqlite3_malloc((int) size);
-}
-
 SQLMATH_API const char *sqlmathSnprintfTrace(
     char *buf,
     const char *prefix,
@@ -1096,27 +1085,29 @@ SQLMATH_FNC static void sql_jenks_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will calculate jenks natural breaks
+// This function will calculate <kk> jenks-natrual-breaks in given <values>,
+// and return a mallocd (double *) array with length (1 + kk * 2) of form:
+// [
+// (double) kk,
+// (double) break_1, (double) count_1,
+// (double) break_2, (double) count_2,
+// ...,
+// (double) break_k, (double) count_k
+// ]
     UNUSED(argc);
     // declare var
-    JenksObject *self = NULL;
-    const int nn = sqlite3_value_bytes(argv[0]) / 8;
-    double *input = (double *) sqlite3_value_blob(argv[0]);
-    double *output = (double *) sqlite3_value_blob(argv[2]);
-    int kk = sqlite3_value_int(argv[1]);
-    // jenks init
+    const double *values = (double *) sqlite3_value_blob(argv[1]);
+    const int kk = sqlite3_value_int(argv[0]);
+    const int nn = sqlite3_value_bytes(argv[1]) / sizeof(double);
     // jenks exec
-    self = jenks(nn, &kk, input, sqlite3MallocSizeT);
-    if (self == NULL) {
+    double *result = jenksCreate(kk, values, nn);
+    if (result == NULL) {
         sqlite3_result_error_nomem(context);
         return;
     }
-    memcpy(output, self, 2 * 8);
-    memcpy(output + 2, self->resultBreaks, (size_t) kk * 8);
-    memcpy(output + 2 + (size_t) kk, self->resultCounts, (size_t) kk * 8);
-    // jenks cleanup
-    sqlite3_free(self);
-    sqlite3_result_null(context);
+    // fprintf(stderr, "\n[sql_jenks_func  kk=%f]\n", result[0]);
+    sqlite3_result_blob(context, (void *) result,
+        (1 + (int) result[0] * 2) * 8, sqlite3_free);
 }
 
 // SQLMATH_FNC sql_kthpercentile_func - start
@@ -1440,8 +1431,7 @@ SQLMATH_FNC static void sql_throwerror_func(
 // SQLMATH_FNC sql_tobase64_func - start
 static char *base64Encode(
     const unsigned char *blob,
-    int *nn,
-    void *(*malloc) (size_t)
+    int *nn
 ) {
 // this function will base64-encode <blob> to <text>
     if (blob == NULL || *nn < 0) {
@@ -1458,7 +1448,7 @@ static char *base64Encode(
     // init bb
     bb = 4 * ceil((double) *nn / 3);
     // init text
-    text = malloc(MAX(bb, 4));
+    text = sqlite3_malloc(MAX(bb, 4));
     // handle nomem
     if (text == NULL) {
         return NULL;
@@ -1513,8 +1503,8 @@ SQLMATH_FNC static void sql_tobase64_func(
     int nn = sqlite3_value_bytes(argv[0]);
     // base64-encode blob to text
     text =
-        base64Encode((const unsigned char *) sqlite3_value_blob(argv[0]), &nn,
-        sqlite3MallocSizeT);
+        base64Encode((const unsigned char *) sqlite3_value_blob(argv[0]),
+        &nn);
     // handle nomem
     if (text == NULL) {
         sqlite3_result_error_nomem(context);
@@ -1555,7 +1545,7 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(copyblob, 1);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
-    SQLITE3_CREATE_FUNCTION1(jenks, 3);
+    SQLITE3_CREATE_FUNCTION1(jenks, 2);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);

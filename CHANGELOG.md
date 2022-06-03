@@ -6,6 +6,8 @@
 - none
 
 # v2022.6.1-beta
+- jenks - streamline jenksCreate() return object to simple double-array instead of struct
+- jenks - inline jenks-function jenksCalcRange() from recursion to iteration
 - jenks - optimize jenks-function jenksCalcRange() from recursion to iteration
 - jenks - replace class-based api with static-function
 - jsbaton - migrate function dbExec() to new unified jsbaton

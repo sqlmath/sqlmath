@@ -59,6 +59,17 @@ file sqlmath_h - start
 #define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
 #define UNUSED(x) ((void)(x))
+#define sqlite3_free free
+static void *sqlite3_malloc(
+    int size
+) {
+    void *pp = size <= 0 ? NULL : malloc((size_t) size);
+    if (pp != NULL) {
+        memset(pp, 0, (size_t) size);
+    }
+    return pp;
+}
+
 SQLMATH_API int doubleSortCompare(
     const void *aa,
     const void *bb
@@ -76,125 +87,74 @@ file sqlmath_h - end
 /*
 file sqlmath_jenks - start
 */
-typedef struct JenksHistogramElem {
-    double cvw;                 // cumulative value * weight
-    double val;                 // value
-    int cnt;                    // count of value
-    int cww;                    // cumulative weight = sum of cnt
-} JenksHistogramElem;
-
-typedef struct JenksObject {
-    double *resultBreaks;
-    double *resultCounts;
-} JenksObject;
-
-inline static int jenksFindMaxBreakIndex(
-    const JenksHistogramElem * histogram,
-    double *ssmNow,
-    const double *ssmPrv,
-    const int completedRows,
-    const int iiMid,
-    const int ppBeg,
-    const int ppEnd2
-) {
-// finds classBreaks[iiMid+completedRows] given that
-// the result is at least ppBeg+(completedRows-1)
-// and less than          ppEnd2+(completedRows-1)
-// Complexity: O(ppEnd2-ppBeg) <= O(mm)
-    int foundP = ppBeg;
-// Get the Squared Mean for elements iiBeg2..iiEnd2, multiplied by weight.
-// Note that nn*mean^2 = sum^2/nn when mean := sum/nn
-    int iiBeg2 = ppBeg + completedRows - 1;
-    int iiEnd2 = iiMid + completedRows;
-    double ssmMin =
-        ssmPrv[ppBeg] + pow(histogram[iiEnd2].cvw - histogram[iiBeg2].cvw,
-        2) / (histogram[iiEnd2].cww - histogram[iiBeg2].cww);
-    int ppBeg2 = ppBeg;
-    while (1) {
-        ppBeg2 += 1;
-        if (ppBeg2 >= ppEnd2) {
-            break;
-        }
-// Get the Squared Mean for elements iiBeg2..iiEnd2, multiplied by weight.
-// Note that nn*mean^2 = sum^2/nn when mean := sum/nn
-        iiBeg2 = ppBeg2 + completedRows - 1;
-        iiEnd2 = iiMid + completedRows;
-        const double currSSM =
-            ssmPrv[ppBeg2] + pow(histogram[iiEnd2].cvw -
-            histogram[iiBeg2].cvw,
-            2) / (histogram[iiEnd2].cww - histogram[iiBeg2].cww);
-        if (currSSM > ssmMin) {
-            ssmMin = currSSM;
-            foundP = ppBeg2;
-        }
-    }
-    ssmNow[iiMid] = ssmMin;
-    return foundP;
-}
-
-SQLMATH_API JenksObject *jenks(
-    int nn,
-    int *__kk,
+SQLMATH_API double *jenksCreate(
+    int kk,
     const double *values,
-    void *(*__malloc) (size_t)
+    int nn
 ) {
-// This function will allocate memory for and initialize new Jenks object.
+// This function will calculate <kk> jenks-natrual-breaks in given <values>,
+// and return a mallocd (double *) array with length (1 + kk * 2) of form:
+// [
+// (double) kk,
+// (double) break_1, (double) count_1,
+// (double) break_2, (double) count_2,
+// ...,
+// (double) break_k, (double) count_k
+// ]
     // declare var
-    JenksHistogramElem *histogram = NULL;
     char *pTmp = NULL;
+    const int nnLog = log2(nn + 1) + 2;
+    double *histogramCvw = NULL;        // cumulative value * weight
     double *resultBreaks = NULL;
-    double *resultCounts = NULL;
     double *ssmNow = NULL;
     double *ssmPrv = NULL;
-    double *ssmTmp = NULL;
     int *classBreaks = NULL;
+    int *histogramCww = NULL;   // cumulative weight = sum of cnt
+    int *resultCounts = NULL;
     int bufSize = 0;
     int byteLength = 0;
     int classBreaksIndex = 0;
     int completedRows = 0;
     int ii = 0;
-    int kk = 0;
     int lastClassBreakIndex = 0;
     int mm = 0;
-    int nnLog = log2(nn + 1) + 2;
     int stackIi = 0;
+    // 64 should be large enough to accomodate most arrays
     int stackList[64][4] = { 0 };
     // int stackList[nnLog][4] = { 0 };
     UNUSED(nnLog);
     // Allocate pTmp.
-    kk = MIN(nn, *__kk);
+    kk = MIN(nn, kk);
     nn = MAX(nn, kk);
     byteLength = (0             //
-        + kk * sizeof(double)   // resultBreaks
-        + kk * sizeof(double)   // resultCounts
-        + nn * sizeof(JenksHistogramElem)       // histogram
+        + nn * sizeof(double)   // histogramCvw
+        + nn * sizeof(double)   // resultBreaks
         + nn * sizeof(double)   // ssmNow
         + nn * sizeof(double)   // ssmPrv
-        + nn * sizeof(double)   // ssmTmp
+        + nn * sizeof(int)      // histogramCww
+        + nn * sizeof(int)      // resultCounts
         + nn * (kk - 1) * sizeof(int)   // classBreaks
         + 0);
     // handle null-case
     if (byteLength <= 0 || kk <= 0 || nn <= 0) {
         goto catch_error;
     }
-    pTmp = (char *) malloc(byteLength);
+    pTmp = (char *) sqlite3_malloc(byteLength);
     if (pTmp == NULL) {
         goto catch_error;
     }
-    // Initialize pTmp.
-    memset(pTmp, 0, byteLength);
     resultBreaks = (double *) pTmp;
-    pTmp += kk * sizeof(double);        // resultBreaks
-    resultCounts = (double *) pTmp;
-    pTmp += kk * sizeof(double);        // resultCounts
-    histogram = (JenksHistogramElem *) pTmp;
-    pTmp += nn * sizeof(JenksHistogramElem);    // histogram
+    pTmp += nn * sizeof(double);        // resultBreaks
     ssmNow = (double *) pTmp;
     pTmp += nn * sizeof(double);        // ssmNow
     ssmPrv = (double *) pTmp;
     pTmp += nn * sizeof(double);        // ssmPrv
-    ssmTmp = (double *) pTmp;
-    pTmp += nn * sizeof(double);        // ssmTmp
+    histogramCvw = (double *) pTmp;
+    pTmp += nn * sizeof(double);        // histogramCvw
+    histogramCww = (int *) pTmp;
+    pTmp += nn * sizeof(int);   // histogramCww
+    resultCounts = (int *) pTmp;
+    pTmp += nn * sizeof(int);   // resultCounts
     classBreaks = (int *) pTmp;
     pTmp += nn * (kk - 1) * sizeof(int);        // classBreaks
     pTmp -= byteLength;
@@ -224,31 +184,31 @@ SQLMATH_API JenksObject *jenks(
         ii = nn;
         while (ii > 0) {
             ii -= 1;
-            ssmTmp[ii] = values[ii];
+            ssmPrv[ii] = values[ii];
         }
-        qsort(ssmTmp, nn, sizeof(double), doubleSortCompare);
-        // init histogram
-        val = ssmTmp[0];
+        qsort(ssmPrv, nn, sizeof(double), doubleSortCompare);
+        // init histogramXxx
+        val = ssmPrv[0];
         ii = 1;
         while (1) {
-            if (ii < nn && ssmTmp[ii] == val) {
+            if (ii < nn && ssmPrv[ii] == val) {
                 cnt += 1;
                 ii += 1;
                 continue;
             }
             cww += cnt;
             cvw += val * cnt;
-            histogram[mm].cnt = cnt;
-            histogram[mm].cvw = cvw;
-            histogram[mm].cww = cww;
-            histogram[mm].val = val;
+            histogramCvw[mm] = cvw;
+            histogramCww[mm] = cww;
+            resultBreaks[mm] = val;
+            resultCounts[mm] = cnt;
             // prepare SSM for first class. Last (kk-1) values are omitted
-            ssmPrv[mm] = pow(histogram[mm].cvw, 2) / histogram[mm].cww;
+            ssmPrv[mm] = pow(histogramCvw[mm], 2) / histogramCww[mm];
             mm += 1;
             if (ii >= nn) {
                 break;
             }
-            val = ssmTmp[ii];
+            val = ssmPrv[ii];
             cnt = 1;
             ii += 1;
         }
@@ -256,12 +216,6 @@ SQLMATH_API JenksObject *jenks(
     // handle if kk >= mm, then return sorted array of unique-values of input
     kk = MIN(kk, mm);
     if (kk >= mm) {
-        ii = mm;
-        while (ii > 0) {
-            ii -= 1;
-            resultBreaks[ii] = histogram[ii].val;
-            resultCounts[ii] = histogram[ii].cnt;
-        }
         goto catch_error;
     }
     // Starting point of calculation of breaks.
@@ -273,12 +227,13 @@ SQLMATH_API JenksObject *jenks(
         // complexity: O(mm*log(mm))
         // jenksCalcRange(histogram, ssmNow, ssmPrv, completedRows, 0, bufSize,
         //     0, bufSize, classBreaksIndex, classBreaks);
+// jenksCalcRange - start
 // find classBreaks[ii+completedRows]
 // for all ii>=iiBeg and ii<iiEnd given that
-// the results are at least ppBeg+(completedRows-1)
-// and less than            ppEnd+(completedRows-1)
+// the results are at least bbBeg+(completedRows-1)
+// and less than            bbEnd+(completedRows-1)
 // Complexity:
-// O(log(iiEnd-iiBeg)*Max((iiEnd-iiBeg),(ppEnd-ppBeg))) <= O(mm*log(mm))
+// O(log(iiEnd-iiBeg)*Max((iiEnd-iiBeg),(bbEnd-bbBeg))) <= O(mm*log(mm))
         // stack-push
         stackList[stackIi][0] = 0;
         stackList[stackIi][1] = bufSize;
@@ -290,30 +245,64 @@ SQLMATH_API JenksObject *jenks(
             stackIi -= 1;
             const int iiBeg = stackList[stackIi][0];
             const int iiEnd = stackList[stackIi][1];
-            const int ppBeg = stackList[stackIi][2];
-            const int ppEnd = stackList[stackIi][3];
+            const int bbBeg = stackList[stackIi][2];
+            const int bbEnd = stackList[stackIi][3];
             assert(iiBeg <= iiEnd);
-            assert(ppBeg <= iiBeg);
-            assert(ppEnd <= iiEnd);
+            assert(bbBeg <= iiBeg);
+            assert(bbEnd <= iiEnd);
             if (iiBeg != iiEnd) {
-                assert(ppBeg < ppEnd);
+                assert(bbBeg < bbEnd);
                 const int iiMid = (iiBeg + iiEnd) / 2;
-                const int ppEnd2 = MIN(ppEnd, iiMid + 1);
-                const int ppMid =
-                    jenksFindMaxBreakIndex(histogram, ssmNow, ssmPrv,
-                    completedRows, iiMid, ppBeg, ppEnd2);
-                assert(ppBeg <= ppMid);
-                assert(ppMid < ppEnd);
-                assert(ppMid <= iiMid);
+                const int bbEnd2 = MIN(bbEnd, iiMid + 1);
+                // const int bbMid =
+                //     jenksFindMaxBreakIndex(histogram, ssmNow, ssmPrv,
+                //     completedRows, iiMid, bbBeg, bbEnd2);
+// jenksFindMaxBreakIndex - start
+// finds classBreaks[iiMid+completedRows] given that
+// the result is at least bbBeg+(completedRows-1)
+// and less than          bbEnd2+(completedRows-1)
+// Complexity: O(bbEnd2-bbBeg) <= O(mm)
+                int bbMid = bbBeg;
+// Get the Squared Mean for elements iiBeg2..iiEnd2, multiplied by weight.
+// Note that nn*mean^2 = sum^2/nn when mean := sum/nn
+                int iiBeg2 = bbBeg + completedRows - 1;
+                const int iiEnd2 = iiMid + completedRows;
+                double ssmMin = ssmPrv[bbBeg] + (       //
+                    pow(histogramCvw[iiEnd2] - histogramCvw[iiBeg2], 2) //
+                    / (histogramCww[iiEnd2] - histogramCww[iiBeg2]));
+                int bbBeg2 = bbBeg;
+                while (1) {
+                    bbBeg2 += 1;
+                    if (bbBeg2 >= bbEnd2) {
+                        break;
+                    }
+// Get the Squared Mean for elements iiBeg2..iiEnd2, multiplied by weight.
+// Note that nn*mean^2 = sum^2/nn when mean := sum/nn
+                    iiBeg2 = bbBeg2 + completedRows - 1;
+// *INDENT-OFF*
+                    const double currSSM = ssmPrv[bbBeg2] + ( //
+                        pow(histogramCvw[iiEnd2] - histogramCvw[iiBeg2], 2) //
+                        / (histogramCww[iiEnd2] - histogramCww[iiBeg2]));
+// *INDENT-ON*
+                    if (currSSM > ssmMin) {
+                        ssmMin = currSSM;
+                        bbMid = bbBeg2;
+                    }
+                }
+                ssmNow[iiMid] = ssmMin;
+// jenksFindMaxBreakIndex - end
+                assert(bbBeg <= bbMid);
+                assert(bbMid < bbEnd);
+                assert(bbMid <= iiMid);
                 // store result for the middle element.
-                classBreaks[classBreaksIndex + iiMid] = ppMid;
+                classBreaks[classBreaksIndex + iiMid] = bbMid;
                 // Recurse - solve first half of the sub-problems
                 // with lower 'half' of possible outcomes.
                 // stack-push
                 stackList[stackIi][0] = iiBeg;
                 stackList[stackIi][1] = iiMid;
-                stackList[stackIi][2] = ppBeg;
-                stackList[stackIi][3] = MIN(iiMid, ppMid + 1);
+                stackList[stackIi][2] = bbBeg;
+                stackList[stackIi][3] = MIN(iiMid, bbMid + 1);
                 stackIi += 1;
                 assert(stackIi < nnLog);
                 // if (stackIi >= nnLog) {
@@ -325,8 +314,8 @@ SQLMATH_API JenksObject *jenks(
                 // stack-push
                 stackList[stackIi][0] = iiMid + 1;
                 stackList[stackIi][1] = iiEnd;
-                stackList[stackIi][2] = ppMid;
-                stackList[stackIi][3] = ppEnd;
+                stackList[stackIi][2] = bbMid;
+                stackList[stackIi][3] = bbEnd;
                 stackIi += 1;
                 assert(stackIi < nnLog);
                 // if (stackIi >= nnLog) {
@@ -335,26 +324,60 @@ SQLMATH_API JenksObject *jenks(
                 // }
             }
         }
+// jenksCalcRange - end
         // swap arrays ssmNow and ssmPrv.
-        memcpy(ssmTmp, ssmPrv, (size_t) bufSize * sizeof(double));
-        memcpy(ssmPrv, ssmNow, (size_t) bufSize * sizeof(double));
-        memcpy(ssmNow, ssmTmp, (size_t) bufSize * sizeof(double));
+        double *ssmTmp = ssmPrv;
+        ssmPrv = ssmNow;
+        ssmNow = ssmTmp;
         // update classBreaksIndex.
         classBreaksIndex += bufSize;
         completedRows += 1;
     }
-    lastClassBreakIndex =
-        jenksFindMaxBreakIndex(histogram, ssmNow, ssmPrv, completedRows,
-        bufSize - 1, 0, bufSize);
+    // lastClassBreakIndex =
+    //     jenksFindMaxBreakIndex(histogram, ssmNow, ssmPrv, completedRows,
+    //     bufSize - 1, 0, bufSize);
+// jenksFindMaxBreakIndex - start
+// finds classBreaks[iiMid+completedRows] given that
+// the result is at least bbBeg+(completedRows-1)
+// and less than          bbEnd2+(completedRows-1)
+// Complexity: O(bbEnd2-bbBeg) <= O(mm)
+    {
+        lastClassBreakIndex = 0;
+// Get the Squared Mean for elements iiBeg2..iiEnd2, multiplied by weight.
+// Note that nn*mean^2 = sum^2/nn when mean := sum/nn
+        int iiBeg2 = completedRows - 1;
+        const int iiEnd2 = bufSize - 1 + completedRows;
+        double ssmMin = ssmPrv[0] + (   //
+            pow(histogramCvw[iiEnd2] - histogramCvw[iiBeg2], 2) //
+            / (histogramCww[iiEnd2] - histogramCww[iiBeg2]));
+        int bbBeg2 = 0;
+        while (1) {
+            bbBeg2 += 1;
+            if (bbBeg2 >= bufSize) {
+                break;
+            }
+// Get the Squared Mean for elements iiBeg2..iiEnd2, multiplied by weight.
+// Note that nn*mean^2 = sum^2/nn when mean := sum/nn
+            iiBeg2 = bbBeg2 + completedRows - 1;
+            const double currSSM = ssmPrv[bbBeg2] + (   //
+                pow(histogramCvw[iiEnd2] - histogramCvw[iiBeg2], 2)     //
+                / (histogramCww[iiEnd2] - histogramCww[iiBeg2]));
+            if (currSSM > ssmMin) {
+                ssmMin = currSSM;
+                lastClassBreakIndex = bbBeg2;
+            }
+        }
+    }
+// jenksFindMaxBreakIndex - end
+    memcpy(ssmPrv, resultBreaks, nn * sizeof(double));
     ii = kk;
     while (ii > 0) {
         ii -= 1;
         // assign the break values to the result
-        resultBreaks[ii] = histogram[lastClassBreakIndex + ii].val;
+        resultBreaks[ii] = ssmPrv[lastClassBreakIndex + ii];
         // assign the bucket count to the result
         if (ii > 0) {
-            resultCounts[ii - 1] =
-                histogram[lastClassBreakIndex + ii - 1].cww;
+            resultCounts[ii - 1] = histogramCww[lastClassBreakIndex + ii - 1];
         }
         if (ii > 1) {
             classBreaksIndex -= bufSize;
@@ -363,7 +386,7 @@ SQLMATH_API JenksObject *jenks(
         }
     }
     // break for the first class is the minimum of the dataset.
-    resultBreaks[0] = histogram[0].val;
+    resultBreaks[0] = ssmPrv[0];
     resultCounts[kk - 1] = nn;
     ii = kk;
     while (ii > 1) {
@@ -371,31 +394,25 @@ SQLMATH_API JenksObject *jenks(
         resultCounts[ii] -= resultCounts[ii - 1];
     }
   catch_error:
-    // update kk
-    *__kk = kk;
     if (pTmp == NULL) {
         return NULL;
     }
-    // init self
-    byteLength = (sizeof(JenksObject)   // JenksObject
-        + kk * sizeof(double)   // resultBreaks
-        + kk * sizeof(double)   // resultCounts
-        + 0);
-    JenksObject *self = (JenksObject *) __malloc(byteLength);
-    if (self == NULL) {
-        free(pTmp);
+    // save result
+    double *result = (double *) sqlite3_malloc((1 + kk * 2) * sizeof(double));
+    if (result == NULL) {
+        sqlite3_free(pTmp);
         return NULL;
     }
-    memset(self, 0, byteLength);
-    self->resultBreaks = (double *) ((char *) self + sizeof(JenksObject));
-    self->resultCounts =
-        (double *) ((char *) self + sizeof(JenksObject) +
-        kk * sizeof(double));
-    memcpy(self->resultBreaks, resultBreaks, kk * sizeof(double));
-    memcpy(self->resultCounts, resultCounts, kk * sizeof(double));
+    // save kk
+    result[0] = kk;
+    // save resultBreaks, resultCounts
+    for (ii = 0; ii < kk; ii += 1) {
+        result[1 + 2 * ii + 0] = resultBreaks[ii];
+        result[1 + 2 * ii + 1] = resultCounts[ii];
+    }
     // cleanup pTmp
-    free(pTmp);
-    return self;
+    sqlite3_free(pTmp);
+    return result;
 }
 
 /*
@@ -744,8 +761,8 @@ void test(
         kk,
         sortedUniqueValueCounts);
     // jenks2
-    JenksObject *self = jenks(nn, &kk, arr, malloc);
-    // print result
+    double *result = jenksCreate(kk, arr, nn);
+    // print result-breaks
     std::cout << "breaks = [";
     ii = 0;
     for (double breakValue : resultingbreaksArray) {
@@ -753,40 +770,47 @@ void test(
         ii += 1;
     }
     std::cout << "]" << std::endl;
+    // print result-counts
+    std::cout << "counts = [";
+    ii = 0;
+    while (ii < kk && ii < 100) {
+        std::cout << (ii == 0 ? "" : ", ") << result[1 + 2 * ii + 1];
+        ii += 1;
+    }
+    std::cout << "]" << std::endl;
     // test
     ii = 0;
     while (ii < kk) {
-        // debug
 // printf(
 // "nn=%d kk=%d ii=%d jenks1[ii]=%f jenks2[ii].val=%f jenks2[ii].cnt=%.0f\n",
-// nn, kk, ii, resultingbreaksArray[ii], self->resultBreaks[ii],
-// self->resultCounts[ii]);
+// nn, result[0], ii, resultingbreaksArray[ii], result[1 + 2 * ii + 0],
+// result[1 + 2 * ii + 1]);
         switch (ii) {
         case 0:
             assert(resultingbreaksArray[ii] == aa);
-            assert(self->resultBreaks[ii] == aa);
-            assert(self->resultCounts[ii] == ee);
+            assert(result[1 + 2 * ii + 0] == aa);
+            assert(result[1 + 2 * ii + 1] == ee);
             break;
         case 1:
             assert(resultingbreaksArray[ii] == bb);
-            assert(self->resultBreaks[ii] == bb);
-            assert(self->resultCounts[ii] == ff);
+            assert(result[1 + 2 * ii + 0] == bb);
+            assert(result[1 + 2 * ii + 1] == ff);
             break;
         case 2:
             assert(resultingbreaksArray[ii] == cc);
-            assert(self->resultBreaks[ii] == cc);
-            assert(self->resultCounts[ii] == gg);
+            assert(result[1 + 2 * ii + 0] == cc);
+            assert(result[1 + 2 * ii + 1] == gg);
             break;
         case 3:
             assert(resultingbreaksArray[ii] == dd);
-            assert(self->resultBreaks[ii] == dd);
-            assert(self->resultCounts[ii] == hh);
+            assert(result[1 + 2 * ii + 0] == dd);
+            assert(result[1 + 2 * ii + 1] == hh);
             break;
         }
         ii += 1;
     }
     std::cout << std::endl << std::endl;
-    free(self);
+    sqlite3_free(result);
 }
 int main(int c, char** argv) {
 /*
@@ -890,14 +914,31 @@ int main(int c, char** argv) {
     {
         size_t nn = 1 << 20;
         double *aa_big_4 = (double *) malloc((size_t) nn * 8);
-        size_t ii = nn;
-        while (ii > 0) {
-            ii -= 1;
-            aa_big_4[ii] = ii;
+        size_t ii = 0;
+        for (ii = 0; ii < nn; ii += 1) {
+            aa_big_4[ii] = (double) ii;
         }
         test(aa_big_4, nn, 4,
             0, 262144, 524288, 786432,
             262144, 262144, 262144, 262144);
+        for (ii = 0; ii < nn; ii += 1) {
+            aa_big_4[nn - 1 - ii] = (double) ii;
+        }
+        test(aa_big_4, nn, 4,
+            0, 262144, 524288, 786432,
+            262144, 262144, 262144, 262144);
+        for (ii = 0; ii < nn; ii += 1) {
+            aa_big_4[ii] = (ii & 1 ? 1 : -1) * (double) ii;
+        }
+        test(aa_big_4, nn, 4,
+            -1048574, -524288, -2, 524287,
+            262143, 262143, 262145, 262145);
+        for (ii = 0; ii < nn; ii += 1) {
+            aa_big_4[nn - 1 - ii] = (ii & 1 ? 1 : -1) * (double) ii;
+        }
+        test(aa_big_4, nn, 4,
+            -1048574, -524288, -2, 524287,
+            262143, 262143, 262145, 262145);
         free(aa_big_4);
     }
 } // main
