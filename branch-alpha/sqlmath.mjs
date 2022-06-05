@@ -1046,7 +1046,51 @@ function objectDeepCopyWithKeysSorted(obj) {
     return sorted;
 }
 
-await (async function () {
+async function sqlMessagePost(baton, cFuncName, ...argList) {
+
+// This function will post msg to <sqlWorker> and return result
+
+    let id;
+    let result;
+    let timeElapsed = Date.now();
+    // increment sqlMessageId
+    sqlMessageId += 1;
+    id = sqlMessageId;
+    // postMessage to web-worker
+    sqlWorker.postMessage(
+        {
+            argList,
+            baton,
+            cFuncName,
+            id
+        },
+        // transfer arraybuffer without copying
+        [
+            baton.buffer,
+            ...argList.filter(function (elem) {
+                return elem && elem.constructor === ArrayBuffer;
+            })
+        ]
+    );
+    // await result from web-worker
+    result = await new Promise(function (resolve) {
+        sqlMessageDict[id] = resolve;
+    });
+    // cleanup sqlMessageDict
+    delete sqlMessageDict[id];
+    console.error(
+        "sqlMessagePost - " + JSON.stringify({
+            cFuncName,
+            timeElapsed: Date.now() - timeElapsed
+        })
+    );
+    assertOrThrow(!result.errmsg, result.errmsg);
+    return [
+        result.baton, result.cFuncName, ...result.argList
+    ];
+}
+
+async function zzInit() {
     dbFinalizationRegistry = new FinalizationRegistry(function ({
         afterFinalization,
         ptr
@@ -1118,79 +1162,31 @@ await (async function () {
             // mock consoleError
             consoleError = noop;
         }
-    } else {
+        return;
+    }
 
 // Feature-detect browser.
 
-        IS_BROWSER = true;
-        sqlWorker = new globalThis.Worker("sqlmath_wasm.js?initSqlJsWorker=1");
-        sqlWorker.onmessage = function ({
-            data
-        }) {
-            sqlMessageDict[data.id](data);
-        };
-        //!! sqlMessagePost({
-            //!! baton: jsbatonCreate(),
-            //!! cFuncName: "_dbNoop"
-        //!! });
-        //!! noop(sqlMessagePost);
-        //!! debugInline(
-            //!! await dbNoopAsync(1, 2, 3)
-        //!! );
-        let db = await dbOpenAsync({ //jslint-quiet
-            filename: ":memory:"
-        });
-        debugInline(
-            await dbExecAsync({
-                db,
-                sql: "SELECT 1234"
-            })
-        );
-    }
-}());
-
-async function sqlMessagePost(baton, cFuncName, ...argList) {
-
-// This function will post msg to <sqlWorker> and return result
-
-    let id;
-    let result;
-    let timeElapsed = Date.now();
-    // increment sqlMessageId
-    sqlMessageId += 1;
-    id = sqlMessageId;
-    // postMessage to web-worker
-    sqlWorker.postMessage(
-        {
-            argList,
-            baton,
-            cFuncName,
-            id
-        },
-        // transfer arraybuffer without copying
-        [
-            baton.buffer,
-            ...argList.filter(function (elem) {
-                return elem && elem.constructor === ArrayBuffer;
-            })
-        ]
-    );
-    // await result from web-worker
-    result = await new Promise(function (resolve) {
-        sqlMessageDict[id] = resolve;
+    IS_BROWSER = true;
+    sqlWorker = new globalThis.Worker("sqlmath_wasm.js?initSqlJsWorker=1");
+    sqlWorker.onmessage = function ({
+        data
+    }) {
+        sqlMessageDict[data.id](data);
+    };
+    /*
+    let db = await dbOpenAsync({ //jslint-quiet
+        filename: ":memory:"
     });
-    // cleanup sqlMessageDict
-    delete sqlMessageDict[id];
-    console.error(
-        "sqlMessagePost - " + JSON.stringify({
-            cFuncName,
-            timeElapsed: Date.now() - timeElapsed
+    debugInline(
+        await dbExecAsync({
+            db,
+            sql: "SELECT 1234"
         })
     );
-    assertOrThrow(!result.errmsg, result.errmsg);
-    return [
-        result.baton, result.cFuncName, ...result.argList
-    ];
+    */
 }
+
+await zzInit();
 
 export default Object.freeze(local);

@@ -9,7 +9,7 @@
      "ranges": [
       {
        "count": 1,
-       "endOffset": 34970,
+       "endOffset": 34688,
        "startOffset": 0
       }
      ],
@@ -1139,17 +1139,28 @@
      "isBlockCoverage": true
     },
     {
-     "functionName": "",
+     "functionName": "sqlMessagePost",
+     "ranges": [
+      {
+       "count": 0,
+       "endOffset": 32109,
+       "startOffset": 30974
+      }
+     ],
+     "isBlockCoverage": false
+    },
+    {
+     "functionName": "zzInit",
      "ranges": [
       {
        "count": 1,
-       "endOffset": 33790,
-       "startOffset": 30981
+       "endOffset": 34632,
+       "startOffset": 32111
       },
       {
        "count": 0,
-       "endOffset": 33788,
-       "startOffset": 33035
+       "endOffset": 34631,
+       "startOffset": 34187
       }
      ],
      "isBlockCoverage": true
@@ -1159,8 +1170,8 @@
      "ranges": [
       {
        "count": 1,
-       "endOffset": 31368,
-       "startOffset": 31055
+       "endOffset": 32504,
+       "startOffset": 32191
       }
      ],
      "isBlockCoverage": true
@@ -1170,19 +1181,8 @@
      "ranges": [
       {
        "count": 0,
-       "endOffset": 33303,
-       "startOffset": 33209
-      }
-     ],
-     "isBlockCoverage": false
-    },
-    {
-     "functionName": "sqlMessagePost",
-     "ranges": [
-      {
-       "count": 0,
-       "endOffset": 34931,
-       "startOffset": 33796
+       "endOffset": 34420,
+       "startOffset": 34342
       }
      ],
      "isBlockCoverage": false

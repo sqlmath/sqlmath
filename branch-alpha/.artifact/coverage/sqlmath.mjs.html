@@ -138,16 +138,16 @@ body {
   <td class="coverageHigh">
       <a href="index.html">. / </a>sqlmath.mjs<br>
     <div class="percentbar">
-      <div style="width: 93.81%;"></div>
+      <div style="width: 94.30%;"></div>
     </div>
   </td>
   <td style="text-align: right;">
-     93.81 %<br>
-    1123 / 1197
+     94.30 %<br>
+    1125 / 1193
   </td>
   <td style="text-align: right;">
     <br>
-    74 / 1197
+    68 / 1193
   </td>
   </tr>
 </tbody>
@@ -1204,155 +1204,151 @@ body {
 <pre><span class="lineno"><a href="#line_1046" id="line_1046"> 1046.</a></span><span class="count        ">      8</span><span>    return sorted;</span></pre>
 <pre><span class="lineno"><a href="#line_1047" id="line_1047"> 1047.</a></span><span class="count        ">      8</span><span>}</span></pre>
 <pre><span class="lineno"><a href="#line_1048" id="line_1048"> 1048.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1049" id="line_1049"> 1049.</a></span><span class="count        ">      1</span><span>await (async function () {</span></pre>
-<pre><span class="lineno"><a href="#line_1050" id="line_1050"> 1050.</a></span><span class="count        ">      1</span><span>    dbFinalizationRegistry = new FinalizationRegistry(function ({</span></pre>
-<pre><span class="lineno"><a href="#line_1051" id="line_1051"> 1051.</a></span><span class="count        ">      1</span><span>        afterFinalization,</span></pre>
-<pre><span class="lineno"><a href="#line_1052" id="line_1052"> 1052.</a></span><span class="count        ">      1</span><span>        ptr</span></pre>
-<pre><span class="lineno"><a href="#line_1053" id="line_1053"> 1053.</a></span><span class="count        ">      1</span><span>    }) {</span></pre>
-<pre><span class="lineno"><a href="#line_1054" id="line_1054"> 1054.</a></span><span class="count        ">      1</span><span>    // This function will auto-close any open sqlite3-db-pointer,</span></pre>
-<pre><span class="lineno"><a href="#line_1055" id="line_1055"> 1055.</a></span><span class="count        ">      1</span><span>    // after its js-wrapper has been garbage-collected</span></pre>
-<pre><span class="lineno"><a href="#line_1056" id="line_1056"> 1056.</a></span><span class="count        ">      1</span><span>        cCallAsync(undefined, "_dbClose", ptr[0]);</span></pre>
-<pre><span class="lineno"><a href="#line_1057" id="line_1057"> 1057.</a></span><span class="count        ">      1</span><span>        if (afterFinalization) {</span></pre>
-<pre><span class="lineno"><a href="#line_1058" id="line_1058"> 1058.</a></span><span class="count        ">      1</span><span>            afterFinalization();</span></pre>
-<pre><span class="lineno"><a href="#line_1059" id="line_1059"> 1059.</a></span><span class="count        ">      1</span><span>        }</span></pre>
-<pre><span class="lineno"><a href="#line_1060" id="line_1060"> 1060.</a></span><span class="count        ">      1</span><span>    });</span></pre>
-<pre><span class="lineno"><a href="#line_1061" id="line_1061"> 1061.</a></span><span class="count        ">      1</span><span>    Object.assign(local, {</span></pre>
-<pre><span class="lineno"><a href="#line_1062" id="line_1062"> 1062.</a></span><span class="count        ">      1</span><span>        SQLITE_MAX_LENGTH2,</span></pre>
-<pre><span class="lineno"><a href="#line_1063" id="line_1063"> 1063.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_AUTOPROXY,</span></pre>
-<pre><span class="lineno"><a href="#line_1064" id="line_1064"> 1064.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_CREATE,</span></pre>
-<pre><span class="lineno"><a href="#line_1065" id="line_1065"> 1065.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_DELETEONCLOSE,</span></pre>
-<pre><span class="lineno"><a href="#line_1066" id="line_1066"> 1066.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_EXCLUSIVE,</span></pre>
-<pre><span class="lineno"><a href="#line_1067" id="line_1067"> 1067.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_FULLMUTEX,</span></pre>
-<pre><span class="lineno"><a href="#line_1068" id="line_1068"> 1068.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_MAIN_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_1069" id="line_1069"> 1069.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_MAIN_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1070" id="line_1070"> 1070.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_MEMORY,</span></pre>
-<pre><span class="lineno"><a href="#line_1071" id="line_1071"> 1071.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_NOFOLLOW,</span></pre>
-<pre><span class="lineno"><a href="#line_1072" id="line_1072"> 1072.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_NOMUTEX,</span></pre>
-<pre><span class="lineno"><a href="#line_1073" id="line_1073"> 1073.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_PRIVATECACHE,</span></pre>
-<pre><span class="lineno"><a href="#line_1074" id="line_1074"> 1074.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_READONLY,</span></pre>
-<pre><span class="lineno"><a href="#line_1075" id="line_1075"> 1075.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_READWRITE,</span></pre>
-<pre><span class="lineno"><a href="#line_1076" id="line_1076"> 1076.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_SHAREDCACHE,</span></pre>
-<pre><span class="lineno"><a href="#line_1077" id="line_1077"> 1077.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_SUBJOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1078" id="line_1078"> 1078.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_SUPER_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1079" id="line_1079"> 1079.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_TEMP_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_1080" id="line_1080"> 1080.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_TEMP_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1081" id="line_1081"> 1081.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_TRANSIENT_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_1082" id="line_1082"> 1082.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_URI,</span></pre>
-<pre><span class="lineno"><a href="#line_1083" id="line_1083"> 1083.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_WAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1084" id="line_1084"> 1084.</a></span><span class="count        ">      1</span><span>        assertJsonEqual,</span></pre>
-<pre><span class="lineno"><a href="#line_1085" id="line_1085"> 1085.</a></span><span class="count        ">      1</span><span>        assertNumericalEqual,</span></pre>
-<pre><span class="lineno"><a href="#line_1086" id="line_1086"> 1086.</a></span><span class="count        ">      1</span><span>        assertOrThrow,</span></pre>
-<pre><span class="lineno"><a href="#line_1087" id="line_1087"> 1087.</a></span><span class="count        ">      1</span><span>        dbCloseAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1088" id="line_1088"> 1088.</a></span><span class="count        ">      1</span><span>        dbExecAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1089" id="line_1089"> 1089.</a></span><span class="count        ">      1</span><span>        dbExecWithRetryAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1090" id="line_1090"> 1090.</a></span><span class="count        ">      1</span><span>        dbGetLastBlobAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1091" id="line_1091"> 1091.</a></span><span class="count        ">      1</span><span>        dbMemoryLoadAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1092" id="line_1092"> 1092.</a></span><span class="count        ">      1</span><span>        dbMemorySaveAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1093" id="line_1093"> 1093.</a></span><span class="count        ">      1</span><span>        dbNoopAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1094" id="line_1094"> 1094.</a></span><span class="count        ">      1</span><span>        dbOpenAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1095" id="line_1095"> 1095.</a></span><span class="count        ">      1</span><span>        dbTableInsertAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1096" id="line_1096"> 1096.</a></span><span class="count        ">      1</span><span>        debugInline,</span></pre>
-<pre><span class="lineno"><a href="#line_1097" id="line_1097"> 1097.</a></span><span class="count        ">      1</span><span>        jsbatonValueString,</span></pre>
-<pre><span class="lineno"><a href="#line_1098" id="line_1098"> 1098.</a></span><span class="count        ">      1</span><span>        noop,</span></pre>
-<pre><span class="lineno"><a href="#line_1099" id="line_1099"> 1099.</a></span><span class="count        ">      1</span><span>        objectDeepCopyWithKeysSorted</span></pre>
-<pre><span class="lineno"><a href="#line_1100" id="line_1100"> 1100.</a></span><span class="count        ">      1</span><span>    });</span></pre>
-<pre><span class="lineno"><a href="#line_1101" id="line_1101"> 1101.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1102" id="line_1102"> 1102.</a></span><span class="count        ">      1</span><span>// Feature-detect nodejs.</span></pre>
-<pre><span class="lineno"><a href="#line_1103" id="line_1103"> 1103.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1104" id="line_1104"> 1104.</a></span><span class="count        ">      1</span><span>    if (</span></pre>
-<pre><span class="lineno"><a href="#line_1105" id="line_1105"> 1105.</a></span><span class="count        ">      1</span><span>        typeof process === "object"</span></pre>
-<pre><span class="lineno"><a href="#line_1106" id="line_1106"> 1106.</a></span><span class="count        ">      1</span><span>        &amp;&amp; typeof process?.versions?.node === "string"</span></pre>
-<pre><span class="lineno"><a href="#line_1107" id="line_1107"> 1107.</a></span><span class="count        ">      1</span><span>    ) {</span></pre>
-<pre><span class="lineno"><a href="#line_1108" id="line_1108"> 1108.</a></span><span class="count        ">      1</span><span>        cModule = await import("module");</span></pre>
-<pre><span class="lineno"><a href="#line_1109" id="line_1109"> 1109.</a></span><span class="count        ">      1</span><span>        cModule = cModule.createRequire(import.meta.url);</span></pre>
-<pre><span class="lineno"><a href="#line_1110" id="line_1110"> 1110.</a></span><span class="count        ">      1</span><span>        cModule = cModule(</span></pre>
-<pre><span class="lineno"><a href="#line_1111" id="line_1111"> 1111.</a></span><span class="count        ">      1</span><span>            "./_binary_sqlmath"</span></pre>
-<pre><span class="lineno"><a href="#line_1112" id="line_1112"> 1112.</a></span><span class="count        ">      1</span><span>            + "_napi8"</span></pre>
-<pre><span class="lineno"><a href="#line_1113" id="line_1113"> 1113.</a></span><span class="count        ">      1</span><span>            + "_" + process.platform</span></pre>
-<pre><span class="lineno"><a href="#line_1114" id="line_1114"> 1114.</a></span><span class="count        ">      1</span><span>            + "_" + process.arch</span></pre>
-<pre><span class="lineno"><a href="#line_1115" id="line_1115"> 1115.</a></span><span class="count        ">      1</span><span>            + ".node"</span></pre>
-<pre><span class="lineno"><a href="#line_1116" id="line_1116"> 1116.</a></span><span class="count        ">      1</span><span>        );</span></pre>
-<pre><span class="lineno"><a href="#line_1117" id="line_1117"> 1117.</a></span><span class="count        ">      1</span><span>        if (process.env.npm_config_mode_test) {</span></pre>
-<pre><span class="lineno"><a href="#line_1118" id="line_1118"> 1118.</a></span><span class="count        ">      1</span><span>            // mock consoleError</span></pre>
-<pre><span class="lineno"><a href="#line_1119" id="line_1119"> 1119.</a></span><span class="count        ">      1</span><span>            consoleError = noop;</span></pre>
-<pre><span class="lineno"><a href="#line_1120" id="line_1120"> 1120.</a></span><span class="count        ">      1</span><span>        }</span></pre>
-<pre><span class="lineno"><a href="#line_1121" id="line_1121"> 1121.</a></span><span class="count        uncovered">     -0</span><span>    }</span><span class="uncovered"> else {</span></pre>
-<pre><span class="lineno"><a href="#line_1122" id="line_1122"> 1122.</a></span><span class="count        uncovered">     -0</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1123" id="line_1123"> 1123.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">// Feature-detect browser.</span></pre>
-<pre><span class="lineno"><a href="#line_1124" id="line_1124"> 1124.</a></span><span class="count        uncovered">     -0</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1125" id="line_1125"> 1125.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        IS_BROWSER = true;</span></pre>
-<pre><span class="lineno"><a href="#line_1126" id="line_1126"> 1126.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        sqlWorker = new globalThis.Worker("sqlmath_wasm.js?initSqlJsWorker=1");</span></pre>
-<pre><span class="lineno"><a href="#line_1127" id="line_1127"> 1127.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        sqlWorker.onmessage = function ({</span></pre>
-<pre><span class="lineno"><a href="#line_1128" id="line_1128"> 1128.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            data</span></pre>
-<pre><span class="lineno"><a href="#line_1129" id="line_1129"> 1129.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        }) {</span></pre>
-<pre><span class="lineno"><a href="#line_1130" id="line_1130"> 1130.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            sqlMessageDict[data.id](data);</span></pre>
-<pre><span class="lineno"><a href="#line_1131" id="line_1131"> 1131.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        };</span></pre>
-<pre><span class="lineno"><a href="#line_1132" id="line_1132"> 1132.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        //!! sqlMessagePost({</span></pre>
-<pre><span class="lineno"><a href="#line_1133" id="line_1133"> 1133.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            //!! baton: jsbatonCreate(),</span></pre>
-<pre><span class="lineno"><a href="#line_1134" id="line_1134"> 1134.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            //!! cFuncName: "_dbNoop"</span></pre>
-<pre><span class="lineno"><a href="#line_1135" id="line_1135"> 1135.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        //!! });</span></pre>
-<pre><span class="lineno"><a href="#line_1136" id="line_1136"> 1136.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        //!! noop(sqlMessagePost);</span></pre>
-<pre><span class="lineno"><a href="#line_1137" id="line_1137"> 1137.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        //!! debugInline(</span></pre>
-<pre><span class="lineno"><a href="#line_1138" id="line_1138"> 1138.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            //!! await dbNoopAsync(1, 2, 3)</span></pre>
-<pre><span class="lineno"><a href="#line_1139" id="line_1139"> 1139.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        //!! );</span></pre>
-<pre><span class="lineno"><a href="#line_1140" id="line_1140"> 1140.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        let db = await dbOpenAsync({ //jslint-quiet</span></pre>
-<pre><span class="lineno"><a href="#line_1141" id="line_1141"> 1141.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            filename: ":memory:"</span></pre>
-<pre><span class="lineno"><a href="#line_1142" id="line_1142"> 1142.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        });</span></pre>
-<pre><span class="lineno"><a href="#line_1143" id="line_1143"> 1143.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        debugInline(</span></pre>
-<pre><span class="lineno"><a href="#line_1144" id="line_1144"> 1144.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            await dbExecAsync({</span></pre>
-<pre><span class="lineno"><a href="#line_1145" id="line_1145"> 1145.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">                db,</span></pre>
-<pre><span class="lineno"><a href="#line_1146" id="line_1146"> 1146.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">                sql: "SELECT 1234"</span></pre>
-<pre><span class="lineno"><a href="#line_1147" id="line_1147"> 1147.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            })</span></pre>
-<pre><span class="lineno"><a href="#line_1148" id="line_1148"> 1148.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        );</span></pre>
-<pre><span class="lineno"><a href="#line_1149" id="line_1149"> 1149.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    }</span></pre>
-<pre><span class="lineno"><a href="#line_1150" id="line_1150"> 1150.</a></span><span class="count        ">      1</span><span>}());</span></pre>
-<pre><span class="lineno"><a href="#line_1151" id="line_1151"> 1151.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1152" id="line_1152"> 1152.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">async function sqlMessagePost(baton, cFuncName, ...argList) {</span></pre>
-<pre><span class="lineno"><a href="#line_1153" id="line_1153"> 1153.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered"></span></pre>
-<pre><span class="lineno"><a href="#line_1154" id="line_1154"> 1154.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">// This function will post msg to &lt;sqlWorker&gt; and return result</span></pre>
-<pre><span class="lineno"><a href="#line_1155" id="line_1155"> 1155.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered"></span></pre>
-<pre><span class="lineno"><a href="#line_1156" id="line_1156"> 1156.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    let id;</span></pre>
-<pre><span class="lineno"><a href="#line_1157" id="line_1157"> 1157.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    let result;</span></pre>
-<pre><span class="lineno"><a href="#line_1158" id="line_1158"> 1158.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    let timeElapsed = Date.now();</span></pre>
-<pre><span class="lineno"><a href="#line_1159" id="line_1159"> 1159.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    // increment sqlMessageId</span></pre>
-<pre><span class="lineno"><a href="#line_1160" id="line_1160"> 1160.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    sqlMessageId += 1;</span></pre>
-<pre><span class="lineno"><a href="#line_1161" id="line_1161"> 1161.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    id = sqlMessageId;</span></pre>
-<pre><span class="lineno"><a href="#line_1162" id="line_1162"> 1162.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    // postMessage to web-worker</span></pre>
-<pre><span class="lineno"><a href="#line_1163" id="line_1163"> 1163.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    sqlWorker.postMessage(</span></pre>
-<pre><span class="lineno"><a href="#line_1164" id="line_1164"> 1164.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        {</span></pre>
-<pre><span class="lineno"><a href="#line_1165" id="line_1165"> 1165.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            argList,</span></pre>
-<pre><span class="lineno"><a href="#line_1166" id="line_1166"> 1166.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            baton,</span></pre>
-<pre><span class="lineno"><a href="#line_1167" id="line_1167"> 1167.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            cFuncName,</span></pre>
-<pre><span class="lineno"><a href="#line_1168" id="line_1168"> 1168.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            id</span></pre>
-<pre><span class="lineno"><a href="#line_1169" id="line_1169"> 1169.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        },</span></pre>
-<pre><span class="lineno"><a href="#line_1170" id="line_1170"> 1170.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        // transfer arraybuffer without copying</span></pre>
-<pre><span class="lineno"><a href="#line_1171" id="line_1171"> 1171.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        [</span></pre>
-<pre><span class="lineno"><a href="#line_1172" id="line_1172"> 1172.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            baton.buffer,</span></pre>
-<pre><span class="lineno"><a href="#line_1173" id="line_1173"> 1173.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            ...argList.filter(function (elem) {</span></pre>
-<pre><span class="lineno"><a href="#line_1174" id="line_1174"> 1174.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">                return elem &amp;&amp; elem.constructor === ArrayBuffer;</span></pre>
-<pre><span class="lineno"><a href="#line_1175" id="line_1175"> 1175.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            })</span></pre>
-<pre><span class="lineno"><a href="#line_1176" id="line_1176"> 1176.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        ]</span></pre>
-<pre><span class="lineno"><a href="#line_1177" id="line_1177"> 1177.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    );</span></pre>
-<pre><span class="lineno"><a href="#line_1178" id="line_1178"> 1178.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    // await result from web-worker</span></pre>
-<pre><span class="lineno"><a href="#line_1179" id="line_1179"> 1179.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    result = await new Promise(function (resolve) {</span></pre>
-<pre><span class="lineno"><a href="#line_1180" id="line_1180"> 1180.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        sqlMessageDict[id] = resolve;</span></pre>
-<pre><span class="lineno"><a href="#line_1181" id="line_1181"> 1181.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    });</span></pre>
-<pre><span class="lineno"><a href="#line_1182" id="line_1182"> 1182.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    // cleanup sqlMessageDict</span></pre>
-<pre><span class="lineno"><a href="#line_1183" id="line_1183"> 1183.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    delete sqlMessageDict[id];</span></pre>
-<pre><span class="lineno"><a href="#line_1184" id="line_1184"> 1184.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    console.error(</span></pre>
-<pre><span class="lineno"><a href="#line_1185" id="line_1185"> 1185.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        "sqlMessagePost - " + JSON.stringify({</span></pre>
-<pre><span class="lineno"><a href="#line_1186" id="line_1186"> 1186.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            cFuncName,</span></pre>
-<pre><span class="lineno"><a href="#line_1187" id="line_1187"> 1187.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            timeElapsed: Date.now() - timeElapsed</span></pre>
-<pre><span class="lineno"><a href="#line_1188" id="line_1188"> 1188.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        })</span></pre>
-<pre><span class="lineno"><a href="#line_1189" id="line_1189"> 1189.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    );</span></pre>
-<pre><span class="lineno"><a href="#line_1190" id="line_1190"> 1190.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    assertOrThrow(!result.errmsg, result.errmsg);</span></pre>
-<pre><span class="lineno"><a href="#line_1191" id="line_1191"> 1191.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    return [</span></pre>
-<pre><span class="lineno"><a href="#line_1192" id="line_1192"> 1192.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        result.baton, result.cFuncName, ...result.argList</span></pre>
-<pre><span class="lineno"><a href="#line_1193" id="line_1193"> 1193.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    ];</span></pre>
-<pre><span class="lineno"><a href="#line_1194" id="line_1194"> 1194.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">}</span></pre>
-<pre><span class="lineno"><a href="#line_1195" id="line_1195"> 1195.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1196" id="line_1196"> 1196.</a></span><span class="count        ">      1</span><span>export default Object.freeze(local);</span></pre>
-<pre><span class="lineno"><a href="#line_1197" id="line_1197"> 1197.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1049" id="line_1049"> 1049.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">async function sqlMessagePost(baton, cFuncName, ...argList) {</span></pre>
+<pre><span class="lineno"><a href="#line_1050" id="line_1050"> 1050.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered"></span></pre>
+<pre><span class="lineno"><a href="#line_1051" id="line_1051"> 1051.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">// This function will post msg to &lt;sqlWorker&gt; and return result</span></pre>
+<pre><span class="lineno"><a href="#line_1052" id="line_1052"> 1052.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered"></span></pre>
+<pre><span class="lineno"><a href="#line_1053" id="line_1053"> 1053.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    let id;</span></pre>
+<pre><span class="lineno"><a href="#line_1054" id="line_1054"> 1054.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    let result;</span></pre>
+<pre><span class="lineno"><a href="#line_1055" id="line_1055"> 1055.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    let timeElapsed = Date.now();</span></pre>
+<pre><span class="lineno"><a href="#line_1056" id="line_1056"> 1056.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    // increment sqlMessageId</span></pre>
+<pre><span class="lineno"><a href="#line_1057" id="line_1057"> 1057.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    sqlMessageId += 1;</span></pre>
+<pre><span class="lineno"><a href="#line_1058" id="line_1058"> 1058.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    id = sqlMessageId;</span></pre>
+<pre><span class="lineno"><a href="#line_1059" id="line_1059"> 1059.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    // postMessage to web-worker</span></pre>
+<pre><span class="lineno"><a href="#line_1060" id="line_1060"> 1060.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    sqlWorker.postMessage(</span></pre>
+<pre><span class="lineno"><a href="#line_1061" id="line_1061"> 1061.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        {</span></pre>
+<pre><span class="lineno"><a href="#line_1062" id="line_1062"> 1062.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            argList,</span></pre>
+<pre><span class="lineno"><a href="#line_1063" id="line_1063"> 1063.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            baton,</span></pre>
+<pre><span class="lineno"><a href="#line_1064" id="line_1064"> 1064.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            cFuncName,</span></pre>
+<pre><span class="lineno"><a href="#line_1065" id="line_1065"> 1065.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            id</span></pre>
+<pre><span class="lineno"><a href="#line_1066" id="line_1066"> 1066.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        },</span></pre>
+<pre><span class="lineno"><a href="#line_1067" id="line_1067"> 1067.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        // transfer arraybuffer without copying</span></pre>
+<pre><span class="lineno"><a href="#line_1068" id="line_1068"> 1068.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        [</span></pre>
+<pre><span class="lineno"><a href="#line_1069" id="line_1069"> 1069.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            baton.buffer,</span></pre>
+<pre><span class="lineno"><a href="#line_1070" id="line_1070"> 1070.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            ...argList.filter(function (elem) {</span></pre>
+<pre><span class="lineno"><a href="#line_1071" id="line_1071"> 1071.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">                return elem &amp;&amp; elem.constructor === ArrayBuffer;</span></pre>
+<pre><span class="lineno"><a href="#line_1072" id="line_1072"> 1072.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            })</span></pre>
+<pre><span class="lineno"><a href="#line_1073" id="line_1073"> 1073.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        ]</span></pre>
+<pre><span class="lineno"><a href="#line_1074" id="line_1074"> 1074.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    );</span></pre>
+<pre><span class="lineno"><a href="#line_1075" id="line_1075"> 1075.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    // await result from web-worker</span></pre>
+<pre><span class="lineno"><a href="#line_1076" id="line_1076"> 1076.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    result = await new Promise(function (resolve) {</span></pre>
+<pre><span class="lineno"><a href="#line_1077" id="line_1077"> 1077.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        sqlMessageDict[id] = resolve;</span></pre>
+<pre><span class="lineno"><a href="#line_1078" id="line_1078"> 1078.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    });</span></pre>
+<pre><span class="lineno"><a href="#line_1079" id="line_1079"> 1079.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    // cleanup sqlMessageDict</span></pre>
+<pre><span class="lineno"><a href="#line_1080" id="line_1080"> 1080.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    delete sqlMessageDict[id];</span></pre>
+<pre><span class="lineno"><a href="#line_1081" id="line_1081"> 1081.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    console.error(</span></pre>
+<pre><span class="lineno"><a href="#line_1082" id="line_1082"> 1082.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        "sqlMessagePost - " + JSON.stringify({</span></pre>
+<pre><span class="lineno"><a href="#line_1083" id="line_1083"> 1083.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            cFuncName,</span></pre>
+<pre><span class="lineno"><a href="#line_1084" id="line_1084"> 1084.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            timeElapsed: Date.now() - timeElapsed</span></pre>
+<pre><span class="lineno"><a href="#line_1085" id="line_1085"> 1085.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        })</span></pre>
+<pre><span class="lineno"><a href="#line_1086" id="line_1086"> 1086.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    );</span></pre>
+<pre><span class="lineno"><a href="#line_1087" id="line_1087"> 1087.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    assertOrThrow(!result.errmsg, result.errmsg);</span></pre>
+<pre><span class="lineno"><a href="#line_1088" id="line_1088"> 1088.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    return [</span></pre>
+<pre><span class="lineno"><a href="#line_1089" id="line_1089"> 1089.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        result.baton, result.cFuncName, ...result.argList</span></pre>
+<pre><span class="lineno"><a href="#line_1090" id="line_1090"> 1090.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    ];</span></pre>
+<pre><span class="lineno"><a href="#line_1091" id="line_1091"> 1091.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">}</span></pre>
+<pre><span class="lineno"><a href="#line_1092" id="line_1092"> 1092.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1093" id="line_1093"> 1093.</a></span><span class="count        ">      1</span><span>async function zzInit() {</span></pre>
+<pre><span class="lineno"><a href="#line_1094" id="line_1094"> 1094.</a></span><span class="count        ">      1</span><span>    dbFinalizationRegistry = new FinalizationRegistry(function ({</span></pre>
+<pre><span class="lineno"><a href="#line_1095" id="line_1095"> 1095.</a></span><span class="count        ">      1</span><span>        afterFinalization,</span></pre>
+<pre><span class="lineno"><a href="#line_1096" id="line_1096"> 1096.</a></span><span class="count        ">      1</span><span>        ptr</span></pre>
+<pre><span class="lineno"><a href="#line_1097" id="line_1097"> 1097.</a></span><span class="count        ">      1</span><span>    }) {</span></pre>
+<pre><span class="lineno"><a href="#line_1098" id="line_1098"> 1098.</a></span><span class="count        ">      1</span><span>    // This function will auto-close any open sqlite3-db-pointer,</span></pre>
+<pre><span class="lineno"><a href="#line_1099" id="line_1099"> 1099.</a></span><span class="count        ">      1</span><span>    // after its js-wrapper has been garbage-collected</span></pre>
+<pre><span class="lineno"><a href="#line_1100" id="line_1100"> 1100.</a></span><span class="count        ">      1</span><span>        cCallAsync(undefined, "_dbClose", ptr[0]);</span></pre>
+<pre><span class="lineno"><a href="#line_1101" id="line_1101"> 1101.</a></span><span class="count        ">      1</span><span>        if (afterFinalization) {</span></pre>
+<pre><span class="lineno"><a href="#line_1102" id="line_1102"> 1102.</a></span><span class="count        ">      1</span><span>            afterFinalization();</span></pre>
+<pre><span class="lineno"><a href="#line_1103" id="line_1103"> 1103.</a></span><span class="count        ">      1</span><span>        }</span></pre>
+<pre><span class="lineno"><a href="#line_1104" id="line_1104"> 1104.</a></span><span class="count        ">      1</span><span>    });</span></pre>
+<pre><span class="lineno"><a href="#line_1105" id="line_1105"> 1105.</a></span><span class="count        ">      1</span><span>    Object.assign(local, {</span></pre>
+<pre><span class="lineno"><a href="#line_1106" id="line_1106"> 1106.</a></span><span class="count        ">      1</span><span>        SQLITE_MAX_LENGTH2,</span></pre>
+<pre><span class="lineno"><a href="#line_1107" id="line_1107"> 1107.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_AUTOPROXY,</span></pre>
+<pre><span class="lineno"><a href="#line_1108" id="line_1108"> 1108.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_CREATE,</span></pre>
+<pre><span class="lineno"><a href="#line_1109" id="line_1109"> 1109.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_DELETEONCLOSE,</span></pre>
+<pre><span class="lineno"><a href="#line_1110" id="line_1110"> 1110.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_EXCLUSIVE,</span></pre>
+<pre><span class="lineno"><a href="#line_1111" id="line_1111"> 1111.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_FULLMUTEX,</span></pre>
+<pre><span class="lineno"><a href="#line_1112" id="line_1112"> 1112.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_MAIN_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_1113" id="line_1113"> 1113.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_MAIN_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1114" id="line_1114"> 1114.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_MEMORY,</span></pre>
+<pre><span class="lineno"><a href="#line_1115" id="line_1115"> 1115.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_NOFOLLOW,</span></pre>
+<pre><span class="lineno"><a href="#line_1116" id="line_1116"> 1116.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_NOMUTEX,</span></pre>
+<pre><span class="lineno"><a href="#line_1117" id="line_1117"> 1117.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_PRIVATECACHE,</span></pre>
+<pre><span class="lineno"><a href="#line_1118" id="line_1118"> 1118.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_READONLY,</span></pre>
+<pre><span class="lineno"><a href="#line_1119" id="line_1119"> 1119.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_READWRITE,</span></pre>
+<pre><span class="lineno"><a href="#line_1120" id="line_1120"> 1120.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_SHAREDCACHE,</span></pre>
+<pre><span class="lineno"><a href="#line_1121" id="line_1121"> 1121.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_SUBJOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1122" id="line_1122"> 1122.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_SUPER_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1123" id="line_1123"> 1123.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_TEMP_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_1124" id="line_1124"> 1124.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_TEMP_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1125" id="line_1125"> 1125.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_TRANSIENT_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_1126" id="line_1126"> 1126.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_URI,</span></pre>
+<pre><span class="lineno"><a href="#line_1127" id="line_1127"> 1127.</a></span><span class="count        ">      1</span><span>        SQLITE_OPEN_WAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1128" id="line_1128"> 1128.</a></span><span class="count        ">      1</span><span>        assertJsonEqual,</span></pre>
+<pre><span class="lineno"><a href="#line_1129" id="line_1129"> 1129.</a></span><span class="count        ">      1</span><span>        assertNumericalEqual,</span></pre>
+<pre><span class="lineno"><a href="#line_1130" id="line_1130"> 1130.</a></span><span class="count        ">      1</span><span>        assertOrThrow,</span></pre>
+<pre><span class="lineno"><a href="#line_1131" id="line_1131"> 1131.</a></span><span class="count        ">      1</span><span>        dbCloseAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1132" id="line_1132"> 1132.</a></span><span class="count        ">      1</span><span>        dbExecAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1133" id="line_1133"> 1133.</a></span><span class="count        ">      1</span><span>        dbExecWithRetryAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1134" id="line_1134"> 1134.</a></span><span class="count        ">      1</span><span>        dbGetLastBlobAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1135" id="line_1135"> 1135.</a></span><span class="count        ">      1</span><span>        dbMemoryLoadAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1136" id="line_1136"> 1136.</a></span><span class="count        ">      1</span><span>        dbMemorySaveAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1137" id="line_1137"> 1137.</a></span><span class="count        ">      1</span><span>        dbNoopAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1138" id="line_1138"> 1138.</a></span><span class="count        ">      1</span><span>        dbOpenAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1139" id="line_1139"> 1139.</a></span><span class="count        ">      1</span><span>        dbTableInsertAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1140" id="line_1140"> 1140.</a></span><span class="count        ">      1</span><span>        debugInline,</span></pre>
+<pre><span class="lineno"><a href="#line_1141" id="line_1141"> 1141.</a></span><span class="count        ">      1</span><span>        jsbatonValueString,</span></pre>
+<pre><span class="lineno"><a href="#line_1142" id="line_1142"> 1142.</a></span><span class="count        ">      1</span><span>        noop,</span></pre>
+<pre><span class="lineno"><a href="#line_1143" id="line_1143"> 1143.</a></span><span class="count        ">      1</span><span>        objectDeepCopyWithKeysSorted</span></pre>
+<pre><span class="lineno"><a href="#line_1144" id="line_1144"> 1144.</a></span><span class="count        ">      1</span><span>    });</span></pre>
+<pre><span class="lineno"><a href="#line_1145" id="line_1145"> 1145.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1146" id="line_1146"> 1146.</a></span><span class="count        ">      1</span><span>// Feature-detect nodejs.</span></pre>
+<pre><span class="lineno"><a href="#line_1147" id="line_1147"> 1147.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1148" id="line_1148"> 1148.</a></span><span class="count        ">      1</span><span>    if (</span></pre>
+<pre><span class="lineno"><a href="#line_1149" id="line_1149"> 1149.</a></span><span class="count        ">      1</span><span>        typeof process === "object"</span></pre>
+<pre><span class="lineno"><a href="#line_1150" id="line_1150"> 1150.</a></span><span class="count        ">      1</span><span>        &amp;&amp; typeof process?.versions?.node === "string"</span></pre>
+<pre><span class="lineno"><a href="#line_1151" id="line_1151"> 1151.</a></span><span class="count        ">      1</span><span>    ) {</span></pre>
+<pre><span class="lineno"><a href="#line_1152" id="line_1152"> 1152.</a></span><span class="count        ">      1</span><span>        cModule = await import("module");</span></pre>
+<pre><span class="lineno"><a href="#line_1153" id="line_1153"> 1153.</a></span><span class="count        ">      1</span><span>        cModule = cModule.createRequire(import.meta.url);</span></pre>
+<pre><span class="lineno"><a href="#line_1154" id="line_1154"> 1154.</a></span><span class="count        ">      1</span><span>        cModule = cModule(</span></pre>
+<pre><span class="lineno"><a href="#line_1155" id="line_1155"> 1155.</a></span><span class="count        ">      1</span><span>            "./_binary_sqlmath"</span></pre>
+<pre><span class="lineno"><a href="#line_1156" id="line_1156"> 1156.</a></span><span class="count        ">      1</span><span>            + "_napi8"</span></pre>
+<pre><span class="lineno"><a href="#line_1157" id="line_1157"> 1157.</a></span><span class="count        ">      1</span><span>            + "_" + process.platform</span></pre>
+<pre><span class="lineno"><a href="#line_1158" id="line_1158"> 1158.</a></span><span class="count        ">      1</span><span>            + "_" + process.arch</span></pre>
+<pre><span class="lineno"><a href="#line_1159" id="line_1159"> 1159.</a></span><span class="count        ">      1</span><span>            + ".node"</span></pre>
+<pre><span class="lineno"><a href="#line_1160" id="line_1160"> 1160.</a></span><span class="count        ">      1</span><span>        );</span></pre>
+<pre><span class="lineno"><a href="#line_1161" id="line_1161"> 1161.</a></span><span class="count        ">      1</span><span>        if (process.env.npm_config_mode_test) {</span></pre>
+<pre><span class="lineno"><a href="#line_1162" id="line_1162"> 1162.</a></span><span class="count        ">      1</span><span>            // mock consoleError</span></pre>
+<pre><span class="lineno"><a href="#line_1163" id="line_1163"> 1163.</a></span><span class="count        ">      1</span><span>            consoleError = noop;</span></pre>
+<pre><span class="lineno"><a href="#line_1164" id="line_1164"> 1164.</a></span><span class="count        ">      1</span><span>        }</span></pre>
+<pre><span class="lineno"><a href="#line_1165" id="line_1165"> 1165.</a></span><span class="count        ">      1</span><span>        return;</span></pre>
+<pre><span class="lineno"><a href="#line_1166" id="line_1166"> 1166.</a></span><span class="count        uncovered">     -0</span><span>    }</span></pre>
+<pre><span class="lineno"><a href="#line_1167" id="line_1167"> 1167.</a></span><span class="count        uncovered">     -0</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1168" id="line_1168"> 1168.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">// Feature-detect browser.</span></pre>
+<pre><span class="lineno"><a href="#line_1169" id="line_1169"> 1169.</a></span><span class="count        uncovered">     -0</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1170" id="line_1170"> 1170.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    IS_BROWSER = true;</span></pre>
+<pre><span class="lineno"><a href="#line_1171" id="line_1171"> 1171.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    sqlWorker = new globalThis.Worker("sqlmath_wasm.js?initSqlJsWorker=1");</span></pre>
+<pre><span class="lineno"><a href="#line_1172" id="line_1172"> 1172.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    sqlWorker.onmessage = function ({</span></pre>
+<pre><span class="lineno"><a href="#line_1173" id="line_1173"> 1173.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        data</span></pre>
+<pre><span class="lineno"><a href="#line_1174" id="line_1174"> 1174.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    }) {</span></pre>
+<pre><span class="lineno"><a href="#line_1175" id="line_1175"> 1175.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        sqlMessageDict[data.id](data);</span></pre>
+<pre><span class="lineno"><a href="#line_1176" id="line_1176"> 1176.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    };</span></pre>
+<pre><span class="lineno"><a href="#line_1177" id="line_1177"> 1177.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    /*</span></pre>
+<pre><span class="lineno"><a href="#line_1178" id="line_1178"> 1178.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    let db = await dbOpenAsync({ //jslint-quiet</span></pre>
+<pre><span class="lineno"><a href="#line_1179" id="line_1179"> 1179.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        filename: ":memory:"</span></pre>
+<pre><span class="lineno"><a href="#line_1180" id="line_1180"> 1180.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    });</span></pre>
+<pre><span class="lineno"><a href="#line_1181" id="line_1181"> 1181.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    debugInline(</span></pre>
+<pre><span class="lineno"><a href="#line_1182" id="line_1182"> 1182.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        await dbExecAsync({</span></pre>
+<pre><span class="lineno"><a href="#line_1183" id="line_1183"> 1183.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            db,</span></pre>
+<pre><span class="lineno"><a href="#line_1184" id="line_1184"> 1184.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            sql: "SELECT 1234"</span></pre>
+<pre><span class="lineno"><a href="#line_1185" id="line_1185"> 1185.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        })</span></pre>
+<pre><span class="lineno"><a href="#line_1186" id="line_1186"> 1186.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    );</span></pre>
+<pre><span class="lineno"><a href="#line_1187" id="line_1187"> 1187.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    */</span></pre>
+<pre><span class="lineno"><a href="#line_1188" id="line_1188"> 1188.</a></span><span class="count        uncovered">     -0</span><span>}</span></pre>
+<pre><span class="lineno"><a href="#line_1189" id="line_1189"> 1189.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1190" id="line_1190"> 1190.</a></span><span class="count        ">      1</span><span>await zzInit();</span></pre>
+<pre><span class="lineno"><a href="#line_1191" id="line_1191"> 1191.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1192" id="line_1192"> 1192.</a></span><span class="count        ">      1</span><span>export default Object.freeze(local);</span></pre>
+<pre><span class="lineno"><a href="#line_1193" id="line_1193"> 1193.</a></span><span class="count        ">      1</span><span></span></pre>
 </div>
 <!-- content end -->
 <div class="footer">
