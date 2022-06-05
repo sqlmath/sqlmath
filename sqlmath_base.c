@@ -1867,9 +1867,9 @@ napi_value napi_module_sqlmath_init(
         NAPI_EXPORT_MEMBER(__dbCloseAsync),
         NAPI_EXPORT_MEMBER(__dbExecAsync),
         NAPI_EXPORT_MEMBER(__dbMemoryLoadOrSaveAsync),
+        NAPI_EXPORT_MEMBER(__dbNoopAsync),
         NAPI_EXPORT_MEMBER(__dbOpenAsync),
         NAPI_EXPORT_MEMBER(__dbTableInsertAsync),
-        NAPI_EXPORT_MEMBER(__dbNoopAsync),
     };
     errcode = napi_define_properties(env, exports,
         sizeof(propList) / sizeof(napi_property_descriptor), propList);

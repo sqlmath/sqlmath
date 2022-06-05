@@ -24,8 +24,6 @@
 /*jslint beta, bitwise, name, node*/
 /*global FinalizationRegistry*/
 "use strict";
-import {createRequire} from "module";
-import jslint from "./jslint.mjs";
 
 let JSBATON_ARGC = 16;
 let SQLITE_DATATYPE_BLOB = 0x04;
@@ -62,17 +60,52 @@ let SQLITE_OPEN_TEMP_JOURNAL = 0x00001000;  /* VFS only */
 let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
 let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
 let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
-let addon;
-let {
-    assertOrThrow,
-    debugInline,
-    noop
-} = jslint;
+let cModule;
 let consoleError = console.error;
 let dbDict = new WeakMap(); // private map of sqlite-database-connections
 let dbFinalizationRegistry;
-let local = Object.assign({}, jslint);
-let requireCjs = createRequire(import.meta.url);
+// init debugInline
+let debugInline = (function () {
+    let __consoleError = function () {
+        return;
+    };
+    function debug(...argv) {
+
+// This function will print <argv> to stderr and then return <argv>[0].
+
+        __consoleError("\n\ndebugInline");
+        __consoleError(...argv);
+        __consoleError("\n");
+        return argv[0];
+    }
+    debug(); // Coverage-hack.
+    __consoleError = console.error;
+    return debug;
+}());
+let local = {};
+let sqlMessageDict = {};
+let sqlMessageId = 0;
+let sqlWorker;
+
+function assertJsonEqual(aa, bb, message) {
+
+// This function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>).
+
+    aa = JSON.stringify(objectDeepCopyWithKeysSorted(aa), undefined, 1);
+    bb = JSON.stringify(objectDeepCopyWithKeysSorted(bb), undefined, 1);
+    if (aa !== bb) {
+        throw new Error(
+            "\n" + aa + "\n!==\n" + bb
+            + (
+                typeof message === "string"
+                ? " - " + message
+                : message
+                ? " - " + JSON.stringify(message)
+                : ""
+            )
+        );
+    }
+}
 
 function assertNumericalEqual(aa, bb, message) {
 
@@ -86,6 +119,19 @@ function assertNumericalEqual(aa, bb, message) {
                 ? " - " + message
                 : ""
             )
+        );
+    }
+}
+
+function assertOrThrow(condition, message) {
+
+// This function will throw <message> if <condition> is falsy.
+
+    if (!condition) {
+        throw (
+            (!message || typeof message === "string")
+            ? new Error(String(message).slice(0, 2048))
+            : message
         );
     }
 }
@@ -142,7 +188,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
     ), "");
     try {
         // call napi with cFuncName and argList
-        return await addon[cFuncName](argList);
+        return await cModule[cFuncName](argList);
     } catch (err) {
         err.stack += errStack;
         assertOrThrow(undefined, err);
@@ -953,63 +999,164 @@ function jsonRowListNormalize({
     return rowList;
 }
 
-addon = requireCjs(
-    "./_binary_sqlmath"
-    + "_napi8"
-    + "_" + process.platform
-    + "_" + process.arch
-    + ".node"
-);
-dbFinalizationRegistry = new FinalizationRegistry(function ({
-    afterFinalization,
-    ptr
-}) {
-// This function will auto-close any open sqlite3-db-pointer,
-// after its js-wrapper has been garbage-collected
-    cCallAsync(undefined, "__dbCloseAsync", ptr[0]);
-    if (afterFinalization) {
-        afterFinalization();
+function noop(val) {
+
+// This function will do nothing except return <val>.
+
+    return val;
+}
+
+function objectDeepCopyWithKeysSorted(obj) {
+
+// This function will recursively deep-copy <obj> with keys sorted.
+
+    let sorted;
+    if (typeof obj !== "object" || !obj) {
+        return obj;
     }
-});
-Object.assign(local, jslint, {
-    SQLITE_MAX_LENGTH2,
-    SQLITE_OPEN_AUTOPROXY,
-    SQLITE_OPEN_CREATE,
-    SQLITE_OPEN_DELETEONCLOSE,
-    SQLITE_OPEN_EXCLUSIVE,
-    SQLITE_OPEN_FULLMUTEX,
-    SQLITE_OPEN_MAIN_DB,
-    SQLITE_OPEN_MAIN_JOURNAL,
-    SQLITE_OPEN_MEMORY,
-    SQLITE_OPEN_NOFOLLOW,
-    SQLITE_OPEN_NOMUTEX,
-    SQLITE_OPEN_PRIVATECACHE,
-    SQLITE_OPEN_READONLY,
-    SQLITE_OPEN_READWRITE,
-    SQLITE_OPEN_SHAREDCACHE,
-    SQLITE_OPEN_SUBJOURNAL,
-    SQLITE_OPEN_SUPER_JOURNAL,
-    SQLITE_OPEN_TEMP_DB,
-    SQLITE_OPEN_TEMP_JOURNAL,
-    SQLITE_OPEN_TRANSIENT_DB,
-    SQLITE_OPEN_URI,
-    SQLITE_OPEN_WAL,
-    assertNumericalEqual,
-    dbCloseAsync,
-    dbExecAsync,
-    dbExecWithRetryAsync,
-    dbGetLastBlobAsync,
-    dbMemoryLoadAsync,
-    dbMemorySaveAsync,
-    dbNoopAsync,
-    dbOpenAsync,
-    dbTableInsertAsync,
-    debugInline,
-    jsbatonValueString
-});
-if (process.env.npm_config_mode_test) {
-    // mock consoleError
-    consoleError = noop;
+
+// Recursively deep-copy list with child-keys sorted.
+
+    if (Array.isArray(obj)) {
+        return obj.map(objectDeepCopyWithKeysSorted);
+    }
+
+// Recursively deep-copy obj with keys sorted.
+
+    sorted = Object.create(null);
+    Object.keys(obj).sort().forEach(function (key) {
+        sorted[key] = objectDeepCopyWithKeysSorted(obj[key]);
+    });
+    return sorted;
+}
+
+await (async function () {
+    dbFinalizationRegistry = new FinalizationRegistry(function ({
+        afterFinalization,
+        ptr
+    }) {
+    // This function will auto-close any open sqlite3-db-pointer,
+    // after its js-wrapper has been garbage-collected
+        cCallAsync(undefined, "__dbCloseAsync", ptr[0]);
+        if (afterFinalization) {
+            afterFinalization();
+        }
+    });
+    Object.assign(local, {
+        SQLITE_MAX_LENGTH2,
+        SQLITE_OPEN_AUTOPROXY,
+        SQLITE_OPEN_CREATE,
+        SQLITE_OPEN_DELETEONCLOSE,
+        SQLITE_OPEN_EXCLUSIVE,
+        SQLITE_OPEN_FULLMUTEX,
+        SQLITE_OPEN_MAIN_DB,
+        SQLITE_OPEN_MAIN_JOURNAL,
+        SQLITE_OPEN_MEMORY,
+        SQLITE_OPEN_NOFOLLOW,
+        SQLITE_OPEN_NOMUTEX,
+        SQLITE_OPEN_PRIVATECACHE,
+        SQLITE_OPEN_READONLY,
+        SQLITE_OPEN_READWRITE,
+        SQLITE_OPEN_SHAREDCACHE,
+        SQLITE_OPEN_SUBJOURNAL,
+        SQLITE_OPEN_SUPER_JOURNAL,
+        SQLITE_OPEN_TEMP_DB,
+        SQLITE_OPEN_TEMP_JOURNAL,
+        SQLITE_OPEN_TRANSIENT_DB,
+        SQLITE_OPEN_URI,
+        SQLITE_OPEN_WAL,
+        assertJsonEqual,
+        assertNumericalEqual,
+        assertOrThrow,
+        dbCloseAsync,
+        dbExecAsync,
+        dbExecWithRetryAsync,
+        dbGetLastBlobAsync,
+        dbMemoryLoadAsync,
+        dbMemorySaveAsync,
+        dbNoopAsync,
+        dbOpenAsync,
+        dbTableInsertAsync,
+        debugInline,
+        jsbatonValueString,
+        noop,
+        objectDeepCopyWithKeysSorted
+    });
+
+// Feature-detect nodejs.
+
+    if (
+        typeof process === "object"
+        && typeof process?.versions?.node === "string"
+    ) {
+        cModule = await import("module");
+        cModule = cModule.createRequire(import.meta.url);
+        cModule = cModule(
+            "./_binary_sqlmath"
+            + "_napi8"
+            + "_" + process.platform
+            + "_" + process.arch
+            + ".node"
+        );
+        if (process.env.npm_config_mode_test) {
+            // mock consoleError
+            consoleError = noop;
+        }
+    } else {
+
+// Feature-detect browser.
+
+        cModule = {};
+        sqlWorker = new globalThis.Worker("sqlmath_wasm.js?initSqlJsWorker=1");
+        sqlWorker.onmessage = function ({
+            data
+        }) {
+            debugInline(data);
+            sqlMessageDict[data.id]();
+        };
+        //!! sqlMessagePost({});
+        noop(sqlMessagePost);
+    }
+}());
+
+async function sqlMessagePost() {
+
+// This function will post msg to <sqlWorker> and return result
+
+    let baton = new DataView(new ArrayBuffer(1024));
+    //!! let errStack = new Error().stack;
+    let id;
+    let result;
+    //!! let timeElapsed = Date.now();
+    sqlMessageId += 1;
+    id = sqlMessageId;
+    sqlWorker.postMessage({
+        baton,
+        cFuncName: "dbNoop",
+        data: {},
+        id
+    }, [
+        // transfer arraybuffer without copying
+        baton.buffer
+    ]);
+    result = await new Promise(function (resolve) {
+        sqlMessageDict[id] = resolve;
+    });
+    delete sqlMessageDict[id];
+    //!! timeElapsed = Date.now() - timeElapsed;
+    //!! console.error(
+        //!! "sqlMessagePost - " + JSON.stringify({
+            //!! action,
+            //!! timeElapsed
+        //!! })
+    //!! );
+    //!! if (error) {
+        //!! throw (Object.assign(err, {
+            //!! message: error,
+            //!! timeElapsed
+        //!! }));
+    //!! }
+    return result;
 }
 
 export default Object.freeze(local);

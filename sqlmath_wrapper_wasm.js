@@ -43,60 +43,119 @@
     stringToUTF8
     lengthBytesUTF8
 */
+
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+/*
+var ALLOC_NORMAL = 0; // Tries to use _malloc()
+var ALLOC_STACK = 1; // Lives for the duration of the current function call
+*/
+/**
+ * allocate(): This function is no longer used by emscripten but is kept around to avoid
+ *             breaking external users.
+ *             You should normally not use allocate(), and instead allocate
+ *             memory using _malloc()/stackAlloc(), initialize it with
+ *             setValue(), and so forth.
+ * @param {(Uint8Array|Array<number>)} slab: An array of data.
+ * @param {number=} allocator : How to allocate memory, see ALLOC_*
+ */
+/*
+function allocate(slab, allocator) {
+  var ret;
+#if ASSERTIONS
+  assert(typeof allocator == 'number', 'allocate no longer takes a type argument')
+  assert(typeof slab != 'number', 'allocate no longer takes a number as arg0')
+#endif
+  if (allocator == ALLOC_STACK) {
+    ret = stackAlloc(slab.length);
+  } else {
+    ret = {{{ makeMalloc('allocate', 'slab.length') }}};
+  }
+  if (!slab.subarray && !slab.slice) {
+    slab = new Uint8Array(slab);
+  }
+  HEAPU8.set(slab, ret);
+  return ret;
+}
+function makeMalloc(source, param) {
+  if (hasExportedFunction('_malloc')) {
+    return `_malloc(${param})`;
+  }
+  // It should be impossible to call some functions without malloc being
+  // included, unless we have a deps_info.json bug. To let closure not error
+  // on `_malloc` not being present, they don't call malloc and instead abort
+  // with an error at runtime.
+  // TODO: A more comprehensive deps system could catch this at compile time.
+  if (!ASSERTIONS) {
+    return 'abort();';
+  }
+  return `abort('malloc was not included, but is needed in ${source}. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');`;
+}
+*/
+
 "use strict";
-var db;
-var onModulePostRun;
-var sqlmath;
-function onModuleReady(msg) {
+let cModule = {};
+let db;
+let onModulePostRun;
+let sqlmath;
+function sqlWorkerDispatch(data) {
+    let baton = new Uint8Array(data["baton"] && data["baton"].buffer);
+    let cFuncName = data["cFuncName"];
+    let id = data["id"];
+    console.error(data);
+    switch (cFuncName) {
+        case "dbClose":
+        case "dbExec":
+        case "dbMemoryLoadOrSave":
+        case "dbNoop":
+        case "dbOpen":
+        case "dbTableInsert":
+            cModule[cFuncName](baton);
+            //!! _dbNoop(null);
+            postMessage({
+                baton: new DataView(baton.buffer),
+                id
+            }, [
+                // transfer arraybuffer without copying
+                baton.buffer
+            ]);
+            return;
+    }
+    //
     function createDb(data) {
         if (db != null) db.close();
         db = new sqlmath.Database(data);
         return db;
     }
-    var buff; var data; var result;
-    data = msg["data"];
-    var config = data["config"] ? data["config"] : {};
-    switch (data && data["action"]) {
+    let buff;
+    let result;
+    let sql = data["sql"];
+    switch (data["action"]) {
         case "open":
             buff = data["buffer"];
             createDb(buff && new Uint8Array(buff));
             return postMessage({
-                id: data["id"],
+                id,
                 ready: true
             });
         case "exec":
             if (db === null) {
                 createDb();
             }
-            if (!data["sql"]) {
+            if (!sql) {
                 throw "exec: Missing query string";
             }
             return postMessage({
-                id: data["id"],
-                results: db.exec(data["sql"], data["params"], config)
+                id,
+                results: db.exec(sql, data["params"])
             });
-        case "each":
-            if (db === null) {
-                createDb();
-            }
-            var callback = function callback(row) {
-                return postMessage({
-                    id: data["id"],
-                    row: row,
-                    finished: false
-                });
-            };
-            var done = function done() {
-                return postMessage({
-                    id: data["id"],
-                    finished: true
-                });
-            };
-            return db.each(data["sql"], data["params"], callback, done, config);
         case "export":
             buff = db["export"]();
             result = {
-                id: data["id"],
+                id,
                 buffer: buff
             };
             try {
@@ -109,29 +168,28 @@ function onModuleReady(msg) {
                 db.close();
             }
             return postMessage({
-                id: data["id"]
+                id
             });
         default:
-            throw new Error("Invalid action : " + (data && data["action"]));
+            throw new Error("Invalid action : " + data["action"]);
     }
 }
-async function onmessage(event) {
+self["onmessage"] = async function ({
+    data
+}) {
     sqlmath = sqlmath || await onModulePostRun;
-    return Promise.resolve()
-        .then(function () {
-            onModuleReady(event);
-        })
-        .catch(function (err) {
-            postMessage({
-                id: event["data"]["id"],
-                error: err["message"]
-            });
+    try {
+        await sqlWorkerDispatch(data);
+    } catch (err) {
+        postMessage({
+            id: data["id"],
+            error: err["message"]
         });
+    }
 };
 onModulePostRun = new Promise(function (resolve) {
     Module["postRun"] = resolve;
 });
-self.onmessage = onmessage;
 
 
 /**
@@ -169,117 +227,123 @@ self.onmessage = onmessage;
 Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     // Declare toplevel variables
     // register, used for temporary stack values
-    var apiTemp = stackAlloc(4);
-    var cwrap = Module["cwrap"];
+    let apiTemp = stackAlloc(4);
+    let cwrap = Module["cwrap"];
     // Null pointer
-    var NULL = 0;
+    let NULL = 0;
     // SQLite enum
-    var SQLITE_OK = 0;
-    var SQLITE_ROW = 100;
-    var SQLITE_DONE = 101;
-    var SQLITE_INTEGER = 1;
-    var SQLITE_FLOAT = 2;
-    var SQLITE_TEXT = 3;
-    var SQLITE_BLOB = 4;
-    // var - Encodings, used for registering functions.
-    var SQLITE_UTF8 = 1;
-    // var - cwrap function
-    var sqlite3_open = cwrap("sqlite3_open", "number", ["string", "number"]);
-    var sqlite3_close_v2 = cwrap("sqlite3_close_v2", "number", ["number"]);
-    var sqlite3_exec = cwrap(
+    let SQLITE_OK = 0;
+    let SQLITE_ROW = 100;
+    let SQLITE_DONE = 101;
+    let SQLITE_INTEGER = 1;
+    let SQLITE_FLOAT = 2;
+    let SQLITE_TEXT = 3;
+    let SQLITE_BLOB = 4;
+    // let - Encodings, used for registering functions.
+    let SQLITE_UTF8 = 1;
+    // let - cwrap function
+    cModule["dbClose"] = cwrap("dbClose", null, ["array"]);
+    cModule["dbExec"] = cwrap("dbExec", null, ["array"]);
+    cModule["dbMemoryLoadOrSave"] = cwrap("dbMemoryLoadOrSave", null, ["array"]);
+    cModule["dbNoop"] = cwrap("dbNoop", null, ["array"]);
+    cModule["dbOpen"] = cwrap("dbOpen", null, ["array"]);
+    cModule["dbTableInsert"] = cwrap("dbTableInsert", null, ["array"]);
+    let sqlite3_open = cwrap("sqlite3_open", "number", ["string", "number"]);
+    let sqlite3_close_v2 = cwrap("sqlite3_close_v2", "number", ["number"]);
+    let sqlite3_exec = cwrap(
         "sqlite3_exec",
         "number",
         ["number", "string", "number", "number", "number"]
     );
-    var sqlite3_changes = cwrap("sqlite3_changes", "number", ["number"]);
-    var sqlite3_prepare_v2 = cwrap(
+    let sqlite3_changes = cwrap("sqlite3_changes", "number", ["number"]);
+    let sqlite3_prepare_v2 = cwrap(
         "sqlite3_prepare_v2",
         "number",
         ["number", "string", "number", "number", "number"]
     );
-    var sqlite3_sql = cwrap("sqlite3_sql", "string", ["number"]);
-    var sqlite3_normalized_sql = cwrap(
+    let sqlite3_sql = cwrap("sqlite3_sql", "string", ["number"]);
+    let sqlite3_normalized_sql = cwrap(
         "sqlite3_normalized_sql",
         "string",
         ["number"]
     );
-    var sqlite3_prepare_v2_sqlptr = cwrap(
+    let sqlite3_prepare_v2_sqlptr = cwrap(
         "sqlite3_prepare_v2",
         "number",
         ["number", "number", "number", "number", "number"]
     );
-    var sqlite3_bind_text = cwrap(
+    let sqlite3_bind_text = cwrap(
         "sqlite3_bind_text",
         "number",
         ["number", "number", "number", "number", "number"]
     );
-    var sqlite3_bind_blob = cwrap(
+    let sqlite3_bind_blob = cwrap(
         "sqlite3_bind_blob",
         "number",
         ["number", "number", "number", "number", "number"]
     );
-    var sqlite3_bind_double = cwrap(
+    let sqlite3_bind_double = cwrap(
         "sqlite3_bind_double",
         "number",
         ["number", "number", "number"]
     );
-    var sqlite3_bind_int = cwrap(
+    let sqlite3_bind_int = cwrap(
         "sqlite3_bind_int",
         "number",
         ["number", "number", "number"]
     );
 
-    var sqlite3_bind_parameter_index = cwrap(
+    let sqlite3_bind_parameter_index = cwrap(
         "sqlite3_bind_parameter_index",
         "number",
         ["number", "string"]
     );
-    var sqlite3_step = cwrap("sqlite3_step", "number", ["number"]);
-    var sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
-    var sqlite3_column_count = cwrap(
+    let sqlite3_step = cwrap("sqlite3_step", "number", ["number"]);
+    let sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
+    let sqlite3_column_count = cwrap(
         "sqlite3_column_count",
         "number",
         ["number"]
     );
-    var sqlite3_data_count = cwrap("sqlite3_data_count", "number", ["number"]);
-    var sqlite3_column_double = cwrap(
+    let sqlite3_data_count = cwrap("sqlite3_data_count", "number", ["number"]);
+    let sqlite3_column_double = cwrap(
         "sqlite3_column_double",
         "number",
         ["number", "number"]
     );
-    var sqlite3_column_text = cwrap(
+    let sqlite3_column_text = cwrap(
         "sqlite3_column_text",
         "string",
         ["number", "number"]
     );
-    var sqlite3_column_blob = cwrap(
+    let sqlite3_column_blob = cwrap(
         "sqlite3_column_blob",
         "number",
         ["number", "number"]
     );
-    var sqlite3_column_bytes = cwrap(
+    let sqlite3_column_bytes = cwrap(
         "sqlite3_column_bytes",
         "number",
         ["number", "number"]
     );
-    var sqlite3_column_type = cwrap(
+    let sqlite3_column_type = cwrap(
         "sqlite3_column_type",
         "number",
         ["number", "number"]
     );
-    var sqlite3_column_name = cwrap(
+    let sqlite3_column_name = cwrap(
         "sqlite3_column_name",
         "string",
         ["number", "number"]
     );
-    var sqlite3_reset = cwrap("sqlite3_reset", "number", ["number"]);
-    var sqlite3_clear_bindings = cwrap(
+    let sqlite3_reset = cwrap("sqlite3_reset", "number", ["number"]);
+    let sqlite3_clear_bindings = cwrap(
         "sqlite3_clear_bindings",
         "number",
         ["number"]
     );
-    var sqlite3_finalize = cwrap("sqlite3_finalize", "number", ["number"]);
-    var sqlite3_create_function_v2 = cwrap(
+    let sqlite3_finalize = cwrap("sqlite3_finalize", "number", ["number"]);
+    let sqlite3_create_function_v2 = cwrap(
         "sqlite3_create_function_v2",
         "number",
         [
@@ -294,45 +358,45 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             "number"
         ]
     );
-    var sqlite3_value_type = cwrap("sqlite3_value_type", "number", ["number"]);
-    var sqlite3_value_bytes = cwrap(
+    let sqlite3_value_type = cwrap("sqlite3_value_type", "number", ["number"]);
+    let sqlite3_value_bytes = cwrap(
         "sqlite3_value_bytes",
         "number",
         ["number"]
     );
-    var sqlite3_value_text = cwrap("sqlite3_value_text", "string", ["number"]);
-    var sqlite3_value_blob = cwrap("sqlite3_value_blob", "number", ["number"]);
-    var sqlite3_value_double = cwrap(
+    let sqlite3_value_text = cwrap("sqlite3_value_text", "string", ["number"]);
+    let sqlite3_value_blob = cwrap("sqlite3_value_blob", "number", ["number"]);
+    let sqlite3_value_double = cwrap(
         "sqlite3_value_double",
         "number",
         ["number"]
     );
-    var sqlite3_result_double = cwrap(
+    let sqlite3_result_double = cwrap(
         "sqlite3_result_double",
         "",
         ["number", "number"]
     );
-    var sqlite3_result_null = cwrap(
+    let sqlite3_result_null = cwrap(
         "sqlite3_result_null",
         "",
         ["number"]
     );
-    var sqlite3_result_text = cwrap(
+    let sqlite3_result_text = cwrap(
         "sqlite3_result_text",
         "",
         ["number", "string", "number", "number"]
     );
-    var sqlite3_result_blob = cwrap(
+    let sqlite3_result_blob = cwrap(
         "sqlite3_result_blob",
         "",
         ["number", "number", "number", "number"]
     );
-    var sqlite3_result_int = cwrap(
+    let sqlite3_result_int = cwrap(
         "sqlite3_result_int",
         "",
         ["number", "number"]
     );
-    var sqlite3_result_error = cwrap(
+    let sqlite3_result_error = cwrap(
         "sqlite3_result_error",
         "",
         ["number", "string", "number"]
@@ -402,14 +466,14 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     * null             | NULL
     *
     * @example <caption>Bind values to named parameters</caption>
-    *     var stmt = db.prepare(
+    *     let stmt = db.prepare(
     *         "UPDATE test SET a=@newval WHERE id BETWEEN $mini AND $maxi"
     *     );
     *     stmt.bind({$mini:10, $maxi:20, '@newval':5});
     *
     * @example <caption>Bind values to anonymous parameters</caption>
     * // Create a statement that contains parameters like '?', '?NNN'
-    * var stmt = db.prepare("UPDATE test SET a=? WHERE id BETWEEN ? AND ?");
+    * let stmt = db.prepare("UPDATE test SET a=? WHERE id BETWEEN ? AND ?");
     * // Call Statement.bind with an array as parameter
     * stmt.bind([5, 10, 20]);
     *
@@ -443,7 +507,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             throw "Statement closed";
         }
         this.pos = 1;
-        var ret = sqlite3_step(this.stmt);
+        let ret = sqlite3_step(this.stmt);
         switch (ret) {
             case SQLITE_ROW:
                 return true;
@@ -471,7 +535,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             pos = this.pos;
             this.pos += 1;
         }
-        var text = sqlite3_column_text(this.stmt, pos);
+        let text = sqlite3_column_text(this.stmt, pos);
         if (typeof BigInt !== "function") {
             throw new Error("BigInt is not supported");
         }
@@ -492,10 +556,10 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             pos = this.pos;
             this.pos += 1;
         }
-        var size = sqlite3_column_bytes(this.stmt, pos);
-        var ptr = sqlite3_column_blob(this.stmt, pos);
-        var result = new Uint8Array(size);
-        for (var i = 0; i < size; i += 1) {
+        let size = sqlite3_column_bytes(this.stmt, pos);
+        let ptr = sqlite3_column_blob(this.stmt, pos);
+        let result = new Uint8Array(size);
+        for (let i = 0; i < size; i += 1) {
             result[i] = HEAP8[ptr + i];
         }
         return result;
@@ -509,11 +573,11 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
 
     @example
     <caption>Print all the rows of the table test to the console</caption>
-    var stmt = db.prepare("SELECT * FROM test");
+    let stmt = db.prepare("SELECT * FROM test");
     while (stmt.step()) console.log(stmt.get());
 
     <caption>Enable BigInt support</caption>
-    var stmt = db.prepare("SELECT * FROM test");
+    let stmt = db.prepare("SELECT * FROM test");
     while (stmt.step()) console.log(stmt.get(null, {useBigInt: true}));
      */
     Statement.prototype["get"] = function get(params, config) {
@@ -521,12 +585,12 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         if (params != null && this["bind"](params)) {
             this["step"]();
         }
-        var results1 = [];
-        var ref = sqlite3_data_count(this.stmt);
-        for (var field = 0; field < ref; field += 1) {
+        let results1 = [];
+        let ref = sqlite3_data_count(this.stmt);
+        for (let field = 0; field < ref; field += 1) {
             switch (sqlite3_column_type(this.stmt, field)) {
                 case SQLITE_INTEGER:
-                    var getfunc = config["useBigInt"]
+                    let getfunc = config["useBigInt"]
                         ? this.getBigInt(field)
                         : this.getNumber(field);
                     results1.push(getfunc);
@@ -550,7 +614,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     /** Get the list of column names of a row of result of a statement.
     @return {string[]} The names of the columns
     @example
-    var stmt = db.prepare(
+    let stmt = db.prepare(
         "SELECT 5 AS nbr, x'616200' AS data, NULL AS null_value;"
     );
     stmt.step(); // Execute the statement
@@ -558,9 +622,9 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     // Will print ['nbr','data','null_value']
      */
     Statement.prototype["getColumnNames"] = function getColumnNames() {
-        var results1 = [];
-        var ref = sqlite3_column_count(this.stmt);
-        for (var i = 0; i < ref; i += 1) {
+        let results1 = [];
+        let ref = sqlite3_column_count(this.stmt);
+        for (let i = 0; i < ref; i += 1) {
             results1.push(sqlite3_column_name(this.stmt, i));
         }
         return results1;
@@ -575,7 +639,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
 
     @example
 
-        var stmt = db.prepare(
+        let stmt = db.prepare(
             "SELECT 5 AS nbr, x'010203' AS data, NULL AS null_value;"
         );
         stmt.step(); // Execute the statement
@@ -583,11 +647,11 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         // Will print {nbr:5, data: Uint8Array([1,2,3]), null_value:null}
      */
     Statement.prototype["getAsObject"] = function getAsObject(params, config) {
-        var values = this["get"](params, config);
-        var names = this["getColumnNames"]();
-        var rowObject = {};
-        for (var i = 0; i < names.length; i += 1) {
-            var name = names[i];
+        let values = this["get"](params, config);
+        let names = this["getColumnNames"]();
+        let rowObject = {};
+        for (let i = 0; i < names.length; i += 1) {
+            let name = names[i];
             rowObject[name] = values[i];
         }
         return rowObject;
@@ -634,8 +698,8 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             pos = this.pos;
             this.pos += 1;
         }
-        var bytes = intArrayFromString(string);
-        var strptr = allocate(bytes, ALLOC_NORMAL);
+        let bytes = intArrayFromString(string);
+        let strptr = _malloc(bytes.length);
         this.allocatedmem.push(strptr);
         this.db.handleError(sqlite3_bind_text(
             this.stmt,
@@ -652,7 +716,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             pos = this.pos;
             this.pos += 1;
         }
-        var blobptr = allocate(array, ALLOC_NORMAL);
+        let blobptr = _malloc(array.length);
         this.allocatedmem.push(blobptr);
         this.db.handleError(sqlite3_bind_blob(
             this.stmt,
@@ -669,7 +733,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             pos = this.pos;
             this.pos += 1;
         }
-        var bindfunc = (
+        let bindfunc = (
             num === (num | 0)
                 ? sqlite3_bind_int
                 : sqlite3_bind_double
@@ -726,9 +790,9 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     @nodoc
      */
     Statement.prototype.bindFromObject = function bindFromObject(valuesObj) {
-        var that = this;
+        let that = this;
         Object.keys(valuesObj).forEach(function each(name) {
-            var num = sqlite3_bind_parameter_index(that.stmt, name);
+            let num = sqlite3_bind_parameter_index(that.stmt, name);
             if (num !== 0) {
                 that.bindValue(valuesObj[name], num);
             }
@@ -742,7 +806,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     @nodoc
      */
     Statement.prototype.bindFromArray = function bindFromArray(values) {
-        for (var num = 0; num < values.length; num += 1) {
+        for (let num = 0; num < values.length; num += 1) {
             this.bindValue(values[num], num + 1);
         }
         return true;
@@ -762,7 +826,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
 
     /** Free the memory allocated during parameter binding */
     Statement.prototype["freemem"] = function freemem() {
-        var mem;
+        let mem;
         while ((mem = this.allocatedmem.pop()) !== undefined) {
             _free(mem);
         }
@@ -772,7 +836,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     @return {boolean} true in case of success
      */
     Statement.prototype["free"] = function free() {
-        var res;
+        let res;
         this["freemem"]();
         res = sqlite3_finalize(this.stmt) === SQLITE_OK;
         delete this.db.statements[this.stmt];
@@ -823,7 +887,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
      */
     function StatementIterator(sql, db) {
         this.db = db;
-        var sz = lengthBytesUTF8(sql) + 1;
+        let sz = lengthBytesUTF8(sql) + 1;
         this.sqlPtr = _malloc(sz);
         if (this.sqlPtr === null) {
             throw new Error("Unable to allocate memory for the SQL string");
@@ -859,8 +923,8 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             this.finalize();
             throw new Error("Database closed");
         }
-        var stack = stackSave();
-        var pzTail = stackAlloc(4);
+        let stack = stackSave();
+        let pzTail = stackAlloc(4);
         setValue(apiTemp, 0, "i32");
         setValue(pzTail, 0, "i32");
         try {
@@ -872,7 +936,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
                 pzTail
             ));
             this.nextSqlPtr = getValue(pzTail, "i32");
-            var pStmt = getValue(apiTemp, "i32");
+            let pStmt = getValue(apiTemp, "i32");
             if (pStmt === NULL) {
                 this.finalize();
                 return { done: true };
@@ -956,7 +1020,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             throw "Database closed";
         }
         if (params) {
-            var stmt = this["prepare"](sql, params);
+            let stmt = this["prepare"](sql, params);
             try {
                 stmt["step"]();
             } finally {
@@ -1003,8 +1067,8 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     *
     * We query it like that:
     * ```javascript
-    * var db = new SQL.Database();
-    * var res = db.exec(
+    * let db = new SQL.Database();
+    * let res = db.exec(
     *     "DROP TABLE IF EXISTS test;\n"
     *     + "CREATE TABLE test (id INTEGER, age INTEGER, name TEXT);"
     *     + "INSERT INTO test VALUES ($id1, :age1, @name1);"
@@ -1038,12 +1102,12 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         if (!this.db) {
             throw "Database closed";
         }
-        var stack = stackSave();
-        var stmt = null;
+        let stack = stackSave();
+        let stmt = null;
         try {
-            var nextSqlPtr = allocateUTF8OnStack(sql);
-            var pzTail = stackAlloc(4);
-            var results = [];
+            let nextSqlPtr = allocateUTF8OnStack(sql);
+            let pzTail = stackAlloc(4);
+            let results = [];
             while (getValue(nextSqlPtr, "i8") !== NULL) {
                 setValue(apiTemp, 0, "i32");
                 setValue(pzTail, 0, "i32");
@@ -1055,11 +1119,11 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
                     pzTail
                 ));
                 // pointer to a statement, or null
-                var pStmt = getValue(apiTemp, "i32");
+                let pStmt = getValue(apiTemp, "i32");
                 nextSqlPtr = getValue(pzTail, "i32");
                 // Empty statement
                 if (pStmt !== NULL) {
-                    var curresult = null;
+                    let curresult = null;
                     stmt = new Statement(pStmt, this);
                     if (params != null) {
                         stmt.bind(params);
@@ -1109,7 +1173,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     Database.prototype["each"] = function each(
         sql, params, callback, done, config
     ) {
-        var stmt;
+        let stmt;
         if (typeof params === "function") {
             done = callback;
             callback = params;
@@ -1140,11 +1204,11 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         setValue(apiTemp, 0, "i32");
         this.handleError(sqlite3_prepare_v2(this.db, sql, -1, apiTemp, NULL));
         // pointer to a statement, or null
-        var pStmt = getValue(apiTemp, "i32");
+        let pStmt = getValue(apiTemp, "i32");
         if (pStmt === NULL) {
             throw "Nothing to prepare";
         }
-        var stmt = new Statement(pStmt, this);
+        let stmt = new Statement(pStmt, this);
         if (params != null) {
             stmt.bind(params);
         }
@@ -1182,7 +1246,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         Object.values(this.functions).forEach(removeFunction);
         this.functions = {};
         this.handleError(sqlite3_close_v2(this.db));
-        var binaryDb = FS.readFile(this.filename, { encoding: "binary" });
+        let binaryDb = FS.readFile(this.filename, { encoding: "binary" });
         this.handleError(sqlite3_open(this.filename, apiTemp));
         this.db = getValue(apiTemp, "i32");
         return binaryDb;
@@ -1218,7 +1282,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     @nodoc
      */
     Database.prototype["handleError"] = function handleError(returnCode) {
-        var errmsg;
+        let errmsg;
         if (returnCode === SQLITE_OK) {
             return null;
         }
@@ -1252,21 +1316,21 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         func
     ) {
         function wrapped_func(cx, argc, argv) {
-            var result;
+            let result;
             function extract_blob(ptr) {
-                var size = sqlite3_value_bytes(ptr);
-                var blob_ptr = sqlite3_value_blob(ptr);
-                var blob_arg = new Uint8Array(size);
-                for (var j = 0; j < size; j += 1) {
+                let size = sqlite3_value_bytes(ptr);
+                let blob_ptr = sqlite3_value_blob(ptr);
+                let blob_arg = new Uint8Array(size);
+                for (let j = 0; j < size; j += 1) {
                     blob_arg[j] = HEAP8[blob_ptr + j];
                 }
                 return blob_arg;
             }
-            var args = [];
-            for (var i = 0; i < argc; i += 1) {
-                var value_ptr = getValue(argv + (4 * i), "i32");
-                var value_type = sqlite3_value_type(value_ptr);
-                var arg;
+            let args = [];
+            for (let i = 0; i < argc; i += 1) {
+                let value_ptr = getValue(argv + (4 * i), "i32");
+                let value_type = sqlite3_value_type(value_ptr);
+                let arg;
                 if (
                     value_type === SQLITE_INTEGER
                     || value_type === SQLITE_FLOAT
@@ -1299,7 +1363,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
                     if (result === null) {
                         sqlite3_result_null(cx);
                     } else if (result.length != null) {
-                        var blobptr = allocate(result, ALLOC_NORMAL);
+                        let blobptr = _malloc(result.length);
                         sqlite3_result_blob(cx, blobptr, result.length, -1);
                         _free(blobptr);
                     } else {
@@ -1319,7 +1383,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         }
         // The signature of the wrapped function is :
         // void wrapped(sqlite3_context *db, int argc, sqlite3_value **argv)
-        var func_ptr = addFunction(wrapped_func, "viii");
+        let func_ptr = addFunction(wrapped_func, "viii");
         this.functions[name] = func_ptr;
         this.handleError(sqlite3_create_function_v2(
             this.db,

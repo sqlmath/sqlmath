@@ -6,6 +6,8 @@
 - none
 
 # v2022.6.1-beta
+- remove jslint-dependency in sqlmath-core to prepare sqlmath for browser/wasm env
+- emscripten updated to v3.1.3, allowing es6 syntax in sqlmath_wrapper_wasm.js
 - jenks - streamline jenksCreate() return object to simple double-array instead of struct
 - jenks - inline jenks-function jenksCalcRange() from recursion to iteration
 - jenks - optimize jenks-function jenksCalcRange() from recursion to iteration

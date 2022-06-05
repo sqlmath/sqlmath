@@ -502,16 +502,20 @@ shCiBuildWasm() {(set -e
             -DEMSCRIPTEN \
             -I.tmp \
             \
-            -O3 \
+            -Oz \
             -Wall \
             -flto \
-            -s INLINING_LIMIT=50 \
             \
             -c "$FILE" -o "$FILE2"
     done
     emcc \
         -s EXPORTED_FUNCTIONS='[
+"_dbClose",
 "_dbExec",
+"_dbMemoryLoadOrSave",
+"_dbNoop",
+"_dbOpen",
+"_dbTableInsert",
 "_free",
 "_malloc",
 "_sqlite3_bind_blob",
@@ -579,7 +583,8 @@ shCiBuildWasm() {(set -e
         \
         --pre-js sqlmath_wrapper_wasm.js \
         \
-        -o sqlmath_wasm.js
+        -o sqlmath_wasm.js \
+        # --closure 1
     printf '' > .tmp.js
     printf '
 /*jslint-disable*/
@@ -596,7 +601,7 @@ shCiBuildWasm() {(set -e
 
 shCiEmsdkExport() {
 # this function will export emsdk env
-    export EMSCRIPTEN_VERSION=2.0.34
+    export EMSCRIPTEN_VERSION=3.1.3
     export EMSDK="$PWD/_emsdk"
     # https://github.com/sql-js/sql.js/blob/v1.6.2/.devcontainer/Dockerfile
     if [ ! "$PATH_EMSDK" ]

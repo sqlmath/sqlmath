@@ -139,20 +139,20 @@
 
 // init debugInline
 let debugInline = (function () {
-    let consoleError = function () {
+    let __consoleError = function () {
         return;
     };
     function debug(...argv) {
 
 // This function will print <argv> to stderr and then return <argv>[0].
 
-        consoleError("\n\ndebugInline");
-        consoleError(...argv);
-        consoleError("\n");
+        __consoleError("\n\ndebugInline");
+        __consoleError(...argv);
+        __consoleError("\n");
         return argv[0];
     }
     debug(); // Coverage-hack.
-    consoleError = console.error;
+    __consoleError = console.error;
     return debug;
 }());
 let jslint_charset_ascii = (

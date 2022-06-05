@@ -22,6 +22,7 @@
 
 
 /*jslint beta, node*/
+import jslint from "./jslint.mjs";
 import sqlmath from "./sqlmath.mjs";
 let {
     assertErrorThrownAsync,
@@ -42,7 +43,7 @@ let {
     jstestDescribe,
     jstestIt,
     noop
-} = sqlmath;
+} = Object.assign({}, jslint, sqlmath);
 noop(debugInline);
 
 jstestDescribe((
@@ -767,6 +768,38 @@ SELECT * FROM testDbExecAsync2;
                     valInput
                 }, undefined, 4)
             );
+        });
+    });
+});
+
+jstestDescribe((
+    "test misc handling-behavior"
+), function testMisc() {
+    jstestIt((
+        "test misc handling-behavior"
+    ), async function () {
+        // test debugInline handling-behavior
+        noop(debugInline);
+        // test assertErrorThrownAsync error handling-behavior
+        await assertErrorThrownAsync(function () {
+            return assertErrorThrownAsync(noop);
+        });
+        // test assertJsonEqual error handling-behavior
+        await assertErrorThrownAsync(function () {
+            assertJsonEqual(1, 2);
+        });
+        await assertErrorThrownAsync(function () {
+            assertJsonEqual(1, 2, "undefined");
+        });
+        await assertErrorThrownAsync(function () {
+            assertJsonEqual(1, 2, {});
+        });
+        // test assertOrThrow error handling-behavior
+        await assertErrorThrownAsync(function () {
+            assertOrThrow(undefined, "undefined");
+        });
+        await assertErrorThrownAsync(function () {
+            assertOrThrow(undefined, new Error());
         });
     });
 });
