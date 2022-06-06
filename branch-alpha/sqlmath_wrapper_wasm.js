@@ -207,6 +207,7 @@ function sqlWorkerDispatch(data) {
             createDb(buff && new Uint8Array(buff));
             return postMessage({
                 "id": id,
+                "rawPtr": db.db,
                 "ready": true
             });
         case "exec":

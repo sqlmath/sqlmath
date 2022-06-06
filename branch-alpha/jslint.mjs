@@ -6700,12 +6700,6 @@ function jslint_phase3_parse(state) {
 // Restore previous catch-scope after catch-block.
 
             catchage = catch_stack.pop();
-        } else {
-
-// test_cause:
-// ["try{}finally{break;}", "stmt_try", "expected_a_before_b", "finally", 6]
-
-            warn("expected_a_before_b", token_nxt, "catch", artifact());
         }
         if (token_nxt.id === "finally") {
             functionage.finally += 1;

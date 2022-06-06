@@ -85,7 +85,8 @@ let debugInline = (function () {
 }());
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
-let sqlWorker;
+let sqlWorkerActive;
+let sqlWorkerInitializedList = []; // list of initialized web-workers
 
 function assertJsonEqual(aa, bb, message) {
 
@@ -1076,7 +1077,7 @@ function objectDeepCopyWithKeysSorted(obj) {
 
 async function sqlMessagePost(baton, cFuncName, ...argList) {
 
-// This function will post msg to <sqlWorker> and return result
+// This function will post msg to <sqlWorkerActive> and return result
 
     let id;
     let result;
@@ -1085,7 +1086,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     sqlMessageId += 1;
     id = sqlMessageId;
     // postMessage to web-worker
-    sqlWorker.postMessage(
+    sqlWorkerActive.postMessage(
         {
             argList,
             baton,
@@ -1118,9 +1119,42 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     ];
 }
 
-async function sqlmathInit({
-    Worker
+function sqlWorkerSetActive({
+    sqlWorker,
+    url
 }) {
+    let Worker = globalThis.Worker;
+    IS_BROWSER = true;
+    // coverage-hack
+    if (typeof process === "object" && process?.env?.npm_config_mode_test) {
+        Worker = function () {
+            this.addEventListener = noop; //jslint-quiet
+        };
+    }
+    sqlWorkerActive = sqlWorker || new Worker(url || "sqlmath_wasm.js");
+    // init sqlWorker
+    if (!sqlWorkerInitializedList.indexOf(sqlWorkerActive) < 0) {
+        sqlWorkerActive.addEventListener("message", function ({
+            data
+        }) {
+            sqlMessageDict[data.id](data);
+        });
+    }
+    /*
+    let db = await dbOpenAsync({ //jslint-quiet
+        filename: ":memory:"
+    });
+    debugInline(
+        await dbExecAsync({
+            db,
+            sql: "aSELECT 1234"
+        })
+    );
+    */
+}
+
+async function sqlmathInit() {
+// this function will init sqlmath
     dbFinalizationRegistry = new FinalizationRegistry(function ({
         afterFinalization,
         ptr
@@ -1154,28 +1188,6 @@ async function sqlmathInit({
         }
         return;
     }
-
-// Feature-detect browser.
-
-    IS_BROWSER = true;
-    Worker = Worker || globalThis.Worker;
-    sqlWorker = new Worker("sqlmath_wasm.js?initSqlJsWorker=1");
-    sqlWorker.onmessage = function ({
-        data
-    }) {
-        sqlMessageDict[data.id](data);
-    };
-    /*
-    let db = await dbOpenAsync({ //jslint-quiet
-        filename: ":memory:"
-    });
-    debugInline(
-        await dbExecAsync({
-            db,
-            sql: "aSELECT 1234"
-        })
-    );
-    */
 }
 
 await sqlmathInit({});
@@ -1218,5 +1230,6 @@ export {
     debugInline,
     jsbatonValueString,
     noop,
-    objectDeepCopyWithKeysSorted
+    objectDeepCopyWithKeysSorted,
+    sqlWorkerSetActive
 };

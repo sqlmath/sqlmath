@@ -22,6 +22,24 @@
 
 
 /*jslint-disable*/
+import {
+    assertJsonEqual,
+    assertNumericalEqual,
+    assertOrThrow,
+    dbCloseAsync,
+    dbExecAsync,
+    dbExecWithRetryAsync,
+    dbGetLastBlobAsync,
+    dbMemoryLoadAsync,
+    dbMemorySaveAsync,
+    dbNoopAsync,
+    dbOpenAsync,
+    dbTableInsertAsync,
+    debugInline,
+    jsbatonValueString,
+    noop,
+    sqlWorkerSetActive
+} from "./sqlmath.mjs";
 window.addEventListener("load", async function () {
     "use strict";
     let {
@@ -1117,6 +1135,7 @@ Definition of the CSV Format
 /* validateLineSortedReset */
     sqlPostMessage = uiRenderError(async function sqlPostMessage({
         action = "exec",
+        cFuncName,
         data,
         params,
         sql
@@ -1148,10 +1167,21 @@ Definition of the CSV Format
         let {
             buffer,
             errmsg,
+            rawPtr,
             results = []
         } = await new Promise(function (resolve) {
             sqlCallbackDict[sqlCallbackId] = resolve;
         });
+        if (rawPtr) {
+            //!! debugInline({
+                //!! action,
+                //!! rawPtr
+            //!! });
+            window.DB_PTR = await dbOpenAsync({
+                filename: "tmp1",
+                rawPtr
+            });
+        }
         delete sqlCallbackDict[id];
         timeElapsed = Date.now() - timeElapsed;
         console.error(
@@ -1919,7 +1949,11 @@ COMMIT;
     sqlCallbackId = 1;
     sqlResultDict = {};
     sqlWorker = new Worker("sqlmath_wasm.js?initSqlJsWorker=1");
-    sqlWorker.onmessage = sqlOnMessage;
+    sqlWorker.addEventListener("message", sqlOnMessage);
+    // init sqlmath
+    sqlWorkerSetActive({
+        sqlWorker
+    });
     sqlPostMessage({
         action: "open"
     });
