@@ -240,6 +240,12 @@ typedef struct Jsbaton {
 
 
 // file sqlmath_h - SQLMATH_API
+SQLMATH_API int __dbMemoryLoadOrSave(
+    sqlite3 * pInMemory,
+    const char *zFilename,
+    int isSave
+);
+
 SQLMATH_API void dbClose(
     Jsbaton * baton
 );
@@ -332,6 +338,70 @@ static int dbCount = 0;
 
 
 // file sqlmath_ext - SQLMATH_API
+SQLMATH_API int __dbMemoryLoadOrSave(
+    sqlite3 * pInMemory,
+    const char *zFilename,
+    int isSave
+) {
+/*
+** https://www.sqlite.org/backup.html
+** This function is used to load the contents of a database file on disk
+** into the "main" database of open database connection pInMemory, or
+** to save the current contents of the database opened by pInMemory into
+** a database file on disk. pInMemory is probably an in-memory database,
+** but this function will also work fine if it is not.
+**
+** Parameter zFilename points to a nul-terminated string containing the
+** name of the database file on disk to load from or save to. If parameter
+** isSave is non-zero, then the contents of the file zFilename are
+** overwritten with the contents of the database opened by pInMemory. If
+** parameter isSave is zero, then the contents of the database opened by
+** pInMemory are replaced by data loaded from the file zFilename.
+**
+** If the operation is successful, SQLITE_OK is returned. Otherwise, if
+** an error occurs, an SQLite error code is returned.
+*/
+    int rc;                     /* Function return code */
+    sqlite3 *pFile;             /* Database connection opened on zFilename */
+    sqlite3_backup *pBackup;    /* Backup object used to copy data */
+    sqlite3 *pTo;               /* Database to copy to (pFile or pInMemory) */
+    sqlite3 *pFrom;             /* Database to copy from (pFile or pInMemory) */
+    /* Open the database file identified by zFilename. Exit early if this fails
+     ** for any reason. */
+    rc = sqlite3_open(zFilename, &pFile);
+    if (rc == SQLITE_OK) {
+        /* If this is a 'load' operation (isSave==0), then data is copied
+         ** from the database file just opened to database pInMemory.
+         ** Otherwise, if this is a 'save' operation (isSave==1), then data
+         ** is copied from pInMemory to pFile.  Set the variables pFrom and
+         ** pTo accordingly. */
+        pFrom = (isSave ? pInMemory : pFile);
+        pTo = (isSave ? pFile : pInMemory);
+        /* Set up the backup procedure to copy from the "main" database of
+         ** connection pFile to the main database of connection pInMemory.
+         ** If something goes wrong, pBackup will be set to NULL and an error
+         ** code and message left in connection pTo.
+         **
+         ** If the backup object is successfully created, call backup_step()
+         ** to copy data from pFile to pInMemory. Then call backup_finish()
+         ** to release resources associated with the pBackup object.  If an
+         ** error occurred, then an error code and message will be left in
+         ** connection pTo. If no error occurred, then the error code belonging
+         ** to pTo is set to SQLITE_OK.
+         */
+        pBackup = sqlite3_backup_init(pTo, "main", pFrom, "main");
+        if (pBackup) {
+            (void) sqlite3_backup_step(pBackup, -1);
+            (void) sqlite3_backup_finish(pBackup);
+        }
+        rc = sqlite3_errcode(pTo);
+    }
+    /* Close the database connection opened on database file zFilename
+     ** and return the result of this function. */
+    (void) sqlite3_close(pFile);
+    return rc;
+}
+
 SQLMATH_API void dbClose(
     Jsbaton * baton
 ) {
@@ -667,74 +737,14 @@ SQLMATH_API void dbMemoryLoadOrSave(
     Jsbaton * baton
 ) {
 // This function will load/save <zFilename> to/from <db>
-    // declare var0
-    int errcode = 0;
-    sqlite3 *db = (sqlite3 *) baton->argv[0];
     // declare var
-    sqlite3 *pInMemory = db;
     const char *zFilename = JSBATON_VALUE_STRING_ARGI(1);
+    int errcode = 0;
     int isSave = baton->argv[2];
+    sqlite3 *db = (sqlite3 *) baton->argv[0];
     // fprintf(stderr, "\nsqlmath.dbMemoryLoadOrSave(ff=%s isSave=%d)\n",
     //     zFilename, isSave);
-/*
-** https://www.sqlite.org/backup.html
-** This function is used to load the contents of a database file on disk
-** into the "main" database of open database connection pInMemory, or
-** to save the current contents of the database opened by pInMemory into
-** a database file on disk. pInMemory is probably an in-memory database,
-** but this function will also work fine if it is not.
-**
-** Parameter zFilename points to a nul-terminated string containing the
-** name of the database file on disk to load from or save to. If parameter
-** isSave is non-zero, then the contents of the file zFilename are
-** overwritten with the contents of the database opened by pInMemory. If
-** parameter isSave is zero, then the contents of the database opened by
-** pInMemory are replaced by data loaded from the file zFilename.
-**
-** If the operation is successful, SQLITE_OK is returned. Otherwise, if
-** an error occurs, an SQLite error code is returned.
-*/
-    int rc;                     /* Function return code */
-    sqlite3 *pFile;             /* Database connection opened on zFilename */
-    sqlite3_backup *pBackup;    /* Backup object used to copy data */
-    sqlite3 *pTo;               /* Database to copy to (pFile or pInMemory) */
-    sqlite3 *pFrom;             /* Database to copy from (pFile or pInMemory) */
-    /* Open the database file identified by zFilename. Exit early if this fails
-     ** for any reason. */
-    rc = sqlite3ApiGet()->open(zFilename, &pFile);
-    if (rc == SQLITE_OK) {
-        /* If this is a 'load' operation (isSave==0), then data is copied
-         ** from the database file just opened to database pInMemory.
-         ** Otherwise, if this is a 'save' operation (isSave==1), then data
-         ** is copied from pInMemory to pFile.  Set the variables pFrom and
-         ** pTo accordingly. */
-        pFrom = (isSave ? pInMemory : pFile);
-        pTo = (isSave ? pFile : pInMemory);
-
-        /* Set up the backup procedure to copy from the "main" database of
-         ** connection pFile to the main database of connection pInMemory.
-         ** If something goes wrong, pBackup will be set to NULL and an error
-         ** code and message left in connection pTo.
-         **
-         ** If the backup object is successfully created, call backup_step()
-         ** to copy data from pFile to pInMemory. Then call backup_finish()
-         ** to release resources associated with the pBackup object.  If an
-         ** error occurred, then an error code and message will be left in
-         ** connection pTo. If no error occurred, then the error code belonging
-         ** to pTo is set to SQLITE_OK.
-         */
-        pBackup = sqlite3_backup_init(pTo, "main", pFrom, "main");
-        if (pBackup) {
-            (void) sqlite3_backup_step(pBackup, -1);
-            (void) sqlite3_backup_finish(pBackup);
-        }
-        rc = sqlite3_errcode(pTo);
-    }
-    /* Close the database connection opened on database file zFilename
-     ** and return the result of this function. */
-    (void) sqlite3_close(pFile);
-    // return rc;
-    errcode = rc;
+    errcode = __dbMemoryLoadOrSave(db, zFilename, isSave);
     JSBATON_ASSERT_OK();
   catch_error:
     (void) 0;
@@ -760,17 +770,18 @@ SQLMATH_API void dbOpen(
     int errcode = 0;
     sqlite3 *db;
     const char *filename = JSBATON_VALUE_STRING_ARGI(0);
+    const int flags = (int) baton->argv[2];
     // call c-function
     errcode = sqlite3ApiGet()->open_v2( //
         filename,               // filename
         &db,                    // db
-        (int) baton->argv[2],   // flags
+        flags,                  // flags
         NULL);
     JSBATON_ASSERT_OK();
     dbCount += 1;
     // fprintf(stderr, "\nsqlmath.dbOpen(dbCount=%d ff=%s)\n", dbCount,
     //     filename);
-    // save result
+    // save db
     baton->argv[0] = (int64_t) db;
   catch_error:
     (void) 0;

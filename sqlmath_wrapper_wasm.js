@@ -100,9 +100,11 @@ function makeMalloc(source, param) {
 let JSBATON_ARGC = 16;
 let JSBATON_OFFSET_BUFV = 4 + 4 + 128;
 let JSBATON_OFFSET_ERRMSG = 4 + 4 + 128 + 128 + 8;
+let __dbMemoryLoadOrSave;
 let cModule = {};
 let db;
 let onModulePostRun;
+let sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
 let sqlmath;
 function noop(val) {
 
@@ -113,9 +115,11 @@ function noop(val) {
 function sqlWorkerDispatch(data) {
     let argList = data["argList"];
     let baton = new Uint8Array(data["baton"] && data["baton"].buffer);
-    let errmsg;
-    let ptr;
+    let batonPtr = 0;
     let cFuncName = data["cFuncName"];
+    let dbPtr = 0;
+    let errcode = 0;
+    let errmsg = "";
     let id = data["id"];
     switch (cFuncName) {
     case "_dbClose":
@@ -124,15 +128,18 @@ function sqlWorkerDispatch(data) {
     case "_dbNoop":
     case "_dbOpen":
     case "_dbTableInsert":
-        ptr = _malloc(baton.byteLength);
-        HEAPU8.set(baton, ptr);
-        cModule[cFuncName](ptr);
+        // copy baton to wasm
+        batonPtr = _malloc(baton.byteLength);
+        data["batonPtr"] = batonPtr;
+        HEAPU8.set(baton, batonPtr);
+        // call c-function
+        cModule[cFuncName](batonPtr);
         // init errmsg
-        errmsg = AsciiToString(ptr + JSBATON_OFFSET_ERRMSG);
+        errmsg = AsciiToString(batonPtr + JSBATON_OFFSET_ERRMSG);
         // update baton
         baton.set(new Uint8Array(
             HEAPU8.buffer,
-            HEAPU8.byteOffset + ptr,
+            HEAPU8.byteOffset + batonPtr,
             1024
         ));
         baton = new BigInt64Array(baton.buffer, 4 + 4);
@@ -154,7 +161,19 @@ function sqlWorkerDispatch(data) {
                 );
             }
         });
-        _free(ptr);
+        // optionally import filedata
+        if (!errmsg && cFuncName === "_dbOpen" && argList[4]) {
+            dbPtr = Number(argList[0]);
+            FS.writeFile("/tmp/__dbTmp", argList[4]);
+            try {
+                errcode = ___dbMemoryLoadOrSave(dbPtr, "/tmp/__dbTmp", 0);
+                if (errcode) {
+                    errmsg = sqlite3_errmsg(dbPtr)
+                }
+            } finally {
+                FS.unlink("/tmp/__dbTmp");
+            }
+        }
         postMessage(
             {
                 "argList": argList,
@@ -227,6 +246,7 @@ self["onmessage"] = async function ({
     data
 }) {
     sqlmath = sqlmath || await onModulePostRun;
+    data["batonPtr"] = 0;
     try {
         await sqlWorkerDispatch(data);
     } catch (err) {
@@ -234,6 +254,9 @@ self["onmessage"] = async function ({
             "id": data["id"],
             "errmsg": err["message"]
         });
+    } finally {
+        // cleanup batonPtr
+        _free(data["batonPtr"]);
     }
 };
 onModulePostRun = new Promise(function (resolve) {
@@ -291,12 +314,19 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     // let - Encodings, used for registering functions.
     let SQLITE_UTF8 = 1;
     // let - cwrap function
+    __dbMemoryLoadOrSave = cwrap(
+        "__dbMemoryLoadOrSave",
+        "number",
+        ["number", "string", "number"]
+    );
     cModule["_dbClose"] = _dbClose;
     cModule["_dbExec"] = _dbExec;
     cModule["_dbMemoryLoadOrSave"] = _dbMemoryLoadOrSave;
     cModule["_dbNoop"] = _dbNoop;
     cModule["_dbOpen"] = _dbOpen;
     cModule["_dbTableInsert"] = _dbTableInsert;
+    sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
+    //
     let sqlite3_open = cwrap("sqlite3_open", "number", ["string", "number"]);
     let sqlite3_close_v2 = cwrap("sqlite3_close_v2", "number", ["number"]);
     let sqlite3_exec = cwrap(
@@ -348,7 +378,6 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         ["number", "string"]
     );
     let sqlite3_step = cwrap("sqlite3_step", "number", ["number"]);
-    let sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
     let sqlite3_column_count = cwrap(
         "sqlite3_column_count",
         "number",
@@ -1035,9 +1064,9 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     * an SQLite database file
     */
     function Database(data) {
-        this.filename = "dbfile_" + (0xffffffff * Math.random() >>> 0);
+        this.filename = "/tmp/dbfile1";
         if (data != null) {
-            FS.createDataFile("/", this.filename, data, true, true);
+            FS.writeFile(this.filename, data);
         }
         this.handleError(sqlite3_open(this.filename, apiTemp));
         this.db = getValue(apiTemp, "i32");

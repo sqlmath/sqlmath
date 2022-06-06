@@ -419,8 +419,10 @@ async function dbNoopAsync(...argList) {
 
 async function dbOpenAsync({
     afterFinalization,
+    filedata,
     filename,
     flags,
+    rawPtr,
     threadCount = 1
 }) {
 // this function will open and return sqlite-database-connection <db>
@@ -436,26 +438,38 @@ async function dbOpenAsync({
     };
     assertOrThrow(
         typeof filename === "string",
-        "invalid filename " + filename
+        `invalid filename ${filename}`
     );
+    assertOrThrow(
+        !filedata || filedata.constructor === ArrayBuffer,
+        "filedata must be ArrayBuffer"
+    );
+    if (rawPtr) {
+        rawPtr = [
+            BigInt(rawPtr)
+        ];
+        threadCount = 1;
+    }
     connPool = await Promise.all(Array.from(new Array(
         threadCount
     ), async function () {
-        let ptr = await cCallAsync(
+        let ptr = rawPtr || await cCallAsync(
             undefined,
             "_dbOpen",
-            // const char *filename,   Database filename (UTF-8)
+            // 0. const char *filename,   Database filename (UTF-8)
             String(filename),
-            // sqlite3 **ppDb,         OUT: SQLite db handle
+            // 1. sqlite3 **ppDb,         OUT: SQLite db handle
             undefined,
-            // int flags,              Flags
+            // 2. int flags,              Flags
             flags ?? (
                 SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
             ),
-            // const char *zVfs        Name of VFS module to use
-            undefined
+            // 3. const char *zVfs        Name of VFS module to use
+            undefined,
+            // 4. wasm-only - arraybuffer of raw sqlite-database to open in wasm
+            filedata
         );
-        ptr = [
+        ptr = rawPtr || [
             ptr[0].getBigInt64(4 + 4, true)
         ];
         dbFinalizationRegistry.register(db, {
@@ -649,7 +663,7 @@ function jsbatonValuePush({
         ) {
             assertOrThrow(
                 !IS_BROWSER,
-                "external ArrayBuffer cannot be passed directly to webassembly"
+                "external ArrayBuffer cannot be passed directly to wasm"
             );
             assertOrThrow(
                 externalbufferList.length <= 8,
