@@ -587,8 +587,8 @@ shCiBuildWasm() {(set -e
         \
         -o sqlmath_wasm.js \
         \
-        #!! --closure 1 \
-        #!! -Oz \
+        --closure 1 \
+        -Oz \
         #
     printf '' > .tmp.js
     printf '

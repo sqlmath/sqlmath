@@ -162,11 +162,11 @@ function sqlWorkerDispatch(data) {
             }
             postMessage(
                 {
-                    argList,
-                    baton: new DataView(baton.buffer),
-                    cFuncName,
-                    errmsg,
-                    id
+                    "argList": argList,
+                    "baton": new DataView(baton.buffer),
+                    "cFuncName": cFuncName,
+                    "errmsg": errmsg,
+                    "id": id
                 },
                 // transfer arraybuffer without copying
                 [
