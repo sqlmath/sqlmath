@@ -141,8 +141,8 @@ async function cCallAsync(baton, cFuncName, ...argList) {
 // suitable for passing into napi
     let argi = 0;
     assertOrThrow(
-        argList.length < JSBATON_ARGC,
-        `cCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
+        argList.length < 16,
+        "cCallAsync - argList.length must be less than than 16"
     );
     baton = baton || jsbatonCreate();
     // pad argList to length JSBATON_ARGC
@@ -155,9 +155,20 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         switch (typeof value) {
         case "bigint":
         case "boolean":
+            baton.setBigInt64(8 + argi * 8, BigInt(value), true);
+            return;
         case "number":
-            // add check for min/max safe-integer
-            //
+            // check for min/max safe-integer
+            assertOrThrow(
+                (
+                    -9_007_199_254_740_991 <= value
+                    && value <= 9_007_199_254_740_991
+                ),
+                (
+                    "non-bigint integer must be within inclusive-range"
+                    + " -9,007,199,254,740,991 to 9,007,199,254,740,991"
+                )
+            );
             baton.setBigInt64(8 + argi * 8, BigInt(value), true);
             return;
         // case "object":
@@ -718,7 +729,10 @@ function jsbatonValuePush({
         // push vsize
         assertOrThrow(
             0 <= vsize && vsize <= 1_000_000_000,
-            "sqlite-blob must be within 0 to 1,000,000,000 inclusive bytes"
+            (
+                "sqlite-blob byte-length must be within inclusive-range"
+                + " 0 to 1,000,000,000"
+            )
         );
         baton.setInt32(nused + 1, vsize, true);
         new Uint8Array(
@@ -732,7 +746,10 @@ function jsbatonValuePush({
         // push vsize
         assertOrThrow(
             0 <= vsize && vsize <= 1_000_000_000,
-            "sqlite-blob must be within 0 to 1,000,000,000 inclusive bytes"
+            (
+                "sqlite-blob byte-length must be within inclusive-range"
+                + " 0 to 1,000,000,000"
+            )
         );
         baton.setInt32(nused + 1, vsize, true);
         break;
@@ -741,9 +758,12 @@ function jsbatonValuePush({
         break;
     case SQLITE_DATATYPE_INTEGER:
         assertOrThrow(
-            -9223372036854775808n <= value && value <= 9223372036854775807n,
             (
-                "sqlite-integer must be within inclusive range "
+                -9_223_372_036_854_775_808n <= value
+                && value <= 9_223_372_036_854_775_807n
+            ),
+            (
+                "sqlite-integer must be within inclusive-range "
                 + "-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
             )
         );

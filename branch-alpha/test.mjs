@@ -49,7 +49,7 @@ noop(debugInline);
 
 jstestDescribe((
     "test assertXxx handling-behavior"
-), function testAssertXxx() {
+), function test_assertXxx() {
     jstestIt((
         "test assertXxx handling-behavior"
     ), function () {
@@ -68,7 +68,7 @@ jstestDescribe((
 
 jstestDescribe((
     "test cCallAsync handling-behavior"
-), function testCcall() {
+), function test_ccall() {
     jstestIt((
         "test cCallAsync handling-behavior"
     ), function () {
@@ -146,14 +146,14 @@ jstestDescribe((
 
 jstestDescribe((
     "test db-bind handling-behavior"
-), function testDbBind() {
+), function test_dbBind() {
     jstestIt((
         "test db-bind-value handling-behavior"
-    ), async function testDbBindValue() {
+    ), async function test_dbBindValue() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        async function testDbGetLastBlobAsync(val) {
+        async function test_dbGetLastBlobAsync(val) {
             return await dbGetLastBlobAsync({
                 bindList: [
                     val
@@ -167,7 +167,9 @@ jstestDescribe((
             -(2n ** 63n + 1n),
             2n ** 63n
         ]).forEach(function (val) {
-            assertErrorThrownAsync(testDbGetLastBlobAsync.bind(undefined, val));
+            assertErrorThrownAsync(
+                test_dbGetLastBlobAsync.bind(undefined, val)
+            );
         });
         // test datatype handling-behavior
         [
@@ -233,7 +235,7 @@ jstestDescribe((
                 valInput
             ].forEach(async function (valInput) {
                 let bufActual = new TextDecoder().decode(
-                    await testDbGetLastBlobAsync(valInput)
+                    await test_dbGetLastBlobAsync(valInput)
                 );
                 let bufExpected = String(valExpected);
                 switch (typeof(valInput)) {
@@ -485,10 +487,10 @@ jstestDescribe((
 
 jstestDescribe((
     "test dbXxxAsync handling-behavior"
-), function testDbXxxAsync() {
+), function test_dbXxxAsync() {
     jstestIt((
         "test dbCloseAsync handling-behavior"
-    ), async function testDbCloseAsync() {
+    ), async function test_dbCloseAsync() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -503,7 +505,7 @@ jstestDescribe((
     });
     jstestIt((
         "test dbExecAsync handling-behavior"
-    ), async function testDbExecAsync() {
+    ), async function test_dbExecAsync() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -601,7 +603,7 @@ SELECT * FROM testDbExecAsync2;
     });
     jstestIt((
         "test dbExecWithRetryAsync handling-behavior"
-    ), function testDbExecWithRetryAsync() {
+    ), function test_dbExecWithRetryAsync() {
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbExecWithRetryAsync({});
@@ -609,7 +611,7 @@ SELECT * FROM testDbExecAsync2;
     });
     jstestIt((
         "test dbMemoryXxx handling-behavior"
-    ), async function testDbMemoryXxx() {
+    ), async function test_dbMemoryXxx() {
         let data;
         let db = await dbOpenAsync({
             filename: ":memory:"
@@ -654,7 +656,7 @@ SELECT * FROM testDbExecAsync2;
     });
     jstestIt((
         "test dbOpenAsync handling-behavior"
-    ), async function testDbOpenAsync() {
+    ), async function test_dbOpenAsync() {
         // test auto-finalization handling-behavior
         await new Promise(function (resolve) {
             dbOpenAsync({
@@ -669,7 +671,7 @@ SELECT * FROM testDbExecAsync2;
     });
     jstestIt((
         "test dbTableInsertAsync handling-behavior"
-    ), async function testDbTableInsertAsync() {
+    ), async function test_dbTableInsertAsync() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -772,7 +774,7 @@ SELECT * FROM testDbExecAsync2;
 
 jstestDescribe((
     "test misc handling-behavior"
-), function testMisc() {
+), function test_misc() {
     jstestIt((
         "test misc handling-behavior"
     ), async function () {
@@ -804,10 +806,10 @@ jstestDescribe((
 
 jstestDescribe((
     "test sqlite handling-behavior"
-), function testSqlite() {
+), function test_sqlite() {
     jstestIt((
         "test sqlite-error handling-behavior"
-    ), async function testSqliteError() {
+    ), async function test_sqliteError() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -864,7 +866,7 @@ jstestDescribe((
     });
     jstestIt((
         "test sqlite-extension-base64 handling-behavior"
-    ), async function testSqliteExtensionBase64() {
+    ), async function test_sqliteExtensionBase64() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -917,7 +919,7 @@ jstestDescribe((
     });
     jstestIt((
         "test sqlite-extension-jenks handling-behavior"
-    ), async function testSqliteExtensionJenks() {
+    ), async function test_sqliteExtensionJenks() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1155,7 +1157,7 @@ jstestDescribe((
     });
     jstestIt((
         "test sqlite-extension-kthpercentile handling-behavior"
-    ), async function testSqliteExtensionKthpercentile() {
+    ), async function test_sqliteExtensionKthpercentile() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1250,7 +1252,7 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
     });
     jstestIt((
         "test sqlite-extension-math handling-behavior"
-    ), async function testSqliteExtensionMath() {
+    ), async function test_sqliteExtensionMath() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1416,7 +1418,7 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
     });
     jstestIt((
         "test sqlite-extension-matrix2d_concat handling-behavior"
-    ), async function testSqliteExtensionMatrix2dConcat() {
+    ), async function test_sqliteExtensionMatrix2dConcat() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });

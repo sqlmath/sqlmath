@@ -792,4 +792,5 @@ shSyncSqlmath() {(set -e
             ln -f "$HOME/Documents/sqlmath/$FILE"
         done
     fi
+    git diff
 )}
