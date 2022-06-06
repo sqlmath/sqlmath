@@ -614,7 +614,7 @@ body {
 <pre><span class="lineno"><a href="#line_456" id="line_456">  456.</a></span><span class="count        ">     13</span><span>            undefined</span></pre>
 <pre><span class="lineno"><a href="#line_457" id="line_457">  457.</a></span><span class="count        ">     13</span><span>        );</span></pre>
 <pre><span class="lineno"><a href="#line_458" id="line_458">  458.</a></span><span class="count        ">     13</span><span>        ptr = [</span></pre>
-<pre><span class="lineno"><a href="#line_459" id="line_459">  459.</a></span><span class="count        ">     13</span><span>            ptr[0].getBigInt64(4 + 4 + 0, true)</span></pre>
+<pre><span class="lineno"><a href="#line_459" id="line_459">  459.</a></span><span class="count        ">     13</span><span>            ptr[0].getBigInt64(4 + 4, true)</span></pre>
 <pre><span class="lineno"><a href="#line_460" id="line_460">  460.</a></span><span class="count        ">     13</span><span>        ];</span></pre>
 <pre><span class="lineno"><a href="#line_461" id="line_461">  461.</a></span><span class="count        ">     13</span><span>        dbFinalizationRegistry.register(db, {</span></pre>
 <pre><span class="lineno"><a href="#line_462" id="line_462">  462.</a></span><span class="count        ">     13</span><span>            afterFinalization,</span></pre>
@@ -807,7 +807,7 @@ body {
 <pre><span class="lineno"><a href="#line_649" id="line_649">  649.</a></span><span class="count        ">   2738</span><span>        ) {</span></pre>
 <pre><span class="lineno"><a href="#line_650" id="line_650">  650.</a></span><span class="count        ">   2738</span><span>            assertOrThrow(</span></pre>
 <pre><span class="lineno"><a href="#line_651" id="line_651">  651.</a></span><span class="count        ">   2738</span><span>                !IS_BROWSER,</span></pre>
-<pre><span class="lineno"><a href="#line_652" id="line_652">  652.</a></span><span class="count        ">   2738</span><span>                "ArrayBuffer cannot be passed directly to webassembly"</span></pre>
+<pre><span class="lineno"><a href="#line_652" id="line_652">  652.</a></span><span class="count        ">   2738</span><span>                "external ArrayBuffer cannot be passed directly to webassembly"</span></pre>
 <pre><span class="lineno"><a href="#line_653" id="line_653">  653.</a></span><span class="count        ">   2738</span><span>            );</span></pre>
 <pre><span class="lineno"><a href="#line_654" id="line_654">  654.</a></span><span class="count        ">   2738</span><span>            assertOrThrow(</span></pre>
 <pre><span class="lineno"><a href="#line_655" id="line_655">  655.</a></span><span class="count        ">   2738</span><span>                externalbufferList.length &lt;= 8,</span></pre>

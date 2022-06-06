@@ -1,11 +1,11 @@
 # Changelog
 
 # Todo
-- wasm - replace sqljs-api with sqlmath-api in wasm
 - sqlmath - add sql-extension carrayblob()
 - none
 
 # v2022.6.1-beta
+- wasm - replace sqljs-api with sqlmath-api in wasm - part1
 - remove jslint-dependency in sqlmath-core to prepare sqlmath for browser/wasm env
 - emscripten updated to v3.1.3, allowing es6 syntax in sqlmath_wrapper_wasm.js
 - jenks - streamline jenksCreate() return object to simple double-array instead of struct

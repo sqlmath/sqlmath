@@ -456,7 +456,7 @@ async function dbOpenAsync({
             undefined
         );
         ptr = [
-            ptr[0].getBigInt64(4 + 4 + 0, true)
+            ptr[0].getBigInt64(4 + 4, true)
         ];
         dbFinalizationRegistry.register(db, {
             afterFinalization,
@@ -649,7 +649,7 @@ function jsbatonValuePush({
         ) {
             assertOrThrow(
                 !IS_BROWSER,
-                "ArrayBuffer cannot be passed directly to webassembly"
+                "external ArrayBuffer cannot be passed directly to webassembly"
             );
             assertOrThrow(
                 externalbufferList.length <= 8,
