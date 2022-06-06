@@ -647,7 +647,6 @@ SQLMATH_API void dbExec(
     // copy str99 to baton
     baton->argv[0] = str99->nUsed;
     baton->bufv[0] = (int64_t) str99->zBuf;
-    //!! baton->argv[1] = (int64_t) str99->zBuf;
   catch_error:
     // cleanup pStmt
     sqlite3_finalize(pStmt);

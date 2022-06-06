@@ -117,66 +117,65 @@ function sqlWorkerDispatch(data) {
     let ptr;
     let cFuncName = data["cFuncName"];
     let id = data["id"];
-    //!! console.error(data);
     switch (cFuncName) {
-        case "_dbClose":
-        case "_dbExec":
-        case "_dbMemoryLoadOrSave":
-        case "_dbNoop":
-        case "_dbOpen":
-        case "_dbTableInsert":
-            try {
-                ptr = _malloc(baton.byteLength);
-                HEAPU8.set(baton, ptr);
-                cModule[cFuncName](ptr);
-                // init errmsg
-                errmsg = AsciiToString(ptr + JSBATON_OFFSET_ERRMSG);
-                // update baton
-                baton.set(new Uint8Array(
-                    HEAPU8.buffer,
-                    HEAPU8.byteOffset + ptr,
-                    1024
-                ));
-                baton = new BigInt64Array(baton.buffer, 4 + 4);
-                baton.subarray(
-                    JSBATON_ARGC,
-                    2 * JSBATON_ARGC
-                ).forEach(function (ptr, ii) {
-                    ptr = Number(ptr);
-                    // init argList[ii] = argv[ii]
-                    if (ptr === 0) {
-                        argList[ii] = baton[ii];
-                    // init argList[ii] = bufv[ii]
-                    } else {
-                        argList[ii] = new ArrayBuffer(
-                            Number(baton[ii])
-                        );
-                        new Uint8Array(argList[ii]).set(
-                            HEAPU8.subarray(ptr, ptr + argList[ii].byteLength)
-                        );
-                    }
-                });
-                _free(ptr);
-            } catch (err) {
-                errmsg = errmsg || err.message;
-            }
-            postMessage(
-                {
-                    "argList": argList,
-                    "baton": new DataView(baton.buffer),
-                    "cFuncName": cFuncName,
-                    "errmsg": errmsg,
-                    "id": id
-                },
-                // transfer arraybuffer without copying
-                [
-                    baton.buffer,
-                    ...argList.filter(function (elem) {
-                        return elem && elem.constructor === ArrayBuffer;
-                    })
-                ]
-            );
-            return;
+    case "_dbClose":
+    case "_dbExec":
+    case "_dbMemoryLoadOrSave":
+    case "_dbNoop":
+    case "_dbOpen":
+    case "_dbTableInsert":
+        try {
+            ptr = _malloc(baton.byteLength);
+            HEAPU8.set(baton, ptr);
+            cModule[cFuncName](ptr);
+            // init errmsg
+            errmsg = AsciiToString(ptr + JSBATON_OFFSET_ERRMSG);
+            // update baton
+            baton.set(new Uint8Array(
+                HEAPU8.buffer,
+                HEAPU8.byteOffset + ptr,
+                1024
+            ));
+            baton = new BigInt64Array(baton.buffer, 4 + 4);
+            baton.subarray(
+                JSBATON_ARGC,
+                2 * JSBATON_ARGC
+            ).forEach(function (ptr, ii) {
+                ptr = Number(ptr);
+                // init argList[ii] = argv[ii]
+                if (ptr === 0) {
+                    argList[ii] = baton[ii];
+                // init argList[ii] = bufv[ii]
+                } else {
+                    argList[ii] = new ArrayBuffer(
+                        Number(baton[ii])
+                    );
+                    new Uint8Array(argList[ii]).set(
+                        HEAPU8.subarray(ptr, ptr + argList[ii].byteLength)
+                    );
+                }
+            });
+            _free(ptr);
+        } catch (err) {
+            errmsg = errmsg || err.message;
+        }
+        postMessage(
+            {
+                "argList": argList,
+                "baton": new DataView(baton.buffer),
+                "cFuncName": cFuncName,
+                "errmsg": errmsg,
+                "id": id
+            },
+            // transfer arraybuffer without copying
+            [
+                baton.buffer,
+                ...argList.filter(function (elem) {
+                    return elem && elem.constructor === ArrayBuffer;
+                })
+            ]
+        );
+        return;
     }
     //
     function createDb(data) {
@@ -192,8 +191,8 @@ function sqlWorkerDispatch(data) {
             buff = data["buffer"];
             createDb(buff && new Uint8Array(buff));
             return postMessage({
-                id,
-                ready: true
+                "id": id,
+                "ready": true
             });
         case "exec":
             if (db === null) {
@@ -203,14 +202,14 @@ function sqlWorkerDispatch(data) {
                 throw "exec: Missing query string";
             }
             return postMessage({
-                id,
-                results: db.exec(sql, data["params"])
+                "id": id,
+                "results": db.exec(sql, data["params"])
             });
         case "export":
             buff = db["export"]();
             result = {
-                id,
-                buffer: buff
+                "id": id,
+                "buffer": buff
             };
             try {
                 return postMessage(result, [result]);
@@ -236,8 +235,8 @@ self["onmessage"] = async function ({
         await sqlWorkerDispatch(data);
     } catch (err) {
         postMessage({
-            id: data["id"],
-            error: err["message"]
+            "id": data["id"],
+            "errmsg": err["message"]
         });
     }
 };
@@ -967,7 +966,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
      */
     StatementIterator.prototype["next"] = function next() {
         if (this.sqlPtr === null) {
-            return { done: true };
+            return { "done": true };
         }
         if (this.activeStatement !== null) {
             this.activeStatement["free"]();
@@ -993,11 +992,11 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
             let pStmt = getValue(apiTemp, "i32");
             if (pStmt === NULL) {
                 this.finalize();
-                return { done: true };
+                return { "done": true };
             }
             this.activeStatement = new Statement(pStmt, this.db);
             this.db.statements[pStmt] = this.activeStatement;
-            return { value: this.activeStatement, done: false };
+            return { "value": this.activeStatement, "done": false };
         } catch (e) {
             this.nextSqlString = UTF8ToString(this.nextSqlPtr);
             this.finalize();
@@ -1185,8 +1184,8 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
                     while (stmt["step"]()) {
                         if (curresult === null) {
                             curresult = {
-                                columns: stmt["getColumnNames"](),
-                                values: [],
+                                "columns": stmt["getColumnNames"](),
+                                "values": [],
                             };
                             results.push(curresult);
                         }
@@ -1300,7 +1299,7 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         Object.values(this.functions).forEach(removeFunction);
         this.functions = {};
         this.handleError(sqlite3_close_v2(this.db));
-        let binaryDb = FS.readFile(this.filename, { encoding: "binary" });
+        let binaryDb = FS.readFile(this.filename, { "encoding": "binary" });
         this.handleError(sqlite3_open(this.filename, apiTemp));
         this.db = getValue(apiTemp, "i32");
         return binaryDb;
