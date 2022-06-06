@@ -201,23 +201,15 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         baton,
         value: cFuncName + "\u0000"
     });
-    try {
-        // prepend baton, cFuncName to argList
-        argList = [
-            baton, cFuncName, ...argList
-        ];
-        return (
-            IS_BROWSER
-            ? await sqlMessagePost(...argList)
-            : await cModule[cFuncName](argList)
-        );
-    } catch (err) {
-        // preserve stack-trace
-        err.stack += new Error().stack.replace((
-            /.*$/m
-        ), "");
-        assertOrThrow(undefined, err);
-    }
+    // prepend baton, cFuncName to argList
+    argList = [
+        baton, cFuncName, ...argList
+    ];
+    return (
+        IS_BROWSER
+        ? await sqlMessagePost(...argList)
+        : await cModule[cFuncName](argList)
+    );
 }
 
 function dbCallAsync(baton, cFuncName, db, ...argList) {
@@ -1166,7 +1158,7 @@ async function sqlmathInit({
     debugInline(
         await dbExecAsync({
             db,
-            sql: "SELECT 1234"
+            sql: "aSELECT 1234"
         })
     );
     */

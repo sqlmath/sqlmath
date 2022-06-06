@@ -124,41 +124,37 @@ function sqlWorkerDispatch(data) {
     case "_dbNoop":
     case "_dbOpen":
     case "_dbTableInsert":
-        try {
-            ptr = _malloc(baton.byteLength);
-            HEAPU8.set(baton, ptr);
-            cModule[cFuncName](ptr);
-            // init errmsg
-            errmsg = AsciiToString(ptr + JSBATON_OFFSET_ERRMSG);
-            // update baton
-            baton.set(new Uint8Array(
-                HEAPU8.buffer,
-                HEAPU8.byteOffset + ptr,
-                1024
-            ));
-            baton = new BigInt64Array(baton.buffer, 4 + 4);
-            baton.subarray(
-                JSBATON_ARGC,
-                2 * JSBATON_ARGC
-            ).forEach(function (ptr, ii) {
-                ptr = Number(ptr);
-                // init argList[ii] = argv[ii]
-                if (ptr === 0) {
-                    argList[ii] = baton[ii];
-                // init argList[ii] = bufv[ii]
-                } else {
-                    argList[ii] = new ArrayBuffer(
-                        Number(baton[ii])
-                    );
-                    new Uint8Array(argList[ii]).set(
-                        HEAPU8.subarray(ptr, ptr + argList[ii].byteLength)
-                    );
-                }
-            });
-            _free(ptr);
-        } catch (err) {
-            errmsg = errmsg || err.message;
-        }
+        ptr = _malloc(baton.byteLength);
+        HEAPU8.set(baton, ptr);
+        cModule[cFuncName](ptr);
+        // init errmsg
+        errmsg = AsciiToString(ptr + JSBATON_OFFSET_ERRMSG);
+        // update baton
+        baton.set(new Uint8Array(
+            HEAPU8.buffer,
+            HEAPU8.byteOffset + ptr,
+            1024
+        ));
+        baton = new BigInt64Array(baton.buffer, 4 + 4);
+        baton.subarray(
+            JSBATON_ARGC,
+            2 * JSBATON_ARGC
+        ).forEach(function (ptr, ii) {
+            ptr = Number(ptr);
+            // init argList[ii] = argv[ii]
+            if (ptr === 0) {
+                argList[ii] = baton[ii];
+            // init argList[ii] = bufv[ii]
+            } else {
+                argList[ii] = new ArrayBuffer(
+                    Number(baton[ii])
+                );
+                new Uint8Array(argList[ii]).set(
+                    HEAPU8.subarray(ptr, ptr + argList[ii].byteLength)
+                );
+            }
+        });
+        _free(ptr);
         postMessage(
             {
                 "argList": argList,
