@@ -138,16 +138,16 @@ body {
   <td class="coverageHigh">
       <a href="index.html">. / </a>sqlmath.mjs<br>
     <div class="percentbar">
-      <div style="width: 93.12%;"></div>
+      <div style="width: 92.97%;"></div>
     </div>
   </td>
   <td style="text-align: right;">
-     93.12 %<br>
-    1151 / 1236
+     92.97 %<br>
+    1151 / 1238
   </td>
   <td style="text-align: right;">
     <br>
-    85 / 1236
+    87 / 1238
   </td>
   </tr>
 </tbody>
@@ -1295,103 +1295,105 @@ body {
 <pre><span class="lineno"><a href="#line_1137" id="line_1137"> 1137.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        sqlWorkerActive.addEventListener("message", function ({</span></pre>
 <pre><span class="lineno"><a href="#line_1138" id="line_1138"> 1138.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            data</span></pre>
 <pre><span class="lineno"><a href="#line_1139" id="line_1139"> 1139.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        }) {</span></pre>
-<pre><span class="lineno"><a href="#line_1140" id="line_1140"> 1140.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            sqlMessageDict[data.id](data);</span></pre>
-<pre><span class="lineno"><a href="#line_1141" id="line_1141"> 1141.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        });</span></pre>
-<pre><span class="lineno"><a href="#line_1142" id="line_1142"> 1142.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    }</span></pre>
-<pre><span class="lineno"><a href="#line_1143" id="line_1143"> 1143.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    /*</span></pre>
-<pre><span class="lineno"><a href="#line_1144" id="line_1144"> 1144.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    let db = await dbOpenAsync({ //jslint-quiet</span></pre>
-<pre><span class="lineno"><a href="#line_1145" id="line_1145"> 1145.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        filename: ":memory:"</span></pre>
-<pre><span class="lineno"><a href="#line_1146" id="line_1146"> 1146.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    });</span></pre>
-<pre><span class="lineno"><a href="#line_1147" id="line_1147"> 1147.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    debugInline(</span></pre>
-<pre><span class="lineno"><a href="#line_1148" id="line_1148"> 1148.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        await dbExecAsync({</span></pre>
-<pre><span class="lineno"><a href="#line_1149" id="line_1149"> 1149.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            db,</span></pre>
-<pre><span class="lineno"><a href="#line_1150" id="line_1150"> 1150.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            sql: "aSELECT 1234"</span></pre>
-<pre><span class="lineno"><a href="#line_1151" id="line_1151"> 1151.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        })</span></pre>
-<pre><span class="lineno"><a href="#line_1152" id="line_1152"> 1152.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    );</span></pre>
-<pre><span class="lineno"><a href="#line_1153" id="line_1153"> 1153.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    */</span></pre>
-<pre><span class="lineno"><a href="#line_1154" id="line_1154"> 1154.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">}</span></pre>
-<pre><span class="lineno"><a href="#line_1155" id="line_1155"> 1155.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1156" id="line_1156"> 1156.</a></span><span class="count        ">      1</span><span>async function sqlmathInit() {</span></pre>
-<pre><span class="lineno"><a href="#line_1157" id="line_1157"> 1157.</a></span><span class="count        ">      1</span><span>// this function will init sqlmath</span></pre>
-<pre><span class="lineno"><a href="#line_1158" id="line_1158"> 1158.</a></span><span class="count        ">      1</span><span>    dbFinalizationRegistry = new FinalizationRegistry(function ({</span></pre>
-<pre><span class="lineno"><a href="#line_1159" id="line_1159"> 1159.</a></span><span class="count        ">      1</span><span>        afterFinalization,</span></pre>
-<pre><span class="lineno"><a href="#line_1160" id="line_1160"> 1160.</a></span><span class="count        ">      1</span><span>        ptr</span></pre>
-<pre><span class="lineno"><a href="#line_1161" id="line_1161"> 1161.</a></span><span class="count        ">      1</span><span>    }) {</span></pre>
-<pre><span class="lineno"><a href="#line_1162" id="line_1162"> 1162.</a></span><span class="count        ">      1</span><span>    // This function will auto-close any open sqlite3-db-pointer,</span></pre>
-<pre><span class="lineno"><a href="#line_1163" id="line_1163"> 1163.</a></span><span class="count        ">      1</span><span>    // after its js-wrapper has been garbage-collected</span></pre>
-<pre><span class="lineno"><a href="#line_1164" id="line_1164"> 1164.</a></span><span class="count        ">      1</span><span>        cCallAsync(undefined, "_dbClose", ptr[0]);</span></pre>
-<pre><span class="lineno"><a href="#line_1165" id="line_1165"> 1165.</a></span><span class="count        ">      1</span><span>        if (afterFinalization) {</span></pre>
-<pre><span class="lineno"><a href="#line_1166" id="line_1166"> 1166.</a></span><span class="count        ">      1</span><span>            afterFinalization();</span></pre>
-<pre><span class="lineno"><a href="#line_1167" id="line_1167"> 1167.</a></span><span class="count        ">      1</span><span>        }</span></pre>
-<pre><span class="lineno"><a href="#line_1168" id="line_1168"> 1168.</a></span><span class="count        ">      1</span><span>    });</span></pre>
-<pre><span class="lineno"><a href="#line_1169" id="line_1169"> 1169.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1170" id="line_1170"> 1170.</a></span><span class="count        ">      1</span><span>// Feature-detect nodejs.</span></pre>
+<pre><span class="lineno"><a href="#line_1140" id="line_1140"> 1140.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            if (sqlMessageDict.hasOwnProperty(data.id)) {</span></pre>
+<pre><span class="lineno"><a href="#line_1141" id="line_1141"> 1141.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">                sqlMessageDict[data.id](data);</span></pre>
+<pre><span class="lineno"><a href="#line_1142" id="line_1142"> 1142.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            }</span></pre>
+<pre><span class="lineno"><a href="#line_1143" id="line_1143"> 1143.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        });</span></pre>
+<pre><span class="lineno"><a href="#line_1144" id="line_1144"> 1144.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    }</span></pre>
+<pre><span class="lineno"><a href="#line_1145" id="line_1145"> 1145.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    /*</span></pre>
+<pre><span class="lineno"><a href="#line_1146" id="line_1146"> 1146.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    let db = await dbOpenAsync({ //jslint-quiet</span></pre>
+<pre><span class="lineno"><a href="#line_1147" id="line_1147"> 1147.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        filename: ":memory:"</span></pre>
+<pre><span class="lineno"><a href="#line_1148" id="line_1148"> 1148.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    });</span></pre>
+<pre><span class="lineno"><a href="#line_1149" id="line_1149"> 1149.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    debugInline(</span></pre>
+<pre><span class="lineno"><a href="#line_1150" id="line_1150"> 1150.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        await dbExecAsync({</span></pre>
+<pre><span class="lineno"><a href="#line_1151" id="line_1151"> 1151.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            db,</span></pre>
+<pre><span class="lineno"><a href="#line_1152" id="line_1152"> 1152.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            sql: "aSELECT 1234"</span></pre>
+<pre><span class="lineno"><a href="#line_1153" id="line_1153"> 1153.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        })</span></pre>
+<pre><span class="lineno"><a href="#line_1154" id="line_1154"> 1154.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    );</span></pre>
+<pre><span class="lineno"><a href="#line_1155" id="line_1155"> 1155.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    */</span></pre>
+<pre><span class="lineno"><a href="#line_1156" id="line_1156"> 1156.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">}</span></pre>
+<pre><span class="lineno"><a href="#line_1157" id="line_1157"> 1157.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1158" id="line_1158"> 1158.</a></span><span class="count        ">      1</span><span>async function sqlmathInit() {</span></pre>
+<pre><span class="lineno"><a href="#line_1159" id="line_1159"> 1159.</a></span><span class="count        ">      1</span><span>// this function will init sqlmath</span></pre>
+<pre><span class="lineno"><a href="#line_1160" id="line_1160"> 1160.</a></span><span class="count        ">      1</span><span>    dbFinalizationRegistry = new FinalizationRegistry(function ({</span></pre>
+<pre><span class="lineno"><a href="#line_1161" id="line_1161"> 1161.</a></span><span class="count        ">      1</span><span>        afterFinalization,</span></pre>
+<pre><span class="lineno"><a href="#line_1162" id="line_1162"> 1162.</a></span><span class="count        ">      1</span><span>        ptr</span></pre>
+<pre><span class="lineno"><a href="#line_1163" id="line_1163"> 1163.</a></span><span class="count        ">      1</span><span>    }) {</span></pre>
+<pre><span class="lineno"><a href="#line_1164" id="line_1164"> 1164.</a></span><span class="count        ">      1</span><span>    // This function will auto-close any open sqlite3-db-pointer,</span></pre>
+<pre><span class="lineno"><a href="#line_1165" id="line_1165"> 1165.</a></span><span class="count        ">      1</span><span>    // after its js-wrapper has been garbage-collected</span></pre>
+<pre><span class="lineno"><a href="#line_1166" id="line_1166"> 1166.</a></span><span class="count        ">      1</span><span>        cCallAsync(undefined, "_dbClose", ptr[0]);</span></pre>
+<pre><span class="lineno"><a href="#line_1167" id="line_1167"> 1167.</a></span><span class="count        ">      1</span><span>        if (afterFinalization) {</span></pre>
+<pre><span class="lineno"><a href="#line_1168" id="line_1168"> 1168.</a></span><span class="count        ">      1</span><span>            afterFinalization();</span></pre>
+<pre><span class="lineno"><a href="#line_1169" id="line_1169"> 1169.</a></span><span class="count        ">      1</span><span>        }</span></pre>
+<pre><span class="lineno"><a href="#line_1170" id="line_1170"> 1170.</a></span><span class="count        ">      1</span><span>    });</span></pre>
 <pre><span class="lineno"><a href="#line_1171" id="line_1171"> 1171.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1172" id="line_1172"> 1172.</a></span><span class="count        ">      1</span><span>    if (</span></pre>
-<pre><span class="lineno"><a href="#line_1173" id="line_1173"> 1173.</a></span><span class="count        ">      1</span><span>        typeof process === "object"</span></pre>
-<pre><span class="lineno"><a href="#line_1174" id="line_1174"> 1174.</a></span><span class="count        ">      1</span><span>        &amp;&amp; typeof process?.versions?.node === "string"</span></pre>
-<pre><span class="lineno"><a href="#line_1175" id="line_1175"> 1175.</a></span><span class="count        ">      1</span><span>    ) {</span></pre>
-<pre><span class="lineno"><a href="#line_1176" id="line_1176"> 1176.</a></span><span class="count        ">      1</span><span>        cModule = await import("module");</span></pre>
-<pre><span class="lineno"><a href="#line_1177" id="line_1177"> 1177.</a></span><span class="count        ">      1</span><span>        cModule = cModule.createRequire(import.meta.url);</span></pre>
-<pre><span class="lineno"><a href="#line_1178" id="line_1178"> 1178.</a></span><span class="count        ">      1</span><span>        cModule = cModule(</span></pre>
-<pre><span class="lineno"><a href="#line_1179" id="line_1179"> 1179.</a></span><span class="count        ">      1</span><span>            "./_binary_sqlmath"</span></pre>
-<pre><span class="lineno"><a href="#line_1180" id="line_1180"> 1180.</a></span><span class="count        ">      1</span><span>            + "_napi8"</span></pre>
-<pre><span class="lineno"><a href="#line_1181" id="line_1181"> 1181.</a></span><span class="count        ">      1</span><span>            + "_" + process.platform</span></pre>
-<pre><span class="lineno"><a href="#line_1182" id="line_1182"> 1182.</a></span><span class="count        ">      1</span><span>            + "_" + process.arch</span></pre>
-<pre><span class="lineno"><a href="#line_1183" id="line_1183"> 1183.</a></span><span class="count        ">      1</span><span>            + ".node"</span></pre>
-<pre><span class="lineno"><a href="#line_1184" id="line_1184"> 1184.</a></span><span class="count        ">      1</span><span>        );</span></pre>
-<pre><span class="lineno"><a href="#line_1185" id="line_1185"> 1185.</a></span><span class="count        ">      1</span><span>        if (process.env.npm_config_mode_test) {</span></pre>
-<pre><span class="lineno"><a href="#line_1186" id="line_1186"> 1186.</a></span><span class="count        ">      1</span><span>            // mock consoleError</span></pre>
-<pre><span class="lineno"><a href="#line_1187" id="line_1187"> 1187.</a></span><span class="count        ">      1</span><span>            consoleError = noop;</span></pre>
-<pre><span class="lineno"><a href="#line_1188" id="line_1188"> 1188.</a></span><span class="count        ">      1</span><span>        }</span></pre>
-<pre><span class="lineno"><a href="#line_1189" id="line_1189"> 1189.</a></span><span class="count        ">      1</span><span>        return;</span></pre>
-<pre><span class="lineno"><a href="#line_1190" id="line_1190"> 1190.</a></span><span class="count        ">      1</span><span>    }</span></pre>
-<pre><span class="lineno"><a href="#line_1191" id="line_1191"> 1191.</a></span><span class="count        ">      1</span><span>}</span></pre>
-<pre><span class="lineno"><a href="#line_1192" id="line_1192"> 1192.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1193" id="line_1193"> 1193.</a></span><span class="count        ">      1</span><span>await sqlmathInit({});</span></pre>
+<pre><span class="lineno"><a href="#line_1172" id="line_1172"> 1172.</a></span><span class="count        ">      1</span><span>// Feature-detect nodejs.</span></pre>
+<pre><span class="lineno"><a href="#line_1173" id="line_1173"> 1173.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1174" id="line_1174"> 1174.</a></span><span class="count        ">      1</span><span>    if (</span></pre>
+<pre><span class="lineno"><a href="#line_1175" id="line_1175"> 1175.</a></span><span class="count        ">      1</span><span>        typeof process === "object"</span></pre>
+<pre><span class="lineno"><a href="#line_1176" id="line_1176"> 1176.</a></span><span class="count        ">      1</span><span>        &amp;&amp; typeof process?.versions?.node === "string"</span></pre>
+<pre><span class="lineno"><a href="#line_1177" id="line_1177"> 1177.</a></span><span class="count        ">      1</span><span>    ) {</span></pre>
+<pre><span class="lineno"><a href="#line_1178" id="line_1178"> 1178.</a></span><span class="count        ">      1</span><span>        cModule = await import("module");</span></pre>
+<pre><span class="lineno"><a href="#line_1179" id="line_1179"> 1179.</a></span><span class="count        ">      1</span><span>        cModule = cModule.createRequire(import.meta.url);</span></pre>
+<pre><span class="lineno"><a href="#line_1180" id="line_1180"> 1180.</a></span><span class="count        ">      1</span><span>        cModule = cModule(</span></pre>
+<pre><span class="lineno"><a href="#line_1181" id="line_1181"> 1181.</a></span><span class="count        ">      1</span><span>            "./_binary_sqlmath"</span></pre>
+<pre><span class="lineno"><a href="#line_1182" id="line_1182"> 1182.</a></span><span class="count        ">      1</span><span>            + "_napi8"</span></pre>
+<pre><span class="lineno"><a href="#line_1183" id="line_1183"> 1183.</a></span><span class="count        ">      1</span><span>            + "_" + process.platform</span></pre>
+<pre><span class="lineno"><a href="#line_1184" id="line_1184"> 1184.</a></span><span class="count        ">      1</span><span>            + "_" + process.arch</span></pre>
+<pre><span class="lineno"><a href="#line_1185" id="line_1185"> 1185.</a></span><span class="count        ">      1</span><span>            + ".node"</span></pre>
+<pre><span class="lineno"><a href="#line_1186" id="line_1186"> 1186.</a></span><span class="count        ">      1</span><span>        );</span></pre>
+<pre><span class="lineno"><a href="#line_1187" id="line_1187"> 1187.</a></span><span class="count        ">      1</span><span>        if (process.env.npm_config_mode_test) {</span></pre>
+<pre><span class="lineno"><a href="#line_1188" id="line_1188"> 1188.</a></span><span class="count        ">      1</span><span>            // mock consoleError</span></pre>
+<pre><span class="lineno"><a href="#line_1189" id="line_1189"> 1189.</a></span><span class="count        ">      1</span><span>            consoleError = noop;</span></pre>
+<pre><span class="lineno"><a href="#line_1190" id="line_1190"> 1190.</a></span><span class="count        ">      1</span><span>        }</span></pre>
+<pre><span class="lineno"><a href="#line_1191" id="line_1191"> 1191.</a></span><span class="count        ">      1</span><span>        return;</span></pre>
+<pre><span class="lineno"><a href="#line_1192" id="line_1192"> 1192.</a></span><span class="count        ">      1</span><span>    }</span></pre>
+<pre><span class="lineno"><a href="#line_1193" id="line_1193"> 1193.</a></span><span class="count        ">      1</span><span>}</span></pre>
 <pre><span class="lineno"><a href="#line_1194" id="line_1194"> 1194.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1195" id="line_1195"> 1195.</a></span><span class="count        ">      1</span><span>export {</span></pre>
-<pre><span class="lineno"><a href="#line_1196" id="line_1196"> 1196.</a></span><span class="count        ">      1</span><span>    SQLITE_MAX_LENGTH2,</span></pre>
-<pre><span class="lineno"><a href="#line_1197" id="line_1197"> 1197.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_AUTOPROXY,</span></pre>
-<pre><span class="lineno"><a href="#line_1198" id="line_1198"> 1198.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_CREATE,</span></pre>
-<pre><span class="lineno"><a href="#line_1199" id="line_1199"> 1199.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_DELETEONCLOSE,</span></pre>
-<pre><span class="lineno"><a href="#line_1200" id="line_1200"> 1200.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_EXCLUSIVE,</span></pre>
-<pre><span class="lineno"><a href="#line_1201" id="line_1201"> 1201.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_FULLMUTEX,</span></pre>
-<pre><span class="lineno"><a href="#line_1202" id="line_1202"> 1202.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MAIN_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_1203" id="line_1203"> 1203.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MAIN_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1204" id="line_1204"> 1204.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MEMORY,</span></pre>
-<pre><span class="lineno"><a href="#line_1205" id="line_1205"> 1205.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_NOFOLLOW,</span></pre>
-<pre><span class="lineno"><a href="#line_1206" id="line_1206"> 1206.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_NOMUTEX,</span></pre>
-<pre><span class="lineno"><a href="#line_1207" id="line_1207"> 1207.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_PRIVATECACHE,</span></pre>
-<pre><span class="lineno"><a href="#line_1208" id="line_1208"> 1208.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_READONLY,</span></pre>
-<pre><span class="lineno"><a href="#line_1209" id="line_1209"> 1209.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_READWRITE,</span></pre>
-<pre><span class="lineno"><a href="#line_1210" id="line_1210"> 1210.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SHAREDCACHE,</span></pre>
-<pre><span class="lineno"><a href="#line_1211" id="line_1211"> 1211.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SUBJOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1212" id="line_1212"> 1212.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SUPER_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1213" id="line_1213"> 1213.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TEMP_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_1214" id="line_1214"> 1214.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TEMP_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1215" id="line_1215"> 1215.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TRANSIENT_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_1216" id="line_1216"> 1216.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_URI,</span></pre>
-<pre><span class="lineno"><a href="#line_1217" id="line_1217"> 1217.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_WAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1218" id="line_1218"> 1218.</a></span><span class="count        ">      1</span><span>    assertJsonEqual,</span></pre>
-<pre><span class="lineno"><a href="#line_1219" id="line_1219"> 1219.</a></span><span class="count        ">      1</span><span>    assertNumericalEqual,</span></pre>
-<pre><span class="lineno"><a href="#line_1220" id="line_1220"> 1220.</a></span><span class="count        ">      1</span><span>    assertOrThrow,</span></pre>
-<pre><span class="lineno"><a href="#line_1221" id="line_1221"> 1221.</a></span><span class="count        ">      1</span><span>    dbCloseAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1222" id="line_1222"> 1222.</a></span><span class="count        ">      1</span><span>    dbExecAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1223" id="line_1223"> 1223.</a></span><span class="count        ">      1</span><span>    dbExecWithRetryAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1224" id="line_1224"> 1224.</a></span><span class="count        ">      1</span><span>    dbGetLastBlobAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1225" id="line_1225"> 1225.</a></span><span class="count        ">      1</span><span>    dbMemoryLoadAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1226" id="line_1226"> 1226.</a></span><span class="count        ">      1</span><span>    dbMemorySaveAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1227" id="line_1227"> 1227.</a></span><span class="count        ">      1</span><span>    dbNoopAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1228" id="line_1228"> 1228.</a></span><span class="count        ">      1</span><span>    dbOpenAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1229" id="line_1229"> 1229.</a></span><span class="count        ">      1</span><span>    dbTableInsertAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1230" id="line_1230"> 1230.</a></span><span class="count        ">      1</span><span>    debugInline,</span></pre>
-<pre><span class="lineno"><a href="#line_1231" id="line_1231"> 1231.</a></span><span class="count        ">      1</span><span>    jsbatonValueString,</span></pre>
-<pre><span class="lineno"><a href="#line_1232" id="line_1232"> 1232.</a></span><span class="count        ">      1</span><span>    noop,</span></pre>
-<pre><span class="lineno"><a href="#line_1233" id="line_1233"> 1233.</a></span><span class="count        ">      1</span><span>    objectDeepCopyWithKeysSorted,</span></pre>
-<pre><span class="lineno"><a href="#line_1234" id="line_1234"> 1234.</a></span><span class="count        ">      1</span><span>    sqlWorkerSetActive</span></pre>
-<pre><span class="lineno"><a href="#line_1235" id="line_1235"> 1235.</a></span><span class="count        ">      1</span><span>};</span></pre>
-<pre><span class="lineno"><a href="#line_1236" id="line_1236"> 1236.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1195" id="line_1195"> 1195.</a></span><span class="count        ">      1</span><span>await sqlmathInit({});</span></pre>
+<pre><span class="lineno"><a href="#line_1196" id="line_1196"> 1196.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1197" id="line_1197"> 1197.</a></span><span class="count        ">      1</span><span>export {</span></pre>
+<pre><span class="lineno"><a href="#line_1198" id="line_1198"> 1198.</a></span><span class="count        ">      1</span><span>    SQLITE_MAX_LENGTH2,</span></pre>
+<pre><span class="lineno"><a href="#line_1199" id="line_1199"> 1199.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_AUTOPROXY,</span></pre>
+<pre><span class="lineno"><a href="#line_1200" id="line_1200"> 1200.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_CREATE,</span></pre>
+<pre><span class="lineno"><a href="#line_1201" id="line_1201"> 1201.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_DELETEONCLOSE,</span></pre>
+<pre><span class="lineno"><a href="#line_1202" id="line_1202"> 1202.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_EXCLUSIVE,</span></pre>
+<pre><span class="lineno"><a href="#line_1203" id="line_1203"> 1203.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_FULLMUTEX,</span></pre>
+<pre><span class="lineno"><a href="#line_1204" id="line_1204"> 1204.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MAIN_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_1205" id="line_1205"> 1205.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MAIN_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1206" id="line_1206"> 1206.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MEMORY,</span></pre>
+<pre><span class="lineno"><a href="#line_1207" id="line_1207"> 1207.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_NOFOLLOW,</span></pre>
+<pre><span class="lineno"><a href="#line_1208" id="line_1208"> 1208.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_NOMUTEX,</span></pre>
+<pre><span class="lineno"><a href="#line_1209" id="line_1209"> 1209.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_PRIVATECACHE,</span></pre>
+<pre><span class="lineno"><a href="#line_1210" id="line_1210"> 1210.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_READONLY,</span></pre>
+<pre><span class="lineno"><a href="#line_1211" id="line_1211"> 1211.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_READWRITE,</span></pre>
+<pre><span class="lineno"><a href="#line_1212" id="line_1212"> 1212.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SHAREDCACHE,</span></pre>
+<pre><span class="lineno"><a href="#line_1213" id="line_1213"> 1213.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SUBJOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1214" id="line_1214"> 1214.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SUPER_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1215" id="line_1215"> 1215.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TEMP_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_1216" id="line_1216"> 1216.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TEMP_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1217" id="line_1217"> 1217.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TRANSIENT_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_1218" id="line_1218"> 1218.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_URI,</span></pre>
+<pre><span class="lineno"><a href="#line_1219" id="line_1219"> 1219.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_WAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1220" id="line_1220"> 1220.</a></span><span class="count        ">      1</span><span>    assertJsonEqual,</span></pre>
+<pre><span class="lineno"><a href="#line_1221" id="line_1221"> 1221.</a></span><span class="count        ">      1</span><span>    assertNumericalEqual,</span></pre>
+<pre><span class="lineno"><a href="#line_1222" id="line_1222"> 1222.</a></span><span class="count        ">      1</span><span>    assertOrThrow,</span></pre>
+<pre><span class="lineno"><a href="#line_1223" id="line_1223"> 1223.</a></span><span class="count        ">      1</span><span>    dbCloseAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1224" id="line_1224"> 1224.</a></span><span class="count        ">      1</span><span>    dbExecAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1225" id="line_1225"> 1225.</a></span><span class="count        ">      1</span><span>    dbExecWithRetryAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1226" id="line_1226"> 1226.</a></span><span class="count        ">      1</span><span>    dbGetLastBlobAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1227" id="line_1227"> 1227.</a></span><span class="count        ">      1</span><span>    dbMemoryLoadAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1228" id="line_1228"> 1228.</a></span><span class="count        ">      1</span><span>    dbMemorySaveAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1229" id="line_1229"> 1229.</a></span><span class="count        ">      1</span><span>    dbNoopAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1230" id="line_1230"> 1230.</a></span><span class="count        ">      1</span><span>    dbOpenAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1231" id="line_1231"> 1231.</a></span><span class="count        ">      1</span><span>    dbTableInsertAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_1232" id="line_1232"> 1232.</a></span><span class="count        ">      1</span><span>    debugInline,</span></pre>
+<pre><span class="lineno"><a href="#line_1233" id="line_1233"> 1233.</a></span><span class="count        ">      1</span><span>    jsbatonValueString,</span></pre>
+<pre><span class="lineno"><a href="#line_1234" id="line_1234"> 1234.</a></span><span class="count        ">      1</span><span>    noop,</span></pre>
+<pre><span class="lineno"><a href="#line_1235" id="line_1235"> 1235.</a></span><span class="count        ">      1</span><span>    objectDeepCopyWithKeysSorted,</span></pre>
+<pre><span class="lineno"><a href="#line_1236" id="line_1236"> 1236.</a></span><span class="count        ">      1</span><span>    sqlWorkerSetActive</span></pre>
+<pre><span class="lineno"><a href="#line_1237" id="line_1237"> 1237.</a></span><span class="count        ">      1</span><span>};</span></pre>
+<pre><span class="lineno"><a href="#line_1238" id="line_1238"> 1238.</a></span><span class="count        ">      1</span><span></span></pre>
 </div>
 <!-- content end -->
 <div class="footer">

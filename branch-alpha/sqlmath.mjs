@@ -1137,7 +1137,9 @@ function sqlWorkerSetActive({
         sqlWorkerActive.addEventListener("message", function ({
             data
         }) {
-            sqlMessageDict[data.id](data);
+            if (sqlMessageDict.hasOwnProperty(data.id)) {
+                sqlMessageDict[data.id](data);
+            }
         });
     }
     /*
