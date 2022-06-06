@@ -770,17 +770,18 @@ SQLMATH_API void dbOpen(
     int errcode = 0;
     sqlite3 *db;
     const char *filename = JSBATON_VALUE_STRING_ARGI(0);
+    const int flags = (int) baton->argv[2];
     // call c-function
     errcode = sqlite3ApiGet()->open_v2( //
         filename,               // filename
         &db,                    // db
-        (int) baton->argv[2],   // flags
+        flags,                  // flags
         NULL);
     JSBATON_ASSERT_OK();
     dbCount += 1;
     // fprintf(stderr, "\nsqlmath.dbOpen(dbCount=%d ff=%s)\n", dbCount,
     //     filename);
-    // save result
+    // save db
     baton->argv[0] = (int64_t) db;
   catch_error:
     (void) 0;

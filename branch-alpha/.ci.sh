@@ -510,6 +510,7 @@ shCiBuildWasm() {(set -e
     done
     emcc \
         -s EXPORTED_FUNCTIONS='[
+"___dbMemoryLoadOrSave",
 "_dbClose",
 "_dbExec",
 "_dbMemoryLoadOrSave",

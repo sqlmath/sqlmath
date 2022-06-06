@@ -100,9 +100,11 @@ function makeMalloc(source, param) {
 let JSBATON_ARGC = 16;
 let JSBATON_OFFSET_BUFV = 4 + 4 + 128;
 let JSBATON_OFFSET_ERRMSG = 4 + 4 + 128 + 128 + 8;
+let __dbMemoryLoadOrSave;
 let cModule = {};
 let db;
 let onModulePostRun;
+let sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
 let sqlmath;
 function noop(val) {
 
@@ -114,9 +116,11 @@ function sqlWorkerDispatch(data) {
     let argList = data["argList"];
     let baton = new Uint8Array(data["baton"] && data["baton"].buffer);
     let cFuncName = data["cFuncName"];
+    let errcode = 0;
     let errmsg = "";
     let id = data["id"];
     let ptrBaton = 0;
+    let ptrDb = 0;
     switch (cFuncName) {
     case "_dbClose":
     case "_dbExec":
@@ -159,7 +163,16 @@ function sqlWorkerDispatch(data) {
         });
         // optionally import filedata
         if (!errmsg && cFuncName === "_dbOpen" && argList[4]) {
-            FS.writeFile("__dbTmp", argList[4]);
+            ptrDb = Number(argList[0]);
+            FS.writeFile("/tmp/__dbTmp", argList[4]);
+            try {
+                errcode = ___dbMemoryLoadOrSave(ptrDb, "/tmp/__dbTmp", 0);
+                if (errcode) {
+                    errmsg = sqlite3_errmsg(ptrDb)
+                }
+            } finally {
+                FS.unlink("/tmp/__dbTmp");
+            }
         }
         postMessage(
             {
@@ -301,12 +314,19 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     // let - Encodings, used for registering functions.
     let SQLITE_UTF8 = 1;
     // let - cwrap function
+    __dbMemoryLoadOrSave = cwrap(
+        "__dbMemoryLoadOrSave",
+        "number",
+        ["number", "string", "number"]
+    );
     cModule["_dbClose"] = _dbClose;
     cModule["_dbExec"] = _dbExec;
     cModule["_dbMemoryLoadOrSave"] = _dbMemoryLoadOrSave;
     cModule["_dbNoop"] = _dbNoop;
     cModule["_dbOpen"] = _dbOpen;
     cModule["_dbTableInsert"] = _dbTableInsert;
+    sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
+    //
     let sqlite3_open = cwrap("sqlite3_open", "number", ["string", "number"]);
     let sqlite3_close_v2 = cwrap("sqlite3_close_v2", "number", ["number"]);
     let sqlite3_exec = cwrap(
@@ -358,7 +378,6 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
         ["number", "string"]
     );
     let sqlite3_step = cwrap("sqlite3_step", "number", ["number"]);
-    let sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
     let sqlite3_column_count = cwrap(
         "sqlite3_column_count",
         "number",
