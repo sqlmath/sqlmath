@@ -23,9 +23,7 @@
 
 /*jslint beta, node*/
 import jslint from "./jslint.mjs";
-import sqlmath from "./sqlmath.mjs";
-let {
-    assertErrorThrownAsync,
+import {
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
@@ -40,15 +38,18 @@ let {
     dbTableInsertAsync,
     debugInline,
     jsbatonValueString,
-    jstestDescribe,
-    jstestIt,
     noop
-} = Object.assign({}, jslint, sqlmath);
+} from "./sqlmath.mjs";
+let {
+    assertErrorThrownAsync,
+    jstestDescribe,
+    jstestIt
+} = jslint;
 noop(debugInline);
 
 jstestDescribe((
     "test assertXxx handling-behavior"
-), function testAssertXxx() {
+), function test_assertXxx() {
     jstestIt((
         "test assertXxx handling-behavior"
     ), function () {
@@ -67,7 +68,7 @@ jstestDescribe((
 
 jstestDescribe((
     "test cCallAsync handling-behavior"
-), function testCcall() {
+), function test_ccall() {
     jstestIt((
         "test cCallAsync handling-behavior"
     ), function () {
@@ -120,16 +121,15 @@ jstestDescribe((
                 });
                 return;
             }
-            baton = noop(
-                await dbNoopAsync(undefined, valInput, undefined)
-            )[0];
+            baton = await dbNoopAsync(undefined, valInput, undefined);
+            baton = baton[0];
             valActual = (
                 typeof valInput === "string"
                 ? jsbatonValueString({
                     argi: 1,
                     baton
                 })
-                : String(baton.getBigInt64(8 + 8, true))
+                : String(baton.getBigInt64(4 + 4 + 8, true))
             );
             valExpected = String(valExpected);
             if (typeof valInput === "bigint") {
@@ -146,14 +146,14 @@ jstestDescribe((
 
 jstestDescribe((
     "test db-bind handling-behavior"
-), function testDbBind() {
+), function test_dbBind() {
     jstestIt((
         "test db-bind-value handling-behavior"
-    ), async function testDbBindValue() {
+    ), async function test_dbBindValue() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        async function testDbGetLastBlobAsync(val) {
+        async function test_dbGetLastBlobAsync(val) {
             return await dbGetLastBlobAsync({
                 bindList: [
                     val
@@ -167,7 +167,9 @@ jstestDescribe((
             -(2n ** 63n + 1n),
             2n ** 63n
         ]).forEach(function (val) {
-            assertErrorThrownAsync(testDbGetLastBlobAsync.bind(undefined, val));
+            assertErrorThrownAsync(
+                test_dbGetLastBlobAsync.bind(undefined, val)
+            );
         });
         // test datatype handling-behavior
         [
@@ -233,7 +235,7 @@ jstestDescribe((
                 valInput
             ].forEach(async function (valInput) {
                 let bufActual = new TextDecoder().decode(
-                    await testDbGetLastBlobAsync(valInput)
+                    await test_dbGetLastBlobAsync(valInput)
                 );
                 let bufExpected = String(valExpected);
                 switch (typeof(valInput)) {
@@ -288,16 +290,14 @@ jstestDescribe((
                 "list",
                 undefined
             ].forEach(async function (responseType) {
-                let bufActual = noop(
-                    await dbExecAsync({
-                        bindList: [
-                            valInput
-                        ],
-                        db,
-                        responseType,
-                        sql: "SELECT ? AS val"
-                    })
-                );
+                let bufActual = await dbExecAsync({
+                    bindList: [
+                        valInput
+                    ],
+                    db,
+                    responseType,
+                    sql: "SELECT ? AS val"
+                });
                 switch (responseType) {
                 case "arraybuffer":
                     bufActual = JSON.parse(
@@ -346,14 +346,12 @@ jstestDescribe((
             ].forEach(async function ([
                 bindList, sql
             ]) {
-                let tblActual = noop(
-                    await dbExecAsync({
-                        bindList,
-                        db,
-                        responseType: "list",
-                        sql
-                    })
-                );
+                let valActual = await dbExecAsync({
+                    bindList,
+                    db,
+                    responseType: "list",
+                    sql
+                });
                 assertJsonEqual(
                     [
                         [
@@ -374,10 +372,10 @@ jstestDescribe((
                             ]
                         ]
                     ],
-                    tblActual,
+                    valActual,
                     {
                         ii,
-                        tblActual,
+                        valActual,
                         valExpected,
                         valInput
                     }
@@ -445,19 +443,18 @@ jstestDescribe((
                 colListPriority,
                 rowList
             }, jj) {
-                let tblActual;
+                let valActual;
                 try {
-                    tblActual = noop(
-                        await dbExecAsync({
-                            db,
-                            responseType: "list",
-                            sql: `SELECT * FROM datatype_${ii}_${jj}`,
-                            tmpColList: colList,
-                            tmpColListPriority: colListPriority,
-                            tmpRowList: rowList,
-                            tmpTableName: "datatype_" + ii + "_" + jj
-                        })
-                    )[0];
+                    valActual = await dbExecAsync({
+                        db,
+                        responseType: "list",
+                        sql: `SELECT * FROM datatype_${ii}_${jj}`,
+                        tmpColList: colList,
+                        tmpColListPriority: colListPriority,
+                        tmpRowList: rowList,
+                        tmpTableName: "datatype_" + ii + "_" + jj
+                    });
+                    valActual = valActual[0];
                 } catch (err) {
                     assertOrThrow((
                         valInput
@@ -466,19 +463,23 @@ jstestDescribe((
                     ), err);
                     return;
                 }
-                assertJsonEqual([
+                assertJsonEqual(
                     [
-                        "c1", "c2", "c3"
-                    ], [
-                        valExpected, valExpected, undefined
-                    ]
-                ], tblActual, {
-                    ii,
-                    jj,
-                    tblActual,
-                    valExpected,
-                    valInput
-                });
+                        [
+                            "c1", "c2", "c3"
+                        ], [
+                            valExpected, valExpected, undefined
+                        ]
+                    ],
+                    valActual,
+                    {
+                        ii,
+                        jj,
+                        valActual,
+                        valExpected,
+                        valInput
+                    }
+                );
             });
         });
     });
@@ -486,10 +487,10 @@ jstestDescribe((
 
 jstestDescribe((
     "test dbXxxAsync handling-behavior"
-), function testDbXxxAsync() {
+), function test_dbXxxAsync() {
     jstestIt((
         "test dbCloseAsync handling-behavior"
-    ), async function testDbCloseAsync() {
+    ), async function test_dbCloseAsync() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -504,7 +505,7 @@ jstestDescribe((
     });
     jstestIt((
         "test dbExecAsync handling-behavior"
-    ), async function testDbExecAsync() {
+    ), async function test_dbExecAsync() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -602,7 +603,7 @@ SELECT * FROM testDbExecAsync2;
     });
     jstestIt((
         "test dbExecWithRetryAsync handling-behavior"
-    ), function testDbExecWithRetryAsync() {
+    ), function test_dbExecWithRetryAsync() {
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbExecWithRetryAsync({});
@@ -610,7 +611,7 @@ SELECT * FROM testDbExecAsync2;
     });
     jstestIt((
         "test dbMemoryXxx handling-behavior"
-    ), async function testDbMemoryXxx() {
+    ), async function test_dbMemoryXxx() {
         let data;
         let db = await dbOpenAsync({
             filename: ":memory:"
@@ -655,7 +656,7 @@ SELECT * FROM testDbExecAsync2;
     });
     jstestIt((
         "test dbOpenAsync handling-behavior"
-    ), async function testDbOpenAsync() {
+    ), async function test_dbOpenAsync() {
         // test auto-finalization handling-behavior
         await new Promise(function (resolve) {
             dbOpenAsync({
@@ -670,7 +671,7 @@ SELECT * FROM testDbExecAsync2;
     });
     jstestIt((
         "test dbTableInsertAsync handling-behavior"
-    ), async function testDbTableInsertAsync() {
+    ), async function test_dbTableInsertAsync() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -749,15 +750,14 @@ SELECT * FROM testDbExecAsync2;
         ].forEach(async function ([
             valInput, valExpected
         ], ii) {
-            let valActual = noop(
-                await dbExecAsync({
-                    db,
-                    responseType: "list",
-                    sql: `SELECT * FROM temp.csv_${ii}`,
-                    tmpCsv: valInput,
-                    tmpTableName: "csv_" + ii
-                })
-            )[0];
+            let valActual = await dbExecAsync({
+                db,
+                responseType: "list",
+                sql: `SELECT * FROM temp.csv_${ii}`,
+                tmpCsv: valInput,
+                tmpTableName: "csv_" + ii
+            });
+            valActual = valActual[0];
             assertJsonEqual(
                 valActual,
                 valExpected,
@@ -774,7 +774,7 @@ SELECT * FROM testDbExecAsync2;
 
 jstestDescribe((
     "test misc handling-behavior"
-), function testMisc() {
+), function test_misc() {
     jstestIt((
         "test misc handling-behavior"
     ), async function () {
@@ -806,10 +806,10 @@ jstestDescribe((
 
 jstestDescribe((
     "test sqlite handling-behavior"
-), function testSqlite() {
+), function test_sqlite() {
     jstestIt((
         "test sqlite-error handling-behavior"
-    ), async function testSqliteError() {
+    ), async function test_sqliteError() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -866,7 +866,7 @@ jstestDescribe((
     });
     jstestIt((
         "test sqlite-extension-base64 handling-behavior"
-    ), async function testSqliteExtensionBase64() {
+    ), async function test_sqliteExtensionBase64() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -919,7 +919,7 @@ jstestDescribe((
     });
     jstestIt((
         "test sqlite-extension-jenks handling-behavior"
-    ), async function testSqliteExtensionJenks() {
+    ), async function test_sqliteExtensionJenks() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1157,7 +1157,7 @@ jstestDescribe((
     });
     jstestIt((
         "test sqlite-extension-kthpercentile handling-behavior"
-    ), async function testSqliteExtensionKthpercentile() {
+    ), async function test_sqliteExtensionKthpercentile() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1252,7 +1252,7 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
     });
     jstestIt((
         "test sqlite-extension-math handling-behavior"
-    ), async function testSqliteExtensionMath() {
+    ), async function test_sqliteExtensionMath() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1418,7 +1418,7 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
     });
     jstestIt((
         "test sqlite-extension-matrix2d_concat handling-behavior"
-    ), async function testSqliteExtensionMatrix2dConcat() {
+    ), async function test_sqliteExtensionMatrix2dConcat() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });

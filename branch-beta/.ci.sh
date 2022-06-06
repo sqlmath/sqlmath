@@ -573,6 +573,7 @@ shCiBuildWasm() {(set -e
         -s NODEJS_CATCH_EXIT=0 \
         -s NODEJS_CATCH_REJECTION=0 \
         -s RESERVED_FUNCTION_POINTERS=64 \
+        -s SAFE_HEAP=1 \
         -s SINGLE_FILE=0 \
         -s USE_ZLIB \
         -s WASM=1 \
@@ -582,9 +583,13 @@ shCiBuildWasm() {(set -e
         .tmp/sqlmath_custom.c.wasm.o \
         \
         --pre-js sqlmath_wrapper_wasm.js \
+        -sWASM_BIGINT \
         \
         -o sqlmath_wasm.js \
-        # --closure 1
+        \
+        --closure 1 \
+        -Oz \
+        #
     printf '' > .tmp.js
     printf '
 /*jslint-disable*/
@@ -787,4 +792,5 @@ shSyncSqlmath() {(set -e
             ln -f "$HOME/Documents/sqlmath/$FILE"
         done
     fi
+    git diff
 )}
