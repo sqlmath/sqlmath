@@ -1147,7 +1147,7 @@ Definition of the CSV Format
         };
         let {
             buffer,
-            error,
+            errmsg,
             results = []
         } = await new Promise(function (resolve) {
             sqlCallbackDict[sqlCallbackId] = resolve;
@@ -1160,9 +1160,9 @@ Definition of the CSV Format
                 timeElapsed
             })
         );
-        if (error) {
+        if (errmsg) {
             throw (Object.assign(err, {
-                message: error,
+                message: errmsg,
                 timeElapsed
             }));
         }
