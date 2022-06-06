@@ -114,7 +114,7 @@ function sqlWorkerDispatch(data) {
     let argList = data["argList"];
     let baton = new Uint8Array(data["baton"] && data["baton"].buffer);
     let errmsg;
-    let ptr;
+    let ptrBaton;
     let cFuncName = data["cFuncName"];
     let id = data["id"];
     switch (cFuncName) {
@@ -124,25 +124,28 @@ function sqlWorkerDispatch(data) {
     case "_dbNoop":
     case "_dbOpen":
     case "_dbTableInsert":
-        ptr = _malloc(baton.byteLength);
-        HEAPU8.set(baton, ptr);
-        cModule[cFuncName](ptr);
+        // copy baton to wasm
+        ptrBaton = _malloc(baton.byteLength);
+        data["ptrBaton"] = ptrBaton;
+        HEAPU8.set(baton, ptrBaton);
+        // call c-function
+        cModule[cFuncName](ptrBaton);
         // init errmsg
-        errmsg = AsciiToString(ptr + JSBATON_OFFSET_ERRMSG);
+        errmsg = AsciiToString(ptrBaton + JSBATON_OFFSET_ERRMSG);
         // update baton
         baton.set(new Uint8Array(
             HEAPU8.buffer,
-            HEAPU8.byteOffset + ptr,
+            HEAPU8.byteOffset + ptrBaton,
             1024
         ));
         baton = new BigInt64Array(baton.buffer, 4 + 4);
         baton.subarray(
             JSBATON_ARGC,
             2 * JSBATON_ARGC
-        ).forEach(function (ptr, ii) {
-            ptr = Number(ptr);
+        ).forEach(function (ptrBaton, ii) {
+            ptrBaton = Number(ptrBaton);
             // init argList[ii] = argv[ii]
-            if (ptr === 0) {
+            if (ptrBaton === 0) {
                 argList[ii] = baton[ii];
             // init argList[ii] = bufv[ii]
             } else {
@@ -150,11 +153,14 @@ function sqlWorkerDispatch(data) {
                     Number(baton[ii])
                 );
                 new Uint8Array(argList[ii]).set(
-                    HEAPU8.subarray(ptr, ptr + argList[ii].byteLength)
+                    HEAPU8.subarray(ptrBaton, ptrBaton + argList[ii].byteLength)
                 );
             }
         });
-        _free(ptr);
+        // optionally import filedata
+        if (!errmsg && cFuncName === "_dbOpen" && argList[4]) {
+            FS.writeFile("__dbTmp", argList[4]);
+        }
         postMessage(
             {
                 "argList": argList,
@@ -227,6 +233,7 @@ self["onmessage"] = async function ({
     data
 }) {
     sqlmath = sqlmath || await onModulePostRun;
+    data["ptrBaton"] = 0;
     try {
         await sqlWorkerDispatch(data);
     } catch (err) {
@@ -234,6 +241,9 @@ self["onmessage"] = async function ({
             "id": data["id"],
             "errmsg": err["message"]
         });
+    } finally {
+        // cleanup ptrBaton
+        _free(data["ptrBaton"]);
     }
 };
 onModulePostRun = new Promise(function (resolve) {
