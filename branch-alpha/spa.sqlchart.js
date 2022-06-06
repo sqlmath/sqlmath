@@ -22,24 +22,6 @@
 
 
 /*jslint-disable*/
-import {
-    assertJsonEqual,
-    assertNumericalEqual,
-    assertOrThrow,
-    dbCloseAsync,
-    dbExecAsync,
-    dbExecWithRetryAsync,
-    dbGetLastBlobAsync,
-    dbMemoryLoadAsync,
-    dbMemorySaveAsync,
-    dbNoopAsync,
-    dbOpenAsync,
-    dbTableInsertAsync,
-    debugInline,
-    jsbatonValueString,
-    noop,
-    sqlWorkerSetActive
-} from "./sqlmath.mjs";
 window.addEventListener("load", async function () {
     "use strict";
     let {
@@ -547,9 +529,7 @@ Definition of the CSV Format
     /*
      * this function will hande <data>-response from <sqlWorker>
      */
-        if (sqlCallbackDict.hasOwnProperty(data.id)) {
-            sqlCallbackDict[data.id](data);
-        }
+        sqlCallbackDict[data.id](data);
     }
 
     function stringHtmlSafe(str) {
@@ -1137,7 +1117,6 @@ Definition of the CSV Format
 /* validateLineSortedReset */
     sqlPostMessage = uiRenderError(async function sqlPostMessage({
         action = "exec",
-        cFuncName,
         data,
         params,
         sql
@@ -1150,90 +1129,71 @@ Definition of the CSV Format
         let timeElapsed;
         uiLoaderStart({});
         timeElapsed = Date.now();
-        switch (cFuncName || action) {
-        case "close2":
-            await dbCloseAsync({
-                db: window.DB_PTR
-            });
-            return;
-        default:
-            sqlCallbackId += 1;
-            id = sqlCallbackId;
-            sqlWorker.postMessage({
+        sqlCallbackId += 1;
+        id = sqlCallbackId;
+        sqlWorker.postMessage({
+            action,
+            buffer: data,
+            id,
+            params,
+            sql
+        });
+        err = new Error();
+        err.msg = {
+            action,
+            data,
+            params,
+            sql
+        };
+        let {
+            buffer,
+            errmsg,
+            results = []
+        } = await new Promise(function (resolve) {
+            sqlCallbackDict[sqlCallbackId] = resolve;
+        });
+        delete sqlCallbackDict[id];
+        timeElapsed = Date.now() - timeElapsed;
+        console.error(
+            "sqlPostMessage - " + JSON.stringify({
                 action,
-                buffer: data,
-                id,
-                params,
-                sql
-            });
-            err = new Error();
-            err.msg = {
-                action,
-                data,
-                params,
-                sql
-            };
-            let {
-                buffer,
-                errmsg,
-                rawPtr,
-                results = []
-            } = await new Promise(function (resolve) {
-                sqlCallbackDict[sqlCallbackId] = resolve;
-            });
-            if (rawPtr) {
-                //!! debugInline({
-                    //!! action,
-                    //!! rawPtr
-                //!! });
-                window.DB_PTR = await dbOpenAsync({
-                    filename: "tmp1",
-                    rawPtr
-                });
-            }
-            delete sqlCallbackDict[id];
-            timeElapsed = Date.now() - timeElapsed;
-            console.error(
-                "sqlPostMessage - " + JSON.stringify({
-                    action,
-                    timeElapsed
-                })
-            );
-            if (errmsg) {
-                throw (Object.assign(err, {
-                    message: errmsg,
-                    timeElapsed
-                }));
-            }
-            results = results.map(function ({
-                columns,
-                ii,
-                jj,
-                values
-            }) {
-                ii = 0;
-                while (ii < values.length) {
-                    jj = 0;
-                    while (jj < values[ii].length) {
-                        if (values[ii][jj]?.constructor === Uint8Array) {
-                            values[ii][jj] = "<blob>";
-                        }
-                        jj += 1;
-                    }
-                    ii += 1;
-                }
-                return {
-                    colList: columns,
-                    rowList: values,
-                    sql
-                };
-            });
-            return {
-                buffer,
-                sql,
-                tableList: results
-            };
+                timeElapsed
+            })
+        );
+        if (errmsg) {
+            throw (Object.assign(err, {
+                message: errmsg,
+                timeElapsed
+            }));
         }
+        results = results.map(function ({
+            columns,
+            ii,
+            jj,
+            values
+        }) {
+            ii = 0;
+            while (ii < values.length) {
+                jj = 0;
+                while (jj < values[ii].length) {
+                    if (values[ii][jj]?.constructor === Uint8Array) {
+                        values[ii][jj] = "<blob>";
+                    }
+                    jj += 1;
+                }
+                ii += 1;
+            }
+            return {
+                colList: columns,
+                rowList: values,
+                sql
+            };
+        });
+        return {
+            buffer,
+            sql,
+            tableList: results
+        };
     });
 
     function onContextmenu(evt) {
@@ -1959,11 +1919,7 @@ COMMIT;
     sqlCallbackId = 1;
     sqlResultDict = {};
     sqlWorker = new Worker("sqlmath_wasm.js?initSqlJsWorker=1");
-    sqlWorker.addEventListener("message", sqlOnMessage);
-    // init sqlmath
-    sqlWorkerSetActive({
-        sqlWorker
-    });
+    sqlWorker.onmessage = sqlOnMessage;
     sqlPostMessage({
         action: "open"
     });
