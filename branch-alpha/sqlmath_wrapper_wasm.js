@@ -113,10 +113,10 @@ function noop(val) {
 function sqlWorkerDispatch(data) {
     let argList = data["argList"];
     let baton = new Uint8Array(data["baton"] && data["baton"].buffer);
-    let errmsg;
-    let ptrBaton;
     let cFuncName = data["cFuncName"];
+    let errmsg = "";
     let id = data["id"];
+    let ptrBaton = 0;
     switch (cFuncName) {
     case "_dbClose":
     case "_dbExec":
