@@ -23,9 +23,7 @@
 
 /*jslint beta, node*/
 import jslint from "./jslint.mjs";
-import sqlmath from "./sqlmath.mjs";
-let {
-    assertErrorThrownAsync,
+import {
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
@@ -40,10 +38,13 @@ let {
     dbTableInsertAsync,
     debugInline,
     jsbatonValueString,
-    jstestDescribe,
-    jstestIt,
     noop
-} = Object.assign({}, jslint, sqlmath);
+} from "./sqlmath.mjs";
+let {
+    assertErrorThrownAsync,
+    jstestDescribe,
+    jstestIt
+} = jslint;
 noop(debugInline);
 
 jstestDescribe((

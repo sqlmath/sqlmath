@@ -83,7 +83,6 @@ let debugInline = (function () {
     __consoleError = console.error;
     return debug;
 }());
-let local = {};
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
@@ -640,11 +639,14 @@ function jsbatonValuePush({
         // 18. true.externalbuffer
         if (
             value?.constructor === ArrayBuffer
-            || (!IS_BROWSER && value?.constructor === SharedArrayBuffer)
+            || (
+                typeof SharedArrayBuffer === "function"
+                && value?.constructor === SharedArrayBuffer
+            )
         ) {
             assertOrThrow(
                 !IS_BROWSER,
-                "ArrayBuffer cannot be passed directly to c-function in browser"
+                "ArrayBuffer cannot be passed directly to webassembly"
             );
             assertOrThrow(
                 externalbufferList.length <= 8,
@@ -1090,7 +1092,9 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     ];
 }
 
-async function zzInit() {
+async function sqlmathInit({
+    Worker
+}) {
     dbFinalizationRegistry = new FinalizationRegistry(function ({
         afterFinalization,
         ptr
@@ -1101,46 +1105,6 @@ async function zzInit() {
         if (afterFinalization) {
             afterFinalization();
         }
-    });
-    Object.assign(local, {
-        SQLITE_MAX_LENGTH2,
-        SQLITE_OPEN_AUTOPROXY,
-        SQLITE_OPEN_CREATE,
-        SQLITE_OPEN_DELETEONCLOSE,
-        SQLITE_OPEN_EXCLUSIVE,
-        SQLITE_OPEN_FULLMUTEX,
-        SQLITE_OPEN_MAIN_DB,
-        SQLITE_OPEN_MAIN_JOURNAL,
-        SQLITE_OPEN_MEMORY,
-        SQLITE_OPEN_NOFOLLOW,
-        SQLITE_OPEN_NOMUTEX,
-        SQLITE_OPEN_PRIVATECACHE,
-        SQLITE_OPEN_READONLY,
-        SQLITE_OPEN_READWRITE,
-        SQLITE_OPEN_SHAREDCACHE,
-        SQLITE_OPEN_SUBJOURNAL,
-        SQLITE_OPEN_SUPER_JOURNAL,
-        SQLITE_OPEN_TEMP_DB,
-        SQLITE_OPEN_TEMP_JOURNAL,
-        SQLITE_OPEN_TRANSIENT_DB,
-        SQLITE_OPEN_URI,
-        SQLITE_OPEN_WAL,
-        assertJsonEqual,
-        assertNumericalEqual,
-        assertOrThrow,
-        dbCloseAsync,
-        dbExecAsync,
-        dbExecWithRetryAsync,
-        dbGetLastBlobAsync,
-        dbMemoryLoadAsync,
-        dbMemorySaveAsync,
-        dbNoopAsync,
-        dbOpenAsync,
-        dbTableInsertAsync,
-        debugInline,
-        jsbatonValueString,
-        noop,
-        objectDeepCopyWithKeysSorted
     });
 
 // Feature-detect nodejs.
@@ -1168,7 +1132,8 @@ async function zzInit() {
 // Feature-detect browser.
 
     IS_BROWSER = true;
-    sqlWorker = new globalThis.Worker("sqlmath_wasm.js?initSqlJsWorker=1");
+    Worker = Worker || globalThis.Worker;
+    sqlWorker = new Worker("sqlmath_wasm.js?initSqlJsWorker=1");
     sqlWorker.onmessage = function ({
         data
     }) {
@@ -1187,6 +1152,45 @@ async function zzInit() {
     */
 }
 
-await zzInit();
+await sqlmathInit({});
 
-export default Object.freeze(local);
+export {
+    SQLITE_MAX_LENGTH2,
+    SQLITE_OPEN_AUTOPROXY,
+    SQLITE_OPEN_CREATE,
+    SQLITE_OPEN_DELETEONCLOSE,
+    SQLITE_OPEN_EXCLUSIVE,
+    SQLITE_OPEN_FULLMUTEX,
+    SQLITE_OPEN_MAIN_DB,
+    SQLITE_OPEN_MAIN_JOURNAL,
+    SQLITE_OPEN_MEMORY,
+    SQLITE_OPEN_NOFOLLOW,
+    SQLITE_OPEN_NOMUTEX,
+    SQLITE_OPEN_PRIVATECACHE,
+    SQLITE_OPEN_READONLY,
+    SQLITE_OPEN_READWRITE,
+    SQLITE_OPEN_SHAREDCACHE,
+    SQLITE_OPEN_SUBJOURNAL,
+    SQLITE_OPEN_SUPER_JOURNAL,
+    SQLITE_OPEN_TEMP_DB,
+    SQLITE_OPEN_TEMP_JOURNAL,
+    SQLITE_OPEN_TRANSIENT_DB,
+    SQLITE_OPEN_URI,
+    SQLITE_OPEN_WAL,
+    assertJsonEqual,
+    assertNumericalEqual,
+    assertOrThrow,
+    dbCloseAsync,
+    dbExecAsync,
+    dbExecWithRetryAsync,
+    dbGetLastBlobAsync,
+    dbMemoryLoadAsync,
+    dbMemorySaveAsync,
+    dbNoopAsync,
+    dbOpenAsync,
+    dbTableInsertAsync,
+    debugInline,
+    jsbatonValueString,
+    noop,
+    objectDeepCopyWithKeysSorted
+};
