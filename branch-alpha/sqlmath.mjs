@@ -422,6 +422,7 @@ async function dbOpenAsync({
     filedata,
     filename,
     flags,
+    rawPtr,
     threadCount = 1
 }) {
 // this function will open and return sqlite-database-connection <db>
@@ -443,10 +444,16 @@ async function dbOpenAsync({
         !filedata || filedata.constructor === ArrayBuffer,
         "filedata must be ArrayBuffer"
     );
+    if (rawPtr) {
+        rawPtr = [
+            BigInt(rawPtr)
+        ];
+        threadCount = 1;
+    }
     connPool = await Promise.all(Array.from(new Array(
         threadCount
     ), async function () {
-        let ptr = await cCallAsync(
+        let ptr = rawPtr || await cCallAsync(
             undefined,
             "_dbOpen",
             // 0. const char *filename,   Database filename (UTF-8)
@@ -462,7 +469,7 @@ async function dbOpenAsync({
             // 4. wasm-only - arraybuffer of raw sqlite-database to open in wasm
             filedata
         );
-        ptr = [
+        ptr = rawPtr || [
             ptr[0].getBigInt64(4 + 4, true)
         ];
         dbFinalizationRegistry.register(db, {

@@ -115,12 +115,12 @@ function noop(val) {
 function sqlWorkerDispatch(data) {
     let argList = data["argList"];
     let baton = new Uint8Array(data["baton"] && data["baton"].buffer);
+    let batonPtr = 0;
     let cFuncName = data["cFuncName"];
+    let dbPtr = 0;
     let errcode = 0;
     let errmsg = "";
     let id = data["id"];
-    let ptrBaton = 0;
-    let ptrDb = 0;
     switch (cFuncName) {
     case "_dbClose":
     case "_dbExec":
@@ -129,27 +129,27 @@ function sqlWorkerDispatch(data) {
     case "_dbOpen":
     case "_dbTableInsert":
         // copy baton to wasm
-        ptrBaton = _malloc(baton.byteLength);
-        data["ptrBaton"] = ptrBaton;
-        HEAPU8.set(baton, ptrBaton);
+        batonPtr = _malloc(baton.byteLength);
+        data["batonPtr"] = batonPtr;
+        HEAPU8.set(baton, batonPtr);
         // call c-function
-        cModule[cFuncName](ptrBaton);
+        cModule[cFuncName](batonPtr);
         // init errmsg
-        errmsg = AsciiToString(ptrBaton + JSBATON_OFFSET_ERRMSG);
+        errmsg = AsciiToString(batonPtr + JSBATON_OFFSET_ERRMSG);
         // update baton
         baton.set(new Uint8Array(
             HEAPU8.buffer,
-            HEAPU8.byteOffset + ptrBaton,
+            HEAPU8.byteOffset + batonPtr,
             1024
         ));
         baton = new BigInt64Array(baton.buffer, 4 + 4);
         baton.subarray(
             JSBATON_ARGC,
             2 * JSBATON_ARGC
-        ).forEach(function (ptrBaton, ii) {
-            ptrBaton = Number(ptrBaton);
+        ).forEach(function (ptr, ii) {
+            ptr = Number(ptr);
             // init argList[ii] = argv[ii]
-            if (ptrBaton === 0) {
+            if (ptr === 0) {
                 argList[ii] = baton[ii];
             // init argList[ii] = bufv[ii]
             } else {
@@ -157,18 +157,18 @@ function sqlWorkerDispatch(data) {
                     Number(baton[ii])
                 );
                 new Uint8Array(argList[ii]).set(
-                    HEAPU8.subarray(ptrBaton, ptrBaton + argList[ii].byteLength)
+                    HEAPU8.subarray(ptr, ptr + argList[ii].byteLength)
                 );
             }
         });
         // optionally import filedata
         if (!errmsg && cFuncName === "_dbOpen" && argList[4]) {
-            ptrDb = Number(argList[0]);
+            dbPtr = Number(argList[0]);
             FS.writeFile("/tmp/__dbTmp", argList[4]);
             try {
-                errcode = ___dbMemoryLoadOrSave(ptrDb, "/tmp/__dbTmp", 0);
+                errcode = ___dbMemoryLoadOrSave(dbPtr, "/tmp/__dbTmp", 0);
                 if (errcode) {
-                    errmsg = sqlite3_errmsg(ptrDb)
+                    errmsg = sqlite3_errmsg(dbPtr)
                 }
             } finally {
                 FS.unlink("/tmp/__dbTmp");
@@ -246,7 +246,7 @@ self["onmessage"] = async function ({
     data
 }) {
     sqlmath = sqlmath || await onModulePostRun;
-    data["ptrBaton"] = 0;
+    data["batonPtr"] = 0;
     try {
         await sqlWorkerDispatch(data);
     } catch (err) {
@@ -255,8 +255,8 @@ self["onmessage"] = async function ({
             "errmsg": err["message"]
         });
     } finally {
-        // cleanup ptrBaton
-        _free(data["ptrBaton"]);
+        // cleanup batonPtr
+        _free(data["batonPtr"]);
     }
 };
 onModulePostRun = new Promise(function (resolve) {
@@ -1064,9 +1064,9 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     * an SQLite database file
     */
     function Database(data) {
-        this.filename = "dbfile_" + (0xffffffff * Math.random() >>> 0);
+        this.filename = "/tmp/dbfile1";
         if (data != null) {
-            FS.createDataFile("/", this.filename, data, true, true);
+            FS.writeFile(this.filename, data);
         }
         this.handleError(sqlite3_open(this.filename, apiTemp));
         this.db = getValue(apiTemp, "i32");

@@ -519,6 +519,8 @@ shCiBuildWasm() {(set -e
 "_dbTableInsert",
 "_free",
 "_malloc",
+"_sqlite3_errmsg",
+
 "_sqlite3_bind_blob",
 "_sqlite3_bind_double",
 "_sqlite3_bind_int",
@@ -536,7 +538,6 @@ shCiBuildWasm() {(set -e
 "_sqlite3_column_type",
 "_sqlite3_create_function_v2",
 "_sqlite3_data_count",
-"_sqlite3_errmsg",
 "_sqlite3_exec",
 "_sqlite3_finalize",
 "_sqlite3_free",
@@ -561,8 +562,9 @@ shCiBuildWasm() {(set -e
 "_sqlite3_value_type"
         ]' \
         -s EXPORTED_RUNTIME_METHODS='[
-"UTF8ToString",
 "cwrap",
+
+"UTF8ToString",
 "stackAlloc",
 "stackRestore",
 "stackSave"
