@@ -1516,7 +1516,7 @@ static void jsbatonBufferFinalize(
     UNUSED(env);
     UNUSED(finalize_hint);
     // cleanup baton->bufv[ii]
-    free(finalize_data);
+    sqlite3ApiGet()->free(finalize_data);
 }
 
 static Jsbaton *jsbatonCreate(

@@ -587,12 +587,12 @@ shCiBuildWasm() {(set -e
         .tmp/sqlmath_custom.c.wasm.o \
         \
         --pre-js sqlmath_wrapper_wasm.js \
+        -Oz \
         -sWASM_BIGINT \
         \
         -o sqlmath_wasm.js \
         \
-        --closure 1 \
-        -Oz \
+        #!! --closure 1 \
         #
     printf '' > .tmp.js
     printf '
