@@ -100,7 +100,7 @@ function makeMalloc(source, param) {
 let JSBATON_ARGC = 16;
 let JSBATON_OFFSET_BUFV = 4 + 4 + 128;
 let JSBATON_OFFSET_ERRMSG = 4 + 4 + 128 + 128 + 8;
-let __dbMemoryLoadOrSave;
+let __dbFileImportOrExport;
 let cModule = {};
 let db;
 let onModulePostRun;
@@ -124,7 +124,7 @@ function sqlWorkerDispatch(data) {
     switch (cFuncName) {
     case "_dbClose":
     case "_dbExec":
-    case "_dbMemoryLoadOrSave":
+    case "_dbFileImportOrExport":
     case "_dbNoop":
     case "_dbOpen":
     case "_dbTableInsert":
@@ -147,6 +147,16 @@ function sqlWorkerDispatch(data) {
             JSBATON_ARGC,
             2 * JSBATON_ARGC
         ).forEach(function (ptr, ii) {
+            // ignore ArrayBuffer
+            if (argList[ii] && (
+                argList[ii]["constructor"] === ArrayBuffer
+                || (
+                    typeof SharedArrayBuffer === "function"
+                    && argList[ii]["constructor"] === SharedArrayBuffer
+                )
+            )) {
+                return;
+            }
             ptr = Number(ptr);
             // init argList[ii] = argv[ii]
             if (ptr === 0) {
@@ -161,17 +171,17 @@ function sqlWorkerDispatch(data) {
                 );
             }
         });
-        // optionally import filedata
+        // _dbOpen - optionally import dbData
         if (!errmsg && cFuncName === "_dbOpen" && argList[4]) {
-            dbPtr = Number(argList[0]);
-            FS.writeFile("/tmp/__dbTmp", argList[4]);
+            FS.writeFile("/tmp/__dbTmp1", new Uint8Array(argList[4]));
             try {
-                errcode = ___dbMemoryLoadOrSave(dbPtr, "/tmp/__dbTmp", 0);
+                dbPtr = Number(argList[0]);
+                errcode = __dbFileImportOrExport(dbPtr, "/tmp/__dbTmp1", 0);
                 if (errcode) {
                     errmsg = sqlite3_errmsg(dbPtr)
                 }
             } finally {
-                FS.unlink("/tmp/__dbTmp");
+                FS.unlink("/tmp/__dbTmp1");
             }
         }
         postMessage(
@@ -314,14 +324,14 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     // let - Encodings, used for registering functions.
     let SQLITE_UTF8 = 1;
     // let - cwrap function
-    __dbMemoryLoadOrSave = cwrap(
-        "__dbMemoryLoadOrSave",
+    __dbFileImportOrExport = cwrap(
+        "__dbFileImportOrExport",
         "number",
         ["number", "string", "number"]
     );
     cModule["_dbClose"] = _dbClose;
     cModule["_dbExec"] = _dbExec;
-    cModule["_dbMemoryLoadOrSave"] = _dbMemoryLoadOrSave;
+    cModule["_dbFileImportOrExport"] = _dbFileImportOrExport;
     cModule["_dbNoop"] = _dbNoop;
     cModule["_dbOpen"] = _dbOpen;
     cModule["_dbTableInsert"] = _dbTableInsert;

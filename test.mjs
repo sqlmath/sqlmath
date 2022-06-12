@@ -28,11 +28,10 @@ import {
     assertNumericalEqual,
     assertOrThrow,
     dbCloseAsync,
+    dbExecAndReturnLastBlobAsync,
     dbExecAsync,
-    dbExecWithRetryAsync,
-    dbGetLastBlobAsync,
-    dbMemoryLoadAsync,
-    dbMemorySaveAsync,
+    dbFileExportAsync,
+    dbFileImportAsync,
     dbNoopAsync,
     dbOpenAsync,
     dbTableInsertAsync,
@@ -153,8 +152,8 @@ jstestDescribe((
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        async function test_dbGetLastBlobAsync(val) {
-            return await dbGetLastBlobAsync({
+        async function test_dbExecAndReturnLastBlobAsync(val) {
+            return await dbExecAndReturnLastBlobAsync({
                 bindList: [
                     val
                 ],
@@ -168,7 +167,7 @@ jstestDescribe((
             2n ** 63n
         ]).forEach(function (val) {
             assertErrorThrownAsync(
-                test_dbGetLastBlobAsync.bind(undefined, val)
+                test_dbExecAndReturnLastBlobAsync.bind(undefined, val)
             );
         });
         // test datatype handling-behavior
@@ -230,12 +229,12 @@ jstestDescribe((
         ].forEach(function ([
             valInput, valExpected
         ], ii) {
-            // test dbGetLastBlobAsync's bind handling-behavior
+            // test dbExecAndReturnLastBlobAsync's bind handling-behavior
             [
                 valInput
             ].forEach(async function (valInput) {
                 let bufActual = new TextDecoder().decode(
-                    await test_dbGetLastBlobAsync(valInput)
+                    await test_dbExecAndReturnLastBlobAsync(valInput)
                 );
                 let bufExpected = String(valExpected);
                 switch (typeof(valInput)) {
@@ -600,30 +599,28 @@ SELECT * FROM testDbExecAsync2;
         }, (
             /db cannot close with \d+? actions pending/
         ));
-    });
-    jstestIt((
-        "test dbExecWithRetryAsync handling-behavior"
-    ), function test_dbExecWithRetryAsync() {
-        // test null-case handling-behavior
+        // test retry handling-behavior
         assertErrorThrownAsync(function () {
-            return dbExecWithRetryAsync({});
+            return dbExecAsync({
+                modeRetry: 1
+            });
         }, "invalid or closed db");
     });
     jstestIt((
-        "test dbMemoryXxx handling-behavior"
-    ), async function test_dbMemoryXxx() {
+        "test dbFileXxx handling-behavior"
+    ), async function test_dbFileXxx() {
         let data;
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
-            return dbMemoryLoadAsync({
+            return dbFileImportAsync({
                 db
             });
         }, "invalid filename undefined");
         assertErrorThrownAsync(function () {
-            return dbMemorySaveAsync({
+            return dbFileExportAsync({
                 db
             });
         }, "invalid filename undefined");
@@ -631,16 +628,16 @@ SELECT * FROM testDbExecAsync2;
             db,
             sql: "CREATE TABLE t01 AS SELECT 1 AS c01"
         });
-        await dbMemorySaveAsync({
+        await dbFileExportAsync({
             db,
-            filename: ".testDbMemoryXxx.sqlite"
+            filename: ".testDbFileXxx.sqlite"
         });
         db = await dbOpenAsync({
             filename: ":memory:"
         });
-        await dbMemoryLoadAsync({
+        await dbFileImportAsync({
             db,
-            filename: ".testDbMemoryXxx.sqlite"
+            filename: ".testDbFileXxx.sqlite"
         });
         data = await dbExecAsync({
             db,
@@ -1129,7 +1126,7 @@ jstestDescribe((
                 input, input.slice().reverse()
             ].forEach(async function (input) {
                 let result = Array.from(new Float64Array(
-                    await dbGetLastBlobAsync({
+                    await dbExecAndReturnLastBlobAsync({
                         bindList: {
                             input: new Float64Array(input),
                             kk
@@ -1465,7 +1462,7 @@ SELECT
             sql, valExpected
         ], ii) {
             let valActual = Array.from(new Float64Array(
-                await dbGetLastBlobAsync({
+                await dbExecAndReturnLastBlobAsync({
                     db,
                     sql
                 })

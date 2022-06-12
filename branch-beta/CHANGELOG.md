@@ -1,10 +1,15 @@
 # Changelog
 
 # Todo
+- wasm - add wasm-functions dbBufferExport(), dbBufferImport()
 - sqlmath - add sql-extension carrayblob()
 - none
 
 # v2022.6.1-beta
+- wasm - update function dbOpen() to be able to import raw dbData arraybuffer
+- merge function dbExecWithRetryAsync() into dbExecAsync()
+- rename function dbMemoryLoadOrSave to dbFileImportOrExport()
+- add file csslint.js
 - wasm - replace sqljs-api with sqlmath-api in wasm - part1
 - remove jslint-dependency in sqlmath-core to prepare sqlmath for browser/wasm env
 - emscripten updated to v3.1.3, allowing es6 syntax in sqlmath_wrapper_wasm.js

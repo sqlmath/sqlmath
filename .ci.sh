@@ -510,10 +510,10 @@ shCiBuildWasm() {(set -e
     done
     emcc \
         -s EXPORTED_FUNCTIONS='[
-"___dbMemoryLoadOrSave",
+"___dbFileImportOrExport",
 "_dbClose",
 "_dbExec",
-"_dbMemoryLoadOrSave",
+"_dbFileImportOrExport",
 "_dbNoop",
 "_dbOpen",
 "_dbTableInsert",
@@ -590,8 +590,8 @@ shCiBuildWasm() {(set -e
         \
         -o sqlmath_wasm.js \
         \
-        --closure 1 \
-        -Oz \
+        #!! --closure 1 \
+        #!! -Oz \
         #
     printf '' > .tmp.js
     printf '
