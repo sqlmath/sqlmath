@@ -193,6 +193,9 @@ async function cCallAsync(baton, cFuncName, ...argList) {
                 value.byteLength
             );
         }
+        if (isExternalBuffer(value)) {
+            return value;
+        }
     });
     // encode cFuncName into baton
     argi += 1;
@@ -263,9 +266,25 @@ function dbDeref(db) {
     return __db;
 }
 
+function dbExecAndReturnLastBlobAsync({
+    bindList = [],
+    db,
+    sql
+}) {
+// this function will exec <sql> in <db> and return last value retrieved
+// from execution as raw blob/buffer
+    return dbExecAsync({
+        bindList,
+        db,
+        responseType: "lastBlob",
+        sql
+    });
+}
+
 async function dbExecAsync({
     bindList = [],
     db,
+    modeRetry,
     responseType,
     sql,
     tmpColList,
@@ -275,15 +294,46 @@ async function dbExecAsync({
     tmpTableName
 }) {
 // this function will exec <sql> in <db> and return <result>
-    let baton = jsbatonCreate();
-    let bindByKey = !Array.isArray(bindList);
-    let bindListLength = (
+    let baton;
+    let bindByKey;
+    let bindListLength;
+    let externalbufferList;
+    let result;
+    while (modeRetry > 0) {
+        try {
+            return await dbExecAsync({
+                bindList,
+                db,
+                responseType,
+                sql,
+                tmpColList,
+                tmpColListPriority,
+                tmpCsv,
+                tmpRowList,
+                tmpTableName
+            });
+        } catch (err) {
+            assertOrThrow(modeRetry > 0, err);
+            consoleError(err);
+            consoleError(
+                "dbExecAsync - retry failed sql-query with "
+                + modeRetry
+                + " remaining retries"
+            );
+            modeRetry -= 1;
+            await new Promise(function (resolve) {
+                setTimeout(resolve, 50);
+            });
+        }
+    }
+    baton = jsbatonCreate();
+    bindByKey = !Array.isArray(bindList);
+    bindListLength = (
         Array.isArray(bindList)
         ? bindList.length
         : Object.keys(bindList).length
     );
-    let externalbufferList = [];
-    let result;
+    externalbufferList = [];
     if (tmpCsv || tmpRowList) {
         await dbTableInsertAsync({
             colList: tmpColList,
@@ -345,71 +395,32 @@ async function dbExecAsync({
     }
 }
 
-async function dbExecWithRetryAsync(option) {
-// this function will exec <sql> in <db> and return <result> with <retryLimit>
-    let retry = option.retryLimit || 1;
-    while (true) {
-        try {
-            return await dbExecAsync(option);
-        } catch (err) {
-            assertOrThrow(retry > 0, err);
-            consoleError(err);
-            consoleError(
-                "dbExecWithRetryAsync - retry failed sql-query with "
-                + retry
-                + " remaining retry"
-            );
-            retry -= 1;
-            await new Promise(function (resolve) {
-                setTimeout(resolve, 50);
-            });
-        }
-    }
+async function dbFileExportAsync({
+    db,
+    filename,
+    modeExport = 1
+}) {
+// This function will export <db> to <filename>
+    assertOrThrow(filename, "invalid filename " + filename);
+    await dbCallAsync(
+        undefined,
+        "_dbFileImportOrExport",
+        db,
+        String(filename),
+        modeExport
+    );
 }
 
-function dbGetLastBlobAsync({
-    bindList = [],
+async function dbFileImportAsync({
     db,
-    sql
+    filename
 }) {
-// this function will exec <sql> in <db> and return last value retrieved
-// from execution as raw blob/buffer
-    return dbExecAsync({
-        bindList,
+// This function will import <filename> to <db>
+    await dbFileExportAsync({
         db,
-        responseType: "lastBlob",
-        sql
+        filename,
+        modeExport: 0
     });
-}
-
-async function dbMemoryLoadAsync({
-    db,
-    filename
-}) {
-// This function will load <filename> to <db>
-    assertOrThrow(filename, "invalid filename " + filename);
-    await dbCallAsync(
-        undefined,
-        "_dbMemoryLoadOrSave",
-        db,
-        String(filename),
-        0
-    );
-}
-
-async function dbMemorySaveAsync({
-    db,
-    filename
-}) {
-// This function will save <db> to <filename>
-    assertOrThrow(filename, "invalid filename " + filename);
-    await dbCallAsync(
-        undefined,
-        "_dbMemoryLoadOrSave",
-        db,
-        String(filename),
-        1
-    );
 }
 
 async function dbNoopAsync(...argList) {
@@ -419,7 +430,7 @@ async function dbNoopAsync(...argList) {
 
 async function dbOpenAsync({
     afterFinalization,
-    filedata,
+    dbData,
     filename,
     flags,
     rawPtr,
@@ -441,8 +452,8 @@ async function dbOpenAsync({
         `invalid filename ${filename}`
     );
     assertOrThrow(
-        !filedata || filedata.constructor === ArrayBuffer,
-        "filedata must be ArrayBuffer"
+        !dbData || isExternalBuffer(dbData),
+        "dbData must be ArrayBuffer"
     );
     if (rawPtr) {
         rawPtr = [
@@ -467,7 +478,7 @@ async function dbOpenAsync({
             // 3. const char *zVfs        Name of VFS module to use
             undefined,
             // 4. wasm-only - arraybuffer of raw sqlite-database to open in wasm
-            filedata
+            dbData
         );
         ptr = rawPtr || [
             ptr[0].getBigInt64(4 + 4, true)
@@ -545,6 +556,17 @@ async function dbTableInsertAsync({
         String(sqlCreateTable),
         String(sqlInsertRow),
         ...externalbufferList
+    );
+}
+
+function isExternalBuffer(buf) {
+// this function will check if <buf> is ArrayBuffer or SharedArrayBuffer
+    return buf && (
+        buf.constructor === ArrayBuffer
+        || (
+            typeof SharedArrayBuffer === "function"
+            && buf.constructor === SharedArrayBuffer
+        )
     );
 }
 
@@ -654,13 +676,7 @@ function jsbatonValuePush({
     // 14. true.string
     default:
         // 18. true.externalbuffer
-        if (
-            value?.constructor === ArrayBuffer
-            || (
-                typeof SharedArrayBuffer === "function"
-                && value?.constructor === SharedArrayBuffer
-            )
-        ) {
+        if (isExternalBuffer(value)) {
             assertOrThrow(
                 !IS_BROWSER,
                 "external ArrayBuffer cannot be passed directly to wasm"
@@ -1118,9 +1134,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     ];
 }
 
-async function sqlmathInit({
-    Worker
-}) {
+async function sqlmathInit() {
     dbFinalizationRegistry = new FinalizationRegistry(function ({
         afterFinalization,
         ptr
@@ -1152,14 +1166,18 @@ async function sqlmathInit({
             // mock consoleError
             consoleError = noop;
         }
-        return;
     }
+}
+
+function sqlmathWebworkerInit({
+    Worker
+}) {
 
 // Feature-detect browser.
 
     IS_BROWSER = true;
     Worker = Worker || globalThis.Worker;
-    sqlWorker = new Worker("sqlmath_wasm.js?initSqlJsWorker=1");
+    sqlWorker = new Worker("sqlmath_wasm.js");
     sqlWorker.onmessage = function ({
         data
     }) {
@@ -1207,16 +1225,17 @@ export {
     assertNumericalEqual,
     assertOrThrow,
     dbCloseAsync,
+    dbExecAndReturnLastBlobAsync,
     dbExecAsync,
-    dbExecWithRetryAsync,
-    dbGetLastBlobAsync,
-    dbMemoryLoadAsync,
-    dbMemorySaveAsync,
+    dbFileExportAsync,
+    dbFileImportAsync,
     dbNoopAsync,
     dbOpenAsync,
     dbTableInsertAsync,
     debugInline,
     jsbatonValueString,
     noop,
-    objectDeepCopyWithKeysSorted
+    objectDeepCopyWithKeysSorted,
+    sqlmathInit,
+    sqlmathWebworkerInit
 };

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>sqlmath tradebot</title>
+    <link rel="modulepreload" href="sqlmath_wasm.js" />
+    <link rel="modulepreload" href="sqlmath.mjs" />
+    <!--!! <script type="module" src="sqlmath.mjs?window_sqlmath=1"></script> -->
+<style>
+/* jslint utility2:true */
+/*csslint
+    box-model: false,
+    ids: false,
+    important: false,
+    overqualified-elements: false,
+    qualified-headings: false,
+*/
+* {
+    box-sizing: border-box;
+}
+body {
+    display: flex;
+    font-family: monospace;
+    margin: 0;
+}
+#panelListing1 {
+    border-right: 1px solid #777;
+    height: 100%;
+    overflow-x: hidden;
+    position: fixed;
+    width: 200px;
+}
+#panelMain1 {
+    flex: 1;
+    margin-left: 200px;
+}
+</style>
+</head>
+<body>
+
+
+<!-- panelListing1 start -->
+<div id="panelListing1">
+</div>
+<!-- panelListing1 end -->
+
+
+<!-- panelMain1 start -->
+<div id="panelMain1">
+aa
+</div>
+<!-- panelMain1 end -->
+
+
+<!-- script start -->
+<script type="module">
+import {
+    //!! assertJsonEqual,
+    //!! assertNumericalEqual,
+    //!! assertOrThrow,
+    //!! dbCloseAsync,
+    dbExecAsync,
+    //!! dbExecWithRetryAsync,
+    //!! dbGetLastBlobAsync,
+    //!! dbMemoryLoadAsync,
+    //!! dbMemorySaveAsync,
+    dbOpenAsync,
+    debugInline,
+    noop,
+    //!! objectDeepCopyWithKeysSorted
+    sqlmathWebworkerInit
+} from "./sqlmath.mjs";
+noop(debugInline);
+await (async function () {
+    let dbData;
+    let db;
+    await sqlmathWebworkerInit({});
+    dbData = await fetch("./.betadog_dtt0_public.sqlite");
+    dbData = await dbData.arrayBuffer();
+    db = await dbOpenAsync({
+        dbData,
+        filename: ":memory:"
+    });
+    debugInline(
+        await dbExecAsync({
+            db,
+            //!! responseType: "list",
+            sql: "SELECT * FROM sqlite_schema"
+        })
+    );
+}());
+</script>
+<!-- script end -->
+
+
+</body>
+</html>

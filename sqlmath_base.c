@@ -92,7 +92,7 @@ extern "C" {
 
 
 // this function will exec <sql> and if <errcode> is not ok,
-// throw <baton->errmsg>
+// throw <baton>->errmsg with given sqlite-<errcode>
 #define JSBATON_ASSERT_OK() \
     if (errcode != SQLITE_OK) { \
         if (baton != NULL && baton->errmsg[0] == '\x00') { \
@@ -240,10 +240,10 @@ typedef struct Jsbaton {
 
 
 // file sqlmath_h - SQLMATH_API
-SQLMATH_API int __dbMemoryLoadOrSave(
+SQLMATH_API int __dbFileImportOrExport(
     sqlite3 * pInMemory,
-    const char *zFilename,
-    int isSave
+    char *zFilename,
+    const int isSave
 );
 
 SQLMATH_API void dbClose(
@@ -254,7 +254,7 @@ SQLMATH_API void dbExec(
     Jsbaton * baton
 );
 
-SQLMATH_API void dbMemoryLoadOrSave(
+SQLMATH_API void dbFileImportOrExport(
     Jsbaton * baton
 );
 
@@ -338,11 +338,13 @@ static int dbCount = 0;
 
 
 // file sqlmath_ext - SQLMATH_API
-SQLMATH_API int __dbMemoryLoadOrSave(
+SQLMATH_API int __dbFileImportOrExport(
     sqlite3 * pInMemory,
-    const char *zFilename,
-    int isSave
+    char *zFilename,
+    const int isSave
 ) {
+    // fprintf(stderr, "\nsqlmath.dbFileImportOrExport(pp=%p ff=%s ss=%d)\n",
+    //     pInMemory, zFilename, isSave);
 /*
 ** https://www.sqlite.org/backup.html
 ** This function is used to load the contents of a database file on disk
@@ -733,18 +735,18 @@ SQLMATH_API void dbExec(
 
 // SQLMATH_API dbexec - end
 
-SQLMATH_API void dbMemoryLoadOrSave(
+SQLMATH_API void dbFileImportOrExport(
     Jsbaton * baton
 ) {
 // This function will load/save <zFilename> to/from <db>
     // declare var
-    const char *zFilename = JSBATON_VALUE_STRING_ARGI(1);
     int errcode = 0;
-    int isSave = baton->argv[2];
     sqlite3 *db = (sqlite3 *) baton->argv[0];
-    // fprintf(stderr, "\nsqlmath.dbMemoryLoadOrSave(ff=%s isSave=%d)\n",
-    //     zFilename, isSave);
-    errcode = __dbMemoryLoadOrSave(db, zFilename, isSave);
+    // call __dbFileImportOrExport()
+    errcode = __dbFileImportOrExport(   //
+        db,                     //
+        (char *) JSBATON_VALUE_STRING_ARGI(1),  //
+        (const int) baton->argv[2]);
     JSBATON_ASSERT_OK();
   catch_error:
     (void) 0;
@@ -1751,7 +1753,7 @@ static void jspromiseResolve(
     NAPI_ASSERT_FATAL(errcode == 0, "napi_delete_reference");
     // Resolve or reject the promise associated with the deferred depending on
     // whether the asynchronous action succeeded.
-    if (baton->errmsg[0] == 0) {
+    if (baton->errmsg[0] == '\x00') {
         // resolve promise with result
         if (jsbatonExport(env, baton) == NULL) {
             return;
@@ -1840,7 +1842,7 @@ static napi_value jspromiseCreate(
 // file sqlmath_napi - init
 NAPI_JSPROMISE_CREATE(dbClose);
 NAPI_JSPROMISE_CREATE(dbExec);
-NAPI_JSPROMISE_CREATE(dbMemoryLoadOrSave);
+NAPI_JSPROMISE_CREATE(dbFileImportOrExport);
 NAPI_JSPROMISE_CREATE(dbNoop);
 NAPI_JSPROMISE_CREATE(dbOpen);
 NAPI_JSPROMISE_CREATE(dbTableInsert);
@@ -1869,7 +1871,7 @@ napi_value napi_module_sqlmath_init(
     const napi_property_descriptor propList[] = {
         NAPI_EXPORT_MEMBER(_dbClose),
         NAPI_EXPORT_MEMBER(_dbExec),
-        NAPI_EXPORT_MEMBER(_dbMemoryLoadOrSave),
+        NAPI_EXPORT_MEMBER(_dbFileImportOrExport),
         NAPI_EXPORT_MEMBER(_dbNoop),
         NAPI_EXPORT_MEMBER(_dbOpen),
         NAPI_EXPORT_MEMBER(_dbTableInsert),
