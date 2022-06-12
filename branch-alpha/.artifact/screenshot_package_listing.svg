@@ -1,5 +1,5 @@
-<svg height="734" width="800" xmlns="http://www.w3.org/2000/svg">
-<rect height="734" fill="#222" width="800"></rect>
+<svg height="778" width="800" xmlns="http://www.w3.org/2000/svg">
+<rect height="778" fill="#222" width="800"></rect>
 <text
     fill="#7f7"
     font-family="consolas, menlo, monospace"
@@ -11,13 +11,13 @@
     textLength="768"
     x="10"
     y="32"
-> 0.  755  2022-06-07T06:46:46Z  13034 KB  .                                                      </tspan>
+> 0.  755  2022-06-12T03:03:32Z  13414 KB  .                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="54"
-> 1.  644  2022-06-06T22:26:51Z     23 KB  .ci.sh                                                 </tspan>
+> 1.  644  2022-06-12T03:03:32Z     23 KB  .ci.sh                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -53,7 +53,7 @@
     textLength="768"
     x="10"
     y="186"
-> 7.  644  2022-06-06T01:49:40Z     15 KB  CHANGELOG.md                                           </tspan>
+> 7.  644  2022-06-12T03:03:32Z     15 KB  CHANGELOG.md                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -107,97 +107,109 @@
     textLength="768"
     x="10"
     y="384"
->14.  644  2022-03-12T10:07:54Z     71 KB  indent.exe                                             </tspan>
+>14.  644  2022-06-12T03:03:32Z    377 KB  csslint.js                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->15.  644  2022-06-07T06:46:46Z    326 KB  jslint.mjs                                             </tspan>
+>15.  644  2022-03-12T10:07:54Z     71 KB  indent.exe                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->16.  644  2022-06-02T17:37:25Z     89 KB  jslint_ci.sh                                           </tspan>
+>16.  644  2022-06-12T03:03:32Z      2 KB  index.html                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->17.  644  2022-06-05T02:05:33Z      2 KB  package.json                                           </tspan>
+>17.  644  2022-06-12T03:03:32Z    326 KB  jslint.mjs                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
->18.  644  2022-06-05T02:05:33Z     95 KB  spa.sqlchart.html                                      </tspan>
+>18.  644  2022-06-02T17:37:25Z     89 KB  jslint_ci.sh                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
->19.  644  2022-06-06T01:49:40Z     61 KB  spa.sqlchart.js                                        </tspan>
+>19.  644  2022-06-12T03:03:32Z      2 KB  package.json                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->20.  644  2022-05-29T04:05:38Z   8906 KB  sqlite3.c                                              </tspan>
+>20.  644  2022-06-05T02:05:33Z     95 KB  spa.sqlchart.html                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="538"
->21.  644  2022-06-02T17:37:25Z    161 KB  sqlite3_ext.c                                          </tspan>
+>21.  644  2022-06-06T01:49:40Z     61 KB  spa.sqlchart.js                                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
->22.  644  2022-05-21T06:35:03Z    710 KB  sqlite3_shell.c                                        </tspan>
+>22.  644  2022-05-29T04:05:38Z   8906 KB  sqlite3.c                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="582"
->23.  644  2022-06-06T22:26:51Z     35 KB  sqlmath.mjs                                            </tspan>
+>23.  644  2022-06-02T17:37:25Z    161 KB  sqlite3_ext.c                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="604"
->24.  644  2022-06-06T22:26:51Z     59 KB  sqlmath_base.c                                         </tspan>
+>24.  644  2022-05-21T06:35:03Z    710 KB  sqlite3_shell.c                                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="626"
->25.  644  2022-05-15T03:37:09Z      2 KB  sqlmath_custom.c                                       </tspan>
+>25.  644  2022-06-12T03:03:32Z     35 KB  sqlmath.mjs                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->26.  644  2021-11-22T22:48:54Z      1 KB  sqlmath_custom.mjs                                     </tspan>
+>26.  644  2022-06-12T03:03:32Z     59 KB  sqlmath_base.c                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->27.  644  2022-06-03T03:11:41Z     32 KB  sqlmath_jenks.c                                        </tspan>
+>27.  644  2022-05-15T03:37:09Z      2 KB  sqlmath_custom.c                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->28.  644  2022-06-06T22:26:51Z     49 KB  sqlmath_wrapper_wasm.js                                </tspan>
+>28.  644  2021-11-22T22:48:54Z      1 KB  sqlmath_custom.mjs                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->29.  644  2022-06-06T01:49:40Z     44 KB  test.mjs                                               </tspan>
+>29.  644  2022-06-03T03:11:41Z     32 KB  sqlmath_jenks.c                                        </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="736"
+>30.  644  2022-06-12T03:03:32Z     49 KB  sqlmath_wrapper_wasm.js                                </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="758"
+>31.  644  2022-06-12T03:03:32Z     44 KB  test.mjs                                               </tspan>
 
 </text>
 </svg>
