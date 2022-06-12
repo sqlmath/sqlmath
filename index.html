@@ -63,8 +63,7 @@ import {
     dbExecAsync,
     //!! dbExecWithRetryAsync,
     //!! dbGetLastBlobAsync,
-    //!! dbMemoryLoadAsync,
-    //!! dbMemorySaveAsync,
+    dbFileExportAsync,
     dbOpenAsync,
     debugInline,
     noop,
@@ -82,13 +81,18 @@ await (async function () {
         dbData,
         filename: ":memory:"
     });
-    debugInline(
+    debugInline(noop(
         await dbExecAsync({
             db,
             //!! responseType: "list",
             sql: "SELECT * FROM sqlite_schema"
         })
-    );
+    ));
+    debugInline(noop(
+        await dbFileExportAsync({
+            db
+        })
+    ));
 }());
 </script>
 <!-- script end -->

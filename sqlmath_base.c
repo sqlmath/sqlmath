@@ -433,7 +433,7 @@ SQLMATH_API void dbExec(
     DbExecBindElem *bindElem = NULL;
     DbExecBindElem *bindList = NULL;
     JsonString *str99 = &__str99;
-    const char **pzShared = ((const char **) baton->argv) + 5;
+    const char **pzShared = ((const char **) baton->argv) + 8;
     const char *zBind = (const char *) baton + SQLITE_DATATYPE_OFFSET;
     const char *zSql = JSBATON_VALUE_STRING_ARGI(1);
     const char *zTmp = NULL;
@@ -713,8 +713,8 @@ SQLMATH_API void dbExec(
     STR99_APPEND_CHAR2(']');
     STR99_APPEND_CHAR2('\n');
     // copy str99 to baton
-    baton->argv[0] = str99->nUsed;
-    baton->bufv[0] = (int64_t) str99->zBuf;
+    baton->argv[7] = str99->nUsed;
+    baton->bufv[7] = (int64_t) str99->zBuf;
   catch_error:
     // cleanup pStmt
     sqlite3_finalize(pStmt);

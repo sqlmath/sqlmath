@@ -49,54 +49,27 @@
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
-/*
-var ALLOC_NORMAL = 0; // Tries to use _malloc()
-var ALLOC_STACK = 1; // Lives for the duration of the current function call
-*/
-/**
- * allocate(): This function is no longer used by emscripten but is kept around to avoid
- *             breaking external users.
- *             You should normally not use allocate(), and instead allocate
- *             memory using _malloc()/stackAlloc(), initialize it with
- *             setValue(), and so forth.
- * @param {(Uint8Array|Array<number>)} slab: An array of data.
- * @param {number=} allocator : How to allocate memory, see ALLOC_*
- */
-/*
-function allocate(slab, allocator) {
-  var ret;
-#if ASSERTIONS
-  assert(typeof allocator == 'number', 'allocate no longer takes a type argument')
-  assert(typeof slab != 'number', 'allocate no longer takes a number as arg0')
-#endif
-  if (allocator == ALLOC_STACK) {
-    ret = stackAlloc(slab.length);
-  } else {
-    ret = {{{ makeMalloc('allocate', 'slab.length') }}};
-  }
-  if (!slab.subarray && !slab.slice) {
-    slab = new Uint8Array(slab);
-  }
-  HEAPU8.set(slab, ret);
-  return ret;
-}
-function makeMalloc(source, param) {
-  if (hasExportedFunction('_malloc')) {
-    return `_malloc(${param})`;
-  }
-  // It should be impossible to call some functions without malloc being
-  // included, unless we have a deps_info.json bug. To let closure not error
-  // on `_malloc` not being present, they don't call malloc and instead abort
-  // with an error at runtime.
-  // TODO: A more comprehensive deps system could catch this at compile time.
-  if (!ASSERTIONS) {
-    return 'abort();';
-  }
-  return `abort('malloc was not included, but is needed in ${source}. Adding "_malloc" to EXPORTED_FUNCTIONS should fix that. This may be a bug in the compiler, please file an issue.');`;
-}
-*/
 
 "use strict";
+// init debugInline
+let debugInline = (function () {
+    let __consoleError = function () {
+        return;
+    };
+    function debug(...argv) {
+
+// This function will print <argv> to stderr and then return <argv>[0].
+
+        __consoleError("\n\ndebugInline");
+        __consoleError(...argv);
+        __consoleError("\n");
+        return argv[0];
+    }
+    debug(); // Coverage-hack.
+    __consoleError = console.error;
+    return debug;
+}());
+let FILENAME_DBTMP = "/tmp/__dbtmp1";
 let JSBATON_ARGC = 16;
 let JSBATON_OFFSET_BUFV = 4 + 4 + 128;
 let JSBATON_OFFSET_ERRMSG = 4 + 4 + 128 + 128 + 8;
@@ -117,10 +90,12 @@ function sqlWorkerDispatch(data) {
     let baton = new Uint8Array(data["baton"] && data["baton"].buffer);
     let batonPtr = 0;
     let cFuncName = data["cFuncName"];
+    let dbData = argList[4];
     let dbPtr = 0;
     let errcode = 0;
     let errmsg = "";
     let id = data["id"];
+    let modeExport = argList[2];
     switch (cFuncName) {
     case "_dbClose":
     case "_dbExec":
@@ -128,9 +103,17 @@ function sqlWorkerDispatch(data) {
     case "_dbNoop":
     case "_dbOpen":
         // copy baton to wasm
-        batonPtr = _malloc(baton.byteLength);
+        batonPtr = _sqlite3_malloc(baton.byteLength);
         data["batonPtr"] = batonPtr;
         HEAPU8.set(baton, batonPtr);
+        switch (cFuncName) {
+        case "_dbFileImportOrExport":
+            // import dbData
+            if (!modeExport) {
+                FS.writeFile(FILENAME_DBTMP, new Uint8Array(dbData));
+            }
+            break;
+        }
         // call c-function
         cModule[cFuncName](batonPtr);
         // init errmsg
@@ -168,20 +151,29 @@ function sqlWorkerDispatch(data) {
                 new Uint8Array(argList[ii]).set(
                     HEAPU8.subarray(ptr, ptr + argList[ii].byteLength)
                 );
+                // cleanup ptr
+                _sqlite3_free(ptr);
             }
         });
-        // _dbOpen - optionally import dbData
-        if (!errmsg && cFuncName === "_dbOpen" && argList[4]) {
-            FS.writeFile("/tmp/__dbTmp1", new Uint8Array(argList[4]));
-            try {
+        switch (!errmsg && cFuncName) {
+        case "_dbFileImportOrExport":
+            // export dbData
+            if (modeExport) {
+                dbData = FS.readFile(FILENAME_DBTMP);
+                argList[4] = dbData.buffer;
+            }
+            break;
+        case "_dbOpen":
+            // import dbData
+            if (dbData) {
+                FS.writeFile(FILENAME_DBTMP, new Uint8Array(dbData));
                 dbPtr = Number(argList[0]);
-                errcode = __dbFileImportOrExport(dbPtr, "/tmp/__dbTmp1", 0);
+                errcode = __dbFileImportOrExport(dbPtr, FILENAME_DBTMP, 0);
                 if (errcode) {
                     errmsg = sqlite3_errmsg(dbPtr)
                 }
-            } finally {
-                FS.unlink("/tmp/__dbTmp1");
             }
+            break;
         }
         postMessage(
             {
@@ -254,6 +246,7 @@ function sqlWorkerDispatch(data) {
 self["onmessage"] = async function ({
     data
 }) {
+    let cFuncName = data["cFuncName"];
     sqlmath = sqlmath || await onModulePostRun;
     data["batonPtr"] = 0;
     try {
@@ -265,7 +258,16 @@ self["onmessage"] = async function ({
         });
     } finally {
         // cleanup batonPtr
-        _free(data["batonPtr"]);
+        _sqlite3_free(data["batonPtr"]);
+        // cleanup FILENAME_DBTMP
+        switch (cFuncName) {
+        case "_dbFileImportOrExport":
+        case "_dbOpen":
+            try {
+                FS.unlink(FILENAME_DBTMP);
+            } catch (ignore) {}
+            break;
+        }
     }
 };
 onModulePostRun = new Promise(function (resolve) {

@@ -516,10 +516,12 @@ shCiBuildWasm() {(set -e
 "_dbFileImportOrExport",
 "_dbNoop",
 "_dbOpen",
+"_sqlite3_errmsg",
+"_sqlite3_free",
+"_sqlite3_malloc",
+
 "_free",
 "_malloc",
-"_sqlite3_errmsg",
-
 "_sqlite3_bind_blob",
 "_sqlite3_bind_double",
 "_sqlite3_bind_int",
@@ -589,8 +591,8 @@ shCiBuildWasm() {(set -e
         \
         -o sqlmath_wasm.js \
         \
-        #!! --closure 1 \
-        #!! -Oz \
+        --closure 1 \
+        -Oz \
         #
     printf '' > .tmp.js
     printf '

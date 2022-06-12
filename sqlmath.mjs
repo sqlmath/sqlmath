@@ -25,6 +25,7 @@
 /*global FinalizationRegistry*/
 "use strict";
 
+let FILENAME_DBTMP = "/tmp/__dbtmp1";
 let IS_BROWSER;
 let JSBATON_ARGC = 16;
 let SQLITE_DATATYPE_BLOB = 0x04;
@@ -156,7 +157,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         case "bigint":
         case "boolean":
             baton.setBigInt64(8 + argi * 8, BigInt(value), true);
-            return;
+            return value;
         case "number":
             // check for min/max safe-integer
             assertOrThrow(
@@ -170,7 +171,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
                 )
             );
             baton.setBigInt64(8 + argi * 8, BigInt(value), true);
-            return;
+            return value;
         // case "object":
         //     break;
         case "string":
@@ -351,9 +352,12 @@ async function dbExecAsync({
             ? 1
             : 0
         ),
-        ...externalbufferList        // 5
+        undefined, // 5
+        undefined, // 6
+        undefined, // 7 - response
+        ...externalbufferList        // 8
     );
-    result = result[2];
+    result = result[2 + 7];
     switch (responseType) {
     case "arraybuffer":
     case "lastBlob":
@@ -377,27 +381,42 @@ async function dbExecAsync({
 
 async function dbFileExportAsync({
     db,
+    dbData,
     filename,
     modeExport = 1
 }) {
 // This function will export <db> to <filename>
-    assertOrThrow(filename, "invalid filename " + filename);
-    await dbCallAsync(
+    let result;
+    if (IS_BROWSER) {
+        filename = FILENAME_DBTMP;
+    }
+    assertOrThrow(
+        typeof filename === "string" && filename,
+        `invalid filename ${filename}`
+    );
+    result = await dbCallAsync(
         undefined,
         "_dbFileImportOrExport",
-        db,
-        String(filename),
-        modeExport
+        db,                     // 0. sqlite3 * pInMemory,
+        String(filename),       // 1. char *zFilename,
+        modeExport,             // 2. const int isSave
+        undefined,              // 3. undefined
+        dbData                  // 4. dbData
     );
+    if (IS_BROWSER) {
+        return result[2 + 4];
+    }
 }
 
 async function dbFileImportAsync({
     db,
+    dbData,
     filename
 }) {
 // This function will import <filename> to <db>
     await dbFileExportAsync({
         db,
+        dbData,
         filename,
         modeExport: 0
     });
