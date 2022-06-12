@@ -266,10 +266,6 @@ SQLMATH_API void dbOpen(
     Jsbaton * baton
 );
 
-SQLMATH_API void dbTableInsert(
-    Jsbaton * baton
-);
-
 SQLMATH_API int doubleSign(
     const double aa
 );
@@ -787,125 +783,6 @@ SQLMATH_API void dbOpen(
     baton->argv[0] = (int64_t) db;
   catch_error:
     (void) 0;
-}
-
-SQLMATH_API void dbTableInsert(
-    Jsbaton * baton
-) {
-// This function will <zSqlCreateTable> in <db> and <zSqlInsertRow>
-// to given table.
-    // declare var
-    char datatype = 0;
-    const char *zBind = (const char *) baton + SQLITE_DATATYPE_OFFSET;
-    const char *zSqlCreateTable = JSBATON_VALUE_STRING_ARGI(3);
-    const char *zSqlInsertRow = JSBATON_VALUE_STRING_ARGI(4);
-    const char *zTmp = NULL;
-    int bTxn = 0;
-    int errcode = 0;
-    int ii = 0;
-    int jj = 0;
-    int nCol = (int) baton->argv[1];
-    int nRow = (int) baton->argv[2];
-    size_t nLen = 0;
-    sqlite3 *db = (sqlite3 *) baton->argv[0];
-    sqlite3_stmt *pStmt = NULL;
-#ifndef EMSCRIPTEN
-    // mutex enter
-    sqlite3_mutex_enter(sqlite3_db_mutex(db));
-#endif                          // EMSCRIPTEN
-    if (zSqlCreateTable == NULL || zSqlInsertRow == NULL) {
-        errcode = SQLITE_ERROR_ZSQL_NULL;
-        JSBATON_ASSERT_OK();
-    }
-    // begin transaction
-    errcode = sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);
-    JSBATON_ASSERT_OK();
-    bTxn = 1;
-    // create table
-    errcode = sqlite3_exec(db, zSqlCreateTable, NULL, NULL, NULL);
-    JSBATON_ASSERT_OK();
-    // init pStmt
-    errcode = sqlite3_prepare_v2(db, zSqlInsertRow, -1, &pStmt, &zTmp);
-    JSBATON_ASSERT_OK();
-    // insert row
-    while (ii < nRow) {
-        jj = 1;
-        while (jj <= nCol) {
-            datatype = zBind[0];
-            zBind += 1;
-            switch (datatype) {
-            case SQLITE_DATATYPE_BLOB:
-                nLen = *(int32_t *) zBind;
-                errcode = sqlite3_bind_blob(pStmt, jj, zBind + 4, (int) nLen,
-                    SQLITE_STATIC);
-                JSBATON_ASSERT_OK();
-                zBind += 4 + nLen;
-                break;
-            case SQLITE_DATATYPE_FLOAT:
-                errcode = sqlite3_bind_double(pStmt, jj, *(double *) zBind);
-                JSBATON_ASSERT_OK();
-                zBind += 8;
-                break;
-            case SQLITE_DATATYPE_INTEGER:
-                errcode = sqlite3_bind_int64(pStmt, jj, *(int64_t *) zBind);
-                JSBATON_ASSERT_OK();
-                zBind += 8;
-                break;
-            case SQLITE_DATATYPE_INTEGER_0:
-                errcode = sqlite3_bind_int(pStmt, jj, 0);
-                JSBATON_ASSERT_OK();
-                break;
-            case SQLITE_DATATYPE_INTEGER_1:
-                errcode = sqlite3_bind_int(pStmt, jj, 1);
-                JSBATON_ASSERT_OK();
-                break;
-            case SQLITE_DATATYPE_NULL:
-                errcode = sqlite3_bind_null(pStmt, jj);
-                JSBATON_ASSERT_OK();
-                break;
-            case SQLITE_DATATYPE_TEXT_0:
-                errcode = sqlite3_bind_text(pStmt, jj, "", 0, SQLITE_STATIC);
-                JSBATON_ASSERT_OK();
-                break;
-            case SQLITE_DATATYPE_TEXT:
-                nLen = *(int32_t *) zBind;
-                errcode = sqlite3_bind_text(pStmt, jj, zBind + 4, (int) nLen,
-                    SQLITE_STATIC);
-                JSBATON_ASSERT_OK();
-                zBind += 4 + nLen;
-                break;
-            default:
-                fprintf(stderr,
-                    "\nsqlmath.dbTableInsert(ii=%d jj=%d dtype=%d len=%d]\n",
-                    ii, jj, datatype, *(int32_t *) zBind);
-                errcode = SQLITE_ERROR_DATATYPE_INVALID;
-                JSBATON_ASSERT_OK();
-            }
-            jj += 1;
-        }
-        errcode = sqlite3_step(pStmt);
-        if (errcode == SQLITE_DONE || errcode == SQLITE_ROW) {
-            errcode = SQLITE_OK;
-        }
-        JSBATON_ASSERT_OK();
-        errcode = sqlite3_clear_bindings(pStmt);
-        JSBATON_ASSERT_OK();
-        errcode = sqlite3_reset(pStmt);
-        JSBATON_ASSERT_OK();
-        ii += 1;
-    }
-  catch_error:
-    // end transaction
-    if (bTxn) {
-        bTxn = 0;
-        sqlite3_exec(db, "END TRANSACTION;", NULL, NULL, NULL);
-    }
-    // cleanup pStmt
-    sqlite3_finalize(pStmt);
-#ifndef EMSCRIPTEN
-    // mutex leave
-    sqlite3_mutex_leave(sqlite3_db_mutex(db));
-#endif                          // EMSCRIPTEN
 }
 
 SQLMATH_API int doubleSign(
@@ -1845,7 +1722,6 @@ NAPI_JSPROMISE_CREATE(dbExec);
 NAPI_JSPROMISE_CREATE(dbFileImportOrExport);
 NAPI_JSPROMISE_CREATE(dbNoop);
 NAPI_JSPROMISE_CREATE(dbOpen);
-NAPI_JSPROMISE_CREATE(dbTableInsert);
 
 napi_value napi_module_sqlmath_init(
     napi_env env,
@@ -1874,7 +1750,6 @@ napi_value napi_module_sqlmath_init(
         NAPI_EXPORT_MEMBER(_dbFileImportOrExport),
         NAPI_EXPORT_MEMBER(_dbNoop),
         NAPI_EXPORT_MEMBER(_dbOpen),
-        NAPI_EXPORT_MEMBER(_dbTableInsert),
     };
     errcode = napi_define_properties(env, exports,
         sizeof(propList) / sizeof(napi_property_descriptor), propList);

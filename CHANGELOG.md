@@ -6,6 +6,7 @@
 - none
 
 # v2022.6.1-beta
+- remove obsolete csv-json-import functions like dbTableInsert(), superseded by json_each()
 - wasm - update function dbOpen() to be able to import raw dbData arraybuffer
 - merge function dbExecWithRetryAsync() into dbExecAsync()
 - rename function dbMemoryLoadOrSave to dbFileImportOrExport()

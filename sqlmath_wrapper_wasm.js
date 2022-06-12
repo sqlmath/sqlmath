@@ -127,7 +127,6 @@ function sqlWorkerDispatch(data) {
     case "_dbFileImportOrExport":
     case "_dbNoop":
     case "_dbOpen":
-    case "_dbTableInsert":
         // copy baton to wasm
         batonPtr = _malloc(baton.byteLength);
         data["batonPtr"] = batonPtr;
@@ -334,7 +333,6 @@ Module["onRuntimeInitialized"] = function onRuntimeInitialized() {
     cModule["_dbFileImportOrExport"] = _dbFileImportOrExport;
     cModule["_dbNoop"] = _dbNoop;
     cModule["_dbOpen"] = _dbOpen;
-    cModule["_dbTableInsert"] = _dbTableInsert;
     sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
     //
     let sqlite3_open = cwrap("sqlite3_open", "number", ["string", "number"]);

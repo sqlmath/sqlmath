@@ -516,7 +516,6 @@ shCiBuildWasm() {(set -e
 "_dbFileImportOrExport",
 "_dbNoop",
 "_dbOpen",
-"_dbTableInsert",
 "_free",
 "_malloc",
 "_sqlite3_errmsg",
