@@ -4,51 +4,134 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>sqlmath tradebot</title>
+    <link rel="stylesheet" href="asset_sqlmath_external_rollup.css">
     <link rel="modulepreload" href="sqlmath.mjs" />
     <link rel="modulepreload" href="sqlmath_wasm.js" />
+    <script defer src="asset_sqlmath_external_rollup.js"></script>
     <script type="module" src="./sqlmath_browser.mjs?aa=01"></script>
 <style>
 /* jslint utility2:true */
 /*csslint
     box-model: false,
+    box-sizing: false,
     ids: false,
     important: false,
     overqualified-elements: false,
     qualified-headings: false,
+    universal-selector: false,
 */
 * {
     box-sizing: border-box;
+    margin: 0;
 }
 body {
-    display: flex;
     font-family: monospace;
-    margin: 0;
+    overflow-y: scroll;
+}
+button,
+button:focus,
+button:hover {
+    background: #eee;
+    border: 1px solid #777;
+    font-family: monospace;
+    height: 1.5rem;
+    min-width: 4rem;
+}
+button:hover {
+    background: #bbd;
+    cursor: pointer;
 }
 table {
     border-collapse: collapse;
 }
+textarea {
+    display: block;
+    width: 100%;
+}
+.CodeMirror-wrap {
+    border: 1px solid #777;
+}
+#sqliteEditor1 {
+    height: 300px;
+}
+
+/*css section content*/
+.contentTitle {
+    background: #bbd;
+    border: 1px solid #777;
+    border-bottom: 0;
+    font-weight: bold;
+    margin-top: 1rem;
+    padding: 0.5rem;
+}
+#contentPanel1 {
+    overflow: hidden;
+    padding: 0 2rem 2rem 18rem;
+    width: 100%;
+}
+#contentPanel1 .dataTable {
+    margin: 0;
+}
+#contentPanel1 .dataTable tbody tr:hover {
+    background: #bbd;
+}
+#contentPanel1 .dataTable td,
+#contentPanel1 .dataTable th {
+    border: none;
+    border-right: 1px solid #777 !important;
+    max-width: 32rem;
+    overflow: hidden;
+    padding: 2px 1rem 0 2px !important;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#contentPanel1 .dataTable tr {
+    background: transparent;
+}
+#contentPanel1 .dataTables_info {
+    padding-top: 2px;
+}
+#contentPanel1 .dataTables_scrollBody {
+    background: #ddd;
+    border: 1px solid #777;
+    overflow: scroll !important;
+}
+#contentPanel1 .dataTables_scrollBody .dataTable {
+    background: #fff;
+    border-bottom: 1px solid #777;
+}
+#contentPanel1 .dataTables_scrollHead {
+    border: 1px solid #777 !important;
+    border-bottom: none !important;
+}
+
+
 /*css section nav*/
-.navTdHeader {
-    text-align: center;
+.navDbtable {
+    color: #037;
+    margin-left: -0.5rem;
+}
+.navDbtable:hover {
+    background: #bbd;
+    cursor: pointer;
+}
+.navDbtable::before {
+    width: 1rem;
+}
+.navTitle {
+    border-top: 1px solid #777;
+    padding-left: 0.5rem;
 }
 #navPanel1 {
     border-right: 1px solid #777;
     height: 100%;
+    left: 0;
     overflow-x: hidden;
     overflow-y: scroll;
     position: fixed;
-    width: 200px;
-}
-#navTable1 {
-    width: 100%;
-}
-/*!! #navTbody1 { */
-    /*!! width: 100%; */
-/*!! } */
-/*css section content*/
-#contentPanel1 {
-    flex: 1;
-    margin-left: 200px;
+    top: 0;
+    width: 16rem;
 }
 </style>
 </head>
@@ -58,20 +141,24 @@ table {
 <!-- contentPanel1 start -->
 <!-- improve seo by keeping contentPanel1 at top -->
 <div id="contentPanel1">
-aa
+    <div class="contentTitle">sqlite editor</div>
+
+<textarea id="sqliteEditor1">
+SELECT COUNT(*), 2;
+SELECT 2;
+select * from db02.p_aco;
+</textarea>
+<button class="button" id="dbExec2" style="margin-top: 1rem;">script - execute</button>
+
+<h2 style="margin-top: 1rem;">sqlite query results</h2>
+<div id="sqlresultList1"></div>
+
 </div>
 <!-- contentPanel1 end -->
 
 
 <!-- navPanel1 start -->
-<div id="navPanel1">
-<table id="navTable1">
-<tbody id="navTbody1">
-    <tr><td class="navTdHeader" colspan="2">databases and tables</td></tr>
-    <tr><td>1</td><td>main.aa</td></tr>
-</tbody>
-</table>
-</div>
+<div id="navPanel1"></div>
 <!-- navPanel1 end -->
 
 

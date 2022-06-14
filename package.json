@@ -11,7 +11,7 @@
     "engines": {
         "node": ">=14"
     },
-    "fileCount": 32,
+    "fileCount": 34,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",

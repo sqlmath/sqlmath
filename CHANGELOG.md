@@ -6,6 +6,8 @@
 - none
 
 # v2022.6.1-beta
+- functional index.html
+- add files asset_sqlmath_external_rollup.css, asset_sqlmath_external_rollup.js
 - bugfix - fix memory-leak by replacing all free()/malloc() with sqlite3_free()/sqlite3_malloc()
 - wasm - update functions dbFileExportAsync(), dbFileImportAsync() to be able to export/import raw-db-arraybuffer
 - remove obsolete csv-json-import functions like dbTableInsert(), superseded by json_each()
