@@ -1,11 +1,15 @@
 # Changelog
 
 # Todo
-- wasm - add wasm-functions dbBufferExport(), dbBufferImport()
 - sqlmath - add sql-extension carrayblob()
 - none
 
 # v2022.6.1-beta
+- sqlmath - milestone - functional index.html
+- add files asset_sqlmath_external_rollup.css, asset_sqlmath_external_rollup.js
+- bugfix - fix memory-leak by replacing all free()/malloc() with sqlite3_free()/sqlite3_malloc()
+- wasm - update functions dbFileExportAsync(), dbFileImportAsync() to be able to export/import raw-db-arraybuffer
+- remove obsolete csv-json-import functions like dbTableInsert(), superseded by json_each()
 - wasm - update function dbOpen() to be able to import raw dbData arraybuffer
 - merge function dbExecWithRetryAsync() into dbExecAsync()
 - rename function dbMemoryLoadOrSave to dbFileImportOrExport()

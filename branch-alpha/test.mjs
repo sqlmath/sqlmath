@@ -34,7 +34,6 @@ import {
     dbFileImportAsync,
     dbNoopAsync,
     dbOpenAsync,
-    dbTableInsertAsync,
     debugInline,
     jsbatonValueString,
     noop
@@ -380,106 +379,6 @@ jstestDescribe((
                     }
                 );
             });
-            // test dbTableInsertAsync's bind handling-behavior
-            [
-                {
-                    // test list-of-list handling-behavior
-                    rowList: [
-                        [
-                            "c1", "c2", "c3"
-                        ],
-                        [
-                            valInput, valInput
-                        ]
-                    ]
-                }, {
-                    // test list-of-dict handling-behavior
-                    rowList: [
-                        {
-                            "c1": valInput,
-                            "c2": valInput,
-                            "c3": undefined
-                        }
-                    ]
-                }, {
-                    // test colList and list-of-list handling-behavior
-                    colList: [
-                        "c1", "c2", "c3"
-                    ],
-                    rowList: [
-                        [
-                            valInput, valInput
-                        ]
-                    ]
-                }, {
-                    // test colList and list-of-dict handling-behavior
-                    colList: [
-                        "c1", "c2", "c3"
-                    ],
-                    rowList: [
-                        {
-                            "c1": valInput,
-                            "c2": valInput,
-                            "c3": undefined
-                        }
-                    ]
-                }, {
-                    // test colList and list-of-list handling-behavior
-                    colList: [
-                        "c1", "c3", "c2"
-                    ],
-                    colListPriority: [
-                        "c1", "c2"
-                    ],
-                    rowList: [
-                        [
-                            valInput, undefined, valInput
-                        ]
-                    ]
-                }
-            ].forEach(async function ({
-                colList,
-                colListPriority,
-                rowList
-            }, jj) {
-                let valActual;
-                try {
-                    valActual = await dbExecAsync({
-                        db,
-                        responseType: "list",
-                        sql: `SELECT * FROM datatype_${ii}_${jj}`,
-                        tmpColList: colList,
-                        tmpColListPriority: colListPriority,
-                        tmpRowList: rowList,
-                        tmpTableName: "datatype_" + ii + "_" + jj
-                    });
-                    valActual = valActual[0];
-                } catch (err) {
-                    assertOrThrow((
-                        valInput
-                        && valInput.constructor === SharedArrayBuffer
-                        && err.message.startsWith("sqlite - invalid datatype")
-                    ), err);
-                    return;
-                }
-                assertJsonEqual(
-                    [
-                        [
-                            "c1", "c2", "c3"
-                        ], [
-                            valExpected, valExpected, undefined
-                        ]
-                    ],
-                    valActual,
-                    {
-                        ii,
-                        jj,
-                        valActual,
-                        valExpected,
-                        valInput
-                    }
-                );
-            });
         });
     });
 });
@@ -665,107 +564,6 @@ SELECT * FROM testDbExecAsync2;
         assertErrorThrownAsync(function () {
             return dbOpenAsync({});
         }, "invalid filename undefined");
-    });
-    jstestIt((
-        "test dbTableInsertAsync handling-behavior"
-    ), async function test_dbTableInsertAsync() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
-        // test error handling-behavior
-        [
-            [
-                undefined,
-                (
-                    /invalid rowList undefined/
-                )
-            ], [
-                [
-                    []
-                ],
-                (
-                    /invalid colList \[\]/
-                )
-            ], [
-                [
-                    {}
-                ],
-                (
-                    /invalid colList \[\]/
-                )
-            ]
-        ].forEach(function ([
-            rowList, rgx
-        ]) {
-            assertErrorThrownAsync(
-                dbTableInsertAsync.bind(
-                    undefined,
-                    {
-                        rowList
-                    }
-                ),
-                rgx
-            );
-        });
-        // test csv handling-behavior
-        [
-            [
-                "0", undefined
-            ],
-            [
-                "0,0,0\n1,1,1",
-                [
-                    [
-                        "c_0", "c_0_2", "c_0_3"
-                    ], [
-                        "1", "1", "1"
-                    ]
-                ]
-            ],
-            [
-                (
-                    "c1,c1,c2\n"
-                    + "1, 2 \n"
-                    + `"1","""2""","3\r\n"\n`
-                    + "\n"
-                    + "1,2,3\n"
-                ),
-                [
-                    [
-                        "c1", "c1_2", "c2"
-                    ], [
-                        "1", " 2 ", null
-                    ], [
-                        "1", "\"2\"", "3\n"
-                    ], [
-                        "", null, null
-                    ], [
-                        "1", "2", "3"
-                    ]
-                ]
-            ]
-        ].forEach(async function ([
-            valInput, valExpected
-        ], ii) {
-            let valActual = await dbExecAsync({
-                db,
-                responseType: "list",
-                sql: `SELECT * FROM temp.csv_${ii}`,
-                tmpCsv: valInput,
-                tmpTableName: "csv_" + ii
-            });
-            valActual = valActual[0];
-            assertJsonEqual(
-                valActual,
-                valExpected,
-                JSON.stringify({
-                    ii,
-                    valActual,
-                    valExpected,
-                    valInput
-                }, undefined, 4)
-            );
-        });
     });
 });
 
@@ -1220,25 +1018,22 @@ jstestDescribe((
             ]
         ].forEach(async function ([
             data, kk, valExpected
-        ], ii) {
+        ]) {
             let valActual;
             data = data.concat([
                 undefined, undefined, 8, 7, 6, 5, 4, 3, 2, 1, undefined
             ]);
             valActual = noop(
                 await dbExecAsync({
+                    bindList: {
+                        tmp1: JSON.stringify(data)
+                    },
                     db,
                     sql: (`
-SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii};
+SELECT kthpercentile(value, ${kk}) AS val FROM json_each($tmp1);
 -- test null-case handling-behavior
-SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
-                    `),
-                    tmpRowList: data.map(function (val) {
-                        return {
-                            val
-                        };
-                    }),
-                    tmpTableName: `__tmp${ii}`
+SELECT kthpercentile(value, ${kk}) AS val FROM json_each($tmp1) WHERE 0;
+                    `)
                 })
             )[0][0].val;
             assertJsonEqual(valActual, valExpected, {

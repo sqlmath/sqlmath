@@ -4,92 +4,222 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>sqlmath tradebot</title>
-    <link rel="modulepreload" href="sqlmath_wasm.js" />
+    <link rel="stylesheet" href="asset_sqlmath_external_rollup.css">
     <link rel="modulepreload" href="sqlmath.mjs" />
-    <!--!! <script type="module" src="sqlmath.mjs?window_sqlmath=1"></script> -->
+    <link rel="modulepreload" href="sqlmath_wasm.js" />
+    <script defer src="asset_sqlmath_external_rollup.js"></script>
+    <script type="module" src="./sqlmath_browser.mjs?aa=02"></script>
 <style>
 /* jslint utility2:true */
 /*csslint
     box-model: false,
+    box-sizing: false,
     ids: false,
     important: false,
     overqualified-elements: false,
     qualified-headings: false,
+    universal-selector: false,
 */
 * {
     box-sizing: border-box;
-}
-body {
-    display: flex;
-    font-family: monospace;
     margin: 0;
 }
-#panelListing1 {
+body {
+    font-family: monospace;
+    font-size: 0.75rem;
+    overflow-y: scroll;
+}
+button,
+button:focus,
+button:hover {
+    background: #eee;
+    border: 1px solid #777;
+    font-family: monospace;
+    font-size: 0.75rem;
+    height: 1.25rem;
+    min-width: 4rem;
+    padding: 0 0.5rem;
+}
+button:hover {
+    background: #bbd;
+    cursor: pointer;
+}
+table {
+    border-collapse: collapse !important;
+}
+textarea {
+    display: block;
+    width: 100%;
+}
+.CodeMirror-wrap {
+    border: 1px solid #777;
+}
+#sqliteEditor1 {
+    height: 300px;
+}
+
+/*css section content*/
+.contentElemTitle {
+    background: #bbd;
+    border: 1px solid #777;
+    border-bottom: 0;
+    font-weight: bold;
+    margin-top: 1rem;
+    padding: 0.5rem;
+}
+.contentSectionTitle {
+    font-size: x-large;
+    font-weight: bold;
+    margin: 2rem 0 1rem 0;
+}
+#contentPanel1 {
+    overflow: hidden;
+    padding: 0 2rem 2rem 18rem;
+    width: 100%;
+}
+#contentPanel1 .dataTable {
+    margin: 0;
+}
+#contentPanel1 .dataTable tbody tr:hover {
+    background: #bbd;
+}
+#contentPanel1 .dataTable td,
+#contentPanel1 .dataTable th {
+    border: none;
+    border-right: 1px solid #777 !important;
+    max-width: 32rem;
+    overflow: hidden;
+    padding: 2px 1rem 0 2px !important;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#contentPanel1 .dataTable tr {
+    background: transparent;
+}
+#contentPanel1 .dataTables_info {
+    padding-top: 2px;
+}
+#contentPanel1 .dataTables_scrollBody {
+    background: #ddd;
+    border: 1px solid #777;
+    overflow: scroll !important;
+}
+#contentPanel1 .dataTables_scrollBody .dataTable {
+    background: #fff;
+    border-bottom: 1px solid #777;
+}
+#contentPanel1 .dataTables_scrollHead {
+    border: 1px solid #777 !important;
+    border-bottom: none !important;
+}
+
+
+/*css section toc*/
+.tocElemA {
+    color: #037;
+    display: inline-block;
+    line-height: 1rem;
+    overflow: hidden;
+    padding: 0 0.5rem 0.125rem 0.625rem;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+}
+.tocElemA:hover {
+    background: #bbd;
+    cursor: pointer;
+}
+.tocElemA::before {
+    background-color: #000;
+    border-radius: 0.125rem;
+    content: "";
+    display: inline-block;
+    height: 0.25rem;
+    margin: 0 0.25rem 0.125rem -0.5rem;
+    width: 0.25rem;
+}
+.tocTitle {
+    border-top: 1px solid #777;
+    margin-left: -0.5rem;
+    padding: 0.5rem;
+    width: 16rem;
+}
+#tocPanel1 {
     border-right: 1px solid #777;
     height: 100%;
+    left: 0;
     overflow-x: hidden;
+    overflow-y: scroll;
+    padding: 0 0.5rem 0 0.5rem;
     position: fixed;
-    width: 200px;
+    top: 0;
+    width: 16rem;
 }
-#panelMain1 {
-    flex: 1;
-    margin-left: 200px;
+#tocPanel1 button {
+    margin-bottom: 0.5rem;
+    text-align: left;
+    width: 100%;
 }
 </style>
 </head>
 <body>
 
 
-<!-- panelListing1 start -->
-<div id="panelListing1">
+<!-- contentPanel1 start -->
+<!-- improve seo by keeping contentPanel1 at top -->
+<div id="contentPanel1">
+
+<div class="contentSectionTitle" style="margin-top: 0.5rem;">sqlite editor</div>
+<div class="contentElemTitle" id="editor1">script editor</div>
+<textarea id="sqliteEditor1">
+SELECT COUNT(*), 2;
+DROP TABLE IF EXISTS foo1;
+CREATE TABLE foo1(aa, bb, cc);
+</textarea>
+<button class="button" id="dbExec2" style="margin-top: 1rem;">script - execute</button>
+
+<div class="contentSectionTitle">sqlite query results</div>
+<div id="sqlresultList1"></div>
+
+<div class="contentSectionTitle">sqlite tables and attached tables</div>
+<div id="dbtableList1"></div>
+
 </div>
-<!-- panelListing1 end -->
+<!-- contentPanel1 end -->
 
 
-<!-- panelMain1 start -->
-<div id="panelMain1">
-aa
+<!-- misc start -->
+<div style="display: none;">
+    <input id="fileOpenDb2" type="file">
+    <input id="fileOpenDbAttach2" type="file">
+    <input id="fileOpenScript2" type="file">
 </div>
-<!-- panelMain1 end -->
+<!-- misc end -->
+
+
+<!-- tocPanel1 start -->
+<div id="tocPanel1">
+<div id="tocDatabase1">
+    <div class="tocTitle" style="border: 0;">sqlite database</div>
+    <button id="fileOpenDb1">database - open</button>
+    <button id="fileOpenDbAttach1">database - open and attach</button>
+</div>
+<div id="tocEditor1">
+    <div class="tocTitle">sqlite editor</div>
+    <button id="fileOpenScript1">script - open</button>
+    <button id="scriptSave1">script - save</button>
+    <button id="dbExec1">script - execute</button>
+    <a class="tocElemA" href="#editor1">script editor</a>
+</div>
+<div id="tocDbList1"></div>
+</div>
+<!-- tocPanel1 end -->
 
 
 <!-- script start -->
 <script type="module">
-import {
-    //!! assertJsonEqual,
-    //!! assertNumericalEqual,
-    //!! assertOrThrow,
-    //!! dbCloseAsync,
-    dbExecAsync,
-    //!! dbExecWithRetryAsync,
-    //!! dbGetLastBlobAsync,
-    //!! dbMemoryLoadAsync,
-    //!! dbMemorySaveAsync,
-    dbOpenAsync,
-    debugInline,
-    noop,
-    //!! objectDeepCopyWithKeysSorted
-    sqlmathWebworkerInit
-} from "./sqlmath.mjs";
-noop(debugInline);
-await (async function () {
-    let dbData;
-    let db;
-    await sqlmathWebworkerInit({});
-    dbData = await fetch("./.betadog_dtt0_public.sqlite");
-    dbData = await dbData.arrayBuffer();
-    db = await dbOpenAsync({
-        dbData,
-        filename: ":memory:"
-    });
-    debugInline(
-        await dbExecAsync({
-            db,
-            //!! responseType: "list",
-            sql: "SELECT * FROM sqlite_schema"
-        })
-    );
-}());
 </script>
 <!-- script end -->
 
