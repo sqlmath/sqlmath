@@ -25,6 +25,7 @@
 /*global FinalizationRegistry*/
 "use strict";
 
+let FILENAME_DBTMP = "/tmp/__dbtmp1";
 let IS_BROWSER;
 let JSBATON_ARGC = 16;
 let SQLITE_DATATYPE_BLOB = 0x04;
@@ -140,6 +141,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
 // this function will serialize <argList> to a c <baton>,
 // suitable for passing into napi
     let argi = 0;
+    let errStack;
     assertOrThrow(
         argList.length < 16,
         "cCallAsync - argList.length must be less than than 16"
@@ -156,7 +158,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         case "bigint":
         case "boolean":
             baton.setBigInt64(8 + argi * 8, BigInt(value), true);
-            return;
+            return value;
         case "number":
             // check for min/max safe-integer
             assertOrThrow(
@@ -170,7 +172,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
                 )
             );
             baton.setBigInt64(8 + argi * 8, BigInt(value), true);
-            return;
+            return value;
         // case "object":
         //     break;
         case "string":
@@ -208,11 +210,20 @@ async function cCallAsync(baton, cFuncName, ...argList) {
     argList = [
         baton, cFuncName, ...argList
     ];
-    return (
-        IS_BROWSER
-        ? await sqlMessagePost(...argList)
-        : await cModule[cFuncName](argList)
-    );
+    // preserve stack-trace
+    errStack = new Error().stack.replace((
+        /.*$/m
+    ), "");
+    try {
+        return (
+            IS_BROWSER
+            ? await sqlMessagePost(...argList)
+            : await cModule[cFuncName](argList)
+        );
+    } catch (err) {
+        err.stack += errStack;
+        assertOrThrow(undefined, err);
+    }
 }
 
 function dbCallAsync(baton, cFuncName, db, ...argList) {
@@ -286,12 +297,7 @@ async function dbExecAsync({
     db,
     modeRetry,
     responseType,
-    sql,
-    tmpColList,
-    tmpColListPriority,
-    tmpCsv,
-    tmpRowList,
-    tmpTableName
+    sql
 }) {
 // this function will exec <sql> in <db> and return <result>
     let baton;
@@ -305,12 +311,7 @@ async function dbExecAsync({
                 bindList,
                 db,
                 responseType,
-                sql,
-                tmpColList,
-                tmpColListPriority,
-                tmpCsv,
-                tmpRowList,
-                tmpTableName
+                sql
             });
         } catch (err) {
             assertOrThrow(modeRetry > 0, err);
@@ -334,16 +335,6 @@ async function dbExecAsync({
         : Object.keys(bindList).length
     );
     externalbufferList = [];
-    if (tmpCsv || tmpRowList) {
-        await dbTableInsertAsync({
-            colList: tmpColList,
-            colListPriority: tmpColListPriority,
-            csv: tmpCsv,
-            db,
-            rowList: tmpRowList,
-            tableName: tmpTableName
-        });
-    }
     Object.entries(bindList).forEach(function ([
         key, val
     ]) {
@@ -371,9 +362,12 @@ async function dbExecAsync({
             ? 1
             : 0
         ),
-        ...externalbufferList        // 5
+        undefined, // 5
+        undefined, // 6
+        undefined, // 7 - response
+        ...externalbufferList        // 8
     );
-    result = result[2];
+    result = result[2 + 7];
     switch (responseType) {
     case "arraybuffer":
     case "lastBlob":
@@ -397,27 +391,42 @@ async function dbExecAsync({
 
 async function dbFileExportAsync({
     db,
+    dbData,
     filename,
     modeExport = 1
 }) {
 // This function will export <db> to <filename>
-    assertOrThrow(filename, "invalid filename " + filename);
-    await dbCallAsync(
+    let result;
+    if (IS_BROWSER) {
+        filename = FILENAME_DBTMP;
+    }
+    assertOrThrow(
+        typeof filename === "string" && filename,
+        `invalid filename ${filename}`
+    );
+    result = await dbCallAsync(
         undefined,
         "_dbFileImportOrExport",
-        db,
-        String(filename),
-        modeExport
+        db,                     // 0. sqlite3 * pInMemory,
+        String(filename),       // 1. char *zFilename,
+        modeExport,             // 2. const int isSave
+        undefined,              // 3. undefined
+        dbData                  // 4. dbData
     );
+    if (IS_BROWSER) {
+        return result[2 + 4];
+    }
 }
 
 async function dbFileImportAsync({
     db,
+    dbData,
     filename
 }) {
 // This function will import <filename> to <db>
     await dbFileExportAsync({
         db,
+        dbData,
         filename,
         modeExport: 0
     });
@@ -495,68 +504,6 @@ async function dbOpenAsync({
         ii: 0
     });
     return db;
-}
-
-async function dbTableInsertAsync({
-    colList,
-    colListPriority,
-    csv,
-    db,
-    rowList,
-    tableName
-}) {
-// this function will create-or-replace temp <tablename> with <rowList>
-    let baton = jsbatonCreate();
-    let externalbufferList = [];
-    let sqlCreateTable;
-    let sqlInsertRow;
-    // normalize and validate tableName
-    tableName = tableName || "__tmp1";
-    tableName = "temp." + JSON.stringify(tableName.replace((
-        /^temp\./
-    ), ""));
-    assertOrThrow((
-        /^temp\."[A-Z_a-z][0-9A-Z_a-z]*?"$/
-    ).test(tableName), "invalid tableName " + tableName);
-    // parse csv
-    if (!rowList && csv) {
-        rowList = jsonRowListFromCsv({
-            csv
-        });
-    }
-    rowList = jsonRowListNormalize({
-        colList,
-        colListPriority,
-        rowList
-    });
-    colList = rowList.shift();
-    sqlCreateTable = (
-        "DROP TABLE IF EXISTS " + tableName + ";"
-        + "CREATE TEMP TABLE " + tableName + "(" + colList.join(",") + ");"
-    );
-    sqlInsertRow = (
-        "INSERT INTO " + tableName + " VALUES("
-        + ",?".repeat(colList.length).slice(1) + ");"
-    );
-    rowList.forEach(function (row) {
-        row.forEach(function (val) {
-            baton = jsbatonValuePush({
-                baton,
-                externalbufferList,
-                value: val
-            });
-        });
-    });
-    await dbCallAsync(
-        baton,
-        "_dbTableInsert",
-        db,
-        colList.length,
-        rowList.length,
-        String(sqlCreateTable),
-        String(sqlInsertRow),
-        ...externalbufferList
-    );
 }
 
 function isExternalBuffer(buf) {
@@ -809,256 +756,6 @@ function jsbatonValueString({
     ));
 }
 
-function jsonRowListFromCsv({
-    csv
-}) {
-// this function will convert <csv>-text to json list-of-list
-/*
-https://tools.ietf.org/html/rfc4180#section-2
-Definition of the CSV Format
-    While there are various specifications and implementations for the
-    CSV format (for ex. [4], [5], [6] and [7]), there is no formal
-    specification in existence, which allows for a wide variety of
-    interpretations of CSV files.  This section documents the format that
-    seems to be followed by most implementations:
-1.  Each record is located on a separate line, delimited by a line
-    break (CRLF).  For example:
-    aaa,bbb,ccc CRLF
-    zzz,yyy,xxx CRLF
-2.  The last record in the file may or may not have an ending line
-    break.  For example:
-    aaa,bbb,ccc CRLF
-    zzz,yyy,xxx
-3.  There maybe an optional header line appearing as the first line
-    of the file with the same format as normal record lines.  This
-    header will contain names corresponding to the fields in the file
-    and should contain the same number of fields as the records in
-    the rest of the file (the presence or absence of the header line
-    should be indicated via the optional "header" parameter of this
-    MIME type).  For example:
-    field_name,field_name,field_name CRLF
-    aaa,bbb,ccc CRLF
-    zzz,yyy,xxx CRLF
-4.  Within the header and each record, there may be one or more
-    fields, separated by commas.  Each line should contain the same
-    number of fields throughout the file.  Spaces are considered part
-    of a field and should not be ignored.  The last field in the
-    record must not be followed by a comma.  For example:
-    aaa,bbb,ccc
-5.  Each field may or may not be enclosed in double quotes (however
-    some programs, such as Microsoft Excel, do not use double quotes
-    at all).  If fields are not enclosed with double quotes, then
-    double quotes may not appear inside the fields.  For example:
-    "aaa","bbb","ccc" CRLF
-    zzz,yyy,xxx
-6.  Fields containing line breaks (CRLF), double quotes, and commas
-    should be enclosed in double-quotes.  For example:
-    "aaa","b CRLF
-    bb","ccc" CRLF
-    zzz,yyy,xxx
-7.  If double-quotes are used to enclose fields, then a double-quote
-    appearing inside a field must be escaped by preceding it with
-    another double quote.  For example:
-    "aaa","b""bb","ccc"
-*/
-    let match;
-    let quote = false;
-    let rgx = (
-        /(.*?)(""|"|,|\n)/g
-    );
-    let row = [];
-    let rowList = [];
-    let val = "";
-    // normalize "\r\n" to "\n"
-    csv = csv.replace((
-        /\r\n?/g
-    ), "\n");
-/*
-2.  The last record in the file may or may not have an ending line
-    break.  For example:
-    aaa,bbb,ccc CRLF
-    zzz,yyy,xxx
-*/
-    if (csv[csv.length - 1] !== "\n") {
-        csv += "\n";
-    }
-    while (true) {
-        match = rgx.exec(csv);
-        if (!match) {
-            return rowList;
-        }
-        // build val
-        val += match[1];
-        match = match[2];
-        switch (quote + "." + match) {
-        case "false.,":
-/*
-4.  Within the header and each record, there may be one or more
-    fields, separated by commas.  Each line should contain the same
-    number of fields throughout the file.  Spaces are considered part
-    of a field and should not be ignored.  The last field in the
-    record must not be followed by a comma.  For example:
-    aaa,bbb,ccc
-*/
-            // delimit val
-            row.push(val);
-            val = "";
-            break;
-        case "false.\"":
-        case "true.\"":
-/*
-5.  Each field may or may not be enclosed in double quotes (however
-    some programs, such as Microsoft Excel, do not use double quotes
-    at all).  If fields are not enclosed with double quotes, then
-    double quotes may not appear inside the fields.  For example:
-    "aaa","bbb","ccc" CRLF
-    zzz,yyy,xxx
-*/
-            assertOrThrow(quote || val === "", (
-                "invalid csv - naked double-quote in unquoted-string "
-                + JSON.stringify(val + "\"")
-            ));
-            quote = !quote;
-            break;
-        // backtrack for naked-double-double-quote
-        case "false.\"\"":
-            quote = true;
-            rgx.lastIndex -= 1;
-            break;
-        case "false.\n":
-        case "false.\r\n":
-/*
-1.  Each record is located on a separate line, delimited by a line
-    break (CRLF).  For example:
-    aaa,bbb,ccc CRLF
-    zzz,yyy,xxx CRLF
-*/
-            // delimit val
-            row.push(val);
-            val = "";
-            // append row
-            rowList.push(row);
-            // reset row
-            row = [];
-            break;
-        case "true.\"\"":
-/*
-7.  If double-quotes are used to enclose fields, then a double-quote
-    appearing inside a field must be escaped by preceding it with
-    another double quote.  For example:
-    "aaa","b""bb","ccc"
-*/
-            val += "\"";
-            break;
-        default:
-/*
-6.  Fields containing line breaks (CRLF), double quotes, and commas
-    should be enclosed in double-quotes.  For example:
-    "aaa","b CRLF
-    bb","ccc" CRLF
-    zzz,yyy,xxx
-*/
-            assertOrThrow(quote, (
-                "invalid csv - illegal character in unquoted-string "
-                + JSON.stringify(match)
-            ));
-            val += match;
-        }
-    }
-}
-
-function jsonRowListNormalize({
-    colList,
-    colListPriority,
-    rowList
-}) {
-// this function will normalize <rowList> with given <colList>
-    let colDict = {};
-    if (!(rowList?.length > 0)) {
-        throw new Error("invalid rowList " + JSON.stringify(rowList));
-    }
-    // convert list-of-dict to list-of-list
-    if (!Array.isArray(rowList[0])) {
-        colList = new Map(Array.from(
-            colList || []
-        ).map(function (key, ii) {
-            return [
-                key, ii
-            ];
-        }));
-        rowList = rowList.map(function (row) {
-            Object.keys(row).forEach(function (key) {
-                if (!colList.has(key)) {
-                    colList.set(key, colList.size);
-                }
-            });
-            return Array.from(colList.keys()).map(function (key) {
-                return row[key];
-            });
-        });
-        colList = Array.from(colList.keys());
-    }
-    if (!colList) {
-        colList = rowList[0];
-        rowList = rowList.slice(1);
-    }
-    if (!(colList?.length > 0)) {
-        throw new Error("invalid colList " + JSON.stringify(colList));
-    }
-    colList = colList.map(function (key) {
-        // sanitize column-name
-        key = String(key).replace((
-            /^[^A-Z_a-z]/
-        ), "c_" + key);
-        key = key.replace((
-            /[^0-9A-Z_a-z]/g
-        ), "_");
-        // for duplicate column-name, add ordinal _2, _3, _4, ...
-        colDict[key] = colDict[key] || 0;
-        colDict[key] += 1;
-        if (colDict[key] > 1) {
-            key += "_" + colDict[key];
-        }
-        return key;
-    });
-    // normalize rowList
-    rowList = rowList.map(function (row) {
-        return (
-            row.length === colList.length
-            ? row
-            : colList.map(function (ignore, ii) {
-                return row[ii];
-            })
-        );
-    });
-    if (!colListPriority) {
-        rowList.unshift(colList);
-        return rowList;
-    }
-    // sort colList by colListPriority
-    colListPriority = new Map([].concat(
-        colListPriority,
-        colList
-    ).map(function (key) {
-        return [
-            key, colList.indexOf(key)
-        ];
-    }).filter(function ([
-        ignore, ii
-    ]) {
-        return ii >= 0;
-    }));
-    colList = Array.from(colListPriority.keys());
-    colListPriority = Array.from(colListPriority.values());
-    rowList = rowList.map(function (row) {
-        return colListPriority.map(function (ii) {
-            return row[ii];
-        });
-    });
-    rowList.unshift(colList);
-    return rowList;
-}
-
 function noop(val) {
 
 // This function will do nothing except return <val>.
@@ -1094,6 +791,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 // This function will post msg to <sqlWorker> and return result
 
+    let errStack;
     let id;
     let result;
     let timeElapsed = Date.now();
@@ -1116,18 +814,28 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
             })
         ]
     );
+    // preserve stack-trace
+    errStack = new Error().stack.replace((
+        /.*$/m
+    ), "");
     // await result from web-worker
     result = await new Promise(function (resolve) {
         sqlMessageDict[id] = resolve;
     });
     // cleanup sqlMessageDict
     delete sqlMessageDict[id];
-    console.error(
-        "sqlMessagePost - " + JSON.stringify({
-            cFuncName,
-            timeElapsed: Date.now() - timeElapsed
-        })
-    );
+    // debug slow postMessage
+    noop(errStack, timeElapsed);
+    // timeElapsed = Date.now() - timeElapsed;
+    // if (timeElapsed > 500) {
+    //     console.error(
+    //         "sqlMessagePost - " + JSON.stringify({
+    //             cFuncName,
+    //             timeElapsed
+    //         })
+    //     );
+    //     console.error(errStack);
+    // }
     assertOrThrow(!result.errmsg, result.errmsg);
     return [
         result.baton, result.cFuncName, ...result.argList
@@ -1231,7 +939,6 @@ export {
     dbFileImportAsync,
     dbNoopAsync,
     dbOpenAsync,
-    dbTableInsertAsync,
     debugInline,
     jsbatonValueString,
     noop,
