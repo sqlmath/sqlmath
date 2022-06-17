@@ -141,6 +141,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
 // this function will serialize <argList> to a c <baton>,
 // suitable for passing into napi
     let argi = 0;
+    let errStack;
     assertOrThrow(
         argList.length < 16,
         "cCallAsync - argList.length must be less than than 16"
@@ -209,11 +210,20 @@ async function cCallAsync(baton, cFuncName, ...argList) {
     argList = [
         baton, cFuncName, ...argList
     ];
-    return (
-        IS_BROWSER
-        ? await sqlMessagePost(...argList)
-        : await cModule[cFuncName](argList)
-    );
+    // preserve stack-trace
+    errStack = new Error().stack.replace((
+        /.*$/m
+    ), "");
+    try {
+        return (
+            IS_BROWSER
+            ? await sqlMessagePost(...argList)
+            : await cModule[cFuncName](argList)
+        );
+    } catch (err) {
+        err.stack += errStack;
+        assertOrThrow(undefined, err);
+    }
 }
 
 function dbCallAsync(baton, cFuncName, db, ...argList) {
@@ -781,6 +791,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 // This function will post msg to <sqlWorker> and return result
 
+    let errStack;
     let id;
     let result;
     let timeElapsed = Date.now();
@@ -803,18 +814,28 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
             })
         ]
     );
+    // preserve stack-trace
+    errStack = new Error().stack.replace((
+        /.*$/m
+    ), "");
     // await result from web-worker
     result = await new Promise(function (resolve) {
         sqlMessageDict[id] = resolve;
     });
     // cleanup sqlMessageDict
     delete sqlMessageDict[id];
-    console.error(
-        "sqlMessagePost - " + JSON.stringify({
-            cFuncName,
-            timeElapsed: Date.now() - timeElapsed
-        })
-    );
+    // debug slow postMessage
+    noop(errStack, timeElapsed);
+    // timeElapsed = Date.now() - timeElapsed;
+    // if (timeElapsed > 500) {
+    //     console.error(
+    //         "sqlMessagePost - " + JSON.stringify({
+    //             cFuncName,
+    //             timeElapsed
+    //         })
+    //     );
+    //     console.error(errStack);
+    // }
     assertOrThrow(!result.errmsg, result.errmsg);
     return [
         result.baton, result.cFuncName, ...result.argList

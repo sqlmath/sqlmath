@@ -8,7 +8,7 @@
     <link rel="modulepreload" href="sqlmath.mjs" />
     <link rel="modulepreload" href="sqlmath_wasm.js" />
     <script defer src="asset_sqlmath_external_rollup.js"></script>
-    <script type="module" src="./sqlmath_browser.mjs?aa=01"></script>
+    <script type="module" src="./sqlmath_browser.mjs?aa=02"></script>
 <style>
 /* jslint utility2:true */
 /*csslint
@@ -26,6 +26,7 @@
 }
 body {
     font-family: monospace;
+    font-size: 0.75rem;
     overflow-y: scroll;
 }
 button,
@@ -34,15 +35,17 @@ button:hover {
     background: #eee;
     border: 1px solid #777;
     font-family: monospace;
-    height: 1.5rem;
+    font-size: 0.75rem;
+    height: 1.25rem;
     min-width: 4rem;
+    padding: 0 0.5rem;
 }
 button:hover {
     background: #bbd;
     cursor: pointer;
 }
 table {
-    border-collapse: collapse;
+    border-collapse: collapse !important;
 }
 textarea {
     display: block;
@@ -56,13 +59,18 @@ textarea {
 }
 
 /*css section content*/
-.contentTitle {
+.contentElemTitle {
     background: #bbd;
     border: 1px solid #777;
     border-bottom: 0;
     font-weight: bold;
     margin-top: 1rem;
     padding: 0.5rem;
+}
+.contentSectionTitle {
+    font-size: x-large;
+    font-weight: bold;
+    margin: 2rem 0 1rem 0;
 }
 #contentPanel1 {
     overflow: hidden;
@@ -107,31 +115,52 @@ textarea {
 }
 
 
-/*css section nav*/
-.navDbtable {
+/*css section toc*/
+.tocElemA {
     color: #037;
-    margin-left: -0.5rem;
+    display: inline-block;
+    line-height: 1rem;
+    overflow: hidden;
+    padding: 0 0.5rem 0.125rem 0.625rem;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
 }
-.navDbtable:hover {
+.tocElemA:hover {
     background: #bbd;
     cursor: pointer;
 }
-.navDbtable::before {
-    width: 1rem;
+.tocElemA::before {
+    background-color: #000;
+    border-radius: 0.125rem;
+    content: "";
+    display: inline-block;
+    height: 0.25rem;
+    margin: 0 0.25rem 0.125rem -0.5rem;
+    width: 0.25rem;
 }
-.navTitle {
+.tocTitle {
     border-top: 1px solid #777;
-    padding-left: 0.5rem;
+    margin-left: -0.5rem;
+    padding: 0.5rem;
+    width: 16rem;
 }
-#navPanel1 {
+#tocPanel1 {
     border-right: 1px solid #777;
     height: 100%;
     left: 0;
     overflow-x: hidden;
     overflow-y: scroll;
+    padding: 0 0.5rem 0 0.5rem;
     position: fixed;
     top: 0;
     width: 16rem;
+}
+#tocPanel1 button {
+    margin-bottom: 0.5rem;
+    text-align: left;
+    width: 100%;
 }
 </style>
 </head>
@@ -141,25 +170,52 @@ textarea {
 <!-- contentPanel1 start -->
 <!-- improve seo by keeping contentPanel1 at top -->
 <div id="contentPanel1">
-    <div class="contentTitle">sqlite editor</div>
 
+<div class="contentSectionTitle" style="margin-top: 0.5rem;">sqlite editor</div>
+<div class="contentElemTitle" id="editor1">script editor</div>
 <textarea id="sqliteEditor1">
 SELECT COUNT(*), 2;
-SELECT 2;
-select * from db02.p_aco;
+DROP TABLE IF EXISTS foo1;
+CREATE TABLE foo1(aa, bb, cc);
 </textarea>
 <button class="button" id="dbExec2" style="margin-top: 1rem;">script - execute</button>
 
-<h2 style="margin-top: 1rem;">sqlite query results</h2>
+<div class="contentSectionTitle">sqlite query results</div>
 <div id="sqlresultList1"></div>
+
+<div class="contentSectionTitle">sqlite tables and attached tables</div>
+<div id="dbtableList1"></div>
 
 </div>
 <!-- contentPanel1 end -->
 
 
-<!-- navPanel1 start -->
-<div id="navPanel1"></div>
-<!-- navPanel1 end -->
+<!-- misc start -->
+<div style="display: none;">
+    <input id="fileOpenDb2" type="file">
+    <input id="fileOpenDbAttach2" type="file">
+    <input id="fileOpenScript2" type="file">
+</div>
+<!-- misc end -->
+
+
+<!-- tocPanel1 start -->
+<div id="tocPanel1">
+<div id="tocDatabase1">
+    <div class="tocTitle" style="border: 0;">sqlite database</div>
+    <button id="fileOpenDb1">database - open</button>
+    <button id="fileOpenDbAttach1">database - open and attach</button>
+</div>
+<div id="tocEditor1">
+    <div class="tocTitle">sqlite editor</div>
+    <button id="fileOpenScript1">script - open</button>
+    <button id="scriptSave1">script - save</button>
+    <button id="dbExec1">script - execute</button>
+    <a class="tocElemA" href="#editor1">script editor</a>
+</div>
+<div id="tocDbList1"></div>
+</div>
+<!-- tocPanel1 end -->
 
 
 <!-- script start -->
