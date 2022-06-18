@@ -67,6 +67,10 @@ textarea {
     margin-top: 1rem;
     padding: 0.5rem;
 }
+.contentTableContainer {
+    height: 256px;
+    overflow: hidden;
+}
 .contentSectionTitle {
     font-size: x-large;
     font-weight: bold;
@@ -77,37 +81,61 @@ textarea {
     padding: 0 2rem 2rem 18rem;
     width: 100%;
 }
-#contentPanel1 .dataTable {
-    margin: 0;
+#contentPanel1 tbody tr {
+    border: none;
+    height: 16px !important; /* hack-datatables - optimization */
 }
-#contentPanel1 .dataTable tbody tr:hover {
+#contentPanel1 tbody tr:hover {
     background: #bbd;
 }
-#contentPanel1 .dataTable td,
-#contentPanel1 .dataTable th {
+#contentPanel1 td,
+#contentPanel1 th {
     border: none;
-    border-right: 1px solid #777 !important;
-    max-width: 32rem;
+    border-right: 1px solid transparent !important;
+    max-width: 24rem;
     overflow: hidden;
-    padding: 2px 1rem 0 2px !important;
+    padding: 0 16px 0 2px;
     text-align: left;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-#contentPanel1 .dataTable tr {
+#contentPanel1 td::after,
+#contentPanel1 td::before,
+#contentPanel1 th::after,
+#contentPanel1 th::before {
+    font-size: 16px;
+    line-height: 8px;
+    right: 2px;
+}
+#contentPanel1 tr {
     background: transparent;
+}
+#contentPanel1 tr:nth-child(even) {
+    background: #ddd;
+}
+#contentPanel1 .dataTable {
+    margin: 0;
+}
+#contentPanel1 .dataTables_scrollBody td,
+#contentPanel1 .dataTables_scrollHead th {
+    border-right: 1px solid #777 !important;
 }
 #contentPanel1 .dataTables_info {
     padding-top: 2px;
+}
+#contentPanel1 .dataTables_processing {
+    z-index: 1;
 }
 #contentPanel1 .dataTables_scrollBody {
     background: #ddd;
     border: 1px solid #777;
     overflow: scroll !important;
 }
+#contentPanel1 .dataTables_scrollBody tbody {
+    border-bottom: 1px solid #777;
+}
 #contentPanel1 .dataTables_scrollBody .dataTable {
     background: #fff;
-    border-bottom: 1px solid #777;
 }
 #contentPanel1 .dataTables_scrollHead {
     border: 1px solid #777 !important;
@@ -137,7 +165,8 @@ textarea {
     content: "";
     display: inline-block;
     height: 0.25rem;
-    margin: 0 0.25rem 0.125rem -0.5rem;
+    margin: 0 0.25rem 0 -0.5rem;
+    vertical-align: middle;
     width: 0.25rem;
 }
 .tocTitle {
