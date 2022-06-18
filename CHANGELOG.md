@@ -5,6 +5,7 @@
 - none
 
 # v2022.6.1-beta
+- datatables - rewrite datatables-function _fnDraw() for faster rendering
 - sqlmath - milestone - functional index.html
 - add files asset_sqlmath_external_rollup.css, asset_sqlmath_external_rollup.js
 - bugfix - fix memory-leak by replacing all free()/malloc() with sqlite3_free()/sqlite3_malloc()
