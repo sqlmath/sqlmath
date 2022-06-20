@@ -115,7 +115,7 @@ extern "C" {
 // this function will assert <errcode> == napi_ok in <env>
 #define NAPI_ASSERT_OK() \
     if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) { \
-        return 0; \
+        return NULL; \
     }
 
 #define NAPI_EXPORT_MEMBER(name) \
@@ -1775,6 +1775,9 @@ napi_value napi_module_sqlmath_init(
     };
     errcode = napi_define_properties(env, exports,
         sizeof(propList) / sizeof(napi_property_descriptor), propList);
+    NAPI_ASSERT_OK();
+    // init sqlite
+    errcode = sqlite3_initialize();
     NAPI_ASSERT_OK();
     return exports;
 }

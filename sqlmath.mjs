@@ -260,7 +260,8 @@ async function dbCloseAsync({
         await cCallAsync(
             undefined,
             "_dbClose",
-            val
+            val,
+            __db.filename
         );
     }));
     dbDict.delete(db);
@@ -501,6 +502,7 @@ async function dbOpenAsync({
     dbDict.set(db, {
         busy: 0,
         connPool,
+        filename,
         ii: 0
     });
     return db;

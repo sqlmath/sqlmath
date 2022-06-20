@@ -5294,7 +5294,7 @@ function jslint_phase3_parse(state) {
         }
         if (the_await.arity === "statement") {
 
-// PR-xxx - Bugfix - fix expression after await misidentified as statement.
+// PR-405 - Bugfix - fix expression after "await" mis-identified as statement.
 
             the_await.expression = parse_expression(150);
             semicolon();

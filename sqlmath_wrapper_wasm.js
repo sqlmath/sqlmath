@@ -63,9 +63,9 @@ function noop(val) {
 (async function () {
     let FILENAME_DBTMP = "/tmp/__dbtmp1";
     let JSBATON_ARGC = 16;
-    let JSBATON_OFFSET_ERRMSG = 4 + 4 + 128 + 128 + 8;
     let __dbFileImportOrExport;
-    //!! let jsbatonValueErrmsg;
+    let jsbatonValueErrmsg;
+    let jsbatonValueStringArgi;
     let onModulePostRun;
     let sqlite3_errmsg;
 
@@ -78,6 +78,7 @@ function noop(val) {
         let dbPtr = 0;
         let errcode = 0;
         let errmsg = "";
+        let filename;
         let id = data.id;
         let modeExport = argList[2];
         switch (cFuncName) {
@@ -91,19 +92,25 @@ function noop(val) {
             data["batonPtr"] = batonPtr;
             HEAPU8.set(baton, batonPtr);
             switch (cFuncName) {
+            case "_dbClose":
+                filename = jsbatonValueStringArgi(batonPtr, 1);
+                console.error(`_dbClose("${filename}")`);
+                break;
             case "_dbFileImportOrExport":
                 // import dbData
                 if (!modeExport) {
                     FS.writeFile(FILENAME_DBTMP, new Uint8Array(dbData));
                 }
                 break;
+            case "_dbOpen":
+                filename = jsbatonValueStringArgi(batonPtr, 0);
+                console.error(`_dbOpen("${filename}")`);
+                break;
             }
             // call c-function
             Module[cFuncName](batonPtr);
             // init errmsg
-            errmsg = AsciiToString( //jslint-quiet
-                batonPtr + JSBATON_OFFSET_ERRMSG
-            );
+            errmsg = jsbatonValueErrmsg(batonPtr);
             // update baton
             baton.set(new Uint8Array(
                 HEAPU8.buffer,
@@ -179,7 +186,7 @@ function noop(val) {
             );
             return;
         }
-        throw new Error(`invalid cFuncName ${cFuncName}`);
+        throw new Error(`invalid cFuncName "${cFuncName}"`);
     }
 
     // init event-handling
@@ -207,7 +214,7 @@ function noop(val) {
             await messageDispatch(data);
         } catch (err) {
             postMessage({
-                "errmsg": err.message,
+                "errmsg": err.stack,
                 "id": data.id
             });
         } finally {
@@ -227,9 +234,12 @@ function noop(val) {
             "number", "string", "number"
         ]
     );
-    //!! jsbatonValueErrmsg = cwrap("jsbatonValueErrmsg", "string", [
-        //!! "number"
-    //!! ]);
+    jsbatonValueErrmsg = cwrap("jsbatonValueErrmsg", "string", [
+        "number"
+    ]);
+    jsbatonValueStringArgi = cwrap("jsbatonValueStringArgi", "string", [
+        "number", "number"
+    ]);
     sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", [
         "number"
     ]);

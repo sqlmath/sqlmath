@@ -1,3 +1,23 @@
+/*jslint devel*/
+// init debugInline
+let debugInline = (function () {
+    let __consoleError = function () {
+        return;
+    };
+    function debug(...argv) {
+
+// This function will print <argv> to stderr and then return <argv>[0].
+
+        __consoleError("\n\ndebugInline");
+        __consoleError(...argv);
+        __consoleError("\n");
+        return argv[0];
+    }
+    debug(); // Coverage-hack.
+    __consoleError = console.error;
+    return debug;
+}());
+
 function assertOrThrow(condition, message) {
 
 // This function will throw <message> if <condition> is falsy.
@@ -12335,9 +12355,6 @@ file https://github.com/DataTables/DataTables/blob/1.10.21/media/js/jquery.dataT
 /*global
     DataTable
     _fnCallbackFire
-    _fnLog
-    _fnSortFlatten
-    _pluck
     assertOrThrow
     jQuery
     stringHtmlSafe
@@ -12484,7 +12501,7 @@ function _fnDraw(settings) {
 function _fnAddData2(settings, aDataIn) {
     /* Create the object for storing information about this new row */
     let iRow = settings.aoData.length;
-    let oData = jQuery.extend(true, {}, DataTable.models.oRow, {
+    let oData = Object.assign({}, DataTable.models.oRow, {
         idx: iRow,
         src: "data"
     });
@@ -12498,10 +12515,6 @@ function _fnAddData2(settings, aDataIn) {
     });
     /* Add to the display array */
     settings.aiDisplayMaster.push(iRow);
-    let id = settings.rowIdFn(aDataIn);
-    if (id !== undefined) {
-        settings.aIds[id] = oData;
-    }
     return iRow;
 }
 // _fnDraw - end

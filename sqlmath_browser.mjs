@@ -42,7 +42,6 @@ let SQLRESULT_LIST = [];
 noop(
     SQLITE_EDITOR,
     assertOrThrow,
-    dbFileAttachAsync,
     dbFileExportAsync,
     debugInline
 );
