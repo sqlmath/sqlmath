@@ -12330,18 +12330,21 @@ file https://github.com/DataTables/DataTables/blob/1.10.21/media/js/jquery.dataT
   }
 
 
+// _fnDraw - start
 /*jslint browser, name*/
 /*global
-    _fnAddData
-    _fnAjaxParameters
-    _fnBuildAjax
+    DataTable
     _fnCallbackFire
+    _fnLog
+    _fnSortFlatten
+    _pluck
     assertOrThrow
+    jQuery
     stringHtmlSafe
 */
 function _fnAjaxUpdateDraw2(settings, json) {
 // Data the data from the server (nuking the old) and redraw the table
-//  @param {object} oSettings dataTables settings object
+//  @param {object} settings dataTables settings object
 //  @param {object} json json data return from the server.
 //  @param {string} json.sEcho Tracking flag for DataTables to match requests
 //  @param {int} json.iTotalRecords Number of records in the data set,
@@ -12365,7 +12368,7 @@ function _fnAjaxUpdateDraw2(settings, json) {
     settings._iRecordsTotal = json.recordsTotal;
     settings._iRecordsDisplay = json.recordsFiltered;
     json.data.forEach(function (elem) {
-        _fnAddData(settings, elem);
+        _fnAddData2(settings, elem);
     });
     settings.aiDisplay = settings.aiDisplayMaster.slice();
     settings.bAjaxDataGet = false;
@@ -12408,12 +12411,13 @@ function _fnDraw(settings) {
         settings.iDraw += 1;
     } else if (!settings.bDestroying && settings.bAjaxDataGet) {
         settings.iDraw += 1;
-        _fnBuildAjax(
+        // Create an Ajax call based on the table's settings
+        settings.ajax(
             settings,
-            _fnAjaxParameters(settings),
             function (json) {
                 _fnAjaxUpdateDraw2(settings, json);
-            }
+            },
+            settings
         );
         return;
     }
@@ -12427,7 +12431,7 @@ function _fnDraw(settings) {
             // Need to create the HTML if new
             html += stringHtmlSafe(
                 val === null
-                ? `<NULL>`
+                ? ""
                 : val
             );
             html += `</td>`;
@@ -12466,6 +12470,41 @@ function _fnDraw(settings) {
     settings.bFiltered = false;
     settings.bDrawing = false;
 }
+// Add a data array to the table, creating DOM node etc. This is the parallel to
+// _fnGatherData, but for adding rows from a Javascript source, rather than a
+// DOM source.
+//  @param {object} settings dataTables settings object
+//  @param {array} aData data array to be added
+//  @param {node} [nTr] TR element to add to the table - optional. If not given,
+//    DataTables will create a row automatically
+//  @param {array} [anTds] Array of TD|TH elements for the row - must be given
+//    if nTr is.
+//  @returns {int} >=0 if successful (index of new aoData entry), -1 if failed
+//  @memberof DataTable#oApi
+function _fnAddData2(settings, aDataIn) {
+    /* Create the object for storing information about this new row */
+    let iRow = settings.aoData.length;
+    let oData = jQuery.extend(true, {}, DataTable.models.oRow, {
+        idx: iRow,
+        src: "data"
+    });
+    oData._aData = aDataIn;
+    settings.aoData.push(oData);
+    /* Create the cells */
+    let columns = settings.aoColumns;
+    // Invalidate the column types as the new data needs to be revalidated
+    columns.forEach(function (col) {
+        col.sType = null;
+    });
+    /* Add to the display array */
+    settings.aiDisplayMaster.push(iRow);
+    let id = settings.rowIdFn(aDataIn);
+    if (id !== undefined) {
+        settings.aIds[id] = oData;
+    }
+    return iRow;
+}
+// _fnDraw - end
 
 
   /**

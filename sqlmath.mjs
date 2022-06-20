@@ -825,17 +825,15 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     // cleanup sqlMessageDict
     delete sqlMessageDict[id];
     // debug slow postMessage
-    noop(errStack, timeElapsed);
-    // timeElapsed = Date.now() - timeElapsed;
-    // if (timeElapsed > 500) {
-    //     console.error(
-    //         "sqlMessagePost - " + JSON.stringify({
-    //             cFuncName,
-    //             timeElapsed
-    //         })
-    //     );
-    //     console.error(errStack);
-    // }
+    timeElapsed = Date.now() - timeElapsed;
+    if (timeElapsed > 500) {
+        consoleError(
+            "sqlMessagePost - " + JSON.stringify({
+                cFuncName,
+                timeElapsed
+            }) + errStack
+        );
+    }
     assertOrThrow(!result.errmsg, result.errmsg);
     return [
         result.baton, result.cFuncName, ...result.argList

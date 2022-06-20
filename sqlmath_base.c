@@ -106,11 +106,6 @@ extern "C" {
         goto catch_error; \
     }
 
-// this function will return string-value from <baton> at given <argi>
-#define JSBATON_VALUE_STRING_ARGI(argi) \
-    (baton->argv[argi] == 0 ? NULL \
-        : ((const char *) baton) + ((size_t) baton->argv[argi] + 1 + 4))
-
 // this function will if <cond> is falsy, terminate process with <msg>
 #define NAPI_ASSERT_FATAL(cond, msg) \
     if (!(cond)) { \
@@ -275,6 +270,15 @@ SQLMATH_API int doubleSortCompare(
     const void *bb
 );
 
+SQLMATH_API const char *jsbatonValueErrmsg(
+    Jsbaton * baton
+);
+
+SQLMATH_API const char *jsbatonValueStringArgi(
+    Jsbaton * baton,
+    int argi
+);
+
 SQLMATH_API void jsonInit2(
     JsonString * pp,
     sqlite3_context * context
@@ -435,7 +439,7 @@ SQLMATH_API void dbExec(
     JsonString *str99 = &__str99;
     const char **pzShared = ((const char **) baton->argv) + 8;
     const char *zBind = (const char *) baton + SQLITE_DATATYPE_OFFSET;
-    const char *zSql = JSBATON_VALUE_STRING_ARGI(1);
+    const char *zSql = jsbatonValueStringArgi(baton, 1);
     const char *zTmp = NULL;
     double rTmp = 0;
     int bindByKey = (int) baton->argv[3];
@@ -741,7 +745,7 @@ SQLMATH_API void dbFileImportOrExport(
     // call __dbFileImportOrExport()
     errcode = __dbFileImportOrExport(   //
         db,                     //
-        (char *) JSBATON_VALUE_STRING_ARGI(1),  //
+        (char *) jsbatonValueStringArgi(baton, 1),      //
         (const int) baton->argv[2]);
     JSBATON_ASSERT_OK();
   catch_error:
@@ -767,7 +771,7 @@ SQLMATH_API void dbOpen(
     // declare var
     int errcode = 0;
     sqlite3 *db;
-    const char *filename = JSBATON_VALUE_STRING_ARGI(0);
+    const char *filename = jsbatonValueStringArgi(baton, 0);
     const int flags = (int) baton->argv[2];
     // call c-function
     errcode = sqlite3ApiGet()->open_v2( //
@@ -799,6 +803,24 @@ SQLMATH_API int doubleSortCompare(
 // this function will compare <aa> with <bb>
     const double cc = *(double *) aa - *(double *) bb;
     return cc < 0 ? -1 : cc > 0 ? 1 : 0;
+}
+
+SQLMATH_API const char *jsbatonValueErrmsg(
+    Jsbaton * baton
+) {
+// this function will return <baton>->errmsg
+    return (const char *) baton->errmsg;
+}
+
+SQLMATH_API const char *jsbatonValueStringArgi(
+    Jsbaton * baton,
+    int argi
+) {
+// this function will return string-value from <baton> at given <argi>
+    if (baton->argv[argi] == 0) {
+        return NULL;
+    }
+    return ((const char *) baton) + ((size_t) baton->argv[argi] + 1 + 4);
 }
 
 SQLMATH_API void jsonInit2(
@@ -1557,7 +1579,7 @@ static Jsbaton *jsbatonCreate(
         }
     }
     // fprintf(stderr, "\nsqlmath.jsbatonCreate(cfuncname=%s)\n",
-    //     JSBATON_VALUE_STRING_ARGI(2 * JSBATON_ARGC + 0));
+    //     jsbatonValueStringArgi(baton, 2 * JSBATON_ARGC));
     return baton;
 }
 

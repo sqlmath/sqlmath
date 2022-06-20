@@ -1,4 +1,4 @@
-/*jslint beta, browser*/
+/*jslint beta, browser, nomen*/
 import {
     //!! assertJsonEqual,
     //!! assertNumericalEqual,
@@ -242,12 +242,14 @@ async function onDbExec() {
         let colList = rowList.shift();
         let hashtag = `sqlresult_${String(ii).padStart(2, "0")}`;
         function ajax({
-            draw,
-            length,
-            order,
-            start
+            _iDisplayLength,
+            _iDisplayStart,
+            aaSorting,
+            iDraw
         }, callback) {
-            let colIi = order[0].column;
+            let [
+                colIi, direction
+            ] = aaSorting[0];
             rowList.sort(function (aa, bb) {
                 aa = aa[colIi];
                 bb = bb[colIi];
@@ -259,15 +261,18 @@ async function onDbExec() {
                     : 0
                 );
             });
-            if (order[0].dir === "desc") {
+            if (direction === "desc") {
                 rowList.reverse();
             }
             debounce(hashtag, function () {
                 callback({
                     data: jsonHtmlSafe(
-                        rowList.slice(start, start + length)
+                        rowList.slice(
+                            _iDisplayStart,
+                            _iDisplayStart + _iDisplayLength
+                        )
                     ),
-                    draw,
+                    draw: iDraw,
                     recordsFiltered: rowList.length,
                     recordsTotal: rowList.length
                 });
@@ -514,12 +519,14 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
                 hashtag
             } = dbtable;
             async function ajax({
-                draw,
-                length,
-                order,
-                start
+                _iDisplayLength,
+                _iDisplayStart,
+                aaSorting,
+                iDraw
             }, callback) {
-                let colIi = order[0].column;
+                let [
+                    colIi, direction
+                ] = aaSorting[0];
                 // datatable - paginate
                 let data = await dbExecAsync({
                     db: DB_MAIN,
@@ -530,14 +537,14 @@ SELECT
         rowid,
         *
     FROM ${dbtableFullname}
-    ORDER BY ${columns[colIi]}
+    ORDER BY [${columns[colIi]}]
                     ${(
-                        order[0].dir === "asc"
+                        direction === "asc"
                         ? "ASC"
                         : "DESC"
                     )}
-    LIMIT ${Number(length)}
-    OFFSET ${Number(start)};
+    LIMIT ${Number(_iDisplayLength)}
+    OFFSET ${Number(_iDisplayStart)};
                     `)
                 });
                 debounce(hashtag, function () {
@@ -547,7 +554,7 @@ SELECT
                             ? jsonHtmlSafe(data[1].slice(1))
                             : []
                         ),
-                        draw,
+                        iDraw,
                         recordsFiltered: data[0][1][0],
                         recordsTotal: data[0][1][0]
                     });
