@@ -9,7 +9,7 @@
      "ranges": [
       {
        "count": 1,
-       "endOffset": 26742,
+       "endOffset": 26828,
        "startOffset": 0
       }
      ],
@@ -817,7 +817,7 @@
      "ranges": [
       {
        "count": 0,
-       "endOffset": 24311,
+       "endOffset": 24397,
        "startOffset": 22943
       }
      ],
@@ -828,8 +828,8 @@
      "ranges": [
       {
        "count": 1,
-       "endOffset": 25266,
-       "startOffset": 24313
+       "endOffset": 25352,
+       "startOffset": 24399
       }
      ],
      "isBlockCoverage": true
@@ -839,8 +839,8 @@
      "ranges": [
       {
        "count": 1,
-       "endOffset": 24711,
-       "startOffset": 24398
+       "endOffset": 24797,
+       "startOffset": 24484
       }
      ],
      "isBlockCoverage": true
@@ -850,8 +850,8 @@
      "ranges": [
       {
        "count": 0,
-       "endOffset": 25774,
-       "startOffset": 25268
+       "endOffset": 25860,
+       "startOffset": 25354
       }
      ],
      "isBlockCoverage": false
