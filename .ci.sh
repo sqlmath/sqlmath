@@ -467,17 +467,9 @@ shCiBuildWasm() {(set -e
     shCiEmsdkInstall
     # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
     # build wasm
+    local OPTION
     local FILE
     local FILE2
-    local OPTION1
-    local OPTION2
-    OPTION1="$OPTION1 -I.tmp"
-    OPTION1="$OPTION1 -Wall"
-    OPTION1="$OPTION1 -flto"
-    # debug
-    # OPTION1="$OPTION1 -O0"
-    OPTION1="$OPTION1 -Os"
-    # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
         sqlite3.c \
         sqlite3_ext.c \
@@ -489,98 +481,131 @@ shCiBuildWasm() {(set -e
         then
             continue
         fi
-        OPTION2=""
-        # https://www.sqlite.org/compile.html
-        # #recommended_compile_time_options
-        OPTION2="$OPTION2 -DSQLITE_DQS=0"
-        OPTION2="$OPTION2 -DSQLITE_THREADSAFE=0"
-        OPTION2="$OPTION2 -DSQLITE_DEFAULT_MEMSTATUS=0"
-        OPTION2="$OPTION2 -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1"
-        OPTION2="$OPTION2 -DSQLITE_LIKE_DOESNT_MATCH_BLOBS"
-        OPTION2="$OPTION2 -DSQLITE_MAX_EXPR_DEPTH=0"
-        OPTION2="$OPTION2 -DSQLITE_OMIT_DECLTYPE"
-        OPTION2="$OPTION2 -DSQLITE_OMIT_DEPRECATED"
-        OPTION2="$OPTION2 -DSQLITE_OMIT_PROGRESS_CALLBACK"
-        # OPTION2="$OPTION2 -DSQLITE_OMIT_SHARED_CACHE"
-        # OPTION2="$OPTION2 -DSQLITE_USE_ALLOCA"
-        OPTION2="$OPTION2 -DSQLITE_OMIT_AUTOINIT"
-        # extra optimization
-        OPTION2="$OPTION2 -DHAVE_MALLOC_USABLE_SIZE"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_NULL_TRIM"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_SORTER_REFERENCES"
-        # extra feature
-        OPTION2="$OPTION2 -DEMSCRIPTEN"
-        OPTION2="$OPTION2 -DSQLITE_DISABLE_LFS"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3_PARENTHESIS"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_MATH_FUNCTIONS"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_NORMALIZE"
-        OPTION2="$OPTION2 -DSQLITE_HAVE_ZLIB"
-        # file
-        OPTION2="$OPTION2 -c $FILE -o $FILE2"
+        OPTION=""
         case "$FILE" in
         sqlite3.c)
-            OPTION2="$OPTION2 -DSQLITE3_C2"
+            OPTION="$OPTION -DSQLITE3_C2"
             ;;
         *)
-            OPTION2="$OPTION2 -DSQLITE3_EXT_C2"
+            OPTION="$OPTION -DSQLITE3_EXT_C2"
             ;;
         esac
-        emcc $OPTION1 $OPTION2
+        emcc $OPTION \
+            -DSQLITE_DISABLE_LFS \
+            -DSQLITE_ENABLE_FTS3 \
+            -DSQLITE_ENABLE_FTS3_PARENTHESIS \
+            -DSQLITE_ENABLE_MATH_FUNCTIONS \
+            -DSQLITE_ENABLE_NORMALIZE \
+            -DSQLITE_HAVE_ZLIB \
+            -DSQLITE_THREADSAFE=0 \
+            \
+            -DEMSCRIPTEN \
+            -I.tmp \
+            \
+            -Oz \
+            -Wall \
+            -flto \
+            \
+            -c "$FILE" -o "$FILE2"
     done
-    OPTION2=""
-    OPTION2="$OPTION2 -s ASSERTIONS=1"
-    OPTION2="$OPTION2 -s SAFE_HEAP=1"
-    if [ "$1" != --debug ]
-    then
-        OPTION2="$OPTION2 --closure 1"
-    fi
-    emcc $OPTION1 $OPTION2 \
+    emcc \
         -s EXPORTED_FUNCTIONS='[
-            "___dbFileImportOrExport",
-            "_dbClose",
-            "_dbExec",
-            "_dbFileImportOrExport",
-            "_dbNoop",
-            "_dbOpen",
-            "_jsbatonValueErrmsg",
-            "_sqlite3_errmsg",
-            "_sqlite3_free",
-            "_sqlite3_initialize",
-            "_sqlite3_malloc"
+"___dbFileImportOrExport",
+"_dbClose",
+"_dbExec",
+"_dbFileImportOrExport",
+"_dbNoop",
+"_dbOpen",
+"_sqlite3_errmsg",
+"_sqlite3_free",
+"_sqlite3_malloc",
+
+"_free",
+"_malloc",
+"_sqlite3_bind_blob",
+"_sqlite3_bind_double",
+"_sqlite3_bind_int",
+"_sqlite3_bind_parameter_index",
+"_sqlite3_bind_text",
+"_sqlite3_changes",
+"_sqlite3_clear_bindings",
+"_sqlite3_close_v2",
+"_sqlite3_column_blob",
+"_sqlite3_column_bytes",
+"_sqlite3_column_count",
+"_sqlite3_column_double",
+"_sqlite3_column_name",
+"_sqlite3_column_text",
+"_sqlite3_column_type",
+"_sqlite3_create_function_v2",
+"_sqlite3_data_count",
+"_sqlite3_exec",
+"_sqlite3_finalize",
+"_sqlite3_free",
+"_sqlite3_normalized_sql",
+"_sqlite3_open",
+"_sqlite3_prepare_v2",
+"_sqlite3_reset",
+"_sqlite3_result_blob",
+"_sqlite3_result_double",
+"_sqlite3_result_error",
+"_sqlite3_result_int",
+"_sqlite3_result_int64",
+"_sqlite3_result_null",
+"_sqlite3_result_text",
+"_sqlite3_sql",
+"_sqlite3_step",
+"_sqlite3_value_blob",
+"_sqlite3_value_bytes",
+"_sqlite3_value_double",
+"_sqlite3_value_int",
+"_sqlite3_value_text",
+"_sqlite3_value_type"
         ]' \
         -s EXPORTED_RUNTIME_METHODS='[
-            "AsciiToString",
-            "cwrap"
+"cwrap",
+
+"UTF8ToString",
+"stackAlloc",
+"stackRestore",
+"stackSave"
         ]' \
-        \
         --memory-init-file 0 \
-        --pre-js sqlmath_wrapper_wasm.js \
         -Wall \
-        -o .tmp/sqlmath_wasm.js \
         -s ALLOW_MEMORY_GROWTH=1 \
         -s ALLOW_TABLE_GROWTH=1 \
         -s NODEJS_CATCH_EXIT=0 \
         -s NODEJS_CATCH_REJECTION=0 \
         -s RESERVED_FUNCTION_POINTERS=64 \
+        -s SAFE_HEAP=1 \
         -s SINGLE_FILE=0 \
         -s USE_ZLIB \
         -s WASM=1 \
-        -s WASM_BIGINT \
+        \
         .tmp/sqlite3.c.wasm.o \
         .tmp/sqlite3_ext.c.wasm.o \
         .tmp/sqlmath_custom.c.wasm.o \
+        \
+        --pre-js sqlmath_wrapper_wasm.js \
+        -Oz \
+        -sWASM_BIGINT \
+        \
+        -o sqlmath_wasm.js \
+        \
+        #!! --closure 1 \
         #
-    printf '' > sqlmath_wasm.js
-    printf '/*jslint-disable*/
+    printf '' > .tmp.js
+    printf '
+/*jslint-disable*/
 (function () {
-"use strict";
-' >> sqlmath_wasm.js
-    cat .tmp/sqlmath_wasm.js >> sqlmath_wasm.js
+    "use strict";
+' >> .tmp.js
+    cat sqlmath_wasm.js | sed -e "s|/\*jslint-[a-z]*\*/||g" >> .tmp.js
     printf '
 }());
 /*jslint-enable*/
-' >> sqlmath_wasm.js
+' >> .tmp.js
+    mv .tmp.js sqlmath_wasm.js
 )}
 
 shCiEmsdkExport() {

@@ -1,8 +1,8 @@
-/*jslint beta, browser, nomen*/
+/*jslint beta, browser*/
 import {
     //!! assertJsonEqual,
     //!! assertNumericalEqual,
-    assertOrThrow,
+    //!! assertOrThrow,
     //!! dbCloseAsync,
     dbExecAsync,
     //!! dbExecWithRetryAsync,
@@ -18,33 +18,20 @@ import {
 
 let {
     CodeMirror,
-    getComputedStyle,
     jQuery
 } = globalThis;
-let DATATABLE_OPTION = {
-    deferRender: true,
-    dom: "rti",
-    processing: true,
-    scrollX: true,
-    scrollY: "224px",
-    scroller: true,
-    searching: false,
-    serverSide: true
-};
 let DBTABLE_DICT = Object.create(null);
 let DB_DICT = new Map();
 let DB_II = 1;
 let DB_MAIN;
-let DEBOUNCE_DICT = Object.create(null);
 let SQLITE_EDITOR;
 let SQLRESULT_LIST = [];
 
 noop(
     SQLITE_EDITOR,
-    assertOrThrow,
+    debugInline,
     dbFileAttachAsync,
-    dbFileExportAsync,
-    debugInline
+    dbFileExportAsync
 );
 
 async function dbFileAttachAsync({
@@ -67,26 +54,7 @@ async function dbFileAttachAsync({
     DB_DICT.set(dbName, dbAttached);
 }
 
-function debounce(key, func) {
-    let val = DEBOUNCE_DICT[key] || {
-        func,
-        timerTimeout: setTimeout(function () {
-            val.func();
-            delete DEBOUNCE_DICT[key];
-        }, 500)
-    };
-    val.func = func;
-    DEBOUNCE_DICT[key] = val;
-}
-
 async function init() {
-    // hack-jquery - optimization
-    jQuery.cssHooks.height.get = function (elem, computed, extra) {
-        return jQueryGetWidthOrHeight("height", elem, computed, extra);
-    };
-    jQuery.cssHooks.width.get = function (elem, computed, extra) {
-        return jQueryGetWidthOrHeight("width", elem, computed, extra);
-    };
     // init main db
     await sqlmathWebworkerInit({});
     DB_MAIN = await dbOpenAsync({
@@ -154,49 +122,6 @@ async function init() {
     });
 }
 
-function jQueryGetWidthOrHeight(name, elem, computed, extra) {
-    // Use the active box-sizing model to add/subtract irrelevant styles
-    let cssExpand = [
-        "Top", "Right", "Bottom", "Left"
-    ];
-    let ii;
-    let val = (
-        name === "width"
-        ? elem.offsetWidth
-        : elem.offsetHeight
-    );
-    assertOrThrow(computed, computed);
-    // Start with offset property, which is equivalent to the border-box value
-    extra = extra || "content";
-    // If we already have the right measurement, avoid augmentation
-    if (extra === "border") {
-        return val + "px";
-    }
-    // Otherwise initialize for horizontal or vertical properties
-    computed = getComputedStyle(elem);
-    ii = (
-        name === "width"
-        ? 1
-        : 0
-    );
-    while (ii < 4) {
-        // Both box models exclude margin, so add it if we want it
-        if (extra === "margin") {
-            val += parseFloat(computed[extra + cssExpand[ii]]);
-        }
-        // border-box includes padding, so remove it if we want content
-        if (extra === "content") {
-            val -= parseFloat(computed["padding" + cssExpand[ii]]);
-        }
-        // At this point, extra isn't border nor margin, so remove border
-        if (extra !== "margin") {
-            val -= parseFloat(computed["border" + cssExpand[ii] + "Width"]);
-        }
-        ii += 2;
-    }
-    return val + "px";
-}
-
 function jsonHtmlSafe(obj) {
 // this function will make <obj> html-safe
 // https://stackoverflow.com/questions/7381974
@@ -240,16 +165,14 @@ async function onDbExec() {
     // 2. ui-render sqlresult to html
     data.forEach(function (rowList, ii) {
         let colList = rowList.shift();
-        let hashtag = `sqlresult_${String(ii).padStart(2, "0")}`;
+        let hashtag;
         function ajax({
-            _iDisplayLength,
-            _iDisplayStart,
-            aaSorting,
-            iDraw
+            draw,
+            length,
+            order,
+            start
         }, callback) {
-            let [
-                colIi, direction
-            ] = aaSorting[0];
+            let colIi = order[0].column;
             rowList.sort(function (aa, bb) {
                 aa = aa[colIi];
                 bb = bb[colIi];
@@ -261,26 +184,21 @@ async function onDbExec() {
                     : 0
                 );
             });
-            if (direction === "desc") {
+            if (order[0].dir === "desc") {
                 rowList.reverse();
             }
-            debounce(hashtag, function () {
-                callback({
-                    data: jsonHtmlSafe(
-                        rowList.slice(
-                            _iDisplayStart,
-                            _iDisplayStart + _iDisplayLength
-                        )
-                    ),
-                    draw: iDraw,
-                    recordsFiltered: rowList.length,
-                    recordsTotal: rowList.length
-                });
+            callback({
+                data: jsonHtmlSafe(
+                    rowList.slice(start, start + length)
+                ),
+                draw,
+                recordsFiltered: rowList.length,
+                recordsTotal: rowList.length
             });
         }
         SQLRESULT_LIST.push({
             colList,
-            datatableOption: Object.assign({}, DATATABLE_OPTION, {
+            datatableOption: {
                 ajax,
                 columns: colList.map(function (name) {
                     return {
@@ -289,16 +207,23 @@ async function onDbExec() {
                         title: name
                     };
                 }),
-                data: rowList
-            }),
+                data: rowList,
+                deferRender: true,
+                dom: "rti",
+                scrollX: true,
+                scrollY: "10rem",
+                scroller: true,
+                searching: false,
+                serverSide: true
+            },
             rowList
         });
+        hashtag = `sqlresult_${String(ii).padStart(2, "0")}`;
         html += (
             `<div class="contentElemTitle" id="${hashtag}">`
             + `sqlite query result ${ii + 1}`
             + `</div>\n`
         );
-        html += `<div class="contentTableContainer">\n`;
         html += `<table class="sqlresultTable" data-ii=${ii}>\n`;
         html += `<thead>\n`;
         html += `<tr>\n`;
@@ -310,7 +235,6 @@ async function onDbExec() {
         html += `<tbody>\n`;
         html += `</tbody>\n`;
         html += `</table>\n`;
-        html += `</div>\n`;
     });
     document.querySelector("#sqlresultList1").innerHTML = html;
     // init datatables
@@ -378,9 +302,6 @@ async function onFileOpen({
 function stringHtmlSafe(str) {
 // this function will make <str> html-safe
 // https://stackoverflow.com/questions/7381974
-    if (typeof str !== "string") {
-        str = String(str);
-    }
     return str.replace((
         /&/gu
     ), "&amp;").replace((
@@ -519,14 +440,12 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
                 hashtag
             } = dbtable;
             async function ajax({
-                _iDisplayLength,
-                _iDisplayStart,
-                aaSorting,
-                iDraw
+                draw,
+                length,
+                order,
+                start
             }, callback) {
-                let [
-                    colIi, direction
-                ] = aaSorting[0];
+                let colIi = order[0].column;
                 // datatable - paginate
                 let data = await dbExecAsync({
                     db: DB_MAIN,
@@ -537,30 +456,28 @@ SELECT
         rowid,
         *
     FROM ${dbtableFullname}
-    ORDER BY [${columns[colIi]}]
+    ORDER BY ${columns[colIi]}
                     ${(
-                        direction === "asc"
+                        order[0].dir === "asc"
                         ? "ASC"
                         : "DESC"
                     )}
-    LIMIT ${Number(_iDisplayLength)}
-    OFFSET ${Number(_iDisplayStart)};
+    LIMIT ${Number(length)}
+    OFFSET ${Number(start)};
                     `)
                 });
-                debounce(hashtag, function () {
-                    callback({
-                        data: (
-                            data[1]
-                            ? jsonHtmlSafe(data[1].slice(1))
-                            : []
-                        ),
-                        iDraw,
-                        recordsFiltered: data[0][1][0],
-                        recordsTotal: data[0][1][0]
-                    });
+                callback({
+                    data: (
+                        data[1]
+                        ? jsonHtmlSafe(data[1].slice(1))
+                        : []
+                    ),
+                    draw,
+                    recordsFiltered: data[0][1][0],
+                    recordsTotal: data[0][1][0]
                 });
             }
-            dbtable.datatableOption = Object.assign({}, DATATABLE_OPTION, {
+            dbtable.datatableOption = {
                 ajax,
                 columns: columns.map(function (name) {
                     return {
@@ -568,8 +485,15 @@ SELECT
                         name,
                         title: name
                     };
-                })
-            });
+                }),
+                deferRender: true,
+                dom: "rti",
+                scrollX: true,
+                scrollY: "10rem",
+                scroller: true,
+                searching: false,
+                serverSide: true
+            };
             html += `<div class="contentElemTitle" id="${hashtag}">`;
             html += (
                 dbName === "main"
@@ -577,7 +501,6 @@ SELECT
                 : `attached table ${stringHtmlSafe(dbtableFullname)}`
             );
             html += `</div>\n`;
-            html += `<div class="contentTableContainer">\n`;
             html += `<table class="dbtableTable" data-hashtag=${hashtag}>\n`;
             html += `<thead>\n`;
             html += `<tr>\n`;
@@ -589,7 +512,6 @@ SELECT
             html += `<tbody>\n`;
             html += `</tbody>\n`;
             html += `</table>\n`;
-            html += `</div>\n`;
         });
     });
     document.querySelector("#dbtableList1").innerHTML = html;

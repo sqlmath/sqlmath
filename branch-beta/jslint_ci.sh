@@ -1944,6 +1944,7 @@ function globExclude({
       /[\[\]]/g
     ), "\\$&");
     strRegex = strRegex.replace((
+      // ignore [-/]
       /[$()*+.?\[\\\]\^{|}]/g
     ), "\\$&");
     strRegex = strRegex.replace((
