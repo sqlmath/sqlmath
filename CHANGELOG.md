@@ -5,6 +5,7 @@
 - none
 
 # v2022.6.1-beta
+- wasm - rewrite file sqlmath_wrapper_wasm.js to pass jslint
 - datatables - rewrite datatables-function _fnDraw() for faster rendering
 - sqlmath - milestone - functional index.html
 - add files asset_sqlmath_external_rollup.css, asset_sqlmath_external_rollup.js
