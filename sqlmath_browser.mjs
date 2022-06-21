@@ -233,7 +233,7 @@ async function onDbExec() {
     }) {
         colList.length = 0;
         rowList.length = 0;
-        datatable.fnDestroy();
+        datatable.api(true).destroy(true);
     });
     SQLRESULT_LIST = [];
     // 2. ui-render sqlresult to html
@@ -243,8 +243,7 @@ async function onDbExec() {
         function ajax({
             _iDisplayLength,
             _iDisplayStart,
-            aaSorting,
-            iDraw
+            aaSorting
         }, callback) {
             let [
                 colIi, direction
@@ -271,9 +270,8 @@ async function onDbExec() {
                             _iDisplayStart + _iDisplayLength
                         )
                     ),
-                    draw: iDraw,
-                    recordsFiltered: rowList.length,
-                    recordsTotal: rowList.length
+                    iRecordsDisplay: rowList.length,
+                    iRecordsTotal: rowList.length
                 });
             });
         }
@@ -419,7 +417,7 @@ async function uiRenderDbtableList() {
     Object.values(DBTABLE_DICT).forEach(function ({
         datatable
     }) {
-        datatable.fnDestroy();
+        datatable.api(true).destroy(true);
     });
     DBTABLE_DICT = Object.create(null);
     // DBTABLE_DICT - sync
@@ -520,8 +518,7 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
             async function ajax({
                 _iDisplayLength,
                 _iDisplayStart,
-                aaSorting,
-                iDraw
+                aaSorting
             }, callback) {
                 let [
                     colIi, direction
@@ -553,9 +550,8 @@ SELECT
                             ? jsonHtmlSafe(data[1].slice(1))
                             : []
                         ),
-                        iDraw,
-                        recordsFiltered: data[0][1][0],
-                        recordsTotal: data[0][1][0]
+                        iRecordsDisplay: data[0][1][0],
+                        iRecordsTotal: data[0][1][0]
                     });
                 });
             }
