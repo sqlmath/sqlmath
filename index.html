@@ -8,6 +8,7 @@
     <link rel="modulepreload" href="sqlmath.mjs" />
     <link rel="modulepreload" href="sqlmath_wasm.js" />
     <script defer src="asset_sqlmath_external_rollup.js"></script>
+    <script defer src="asset_sqlmath_datatables_rollup.js"></script>
     <script type="module" src="./sqlmath_browser.mjs?aa=02"></script>
 <style>
 /* jslint utility2:true */
@@ -120,6 +121,17 @@ textarea {
 #contentPanel1 .dataTables_scrollHead th {
     border-right: 1px solid #777 !important;
 }
+/* stick-header
+#contentPanel1 .dataTables_scrollBody th {
+    background: #bbb;
+    height: 16px !important;
+    position: sticky;
+    top: 0;
+}
+#contentPanel1 .dataTables_scrollHead {
+    display: none;
+}
+*/
 #contentPanel1 .dataTables_info {
     padding-top: 2px;
 }

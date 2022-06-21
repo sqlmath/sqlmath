@@ -3,7 +3,6 @@
 /*global
     DataTable
     _fnCallbackFire
-    _fnAdjustColumnSizing
     assertOrThrow
     stringHtmlSafe
 */
@@ -52,12 +51,10 @@ function _fnAjaxUpdateDraw2(settings, {
     settings.bAjaxDataGet = false;
     _fnDraw(settings);
     if (!settings._bInitComplete) {
-        // _fnInitComplete(settings, json);
         settings._bInitComplete = true;
         // When data was added after the initialisation (data or Ajax)
         // we need to calculate the column sizing
         // hack-datatables - optimization - disable slow-onresize-handler
-        // _fnAdjustColumnSizing(settings);
         _fnCallbackFire(settings, "aoInitComplete", "init", [settings, {
             data,
             iRecordsDisplay,
@@ -84,7 +81,6 @@ function _fnDraw(settings) {
             settings
         ]
     );
-    settings.bDrawing = true;
     if (
         !settings.bDeferLoading
         && !settings.bDestroying
@@ -151,7 +147,6 @@ function _fnDraw(settings) {
     // Draw is complete, sorting and filtering must be as well
     settings.bSorted = false;
     settings.bFiltered = false;
-    settings.bDrawing = false;
 }
 function _fnProcessingDisplay(settings, show) {
 // Display or hide the processing indicator
