@@ -270,8 +270,7 @@ async function onDbExec() {
                             _iDisplayStart + _iDisplayLength
                         )
                     ),
-                    iRecordsDisplay: rowList.length,
-                    iRecordsTotal: rowList.length
+                    iRecordsCount: rowList.length
                 });
             });
         }
@@ -550,8 +549,7 @@ SELECT
                             ? jsonHtmlSafe(data[1].slice(1))
                             : []
                         ),
-                        iRecordsDisplay: data[0][1][0],
-                        iRecordsTotal: data[0][1][0]
+                        iRecordsCount: data[0][1][0]
                     });
                 });
             }
