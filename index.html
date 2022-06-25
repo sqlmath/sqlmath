@@ -8,8 +8,7 @@
     <link rel="modulepreload" href="sqlmath.mjs" />
     <link rel="modulepreload" href="sqlmath_wasm.js" />
     <script defer src="asset_sqlmath_external_rollup.js"></script>
-    <script defer src="asset_sqlmath_datatables_rollup.js"></script>
-    <script type="module" src="./sqlmath_browser.mjs?aa=02"></script>
+    <script type="module" src="./sqlmath_browser.mjs"></script>
 <style>
 /* jslint utility2:true */
 /*csslint
@@ -54,6 +53,7 @@ textarea {
 }
 .CodeMirror-wrap {
     border: 1px solid #777;
+    border-top: 0;
 }
 #sqliteEditor1 {
     height: 300px;
@@ -63,7 +63,6 @@ textarea {
 .contentElemTitle {
     background: #bbd;
     border: 1px solid #777;
-    border-bottom: 0;
     font-weight: bold;
     margin-top: 1rem;
     padding: 0.5rem;
@@ -82,8 +81,10 @@ textarea {
     padding: 0 2rem 2rem 18rem;
     width: 100%;
 }
+#contentPanel1 tbody {
+    border-bottom: 1px solid #777;
+}
 #contentPanel1 tbody tr {
-    border: none;
     height: 16px !important; /* hack-datatables - optimization */
 }
 #contentPanel1 tbody tr:hover {
@@ -91,17 +92,21 @@ textarea {
 }
 #contentPanel1 td,
 #contentPanel1 th {
-    border: none;
-    border-right: 1px solid transparent !important;
+    border-right: 1px solid #777;
     max-width: 24rem;
     overflow: hidden;
     padding: 0 16px 0 2px;
-    text-align: left;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-#contentPanel1 td::after,
-#contentPanel1 td::before,
+/* stick-header */
+#contentPanel1 th {
+    background: #bbd;
+    border-right: 1px solid #333;
+    height: 16px !important;
+    position: sticky;
+    top: 0;
+}
 #contentPanel1 th::after,
 #contentPanel1 th::before {
     font-size: 16px;
@@ -115,43 +120,30 @@ textarea {
     background: #ddd;
 }
 #contentPanel1 .dataTable {
+    background: #fff;
+    left: 0;
     margin: 0;
-}
-#contentPanel1 .dataTables_scrollBody td,
-#contentPanel1 .dataTables_scrollHead th {
-    border-right: 1px solid #777 !important;
-}
-/* stick-header
-#contentPanel1 .dataTables_scrollBody th {
-    background: #bbb;
-    height: 16px !important;
-    position: sticky;
+    position: absolute;
     top: 0;
 }
-#contentPanel1 .dataTables_scrollHead {
-    display: none;
-}
-*/
 #contentPanel1 .dataTables_info {
-    padding-top: 2px;
+    border-left: 1px solid #777;
+    border-right: 1px solid #777;
+    height: 16px;
+    padding: 2px;
+    width: 100%;
 }
 #contentPanel1 .dataTables_processing {
-    z-index: 1;
+    background: #fff;
+    border: 1px solid #777;
+    opacity: 0.875;
+    z-index: 99;
 }
-#contentPanel1 .dataTables_scrollBody {
+#contentPanel1 .dataTables_scroller {
     background: #ddd;
     border: 1px solid #777;
     overflow: scroll !important;
-}
-#contentPanel1 .dataTables_scrollBody tbody {
-    border-bottom: 1px solid #777;
-}
-#contentPanel1 .dataTables_scrollBody .dataTable {
-    background: #fff;
-}
-#contentPanel1 .dataTables_scrollHead {
-    border: 1px solid #777 !important;
-    border-bottom: none !important;
+    position: relative;
 }
 
 

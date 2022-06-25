@@ -5,6 +5,7 @@
 - none
 
 # v2022.6.1-beta
+- merge datatables code into file sqlmath_browser.mjs and remove jquery-dependency
 - bugfix - fix ci-function shCiBuildWasm() not updating output sqlmath_wasm.wasm
 - wasm - rewrite file sqlmath_wrapper_wasm.js to pass jslint
 - datatables - rewrite datatables-function _fnDraw() for faster rendering
