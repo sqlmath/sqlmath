@@ -19,12 +19,8 @@ import {
 let {
     CodeMirror
 } = globalThis;
-let DATATABLE_OPTION = {
-    sScrollY: "224px"
-};
 let DATATABLE_ROW_BUFFER_SCALE = 16;
 let DATATABLE_ROW_HEIGHT = 16;
-let DATATABLE_SCROLLER_BOUNDARY_SCALE = 0.5;
 let DBTABLE_DICT = Object.create(null);
 let DB_DICT = new Map();
 let DB_II = 1;
@@ -41,23 +37,23 @@ noop(
 );
 
 function datatableAjax(baton, json) {
-    let boundaryPx;
-    let displayEnd = baton.rowCount;
-    let displayLen = baton.pageLimit;
-    let displayStart = baton.pageOffset;
+    let {
+        ajax,
+        elemLoading,
+        elemScroller,
+        elemTable,
+        pageOffset
+    } = baton;
     let html = "";
-    let iTableHeight = baton.nTable.offsetHeight;
     let rowCount = json?.rowCount;
     let rowList = json?.rowList;
-    let scrollTop;
-    let tableTop;
     switch (rowCount === undefined && baton.modeAjax) {
     case 0:
-        debugInline("datatableAjax - modeAjax=0");
+        //!! debugInline("datatableAjax - modeAjax=0");
         // uiLoading - show
-        baton.nLoading.style.display = "block";
+        elemLoading.style.display = "block";
         baton.modeAjax = 1;
-        baton.ajax(baton, async function (json) {
+        ajax(baton, async function (json) {
             // recurse - draw
             datatableAjax(baton, json);
             // debounce - throttle
@@ -72,7 +68,7 @@ function datatableAjax(baton, json) {
             // cleanup
             baton.modeAjax = 0;
             // uiLoading - hide
-            baton.nLoading.style.display = "none";
+            elemLoading.style.display = "none";
         });
         return;
     // debounce
@@ -86,21 +82,18 @@ function datatableAjax(baton, json) {
     // init scroller height-properties
     if (!baton.hasOwnProperty(rowCount)) {
         baton.rowCount = rowCount;
-        baton.scrollerHeight = DATATABLE_ROW_HEIGHT * Math.max(1, rowCount);
-        // Minimum height so there is always a row visible
-        // (the 'no rows found' if reduced to zero filtering)
-        baton.nScrollerForce.style.height = (
-            `${Math.max(DATATABLE_ROW_HEIGHT, baton.scrollerHeight)}px`
+        // .datatableScrollerDummy
+        elemScroller.firstElementChild.style.height = (
+            `${rowCount * DATATABLE_ROW_HEIGHT}px`
         );
     }
     if (!(rowList.length && rowList[0].length)) {
         return;
     }
-    baton.rowList = rowList;
     // Insert the required TR nodes into the table for display
     // html-sanitize rowList
     JSON.parse(
-        JSON.stringify(baton.rowList).replace((
+        JSON.stringify(rowList).replace((
             /&/gu
         ), "&amp;").replace((
             /</gu
@@ -116,106 +109,44 @@ function datatableAjax(baton, json) {
         });
         html += `</tr>`;
     });
-    baton.nTable.children[1].innerHTML = html;
-    // Call all required callback functions for the end of a draw
-    // Update the scroller when the Datatable is redrawn
-    //
-// Draw callback function which is fired when the Datatable is redrawn.
-// The main function of this method is to position the drawn table correctly
-// the scrolling container for the rows that is displays as a result of the
-// scrolling position.
-    // Disable the scroll event listener while we are updating the DOM
-    baton.skip = true;
-    // Reposition the scrolling for the updated virtual position if needed
-    if (displayStart === 0) {
-        // Linear calculation at the top of the table
-        scrollTop = baton.topRowFloat * DATATABLE_ROW_HEIGHT;
-    } else if (displayStart + displayLen >= displayEnd) {
-        // Linear calculation that the bottom as well
-        scrollTop = (
-            baton.scrollerHeight
-            - ((displayEnd - baton.topRowFloat) * DATATABLE_ROW_HEIGHT)
-        );
-    } else {
-        // Domain scaled in the middle
-        scrollTop = baton.topRowFloat * DATATABLE_ROW_HEIGHT;
-    }
-    baton.nScroller.scrollTop = scrollTop;
-    // Store positional information so positional calculations can be based
-    // upon the current table draw position
-    baton.scrollTop0 = scrollTop;
-    baton.baseRowTop = baton.topRowFloat;
-    /**
-// Pixel location of the top of the drawn table in the viewport
-//  @type     int
-//  @default  0
-      */
+    // tbody
+    elemTable.children[1].innerHTML = html;
     // Position the table in the virtual scroller
-    tableTop = (
-        scrollTop
-        - ((baton.topRowFloat - displayStart) * DATATABLE_ROW_HEIGHT)
-    );
-    if (displayStart === 0) {
-        tableTop = 0;
-    } else if (displayStart + displayLen >= displayEnd) {
-        tableTop = baton.scrollerHeight - iTableHeight;
-    }
-    baton.nTable.style.top = tableTop + "px";
-    // Calculate the boundaries for where a redraw will be triggered by the
-    // scroll event listener
-    boundaryPx = (
-        (scrollTop - tableTop) * DATATABLE_SCROLLER_BOUNDARY_SCALE
-    );
-    baton.redrawTop = scrollTop - boundaryPx;
-    baton.redrawBottom = (
-        (scrollTop + boundaryPx > (
-            baton.scrollerHeight
-            - baton.viewport
-            - DATATABLE_ROW_HEIGHT
-        ))
-        ? baton.scrollerHeight - baton.viewport - DATATABLE_ROW_HEIGHT
-        : scrollTop + boundaryPx
-    );
-    baton.skip = false;
-    baton.ignoreScroll = false;
+    elemTable.style.top = Math.max(0, Math.floor(
+        (elemScroller.scrollHeight - 1)
+        * pageOffset
+        / (baton.rowCount + 1)
+    )) + "px";
 }
 
-function datatableCreate(nTable, baton) {
-// Create a Datatables Api instance, with the currently selected tables for
-// the Api's context.
-    let nTableWrapper;
+function datatableCreate(elemTable, baton) {
+// this function will create a dom-datatable-view of sqlite queries and tables
+    let elemContainer;
+    let elemLoading;
+    let elemPageInfo;
+    let elemScroller;
+    let viewRowCount;
     baton = Object.assign({
-        aaSorting: [
+        modeAjax: 0,
+        orderBy: [
             [
                 0,
                 "asc"
             ]
         ],
-        modeAjax: 0,
-        pageOffset: 0,
-        // Pixel location of the boundary for when the next data set
-        // should be loaded and drawn when scrolling down the way.
-        // Note that this is actually calculated as the offset from
-        redrawBottom: 0,
-        // Pixel location of the boundary for when the next data set
-        // should be loaded and drawn when scrolling up the way.
-        redrawTop: 0,
-        topRowFloat: 0,
-        // Number of rows calculated as visible in the visible viewport
-        viewportRows: 0
+        pageOffset: 0
     }, baton);
-    baton.nTable = nTable;
     // Sanity check
-    assertOrThrow(nTable.nodeName === "TABLE");
-    nTable.classList.add("dataTable");
+    assertOrThrow(elemTable.nodeName === "TABLE");
+    elemTable.classList.add("datatable");
     // init columns
-    nTable.children[1].innerHTML = (`
-<tr><td colspan="${nTable.children[0].firstElementChild.children.length}">
+    elemTable.children[1].innerHTML = (`
+<tr><td colspan="${elemTable.children[0].firstElementChild.children.length}">
 No data available in table
 </td></tr>
     `);
     // Show the display HTML options
-    // All Datatables are wrapped in a div
+    // All datatables are wrapped in a div
     // Generate the node required for the processing node
     // The HTML structure that we want to generate in this function is:
     //  div - scroller
@@ -227,37 +158,26 @@ No data available in table
     //      table - table (master table)
     //        thead - thead clone for sizing
     //        tbody - tbody
-    nTableWrapper = domDivCreate(`
-<div class="dataTables_wrapper no-footer">
-<div class="dataTables_processing" style="display: block;">
-    Loading...
-    <div>
-        <div></div><div></div><div></div><div></div>
-    </div>
-</div>
-<div class="dataTables_info">
-Showing 0 to 0 of 0 entries
-</div>
-<div class="dataTables_scroll">
-    <div
-        class="dataTables_scroller"
-        style="height: ${baton.sScrollY}; maxHeight: ${baton.sScrollY};"
-    >
-        <div class="dataTables_scrollerForce"></div>
-    </div>
+    elemContainer = domDivCreate(`
+<div class="datatableContainer">
+<div class="loadingEllipsis" style="display: block;">Loading</div>
+<div class="datatablePageInfo">Showing 0 to 0 of 0 entries</div>
+<div
+    class="datatableScroller"
+    style="height: ${12 * DATATABLE_ROW_HEIGHT}px;"
+>
+    <div class="datatableScrollerDummy" style="height: 0;"></div>
 </div>
 </div>
     `).firstElementChild;
     [
-        baton.nLoading, baton.nScrollInfo, baton.nScroller
-    ] = nTableWrapper.children;
-    baton.nScroller = baton.nScroller.firstElementChild;
-    baton.nScrollerForce = baton.nScroller.firstElementChild;
+        elemLoading, elemPageInfo, elemScroller
+    ] = elemContainer.children;
     // Built our DOM structure - replace the holding div with what we want
-    nTable.before(nTableWrapper);
-    baton.nScroller.append(nTable);
+    elemTable.before(elemContainer);
+    elemScroller.append(elemTable);
     // init event-handling - sorting
-    nTable.querySelector(
+    elemTable.querySelector(
         "thead tr"
     ).addEventListener("click", function ({
         currentTarget,
@@ -268,7 +188,6 @@ Showing 0 to 0 of 0 entries
             Array.from(currentTarget.children).indexOf(target.closest("th"))
         );
     });
-
     // Initialization for Scroller
     // Insert a div element that we can use to force the DT scrolling container
     // to the height required if the whole table was being displayed
@@ -277,17 +196,23 @@ Showing 0 to 0 of 0 entries
     // in the scrolling viewport, based on current dimensions in the browser's
     // rendering. This can be particularly useful if the table is initially
     // drawn in a hidden element - for example in a tab.
-    baton.viewport = baton.nScroller.clientHeight;
-    baton.viewportRows = (
-        parseInt(baton.viewport / DATATABLE_ROW_HEIGHT, 10) + 1
+    //
+    // Number of rows in visible view of table.
+    viewRowCount = (
+        Math.floor(elemScroller.clientHeight / DATATABLE_ROW_HEIGHT) + 1
     );
-    baton.pageLimit = baton.viewportRows * DATATABLE_ROW_BUFFER_SCALE;
-    // Scrolling callback to see if a page change is needed - use a throttled
-    // function for the save save callback so we aren't hitting it on every
-    // scroll
-    baton.ignoreScroll = true;
-    baton.nScroller.addEventListener("scroll", function () {
+    // Scrolling callback to see if a page change is needed
+    elemScroller.addEventListener("scroll", function () {
         datatableScroll(baton);
+    });
+    Object.assign(baton, {
+        elemLoading,
+        elemPageInfo,
+        elemScroller,
+        elemTable,
+        pageLimit: viewRowCount * DATATABLE_ROW_BUFFER_SCALE,
+        pageOffset: 0,
+        viewRowCount
     });
     // If there is default sorting required - let's do it. The sort function
     // will do the drawing for us. Otherwise we draw the table regardless of the
@@ -303,74 +228,56 @@ function datatableScroll(baton) {
 // currently drawn or not. If needed, then it will redraw the table based on
 // the new position.
     // Update the table's information display for what is now in the viewport
-    // Update any information elements that are controlled by the Datatable
+    // Update any information elements that are controlled by the datatable
     // based on the scrolling viewport and what rows are visible in it.
-    let iTopRow;
-    let scrollTop = baton.nScroller.scrollTop;
-    let scrollTop0 = baton.scrollTop0;
-    baton.nScrollInfo.textContent = (
+    let {
+        elemPageInfo,
+        elemScroller,
+        pageLimit,
+        pageOffset,
+        rowCount,
+        viewRowCount
+    } = baton;
+    let viewRowBeg = Math.max(0, Math.floor(
+        rowCount
+        * elemScroller.scrollTop
+        / (elemScroller.scrollHeight + 1)
+    ));
+    let viewRowEnd = Math.min(
+        rowCount,
+        Math.ceil(viewRowBeg + viewRowCount)
+    );
+    elemPageInfo.textContent = (
         "Showing "
-        + new Intl.NumberFormat("en-US").format(Math.floor(
-            (scrollTop - scrollTop0) / DATATABLE_ROW_HEIGHT
-            + baton.baseRowTop + 1
-        ))
+        + new Intl.NumberFormat("en-US").format(viewRowBeg + 1)
         + " to "
-        + new Intl.NumberFormat("en-US").format(Math.min(
-            baton.rowCount,
-            Math.ceil(
-                (scrollTop + baton.viewport - scrollTop0) / DATATABLE_ROW_HEIGHT
-                + baton.baseRowTop
-            )
-        ))
+        + new Intl.NumberFormat("en-US").format(viewRowEnd)
         + " of "
-        + new Intl.NumberFormat("en-US").format(baton.rowCount)
+        + new Intl.NumberFormat("en-US").format(rowCount)
         + " entries"
     );
-    if (baton.skip) {
-        return;
-    }
-    if (baton.ignoreScroll) {
-        return;
-    }
-    // If scroll point is inside the trigger boundary,
-    // we can skip expensive table redraw.
-    if (baton.redrawTop <= scrollTop && scrollTop <= baton.redrawBottom) {
-        baton.topRowFloat = scrollTop0 + scrollTop - scrollTop0;
-        return;
-    }
-    // Perform expensive table redraw.
-    baton.topRowFloat = scrollTop / DATATABLE_ROW_HEIGHT;
-    iTopRow = (
-        Math.floor(baton.topRowFloat)
-        - Math.ceil(
-            0.5 * (DATATABLE_ROW_BUFFER_SCALE - 1) * baton.viewportRows
+    // If scroll point is inside trigger boundary, skip expensive table redraw.
+    if (
+        pageOffset <= Math.max(0, viewRowBeg - 2 * viewRowCount)
+        && (
+            Math.min(rowCount, viewRowEnd + 2 * viewRowCount)
+            <= pageOffset + pageLimit
         )
-    );
-    if (iTopRow <= 0) {
-        // At the start of the table
-        iTopRow = 0;
-    } else if (iTopRow + baton.pageLimit > baton.rowCount) {
-        // At the end of the table
-        iTopRow = Math.max(0, baton.rowCount - baton.pageLimit);
-    } else if (iTopRow % 2 !== 0) {
-        // For the row-striping classes (odd/even) we want only to start
-        // on evens otherwise the stripes will change between draws and
-        // look rubbish
-        iTopRow += 1;
+    ) {
+        return;
     }
-    if (iTopRow !== baton.pageOffset) {
-        // Do the Datatables redraw based on the calculated start point
-        // - note that when using server-side processing
-        baton.pageOffset = iTopRow;
-        datatableAjax(baton);
-    }
+    // Do the datatable redraw based on the calculated start point
+    baton.pageOffset = Math.max(0, Math.round(
+        viewRowBeg + 0.5 * viewRowCount - 0.5 * pageLimit
+    ));
+    datatableAjax(baton);
 }
 
 function datatableSort(baton, colIdx) {
 // Function to run on user sort request
     let asSorting = ["asc", "desc"];
     let nextSortIdx;
-    let sorting = baton.aaSorting;
+    let sorting = baton.orderBy;
     function next(a, overflow) {
         let idx = a._idx;
         if (idx === undefined) {
@@ -398,7 +305,7 @@ function datatableSort(baton, colIdx) {
     }
     // Reset scroll to top in redraw.
     baton.pageOffset = 0;
-    baton.topRowFloat = 0;
+    baton.elemScroller.scrollTop = 0;
     // Run the sort by calling a full redraw
     datatableAjax(baton);
 }
@@ -553,13 +460,13 @@ async function onDbExec() {
         let colList = rowList.shift();
         let hashtag = `sqlresult_${String(ii).padStart(2, "0")}`;
         function ajax({
-            aaSorting,
+            orderBy,
             pageLimit,
             pageOffset
         }, datatableAjax) {
             let [
                 colIi, direction
-            ] = aaSorting[0];
+            ] = orderBy[0];
             rowList.sort(function (aa, bb) {
                 aa = aa[colIi];
                 bb = bb[colIi];
@@ -588,17 +495,9 @@ async function onDbExec() {
         }
         SQLRESULT_LIST.push({
             colList,
-            datatableOption: Object.assign({}, DATATABLE_OPTION, {
-                ajax,
-                aoColumns: colList.map(function (name) {
-                    return {
-                        defaultContent: "",
-                        name,
-                        title: name
-                    };
-                }),
-                data: rowList
-            }),
+            datatableOption: {
+                ajax
+            },
             rowList
         });
         html += (
@@ -606,7 +505,6 @@ async function onDbExec() {
             + `sqlite query result ${ii + 1}`
             + `</div>\n`
         );
-        html += `<div class="contentTableContainer">\n`;
         html += `<table class="sqlresultTable" data-ii=${ii}>\n`;
         html += `<thead>\n`;
         html += `<tr>\n`;
@@ -618,7 +516,6 @@ async function onDbExec() {
         html += `<tbody>\n`;
         html += `</tbody>\n`;
         html += `</table>\n`;
-        html += `</div>\n`;
     });
     document.querySelector("#sqlresultList1").innerHTML = html;
     // init datatables
@@ -816,13 +713,13 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
                 hashtag
             } = dbtable;
             async function ajax({
-                aaSorting,
+                orderBy,
                 pageLimit,
                 pageOffset
             }, datatableAjax) {
                 let [
                     colIi, direction
-                ] = aaSorting[0];
+                ] = orderBy[0];
                 // datatable - paginate
                 let data = await dbExecAsync({
                     db: DB_MAIN,
@@ -854,16 +751,9 @@ SELECT
                     });
                 });
             }
-            dbtable.datatableOption = Object.assign({}, DATATABLE_OPTION, {
-                ajax,
-                aoColumns: columns.map(function (name) {
-                    return {
-                        defaultContent: "",
-                        name,
-                        title: name
-                    };
-                })
-            });
+            dbtable.datatableOption = {
+                ajax
+            };
             html += `<div class="contentElemTitle" id="${hashtag}">`;
             html += (
                 dbName === "main"
@@ -871,7 +761,6 @@ SELECT
                 : `attached table ${stringHtmlSafe(dbtableFullname)}`
             );
             html += `</div>\n`;
-            html += `<div class="contentTableContainer">\n`;
             html += `<table class="dbtableTable" data-hashtag=${hashtag}>\n`;
             html += `<thead>\n`;
             html += `<tr>\n`;
@@ -883,7 +772,6 @@ SELECT
             html += `<tbody>\n`;
             html += `</tbody>\n`;
             html += `</table>\n`;
-            html += `</div>\n`;
         });
     });
     document.querySelector("#dbtableList1").innerHTML = html;
