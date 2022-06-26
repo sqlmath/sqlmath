@@ -5,6 +5,8 @@
 - none
 
 # v2022.6.1-beta
+- optimization - defer rendering data in dttable until you scroll into it in viewport
+- add modal to display sql-query errors
 - bugfix - fix broken sorting
 - merge datatables css into file index.html
 - merge datatables code into file sqlmath_browser.mjs and remove jquery-dependency

@@ -428,28 +428,28 @@ file none
     universal-selector: false,
 */
 * {
+    border: 0;
     box-sizing: border-box;
     margin: 0;
+    outline: none;
+    padding: 0;
+    text-decoration: none;
+}
+*:focus {
+    outline: none;
 }
 body {
     font-family: monospace;
     font-size: 0.75rem;
     overflow-y: scroll;
 }
-button,
-button:focus,
-button:hover {
-    background: #eee;
-    border: 1px solid #777;
+button {
+    background: #bbb;
     font-family: monospace;
     font-size: 0.75rem;
     height: 1.25rem;
     min-width: 4rem;
     padding: 0 0.5rem;
-}
-button:hover {
-    background: #bbd;
-    cursor: pointer;
 }
 table {
     border-collapse: collapse;
@@ -458,10 +458,6 @@ textarea {
     display: block;
     width: 100%;
 }
-.CodeMirror-wrap {
-    border: 1px solid #777;
-    border-top: 0;
-}
 #sqliteEditor1 {
     height: 300px;
 }
@@ -469,9 +465,7 @@ textarea {
 /*css section content*/
 .contentElemTitle {
     background: #bbd;
-    border: 1px solid #777;
     font-weight: bold;
-    margin-top: 2rem;
     padding: 0.5rem;
 }
 .contentSectionTitle {
@@ -485,11 +479,11 @@ textarea {
     width: 100%;
 }
 #contentPanel1 tbody {
-    border-bottom: 1px solid #777;
+    border-bottom: 1px solid #999;
 }
 #contentPanel1 td,
 #contentPanel1 th {
-    border-right: 1px solid #777;
+    border-right: 1px solid #999;
     max-width: 24rem;
     overflow: hidden;
     padding: 0 8px 0 2px;
@@ -533,9 +527,6 @@ textarea {
 #contentPanel1 tr:nth-child(even) {
     background: #ddd;
 }
-#contentPanel1 tr:hover {
-    background: #bbd;
-}
 #contentPanel1 .dttable {
     background: #fff;
     left: 0;
@@ -543,14 +534,9 @@ textarea {
     position: absolute;
     top: 0;
 }
-#contentPanel1 .dttableContainer {
-    border: 1px solid #777;
-    border-top: 0;
-    position: relative;
-}
 #contentPanel1 .dttableLoading {
     background: #fff;
-    border: 1px solid #777;
+    display: none;
     left: 50%;
     margin-left: -100px;
     margin-top: -26px;
@@ -560,7 +546,7 @@ textarea {
     text-align: center;
     top: 50%;
     width: 200px;
-    z-index: 99;
+    z-index: 1;
 }
 #contentPanel1 .dttableLoading::after {
     animation: dttableLoading steps(1, end) 1s infinite;
@@ -582,6 +568,11 @@ textarea {
 #contentPanel1 .dttableScrollerDummy {
     width: 1px;
 }
+#contentPanel1 .contentElem {
+    box-shadow: 2px 2px 4px 2px #bbb;
+    margin-top: 2rem;
+    position: relative;
+}
 @keyframes dttableLoading {
     0% {
         content: "";
@@ -600,21 +591,55 @@ textarea {
     }
 }
 
+/*css section error*/
+#errorPanel1 {
+    color: #b00;
+    z-index: 10;
+}
+#errorPanel1 .modalTitle {
+    color: #700;
+    background: #d777;
+}
+
+/*css section modal*/
+.modalClose {
+    color: #777;
+    cursor: pointer;
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    margin: -4px 4px;
+}
+.modalContent {
+    padding: 1rem;
+    width: 100%;
+}
+.modalPanel {
+    background: #fff;
+    display: none;
+    left: 50%;
+    position: fixed;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+}
+.modalTitle {
+    background: #bbd;
+    padding: 0.5rem;
+    text-align: center;
+}
+
 /*css section toc*/
 .tocElemA {
     color: #037;
+    cursor: pointer;
     display: inline-block;
     line-height: 1rem;
     overflow: hidden;
     padding: 0 0.5rem 0.125rem 0.625rem;
-    text-decoration: none;
     text-overflow: ellipsis;
     white-space: nowrap;
     width: 100%;
-}
-.tocElemA:hover {
-    background: #bbd;
-    cursor: pointer;
 }
 .tocElemA::before {
     background-color: #000;
@@ -648,6 +673,24 @@ textarea {
     text-align: left;
     width: 100%;
 }
+
+/* section important */
+.modalPanel,
+#contentPanel1 .dttableLoading {
+    box-shadow: 4px 4px 8px 2px #777;
+}
+button:hover {
+    background: #999;
+}
+.modalClose:hover {
+    color: #333;
+}
+.tocElemA:hover {
+    background: #bbd;
+}
+#contentPanel1 tr:hover {
+    background: #bbd;
+}
 </style>
 </head>
 <body>
@@ -658,12 +701,14 @@ textarea {
 <div id="contentPanel1">
 
 <div class="contentSectionTitle" style="margin-top: 0.5rem;">sqlite editor</div>
-<div class="contentElemTitle" id="editor1">script editor</div>
-<textarea id="sqliteEditor1">
+<div class="contentElem" id="editor1">
+<div class="contentElemTitle">script editor</div>
+<textarea id="sqliteEditor1" style="border: 0;">
 SELECT COUNT(*), 2;
 DROP TABLE IF EXISTS foo1;
 CREATE TABLE foo1(aa, bb, cc);
 </textarea>
+</div>
 <button class="button" id="dbExec2" style="margin-top: 1rem;">script - execute</button>
 
 <div class="contentSectionTitle">sqlite query results</div>
@@ -702,6 +747,27 @@ CREATE TABLE foo1(aa, bb, cc);
 <div id="tocDbList1"></div>
 </div>
 <!-- tocPanel1 end -->
+
+
+<!-- errorPanel1 start -->
+<div id="errorPanel1" class="modalPanel">
+<span class="modalClose">&times;</span>
+<div class="modalTitle">SQLite Error</div>
+<pre class="modalContent"></pre>
+</div>
+<!-- errorPanel1 end -->
+
+
+<!-- modalPanel1 start -->
+<div id="modalPanel1" class="modalPanel">
+<span class="modalClose">&times;</span>
+<div class="modalTitle">hello Title</div>
+<div class="modalContent">
+    <p>Some text in the Modal..</p>
+</div>
+</div>
+</script>
+<!-- modalPanel1 end -->
 
 
 <!-- script start -->
