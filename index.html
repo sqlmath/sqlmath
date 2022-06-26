@@ -498,7 +498,7 @@ textarea {
     white-space: nowrap;
 }
 #contentPanel1 th {
-    background: #bbd;
+    background: #dde;
     cursor: pointer;
     height: 16px;
     padding-left: 12px;
@@ -509,9 +509,9 @@ textarea {
 #contentPanel1 th::after,
 #contentPanel1 th::before {
     font-size: 16px;
-    left: 2px;
+    left: 1px;
     line-height: 8px;
-    opacity: 0.5;
+    opacity: 0.25;
     position: absolute;
 }
 #contentPanel1 th::after {
@@ -522,46 +522,33 @@ textarea {
     bottom: 50%;
     content: "\25b4";
 }
-#contentPanel1 th.sorting_desc_disabled::after,
-#contentPanel1 th.sorting_desc_disabled::before {
-    opacity: 0.125;
+#contentPanel1 th[data-sort="asc"]::before,
+#contentPanel1 th[data-sort="desc"]::after {
+    opacity: 0.5;
 }
 #contentPanel1 tr {
     background: transparent;
     height: 16px;
 }
-#contentPanel1 tr:hover {
-    background: #bbd;
-}
 #contentPanel1 tr:nth-child(even) {
     background: #ddd;
 }
-#contentPanel1 .datatable {
+#contentPanel1 tr:hover {
+    background: #bbd;
+}
+#contentPanel1 .dttable {
     background: #fff;
     left: 0;
     margin: 0;
     position: absolute;
     top: 0;
 }
-#contentPanel1 .datatableContainer {
+#contentPanel1 .dttableContainer {
     border: 1px solid #777;
     border-top: 0;
     position: relative;
 }
-#contentPanel1 .datatablePageInfo {
-    height: 16px;
-    padding: 2px;
-    width: 100%;
-}
-#contentPanel1 .datatableScroller {
-    background: #ddd;
-    overflow: scroll;
-    position: relative;
-}
-#contentPanel1 .datatableScrollerDummy {
-    width: 1px;
-}
-#contentPanel1 .loadingEllipsis {
+#contentPanel1 .dttableLoading {
     background: #fff;
     border: 1px solid #777;
     left: 50%;
@@ -575,14 +562,27 @@ textarea {
     width: 200px;
     z-index: 99;
 }
-#contentPanel1 .loadingEllipsis::after {
-    animation: loadingEllipsis steps(1, end) 1s infinite;
+#contentPanel1 .dttableLoading::after {
+    animation: dttableLoading steps(1, end) 1s infinite;
     content: "";
     display: inline-block;
     text-align: left;
     width: 1rem;
 }
-@keyframes loadingEllipsis {
+#contentPanel1 .dttablePageInfo {
+    height: 16px;
+    padding: 2px;
+    width: 100%;
+}
+#contentPanel1 .dttableScroller {
+    background: #ddd;
+    overflow: scroll;
+    position: relative;
+}
+#contentPanel1 .dttableScrollerDummy {
+    width: 1px;
+}
+@keyframes dttableLoading {
     0% {
         content: "";
     }
