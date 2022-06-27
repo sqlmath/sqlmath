@@ -22,15 +22,15 @@ let DBTABLE_DICT = new Map();
 let DB_DICT = new Map();
 let DB_II = 1;
 let DB_MAIN;
+let DB_QUERY;
 let DEBOUNCE_DICT = Object.create(null);
-let SQLITE_EDITOR;
-let SQLRESULT_DICT = new Map();
+let UI_EDITOR;
 let UI_PAGE_SIZE = 256;
 let UI_ROW_HEIGHT = 16;
 let UI_VIEW_SIZE = 10;
 
 noop(
-    SQLITE_EDITOR,
+    UI_EDITOR,
     assertOrThrow,
     dbFileExportAsync,
     debugInline
@@ -68,270 +68,31 @@ function debounce(key, func) {
     DEBOUNCE_DICT[key] = val;
 }
 
-function dttableAjax(baton, {
-    rowList,
-    type
-}) {
-    let {
-        ajax,
-        contentElem,
-        elemInfo,
-        elemLoading,
-        elemScroller,
-        elemTable,
-        rowCount,
-        rowOffset
-    } = baton;
-    let html = "";
-    let viewRowBeg;
-    let viewRowEnd;
-    if (baton.rowCount === 0) {
-        return;
-    }
-    switch (type) {
-    // dttableScroll
-    case "dttableInit":
-    case "scroll":
-        viewRowBeg = Math.max(0, Math.round(
-            rowCount
-            * elemScroller.scrollTop
-            / (elemScroller.scrollHeight - 1 * UI_ROW_HEIGHT)
-        ));
-        viewRowEnd = Math.min(rowCount, Math.round(viewRowBeg + UI_VIEW_SIZE));
-        // update table-view info
-        elemInfo.textContent = (
-            "Showing "
-            + new Intl.NumberFormat("en-US").format(viewRowBeg + 1)
-            + " to "
-            + new Intl.NumberFormat("en-US").format(viewRowEnd)
-            + " of "
-            + new Intl.NumberFormat("en-US").format(rowCount)
-            + " entries"
-        );
-        // skip expensive table-redraw, if scroll-point is within boundaries
-        if (
-            contentElem.dataset.init !== "0"
-            && rowOffset <= Math.max(0, viewRowBeg - 1 * UI_VIEW_SIZE)
-            && (
-                Math.min(rowCount, viewRowEnd + 1 * UI_VIEW_SIZE)
-                <= rowOffset + UI_PAGE_SIZE
-            )
-        ) {
-            return;
-        }
-        // Do the dttable redraw based on the calculated start point
-        baton.rowOffset = Math.max(0, Math.round(
-            viewRowBeg + 0.5 * UI_VIEW_SIZE - 0.5 * UI_PAGE_SIZE
-        ));
-        break;
-    }
-    switch (type !== "dttableDraw" && baton.modeAjax) {
-    case 0:
-        // dttableLoading - show
-        elemLoading.style.display = "block";
-        baton.modeAjax = 1;
-        ajax(baton, async function (json) {
-            // recurse - draw
-            dttableAjax(baton, json);
-            // debounce - throttle
-            await new Promise(function (resolve) {
-                setTimeout(resolve, 500);
-            });
-            // debounce - next
-            if (baton.modeAjax === 2) {
-                baton.modeAjax = 0;
-                dttableAjax(baton, {});
-                // keep focus on current scroller when debouncing
-                if (type === "scroll") {
-                    elemScroller.focus();
-                }
-                return;
-            }
-            // cleanup
-            baton.modeAjax = 0;
-            // dttableLoading - hide
-            elemLoading.style.display = "none";
-        });
-        return;
-    // debounce
-    case 1:
-        baton.modeAjax = 2;
-        return;
-    // debounce
-    case 2:
-        return;
-    }
-    // dttableDraw
-    // Position the table in the virtual scroller
-    elemTable.style.top = Math.max(0, Math.round(
-        elemScroller.scrollHeight * rowOffset / (baton.rowCount + 1)
-    )) + "px";
-    // Insert the required TR nodes into the table for display
-    jsonHtmlSafe(rowList).forEach(function (row) {
-        html += "<tr>";
-        row.forEach(function (val) {
-            html += "<td>" + (val ?? "") + "</td>";
-        });
-        html += "</tr>";
-    });
-    elemTable.children[1].innerHTML = html;
-}
-
-function dttableInit(contentElem, baton) {
-// this function will create a dom-dttable-view of sqlite queries and tables
-    let elemInfo;
-    let elemLoading;
-    let elemScroller;
-    let elemTable;
-    let elemTitle;
-    // All dttables are wrapped in a div
-    // Generate the node required for the processing node
-    // The HTML structure that we want to generate in this function is:
-    //  div - scroller
-    //    div - scroll head
-    //      div - scroll head inner
-    //        table - scroll head table
-    //          thead - thead
-    //    div - scroll body
-    //      table - table (master table)
-    //        thead - thead clone for sizing
-    //        tbody - tbody
-    contentElem.dataset.init = "0";
-    contentElem.innerHTML = (`
-<div class="contentElemTitle">${stringHtmlSafe(baton.title)}</div>
-<div class="dttablePageInfo">Showing 0 to 0 of 0 entries</div>
-<div
-    class="dttableScroller"
-    style="height: ${(UI_VIEW_SIZE + 2) * UI_ROW_HEIGHT}px;"
-    tabindex="-1"
->
-    <div
-        class="dttableScrollerDummy"
-        style="height: ${baton.rowCount * UI_ROW_HEIGHT}px;"
-    ></div>
-    <table class="dttable">
-        <thead>
-            <tr>
-    `) + jsonHtmlSafe(baton.colList).map(function (col) {
-        return `<th>${col}</th>`;
-    }).join("") + (`
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-            <td colspan="${baton.colList.length}">
-            No data available in table
-            </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-<div class="dttableLoading">Loading</div>
-    `);
-    [
-        elemTitle,
-        elemInfo,
-        elemScroller,
-        elemLoading
-    ] = contentElem.children;
-    elemTable = elemScroller.children[1];
-    // init event-handling - sorting
-    contentElem.querySelector(
-        "thead tr"
-    ).addEventListener("click", function (evt) {
-        dttableSort(baton, evt);
-    });
-    // init event-handling - scrolling
-    contentElem.querySelector(
-        ".dttableScroller"
-    ).addEventListener("scroll", function (evt) {
-        dttableAjax(baton, evt);
-    });
-    contentElem.addEventListener("dttableInit", function (evt) {
-        dttableAjax(baton, evt);
-    });
-    Object.assign(baton, {
-        contentElem,
-        elemInfo,
-        elemLoading,
-        elemScroller,
-        elemTable,
-        modeAjax: 0,
-        modeInit: 0,
-        rowOffset: 0
-    });
-}
-
-function dttableListInitWithinView({
-    modeDebounce
-}) {
-// this function will defer-init dttables when visible in viewport
-    if (!modeDebounce) {
-        debounce(
-            "dttableListInitWithinView",
-            dttableListInitWithinView.bind(undefined, {
-                modeDebounce: true
-            })
-        );
-        return;
-    }
-    document.querySelectorAll(
-        `#contentPanel1 .contentElem[data-init="0"]`
-    ).forEach(function (elem) {
-        let rect = elem.getBoundingClientRect();
-        if (0 <= rect.bottom && rect.top < window.innerHeight) {
-            elem.dispatchEvent(new window.CustomEvent("dttableInit"));
-            elem.dataset.init = "1";
-        }
-    });
-}
-
-function dttableSort(baton, {
-    currentTarget,
-    target
-}) {
-// Function to run on user sort request
-    let colIi;
-    let direction;
-    let elem = target.closest("th");
-    if (!elem) {
-        return;
-    }
-    direction = elem.dataset.sort;
-    direction = (
-        direction === "asc"
-        ? "desc"
-        : "asc"
-    );
-    Array.from(currentTarget.children).forEach(function (elemTh, ii) {
-        if (elemTh !== elem) {
-            elemTh.dataset.sort = "";
-            return;
-        }
-        colIi = ii;
-    });
-    elem.dataset.sort = direction;
-    baton.orderBy = [
-        colIi, direction
-    ];
-    // Reset scroll to top in redraw.
-    baton.elemScroller.scrollTop = 0;
-    baton.rowOffset = 0;
-    dttableAjax(baton, {});
+function domDivCreate(innerHTML) {
+// this function will return div-element with rendered <innerHTML>
+    let elem = document.createElement("div");
+    elem.innerHTML = innerHTML;
+    return elem;
 }
 
 async function init() {
-    // init main db
+    // init db - query
+    DB_QUERY = {
+        dbName: "query",
+        dbtableList: []
+    };
+    DB_DICT.set("query", DB_QUERY);
+    // init db - main
     await sqlmathWebworkerInit({});
     DB_MAIN = await dbOpenAsync({
         filename: ":memory:"
     });
     DB_MAIN.dbName = "main";
-    DB_DICT.set(DB_MAIN.dbName, DB_MAIN);
+    DB_DICT.set("main", DB_MAIN);
     //
     await uiRenderDbtableList();
     // init sqlEditor
-    SQLITE_EDITOR = CodeMirror.fromTextArea(document.querySelector(
+    UI_EDITOR = CodeMirror.fromTextArea(document.querySelector(
         "#sqliteEditor1"
     ), {
         extraKeys: {
@@ -395,8 +156,8 @@ async function init() {
         evt.preventDefault();
         evt.stopPropagation();
     });
-    window.addEventListener("hashchange", dttableListInitWithinView);
-    window.addEventListener("scroll", dttableListInitWithinView);
+    window.addEventListener("hashchange", uitableInitWithinView);
+    window.addEventListener("scroll", uitableInitWithinView);
 }
 
 function jsonHtmlSafe(obj) {
@@ -417,9 +178,8 @@ async function onDbExec({
 }) {
 // this function will
 // 1. exec sql-command in webworker
-// 2. ui-render sqlresult to html
-    let data;
-    let html = "";
+// 2. ui-render sql-queries to html
+    let dbtableList0;
     if (!modeTryCatch) {
         try {
             await onDbExec({
@@ -439,77 +199,37 @@ async function onDbExec({
     }
     // close error modal
     document.querySelector("#errorPanel1").style.display = "none";
+    // DBTABLE_DICT - cleanup old uitable
+    DBTABLE_DICT.forEach(function ({
+        colList,
+        dbName,
+        rowList0
+    }, key) {
+        if (dbName === "query") {
+            colList.length = 0;
+            rowList0.length = 0;
+            DBTABLE_DICT.delete(key);
+        }
+    });
+    DB_QUERY.dbtableList0 = [];
     // 1. exec sql-command in webworker
-    data = await dbExecAsync({
+    dbtableList0 = await dbExecAsync({
         db: DB_MAIN,
         responseType: "list",
-        sql: sql || SQLITE_EDITOR.getValue()
+        sql: sql || UI_EDITOR.getValue()
     });
-    // SQLRESULT_DICT - cleanup old dttables
-    SQLRESULT_DICT.forEach(function ({
-        colList,
-        rowList
-    }) {
-        colList.length = 0;
-        rowList.length = 0;
-    });
-    SQLRESULT_DICT = new Map();
-    // 2. ui-render sqlresult to html
-    data.forEach(function (rowList, ii) {
-        let colList = rowList.shift();
-        let hashtag = `sqlresult_${String(ii).padStart(2, "0")}`;
-        function ajax({
-            orderBy = [],
-            rowOffset
-        }, callbackDraw) {
-            let [
-                colIi, direction
-            ] = orderBy;
-            if (direction) {
-                rowList.sort(function (aa, bb) {
-                    aa = aa[colIi];
-                    bb = bb[colIi];
-                    return (
-                        aa < bb
-                        ? -1
-                        : aa > bb
-                        ? 1
-                        : 0
-                    );
-                });
-                if (direction === "desc") {
-                    rowList.reverse();
-                }
-            }
-            callbackDraw({
-                rowList: rowList.slice(rowOffset, rowOffset + UI_PAGE_SIZE),
-                type: "dttableDraw"
-            });
-        }
-        SQLRESULT_DICT.set(hashtag, {
-            baton: {
-                ajax,
-                colList,
-                rowCount: rowList.length,
-                title: `sqlite query result ${ii + 1}`
-            },
+    // 2. ui-render sql-queries to html
+    dbtableList0 = dbtableList0.map(function (rowList0, ii) {
+        let colList = rowList0.shift();
+        return {
             colList,
-            rowList
-        });
-        html += `<div class="contentElem" id="${hashtag}"></div>\n`;
+            dbtableFullname: `query result ${ii + 1}`,
+            rowCount: rowList0.length,
+            rowList0
+        };
     });
-    document.querySelector("#sqlresultList1").innerHTML = html;
-    // init dttables
-    document.querySelectorAll(
-        "#sqlresultList1 .contentElem"
-    ).forEach(function (elem) {
-        dttableInit(
-            elem,
-            SQLRESULT_DICT.get(elem.id).baton
-        );
-    });
+    DB_QUERY.dbtableList0 = dbtableList0;
     await uiRenderDbtableList();
-    dttableListInitWithinView({});
 }
 
 async function onFileOpen({
@@ -557,7 +277,7 @@ async function onFileOpen({
         return;
     case "fileOpenScript2":
         currentTarget = await currentTarget.files[0].text();
-        SQLITE_EDITOR.setValue(currentTarget);
+        UI_EDITOR.setValue(currentTarget);
         await uiRenderDbtableList();
         return;
     }
@@ -590,8 +310,11 @@ function stringHtmlSafe(str) {
 async function uiRenderDbtableList() {
 // this function will render #dbtableList1
     let dbList;
+    let dbtableIi = 0;
     let html = "";
-    // reset location.hash
+    let locationHash;
+    // save location.hash
+    locationHash = location.hash;
     location.hash = "";
     // DB_DICT - sync
     dbList = await dbExecAsync({
@@ -604,79 +327,100 @@ async function uiRenderDbtableList() {
         return name;
     }));
     DB_DICT.forEach(function (ignore, dbName) {
-        if (!dbList.has(dbName)) {
+        if (dbName !== "query" && !dbList.has(dbName)) {
             DB_DICT.delete(dbName);
         }
     });
-    // DBTABLE_DICT - cleanup old dttables
-    DBTABLE_DICT = new Map();
+    // DBTABLE_DICT - cleanup old uitable
+    DBTABLE_DICT.forEach(function ({
+        dbName
+    }, key) {
+        if (dbName !== "query") {
+            DBTABLE_DICT.delete(key);
+        }
+    });
     // DBTABLE_DICT - sync
     await Promise.all(Array.from(
         DB_DICT.values()
-    ).map(async function (db, dbIi) {
+    ).map(async function (db) {
+        let baton;
         let dbName = db.dbName;
-        let dbtable;
         let dbtableList;
         let tmp;
         db.dbtableList = [];
-        dbtableList = await dbExecAsync({
-            db,
-            sql: (`
+        dbtableList = (
+            db === DB_QUERY
+            ? db.dbtableList0
+            : noop(
+                await dbExecAsync({
+                    db,
+                    sql: (`
 SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
-            `)
-        });
-        dbtableList = dbtableList[0];
+                    `)
+                })
+            )[0]
+        );
         if (!dbtableList) {
             return;
         }
         dbtableList = dbtableList.map(function ({
+            colList = [],
+            dbtableFullname,
+            rowCount = 0,
+            rowList0,
             sql,
             tbl_name
-        }, dbtableIi) {
-            let dbtableFullname = `[${dbName}].[${tbl_name}]`;
-            dbtable = {
-                columns: [],
+        }) {
+            dbtableFullname = dbtableFullname || `[${dbName}].[${tbl_name}]`;
+            dbtableIi += 1;
+            baton = {
+                colList,
+                db,
                 dbName,
                 dbtableFullname,
                 dbtableName: `[${tbl_name}]`,
-                hashtag: (
-                    "dbtable_"
-                    + String(dbIi).padStart(2, "0")
-                    + "_"
-                    + String(dbtableIi).padStart(2, "0")
-                ),
-                rowcount: 0,
-                sql
+                hashtag: `dbtable_${String(dbtableIi).padStart(2, "0")}`,
+                rowCount,
+                rowList0,
+                sql,
+                title: (
+                    dbName === "query"
+                    ? `${dbtableFullname}`
+                    : dbName === "main"
+                    ? `table ${dbtableFullname}`
+                    : `attached table ${dbtableFullname}`
+                )
             };
-            DBTABLE_DICT.set(dbtable.hashtag, dbtable);
-            return dbtable;
+            DBTABLE_DICT.set(baton.hashtag, baton);
+            return baton;
         });
-        tmp = dbtableList.map(function ({
-            dbtableName,
-            hashtag
-        }) {
-            return (`
+        if (db !== DB_QUERY) {
+            tmp = "";
+            dbtableList.forEach(function ({
+                dbtableName,
+                hashtag
+            }) {
+                tmp += (`
 SELECT '${hashtag}' AS hashtag;
 PRAGMA table_info(${dbtableName});
 SELECT COUNT(*) AS rowcount FROM ${dbtableName};
-            `);
-        }).join("");
-        tmp = await dbExecAsync({
-            db,
-            sql: tmp
-        });
-        tmp.forEach(function (rowList) {
-            let row0 = rowList[0];
-            if (!row0) {
-                return;
-            }
-            [
-                "cid", "hashtag", "rowcount"
-            ].forEach(function (key) {
-                if (row0.hasOwnProperty(key)) {
-                    switch (key) {
+                `);
+            });
+            tmp = await dbExecAsync({
+                db,
+                sql: tmp
+            });
+            tmp.forEach(function (rowList) {
+                let row0 = rowList[0];
+                if (!row0) {
+                    return;
+                }
+                [
+                    "cid", "hashtag", "rowcount"
+                ].forEach(function (key) {
+                    switch (row0.hasOwnProperty(key) && key) {
                     case "cid":
-                        dbtable.columns = [
+                        baton.colList = [
                             "rowid",
                             rowList.map(function ({
                                 name
@@ -686,85 +430,29 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
                         ].flat();
                         break;
                     case "hashtag":
-                        dbtable = DBTABLE_DICT.get(row0.hashtag);
+                        baton = DBTABLE_DICT.get(row0.hashtag);
                         break;
                     case "rowcount":
-                        dbtable.rowcount = row0.rowcount;
+                        baton.rowCount = row0.rowcount;
                         break;
                     }
-                }
+                });
             });
-        });
+        }
         db.dbtableList = dbtableList;
     }));
     // ui-render databases and tables to html
-    DB_DICT.forEach(function ({
-        dbName,
-        dbtableList
-    }) {
-        dbtableList.forEach(function (dbtable) {
-            let {
-                columns,
-                dbtableFullname,
-                hashtag,
-                rowcount
-            } = dbtable;
-            async function ajax({
-                orderBy = [],
-                rowOffset
-            }, callbackDraw) {
-                let [
-                    colIi, direction
-                ] = orderBy;
-                // dttable - paginate
-                let data = await dbExecAsync({
-                    db: DB_MAIN,
-                    responseType: "list",
-                    sql: (`
-SELECT
-        rowid,
-        *
-    FROM ${dbtableFullname}
-                    `) + (
-                        direction
-                        ? `ORDER BY [${columns[colIi]}] ${direction}`
-                        : ""
-                    ) + (`
-    LIMIT ${Number(UI_PAGE_SIZE)}
-    OFFSET ${Number(rowOffset)};
-                    `)
-                });
-                callbackDraw({
-                    rowList: (
-                        data[0]
-                        ? data[0].slice(1)
-                        : []
-                    ),
-                    type: "dttableDraw"
-                });
-            }
-            dbtable.baton = {
-                ajax,
-                colList: columns,
-                rowCount: rowcount,
-                title: (
-                    dbName === "main"
-                    ? `table ${dbtableFullname}`
-                    : `attached table ${dbtableFullname}`
-                )
-            };
-            html += `<div class="contentElem" id="${hashtag}"></div>\n`;
+    document.querySelector("#sqlqueryList1").innerHTML = "";
+    document.querySelector("#dbtableList1").innerHTML = "";
+    DB_DICT.forEach(function (db) {
+        db.dbtableList.forEach(function (baton) {
+            // create uitable
+            document.querySelector(
+                db === DB_QUERY
+                ? "#sqlqueryList1"
+                : "#dbtableList1"
+            ).appendChild(uitableCreate(baton));
         });
-    });
-    document.querySelector("#dbtableList1").innerHTML = html;
-    // init dttables
-    document.querySelectorAll(
-        "#dbtableList1 .contentElem"
-    ).forEach(function (elem) {
-        dttableInit(
-            elem,
-            DBTABLE_DICT.get(elem.id).baton
-        );
     });
     // ui-render #tocPanel1
     html = "";
@@ -772,35 +460,351 @@ SELECT
         dbName,
         dbtableList
     }) {
-        html += `<div class="tocTitle">\n`;
         html += (
-            dbName === "main"
-            ? `database [${dbName}]\n`
-            : `database [${dbName}] (attached)\n`
+            `<div class="tocTitle">`
+            + (
+                dbName === "query"
+                ? `query results`
+                : dbName === "main"
+                ? `database [${dbName}]`
+                : `database [${dbName}] (attached)`
+            )
+            + `</div>`
         );
-        html += `</div>\n`;
-        html += dbtableList.map(function ({
-            columns,
+        dbtableList.forEach(function ({
+            colList,
             dbtableFullname,
             hashtag,
-            rowcount
+            rowCount
         }) {
-            return (
+            html += (
                 `<a class="tocElemA" href="#${hashtag}" title="`
                 + stringHtmlSafe((
                     `[right-click for crud operations]\n`
                 ) + JSON.stringify({
-                    columns,
+                    colList,
                     dbtableFullname,
-                    rowcount
+                    rowCount
                 }, undefined, 4))
                 + `">`
                 + stringHtmlSafe(dbtableFullname)
                 + `</a>\n`
             );
-        }).join("");
+        });
     });
     document.querySelector("#tocDbList1").innerHTML = html;
+    // restore location.hash
+    location.hash = locationHash;
+    uitableInitWithinView({});
+}
+
+async function uitableAjax(baton, {
+    rowList,
+    type
+}) {
+    let {
+        contentElem,
+        db,
+        elemInfo,
+        elemLoading,
+        elemScroller,
+        elemTable,
+        rowCount,
+        rowList0,
+        rowOffset,
+        sortCol,
+        sortDir
+    } = baton;
+    let html = "";
+    let viewRowBeg;
+    let viewRowEnd;
+    if (baton.rowCount === 0) {
+        return;
+    }
+    switch (type) {
+    // uitableScroll
+    case "scroll":
+    case "uitableInit":
+        viewRowBeg = Math.max(0, Math.round(
+            rowCount
+            * elemScroller.scrollTop
+            / (elemScroller.scrollHeight - 1 * UI_ROW_HEIGHT)
+        ));
+        viewRowEnd = Math.min(rowCount, Math.round(viewRowBeg + UI_VIEW_SIZE));
+        // update table-view info
+        elemInfo.textContent = (
+            "Showing "
+            + new Intl.NumberFormat("en-US").format(viewRowBeg + 1)
+            + " to "
+            + new Intl.NumberFormat("en-US").format(viewRowEnd)
+            + " of "
+            + new Intl.NumberFormat("en-US").format(rowCount)
+            + " entries"
+        );
+        // skip expensive table-redraw, if scroll-point is within boundaries
+        if (
+            contentElem.dataset.init !== "0"
+            && rowOffset <= Math.max(0, viewRowBeg - 1 * UI_VIEW_SIZE)
+            && (
+                Math.min(rowCount, viewRowEnd + 1 * UI_VIEW_SIZE)
+                <= rowOffset + UI_PAGE_SIZE
+            )
+        ) {
+            return;
+        }
+        // Do the uitable redraw based on the calculated start point
+        baton.rowOffset = Math.max(0, Math.round(
+            viewRowBeg + 0.5 * UI_VIEW_SIZE - 0.5 * UI_PAGE_SIZE
+        ));
+        break;
+    }
+    switch (type !== "uitableDraw" && baton.modeAjax) {
+    // uitableAjax
+    case 0:
+        // uitableLoading - show
+        elemLoading.style.display = "block";
+        baton.modeAjax = 1;
+        if (db === DB_QUERY) {
+            if (sortDir) {
+                rowList0.sort(function (aa, bb) {
+                    aa = aa[sortCol];
+                    bb = bb[sortCol];
+                    return (
+                        aa < bb
+                        ? -1
+                        : aa > bb
+                        ? 1
+                        : 0
+                    );
+                });
+                if (sortDir === "desc") {
+                    rowList0.reverse();
+                }
+            }
+            rowList = rowList0.slice(
+                rowOffset,
+                rowOffset + UI_PAGE_SIZE
+            );
+        } else {
+            // uitable - paginate
+            rowList = await dbExecAsync({
+                db,
+                responseType: "list",
+                sql: String(`
+SELECT
+        rowid,
+        *
+    FROM ${baton.dbtableName}
+    ORDER BY
+    LIMIT ${Number(UI_PAGE_SIZE)}
+    OFFSET ${Number(rowOffset)};
+                `).replace("ORDER BY", (
+                    sortDir
+                    ? `ORDER BY [${baton.colList[sortCol]}] ${sortDir}`
+                    : ""
+                ))
+            });
+            rowList = (
+                rowList[0]
+                ? rowList[0].slice(1)
+                : []
+            );
+        }
+        // recurse - draw
+        await uitableAjax(baton, {
+            rowList,
+            type: "uitableDraw"
+        });
+        return;
+    // debounce
+    case 1:
+        baton.modeAjax = 2;
+        return;
+    // debounce
+    case 2:
+        return;
+    }
+    // uitableDraw
+    // Position the table in the virtual scroller
+    elemTable.style.top = Math.max(0, Math.round(
+        elemScroller.scrollHeight * rowOffset / (baton.rowCount + 1)
+    )) + "px";
+    // Insert the required TR nodes into the table for display
+    jsonHtmlSafe(rowList).forEach(function (row) {
+        html += "<tr>";
+        row.forEach(function (val) {
+            html += "<td>" + (val ?? "") + "</td>";
+        });
+        html += "</tr>";
+    });
+    elemTable.children[1].innerHTML = html;
+    // debounce - throttle
+    await new Promise(function (resolve) {
+        setTimeout(resolve, 500);
+    });
+    // debounce - next
+    if (baton.modeAjax === 2) {
+        baton.modeAjax = 0;
+        // keep focus on current scroller when debouncing
+        if (type === "scroll") {
+            elemScroller.focus();
+        }
+        await uitableAjax(baton, {});
+        return;
+    }
+    // cleanup
+    baton.modeAjax = 0;
+    // uitableLoading - hide
+    elemLoading.style.display = "none";
+}
+
+function uitableCreate(baton) {
+// this function will create a dom-datatable-view of sqlite queries and tables
+    let contentElem;
+    let elemInfo;
+    let elemLoading;
+    let elemScroller;
+    let elemTable;
+    let elemTitle;
+    // All uitables are wrapped in a div
+    // Generate the node required for the processing node
+    // The HTML structure that we want to generate in this function is:
+    //  div - scroller
+    //    div - scroll head
+    //      div - scroll head inner
+    //        table - scroll head table
+    //          thead - thead
+    //    div - scroll body
+    //      table - table (master table)
+    //        thead - thead clone for sizing
+    //        tbody - tbody
+    contentElem = domDivCreate(
+        (`
+<div class="contentElem" data-init="0" id="${baton.hashtag}">
+<div class="contentElemTitle">${stringHtmlSafe(baton.title)}</div>
+<div class="uitablePageInfo">Showing 0 to 0 of 0 entries</div>
+<div
+    class="uitableScroller"
+    style="height: ${(UI_VIEW_SIZE + 2) * UI_ROW_HEIGHT}px;"
+    tabindex="-1"
+>
+    <div
+        class="uitableScrollerDummy"
+        style="height: ${baton.rowCount * UI_ROW_HEIGHT}px;"
+    ></div>
+    <table class="uitable">
+        <thead>
+            <tr>
+        `)
+        + jsonHtmlSafe(baton.colList).map(function (col) {
+            return `<th>${col}</th>`;
+        }).join("")
+        + (`
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+            <td colspan="${baton.colList.length}">
+            No data available in table
+            </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<div class="uitableLoading">Loading</div>
+</div>
+        `)
+    ).firstElementChild;
+    [
+        elemTitle,
+        elemInfo,
+        elemScroller,
+        elemLoading
+    ] = contentElem.children;
+    elemTable = elemScroller.children[1];
+    // init event-handling - sorting
+    contentElem.querySelector(
+        "thead tr"
+    ).addEventListener("click", function (evt) {
+        uitableSort(baton, evt);
+    });
+    // init event-handling - scrolling
+    contentElem.querySelector(
+        ".uitableScroller"
+    ).addEventListener("scroll", function (evt) {
+        uitableAjax(baton, evt);
+    });
+    contentElem.addEventListener("uitableInit", function (evt) {
+        uitableAjax(baton, evt);
+    });
+    Object.assign(baton, {
+        contentElem,
+        elemInfo,
+        elemLoading,
+        elemScroller,
+        elemTable,
+        modeAjax: 0,
+        modeInit: 0,
+        rowOffset: 0
+    });
+    return contentElem;
+}
+
+function uitableInitWithinView({
+    modeDebounce
+}) {
+// this function will defer-init uitables when visible in viewport
+    if (!modeDebounce) {
+        debounce(
+            "uitableInitWithinView",
+            uitableInitWithinView.bind(undefined, {
+                modeDebounce: true
+            })
+        );
+        return;
+    }
+    document.querySelectorAll(
+        `#contentPanel1 .contentElem[data-init="0"]`
+    ).forEach(function (elem) {
+        let rect = elem.getBoundingClientRect();
+        if (0 <= rect.bottom && rect.top < window.innerHeight) {
+            elem.dispatchEvent(new window.CustomEvent("uitableInit"));
+            elem.dataset.init = "1";
+        }
+    });
+}
+
+function uitableSort(baton, {
+    currentTarget,
+    target
+}) {
+// Function to run on user sort request
+    let colIi;
+    let direction;
+    let elem = target.closest("th");
+    if (!elem) {
+        return;
+    }
+    direction = elem.dataset.sort;
+    direction = (
+        direction === "asc"
+        ? "desc"
+        : "asc"
+    );
+    Array.from(currentTarget.children).forEach(function (elemTh, ii) {
+        if (elemTh !== elem) {
+            elemTh.dataset.sort = "";
+            return;
+        }
+        colIi = ii;
+    });
+    elem.dataset.sort = direction;
+    baton.sortCol = colIi;
+    baton.sortDir = direction;
+    // Reset scroll to top in redraw.
+    baton.elemScroller.scrollTop = 0;
+    baton.rowOffset = 0;
+    uitableAjax(baton, {});
 }
 
 // init

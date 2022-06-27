@@ -492,11 +492,10 @@ textarea {
     white-space: nowrap;
 }
 #contentPanel1 th {
-    background: #dde;
+    background: #cce;
     cursor: pointer;
     height: 16px;
     padding-left: 12px;
-    position: relative;
     position: sticky;
     top: 0;
 }
@@ -527,14 +526,19 @@ textarea {
 #contentPanel1 tr:nth-child(even) {
     background: #ddd;
 }
-#contentPanel1 .dttable {
+#contentPanel1 .contentElem {
+    box-shadow: 2px 2px 4px 2px #bbb;
+    margin-top: 2rem;
+    position: relative;
+}
+#contentPanel1 .uitable {
     background: #fff;
     left: 0;
     margin: 0;
     position: absolute;
     top: 0;
 }
-#contentPanel1 .dttableLoading {
+#contentPanel1 .uitableLoading {
     background: #fff;
     display: none;
     left: 50%;
@@ -548,32 +552,27 @@ textarea {
     width: 200px;
     z-index: 1;
 }
-#contentPanel1 .dttableLoading::after {
-    animation: dttableLoading steps(1, end) 1s infinite;
+#contentPanel1 .uitableLoading::after {
+    animation: uitableLoading steps(1, end) 1s infinite;
     content: "";
     display: inline-block;
     text-align: left;
     width: 1rem;
 }
-#contentPanel1 .dttablePageInfo {
+#contentPanel1 .uitablePageInfo {
     height: 16px;
     padding: 2px;
     width: 100%;
 }
-#contentPanel1 .dttableScroller {
+#contentPanel1 .uitableScroller {
     background: #ddd;
     overflow: scroll;
     position: relative;
 }
-#contentPanel1 .dttableScrollerDummy {
+#contentPanel1 .uitableScrollerDummy {
     width: 1px;
 }
-#contentPanel1 .contentElem {
-    box-shadow: 2px 2px 4px 2px #bbb;
-    margin-top: 2rem;
-    position: relative;
-}
-@keyframes dttableLoading {
+@keyframes uitableLoading {
     0% {
         content: "";
     }
@@ -676,7 +675,7 @@ textarea {
 
 /* section important */
 .modalPanel,
-#contentPanel1 .dttableLoading {
+#contentPanel1 .uitableLoading {
     box-shadow: 4px 4px 8px 2px #777;
 }
 button:hover {
@@ -712,7 +711,7 @@ CREATE TABLE foo1(aa, bb, cc);
 <button class="button" id="dbExec2" style="margin-top: 1rem;">script - execute</button>
 
 <div class="contentSectionTitle">sqlite query results</div>
-<div id="sqlresultList1"></div>
+<div id="sqlqueryList1"></div>
 
 <div class="contentSectionTitle">sqlite tables and attached tables</div>
 <div id="dbtableList1"></div>
@@ -752,7 +751,7 @@ CREATE TABLE foo1(aa, bb, cc);
 <!-- errorPanel1 start -->
 <div id="errorPanel1" class="modalPanel">
 <span class="modalClose">&times;</span>
-<div class="modalTitle">SQLite Error</div>
+<div class="modalTitle">sqlite error</div>
 <pre class="modalContent"></pre>
 </div>
 <!-- errorPanel1 end -->
