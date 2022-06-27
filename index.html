@@ -445,6 +445,7 @@ body {
 }
 button {
     background: #bbb;
+    cursor: pointer;
     font-family: monospace;
     font-size: 0.75rem;
     height: 1.25rem;
@@ -635,7 +636,7 @@ textarea {
     display: inline-block;
     line-height: 1rem;
     overflow: hidden;
-    padding: 0 0.5rem 0.125rem 0.625rem;
+    padding: 0 0.5rem 0.125rem 8px;
     text-overflow: ellipsis;
     white-space: nowrap;
     width: 100%;
@@ -652,6 +653,7 @@ textarea {
 }
 .tocTitle {
     border-top: 1px solid #777;
+    color: #777;
     margin-left: -0.5rem;
     padding: 0.5rem;
     width: 16rem;
@@ -721,10 +723,10 @@ CREATE TABLE foo1(aa, bb, cc);
 
 
 <!-- misc start -->
-<div style="display: none;">
-    <input id="fileOpenDb2" type="file">
-    <input id="fileOpenDbAttach2" type="file">
-    <input id="fileOpenScript2" type="file">
+<div id="fileInput1" style="display: none;">
+    <input id="fileOpenDb1" type="file">
+    <input id="fileOpenDbAttach1" type="file">
+    <input id="fileOpenScript1" type="file">
 </div>
 <!-- misc end -->
 
@@ -733,14 +735,15 @@ CREATE TABLE foo1(aa, bb, cc);
 <div id="tocPanel1">
 <div id="tocDatabase1">
     <div class="tocTitle" style="border: 0;">sqlite database</div>
-    <button id="fileOpenDb1">database - open</button>
-    <button id="fileOpenDbAttach1">database - open and attach</button>
+    <button data-action="dbRefresh">database - refresh</button>
+    <button data-action="fileOpenDb1">database - open</button>
+    <button data-action="fileOpenDbAttach1">database - open and attach</button>
 </div>
 <div id="tocEditor1">
     <div class="tocTitle">sqlite editor</div>
-    <button id="fileOpenScript1">script - open</button>
-    <button id="scriptSave1">script - save</button>
-    <button id="dbExec1">script - execute</button>
+    <button data-action="fileOpenScript1">script - open</button>
+    <button data-action="scriptSave1">script - save</button>
+    <button data-action="dbExec">script - execute</button>
     <a class="tocElemA" href="#editor1">script editor</a>
 </div>
 <div id="tocDbList1"></div>

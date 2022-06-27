@@ -1,20 +1,16 @@
 /*jslint beta, browser, devel, nomen*/
 import {
-    //!! assertJsonEqual,
     assertOrThrow,
-    //!! dbCloseAsync,
     dbExecAsync,
-    //!! dbExecWithRetryAsync,
-    //!! dbGetLastBlobAsync,
     dbFileExportAsync,
     dbFileImportAsync,
     dbOpenAsync,
     debugInline,
     noop,
-    //!! objectDeepCopyWithKeysSorted
     sqlmathWebworkerInit
 } from "./sqlmath.mjs";
 
+let BLOB_DOWNLOAD;
 let {
     CodeMirror
 } = globalThis;
@@ -57,15 +53,22 @@ async function dbFileAttachAsync({
 }
 
 function debounce(key, func) {
-    let val = DEBOUNCE_DICT[key] || {
-        func,
+// this function will debounce <func> with given <key>
+    let val = DEBOUNCE_DICT[key];
+    if (val) {
+        val.func = func;
+        return;
+    }
+    val = {
+        func: noop,
         timerTimeout: setTimeout(function () {
             delete DEBOUNCE_DICT[key];
             val.func();
-        }, 250)
+        }, 500)
     };
-    val.func = func;
     DEBOUNCE_DICT[key] = val;
+    // if first-time, then immediately call <func>
+    func();
 }
 
 function domDivCreate(innerHTML) {
@@ -90,7 +93,7 @@ async function init() {
     DB_MAIN.dbName = "main";
     DB_DICT.set("main", DB_MAIN);
     //
-    await uiRenderDbtableList();
+    await uiRenderDb();
     // init sqlEditor
     UI_EDITOR = CodeMirror.fromTextArea(document.querySelector(
         "#sqliteEditor1"
@@ -109,53 +112,20 @@ async function init() {
     });
     // init event-handling
     [
-        [
-            ".modalClose", "click", onModalClose
-        ],
-        [
-            "#dbExec2", "click", onDbExec
-        ],
-        [
-            "#fileOpenDb1", "click", onFileOpen
-        ],
-        [
-            "#fileOpenDb2", "change", onFileOpen
-        ],
-        [
-            "#fileOpenDbAttach1", "click", onFileOpen
-        ],
-        [
-            "#fileOpenDbAttach2", "change", onFileOpen
-        ],
-        [
-            "#fileOpenScript1", "click", onFileOpen
-        ],
-        [
-            "#fileOpenScript2", "change", onFileOpen
-        ]
+        ["#dbExec2", "click", onDbExec],
+        ["#fileInput1", "change", onDbAction],
+        ["#tocPanel1", "click", onDbAction],
+        [".modalClose", "click", onModalClose]
     ].forEach(function ([
         selector, evt, listener
     ]) {
-        document.querySelectorAll(selector).forEach(function (elem) {
-            elem.addEventListener(evt, function (evt) {
-                evt.preventDefault();
-                evt.stopPropagation();
-                listener(evt);
-            });
+        selector = document.querySelectorAll(selector);
+        assertOrThrow(selector.length > 0);
+        selector.forEach(function (elem) {
+            elem.addEventListener(evt, listener);
         });
     });
-    document.addEventListener("keyup", function (evt) {
-        switch ((evt.ctrlKey || evt.metaKey) && evt.key) {
-        case "Enter":
-            onDbExec({});
-            break;
-        default:
-            return;
-        }
-        // disable default
-        evt.preventDefault();
-        evt.stopPropagation();
-    });
+    document.addEventListener("keyup", onKeyUp);
     window.addEventListener("hashchange", uitableInitWithinView);
     window.addEventListener("scroll", uitableInitWithinView);
 }
@@ -170,6 +140,100 @@ function jsonHtmlSafe(obj) {
     ), "&lt;").replace((
         />/gu
     ), "&gt;"));
+}
+
+async function onDbAction(evt) {
+// this function will open db from file
+    let data;
+    let db;
+    let elem = evt.target;
+    if (elem.dataset.action) {
+        evt.preventDefault();
+        evt.stopPropagation();
+    }
+    if (elem.dataset.db) {
+        db = DB_DICT.get(elem.dataset.db);
+    }
+    switch (elem.dataset.action) {
+    case "dbDetach":
+        await dbExecAsync({
+            db: DB_MAIN,
+            sql: `DETACH ${db.dbName};`
+        });
+        await uiRenderDb();
+        return;
+    case "dbExec":
+        await onDbExec({});
+        return;
+    case "dbFileExport":
+        data = await dbFileExportAsync({
+            db
+        });
+        data = data[6];
+        // cleanup
+        URL.revokeObjectURL(BLOB_DOWNLOAD);
+        //!! uiLoaderStart({});
+        BLOB_DOWNLOAD = URL.createObjectURL(new Blob([
+            data
+        ]));
+        elem = document.createElement("a");
+        elem.href = BLOB_DOWNLOAD;
+        // cleanup
+        setTimeout(function () {
+            URL.revokeObjectURL(elem.href);
+        }, 30000);
+        elem.download = (
+            `database_${db.dbName}_`
+            + new Date().toISOString().slice(0, 10).replace((
+                /-/g
+            ), "_")
+            + ".sqlite"
+        );
+        //!! uiLoaderEnd({});
+        elem.click();
+        return;
+    case "dbRefresh":
+        await uiRenderDb();
+        return;
+    case "fileOpenDb1":
+    case "fileOpenDbAttach1":
+    case "fileOpenScript1":
+        elem = document.getElementById(elem.dataset.action);
+        elem.value = "";
+        elem.click();
+        return;
+    }
+    switch (elem.id) {
+    case "fileOpenDb1":
+        if (elem.files.length === 0) {
+            return;
+        }
+        await dbFileImportAsync({
+            db: DB_MAIN,
+            dbData: (
+                await elem.files[0].arrayBuffer()
+            )
+        });
+        await uiRenderDb();
+        return;
+    case "fileOpenDbAttach1":
+        if (elem.files.length === 0) {
+            return;
+        }
+        await dbFileAttachAsync({
+            db: DB_MAIN,
+            dbData: (
+                await elem.files[0].arrayBuffer()
+            )
+        });
+        await uiRenderDb();
+        return;
+    case "fileOpenScript1":
+        elem = await elem.files[0].text();
+        UI_EDITOR.setValue(elem);
+        await uiRenderDb();
+        return;
+    }
 }
 
 async function onDbExec({
@@ -202,10 +266,10 @@ async function onDbExec({
     // DBTABLE_DICT - cleanup old uitable
     DBTABLE_DICT.forEach(function ({
         colList,
-        dbName,
+        db,
         rowList0
     }, key) {
-        if (dbName === "query") {
+        if (db === DB_QUERY) {
             colList.length = 0;
             rowList0.length = 0;
             DBTABLE_DICT.delete(key);
@@ -229,56 +293,29 @@ async function onDbExec({
         };
     });
     DB_QUERY.dbtableList0 = dbtableList0;
-    await uiRenderDbtableList();
+    await uiRenderDb();
 }
 
-async function onFileOpen({
-    currentTarget
-}) {
-// this function will open db from file
-    switch (currentTarget.id) {
-    case "fileOpenDb1":
-        document.querySelector("#fileOpenDb2").value = "";
-        document.querySelector("#fileOpenDb2").click();
-        return;
-    case "fileOpenDbAttach1":
-        document.querySelector("#fileOpenDbAttach2").value = "";
-        document.querySelector("#fileOpenDbAttach2").click();
-        return;
-    case "fileOpenScript1":
-        document.querySelector("#fileOpenScript2").value = "";
-        document.querySelector("#fileOpenScript2").click();
+function onKeyUp(evt) {
+// this function will close current modal
+    if (!evt.modeDebounce) {
+        debounce(
+            "onKeyUp",
+            onKeyUp.bind(undefined, Object.assign(evt, {
+                modeDebounce: true
+            }))
+        );
         return;
     }
-    switch (currentTarget.id) {
-    case "fileOpenDb2":
-        if (currentTarget.files.length === 0) {
-            return;
-        }
-        await dbFileImportAsync({
-            db: DB_MAIN,
-            dbData: (
-                await currentTarget.files[0].arrayBuffer()
-            )
-        });
-        await uiRenderDbtableList();
+    switch (evt.key) {
+    case "Escape":
+        // close error-modal
+        document.querySelector("#errorPanel1").style.display = "none";
         return;
-    case "fileOpenDbAttach2":
-        if (currentTarget.files.length === 0) {
-            return;
-        }
-        await dbFileAttachAsync({
-            db: DB_MAIN,
-            dbData: (
-                await currentTarget.files[0].arrayBuffer()
-            )
-        });
-        await uiRenderDbtableList();
-        return;
-    case "fileOpenScript2":
-        currentTarget = await currentTarget.files[0].text();
-        UI_EDITOR.setValue(currentTarget);
-        await uiRenderDbtableList();
+    }
+    switch ((evt.ctrlKey || evt.metaKey) && evt.key) {
+    case "Enter":
+        onDbExec({});
         return;
     }
 }
@@ -307,15 +344,16 @@ function stringHtmlSafe(str) {
     ), "&quot;");
 }
 
-async function uiRenderDbtableList() {
+async function uiRenderDb() {
 // this function will render #dbtableList1
     let dbList;
     let dbtableIi = 0;
     let html = "";
-    let locationHash;
-    // save location.hash
-    locationHash = location.hash;
-    location.hash = "";
+    let windowScrollY;
+    // reset location.hash
+    location.hash = "0";
+    // save window.scrollY
+    windowScrollY = window.scrollY;
     // DB_DICT - sync
     dbList = await dbExecAsync({
         db: DB_MAIN,
@@ -333,9 +371,9 @@ async function uiRenderDbtableList() {
     });
     // DBTABLE_DICT - cleanup old uitable
     DBTABLE_DICT.forEach(function ({
-        dbName
+        db
     }, key) {
-        if (dbName !== "query") {
+        if (db !== DB_QUERY) {
             DBTABLE_DICT.delete(key);
         }
     });
@@ -384,9 +422,9 @@ SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
                 rowList0,
                 sql,
                 title: (
-                    dbName === "query"
+                    db === DB_QUERY
                     ? `${dbtableFullname}`
-                    : dbName === "main"
+                    : db === DB_MAIN
                     ? `table ${dbtableFullname}`
                     : `attached table ${dbtableFullname}`
                 )
@@ -471,6 +509,20 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
             )
             + `</div>`
         );
+        if (dbName !== "query") {
+            html += (`
+<button data-action="dbFileExport" data-db="${dbName}">
+database [${dbName}] - save
+</button>
+            `);
+        }
+        if (dbName.startsWith("db")) {
+            html += (`
+<button data-action="dbDetach" data-db="${dbName}">
+database [${dbName}] - detach
+</button>
+            `);
+        }
         dbtableList.forEach(function ({
             colList,
             dbtableFullname,
@@ -493,8 +545,8 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
         });
     });
     document.querySelector("#tocDbList1").innerHTML = html;
-    // restore location.hash
-    location.hash = locationHash;
+    // restore window.scrollY
+    window.scroll(0, windowScrollY);
     uitableInitWithinView({});
 }
 

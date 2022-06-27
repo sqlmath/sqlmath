@@ -1,11 +1,12 @@
 # Changelog
 
 # Todo
-- add sqlresultlist to toc
+- add dbtable-crud-operations
 - sqlmath - add sql-extension carrayblob()
 - none
 
 # v2022.6.1-beta
+- add database-crud-operations
 - merge rendering of sql-queries and sql-tables into one
 - optimization - defer rendering data in dttable until you scroll into it in viewport
 - add modal to display sql-query errors

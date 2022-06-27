@@ -397,7 +397,6 @@ async function dbFileExportAsync({
     modeExport = 1
 }) {
 // This function will export <db> to <filename>
-    let result;
     if (IS_BROWSER) {
         filename = FILENAME_DBTMP;
     }
@@ -405,7 +404,7 @@ async function dbFileExportAsync({
         typeof filename === "string" && filename,
         `invalid filename ${filename}`
     );
-    result = await dbCallAsync(
+    return await dbCallAsync(
         undefined,
         "_dbFileImportOrExport",
         db,                     // 0. sqlite3 * pInMemory,
@@ -414,9 +413,6 @@ async function dbFileExportAsync({
         undefined,              // 3. undefined
         dbData                  // 4. dbData
     );
-    if (IS_BROWSER) {
-        return result[2 + 4];
-    }
 }
 
 async function dbFileImportAsync({
