@@ -6,6 +6,7 @@
 - none
 
 # v2022.6.1-beta
+- add contextmenu and dbtable-crud-operation dbtableDrop
 - add database-crud-operations
 - merge rendering of sql-queries and sql-tables into one
 - optimization - defer rendering data in dttable until you scroll into it in viewport

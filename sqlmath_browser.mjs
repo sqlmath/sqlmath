@@ -1,6 +1,7 @@
 /*jslint beta, browser, devel, nomen*/
 import {
     assertOrThrow,
+    dbCloseAsync,
     dbExecAsync,
     dbFileExportAsync,
     dbFileImportAsync,
@@ -20,7 +21,10 @@ let DB_II = 1;
 let DB_MAIN;
 let DB_QUERY;
 let DEBOUNCE_DICT = Object.create(null);
+let UI_CONTEXTMENU = document.getElementById("contextmenu1");
+let UI_CONTEXTMENU_BATON;
 let UI_EDITOR;
+let UI_FILE_DOWNLOAD = document.createElement("a");
 let UI_PAGE_SIZE = 256;
 let UI_ROW_HEIGHT = 16;
 let UI_VIEW_SIZE = 10;
@@ -82,15 +86,20 @@ async function init() {
     // init db - query
     DB_QUERY = {
         dbName: "query",
-        dbtableList: []
+        dbtableList: [],
+        isDbquery: true
     };
     DB_DICT.set("query", DB_QUERY);
     // init db - main
     await sqlmathWebworkerInit({});
-    DB_MAIN = await dbOpenAsync({
-        filename: ":memory:"
+    DB_MAIN = Object.assign(noop(
+        await dbOpenAsync({
+            filename: ":memory:"
+        })
+    ), {
+        dbName: "main",
+        isDbmain: true
     });
-    DB_MAIN.dbName = "main";
     DB_DICT.set("main", DB_MAIN);
     //
     await uiRenderDb();
@@ -113,9 +122,11 @@ async function init() {
     // init event-handling
     [
         ["#dbExec2", "click", onDbExec],
-        ["#fileInput1", "change", onDbAction],
+        ["#miscPanel1", "change", onDbAction],
         ["#tocPanel1", "click", onDbAction],
-        [".modalClose", "click", onModalClose]
+        [".modalClose", "click", onModalClose],
+        ["body", "click", onContextmenu],
+        ["body", "contextmenu", onContextmenu]
     ].forEach(function ([
         selector, evt, listener
     ]) {
@@ -128,6 +139,8 @@ async function init() {
     document.addEventListener("keyup", onKeyUp);
     window.addEventListener("hashchange", uitableInitWithinView);
     window.addEventListener("scroll", uitableInitWithinView);
+    // exec demo-sql-query
+    onDbExec({});
 }
 
 function jsonHtmlSafe(obj) {
@@ -142,23 +155,84 @@ function jsonHtmlSafe(obj) {
     ), "&gt;"));
 }
 
+function onContextmenu(evt) {
+// this function will handle contextmenu-event
+    let {
+        clientX,
+        clientY,
+        ctrlKey,
+        datasetCm,
+        metaKey,
+        shiftKey,
+        target,
+        type
+    } = evt;
+    // contextmenu - left-click
+    if (type !== "contextmenu") {
+        // contextmenu - hide
+        UI_CONTEXTMENU.style.display = "none";
+        // contextmenu - action
+        onDbAction(evt);
+        return;
+    }
+    // contextmenu - right-click
+    // contextmenu - enable default
+    if (ctrlKey || metaKey || shiftKey) {
+        return;
+    }
+    // contextmenu - disable default
+    evt.preventDefault();
+    evt.stopPropagation();
+    // init target
+    target = target.closest(".tocElemA[data-dbtype]");
+    // contextmenu - hide
+    if (!target) {
+        UI_CONTEXTMENU.style.display = "none";
+        return;
+    }
+    // show / hide .contextmenuElem
+    datasetCm = target.dataset;
+    UI_CONTEXTMENU.querySelectorAll(".contextmenuElem").forEach(function ({
+        dataset,
+        style
+    }) {
+        style.display = "none";
+        if (dataset.dbtype && dataset.dbtype === datasetCm.dbtype) {
+            style.display = "block";
+        }
+    });
+    // init UI_CONTEXTMENU_BATON
+    UI_CONTEXTMENU_BATON = DBTABLE_DICT.get(target.dataset.hashtag);
+    // contextmenu - show
+    UI_CONTEXTMENU.style.left = Math.min(
+        clientX,
+        window.innerWidth - UI_CONTEXTMENU.offsetWidth - 10
+    ) + "px";
+    UI_CONTEXTMENU.style.top = Math.min(
+        clientY,
+        window.innerHeight - UI_CONTEXTMENU.offsetHeight - 20
+    ) + "px";
+    UI_CONTEXTMENU.style.display = "block";
+}
+
 async function onDbAction(evt) {
 // this function will open db from file
     let data;
     let db;
-    let elem = evt.target;
-    if (elem.dataset.action) {
+    let target = evt.target.closest("[data-action]") || evt.target;
+    if (target.dataset.action) {
         evt.preventDefault();
         evt.stopPropagation();
     }
-    if (elem.dataset.db) {
-        db = DB_DICT.get(elem.dataset.db);
-    }
-    switch (elem.dataset.action) {
+    db = DB_DICT.get(target.dataset.db);
+    switch (target.dataset.action) {
     case "dbDetach":
         await dbExecAsync({
             db: DB_MAIN,
             sql: `DETACH ${db.dbName};`
+        });
+        await dbCloseAsync({
+            db
         });
         await uiRenderDb();
         return;
@@ -176,13 +250,12 @@ async function onDbAction(evt) {
         BLOB_DOWNLOAD = URL.createObjectURL(new Blob([
             data
         ]));
-        elem = document.createElement("a");
-        elem.href = BLOB_DOWNLOAD;
+        UI_FILE_DOWNLOAD.href = BLOB_DOWNLOAD;
         // cleanup
         setTimeout(function () {
-            URL.revokeObjectURL(elem.href);
+            URL.revokeObjectURL(UI_FILE_DOWNLOAD.href);
         }, 30000);
-        elem.download = (
+        UI_FILE_DOWNLOAD.download = (
             `database_${db.dbName}_`
             + new Date().toISOString().slice(0, 10).replace((
                 /-/g
@@ -190,47 +263,54 @@ async function onDbAction(evt) {
             + ".sqlite"
         );
         //!! uiLoaderEnd({});
-        elem.click();
+        UI_FILE_DOWNLOAD.click();
         return;
     case "dbRefresh":
+        await uiRenderDb();
+        return;
+    case "dbtableDrop":
+        await dbExecAsync({
+            db: UI_CONTEXTMENU_BATON.db,
+            sql: `DROP TABLE ${UI_CONTEXTMENU_BATON.dbtableName};`
+        });
         await uiRenderDb();
         return;
     case "fileOpenDb1":
     case "fileOpenDbAttach1":
     case "fileOpenScript1":
-        elem = document.getElementById(elem.dataset.action);
-        elem.value = "";
-        elem.click();
+        target = document.getElementById(target.dataset.action);
+        target.value = "";
+        target.click();
         return;
     }
-    switch (elem.id) {
+    switch (target.id) {
     case "fileOpenDb1":
-        if (elem.files.length === 0) {
+        if (target.files.length === 0) {
             return;
         }
         await dbFileImportAsync({
             db: DB_MAIN,
             dbData: (
-                await elem.files[0].arrayBuffer()
+                await target.files[0].arrayBuffer()
             )
         });
         await uiRenderDb();
         return;
     case "fileOpenDbAttach1":
-        if (elem.files.length === 0) {
+        if (target.files.length === 0) {
             return;
         }
         await dbFileAttachAsync({
             db: DB_MAIN,
             dbData: (
-                await elem.files[0].arrayBuffer()
+                await target.files[0].arrayBuffer()
             )
         });
         await uiRenderDb();
         return;
     case "fileOpenScript1":
-        elem = await elem.files[0].text();
-        UI_EDITOR.setValue(elem);
+        target = await target.files[0].text();
+        UI_EDITOR.setValue(target);
         await uiRenderDb();
         return;
     }
@@ -266,10 +346,10 @@ async function onDbExec({
     // DBTABLE_DICT - cleanup old uitable
     DBTABLE_DICT.forEach(function ({
         colList,
-        db,
+        isDbquery,
         rowList0
     }, key) {
-        if (db === DB_QUERY) {
+        if (isDbquery) {
             colList.length = 0;
             rowList0.length = 0;
             DBTABLE_DICT.delete(key);
@@ -364,16 +444,19 @@ async function uiRenderDb() {
     }) {
         return name;
     }));
-    DB_DICT.forEach(function (ignore, dbName) {
-        if (dbName !== "query" && !dbList.has(dbName)) {
+    DB_DICT.forEach(function ({
+        dbName,
+        isDbquery
+    }) {
+        if (!isDbquery && !dbList.has(dbName)) {
             DB_DICT.delete(dbName);
         }
     });
     // DBTABLE_DICT - cleanup old uitable
     DBTABLE_DICT.forEach(function ({
-        db
+        isDbquery
     }, key) {
-        if (db !== DB_QUERY) {
+        if (!isDbquery) {
             DBTABLE_DICT.delete(key);
         }
     });
@@ -382,12 +465,16 @@ async function uiRenderDb() {
         DB_DICT.values()
     ).map(async function (db) {
         let baton;
-        let dbName = db.dbName;
+        let {
+            dbName,
+            isDbmain,
+            isDbquery
+        } = db;
         let dbtableList;
         let tmp;
         db.dbtableList = [];
         dbtableList = (
-            db === DB_QUERY
+            db.isDbquery
             ? db.dbtableList0
             : noop(
                 await dbExecAsync({
@@ -418,13 +505,15 @@ SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
                 dbtableFullname,
                 dbtableName: `[${tbl_name}]`,
                 hashtag: `dbtable_${String(dbtableIi).padStart(2, "0")}`,
+                isDbmain,
+                isDbquery,
                 rowCount,
                 rowList0,
                 sql,
                 title: (
-                    db === DB_QUERY
+                    isDbquery
                     ? `${dbtableFullname}`
-                    : db === DB_MAIN
+                    : isDbmain
                     ? `table ${dbtableFullname}`
                     : `attached table ${dbtableFullname}`
                 )
@@ -432,7 +521,7 @@ SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
             DBTABLE_DICT.set(baton.hashtag, baton);
             return baton;
         });
-        if (db !== DB_QUERY) {
+        if (!isDbquery) {
             tmp = "";
             dbtableList.forEach(function ({
                 dbtableName,
@@ -486,7 +575,7 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
         db.dbtableList.forEach(function (baton) {
             // create uitable
             document.querySelector(
-                db === DB_QUERY
+                db.isDbquery
                 ? "#sqlqueryList1"
                 : "#dbtableList1"
             ).appendChild(uitableCreate(baton));
@@ -496,20 +585,22 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
     html = "";
     DB_DICT.forEach(function ({
         dbName,
-        dbtableList
+        dbtableList,
+        isDbmain,
+        isDbquery
     }) {
         html += (
             `<div class="tocTitle">`
             + (
-                dbName === "query"
+                isDbquery
                 ? `query results`
-                : dbName === "main"
+                : isDbmain
                 ? `database [${dbName}]`
                 : `database [${dbName}] (attached)`
             )
             + `</div>`
         );
-        if (dbName !== "query") {
+        if (!isDbquery) {
             html += (`
 <button data-action="dbFileExport" data-db="${dbName}">
 database [${dbName}] - save
@@ -529,19 +620,28 @@ database [${dbName}] - detach
             hashtag,
             rowCount
         }) {
+            html += `<a class="tocElemA"`;
+            html += ` data-hashtag="${hashtag}"`;
+            html += ` href="#${hashtag}"`;
             html += (
-                `<a class="tocElemA" href="#${hashtag}" title="`
+                ` title="`
                 + stringHtmlSafe((
-                    `[right-click for crud operations]\n`
+                    `[right-click for crud operation]\n`
                 ) + JSON.stringify({
                     colList,
                     dbtableFullname,
                     rowCount
                 }, undefined, 4))
-                + `">`
-                + stringHtmlSafe(dbtableFullname)
-                + `</a>\n`
+                + `"`
             );
+            html += (
+                isDbquery
+                ? ` data-dbtype="query"`
+                : ` data-dbtype="table"`
+            );
+            html += `">`;
+            html += stringHtmlSafe(dbtableFullname);
+            html += `</a>\n`;
         });
     });
     document.querySelector("#tocDbList1").innerHTML = html;
@@ -561,6 +661,7 @@ async function uitableAjax(baton, {
         elemLoading,
         elemScroller,
         elemTable,
+        isDbquery,
         rowCount,
         rowList0,
         rowOffset,
@@ -571,6 +672,8 @@ async function uitableAjax(baton, {
     let viewRowBeg;
     let viewRowEnd;
     if (baton.rowCount === 0) {
+        // uitableLoading - hide
+        elemLoading.style.display = "none";
         return;
     }
     switch (type) {
@@ -616,7 +719,7 @@ async function uitableAjax(baton, {
         // uitableLoading - show
         elemLoading.style.display = "block";
         baton.modeAjax = 1;
-        if (db === DB_QUERY) {
+        if (isDbquery) {
             if (sortDir) {
                 rowList0.sort(function (aa, bb) {
                     aa = aa[sortCol];
@@ -733,7 +836,7 @@ function uitableCreate(baton) {
     contentElem = domDivCreate(
         (`
 <div class="contentElem" data-init="0" id="${baton.hashtag}">
-<div class="contentElemTitle">${stringHtmlSafe(baton.title)}</div>
+<div class="contentElemTitle title">${stringHtmlSafe(baton.title)}</div>
 <div class="uitablePageInfo">Showing 0 to 0 of 0 entries</div>
 <div
     class="uitableScroller"
@@ -749,7 +852,7 @@ function uitableCreate(baton) {
             <tr>
         `)
         + jsonHtmlSafe(baton.colList).map(function (col) {
-            return `<th>${col}</th>`;
+            return `<th title="${col}">${col}</th>`;
         }).join("")
         + (`
             </tr>

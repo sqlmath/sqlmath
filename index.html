@@ -444,7 +444,7 @@ body {
     overflow-y: scroll;
 }
 button {
-    background: #bbb;
+    background: #ccc;
     cursor: pointer;
     font-family: monospace;
     font-size: 0.75rem;
@@ -459,16 +459,16 @@ textarea {
     display: block;
     width: 100%;
 }
+.title {
+    background: #bbd;
+    font-weight: bold;
+    padding: 0.5rem;
+}
 #sqliteEditor1 {
     height: 300px;
 }
 
 /*css section content*/
-.contentElemTitle {
-    background: #bbd;
-    font-weight: bold;
-    padding: 0.5rem;
-}
 .contentSectionTitle {
     font-size: x-large;
     font-weight: bold;
@@ -485,25 +485,26 @@ textarea {
 #contentPanel1 td,
 #contentPanel1 th {
     border-right: 1px solid #999;
-    max-width: 24rem;
+    max-width: 16rem;
     overflow: hidden;
-    padding: 0 8px 0 2px;
+    padding: 0 2px;
     text-align: left;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 #contentPanel1 th {
-    background: #cce;
+    background: #bbd;
     cursor: pointer;
     height: 16px;
-    padding-left: 12px;
+    max-width: 48px;
+    padding-left: 8px;
     position: sticky;
     top: 0;
 }
 #contentPanel1 th::after,
 #contentPanel1 th::before {
-    font-size: 16px;
-    left: 1px;
+    font-size: 12px;
+    left: 0;
     line-height: 8px;
     opacity: 0.25;
     position: absolute;
@@ -525,15 +526,15 @@ textarea {
     height: 16px;
 }
 #contentPanel1 tr:nth-child(even) {
-    background: #ddd;
+    background: #e7e7e7;
 }
 #contentPanel1 .contentElem {
-    box-shadow: 2px 2px 4px 2px #bbb;
     margin-top: 2rem;
     position: relative;
 }
 #contentPanel1 .uitable {
     background: #fff;
+    font-size: 11px;
     left: 0;
     margin: 0;
     position: absolute;
@@ -541,7 +542,6 @@ textarea {
 }
 #contentPanel1 .uitableLoading {
     background: #fff;
-    display: none;
     left: 50%;
     margin-left: -100px;
     margin-top: -26px;
@@ -591,6 +591,28 @@ textarea {
     }
 }
 
+/*css section contextmenu*/
+.contextmenuElem {
+    border-top: 1px solid #bbb;
+    cursor: pointer;
+}
+.contextmenuElem,
+.contextmenuTitle {
+    border-top: 1px solid #bbb;
+    height: 1.5rem;
+    line-height: 1.5rem;
+    padding: 0 0.5rem;
+    white-space: nowrap;
+}
+.contextmenuTitle {
+    font-weight: bold;
+}
+#contextmenu1 {
+    background: #fff;
+    position: fixed;
+    z-index: 99;
+}
+
 /*css section error*/
 #errorPanel1 {
     color: #b00;
@@ -616,7 +638,6 @@ textarea {
 }
 .modalPanel {
     background: #fff;
-    display: none;
     left: 50%;
     position: fixed;
     top: 50%;
@@ -624,8 +645,6 @@ textarea {
     z-index: 1;
 }
 .modalTitle {
-    background: #bbd;
-    padding: 0.5rem;
     text-align: center;
 }
 
@@ -659,7 +678,6 @@ textarea {
     width: 16rem;
 }
 #tocPanel1 {
-    border-right: 1px solid #777;
     height: 100%;
     left: 0;
     overflow-x: hidden;
@@ -676,21 +694,25 @@ textarea {
 }
 
 /* section important */
-.modalPanel,
-#contentPanel1 .uitableLoading {
-    box-shadow: 4px 4px 8px 2px #777;
-}
 button:hover {
     background: #999;
+}
+.contextmenuElem:hover,
+.tocElemA:hover,
+#contentPanel1 tr:hover {
+    background: #cce;
 }
 .modalClose:hover {
     color: #333;
 }
-.tocElemA:hover {
-    background: #bbd;
+.modalPanel,
+#contentPanel1 .uitableLoading,
+#contextmenu1 {
+    box-shadow: 4px 4px 8px 2px #777;
 }
-#contentPanel1 tr:hover {
-    background: #bbd;
+#contentPanel1 .contentElem,
+#tocPanel1 {
+    box-shadow: 2px 2px 4px 2px #bbb;
 }
 </style>
 </head>
@@ -703,32 +725,55 @@ button:hover {
 
 <div class="contentSectionTitle" style="margin-top: 0.5rem;">sqlite editor</div>
 <div class="contentElem" id="editor1">
-<div class="contentElemTitle">script editor</div>
-<textarea id="sqliteEditor1" style="border: 0;">
-SELECT COUNT(*), 2;
-DROP TABLE IF EXISTS foo1;
-CREATE TABLE foo1(aa, bb, cc);
+<div class="contentElemTitle title">script editor</div>
+<textarea id="sqliteEditor1" style="border: 0; padding-left: 30px;">
+DROP TABLE IF EXISTS __test1;
+CREATE TABLE __test1(
+    col1,
+    col2,
+    column_long_name_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+);
+DROP TABLE IF EXISTS __stock_historical;
+CREATE TABLE __stock_historical(ticker TEXT, date TEXT, price FLOAT);
+INSERT INTO __stock_historical (ticker, date, price) VALUES
+    ('aapl', '2020-01-01', 77.37),  ('aapl', '2020-02-01', 68.33),
+    ('aapl', '2020-03-01', 63.57),  ('aapl', '2020-04-01', 73.44),
+    ('aapl', '2020-05-01', 79.48),  ('aapl', '2020-06-01', 91.19),
+    ('aapl', '2020-07-01', 106.26),  ('aapl', '2020-08-01', 129.03),
+    ('aapl', '2020-09-01', 115.80),  ('aapl', '2020-10-01', 108.86),
+    ('aapl', '2020-11-01', 119.05),  ('aapl', '2020-12-01', 132.69),
+    ('goog', '2020-01-01', 1434.23),  ('goog', '2020-02-01', 1339.33),
+    ('goog', '2020-03-01', 1162.81),  ('goog', '2020-04-01', 1348.66),
+    ('goog', '2020-05-01', 1428.92),  ('goog', '2020-06-01', 1413.61),
+    ('goog', '2020-07-01', 1482.96),  ('goog', '2020-08-01', 1634.18),
+    ('goog', '2020-09-01', 1469.60),  ('goog', '2020-10-01', 1621.01),
+    ('goog', '2020-11-01', 1760.74),  ('goog', '2020-12-01', 1751.88);
+SELECT
+        *,
+        random() AS c1,
+        random() AS c2,
+        random() AS c3,
+        random() AS c4,
+        random(),
+        random(),
+        random(),
+        random(),
+        1 AS sentinel
+    FROM __stock_historical
+    LEFT JOIN __test1 ON __test1.col1 = __stock_historical.ticker
+    CROSS JOIN (SELECT random() FROM __stock_historical);
 </textarea>
 </div>
 <button class="button" id="dbExec2" style="margin-top: 1rem;">script - execute</button>
 
-<div class="contentSectionTitle">sqlite query results</div>
+<div class="contentSectionTitle">sqlite query result</div>
 <div id="sqlqueryList1"></div>
 
-<div class="contentSectionTitle">sqlite tables and attached tables</div>
+<div class="contentSectionTitle">sqlite table and attached table</div>
 <div id="dbtableList1"></div>
 
 </div>
 <!-- contentPanel1 end -->
-
-
-<!-- misc start -->
-<div id="fileInput1" style="display: none;">
-    <input id="fileOpenDb1" type="file">
-    <input id="fileOpenDbAttach1" type="file">
-    <input id="fileOpenScript1" type="file">
-</div>
-<!-- misc end -->
 
 
 <!-- tocPanel1 start -->
@@ -751,8 +796,24 @@ CREATE TABLE foo1(aa, bb, cc);
 <!-- tocPanel1 end -->
 
 
+<!-- contextmenu1 start -->
+<div id="contextmenu1" style="display: none;">
+    <div class="contextmenuTitle title">crud operation</div>
+    <a class="contextmenuElem" data-dbtype="query" data-action="dbQuerySaveCsv">query - save to csv</a>
+    <a class="contextmenuElem" data-dbtype="row" data-action="dbrowDelete">row - delete</a>
+    <a class="contextmenuElem" data-dbtype="row" data-action="dbrowInsert">row - insert</a>
+    <a class="contextmenuElem" data-dbtype="row" data-action="dbrowUpdate">row - update</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableDrop">table - drop</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableRename">table - rename</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableRenameColumn">table - rename column</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableSaveCsv">table - save to csv</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableSaveJson">table - save to json</a>
+</div>
+<!-- contextmenu1 end -->
+
+
 <!-- errorPanel1 start -->
-<div id="errorPanel1" class="modalPanel">
+<div id="errorPanel1" class="modalPanel" style="display: none;">
 <span class="modalClose">&times;</span>
 <div class="modalTitle">sqlite error</div>
 <pre class="modalContent"></pre>
@@ -761,15 +822,24 @@ CREATE TABLE foo1(aa, bb, cc);
 
 
 <!-- modalPanel1 start -->
-<div id="modalPanel1" class="modalPanel">
+<div id="modalPanel1" class="modalPanel" style="display: none;">
 <span class="modalClose">&times;</span>
-<div class="modalTitle">hello Title</div>
+<div class="modalTitle title">hello Title</div>
 <div class="modalContent">
     <p>Some text in the Modal..</p>
 </div>
 </div>
 </script>
 <!-- modalPanel1 end -->
+
+
+<!-- misc start -->
+<div id="miscPanel1" style="display: none;">
+    <input id="fileOpenDb1" type="file">
+    <input id="fileOpenDbAttach1" type="file">
+    <input id="fileOpenScript1" type="file">
+</div>
+<!-- misc end -->
 
 
 <!-- script start -->

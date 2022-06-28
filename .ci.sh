@@ -1,9 +1,9 @@
 #!/bin/sh
 
-# curl -L https://www.sqlite.org/2021/sqlite-autoconf-3360000.tar.gz | tar -xz
-# https://www.sqlite.org/2021/sqlite-tools-linux-x86-3360000.zip
-# https://www.sqlite.org/2021/sqlite-tools-osx-x86-3360000.zip
-# https://www.sqlite.org/2021/sqlite-tools-win32-x86-3360000.zip
+# curl -L https://www.sqlite.org/2022/sqlite-autoconf-3380500.tar.gz | tar -xz
+# https://www.sqlite.org/2022/sqlite-tools-linux-x86-3380500.zip
+# https://www.sqlite.org/2022/sqlite-tools-osx-x86-3380500.zip
+# https://www.sqlite.org/2022/sqlite-tools-win32-x86-3380500.zip
 
 shCiArtifactUploadCustom() {(set -e
     git fetch origin artifact
@@ -766,7 +766,10 @@ shSyncSqlmath() {(set -e
         shRawLibFetch sqlite3.c
         shRawLibFetch sqlite3_ext.c
         shRawLibFetch sqlite3_shell.c
-        git grep '3.38.[^5]' || true
+        git grep '3\.38\.[^5]' \
+            ":(exclude)CHANGELOG.md" \
+            ":(exclude)sqlite3.c" \
+            || true
         git grep '3380[^5]00' || true
         return
     fi
