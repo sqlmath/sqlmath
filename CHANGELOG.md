@@ -1,11 +1,12 @@
 # Changelog
 
 # Todo
-- add dbtable-crud-operations
+- add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop, dbtableOpenCsv, dbtableOpenJson
 - sqlmath - add sql-extension carrayblob()
 - none
 
 # v2022.6.1-beta
+- add dbtable-crud-operations dbquerySaveCsv, dbquerySaveJson, dbtableDrop, dbtableSaveCsv, dbtableSaveJson
 - add contextmenu and dbtable-crud-operation dbtableDrop
 - add database-crud-operations
 - merge rendering of sql-queries and sql-tables into one

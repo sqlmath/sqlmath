@@ -592,17 +592,21 @@ textarea {
 }
 
 /*css section contextmenu*/
-.contextmenuElem {
-    border-top: 1px solid #bbb;
-    cursor: pointer;
+.contextmenuDivider {
+    height: 1rem;
 }
 .contextmenuElem,
 .contextmenuTitle {
-    border-top: 1px solid #bbb;
+    border-bottom: 1px solid #bbb;
     height: 1.5rem;
     line-height: 1.5rem;
+    overflow: hidden;
     padding: 0 0.5rem;
+    text-overflow: ellipsis;
     white-space: nowrap;
+}
+.contextmenuElem {
+    cursor: pointer;
 }
 .contextmenuTitle {
     font-weight: bold;
@@ -610,6 +614,7 @@ textarea {
 #contextmenu1 {
     background: #fff;
     position: fixed;
+    width: 256px;
     z-index: 99;
 }
 
@@ -672,20 +677,21 @@ textarea {
 }
 .tocTitle {
     border-top: 1px solid #777;
-    color: #777;
-    margin-left: -0.5rem;
+    font-weight: bold;
+    margin-left: -1rem;
     padding: 0.5rem;
-    width: 16rem;
+    padding-top: 1rem;
+    width: 256px;
 }
 #tocPanel1 {
     height: 100%;
     left: 0;
     overflow-x: hidden;
     overflow-y: scroll;
-    padding: 0 0.5rem 0 0.5rem;
+    padding: 0 0.5rem 0 1rem;
     position: fixed;
     top: 0;
-    width: 16rem;
+    width: 256px;
 }
 #tocPanel1 button {
     margin-bottom: 0.5rem;
@@ -733,6 +739,8 @@ CREATE TABLE __test1(
     col2,
     column_long_name_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 );
+DROP TABLE IF EXISTS db02.__test2;
+CREATE TABLE db02.__test2 AS SELECT * FROM __test1;
 DROP TABLE IF EXISTS __stock_historical;
 CREATE TABLE __stock_historical(ticker TEXT, date TEXT, price FLOAT);
 INSERT INTO __stock_historical (ticker, date, price) VALUES
@@ -779,17 +787,15 @@ SELECT
 <!-- tocPanel1 start -->
 <div id="tocPanel1">
 <div id="tocDatabase1">
-    <div class="tocTitle" style="border: 0;">sqlite database</div>
+    <div class="tocTitle" style="border: 0; padding-top: 0.5rem;">sqlite database</div>
     <button data-action="dbRefresh">database - refresh</button>
-    <button data-action="fileOpenDb1">database - open</button>
-    <button data-action="fileOpenDbAttach1">database - open and attach</button>
+    <button data-action="dbOpen">database - open</button>
+    <button data-action="dbAttach">database - open and attach</button>
 </div>
 <div id="tocEditor1">
     <div class="tocTitle">sqlite editor</div>
-    <button data-action="fileOpenScript1">script - open</button>
-    <button data-action="scriptSave1">script - save</button>
     <button data-action="dbExec">script - execute</button>
-    <a class="tocElemA" href="#editor1">script editor</a>
+    <a class="tocElemA" href="#editor1" data-dbtype="script" title="[right-click for crud operation]">script editor</a>
 </div>
 <div id="tocDbList1"></div>
 </div>
@@ -798,16 +804,30 @@ SELECT
 
 <!-- contextmenu1 start -->
 <div id="contextmenu1" style="display: none;">
-    <div class="contextmenuTitle title">crud operation</div>
-    <a class="contextmenuElem" data-dbtype="query" data-action="dbQuerySaveCsv">query - save to csv</a>
+    <div class="contextmenuTitle title">crud operation for:</div>
+    <div class="contextmenuTitle title"></div>
+    <div class="contextmenuDivider" data-dbtype="all"></div>
+    <a class="contextmenuElem" data-dbtype="script" data-action="dbscriptOpen">script - open</a>
+    <a class="contextmenuElem" data-dbtype="script" data-action="dbscriptSave">script - save</a>
+    <a class="contextmenuElem" data-dbtype="query" data-action="dbquerySaveCsv">query - save to csv</a>
+    <a class="contextmenuElem" data-dbtype="query" data-action="dbquerySaveJson">query - save to json</a>
+
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbExport">database - save</a>
+    <div class="contextmenuDivider" data-dbtype="table"></div>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableRename">table &nbsp;&nbsp; - rename</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableSaveCsv">table &nbsp;&nbsp; - save to csv</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableSaveJson">table &nbsp;&nbsp; - save to json</a>
+    <div class="contextmenuDivider" data-dbtype="table"></div>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbcolumnAdd">column &nbsp; - add</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbcolumnRename">column &nbsp; - rename</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbcolumnDrop">column &nbsp; - drop</a>
+    <div class="contextmenuDivider" data-dbtype="table"></div>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbDetach">database - detach and close</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableDrop">table &nbsp;&nbsp; - drop</a>
+
     <a class="contextmenuElem" data-dbtype="row" data-action="dbrowDelete">row - delete</a>
     <a class="contextmenuElem" data-dbtype="row" data-action="dbrowInsert">row - insert</a>
     <a class="contextmenuElem" data-dbtype="row" data-action="dbrowUpdate">row - update</a>
-    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableDrop">table - drop</a>
-    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableRename">table - rename</a>
-    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableRenameColumn">table - rename column</a>
-    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableSaveCsv">table - save to csv</a>
-    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableSaveJson">table - save to json</a>
 </div>
 <!-- contextmenu1 end -->
 
@@ -831,15 +851,6 @@ SELECT
 </div>
 </script>
 <!-- modalPanel1 end -->
-
-
-<!-- misc start -->
-<div id="miscPanel1" style="display: none;">
-    <input id="fileOpenDb1" type="file">
-    <input id="fileOpenDbAttach1" type="file">
-    <input id="fileOpenScript1" type="file">
-</div>
-<!-- misc end -->
 
 
 <!-- script start -->
