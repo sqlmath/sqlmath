@@ -6,6 +6,7 @@
 - none
 
 # v2022.6.1-beta
+- demo - add web-demo in README.md
 - webapp - add ui-loading when running onDbAction(), onDbExec()
 - add dbtable-crud-operations dbquerySaveCsv, dbquerySaveJson, dbtableDrop, dbtableSaveCsv, dbtableSaveJson
 - add contextmenu and dbtable-crud-operation dbtableDrop

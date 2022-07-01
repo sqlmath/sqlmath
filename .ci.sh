@@ -10,6 +10,36 @@ shCiArtifactUploadCustom() {(set -e
     git checkout origin/artifact "branch-$GITHUB_BRANCH0"
     mv "branch-$GITHUB_BRANCH0"/* .
     git add -f _binary_* sqlmath_wasm.*
+    # screenshot html
+    node --input-type=module --eval '
+import moduleChildProcess from "child_process";
+(async function () {
+    let {
+        GITHUB_BRANCH0,
+        GITHUB_GITHUB_IO
+    } = process.env;
+    await Promise.all([
+        (
+            `https://${GITHUB_GITHUB_IO}/branch-${GITHUB_BRANCH0}`
+            + `/index.html`
+        )
+    ].map(async function (url) {
+        await new Promise(function (resolve) {
+            moduleChildProcess.spawn(
+                "sh",
+                [
+                    "jslint_ci.sh", "shBrowserScreenshot", url
+                ],
+                {
+                    stdio: [
+                        "ignore", 1, 2
+                    ]
+                }
+            ).on("exit", resolve);
+        });
+    }));
+}());
+' "$@" # '
 )}
 
 shCiArtifactUpload2() {(set -e
@@ -763,6 +793,7 @@ shSyncSqlmath() {(set -e
     local FILE
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
+        shRawLibFetch asset_sqlmath_external_rollup.js
         shRawLibFetch index.html
         shRawLibFetch sqlite3.c
         shRawLibFetch sqlite3_ext.c
