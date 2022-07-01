@@ -260,7 +260,8 @@ async function dbCloseAsync({
         await cCallAsync(
             undefined,
             "_dbClose",
-            val
+            val,
+            __db.filename
         );
     }));
     dbDict.delete(db);
@@ -396,7 +397,6 @@ async function dbFileExportAsync({
     modeExport = 1
 }) {
 // This function will export <db> to <filename>
-    let result;
     if (IS_BROWSER) {
         filename = FILENAME_DBTMP;
     }
@@ -404,7 +404,7 @@ async function dbFileExportAsync({
         typeof filename === "string" && filename,
         `invalid filename ${filename}`
     );
-    result = await dbCallAsync(
+    return await dbCallAsync(
         undefined,
         "_dbFileImportOrExport",
         db,                     // 0. sqlite3 * pInMemory,
@@ -413,9 +413,6 @@ async function dbFileExportAsync({
         undefined,              // 3. undefined
         dbData                  // 4. dbData
     );
-    if (IS_BROWSER) {
-        return result[2 + 4];
-    }
 }
 
 async function dbFileImportAsync({
@@ -501,6 +498,7 @@ async function dbOpenAsync({
     dbDict.set(db, {
         busy: 0,
         connPool,
+        filename,
         ii: 0
     });
     return db;
@@ -825,17 +823,15 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     // cleanup sqlMessageDict
     delete sqlMessageDict[id];
     // debug slow postMessage
-    noop(errStack, timeElapsed);
-    // timeElapsed = Date.now() - timeElapsed;
-    // if (timeElapsed > 500) {
-    //     console.error(
-    //         "sqlMessagePost - " + JSON.stringify({
-    //             cFuncName,
-    //             timeElapsed
-    //         })
-    //     );
-    //     console.error(errStack);
-    // }
+    timeElapsed = Date.now() - timeElapsed;
+    if (timeElapsed > 500) {
+        consoleError(
+            "sqlMessagePost - " + JSON.stringify({
+                cFuncName,
+                timeElapsed
+            }) + errStack
+        );
+    }
     assertOrThrow(!result.errmsg, result.errmsg);
     return [
         result.baton, result.cFuncName, ...result.argList

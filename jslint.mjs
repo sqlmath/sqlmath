@@ -100,7 +100,7 @@
     catch_stack, causes, char, children, clear, closer, closure, code, column,
     concat, consoleError, console_error, console_log, constant, context,
     convert, count, coverageDir, create, cwd, d, dead, debugInline, default,
-    delta, devel, directive, directive_list, directive_quiet, directives,
+    delta, devel, directive, directive_ignore_line, directive_list, directives,
     dirname, disrupt, dot, edition, elem_list, ellipsis, else, end, endOffset,
     endsWith, entries, env, error, eval, every, example_list, excludeList, exec,
     execArgv, exit, exitCode, export_dict, exports, expression, extra, file,
@@ -120,21 +120,22 @@
     message, meta, min, mkdir, modeCoverageIgnoreFile, modeIndex, mode_cli,
     mode_conditional, mode_json, mode_module, mode_noop, mode_property,
     mode_shebang, mode_stop, module, moduleFsInit, moduleName, module_list,
-    name, names, node, noop, now, nr, nud_prefix, objectDeepCopyWithKeysSorted,
-    ok, on, open, opening, option, option_dict, order, package_name, padEnd,
-    padStart, parameters, parent, parentIi, parse, pathname, pathnameList,
-    platform, pop, processArgv, process_argv, process_env, process_exit,
-    promises, property, property_dict, push, quote, ranges, readFile, readdir,
-    readonly, recursive, reduce, repeat, replace, resolve, result, reverse,
-    role, round, scriptId, search, set, shebang, shift, signature, single,
-    slice, some, sort, source, spawn, splice, split, stack, stack_trace, start,
-    startOffset, startsWith, statement, statement_prv, stdio, stop, stop_at,
-    stringify, switch, syntax_dict, tenure, test, test_cause,
-    test_internal_error, this, thru, toString, token, token_global, token_list,
-    token_nxt, token_tree, tokens, trace, tree, trim, trimEnd, trimRight, try,
-    type, unlink, unordered, unshift, url, used, v8CoverageListMerge,
-    v8CoverageReportCreate, value, variable, version, versions, warn, warn_at,
-    warning, warning_list, warnings, white, wrapped, writeFile
+    name, names, node, nomen, noop, now, nr, nud_prefix,
+    objectDeepCopyWithKeysSorted, ok, on, open, opening, option, option_dict,
+    order, package_name, padEnd, padStart, parameters, parent, parentIi, parse,
+    pathname, pathnameList, platform, pop, processArgv, process_argv,
+    process_env, process_exit, promises, property, property_dict, push, quote,
+    ranges, readFile, readdir, readonly, recursive, reduce, repeat, replace,
+    resolve, result, reverse, role, round, scriptId, search, set, shebang,
+    shift, signature, single, slice, some, sort, source, spawn, splice, split,
+    stack, stack_trace, start, startOffset, startsWith, statement,
+    statement_prv, stdio, stop, stop_at, stringify, subscript, switch,
+    syntax_dict, tenure, test, test_cause, test_internal_error, this, thru,
+    toString, token, token_global, token_list, token_nxt, token_tree, tokens,
+    trace, tree, trim, trimEnd, trimRight, try, type, unlink, unordered,
+    unshift, url, used, v8CoverageListMerge, v8CoverageReportCreate, value,
+    variable, version, versions, warn, warn_at, warning, warning_list, warnings,
+    white, wrapped, writeFile
 */
 
 // init debugInline
@@ -164,7 +165,7 @@ let jslint_charset_ascii = (
     + "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
     + "`abcdefghijklmnopqrstuvwxyz{|}~\u007f"
 );
-let jslint_edition = "v2022.6.1-beta";
+let jslint_edition = "v2022.7.1-beta";
 let jslint_export;                      // The jslint object to be exported.
 let jslint_fudge = 1;                   // Fudge starting line and starting
                                         // ... column to 1.
@@ -468,7 +469,9 @@ function globExclude({
 // $()*+-./?[\]^{|}
 
         strRegex = strRegex.replace((
-            // ignore [-/]
+
+// Ignore [-/].
+
             /[$()*+.?\[\\\]\^{|}]/g
         ), "\\$&");
 
@@ -1216,12 +1219,12 @@ function jslint(
         if (option_dict.trace) {
             warning.stack_trace = new Error().stack;
         }
-        if (warning.directive_quiet) {
+        if (warning.directive_ignore_line) {
 
 // test_cause:
-// ["0 //jslint-quiet", "semicolon", "directive_quiet", "", 0]
+// ["0 //jslint-ignore-line", "semicolon", "directive_ignore_line", "", 0]
 
-            test_cause("directive_quiet");
+            test_cause("directive_ignore_line");
             return warning;
         }
         warning_list.push(warning);
@@ -1255,7 +1258,7 @@ function jslint(
             mode_json: false,           // true if parsing JSON.
             mode_module: false,         // true if import or export was used.
             mode_property: false,       // true if directive /*property*/ is
-                                        // used.
+                                        // ... used.
             mode_shebang: false,        // true if #! is seen on the first line.
             option_dict,
             property_dict,
@@ -2410,7 +2413,7 @@ function jslint_phase2_lex(state) {
         if (!option_dict.devel && jslint_rgx_todo.test(snippet)) {
 
 // test_cause:
-// ["//todo", "lex_comment", "todo_comment", "(comment)", 1] //jslint-quiet
+// ["//todo", "lex_comment", "todo_comment", "(comment)", 1] //jslint-ignore-line
 
             warn("todo_comment", the_comment);
         }
@@ -2470,6 +2473,7 @@ function jslint_phase2_lex(state) {
                 global_dict[key] = "user-defined";
 
 // PR-347 - Disable warning "unexpected_directive_a".
+//
 //                 state.mode_module = the_comment;
 
                 break;
@@ -3285,9 +3289,10 @@ function jslint_phase2_lex(state) {
         case "getset":          // Allow get() and set().
         case "indent2":         // Use 2-space indent.
         case "long":            // Allow long lines.
-        case "name":            // Allow weird property names.
         case "node":            // Assume Node.js environment.
+        case "nomen":           // Allow weird property names.
         case "single":          // Allow single-quote strings.
+        case "subscript":       // Allow identifier in subscript-notation.
         case "test_cause":      // Test jslint's causes.
         case "test_internal_error":     // Test jslint's internal-error
                                         // ... handling-ability.
@@ -3300,6 +3305,16 @@ function jslint_phase2_lex(state) {
         case "white":           // Allow messy whitespace.
             option_dict[key] = val;
             break;
+
+// PR-404 - Alias "evil" to jslint-directive "eval" for backwards-compat.
+
+        case "evil":
+            return option_set_item("eval", val);
+
+// PR-404 - Alias "nomen" to jslint-directive "name" for backwards-compat.
+
+        case "name":
+            return option_set_item("nomen", val);
         default:
             return false;
         }
@@ -3388,6 +3403,7 @@ console.log(JSON.stringify(Object.keys(window).sort(), undefined, 4));
                 "location",
                 // "name",
                 "navigator",
+                "postMessage",
                 // "screen",
                 "sessionStorage",
                 // "setInterval",
@@ -3642,7 +3658,7 @@ import moduleHttps from "https";
         ) {
 
 // test_cause:
-// ["/////////////////////////////////////////////////////////////////////////////////", "read_line", "too_long", "", 1] //jslint-quiet
+// ["/////////////////////////////////////////////////////////////////////////////////", "read_line", "too_long", "", 1] //jslint-ignore-line
 
             warn_at("too_long", line);
         }
@@ -3660,7 +3676,7 @@ import moduleHttps from "https";
 // Scan each line for following ignore-directives:
 // "/*jslint-disable*/"
 // "/*jslint-enable*/"
-// "//jslint-quiet"
+// "//jslint-ignore-line"
 
         if (line_source === "/*jslint-disable*/") {
 
@@ -3678,13 +3694,16 @@ import moduleHttps from "https";
                 stop_at("unopened_enable", line);
             }
             line_disable = undefined;
-        } else if (line_source.endsWith(" //jslint-quiet")) {
+        } else if (
+            line_source.endsWith(" //jslint-ignore-line")
+            || line_source.endsWith(" //jslint-quiet")
+        ) {
 
 // test_cause:
-// ["0 //jslint-quiet", "read_line", "jslint_quiet", "", 0]
+// ["0 //jslint-ignore-line", "read_line", "jslint_ignore_line", "", 0]
 
-            test_cause("jslint_quiet");
-            line_list[line].directive_quiet = true;
+            test_cause("jslint_ignore_line");
+            line_list[line].directive_ignore_line = true;
         }
         if (line_disable !== undefined) {
 
@@ -4545,7 +4564,10 @@ function jslint_phase3_parse(state) {
         let the_subscript = parse_expression(0);
         if (the_subscript.id === "(string)" || the_subscript.id === "`") {
             name = survey(the_subscript);
-            if (jslint_rgx_identifier.test(name)) {
+
+// PR-404 - Add new directive "subscript" to play nice with Google Closure.
+
+            if (!option_dict.subscript && jslint_rgx_identifier.test(name)) {
 
 // test_cause:
 // ["aa[`aa`]", "infix_lbracket", "subscript_a", "aa", 4]
@@ -5274,10 +5296,13 @@ function jslint_phase3_parse(state) {
             functionage.async += 1;
         }
         if (the_await.arity === "statement") {
-            the_await.block = parse_expression();
+
+// PR-405 - Bugfix - fix expression after "await" mis-identified as statement.
+
+            the_await.expression = parse_expression(150);
             semicolon();
         } else {
-            the_await.expression = parse_expression();
+            the_await.expression = parse_expression(150);
         }
         return the_await;
     }
@@ -6343,6 +6368,7 @@ function jslint_phase3_parse(state) {
         let names;
 
 // PR-347 - Disable warning "unexpected_directive_a".
+//
 //         if (typeof state.mode_module === "object") {
 //
 // // test_cause:
@@ -6700,6 +6726,16 @@ function jslint_phase3_parse(state) {
 // Restore previous catch-scope after catch-block.
 
             catchage = catch_stack.pop();
+
+// PR-404 - Relax warning about missing `catch` in `try...finally` statement.
+//
+//         } else {
+//
+// // test_cause:
+// // ["try{}finally{break;}", "stmt_try", "expected_a_before_b", "finally", 6]
+//
+//             warn("expected_a_before_b", token_nxt, "catch", artifact());
+
         }
         if (token_nxt.id === "finally") {
             functionage.finally += 1;
@@ -6820,12 +6856,14 @@ function jslint_phase3_parse(state) {
                             return stop("expected_identifier_a");
                         }
 
-// PR-363 - Bugfix - fix false-warning
-// <uninitialized 'bb'> in code '/*jslint node*/\nlet {aa:bb} = {}; bb();'
+// PR-363 - Bugfix
+// Add test against false-warning <uninitialized 'bb'> in code
+// '/*jslint node*/\nlet {aa:bb} = {}; bb();'.
+//
+//                         token_nxt.label = name;
+//                         the_variable.names.push(token_nxt);
+//                         enroll(token_nxt, "variable", mode_const);
 
-                        // token_nxt.label = name;
-                        // the_variable.names.push(token_nxt);
-                        // enroll(token_nxt, "variable", mode_const);
                         name = token_nxt;
                         the_variable.names.push(name);
                         survey(name);
@@ -7048,7 +7086,7 @@ function jslint_phase3_parse(state) {
                     warn("unregistered_property_a", name);
                 }
             } else if (
-                !option_dict.name
+                !option_dict.nomen
                 && name.identifier
                 && jslint_rgx_weird_property.test(id)
             ) {
@@ -8461,9 +8499,6 @@ function jslint_phase4_walk(state) {
 // ["+[]", "walk_statement", "unexpected_expression_a", "+", 1]
 // ["+new aa()", "walk_statement", "unexpected_expression_a", "+", 1]
 // ["0", "walk_statement", "unexpected_expression_a", "0", 1]
-// ["
-// async function aa(){await 0;}
-// ", "walk_statement", "unexpected_expression_a", "0", 27]
 // ["typeof 0", "walk_statement", "unexpected_expression_a", "typeof", 1]
 
                     warn("unexpected_expression_a", thing);
@@ -10182,7 +10217,7 @@ function v8CoverageListMerge(processCovs) {
             let resultTree;
             let rightChildren;
 
-// TODO(perf): Binary search (check overhead) //jslint-quiet
+// TODO(perf): Binary search (check overhead) //jslint-ignore-line
 
             while (ii < tree.children.length) {
                 child = tree.children[ii];
@@ -10260,7 +10295,7 @@ function v8CoverageListMerge(processCovs) {
 
 // This function will normalize-and-sort <funcCov>.ranges.
 // Sorts the ranges (pre-order sort).
-// TODO: Tree-based normalization of the ranges. //jslint-quiet
+// TODO: Tree-based normalization of the ranges. //jslint-ignore-line
 // @param funcCov Function coverage to normalize.
 
         funcCov.ranges = treeToRanges(treeFromSortedRanges(
@@ -11088,15 +11123,13 @@ function sentinel() {}
         processArgElem[1] = processArgElem.slice(1).join("=");
         switch (processArgElem[0]) {
 
-// PR-371
-// Add cli-option `--exclude=...`.
+// PR-371 - Add cli-option `--exclude=...`.
 
         case "--exclude":
             excludeList.push(processArgElem[1]);
             break;
 
-// PR-371
-// Add cli-option `--include=...`
+// PR-371 - Add cli-option `--include=...`
 
         case "--include":
             includeList.push(processArgElem[1]);
@@ -11196,15 +11229,13 @@ function sentinel() {}
             pathnameDict[pathname] = scriptCov;
         });
 
-// PR-400
-// Filter directory `node_modules`.
+// PR-400 - Filter directory `node_modules`.
 
         if (!modeIncludeNodeModules) {
             excludeList.push("node_modules/");
         }
 
-// PR-400
-// Filter files by glob-patterns in excludeList, includeList.
+// PR-400 - Filter files by glob-patterns in excludeList, includeList.
 
         data.result = globExclude({
             excludeList,

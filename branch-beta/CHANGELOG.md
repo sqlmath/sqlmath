@@ -1,10 +1,25 @@
 # Changelog
 
 # Todo
+- add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop, dbtableOpenCsv, dbtableOpenJson
 - sqlmath - add sql-extension carrayblob()
 - none
 
 # v2022.6.1-beta
+- demo - add web-demo in README.md
+- webapp - add ui-loading when running onDbAction(), onDbExec()
+- add dbtable-crud-operations dbquerySaveCsv, dbquerySaveJson, dbtableDrop, dbtableSaveCsv, dbtableSaveJson
+- add contextmenu and dbtable-crud-operation dbtableDrop
+- add database-crud-operations
+- merge rendering of sql-queries and sql-tables into one
+- optimization - defer rendering data in dttable until you scroll into it in viewport
+- add modal to display sql-query errors
+- bugfix - fix broken sorting
+- merge datatables css into file index.html
+- merge datatables code into file sqlmath_browser.mjs and remove jquery-dependency
+- bugfix - fix ci-function shCiBuildWasm() not updating output sqlmath_wasm.wasm
+- wasm - rewrite file sqlmath_wrapper_wasm.js to pass jslint
+- datatables - rewrite datatables-function _fnDraw() for faster rendering
 - sqlmath - milestone - functional index.html
 - add files asset_sqlmath_external_rollup.css, asset_sqlmath_external_rollup.js
 - bugfix - fix memory-leak by replacing all free()/malloc() with sqlite3_free()/sqlite3_malloc()
