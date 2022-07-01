@@ -449,6 +449,7 @@ button {
     font-family: monospace;
     font-size: 0.75rem;
     height: 1.25rem;
+    line-height: 1.25rem;
     min-width: 4rem;
     padding: 0 0.5rem;
 }
@@ -560,19 +561,6 @@ textarea {
     text-align: left;
     width: 1rem;
 }
-#contentPanel1 .uitablePageInfo {
-    height: 16px;
-    padding: 2px;
-    width: 100%;
-}
-#contentPanel1 .uitableScroller {
-    background: #ddd;
-    overflow: scroll;
-    position: relative;
-}
-#contentPanel1 .uitableScrollerDummy {
-    width: 1px;
-}
 @keyframes uitableLoading {
     0% {
         content: "";
@@ -589,6 +577,19 @@ textarea {
     100% {
         content: "";
     }
+}
+#contentPanel1 .uitablePageInfo {
+    height: 16px;
+    padding: 2px;
+    width: 100%;
+}
+#contentPanel1 .uitableScroller {
+    background: #ddd;
+    overflow: scroll;
+    position: relative;
+}
+#contentPanel1 .uitableScrollerDummy {
+    width: 1px;
 }
 
 /*css section contextmenu*/
@@ -621,11 +622,53 @@ textarea {
 /*css section error*/
 #errorPanel1 {
     color: #b00;
-    z-index: 10;
+    z-index: 999;
 }
 #errorPanel1 .modalTitle {
     color: #700;
     background: #d777;
+}
+
+/*css section loading*/
+.uiLoading,
+.uiLoading::after,
+.uiLoading::before {
+    animation: uiLoading 1s infinite alternate;
+    background: #777;
+    border-radius: 10px;
+    content: "";
+    display: inline-block;
+    height: 20px;
+    left: -30px;
+    position: absolute;
+    top: 0;
+    width: 20px;
+}
+.uiLoading {
+    animation-delay: .5s;
+    left: 0;
+    position: relative;
+}
+.uiLoading::after {
+    animation-delay: 1s;
+    left: 30px;
+}
+@keyframes uiLoading {
+    0% {
+        background: #33b;
+    }
+}
+#loadingPanel1 {
+    background: #ddd;
+    left: 50%;
+    opacity: 0.875;
+    padding: 1rem;
+    position: fixed;
+    text-align: center;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    z-index: 99;
 }
 
 /*css section modal*/
@@ -658,22 +701,23 @@ textarea {
     color: #037;
     cursor: pointer;
     display: inline-block;
-    line-height: 1rem;
+    height: 20px;
+    line-height: 20px;
     overflow: hidden;
-    padding: 0 0.5rem 0.125rem 8px;
+    padding-left: 0.5rem;
     text-overflow: ellipsis;
     white-space: nowrap;
     width: 100%;
 }
 .tocElemA::before {
     background-color: #000;
-    border-radius: 0.125rem;
+    border-radius: 2px;
     content: "";
     display: inline-block;
-    height: 0.25rem;
-    margin: 0 0.25rem 0 -0.5rem;
-    vertical-align: middle;
-    width: 0.25rem;
+    height: 4px;
+    margin: 8px -0.5rem;
+    position: absolute;
+    width: 4px;
 }
 .tocTitle {
     border-top: 1px solid #777;
@@ -699,7 +743,7 @@ textarea {
     width: 100%;
 }
 
-/* section important */
+/* section misc */
 button:hover {
     background: #999;
 }
@@ -713,8 +757,10 @@ button:hover {
 }
 .modalPanel,
 #contentPanel1 .uitableLoading,
-#contextmenu1 {
+#contextmenu1,
+#loadingPanel1 {
     box-shadow: 4px 4px 8px 2px #777;
+    transition: visibility 0.5s, opacity 0.5s;
 }
 #contentPanel1 .contentElem,
 #tocPanel1 {
@@ -803,7 +849,7 @@ SELECT
 
 
 <!-- contextmenu1 start -->
-<div id="contextmenu1" style="display: none;">
+<div id="contextmenu1" style="visibility: hidden;">
     <div class="contextmenuTitle title">crud operation for:</div>
     <div class="contextmenuTitle title"></div>
     <div class="contextmenuDivider" data-dbtype="all"></div>
@@ -824,25 +870,26 @@ SELECT
     <div class="contextmenuDivider" data-dbtype="table"></div>
     <a class="contextmenuElem" data-dbtype="table" data-action="dbDetach">database - detach and close</a>
     <a class="contextmenuElem" data-dbtype="table" data-action="dbtableDrop">table &nbsp;&nbsp; - drop</a>
-
-    <a class="contextmenuElem" data-dbtype="row" data-action="dbrowDelete">row - delete</a>
-    <a class="contextmenuElem" data-dbtype="row" data-action="dbrowInsert">row - insert</a>
-    <a class="contextmenuElem" data-dbtype="row" data-action="dbrowUpdate">row - update</a>
 </div>
 <!-- contextmenu1 end -->
 
 
 <!-- errorPanel1 start -->
-<div id="errorPanel1" class="modalPanel" style="display: none;">
+<div id="errorPanel1" class="modalPanel" style="visibility: hidden;">
 <span class="modalClose">&times;</span>
-<div class="modalTitle">sqlite error</div>
+<div class="modalTitle title">sqlite error</div>
 <pre class="modalContent"></pre>
 </div>
 <!-- errorPanel1 end -->
 
 
+<!-- loadingPanel1 start -->
+<div id="loadingPanel1" style="visibility: hidden;"><div class="uiLoading"></div></div>
+<!-- loadingPanel1 end -->
+
+
 <!-- modalPanel1 start -->
-<div id="modalPanel1" class="modalPanel" style="display: none;">
+<div id="modalPanel1" class="modalPanel" style="visibility: hidden;">
 <span class="modalClose">&times;</span>
 <div class="modalTitle title">hello Title</div>
 <div class="modalContent">

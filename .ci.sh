@@ -763,6 +763,7 @@ shSyncSqlmath() {(set -e
     local FILE
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
+        shRawLibFetch index.html
         shRawLibFetch sqlite3.c
         shRawLibFetch sqlite3_ext.c
         shRawLibFetch sqlite3_shell.c

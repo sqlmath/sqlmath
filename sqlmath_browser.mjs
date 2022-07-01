@@ -26,6 +26,8 @@ let UI_CONTEXTMENU_BATON;
 let UI_EDITOR;
 let UI_FILE_OPEN = document.createElement("input");
 let UI_FILE_SAVE = document.createElement("a");
+let UI_LOADING = document.getElementById("loadingPanel1");
+let UI_LOADING_COUNTER = 0;
 let UI_PAGE_SIZE = 256;
 let UI_ROW_HEIGHT = 16;
 let UI_VIEW_SIZE = 10;
@@ -215,7 +217,7 @@ function onContextmenu(evt) {
     // contextmenu - left-click
     if (type !== "contextmenu") {
         // contextmenu - hide
-        UI_CONTEXTMENU.style.display = "none";
+        uiFadeOut(UI_CONTEXTMENU);
         // contextmenu - action
         onDbAction(evt);
         return;
@@ -232,7 +234,7 @@ function onContextmenu(evt) {
     target = target.closest(".tocElemA[data-dbtype]");
     // contextmenu - hide
     if (!target) {
-        UI_CONTEXTMENU.style.display = "none";
+        uiFadeOut(UI_CONTEXTMENU);
         return;
     }
     // init UI_CONTEXTMENU_BATON
@@ -261,7 +263,7 @@ function onContextmenu(evt) {
     UI_CONTEXTMENU.children[1].textContent = (
         `${baton.dbtableFullname || "script editor"}`
     );
-    UI_CONTEXTMENU.style.display = "block";
+    uiFadeIn(UI_CONTEXTMENU);
     UI_CONTEXTMENU.style.left = Math.max(0, Math.min(
         clientX,
         window.innerWidth - UI_CONTEXTMENU.offsetWidth - 10
@@ -277,10 +279,16 @@ async function onDbAction(evt) {
     let baton;
     let data;
     let target = evt.target.closest("[data-action]") || evt.target;
-    if (target.dataset.action) {
-        evt.preventDefault();
-        evt.stopPropagation();
+    if (!target.dataset.action) {
+        return;
     }
+    if (!evt.modeTryCatch) {
+        evt.modeTryCatch = true;
+        await uiTryCatch(onDbAction, evt);
+        return;
+    }
+    evt.preventDefault();
+    evt.stopPropagation();
     baton = UI_CONTEXTMENU_BATON;
     switch (target === UI_FILE_OPEN && target.dataset.action) {
     case "dbAttach":
@@ -421,6 +429,7 @@ async function onDbAction(evt) {
         });
         return;
     }
+    throw new Error(`onDbAction - invalid action ${target.dataset.action}`);
 }
 
 async function onDbExec({
@@ -432,24 +441,14 @@ async function onDbExec({
 // 2. ui-render sql-queries to html
     let dbtableList0;
     if (!modeTryCatch) {
-        try {
-            await onDbExec({
-                modeTryCatch: true,
-                sql
-            });
-        } catch (err) {
-            console.error(err);
-            document.querySelector(
-                "#errorPanel1 .modalContent"
-            ).textContent = err;
-            document.querySelector(
-                "#errorPanel1"
-            ).style.display = "block";
-        }
+        await uiTryCatch(onDbExec, {
+            modeTryCatch: true,
+            sql
+        });
         return;
     }
     // close error modal
-    document.querySelector("#errorPanel1").style.display = "none";
+    uiFadeOut(document.querySelector("#errorPanel1"));
     // DBTABLE_DICT - cleanup old uitable
     DBTABLE_DICT.forEach(function ({
         colList,
@@ -497,7 +496,7 @@ function onKeyUp(evt) {
     switch (evt.key) {
     case "Escape":
         // close error-modal
-        document.querySelector("#errorPanel1").style.display = "none";
+        uiFadeOut(document.querySelector("#errorPanel1"));
         return;
     }
     switch ((evt.ctrlKey || evt.metaKey) && evt.key) {
@@ -511,7 +510,7 @@ function onModalClose({
     currentTarget
 }) {
 // this function will close current modal
-    currentTarget.closest(".modalPanel").style.display = "none";
+    uiFadeOut(currentTarget.closest(".modalPanel"));
 }
 
 function rowListToCsv({
@@ -584,6 +583,18 @@ function stringHtmlSafe(str) {
     ), "&gt;").replace((
         /"/gu
     ), "&quot;");
+}
+
+function uiFadeIn(elem) {
+// this function will fade-in <elem>
+    elem.style.opacity = "0.875";
+    elem.style.visibility = "visible";
+}
+
+function uiFadeOut(elem) {
+// this function will fade-out <elem>
+    elem.style.opacity = "0";
+    elem.style.visibility = "hidden";
 }
 
 async function uiRenderDb() {
@@ -798,6 +809,31 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
     uitableInitWithinView({});
 }
 
+async function uiTryCatch(func, ...argList) {
+// this function will call <func> in a try-catch-block
+// that will display any error thrown to user
+    try {
+        UI_LOADING_COUNTER += 1;
+        uiFadeIn(UI_LOADING);
+        await func(...argList);
+    } catch (err) {
+        console.error(err);
+        document.querySelector(
+            "#errorPanel1 .modalContent"
+        ).textContent = err;
+        uiFadeIn(document.querySelector(
+            "#errorPanel1"
+        ));
+    } finally {
+        setTimeout(function () {
+            UI_LOADING_COUNTER -= 1;
+            if (UI_LOADING_COUNTER === 0) {
+                uiFadeOut(UI_LOADING);
+            }
+        }, 500);
+    }
+}
+
 async function uitableAjax(baton, {
     rowList,
     type
@@ -821,7 +857,7 @@ async function uitableAjax(baton, {
     let viewRowEnd;
     if (baton.rowCount === 0) {
         // uitableLoading - hide
-        elemLoading.style.display = "none";
+        uiFadeOut(elemLoading);
         return;
     }
     switch (type) {
@@ -865,7 +901,7 @@ async function uitableAjax(baton, {
     // uitableAjax
     case 0:
         // uitableLoading - show
-        elemLoading.style.display = "block";
+        uiFadeIn(elemLoading);
         baton.modeAjax = 1;
         if (isDbquery) {
             if (sortDir) {
@@ -958,7 +994,7 @@ SELECT
     // cleanup
     baton.modeAjax = 0;
     // uitableLoading - hide
-    elemLoading.style.display = "none";
+    uiFadeOut(elemLoading);
 }
 
 function uitableCreate(baton) {
