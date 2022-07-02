@@ -1,5 +1,5 @@
-<svg height="1284" width="800" xmlns="http://www.w3.org/2000/svg">
-<rect height="1284" fill="#222" width="800"></rect>
+<svg height="1262" width="800" xmlns="http://www.w3.org/2000/svg">
+<rect height="1262" fill="#222" width="800"></rect>
 <text
     fill="#7f7"
     font-family="consolas, menlo, monospace"
@@ -29,37 +29,37 @@
     textLength="768"
     x="10"
     y="98"
->- add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop, dbtableO\</tspan>
+>- add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="120"
->  penCsv, dbtableOpenJson                                                                        </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="142"
 >- sqlmath - add sql-extension carrayblob()                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
-    y="164"
+    y="142"
 >- none                                                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
-    y="186"
+    y="164"
 >                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="186"
+># v2022.6.30                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="208"
-># v2022.6.1-beta                                                                                 </tspan>
+>- add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -342,12 +342,6 @@
     x="10"
     y="1242"
 >  nRegistry()                                                                                    </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1264"
->- sqlmath - add sql-extension copyblob(), matrix2d_concat()                                      </tspan>
 
 </text>
 </svg>

@@ -23,6 +23,7 @@ let DB_QUERY;
 let DEBOUNCE_DICT = Object.create(null);
 let UI_CONTEXTMENU = document.getElementById("contextmenu1");
 let UI_CONTEXTMENU_BATON;
+let UI_CRUD = document.getElementById("crudPanel1");
 let UI_EDITOR;
 let UI_FILE_OPEN = document.createElement("input");
 let UI_FILE_SAVE = document.createElement("a");
@@ -157,8 +158,10 @@ async function init() {
     });
     // init event-handling
     [
-        ["#dbExec2", "click", onDbExec],
         ["#tocPanel1", "click", onDbAction],
+        [".dbExec", "click", onDbExec],
+        [".dbcrudExec", "click", onDbcrudExec],
+        [".modalCancel", "click", onModalClose],
         [".modalClose", "click", onModalClose],
         ["body", "click", onContextmenu],
         ["body", "contextmenu", onContextmenu],
@@ -219,7 +222,9 @@ function onContextmenu(evt) {
         // contextmenu - hide
         uiFadeOut(UI_CONTEXTMENU);
         // contextmenu - action
-        onDbAction(evt);
+        if (target.closest(".contextmenuElem")) {
+            onDbAction(evt);
+        }
         return;
     }
     // contextmenu - right-click
@@ -260,8 +265,9 @@ function onContextmenu(evt) {
         }
     });
     // contextmenu - show
-    UI_CONTEXTMENU.children[1].textContent = (
-        `${baton.dbtableFullname || "script editor"}`
+    UI_CONTEXTMENU.children[0].innerHTML = (
+        "crud operation for:<br>"
+        + stringHtmlSafe(baton.dbtableFullname || "script editor")
     );
     uiFadeIn(UI_CONTEXTMENU);
     UI_CONTEXTMENU.style.left = Math.max(0, Math.min(
@@ -276,12 +282,126 @@ function onContextmenu(evt) {
 
 async function onDbAction(evt) {
 // this function will open db from file
+    let action;
     let baton;
     let data;
     let target = evt.target.closest("[data-action]") || evt.target;
-    if (!target.dataset.action) {
+    let title;
+    action = target.dataset.action;
+    if (!action) {
         return;
     }
+    baton = UI_CONTEXTMENU_BATON;
+    // fast actions that do not require loading
+    switch (target !== UI_FILE_OPEN && action) {
+    case "dbAttach":
+    case "dbOpen":
+    case "dbscriptOpen":
+        UI_FILE_OPEN.dataset.action = action;
+        UI_FILE_OPEN.value = "";
+        UI_FILE_OPEN.click();
+        return;
+    case "dbcolumnAdd":
+    case "dbcolumnDrop":
+    case "dbcolumnRename":
+    case "dbtableRename":
+        title = target.textContent.trim().replace(/\s+/g, " ");
+        UI_CRUD.querySelector(".modalTitle").innerHTML = (
+            `${stringHtmlSafe(baton.dbtableFullname)}<br>${title}`
+        );
+        UI_CRUD.querySelector("tbody").innerHTML = (
+            (`
+<tr class="crudInput-new_table" style="display: none;">
+    <td><span class="crudLabel">{{new_table}}</span></td>
+    <td class="tdInput">
+    <input class="crudInput" type="text" value="new_table_1">
+    </td>
+</tr>
+<tr class="crudInput-selected_column" style="display: none;">
+    <td><span class="crudLabel">{{selected_column}}</span></td>
+    <td class="tdInput">
+    <select class="crudInput">
+            `)
+            + baton.colList.slice(1).map(function (col) {
+                return (
+                    `<option>${stringHtmlSafe(col)}</option>`
+                );
+            }).join("")
+            + (`
+    </select>
+    </td>
+</tr>
+<tr class="crudInput-new_column" style="display: none;">
+    <td><span class="crudLabel">{{new_column}}</span></td>
+    <td class="tdInput">
+    <input class="crudInput" type="text" value="new_column_1">
+    </td>
+</tr>
+            `)
+        );
+        UI_CRUD.querySelector("textarea").value = String(`
+-- column - add
+ALTER TABLE
+    ${baton.dbtableFullname}
+ADD
+    "{{new_column}}" TEXT NOT NULL DEFAULT '';
+
+-- column - drop
+ALTER TABLE
+    ${baton.dbtableFullname}
+DROP COLUMN
+    "{{selected_column}}";
+
+-- column - rename
+ALTER TABLE
+    ${baton.dbtableFullname}
+RENAME
+    "{{selected_column}}"
+TO
+    "{{new_column}}";
+
+-- table - rename
+ALTER TABLE
+    ${baton.dbtableFullname}
+RENAME TO
+    "{{new_table}}";
+        `).trim().split("\n\n").filter(function (sql) {
+            return sql.indexOf(title) >= 0;
+        })[0] + "\n";
+        switch (action) {
+        case "dbcolumnAdd":
+            UI_CRUD.querySelectorAll(
+                ".crudInput-new_column"
+            ).forEach(function (elem) {
+                elem.style.display = "table-row";
+            });
+            break;
+        case "dbcolumnDrop":
+            UI_CRUD.querySelectorAll(
+                ".crudInput-selected_column"
+            ).forEach(function (elem) {
+                elem.style.display = "table-row";
+            });
+            break;
+        case "dbcolumnRename":
+            UI_CRUD.querySelectorAll(
+                ".crudInput-new_column, .crudInput-selected_column"
+            ).forEach(function (elem) {
+                elem.style.display = "table-row";
+            });
+            break;
+        case "dbtableRename":
+            UI_CRUD.querySelectorAll(
+                ".crudInput-new_table"
+            ).forEach(function (elem) {
+                elem.style.display = "table-row";
+            });
+            break;
+        }
+        uiFadeIn(UI_CRUD);
+        return;
+    }
+    // slow actions that require loading
     if (!evt.modeTryCatch) {
         evt.modeTryCatch = true;
         await uiTryCatch(onDbAction, evt);
@@ -289,8 +409,7 @@ async function onDbAction(evt) {
     }
     evt.preventDefault();
     evt.stopPropagation();
-    baton = UI_CONTEXTMENU_BATON;
-    switch (target === UI_FILE_OPEN && target.dataset.action) {
+    switch (target === UI_FILE_OPEN && action) {
     case "dbAttach":
         if (target.files.length === 0) {
             return;
@@ -322,14 +441,7 @@ async function onDbAction(evt) {
         await uiRenderDb();
         return;
     }
-    switch (target.dataset.action) {
-    case "dbAttach":
-    case "dbOpen":
-    case "dbscriptOpen":
-        UI_FILE_OPEN.dataset.action = target.dataset.action;
-        UI_FILE_OPEN.value = "";
-        UI_FILE_OPEN.click();
-        return;
+    switch (action) {
     case "dbDetach":
         if (!window.confirm(
             "are you sure you want to detach and close database"
@@ -385,7 +497,7 @@ async function onDbAction(evt) {
     case "dbscriptSave":
         fileSave({
             buf: UI_EDITOR.getValue(),
-            filename: `sqlite_script.json`
+            filename: `sqlite_script.sql`
         });
         return;
     case "dbtableDrop":
@@ -429,12 +541,11 @@ async function onDbAction(evt) {
         });
         return;
     }
-    throw new Error(`onDbAction - invalid action ${target.dataset.action}`);
+    throw new Error(`onDbAction - invalid action ${action}`);
 }
 
 async function onDbExec({
-    modeTryCatch,
-    sql
+    modeTryCatch
 }) {
 // this function will
 // 1. exec sql-command in webworker
@@ -442,8 +553,7 @@ async function onDbExec({
     let dbtableList0;
     if (!modeTryCatch) {
         await uiTryCatch(onDbExec, {
-            modeTryCatch: true,
-            sql
+            modeTryCatch: true
         });
         return;
     }
@@ -466,7 +576,7 @@ async function onDbExec({
     dbtableList0 = await dbExecAsync({
         db: DB_MAIN,
         responseType: "list",
-        sql: sql || UI_EDITOR.getValue()
+        sql: UI_EDITOR.getValue()
     });
     // 2. ui-render sql-queries to html
     dbtableList0 = dbtableList0.map(function (rowList0, ii) {
@@ -482,8 +592,41 @@ async function onDbExec({
     await uiRenderDb();
 }
 
+async function onDbcrudExec({
+    modeTryCatch
+}) {
+// this function will exec crud operation
+    let sql;
+    if (!modeTryCatch) {
+        await uiTryCatch(onDbcrudExec, {
+            modeTryCatch: true
+        });
+        return;
+    }
+    sql = document.querySelector("#crudPanel1 textarea").value.replace((
+        /\{\{\w+?\}\}/g
+    ), function (match0) {
+        let val = document.querySelector(
+            `#crudPanel1 .crudInput-${match0.slice(2, -2)} .crudInput`
+        );
+        if (!val) {
+            return match0;
+        }
+        if (val.tagName === "SELECT") {
+            return val.selectedOptions[0].textContent;
+        }
+        return val.value.trim();
+    });
+    await dbExecAsync({
+        db: DB_MAIN,
+        sql
+    });
+    await uiRenderDb();
+    uiFadeOut(UI_CRUD);
+}
+
 function onKeyUp(evt) {
-// this function will close current modal
+// this function will handle event keyup
     if (!evt.modeDebounce) {
         debounce(
             "onKeyUp",
@@ -497,6 +640,8 @@ function onKeyUp(evt) {
     case "Escape":
         // close error-modal
         uiFadeOut(document.querySelector("#errorPanel1"));
+        // close contextmenu
+        uiFadeOut(UI_CONTEXTMENU);
         return;
     }
     switch ((evt.ctrlKey || evt.metaKey) && evt.key) {
@@ -587,7 +732,11 @@ function stringHtmlSafe(str) {
 
 function uiFadeIn(elem) {
 // this function will fade-in <elem>
-    elem.style.opacity = "0.875";
+    elem.style.opacity = (
+        elem === UI_CRUD
+        ? "1"
+        : "0.875"
+    );
     elem.style.visibility = "visible";
 }
 
@@ -798,7 +947,7 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
                 }, undefined, 4))
                 + `"`
             );
-            html += `">`;
+            html += `>`;
             html += stringHtmlSafe(dbtableFullname);
             html += `</a>\n`;
         });
@@ -827,7 +976,10 @@ async function uiTryCatch(func, ...argList) {
     } finally {
         setTimeout(function () {
             UI_LOADING_COUNTER -= 1;
-            if (UI_LOADING_COUNTER === 0) {
+            if (
+                UI_LOADING_COUNTER === 0
+                && UI_LOADING.style.visibility === "visible"
+            ) {
                 uiFadeOut(UI_LOADING);
             }
         }, 500);
@@ -872,7 +1024,7 @@ async function uitableAjax(baton, {
         viewRowEnd = Math.min(rowCount, Math.round(viewRowBeg + UI_VIEW_SIZE));
         // update table-view info
         elemInfo.textContent = (
-            "Showing "
+            "showing "
             + new Intl.NumberFormat("en-US").format(viewRowBeg + 1)
             + " to "
             + new Intl.NumberFormat("en-US").format(viewRowEnd)
@@ -1021,7 +1173,7 @@ function uitableCreate(baton) {
         (`
 <div class="contentElem" data-init="0" id="${baton.hashtag}">
 <div class="contentElemTitle title">${stringHtmlSafe(baton.title)}</div>
-<div class="uitablePageInfo">Showing 0 to 0 of 0 entries</div>
+<div class="uitablePageInfo">showing 0 to 0 of 0 entries</div>
 <div
     class="uitableScroller"
     style="height: ${(UI_VIEW_SIZE + 2) * UI_ROW_HEIGHT}px;"
@@ -1050,7 +1202,7 @@ function uitableCreate(baton) {
         </tbody>
     </table>
 </div>
-<div class="uitableLoading">Loading</div>
+<div class="uitableLoading">loading</div>
 </div>
         `)
     ).firstElementChild;
