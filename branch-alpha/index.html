@@ -423,15 +423,13 @@ file none
     box-model: false,
     box-sizing: false,
     ids: false,
-    overqualified-elements: false,
-    qualified-headings: false,
+    known-properties: false,
     universal-selector: false,
 */
 * {
     border: 0;
     box-sizing: border-box;
     margin: 0;
-    outline: none;
     padding: 0;
     text-decoration: none;
 }
@@ -458,7 +456,37 @@ table {
 }
 textarea {
     display: block;
+    font-size: 0.75rem;
+    overflow-y: scroll;
+    padding: 0.25rem;
+    resize: none;
     width: 100%;
+}
+.modalClose {
+    color: #777;
+    cursor: pointer;
+    font-size: 24px;
+    font-weight: bold;
+    margin: -4px 4px;
+    position: absolute;
+    right: 0;
+}
+.modalContent {
+    padding: 1rem;
+    width: 100%;
+}
+.modalPanel {
+    background: #fff;
+    left: 50%;
+    position: fixed;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 24rem;
+    z-index: 1;
+}
+.modalTitle {
+    line-height: 1.5rem;
+    text-align: center;
 }
 .title {
     background: #bbd;
@@ -487,11 +515,8 @@ textarea {
 #contentPanel1 th {
     border-right: 1px solid #999;
     max-width: 16rem;
-    overflow: hidden;
     padding: 0 2px;
     text-align: left;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 #contentPanel1 th {
     background: #bbd;
@@ -599,15 +624,12 @@ textarea {
 .contextmenuElem,
 .contextmenuTitle {
     border-bottom: 1px solid #bbb;
-    height: 1.5rem;
     line-height: 1.5rem;
-    overflow: hidden;
     padding: 0 0.5rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 .contextmenuElem {
     cursor: pointer;
+    height: 1.5rem;
 }
 .contextmenuTitle {
     font-weight: bold;
@@ -619,14 +641,37 @@ textarea {
     z-index: 99;
 }
 
+/*css section crud*/
+.crudInput,
+.crudLabel {
+    background: #bbd;
+    display: inline-block;
+    height: 1.25rem;
+    line-height: 1.25rem;
+    padding: 0 0.5rem;
+    width: 100%;
+}
+.crudInput {
+    background: transparent;
+    border: 1px solid #999;
+}
+#crudPanel1 {
+    padding-bottom: 1rem;
+    text-align: center;
+}
+#crudPanel1 .tdInput {
+    height: 2rem;
+    padding-left: 1rem;
+}
+
 /*css section error*/
 #errorPanel1 {
     color: #b00;
     z-index: 999;
 }
 #errorPanel1 .modalTitle {
-    color: #700;
     background: #d777;
+    color: #700;
 }
 
 /*css section loading*/
@@ -671,31 +716,6 @@ textarea {
     z-index: 99;
 }
 
-/*css section modal*/
-.modalClose {
-    color: #777;
-    cursor: pointer;
-    float: right;
-    font-size: 24px;
-    font-weight: bold;
-    margin: -4px 4px;
-}
-.modalContent {
-    padding: 1rem;
-    width: 100%;
-}
-.modalPanel {
-    background: #fff;
-    left: 50%;
-    position: fixed;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1;
-}
-.modalTitle {
-    text-align: center;
-}
-
 /*css section toc*/
 .tocElemA {
     color: #037;
@@ -703,10 +723,7 @@ textarea {
     display: inline-block;
     height: 20px;
     line-height: 20px;
-    overflow: hidden;
     padding-left: 0.5rem;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     width: 100%;
 }
 .tocElemA::before {
@@ -747,6 +764,15 @@ textarea {
 button:hover {
     background: #999;
 }
+.contextmenuElem,
+.contextmenuTitle,
+.tocElemA,
+#contentPanel1 td,
+#contentPanel1 th {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .contextmenuElem:hover,
 .tocElemA:hover,
 #contentPanel1 tr:hover {
@@ -760,7 +786,9 @@ button:hover {
 #contextmenu1,
 #loadingPanel1 {
     box-shadow: 4px 4px 8px 2px #777;
+    opacity: 0;
     transition: visibility 0.5s, opacity 0.5s;
+    visibility: hidden;
 }
 #contentPanel1 .contentElem,
 #tocPanel1 {
@@ -818,7 +846,7 @@ SELECT
     CROSS JOIN (SELECT random() FROM __stock_historical);
 </textarea>
 </div>
-<button class="button" id="dbExec2" style="margin-top: 1rem;">script - execute</button>
+<button class="dbExec" style="margin-top: 1rem;">script - execute</button>
 
 <div class="contentSectionTitle">sqlite query result</div>
 <div id="sqlqueryList1"></div>
@@ -833,7 +861,7 @@ SELECT
 <!-- tocPanel1 start -->
 <div id="tocPanel1">
 <div id="tocDatabase1">
-    <div class="tocTitle" style="border: 0; padding-top: 0.5rem;">sqlite database</div>
+    <div class="tocTitle" style="padding-top: 0.5rem;">sqlite database</div>
     <button data-action="dbRefresh">database - refresh</button>
     <button data-action="dbOpen">database - open</button>
     <button data-action="dbAttach">database - open and attach</button>
@@ -849,8 +877,7 @@ SELECT
 
 
 <!-- contextmenu1 start -->
-<div id="contextmenu1" style="visibility: hidden;">
-    <div class="contextmenuTitle title">crud operation for:</div>
+<div id="contextmenu1">
     <div class="contextmenuTitle title"></div>
     <div class="contextmenuDivider" data-dbtype="all"></div>
     <a class="contextmenuElem" data-dbtype="script" data-action="dbscriptOpen">script - open</a>
@@ -874,8 +901,33 @@ SELECT
 <!-- contextmenu1 end -->
 
 
+<!-- crudPanel1 start -->
+<div id="crudPanel1" class="modalPanel">
+<span class="modalClose">&times;</span>
+<div class="modalTitle title"></div>
+<div class="modalContent">
+    <table style="margin-bottom: 1rem; text-align: left; width: 100%;">
+    <thead>
+    <tr>
+    <th style="height: 1px; min-width: 10rem; visibility: hidden;"></th>
+    <th></th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+    </table>
+    <div>inspect and/or edit sql, then click "ok"</div>
+    <textarea
+        style="border: 1px solid #999; height: 10rem; margin-top: 0.25rem;"
+    ></textarea>
+</div>
+<button class="dbcrudExec">ok</button>
+<button class="modalCancel" style="margin-left: 1rem;">cancel</button>
+</div>
+<!-- crudPanel1 end -->
+
+
 <!-- errorPanel1 start -->
-<div id="errorPanel1" class="modalPanel" style="visibility: hidden;">
+<div id="errorPanel1" class="modalPanel">
 <span class="modalClose">&times;</span>
 <div class="modalTitle title">sqlite error</div>
 <pre class="modalContent"></pre>
@@ -884,20 +936,8 @@ SELECT
 
 
 <!-- loadingPanel1 start -->
-<div id="loadingPanel1" style="visibility: hidden;"><div class="uiLoading"></div></div>
+<div id="loadingPanel1"><div class="uiLoading"></div></div>
 <!-- loadingPanel1 end -->
-
-
-<!-- modalPanel1 start -->
-<div id="modalPanel1" class="modalPanel" style="visibility: hidden;">
-<span class="modalClose">&times;</span>
-<div class="modalTitle title">hello Title</div>
-<div class="modalContent">
-    <p>Some text in the Modal..</p>
-</div>
-</div>
-</script>
-<!-- modalPanel1 end -->
 
 
 <!-- script start -->

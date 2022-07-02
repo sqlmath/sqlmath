@@ -43,7 +43,7 @@
 
 <br><br>
 # License
-- SQLite is under public domain.
+- SQLite is under [public domain](https://www.sqlite.org/copyright.html).
 - JSLint is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
 - [cpplint.py](cpplint.py) is under [BSD 3-clause license](https://github.com/cpplint/cpplint/blob/develop/LICENSE).
 - [indent.exe](indent.exe) is under [GPLv3 License](https://www.gnu.org/licenses/gpl-3.0.txt).
