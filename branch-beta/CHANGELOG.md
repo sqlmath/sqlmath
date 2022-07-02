@@ -5,6 +5,9 @@
 - sqlmath - add sql-extension carrayblob()
 - none
 
+# v2022.7.1-beta
+- demo - add github-fork-banner
+
 # v2022.6.30
 - add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop
 - demo - add web-demo in README.md
