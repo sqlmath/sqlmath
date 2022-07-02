@@ -1,15 +1,45 @@
 #!/bin/sh
 
-# curl -L https://www.sqlite.org/2021/sqlite-autoconf-3360000.tar.gz | tar -xz
-# https://www.sqlite.org/2021/sqlite-tools-linux-x86-3360000.zip
-# https://www.sqlite.org/2021/sqlite-tools-osx-x86-3360000.zip
-# https://www.sqlite.org/2021/sqlite-tools-win32-x86-3360000.zip
+# curl -L https://www.sqlite.org/2022/sqlite-autoconf-3380500.tar.gz | tar -xz
+# https://www.sqlite.org/2022/sqlite-tools-linux-x86-3380500.zip
+# https://www.sqlite.org/2022/sqlite-tools-osx-x86-3380500.zip
+# https://www.sqlite.org/2022/sqlite-tools-win32-x86-3380500.zip
 
 shCiArtifactUploadCustom() {(set -e
     git fetch origin artifact
     git checkout origin/artifact "branch-$GITHUB_BRANCH0"
     mv "branch-$GITHUB_BRANCH0"/* .
     git add -f _binary_* sqlmath_wasm.*
+    # screenshot html
+    node --input-type=module --eval '
+import moduleChildProcess from "child_process";
+(async function () {
+    let {
+        GITHUB_BRANCH0,
+        GITHUB_GITHUB_IO
+    } = process.env;
+    await Promise.all([
+        (
+            `https://${GITHUB_GITHUB_IO}/branch-${GITHUB_BRANCH0}`
+            + `/index.html`
+        )
+    ].map(async function (url) {
+        await new Promise(function (resolve) {
+            moduleChildProcess.spawn(
+                "sh",
+                [
+                    "jslint_ci.sh", "shBrowserScreenshot", url
+                ],
+                {
+                    stdio: [
+                        "ignore", 1, 2
+                    ]
+                }
+            ).on("exit", resolve);
+        });
+    }));
+}());
+' "$@" # '
 )}
 
 shCiArtifactUpload2() {(set -e
@@ -276,31 +306,36 @@ import modulePath from "path";
                 }
             },
             "defines": [
-
+                //
 // https://www.sqlite.org/compile.html#recommended_compile_time_options
-
+                //
+                "SQLITE_DQS=0",
+                // "SQLITE_THREADSAFE=0",
                 "SQLITE_DEFAULT_MEMSTATUS=0",
                 "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
-                "SQLITE_DQS=0",
                 "SQLITE_LIKE_DOESNT_MATCH_BLOBS",
-                // "SQLITE_MAX_EXPR_DEPTH=0",
-                // "SQLITE_OMIT_AUTOINIT",
+                "SQLITE_MAX_EXPR_DEPTH=0",
                 "SQLITE_OMIT_DECLTYPE",
                 "SQLITE_OMIT_DEPRECATED",
                 "SQLITE_OMIT_PROGRESS_CALLBACK",
                 // "SQLITE_OMIT_SHARED_CACHE",
-                // "SQLITE_THREADSAFE=0",
                 "SQLITE_USE_ALLOCA",
-
-// custom
-
+                "SQLITE_OMIT_AUTOINIT",
+                //
+                // extra optimization
+                //
+                "HAVE_MALLOC_USABLE_SIZE",
+                "SQLITE_ENABLE_NULL_TRIM",
+                "SQLITE_ENABLE_SORTER_REFERENCES",
+                //
+                // extra feature
+                //
                 "SQLITE_ENABLE_MATH_FUNCTIONS",
                 // "SQLITE_ENABLE_STMTVTAB",
-                // "SQLITE_ENABLE_UNKNOWN_SQL_FUNCTION",
                 "SQLITE_HAVE_ZLIB",
-
-// node-sqlite3
-
+                //
+                // node-sqlite3
+                //
                 "HAVE_USLEEP=1",
                 "NAPI_DISABLE_CPP_EXCEPTIONS=1",
                 "SQLITE_ENABLE_DBSTAT_VTAB=1",
@@ -467,9 +502,18 @@ shCiBuildWasm() {(set -e
     shCiEmsdkInstall
     # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
     # build wasm
-    local OPTION
     local FILE
     local FILE2
+    local OPTION1
+    local OPTION2
+    printf "shCiBuildWasm\n" 1>&2
+    OPTION1="$OPTION1 -I.tmp"
+    OPTION1="$OPTION1 -Wall"
+    OPTION1="$OPTION1 -flto"
+    # debug
+    # OPTION1="$OPTION1 -O0"
+    OPTION1="$OPTION1 -Os"
+    # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
         sqlite3.c \
         sqlite3_ext.c \
@@ -479,91 +523,84 @@ shCiBuildWasm() {(set -e
         # optimization - skip rebuild of sqlite3.c if possible
         if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite3.c ]
         then
+            printf "shCiBuildWasm - skip $FILE\n" 1>&2
             continue
         fi
-        OPTION=""
+        OPTION2=""
+        #
+# https://www.sqlite.org/compile.html#recommended_compile_time_options
+        #
+        OPTION2="$OPTION2 -DSQLITE_DQS=0"
+        OPTION2="$OPTION2 -DSQLITE_THREADSAFE=0"
+        OPTION2="$OPTION2 -DSQLITE_DEFAULT_MEMSTATUS=0"
+        OPTION2="$OPTION2 -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1"
+        OPTION2="$OPTION2 -DSQLITE_LIKE_DOESNT_MATCH_BLOBS"
+        OPTION2="$OPTION2 -DSQLITE_MAX_EXPR_DEPTH=0"
+        OPTION2="$OPTION2 -DSQLITE_OMIT_DECLTYPE"
+        OPTION2="$OPTION2 -DSQLITE_OMIT_DEPRECATED"
+        OPTION2="$OPTION2 -DSQLITE_OMIT_PROGRESS_CALLBACK"
+        # OPTION2="$OPTION2 -DSQLITE_OMIT_SHARED_CACHE"
+        # OPTION2="$OPTION2 -DSQLITE_USE_ALLOCA"
+        OPTION2="$OPTION2 -DSQLITE_OMIT_AUTOINIT"
+        #
+        # extra optimization
+        #
+        OPTION2="$OPTION2 -DHAVE_MALLOC_USABLE_SIZE"
+        OPTION2="$OPTION2 -DSQLITE_ENABLE_NULL_TRIM"
+        OPTION2="$OPTION2 -DSQLITE_ENABLE_SORTER_REFERENCES"
+        #
+        # extra feature
+        #
+        OPTION2="$OPTION2 -DEMSCRIPTEN"
+        OPTION2="$OPTION2 -DSQLITE_DISABLE_LFS"
+        OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3"
+        OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3_PARENTHESIS"
+        OPTION2="$OPTION2 -DSQLITE_ENABLE_MATH_FUNCTIONS"
+        OPTION2="$OPTION2 -DSQLITE_ENABLE_NORMALIZE"
+        OPTION2="$OPTION2 -DSQLITE_HAVE_ZLIB"
+        # file
+        OPTION2="$OPTION2 -c $FILE -o $FILE2"
         case "$FILE" in
         sqlite3.c)
-            OPTION="$OPTION -DSQLITE3_C2"
+            OPTION2="$OPTION2 -DSQLITE3_C2"
             ;;
         *)
-            OPTION="$OPTION -DSQLITE3_EXT_C2"
+            OPTION2="$OPTION2 -DSQLITE3_EXT_C2"
             ;;
         esac
-        emcc $OPTION \
-            -DSQLITE_DISABLE_LFS \
-            -DSQLITE_ENABLE_FTS3 \
-            -DSQLITE_ENABLE_FTS3_PARENTHESIS \
-            -DSQLITE_ENABLE_MATH_FUNCTIONS \
-            -DSQLITE_ENABLE_NORMALIZE \
-            -DSQLITE_HAVE_ZLIB \
-            -DSQLITE_THREADSAFE=0 \
-            \
-            -DEMSCRIPTEN \
-            -DSQLMATH_C_DISABLE \
-            -I.tmp \
-            \
-            -O3 \
-            -Wall \
-            -flto \
-            -s INLINING_LIMIT=50 \
-            \
-            -c "$FILE" -o "$FILE2"
+        emcc $OPTION1 $OPTION2
     done
-	emcc \
-        -s EXPORTED_FUNCTIONS='[
-"_free",
-"_malloc",
-"_sqlite3_bind_blob",
-"_sqlite3_bind_double",
-"_sqlite3_bind_int",
-"_sqlite3_bind_parameter_index",
-"_sqlite3_bind_text",
-"_sqlite3_changes",
-"_sqlite3_clear_bindings",
-"_sqlite3_close_v2",
-"_sqlite3_column_blob",
-"_sqlite3_column_bytes",
-"_sqlite3_column_count",
-"_sqlite3_column_double",
-"_sqlite3_column_name",
-"_sqlite3_column_text",
-"_sqlite3_column_type",
-"_sqlite3_create_function_v2",
-"_sqlite3_data_count",
-"_sqlite3_errmsg",
-"_sqlite3_exec",
-"_sqlite3_finalize",
-"_sqlite3_free",
-"_sqlite3_normalized_sql",
-"_sqlite3_open",
-"_sqlite3_prepare_v2",
-"_sqlite3_reset",
-"_sqlite3_result_blob",
-"_sqlite3_result_double",
-"_sqlite3_result_error",
-"_sqlite3_result_int",
-"_sqlite3_result_int64",
-"_sqlite3_result_null",
-"_sqlite3_result_text",
-"_sqlite3_sql",
-"_sqlite3_step",
-"_sqlite3_value_blob",
-"_sqlite3_value_bytes",
-"_sqlite3_value_double",
-"_sqlite3_value_int",
-"_sqlite3_value_text",
-"_sqlite3_value_type"
-        ]' \
-        -s EXPORTED_RUNTIME_METHODS='[
-"UTF8ToString",
-"cwrap",
-"stackAlloc",
-"stackRestore",
-"stackSave"
-        ]' \
+    OPTION2=""
+    #
+    OPTION2="$OPTION2 -s EXPORTED_FUNCTIONS=_sqlite3_initialize"
+    OPTION2="$OPTION2,___dbFileImportOrExport"
+    OPTION2="$OPTION2,_dbClose"
+    OPTION2="$OPTION2,_dbExec"
+    OPTION2="$OPTION2,_dbFileImportOrExport"
+    OPTION2="$OPTION2,_dbNoop"
+    OPTION2="$OPTION2,_dbOpen"
+    OPTION2="$OPTION2,_jsbatonValueErrmsg"
+    OPTION2="$OPTION2,_jsbatonValueStringArgi"
+    OPTION2="$OPTION2,_sqlite3_errmsg"
+    OPTION2="$OPTION2,_sqlite3_free"
+    OPTION2="$OPTION2,_sqlite3_malloc"
+    #
+    OPTION2="$OPTION2 -s EXPORTED_RUNTIME_METHODS=cwrap"
+    # OPTION2="$OPTION2,AsciiToString"
+    #
+    case "$1" in
+    --debug)
+        OPTION2="$OPTION2 -s ASSERTIONS=1 -s SAFE_HEAP=1"
+        ;;
+    *)
+        OPTION2="$OPTION2 --closure 1"
+        ;;
+    esac
+    emcc $OPTION1 $OPTION2 \
         --memory-init-file 0 \
+        --pre-js sqlmath_wrapper_wasm.js \
         -Wall \
+        -o .tmp/sqlmath_wasm.js \
         -s ALLOW_MEMORY_GROWTH=1 \
         -s ALLOW_TABLE_GROWTH=1 \
         -s NODEJS_CATCH_EXIT=0 \
@@ -572,159 +609,31 @@ shCiBuildWasm() {(set -e
         -s SINGLE_FILE=0 \
         -s USE_ZLIB \
         -s WASM=1 \
-        \
+        -s WASM_BIGINT \
         .tmp/sqlite3.c.wasm.o \
         .tmp/sqlite3_ext.c.wasm.o \
         .tmp/sqlmath_custom.c.wasm.o \
-        \
-	    --pre-js sqlmath_wrapper_wasm.js \
-        \
-        -o sqlmath_wasm.js
-    printf '' > .tmp.js
-	printf '
-/*jslint-disable*/
-var initSqlJsPromise = undefined;
-var initSqlJs = function (moduleConfig) {
-    if (initSqlJsPromise){
-      return initSqlJsPromise;
-    }
-    initSqlJsPromise = new Promise(function (resolveModule, reject) {
-        var Module = typeof moduleConfig !== "undefined" ? moduleConfig : {};
-        var originalOnAbortFunction = Module["onAbort"];
-        Module["onAbort"] = function (errorThatCausedAbort) {
-            reject(new Error(errorThatCausedAbort));
-            if (originalOnAbortFunction){
-              originalOnAbortFunction(errorThatCausedAbort);
-            }
-        };
-        Module["postRun"] = Module["postRun"] || [];
-        Module["postRun"].push(function () {
-            resolveModule(Module);
-        });
-        module = undefined;
-' >> .tmp.js
-    cat sqlmath_wasm.js | sed -e "s|/\*jslint-[a-z]*\*/||g" >> .tmp.js
+        #
+    printf '' > sqlmath_wasm.js
+    printf "/*jslint-disable*/
+// Copyright (c) 2021 Kai Zhu
+// SPDX-License-Identifier: MIT
+// $(date -u +"%Y-%m-%dT%H:%M:%S%z")
+(function () {
+\"use strict\";
+" >> sqlmath_wasm.js
+    cat .tmp/sqlmath_wasm.js | tr -d "\r" >> sqlmath_wasm.js
     printf '
-        return Module;
-    }); // The end of the promise being returned
-  return initSqlJsPromise;
-} // The end of our initSqlJs function
-if (typeof exports === "object" && typeof module === "object"){
-    module.exports = initSqlJs;
-    module.exports.default = initSqlJs;
-}
-else if (typeof define === "function" && define["amd"]) {
-    define([], function() { return initSqlJs; });
-}
-else if (typeof exports === "object"){
-    exports["Module"] = initSqlJs;
-}
-/* global initSqlJs */
-/* eslint-env worker */
-/* eslint no-restricted-globals: ["error"] */
-
-"use strict";
-
-// hack-sqljs - conditional-worker
-if ((/\\binitSqlJsWorker=1\\b/).test(typeof location === "object" && location && location.search)) {
-var db;
-
-function onModuleReady(SQL) {
-    function createDb(data) {
-        if (db != null) db.close();
-        db = new SQL.Database(data);
-        return db;
-    }
-
-    var buff; var data; var result;
-    data = this["data"];
-    var config = data["config"] ? data["config"] : {};
-    switch (data && data["action"]) {
-        case "open":
-            buff = data["buffer"];
-            createDb(buff && new Uint8Array(buff));
-            return postMessage({
-                id: data["id"],
-                ready: true
-            });
-        case "exec":
-            if (db === null) {
-                createDb();
-            }
-            if (!data["sql"]) {
-                throw "exec: Missing query string";
-            }
-            return postMessage({
-                id: data["id"],
-                results: db.exec(data["sql"], data["params"], config)
-            });
-        case "each":
-            if (db === null) {
-                createDb();
-            }
-            var callback = function callback(row) {
-                return postMessage({
-                    id: data["id"],
-                    row: row,
-                    finished: false
-                });
-            };
-            var done = function done() {
-                return postMessage({
-                    id: data["id"],
-                    finished: true
-                });
-            };
-            return db.each(data["sql"], data["params"], callback, done, config);
-        case "export":
-            buff = db["export"]();
-            result = {
-                id: data["id"],
-                buffer: buff
-            };
-            try {
-                return postMessage(result, [result]);
-            } catch (error) {
-                return postMessage(result);
-            }
-        case "close":
-            if (db) {
-                db.close();
-            }
-            return postMessage({
-                id: data["id"]
-            });
-        default:
-            throw new Error("Invalid action : " + (data && data["action"]));
-    }
-}
-
-function onError(err) {
-    return postMessage({
-        id: this["data"]["id"],
-        error: err["message"]
-    });
-}
-
-// hack-sqljs - conditional-worker
-if (typeof importScripts === "function") {
-    db = null;
-    var sqlModuleReady = initSqlJs();
-    self.onmessage = function onmessage(event) {
-        return sqlModuleReady
-            .then(onModuleReady.bind(event))
-            .catch(onError.bind(event));
-    };
-}
-}
+}());
 /*jslint-enable*/
-' >> .tmp.js
-	mv .tmp.js sqlmath_wasm.js
+' >> sqlmath_wasm.js
+    cp .tmp/sqlmath_wasm.wasm .
+    ls -l sqlmath_wasm.*
 )}
 
 shCiEmsdkExport() {
 # this function will export emsdk env
-    export EMSCRIPTEN_VERSION=2.0.34
+    export EMSCRIPTEN_VERSION=3.1.3
     export EMSDK="$PWD/_emsdk"
     # https://github.com/sql-js/sql.js/blob/v1.6.2/.devcontainer/Dockerfile
     if [ ! "$PATH_EMSDK" ]
@@ -884,11 +793,16 @@ shSyncSqlmath() {(set -e
     local FILE
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
-        git grep '3.38.[^5]'
-        git grep '3380[^5]00'
+        shRawLibFetch asset_sqlmath_external_rollup.js
+        shRawLibFetch index.html
         shRawLibFetch sqlite3.c
         shRawLibFetch sqlite3_ext.c
         shRawLibFetch sqlite3_shell.c
+        git grep '3\.38\.[^5]' \
+            ":(exclude)CHANGELOG.md" \
+            ":(exclude)sqlite3.c" \
+            || true
+        git grep '3380[^5]00' || true
         return
     fi
     if [ -d "$HOME/Documents/sqlmath/" ]
@@ -910,4 +824,5 @@ shSyncSqlmath() {(set -e
             ln -f "$HOME/Documents/sqlmath/$FILE"
         done
     fi
+    git diff
 )}

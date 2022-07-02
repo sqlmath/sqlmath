@@ -22,31 +22,32 @@
 
 
 /*jslint beta, node*/
-import sqlmath from "./sqlmath.mjs";
-let {
-    assertErrorThrownAsync,
+import jslint from "./jslint.mjs";
+import {
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
-    cCall,
     dbCloseAsync,
+    dbExecAndReturnLastBlobAsync,
     dbExecAsync,
-    dbExecWithRetryAsync,
-    dbGetLastBlobAsync,
-    dbMemoryLoadAsync,
-    dbMemorySaveAsync,
+    dbFileExportAsync,
+    dbFileImportAsync,
+    dbNoopAsync,
     dbOpenAsync,
-    dbTableInsertAsync,
     debugInline,
-    jstestDescribe,
-    jstestIt,
+    jsbatonValueString,
     noop
-} = sqlmath;
+} from "./sqlmath.mjs";
+let {
+    assertErrorThrownAsync,
+    jstestDescribe,
+    jstestIt
+} = jslint;
 noop(debugInline);
 
 jstestDescribe((
     "test assertXxx handling-behavior"
-), function testAssertXxx() {
+), function test_assertXxx() {
     jstestIt((
         "test assertXxx handling-behavior"
     ), function () {
@@ -64,39 +65,74 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test cCall handling-behavior"
-), function testCcall() {
+    "test cCallAsync handling-behavior"
+), function test_ccall() {
     jstestIt((
-        "test cCall handling-behavior"
+        "test cCallAsync handling-behavior"
     ), function () {
+        // test datatype handling-behavior
         [
-            [-0, "0"],
-            [-Infinity, "0"],
-            [0, "0"],
-            [1 / 0, "0"],
-            [Infinity, "0"],
-            [false, "0"],
-            [null, "0"],
-            [true, "1"],
-            [undefined, "0"],
-            [{}, "0"]
+            ["", ""],
+            ["\u0000", ""],
+            ["aa", "aa"],
+            [-0, 0],
+            [-0.5, undefined],
+            [-0n, -0],
+            [-0x8000000000000000n, -0x8000000000000000n],
+            [-0x8000000000000001n, 0x7fffffffffffffffn],
+            [-1 / 0, undefined],
+            [-1e-999, 0],
+            [-1e999, undefined],
+            [-1n, -1],
+            [-2, -2],
+            [-2n, -2],
+            [-Infinity, undefined],
+            [-NaN, undefined],
+            [0, 0],
+            [0.5, undefined],
+            [0n, 0],
+            [0x7fffffffffffffffn, 0x7fffffffffffffffn],
+            [0x8000000000000000n, -0x8000000000000000n],
+            [1 / 0, undefined],
+            [1e-999, 0],
+            [1e999, undefined],
+            [1n, 1],
+            [2, 2],
+            [2n, 2],
+            [Infinity, undefined],
+            [NaN, undefined],
+            [Symbol(), 0],
+            [false, 0],
+            [noop, 0],
+            [null, 0],
+            [true, 1],
+            [undefined, 0],
+            [{}, 0]
         ].forEach(async function ([
             valInput, valExpected
         ]) {
+            let baton;
             let valActual;
-            valActual = String(
-                await cCall("noopAsync", [
-                    valInput
-                ])
-            )[0][0];
-            assertJsonEqual(valActual, valExpected, {
-                valActual,
-                valExpected,
-                valInput
-            });
-            valActual = String(cCall("noopSync", [
-                valInput
-            ]))[0][0];
+            if (valExpected === undefined) {
+                assertErrorThrownAsync(function () {
+                    return dbNoopAsync(undefined, valInput, undefined);
+                });
+                return;
+            }
+            baton = await dbNoopAsync(undefined, valInput, undefined);
+            baton = baton[0];
+            valActual = (
+                typeof valInput === "string"
+                ? jsbatonValueString({
+                    argi: 1,
+                    baton
+                })
+                : String(baton.getBigInt64(4 + 4 + 8, true))
+            );
+            valExpected = String(valExpected);
+            if (typeof valInput === "bigint") {
+                valInput = String(valInput);
+            }
             assertJsonEqual(valActual, valExpected, {
                 valActual,
                 valExpected,
@@ -108,15 +144,15 @@ jstestDescribe((
 
 jstestDescribe((
     "test db-bind handling-behavior"
-), function testDbBind() {
+), function test_dbBind() {
     jstestIt((
         "test db-bind-value handling-behavior"
-    ), async function testDbBindValue() {
+    ), async function test_dbBindValue() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        async function testDbGetLastBlobAsync(val) {
-            return await dbGetLastBlobAsync({
+        async function test_dbExecAndReturnLastBlobAsync(val) {
+            return await dbExecAndReturnLastBlobAsync({
                 bindList: [
                     val
                 ],
@@ -126,16 +162,18 @@ jstestDescribe((
         }
         // test bigint-error handling-behavior
         noop([
-            -(2n ** 63n),
+            -(2n ** 63n + 1n),
             2n ** 63n
         ]).forEach(function (val) {
-            assertErrorThrownAsync(testDbGetLastBlobAsync.bind(undefined, val));
+            assertErrorThrownAsync(
+                test_dbExecAndReturnLastBlobAsync.bind(undefined, val)
+            );
         });
         // test datatype handling-behavior
         [
             // 1. bigint
             [-0n, -0],
-            [-0x7fffffffffffffffn, "-9223372036854775807"],
+            [-0x8000000000000000n, "-9223372036854775808"],
             [-1n, -1],
             [-2n, -2],
             [0n, 0],
@@ -149,6 +187,7 @@ jstestDescribe((
             [noop, null],
             // 4. number
             [-0, 0],
+            [-0.5, -0.5],
             [-1 / 0, null],
             [-1e-999, 0],
             [-1e999, null],
@@ -156,6 +195,7 @@ jstestDescribe((
             [-Infinity, null],
             [-NaN, 0],
             [0, 0],
+            [0.5, 0.5],
             [1 / 0, null],
             [1e-999, 0],
             [1e999, null],
@@ -188,12 +228,12 @@ jstestDescribe((
         ].forEach(function ([
             valInput, valExpected
         ], ii) {
-            // test dbGetLastBlobAsync's bind handling-behavior
+            // test dbExecAndReturnLastBlobAsync's bind handling-behavior
             [
                 valInput
             ].forEach(async function (valInput) {
                 let bufActual = new TextDecoder().decode(
-                    await testDbGetLastBlobAsync(valInput)
+                    await test_dbExecAndReturnLastBlobAsync(valInput)
                 );
                 let bufExpected = String(valExpected);
                 switch (typeof(valInput)) {
@@ -248,16 +288,14 @@ jstestDescribe((
                 "list",
                 undefined
             ].forEach(async function (responseType) {
-                let bufActual = noop(
-                    await dbExecAsync({
-                        bindList: [
-                            valInput
-                        ],
-                        db,
-                        responseType,
-                        sql: "SELECT ? AS val"
-                    })
-                );
+                let bufActual = await dbExecAsync({
+                    bindList: [
+                        valInput
+                    ],
+                    db,
+                    responseType,
+                    sql: "SELECT ? AS val"
+                });
                 switch (responseType) {
                 case "arraybuffer":
                     bufActual = JSON.parse(
@@ -306,14 +344,12 @@ jstestDescribe((
             ].forEach(async function ([
                 bindList, sql
             ]) {
-                let tblActual = noop(
-                    await dbExecAsync({
-                        bindList,
-                        db,
-                        responseType: "list",
-                        sql
-                    })
-                );
+                let valActual = await dbExecAsync({
+                    bindList,
+                    db,
+                    responseType: "list",
+                    sql
+                });
                 assertJsonEqual(
                     [
                         [
@@ -334,111 +370,14 @@ jstestDescribe((
                             ]
                         ]
                     ],
-                    tblActual,
+                    valActual,
                     {
                         ii,
-                        tblActual,
+                        valActual,
                         valExpected,
                         valInput
                     }
                 );
-            });
-            // test dbTableInsertAsync's bind handling-behavior
-            [
-                {
-                    // test list-of-list handling-behavior
-                    rowList: [
-                        [
-                            "c1", "c2", "c3"
-                        ],
-                        [
-                            valInput, valInput
-                        ]
-                    ]
-                }, {
-                    // test list-of-dict handling-behavior
-                    rowList: [
-                        {
-                            "c1": valInput,
-                            "c2": valInput,
-                            "c3": undefined
-                        }
-                    ]
-                }, {
-                    // test colList and list-of-list handling-behavior
-                    colList: [
-                        "c1", "c2", "c3"
-                    ],
-                    rowList: [
-                        [
-                            valInput, valInput
-                        ]
-                    ]
-                }, {
-                    // test colList and list-of-dict handling-behavior
-                    colList: [
-                        "c1", "c2", "c3"
-                    ],
-                    rowList: [
-                        {
-                            "c1": valInput,
-                            "c2": valInput,
-                            "c3": undefined
-                        }
-                    ]
-                }, {
-                    // test colList and list-of-list handling-behavior
-                    colList: [
-                        "c1", "c3", "c2"
-                    ],
-                    colListPriority: [
-                        "c1", "c2"
-                    ],
-                    rowList: [
-                        [
-                            valInput, undefined, valInput
-                        ]
-                    ]
-                }
-            ].forEach(async function ({
-                colList,
-                colListPriority,
-                rowList
-            }, jj) {
-                let tblActual;
-                try {
-                    tblActual = noop(
-                        await dbExecAsync({
-                            db,
-                            responseType: "list",
-                            sql: `SELECT * FROM datatype_${ii}_${jj}`,
-                            tmpColList: colList,
-                            tmpColListPriority: colListPriority,
-                            tmpRowList: rowList,
-                            tmpTableName: "datatype_" + ii + "_" + jj
-                        })
-                    )[0];
-                } catch (err) {
-                    assertOrThrow((
-                        valInput
-                        && valInput.constructor === SharedArrayBuffer
-                        && err.message.startsWith("sqlite - invalid datatype")
-                    ), err);
-                    return;
-                }
-                assertJsonEqual([
-                    [
-                        "c1", "c2", "c3"
-                    ], [
-                        valExpected, valExpected, undefined
-                    ]
-                ], tblActual, {
-                    ii,
-                    jj,
-                    tblActual,
-                    valExpected,
-                    valInput
-                });
             });
         });
     });
@@ -446,10 +385,10 @@ jstestDescribe((
 
 jstestDescribe((
     "test dbXxxAsync handling-behavior"
-), function testDbXxxAsync() {
+), function test_dbXxxAsync() {
     jstestIt((
         "test dbCloseAsync handling-behavior"
-    ), async function testDbCloseAsync() {
+    ), async function test_dbCloseAsync() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -464,7 +403,7 @@ jstestDescribe((
     });
     jstestIt((
         "test dbExecAsync handling-behavior"
-    ), async function testDbExecAsync() {
+    ), async function test_dbExecAsync() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -559,30 +498,28 @@ SELECT * FROM testDbExecAsync2;
         }, (
             /db cannot close with \d+? actions pending/
         ));
-    });
-    jstestIt((
-        "test dbExecWithRetryAsync handling-behavior"
-    ), function testDbExecWithRetryAsync() {
-        // test null-case handling-behavior
+        // test retry handling-behavior
         assertErrorThrownAsync(function () {
-            return dbExecWithRetryAsync({});
+            return dbExecAsync({
+                modeRetry: 1
+            });
         }, "invalid or closed db");
     });
     jstestIt((
-        "test dbMemoryXxx handling-behavior"
-    ), async function testDbMemoryXxx() {
+        "test dbFileXxx handling-behavior"
+    ), async function test_dbFileXxx() {
         let data;
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
-            return dbMemoryLoadAsync({
+            return dbFileImportAsync({
                 db
             });
         }, "invalid filename undefined");
         assertErrorThrownAsync(function () {
-            return dbMemorySaveAsync({
+            return dbFileExportAsync({
                 db
             });
         }, "invalid filename undefined");
@@ -590,16 +527,16 @@ SELECT * FROM testDbExecAsync2;
             db,
             sql: "CREATE TABLE t01 AS SELECT 1 AS c01"
         });
-        await dbMemorySaveAsync({
+        await dbFileExportAsync({
             db,
-            filename: ".testDbMemoryXxx.sqlite"
+            filename: ".testDbFileXxx.sqlite"
         });
         db = await dbOpenAsync({
             filename: ":memory:"
         });
-        await dbMemoryLoadAsync({
+        await dbFileImportAsync({
             db,
-            filename: ".testDbMemoryXxx.sqlite"
+            filename: ".testDbFileXxx.sqlite"
         });
         data = await dbExecAsync({
             db,
@@ -615,125 +552,71 @@ SELECT * FROM testDbExecAsync2;
     });
     jstestIt((
         "test dbOpenAsync handling-behavior"
-    ), function testDbOpenAsync() {
+    ), async function test_dbOpenAsync() {
+        // test auto-finalization handling-behavior
+        await new Promise(function (resolve) {
+            dbOpenAsync({
+                afterFinalization: resolve,
+                filename: ":memory:"
+            });
+        });
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbOpenAsync({});
         }, "invalid filename undefined");
     });
+});
+
+jstestDescribe((
+    "test misc handling-behavior"
+), function test_misc() {
     jstestIt((
-        "test dbTableInsertAsync handling-behavior"
-    ), async function testDbTableInsertAsync() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
+        "test misc handling-behavior"
+    ), async function () {
+        // test debugInline handling-behavior
+        noop(debugInline);
+        // test assertErrorThrownAsync error handling-behavior
+        await assertErrorThrownAsync(function () {
+            return assertErrorThrownAsync(noop);
         });
-        // test error handling-behavior
-        [
-            [
-                undefined,
-                (
-                    /invalid rowList undefined/
-                )
-            ], [
-                [
-                    []
-                ],
-                (
-                    /invalid colList \[\]/
-                )
-            ], [
-                [
-                    {}
-                ],
-                (
-                    /invalid colList \[\]/
-                )
-            ]
-        ].forEach(function ([
-            rowList, rgx
-        ]) {
-            assertErrorThrownAsync(
-                dbTableInsertAsync.bind(
-                    undefined,
-                    {
-                        rowList
-                    }
-                ),
-                rgx
-            );
+        // test assertJsonEqual error handling-behavior
+        await assertErrorThrownAsync(function () {
+            assertJsonEqual(1, 2);
         });
-        // test csv handling-behavior
-        [
-            [
-                "0", undefined
-            ],
-            [
-                "0,0,0\n1,1,1",
-                [
-                    [
-                        "c_0", "c_0_2", "c_0_3"
-                    ], [
-                        "1", "1", "1"
-                    ]
-                ]
-            ],
-            [
-                (
-                    "c1,c1,c2\n"
-                    + "1, 2 \n"
-                    + `"1","""2""","3\r\n"\n`
-                    + "\n"
-                    + "1,2,3\n"
-                ),
-                [
-                    [
-                        "c1", "c1_2", "c2"
-                    ], [
-                        "1", " 2 ", null
-                    ], [
-                        "1", "\"2\"", "3\n"
-                    ], [
-                        "", null, null
-                    ], [
-                        "1", "2", "3"
-                    ]
-                ]
-            ]
-        ].forEach(async function ([
-            valInput, valExpected
-        ], ii) {
-            let valActual = noop(
-                await dbExecAsync({
-                    db,
-                    responseType: "list",
-                    sql: `SELECT * FROM temp.csv_${ii}`,
-                    tmpCsv: valInput,
-                    tmpTableName: "csv_" + ii
-                })
-            )[0];
-            assertJsonEqual(
-                valActual,
-                valExpected,
-                JSON.stringify({
-                    ii,
-                    valActual,
-                    valExpected,
-                    valInput
-                }, undefined, 4)
-            );
+        await assertErrorThrownAsync(function () {
+            assertJsonEqual(1, 2, "undefined");
+        });
+        await assertErrorThrownAsync(function () {
+            assertJsonEqual(1, 2, {});
+        });
+        // test assertOrThrow error handling-behavior
+        await assertErrorThrownAsync(function () {
+            assertOrThrow(undefined, "undefined");
+        });
+        await assertErrorThrownAsync(function () {
+            assertOrThrow(undefined, new Error());
         });
     });
 });
 
 jstestDescribe((
     "test sqlite handling-behavior"
-), function testSqlite() {
+), function test_sqlite() {
     jstestIt((
         "test sqlite-error handling-behavior"
-    ), async function testSqliteError() {
+    ), async function test_sqliteError() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
+        assertJsonEqual(
+            "not an error",
+            noop(
+                await dbExecAsync({
+                    db,
+                    sql: `SELECT throwerror(0) AS val`
+                })
+            )[0][0].val
+        );
         [
             [1, "SQL logic error"],
             [2, "unknown error"],
@@ -778,7 +661,7 @@ jstestDescribe((
     });
     jstestIt((
         "test sqlite-extension-base64 handling-behavior"
-    ), async function testSqliteExtensionBase64() {
+    ), async function test_sqliteExtensionBase64() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -831,7 +714,7 @@ jstestDescribe((
     });
     jstestIt((
         "test sqlite-extension-jenks handling-behavior"
-    ), async function testSqliteExtensionJenks() {
+    ), async function test_sqliteExtensionJenks() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1040,27 +923,28 @@ jstestDescribe((
             [
                 input, input.slice().reverse()
             ].forEach(async function (input) {
-                let output = new Float64Array(new SharedArrayBuffer(
-                    (2 + 2 * kk) * 8
+                let result = Array.from(new Float64Array(
+                    await dbExecAndReturnLastBlobAsync({
+                        bindList: {
+                            input: new Float64Array(input),
+                            kk
+                        },
+                        db,
+                        sql: "SELECT jenks($kk, $input) AS result;"
+                    })
                 ));
-                input = new Float64Array(input);
-                await dbExecAsync({
-                    bindList: {
-                        input: new Float64Array(input),
-                        kk,
-                        nn: input.length,
-                        output: output.buffer
-                    },
-                    db,
-                    sql: "SELECT jenks($input, $nn, $kk, $output);"
-                });
-                kk = output[1];
+                kk = result[0];
+                assertJsonEqual(kk, expected.length / 2);
                 assertJsonEqual(
-                    Array.from(output.slice(2, 2 + kk)),
+                    result.slice(1).filter(function (ignore, ii) {
+                        return ii % 2 === 0;
+                    }),
                     expected.slice(0, kk)
                 );
                 assertJsonEqual(
-                    Array.from(output.slice(2 + kk, 2 + kk + kk)),
+                    result.slice(1).filter(function (ignore, ii) {
+                        return ii % 2 === 1;
+                    }),
                     expected.slice(kk, kk + kk)
                 );
             });
@@ -1068,7 +952,7 @@ jstestDescribe((
     });
     jstestIt((
         "test sqlite-extension-kthpercentile handling-behavior"
-    ), async function testSqliteExtensionKthpercentile() {
+    ), async function test_sqliteExtensionKthpercentile() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1134,25 +1018,22 @@ jstestDescribe((
             ]
         ].forEach(async function ([
             data, kk, valExpected
-        ], ii) {
+        ]) {
             let valActual;
             data = data.concat([
                 undefined, undefined, 8, 7, 6, 5, 4, 3, 2, 1, undefined
             ]);
             valActual = noop(
                 await dbExecAsync({
+                    bindList: {
+                        tmp1: JSON.stringify(data)
+                    },
                     db,
                     sql: (`
-SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii};
+SELECT kthpercentile(value, ${kk}) AS val FROM json_each($tmp1);
 -- test null-case handling-behavior
-SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
-                    `),
-                    tmpRowList: data.map(function (val) {
-                        return {
-                            val
-                        };
-                    }),
-                    tmpTableName: `__tmp${ii}`
+SELECT kthpercentile(value, ${kk}) AS val FROM json_each($tmp1) WHERE 0;
+                    `)
                 })
             )[0][0].val;
             assertJsonEqual(valActual, valExpected, {
@@ -1163,71 +1044,224 @@ SELECT kthpercentile(val, ${kk}) AS val FROM __tmp${ii} WHERE 0;
     });
     jstestIt((
         "test sqlite-extension-math handling-behavior"
-    ), async function testSqliteExtensionMath() {
+    ), async function test_sqliteExtensionMath() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
         // test sqlmath-defined-func handling-behavior
+        Object.entries({
+            "''": {
+                "castrealorzero": 0,
+                "casttextorempty": "",
+                "copyblob": ""
+            },
+            "'-0.5'": {
+                "castrealorzero": -0.5,
+                "casttextorempty": "-0.5",
+                "copyblob": "-0.5"
+            },
+            "'-1'": {
+                "castrealorzero": -1,
+                "casttextorempty": "-1",
+                "copyblob": "-1",
+                "cot": -0.642092615934331,
+                "coth": -1.31303528549933,
+                "sign": -1
+            },
+            "'0'": {
+                "castrealorzero": 0,
+                "casttextorempty": "0",
+                "copyblob": "0",
+                "cot": null,
+                "coth": null,
+                "sign": 0
+            },
+            "'0.5'": {
+                "castrealorzero": 0.5,
+                "casttextorempty": "0.5",
+                "copyblob": "0.5"
+            },
+            "'1'": {
+                "castrealorzero": 1,
+                "casttextorempty": "1",
+                "copyblob": "1",
+                "cot": 0.642092615934331,
+                "coth": 1.31303528549933,
+                "sign": 1
+            },
+            "'aa'": {
+                "castrealorzero": 0,
+                "casttextorempty": "aa",
+                "copyblob": "aa"
+            },
+            "'hello'": {
+                "castrealorzero": 0,
+                "casttextorempty": "hello",
+                "copyblob": "hello"
+            },
+            "-0.5": {
+                "castrealorzero": -0.5,
+                "casttextorempty": "-0.5",
+                "copyblob": -0.5
+            },
+            "-0x7fffffffffffffff": {
+                "sign": -1
+            },
+            "-1": {
+                "castrealorzero": -1,
+                "casttextorempty": "-1",
+                "copyblob": -1,
+                "cot": -0.642092615934331,
+                "coth": -1.31303528549933,
+                "sign": -1
+            },
+            "-1e999": {
+                "sign": -1
+            },
+            "0": {
+                "castrealorzero": 0,
+                "casttextorempty": "0",
+                "copyblob": 0,
+                "cot": null,
+                "coth": null,
+                "sign": 0
+            },
+            "0.5": {
+                "castrealorzero": 0.5,
+                "casttextorempty": "0.5",
+                "copyblob": 0.5
+            },
+            "0.5, 0.5": {
+                "roundorzero": 1
+            },
+            "0.5, 1": {
+                "roundorzero": 0.5
+            },
+            "0.5, NULL": {
+                "roundorzero": 1
+            },
+            "0x7fffffffffffffff": {
+                "sign": 1
+            },
+            "0x8000000000000000": {
+                "sign": -1
+            },
+            "0xffffffffffffffff": {
+                "sign": -1
+            },
+            "1": {
+                "castrealorzero": 1,
+                "casttextorempty": "1",
+                "copyblob": 1,
+                "cot": 0.642092615934331,
+                "coth": 1.31303528549933,
+                "sign": 1
+            },
+            "1e999": {
+                "sign": 1
+            },
+            "null": {
+                "castrealorzero": 0,
+                "casttextorempty": "",
+                "copyblob": null,
+                "cot": null,
+                "coth": null,
+                "sign": null
+            },
+            "null, 0": {
+                "roundorzero": 0
+            },
+            "null, 0.5": {
+                "roundorzero": 0
+            },
+            "null, null": {
+                "roundorzero": 0
+            },
+            "zeroblob(0)": {
+                "castrealorzero": 0,
+                "casttextorempty": "",
+                "copyblob": null
+            },
+            "zeroblob(1)": {
+                "castrealorzero": 0,
+                "casttextorempty": "",
+                "copyblob": null
+            }
+        }).forEach(function ([
+            arg, funcDict
+        ]) {
+            Object.entries(funcDict).forEach(async function ([
+                func, valExpected
+            ]) {
+                let sql = `SELECT ${func}(${arg}) AS val`;
+                let valActual = noop(
+                    await dbExecAsync({
+                        db,
+                        sql
+                    })
+                )[0][0].val;
+                assertJsonEqual(valActual, valExpected, {
+                    sql,
+                    valActual,
+                    valExpected
+                });
+            });
+        });
+    });
+    jstestIt((
+        "test sqlite-extension-matrix2d_concat handling-behavior"
+    ), async function test_sqliteExtensionMatrix2dConcat() {
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
         [
-            ["CASTREALORZERO('')", 0],
-            ["CASTREALORZERO('-0.5')", -0.5],
-            ["CASTREALORZERO('0.5')", 0.5],
-            ["CASTREALORZERO('hello')", 0],
-            ["CASTREALORZERO(-0.5)", -0.5],
-            ["CASTREALORZERO(0.5)", 0.5],
-            ["CASTREALORZERO(NULL)", 0],
-            ["CASTTEXTOREMPTY('')", ""],
-            ["CASTTEXTOREMPTY('-0.5')", "-0.5"],
-            ["CASTTEXTOREMPTY('0.5')", "0.5"],
-            ["CASTTEXTOREMPTY('hello')", "hello"],
-            ["CASTTEXTOREMPTY(-0.5)", "-0.5"],
-            ["CASTTEXTOREMPTY(0.5)", "0.5"],
-            ["CASTTEXTOREMPTY(NULL)", ""],
-            ["COT('-1')", -0.642092615934331],
-            ["COT('0')", null],
-            ["COT('1')", 0.642092615934331],
-            ["COT(-1)", -0.642092615934331],
-            ["COT(0)", null],
-            ["COT(1)", 0.642092615934331],
-            ["COT(NULL)", null],
-            ["COTH('-1')", -1.31303528549933],
-            ["COTH('0')", null],
-            ["COTH('1')", 1.31303528549933],
-            ["COTH(-1)", -1.31303528549933],
-            ["COTH(0)", null],
-            ["COTH(1)", 1.31303528549933],
-            ["COTH(NULL)", null],
-            ["ROUNDORZERO(0.5, 0.5)", 1],
-            ["ROUNDORZERO(0.5, 1)", 0.5],
-            ["ROUNDORZERO(0.5, NULL)", 1],
-            ["ROUNDORZERO(NULL, 0)", 0],
-            ["ROUNDORZERO(NULL, 0.5)", 0],
-            ["ROUNDORZERO(NULL, NULL)", 0],
-            ["SIGN('-1')", -1],
-            ["SIGN('0')", 0],
-            ["SIGN('1')", 1],
-            ["SIGN(-0x7fffffffffffffff)", -1],
-            ["SIGN(-1)", -1],
-            ["SIGN(-1e999)", -1],
-            ["SIGN(0)", 0],
-            ["SIGN(0x7fffffffffffffff)", 1],
-            ["SIGN(0x8000000000000000)", -1],
-            ["SIGN(0xffffffffffffffff)", -1],
-            ["SIGN(1)", 1],
-            ["SIGN(1e999)", 1],
-            ["SIGN(NULL)", null],
-            // sentinel
-            ["NULL", null]
+            [
+                (`
+SELECT matrix2d_concat();
+                `),
+                []
+            ],
+            [
+                (`
+SELECT matrix2d_concat() FROM (SELECT 1 UNION ALL SELECT 2);
+                `),
+                []
+            ],
+            [
+                (`
+SELECT
+        matrix2d_concat(aa, aa)
+    FROM (
+        SELECT NULL AS aa
+        UNION ALL SELECT '12.34'
+        UNION ALL SELECT 'abcd'
+        UNION ALL SELECT 12.34
+        UNION ALL SELECT zeroblob(0)
+        UNION ALL SELECT zeroblob(1)
+        UNION ALL SELECT NULL
+    );
+
+                `),
+                [
+                    7, 2,
+                    0, 0,
+                    12.34, 12.34,
+                    0, 0,
+                    12.34, 12.34,
+                    0, 0,
+                    0, 0,
+                    0, 0
+                ]
+            ]
         ].forEach(async function ([
             sql, valExpected
         ], ii) {
-            let valActual = noop(
-                await dbExecAsync({
+            let valActual = Array.from(new Float64Array(
+                await dbExecAndReturnLastBlobAsync({
                     db,
-                    responseType: "dict",
-                    sql: `SELECT ${sql} AS val`
+                    sql
                 })
-            )[0][0].val;
+            ));
             assertJsonEqual(valActual, valExpected, {
                 ii,
                 sql,

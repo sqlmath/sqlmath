@@ -1,5 +1,5 @@
-<svg height="1130" width="800" xmlns="http://www.w3.org/2000/svg">
-<rect height="1130" fill="#222" width="800"></rect>
+<svg height="1262" width="800" xmlns="http://www.w3.org/2000/svg">
+<rect height="1262" fill="#222" width="800"></rect>
 <text
     fill="#7f7"
     font-family="consolas, menlo, monospace"
@@ -29,283 +29,319 @@
     textLength="768"
     x="10"
     y="98"
->- none                                                                                           </tspan>
+>- add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="120"
->                                                                                                 </tspan>
+>- sqlmath - add sql-extension carrayblob()                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="142"
-># v2022.5.20                                                                                     </tspan>
+>- none                                                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="164"
->- sqlite - update to sqlite v3.38.5                                                              </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="186"
->- sqlmath - add sql-functions castrealorzero(), casttextorempty()                                </tspan>
+># v2022.6.30                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="208"
->- sqlmath - migrate test to jsTestXxx                                                            </tspan>
+>- add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="230"
->- jslint - update jslint v2022.05.13                                                             </tspan>
+>- demo - add web-demo in README.md                                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="252"
->                                                                                                 </tspan>
+>- webapp - add ui-loading when running onDbAction(), onDbExec()                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
-># v2022.4.28                                                                                     </tspan>
+>- add dbtable-crud-operations dbquerySaveCsv, dbquerySaveJson, dbtableDrop, dbtableSaveCsv, dbta\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->- jslint - update jslint v2022.4.28                                                              </tspan>
+>  bleSaveJson                                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="318"
->- sqlite - update to sqlite v3.38.2                                                              </tspan>
+>- add contextmenu and dbtable-crud-operation dbtableDrop                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="340"
->- sqlmath - bugfix - fix crash from sql-fnc kthpercentile(), when passed with empty-list         </tspan>
+>- add database-crud-operations                                                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
->                                                                                                 </tspan>
+>- merge rendering of sql-queries and sql-tables into one                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
-># v2022.3.20                                                                                     </tspan>
+>- optimization - defer rendering data in dttable until you scroll into it in viewport            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->- sqlmath - add builtin sql-function jenks() which is a fast 1d, ml classifier                   </tspan>
+>- add modal to display sql-query errors                                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->- sqlmath - merge/streamline buildstep sqlmath_custom.c into sqlmath_base.c                      </tspan>
+>- bugfix - fix broken sorting                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->- sqlmath - remove unused responseType = lastMatrixDouble                                        </tspan>
+>- merge datatables css into file index.html                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
->- sqlmath - export c-function dbExec to wasm                                                     </tspan>
+>- merge datatables code into file sqlmath_browser.mjs and remove jquery-dependency               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
->- sqlmath - replace Str99 with sqlite-builtin JsonString                                         </tspan>
+>- bugfix - fix ci-function shCiBuildWasm() not updating output sqlmath_wasm.wasm                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->- update to sqlite v3.38.1                                                                       </tspan>
+>- wasm - rewrite file sqlmath_wrapper_wasm.js to pass jslint                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="538"
->- ci - add fileCount check                                                                       </tspan>
+>- datatables - rewrite datatables-function _fnDraw() for faster rendering                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
->- sqlmath - re-enable building shell-executable                                                  </tspan>
+>- sqlmath - milestone - functional index.html                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="582"
->- sqlmath - use sqlite-builtin jsonstring instead of str99 for extension kthpercentile           </tspan>
+>- add files asset_sqlmath_external_rollup.css, asset_sqlmath_external_rollup.js                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="604"
->- sqlmath - remove zlib.h and use handcoded headers instead                                      </tspan>
+>- bugfix - fix memory-leak by replacing all free()/malloc() with sqlite3_free()/sqlite3_malloc() </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="626"
->- split build-step sqlite3_c to sqlite3_c, sqlite3_ext_c, to deduplicate definition SQLITE3_C2   </tspan>
+>- wasm - update functions dbFileExportAsync(), dbFileImportAsync() to be able to export/import r\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->- add shell-function shCiBuildWasm() to build wasm binaries with online demo spa.sqlchart.html   </tspan>
+>  aw-db-arraybuffer                                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->- update to sqlite v3.38.0                                                                       </tspan>
+>- remove obsolete csv-json-import functions like dbTableInsert(), superseded by json_each()      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->- create github-branch-artifact to upload shared binaries                                        </tspan>
+>- wasm - update function dbOpen() to be able to import raw dbData arraybuffer                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->                                                                                                 </tspan>
+>- merge function dbExecWithRetryAsync() into dbExecAsync()                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="736"
-># v2022.3.5                                                                                      </tspan>
+>- rename function dbMemoryLoadOrSave to dbFileImportOrExport()                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="758"
->- update jslint v2022.2.20                                                                       </tspan>
+>- add file csslint.js                                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="780"
->- add sqlite-function RANDOM1() generating random-float between 0 &lt;= xx &lt; 1                      </tspan>
+>- wasm - replace sqljs-api with sqlmath-api in wasm - part1                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="802"
->- remove file sqlmath_old.js                                                                     </tspan>
+>- remove jslint-dependency in sqlmath-core to prepare sqlmath for browser/wasm env               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="824"
->- add sql-function kthpercentile(val, percentile)                                                </tspan>
+>- emscripten updated to v3.1.3, allowing es6 syntax in sqlmath_wrapper_wasm.js                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="846"
->- update sql-functions compress(), uncompress() with null check/guard                            </tspan>
+>- jenks - streamline jenksCreate() return object to simple double-array instead of struct        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="868"
->                                                                                                 </tspan>
+>- jenks - inline jenks-function jenksCalcRange() from recursion to iteration                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="890"
-># v2021.11.20                                                                                    </tspan>
+>- jenks - optimize jenks-function jenksCalcRange() from recursion to iteration                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="912"
->- npm publish v2021.10.20                                                                        </tspan>
+>- jenks - replace class-based api with static-function                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="934"
->- update to jslint v2021.10.20                                                                   </tspan>
+>- jsbaton - migrate function dbExec() to new unified jsbaton                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="956"
->- refactor - replace nodejs-buffer-api-calls with DataView / TextDecoder / TextEncoder           </tspan>
+>- error - add sqlite errcode SQLITE_ERROR_ZSQL_NULL                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="978"
->                                                                                                 </tspan>
+>- jsbaton - migrate function dbTableInsert() to new unified jsbaton                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1000"
-># v2021.10.20                                                                                    </tspan>
+>- jsbaton - migrate functions dbClose(), dbMemoryLoadOrSave(), dbNoop(), dbOpen() to new, stream\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1022"
->- revamp - update to jslint_ci.sh from 2020.10.2                                                 </tspan>
+>  lined jsbaton2                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1044"
->                                                                                                 </tspan>
+>- add js-function jsbatonPushValue() to dynamically push value to jsbaton                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1066"
-># v2021.9.9                                                                                      </tspan>
+>- napi - decouple c-functions dbClose(), dbExec(), dbMemoryLoadOrSave(), dbNoop(), dbOpen(), dbT\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1088"
->- add sql-function slr_ohlcv() with tests                                                        </tspan>
+>  ableInsert() from napi                                                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1110"
->- update file jslint_ci.sh with chorish shell-functions                                          </tspan>
+>- perf - reduce unnecessary copying, replacing SQLITE_TRANSIENT with SQLITE_STATIC               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1132"
+>- sqlmath - wrap c-functions jsonInit(), jsonInitNoContext() with jsonInit2() that auto jsonGrow\</tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1154"
+>  /malloc str99-&gt;zBuf                                                                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1176"
+>- sqlmath - streamline function cCall() to cCallAsync(), which only returns a promise            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1198"
+>- wasm - migrate from sqljs-api to sqlmath-api in wasm - part1                                   </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1220"
+>- gc - replace node-specific-gc __dbFinalizerCreate() with more-webassembly-friendly Finalizatio\</tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1242"
+>  nRegistry()                                                                                    </tspan>
 
 </text>
 </svg>

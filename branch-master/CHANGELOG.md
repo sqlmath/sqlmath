@@ -1,7 +1,55 @@
 # Changelog
 
 # Todo
+- add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson
+- sqlmath - add sql-extension carrayblob()
 - none
+
+# v2022.6.30
+- add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop
+- demo - add web-demo in README.md
+- webapp - add ui-loading when running onDbAction(), onDbExec()
+- add dbtable-crud-operations dbquerySaveCsv, dbquerySaveJson, dbtableDrop, dbtableSaveCsv, dbtableSaveJson
+- add contextmenu and dbtable-crud-operation dbtableDrop
+- add database-crud-operations
+- merge rendering of sql-queries and sql-tables into one
+- optimization - defer rendering data in dttable until you scroll into it in viewport
+- add modal to display sql-query errors
+- bugfix - fix broken sorting
+- merge datatables css into file index.html
+- merge datatables code into file sqlmath_browser.mjs and remove jquery-dependency
+- bugfix - fix ci-function shCiBuildWasm() not updating output sqlmath_wasm.wasm
+- wasm - rewrite file sqlmath_wrapper_wasm.js to pass jslint
+- datatables - rewrite datatables-function _fnDraw() for faster rendering
+- sqlmath - milestone - functional index.html
+- add files asset_sqlmath_external_rollup.css, asset_sqlmath_external_rollup.js
+- bugfix - fix memory-leak by replacing all free()/malloc() with sqlite3_free()/sqlite3_malloc()
+- wasm - update functions dbFileExportAsync(), dbFileImportAsync() to be able to export/import raw-db-arraybuffer
+- remove obsolete csv-json-import functions like dbTableInsert(), superseded by json_each()
+- wasm - update function dbOpen() to be able to import raw dbData arraybuffer
+- merge function dbExecWithRetryAsync() into dbExecAsync()
+- rename function dbMemoryLoadOrSave to dbFileImportOrExport()
+- add file csslint.js
+- wasm - replace sqljs-api with sqlmath-api in wasm - part1
+- remove jslint-dependency in sqlmath-core to prepare sqlmath for browser/wasm env
+- emscripten updated to v3.1.3, allowing es6 syntax in sqlmath_wrapper_wasm.js
+- jenks - streamline jenksCreate() return object to simple double-array instead of struct
+- jenks - inline jenks-function jenksCalcRange() from recursion to iteration
+- jenks - optimize jenks-function jenksCalcRange() from recursion to iteration
+- jenks - replace class-based api with static-function
+- jsbaton - migrate function dbExec() to new unified jsbaton
+- error - add sqlite errcode SQLITE_ERROR_ZSQL_NULL
+- jsbaton - migrate function dbTableInsert() to new unified jsbaton
+- jsbaton - migrate functions dbClose(), dbMemoryLoadOrSave(), dbNoop(), dbOpen() to new, streamlined jsbaton2
+- add js-function jsbatonPushValue() to dynamically push value to jsbaton
+- napi - decouple c-functions dbClose(), dbExec(), dbMemoryLoadOrSave(), dbNoop(), dbOpen(), dbTableInsert() from napi
+- perf - reduce unnecessary copying, replacing SQLITE_TRANSIENT with SQLITE_STATIC
+- sqlmath - wrap c-functions jsonInit(), jsonInitNoContext() with jsonInit2() that auto jsonGrow/malloc str99->zBuf
+- sqlmath - streamline function cCall() to cCallAsync(), which only returns a promise
+- wasm - migrate from sqljs-api to sqlmath-api in wasm - part1
+- gc - replace node-specific-gc __dbFinalizerCreate() with more-webassembly-friendly FinalizationRegistry()
+- sqlmath - add sql-extension copyblob(), matrix2d_concat()
+- sqlmath - re-include carray-extension
 
 # v2022.5.20
 - sqlite - update to sqlite v3.38.5

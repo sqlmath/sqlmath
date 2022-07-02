@@ -414,7 +414,7 @@ shCiBase() {(set -e
 import moduleFs from "fs";
 globalThis.assert(
     JSON.parse(
-        moduleFs.readFileSync("package.json") //jslint-quiet
+        moduleFs.readFileSync("package.json") //jslint-ignore-line
     ).fileCount === Number(process.argv[1]),
     `package.json.fileCount !== ${process.argv[1]}`
 );
@@ -437,7 +437,7 @@ import moduleFs from "fs";
         fileDict[file] = await moduleFs.promises.readFile(file, "utf8");
     }));
     Array.from(fileDict["CHANGELOG.md"].matchAll(
-        /\n\n# (v\d\d\d\d\.\d\d?\.\d\d?(.*?)?)\n/g
+        /\n\n# v(\d\d\d\d\.\d\d?\.\d\d?(-.*?)?)\n/g
     )).slice(0, 2).forEach(function ([
         ignore, version, isBeta
     ]) {
@@ -449,12 +449,12 @@ import moduleFs from "fs";
             file: "README.md",
             src: fileDict["README.md"].replace((
                 /\bv\d\d\d\d\.\d\d?\.\d\d?\b/m
-            ), versionMaster)
+            ), `v${versionMaster}`)
         }, {
             file: "package.json",
             src: fileDict["package.json"].replace((
-                /("version": )".*?"/
-            ), "$1" + JSON.stringify(versionBeta.slice(1)))
+                /    "version": "\d\d\d\d\.\d\d?\.\d\d?(?:-.*?)?"/
+            ), `    "version": "${versionBeta}"`)
         }
     ].map(async function ({
         file,
@@ -484,8 +484,7 @@ import moduleFs from "fs";
         let ii = -1;
         let toc = "\n# Table of Contents\n";
         data.replace((
-            // /(\n{3,}#|\n+?<br><br>\n#|\n+?###) (\S.*)/g
-            /((?:\n{3,}|\n+?(?:<br>)+?\n)(?:#|###)) (\S.*)/g
+            /((?:\n{3,}|\n+?(?:<br>)+?\n+?)(?:#|###|#####)) (\S.*)/g
         ), function (match0, level, title) {
             if (title === "Table of Contents") {
                 ii += 1;
@@ -495,6 +494,9 @@ import moduleFs from "fs";
                 return "";
             }
             switch (level) {
+            case "\n\n<br>\n\n#####":
+                toc += "        - [" + title + "](#";
+                break;
             case "\n\n\n<br><br>\n#":
                 ii += 1;
                 toc += "\n" + ii + ". [" + title + "](#";
@@ -1000,7 +1002,7 @@ import modulePath from "path";
     data = data.replace((
         /^(.+?):(\d+?):(.*?)$/gm
     ), function (ignore, file, lineno, str) {
-        dict[file] = dict[file] || moduleFs.readFileSync( //jslint-quiet
+        dict[file] = dict[file] || moduleFs.readFileSync( //jslint-ignore-line
             modulePath.resolve(file),
             "utf8"
         ).split("\n");
@@ -1248,7 +1250,7 @@ import moduleUrl from "url";
                 script = "\n";
                 break;
             // syntax-sugar - list obj-keys, sorted by item-type
-            // console.error(Object.keys(global).map(function(key){return(typeof global[key]===\u0027object\u0027&&global[key]&&global[key]===global[key]?\u0027global\u0027:typeof global[key])+\u0027 \u0027+key;}).sort().join(\u0027\n\u0027)) //jslint-quiet
+            // console.error(Object.keys(global).map(function(key){return(typeof global[key]===\u0027object\u0027&&global[key]&&global[key]===global[key]?\u0027global\u0027:typeof global[key])+\u0027 \u0027+key;}).sort().join(\u0027\n\u0027)) //jslint-ignore-line
             case "keys":
                 script = (
                     "console.error(Object.keys(" + match2
@@ -1702,7 +1704,7 @@ function objectDeepCopyWithKeysSorted(obj) {
             /\n+?(\n *?\})/g
         ), "$1");
         // eslint - no-multiple-empty-lines
-        // https://github.com/eslint/eslint/blob/v7.2.0/docs/rules/no-multiple-empty-lines.md //jslint-quiet
+        // https://github.com/eslint/eslint/blob/v7.2.0/docs/rules/no-multiple-empty-lines.md //jslint-ignore-line
         result = result.replace((
             /\n{4,}/g
         ), "\n\n\n");
@@ -1713,7 +1715,11 @@ function objectDeepCopyWithKeysSorted(obj) {
             flags
         }) {
             result0 = result;
-            result = result.replace(new RegExp(aa, flags), bb);
+            result = result.replace(new RegExp(aa, flags), bb.replace((
+                /\*\\\\\//g
+            ), "*/").replace((
+                /\/\\\\\*/g
+            ), "/*"));
             if (result0 === result) {
                 throw new Error(
                     "shRawLibFetch - cannot find-and-replace snippet "
@@ -1807,7 +1813,7 @@ function objectDeepCopyWithKeysSorted(obj) {
             result += "\n\n" + match1.trim() + "\n";
         });
         // write to file
-        moduleFs.writeFileSync(process.argv[1], result); //jslint-quiet
+        moduleFs.writeFileSync(process.argv[1], result); //jslint-ignore-line
     });
 }());
 ' "$@" # '
@@ -1940,7 +1946,6 @@ function globExclude({
       /[\[\]]/g
     ), "\\$&");
     strRegex = strRegex.replace((
-      // ignore [-/]
       /[$()*+.?\[\\\]\^{|}]/g
     ), "\\$&");
     strRegex = strRegex.replace((

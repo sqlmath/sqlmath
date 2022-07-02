@@ -2,21 +2,31 @@
 
 
 # Status
-| Branch | [master<br>(v2022.5.20)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
+| Branch | [master<br>(v2022.6.30)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
 |--:|:--:|:--:|:--:|
 | CI | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Amaster) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=beta)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Abeta) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=alpha)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Aalpha) |
 | Coverage | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) |
+| Demo | [<img src="asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) | [<img src="asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) | [<img src="asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) |
 | Artifacts | [<img src="asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) | [<img src="asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) | [<img src="asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) |
 
 
 <br><br>
 # Table of Contents
 
-1. [Package Listing](#package-listing)
+1. [Web Demo](#web-demo)
 
-2. [Changelog](#changelog)
+2. [Package Listing](#package-listing)
 
-3. [License](#license)
+3. [Changelog](#changelog)
+
+4. [License](#license)
+
+
+<br><br>
+# Web Demo
+- https://sqlmath.github.io/sqlmath/index.html
+
+[![screenshot](https://sqlmath.github.io/sqlmath/branch-master/.artifact/screenshot_browser__2fsqlmath_2fbranch-master_2findex.html.png)](https://sqlmath.github.io/sqlmath/index.html)
 
 
 <br><br>
@@ -33,7 +43,7 @@
 
 <br><br>
 # License
-- SQLite is under public domain.
+- SQLite is under [public domain](https://www.sqlite.org/copyright.html).
 - JSLint is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
 - [cpplint.py](cpplint.py) is under [BSD 3-clause license](https://github.com/cpplint/cpplint/blob/develop/LICENSE).
 - [indent.exe](indent.exe) is under [GPLv3 License](https://www.gnu.org/licenses/gpl-3.0.txt).

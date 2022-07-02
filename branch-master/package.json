@@ -3,7 +3,7 @@
         "email": "kaizhu256@gmail.com",
         "name": "kai zhu"
     },
-    "counter": 10,
+    "counter": 13,
     "cpu": [
         "x64"
     ],
@@ -11,7 +11,7 @@
     "engines": {
         "node": ">=14"
     },
-    "fileCount": 29,
+    "fileCount": 34,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",
@@ -37,5 +37,5 @@
         "test2": "sh jslint_ci.sh shCiBase",
         "test_win32": "node -e \"require('child_process').spawn('C:\\\\Program Files\\\\Git\\\\bin\\\\bash.exe',['-c','npm run test' + ' ' + process.argv.slice(1).join(' ')],{stdio:['ignore',1,2]});\""
     },
-    "version": "2022.5.20"
+    "version": "2022.6.30"
 }
