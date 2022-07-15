@@ -437,14 +437,13 @@ file none
     outline: none;
 }
 body {
-    font-family: monospace;
+    font-family: sans-serif;
     font-size: 0.75rem;
     overflow-y: scroll;
 }
 button {
     background: #ccc;
     cursor: pointer;
-    font-family: monospace;
     font-size: 0.75rem;
     height: 1.25rem;
     line-height: 1.25rem;
@@ -495,6 +494,58 @@ textarea {
 }
 #sqliteEditor1 {
     height: 300px;
+}
+
+/*css section chart*/
+.uichart {
+    box-sizing: content-box;
+    font-size: 12px;
+    line-height: normal;
+    overflow: hidden;
+    position: relative;
+    text-align: left;
+    z-index: 0;
+}
+.uichartCanvas {
+    padding: 12px 12px 0 0;
+}
+.uichartLegend {
+    border: 1px solid #999;
+    flex: 1;
+    font-size: 11px;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.uichartLegendElem {
+    cursor: pointer;
+    display: block;
+    height: 16px;
+    line-height: 16px;
+    position: relative;
+}
+.uichartLegendElem[data-hidden="1"] {
+    opacity: 0.5;
+}
+.uichartLegendElem:hover {
+    background: #ddd;
+}
+.uichartLegendElemColor {
+    display: inline-block;
+    height: 8px;
+    line-height: 8px;
+    margin-left: 4px;
+    width: 16px;
+}
+.uichartNav {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 0 12px 12px;
+}
+.uichartNav button.uichartAction {
+    margin-bottom: 12px;
+    width: 100%
 }
 
 /*css section content*/
@@ -559,12 +610,13 @@ textarea {
     position: relative;
 }
 #contentPanel1 .uitable {
-    background: #fff;
-    font-size: 11px;
-    left: 0;
-    margin: 0;
-    position: absolute;
-    top: 0;
+    font-family: monospace;
+    position: relative;
+}
+#contentPanel1 .uitableInfo {
+    height: 16px;
+    padding: 2px;
+    width: 100%;
 }
 #contentPanel1 .uitableLoading {
     background: #fff;
@@ -603,11 +655,6 @@ textarea {
         content: "";
     }
 }
-#contentPanel1 .uitablePageInfo {
-    height: 16px;
-    padding: 2px;
-    width: 100%;
-}
 #contentPanel1 .uitableScroller {
     background: #ddd;
     overflow: scroll;
@@ -615,6 +662,14 @@ textarea {
 }
 #contentPanel1 .uitableScrollerDummy {
     width: 1px;
+}
+#contentPanel1 .uitableTable {
+    background: #fff;
+    font-size: 11px;
+    left: 0;
+    margin: 0;
+    position: absolute;
+    top: 0;
 }
 
 /*css section contextmenu*/
@@ -685,6 +740,7 @@ textarea {
     display: inline-block;
     height: 20px;
     left: -30px;
+    line-height: 20px;
     position: absolute;
     top: 0;
     width: 20px;
@@ -717,47 +773,38 @@ textarea {
 }
 
 /*css section toc*/
-.tocElemA {
-    color: #037;
-    cursor: pointer;
-    display: inline-block;
+.tocElemA,
+.tocTitle,
+#tocPanel1 button {
+    border-bottom: 1px solid #999;
     height: 20px;
     line-height: 20px;
     padding-left: 0.5rem;
+    text-align: left;
     width: 100%;
 }
-.tocElemA::before {
-    background-color: #000;
-    border-radius: 2px;
-    content: "";
-    display: inline-block;
-    height: 4px;
-    margin: 8px -0.5rem;
-    position: absolute;
-    width: 4px;
+.tocElemA {
+    color: #037;
+    cursor: pointer;
+    display: block;
 }
 .tocTitle {
-    border-top: 1px solid #777;
     font-weight: bold;
-    margin-left: -1rem;
-    padding: 0.5rem;
-    padding-top: 1rem;
-    width: 256px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
 }
 #tocPanel1 {
     height: 100%;
     left: 0;
     overflow-x: hidden;
     overflow-y: scroll;
-    padding: 0 0.5rem 0 1rem;
     position: fixed;
     top: 0;
     width: 256px;
 }
 #tocPanel1 button {
-    margin-bottom: 0.5rem;
-    text-align: left;
-    width: 100%;
+    border-bottom: 1px solid #777;
 }
 
 /* section misc */
@@ -807,14 +854,6 @@ button:hover {
 <div class="contentElem" id="editor1">
 <div class="contentElemTitle title">script editor</div>
 <textarea id="sqliteEditor1" style="border: 0; padding-left: 30px;">
-DROP TABLE IF EXISTS __test1;
-CREATE TABLE __test1(
-    col1,
-    col2,
-    column_long_name_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-);
-DROP TABLE IF EXISTS db02.__test2;
-CREATE TABLE db02.__test2 AS SELECT * FROM __test1;
 DROP TABLE IF EXISTS __stock_historical;
 CREATE TABLE __stock_historical(ticker TEXT, date TEXT, price FLOAT);
 INSERT INTO __stock_historical (ticker, date, price) VALUES
@@ -830,6 +869,23 @@ INSERT INTO __stock_historical (ticker, date, price) VALUES
     ('goog', '2020-07-01', 1482.96),  ('goog', '2020-08-01', 1634.18),
     ('goog', '2020-09-01', 1469.60),  ('goog', '2020-10-01', 1621.01),
     ('goog', '2020-11-01', 1760.74),  ('goog', '2020-12-01', 1751.88);
+
+DROP TABLE IF EXISTS __test1;
+CREATE TABLE __test1(
+    col1,
+    col2,
+    column_long_name_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+);
+
+DROP TABLE IF EXISTS __test2;
+CREATE TABLE __test2 AS
+    SELECT * FROM __test1
+    UNION ALL SELECT 1, 2, 3
+    UNION ALL SELECT 4, 5, 6;
+
+DROP TABLE IF EXISTS attached_01.__test3;
+CREATE TABLE attached_01.__test3 AS SELECT * FROM __test2;
+
 SELECT
         *,
         random() AS c1,
@@ -844,14 +900,98 @@ SELECT
     FROM __stock_historical
     LEFT JOIN __test1 ON __test1.col1 = __stock_historical.ticker
     CROSS JOIN (SELECT random() FROM __stock_historical);
+
+DROP TABLE IF EXISTS chart.__stock_chart;
+CREATE TABLE chart.__stock_chart (
+    label TEXT,
+    xx TEXT,
+    yy REAL,
+    options TEXT
+);
+INSERT INTO chart.__stock_chart (options) VALUES (
+    '{
+        "title":"price vs. date comparison of multiple stocks",
+        "xAxesType": "time",
+        "xLabel": "date",
+        "yLabel": "price"
+    }'
+);
+INSERT INTO chart.__stock_chart (label, xx, yy)
+    SELECT
+        ticker AS label,
+        date AS xx,
+        price AS yy
+    FROM __stock_historical;
+UPDATE chart.__stock_chart
+    SET
+        yy = yy * inv
+    FROM (SELECT 1)
+    JOIN (
+        SELECT
+            1.0 / yy AS inv,
+            label
+        FROM (
+            SELECT
+                ROW_NUMBER() OVER (PARTITION BY label ORDER BY xx) AS rownum,
+                yy,
+                label
+            FROM chart.__stock_chart
+            WHERE yy > 0
+        )
+        WHERE rownum = 1
+    ) USING (label);
+
+DROP TABLE IF EXISTS chart.__test_chart;
+CREATE TABLE chart.__test_chart (
+    label TEXT,
+    xx TEXT,
+    yy REAL,
+    options TEXT
+);
+INSERT INTO chart.__test_chart (options) VALUES (
+    '{
+        "xAxesType": "linear",
+        "xLabel": "random x",
+        "yAxesType": "logarithmic",
+        "yLabel": "random y (logarithmic)"
+    }'
+);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+        RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data1', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data2', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data3', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data4', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data4', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data4', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data4', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data5', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data6', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data7', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
+INSERT INTO chart.__test_chart (label, xx, yy)
+    SELECT 'data8', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
 </textarea>
 </div>
 <button class="dbExec" style="margin-top: 1rem;">script - execute</button>
 
-<div class="contentSectionTitle">sqlite query result</div>
-<div id="sqlqueryList1"></div>
+<div class="contentSectionTitle">sqlite chart</div>
+<div id="dbchartList1"></div>
 
-<div class="contentSectionTitle">sqlite table and attached table</div>
+<div class="contentSectionTitle">sqlite query result</div>
+<div id="dbqueryList1"></div>
+
+<div class="contentSectionTitle">sqlite table</div>
 <div id="dbtableList1"></div>
 
 </div>
@@ -861,14 +1001,13 @@ SELECT
 <!-- tocPanel1 start -->
 <div id="tocPanel1">
 <div id="tocDatabase1">
-    <div class="tocTitle" style="padding-top: 0.5rem;">sqlite database</div>
     <button data-action="dbRefresh">database - refresh</button>
     <button data-action="dbOpen">database - open</button>
-    <button data-action="dbAttach">database - open and attach</button>
+    <button data-action="dbAttach" style="border-bottom: 1px solid #999;">database - open and attach</button>
 </div>
 <div id="tocEditor1">
     <div class="tocTitle">sqlite editor</div>
-    <button data-action="dbExec">script - execute</button>
+    <button data-action="dbExec" style="border-bottom: 1px solid #999;">script - execute</button>
     <a class="tocElemA" href="#editor1" data-dbtype="script" title="[right-click for crud operation]">script editor</a>
 </div>
 <div id="tocDbList1"></div>
@@ -916,8 +1055,10 @@ fork on github
     <div class="contextmenuDivider" data-dbtype="all"></div>
     <a class="contextmenuElem" data-dbtype="script" data-action="dbscriptOpen">script - open</a>
     <a class="contextmenuElem" data-dbtype="script" data-action="dbscriptSave">script - save</a>
-    <a class="contextmenuElem" data-dbtype="query" data-action="dbquerySaveCsv">query - save to csv</a>
-    <a class="contextmenuElem" data-dbtype="query" data-action="dbquerySaveJson">query - save to json</a>
+    <a class="contextmenuElem" data-dbtype="chart" data-action="dbtableSaveCsv">chart - save to csv</a>
+    <a class="contextmenuElem" data-dbtype="chart" data-action="dbtableSaveJson">chart - save to json</a>
+    <a class="contextmenuElem" data-dbtype="query" data-action="dbtableSaveCsv">query - save to csv</a>
+    <a class="contextmenuElem" data-dbtype="query" data-action="dbtableSaveJson">query - save to json</a>
 
     <a class="contextmenuElem" data-dbtype="table" data-action="dbExport">database - save</a>
     <div class="contextmenuDivider" data-dbtype="table"></div>
