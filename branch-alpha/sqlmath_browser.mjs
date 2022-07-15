@@ -1,4 +1,4 @@
-/*jslint beta, browser, devel, nomen*/
+/*jslint beta, bitwise, browser, devel, nomen*/
 import {
     assertOrThrow,
     dbCloseAsync,
@@ -13,14 +13,18 @@ import {
 
 let BLOB_SAVE;
 let {
+    Chart,
     CodeMirror
 } = globalThis;
 let DBTABLE_DICT = new Map();
+let DB_CHART;
 let DB_DICT = new Map();
-let DB_II = 1;
+let DB_II = 0;
 let DB_MAIN;
 let DB_QUERY;
 let DEBOUNCE_DICT = Object.create(null);
+let UI_CHART_HEIGHT = 256;
+let UI_CHART_LEGEND_WIDTH = 128;
 let UI_CONTEXTMENU = document.getElementById("contextmenu1");
 let UI_CONTEXTMENU_BATON;
 let UI_CRUD = document.getElementById("crudPanel1");
@@ -48,7 +52,7 @@ async function dbFileAttachAsync({
     let dbAttached;
     let dbName;
     DB_II += 1;
-    dbName = `[db${String(DB_II).padStart(2, "0")}]`;
+    dbName = `[attached_${String(DB_II).padStart(2, "0")}]`;
     dbAttached = await dbOpenAsync({
         dbData,
         filename: `file:${dbName.slice(1, -1)}?mode=memory&cache=shared`
@@ -94,7 +98,6 @@ function fileSave({
 // this function will save <buf> with given <filename>
     // cleanup previous blob to prevent memory-leak
     URL.revokeObjectURL(BLOB_SAVE);
-    //!! uiLoaderStart({});
     // create new blob
     BLOB_SAVE = URL.createObjectURL(new Blob([
         buf
@@ -115,20 +118,32 @@ function fileSave({
         ), "")
         + ".$1"
     ));
-    //!! uiLoaderEnd({});
     UI_FILE_SAVE.click();
 }
 
 async function init() {
-    // init db - query
-    DB_QUERY = {
-        dbName: "query",
-        dbtableList: [],
-        isDbquery: true
-    };
-    DB_DICT.set("query", DB_QUERY);
-    // init db - main
     await sqlmathWebworkerInit({});
+    // init DB_CHART
+    DB_CHART = Object.assign(noop(
+        await dbOpenAsync({
+            filename: "file:dbchart?mode=memory&cache=shared"
+        })
+    ), {
+        dbName: "[chart]",
+        isDbchart: true
+    });
+    DB_DICT.set("[chart]", DB_CHART);
+    // init DB_QUERY
+    DB_QUERY = Object.assign(noop(
+        await dbOpenAsync({
+            filename: ":memory:"
+        })
+    ), {
+        dbName: "[query]",
+        isDbquery: true
+    });
+    DB_DICT.set("[query]", DB_QUERY);
+    // init DB_MAIN
     DB_MAIN = Object.assign(noop(
         await dbOpenAsync({
             filename: ":memory:"
@@ -138,6 +153,11 @@ async function init() {
         isDbmain: true
     });
     DB_DICT.set("[main]", DB_MAIN);
+    // attach DB_CHART
+    await dbExecAsync({
+        db: DB_MAIN,
+        sql: `ATTACH DATABASE [${DB_CHART.filename}] AS chart;`
+    });
     // init UI_FILE_OPEN
     UI_FILE_OPEN.type = "file";
     // init sqlEditor
@@ -287,6 +307,7 @@ async function onDbAction(evt) {
     let data;
     let target = evt.target.closest("[data-action]") || evt.target;
     let title;
+    let uichart = target.closest(".uichart");
     action = target.dataset.action;
     if (!action) {
         return;
@@ -400,6 +421,26 @@ RENAME TO
         }
         uiFadeIn(UI_CRUD);
         return;
+    case "uichartDatasetHideAll":
+    case "uichartDatasetShowAll":
+        data = Number(action === "uichartDatasetHideAll");
+        uichart.chart.data.datasets.forEach(function (dataset) {
+            dataset.hidden = data;
+        });
+        uichart.querySelectorAll(".uichartLegendElem").forEach(function (elem) {
+            elem.dataset.hidden = data;
+        });
+        uichart.chart.update();
+        return;
+    case "uichartDatasetHideOrShow":
+        data = uichart.chart.data.datasets[target.dataset.ii].hidden ^ 1;
+        uichart.chart.data.datasets[target.dataset.ii].hidden = data;
+        target.dataset.hidden = data;
+        uichart.chart.update();
+        return;
+    case "uichartZoomReset":
+        uichart.chart.resetZoom();
+        return;
     }
     // slow actions that require loading
     if (!evt.modeTryCatch) {
@@ -474,26 +515,6 @@ RENAME TO
     case "dbRefresh":
         await uiRenderDb();
         return;
-    case "dbquerySaveCsv":
-        data = rowListToCsv({
-            colList: baton.colList,
-            rowList: baton.rowList0
-        });
-        fileSave({
-            buf: data,
-            filename: `sqlite_${baton.dbtableFullname}.csv`
-        });
-        return;
-    case "dbquerySaveJson":
-        data = rowListToJson({
-            colList: baton.colList,
-            rowList: baton.rowList0
-        });
-        fileSave({
-            buf: data,
-            filename: `sqlite_${baton.dbtableFullname}.json`
-        });
-        return;
     case "dbscriptSave":
         fileSave({
             buf: UI_EDITOR.getValue(),
@@ -550,7 +571,7 @@ async function onDbExec({
 // this function will
 // 1. exec sql-command in webworker
 // 2. ui-render sql-queries to html
-    let dbtableList0;
+    let dbqueryList;
     if (!modeTryCatch) {
         await uiTryCatch(onDbExec, {
             modeTryCatch: true
@@ -561,34 +582,60 @@ async function onDbExec({
     uiFadeOut(document.querySelector("#errorPanel1"));
     // DBTABLE_DICT - cleanup old uitable
     DBTABLE_DICT.forEach(function ({
-        colList,
-        isDbquery,
-        rowList0
+        isDbchart,
+        isDbquery
     }, key) {
-        if (isDbquery) {
-            colList.length = 0;
-            rowList0.length = 0;
+        if (isDbchart || isDbquery) {
             DBTABLE_DICT.delete(key);
         }
     });
-    DB_QUERY.dbtableList0 = [];
+    await Promise.all([
+        DB_CHART, DB_QUERY
+    ].map(async function (db) {
+        let sqlCleanup = noop(
+            await dbExecAsync({
+                db,
+                sql: (`
+BEGIN TRANSACTION;
+SELECT
+        group_concat('DROP TABLE [' || name || '];', '') AS sql
+    FROM sqlite_master WHERE type = 'table';
+END TRANSACTION;
+                `)
+            })
+        )[0][0].sql || "";
+        await dbExecAsync({
+            db,
+            sql: sqlCleanup
+        });
+    }));
     // 1. exec sql-command in webworker
-    dbtableList0 = await dbExecAsync({
+    dbqueryList = await dbExecAsync({
         db: DB_MAIN,
         responseType: "list",
         sql: UI_EDITOR.getValue()
     });
+    // 1a. save query-result
+    await Promise.all(dbqueryList.map(async function (rowList, ii) {
+        let colList = rowList.shift().map(function (col, ii) {
+            return `value->>${ii} AS [${col}]`;
+        }).join(",");
+        await dbExecAsync({
+            bindList: {
+                tmp1: JSON.stringify(rowList)
+            },
+            db: DB_QUERY,
+            sql: (`
+BEGIN TRANSACTION;
+CREATE TABLE result_${String(ii).padStart(2, "0")} AS
+    SELECT
+        ${colList}
+    FROM json_each($tmp1);
+END TRANSACTION;
+            `)
+        });
+    }));
     // 2. ui-render sql-queries to html
-    dbtableList0 = dbtableList0.map(function (rowList0, ii) {
-        let colList = rowList0.shift();
-        return {
-            colList,
-            dbtableFullname: `query result ${ii + 1}`,
-            rowCount: rowList0.length,
-            rowList0
-        };
-    });
-    DB_QUERY.dbtableList0 = dbtableList0;
     await uiRenderDb();
 }
 
@@ -698,21 +745,6 @@ function rowListToCsv({
     return data;
 }
 
-function rowListToJson({
-    colList,
-    rowList
-}) {
-// this function will convert list-of-list <rowList> to list-of-object
-// with given <colList>
-    return JSON.stringify(rowList.map(function (row) {
-        let dict = {};
-        colList.forEach(function (col, ii) {
-            dict[col] = row[ii];
-        });
-        return dict;
-    }));
-}
-
 function stringHtmlSafe(str) {
 // this function will make <str> html-safe
 // https://stackoverflow.com/questions/7381974
@@ -768,17 +800,19 @@ async function uiRenderDb() {
     }));
     DB_DICT.forEach(function ({
         dbName,
+        isDbchart,
         isDbquery
     }) {
-        if (!isDbquery && !dbList.has(dbName)) {
+        if (!isDbchart && !isDbquery && !dbList.has(dbName)) {
             DB_DICT.delete(dbName);
         }
     });
     // DBTABLE_DICT - cleanup old uitable
     DBTABLE_DICT.forEach(function ({
+        isDbchart,
         isDbquery
     }, key) {
-        if (!isDbquery) {
+        if (!isDbchart && !isDbquery) {
             DBTABLE_DICT.delete(key);
         }
     });
@@ -789,24 +823,21 @@ async function uiRenderDb() {
         let baton;
         let {
             dbName,
+            isDbchart,
             isDbmain,
             isDbquery
         } = db;
         let dbtableList;
         let tmp;
         db.dbtableList = [];
-        dbtableList = (
-            db.isDbquery
-            ? db.dbtableList0
-            : noop(
-                await dbExecAsync({
-                    db,
-                    sql: (`
+        dbtableList = noop(
+            await dbExecAsync({
+                db,
+                sql: (`
 SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
-                    `)
-                })
-            )[0]
-        );
+                `)
+            })
+        )[0];
         if (!dbtableList) {
             return;
         }
@@ -827,78 +858,80 @@ SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
                 dbtableFullname,
                 dbtableName: `[${tbl_name}]`,
                 hashtag: `dbtable_${String(dbtableIi).padStart(2, "0")}`,
+                isDbchart,
                 isDbmain,
                 isDbquery,
                 rowCount,
                 rowList0,
+                sortCol: 0,
+                sortDir: "asc",
                 sql,
-                title: (
-                    isDbquery
-                    ? `${dbtableFullname}`
-                    : isDbmain
-                    ? `table ${dbtableFullname}`
-                    : `attached table ${dbtableFullname}`
-                )
+                title: `table ${dbtableFullname}`
             };
             DBTABLE_DICT.set(baton.hashtag, baton);
             return baton;
         });
-        if (!isDbquery) {
-            tmp = "";
-            dbtableList.forEach(function ({
-                dbtableName,
-                hashtag
-            }) {
-                tmp += (`
+        tmp = "";
+        dbtableList.forEach(function ({
+            dbtableName,
+            hashtag
+        }) {
+            tmp += (`
 SELECT '${hashtag}' AS hashtag;
 PRAGMA table_info(${dbtableName});
 SELECT COUNT(*) AS rowcount FROM ${dbtableName};
-                `);
-            });
-            tmp = await dbExecAsync({
-                db,
-                sql: tmp
-            });
-            tmp.forEach(function (rowList) {
-                let row0 = rowList[0];
-                if (!row0) {
-                    return;
+            `);
+        });
+        tmp = await dbExecAsync({
+            db,
+            sql: tmp
+        });
+        tmp.forEach(function (rowList) {
+            let row0 = rowList[0];
+            if (!row0) {
+                return;
+            }
+            [
+                "cid", "hashtag", "rowcount"
+            ].forEach(function (key) {
+                switch (row0.hasOwnProperty(key) && key) {
+                case "cid":
+                    baton.colList = [
+                        "rowid",
+                        rowList.map(function ({
+                            name
+                        }) {
+                            return name;
+                        })
+                    ].flat();
+                    break;
+                case "hashtag":
+                    baton = DBTABLE_DICT.get(row0.hashtag);
+                    break;
+                case "rowcount":
+                    baton.rowCount = row0.rowcount;
+                    break;
                 }
-                [
-                    "cid", "hashtag", "rowcount"
-                ].forEach(function (key) {
-                    switch (row0.hasOwnProperty(key) && key) {
-                    case "cid":
-                        baton.colList = [
-                            "rowid",
-                            rowList.map(function ({
-                                name
-                            }) {
-                                return name;
-                            })
-                        ].flat();
-                        break;
-                    case "hashtag":
-                        baton = DBTABLE_DICT.get(row0.hashtag);
-                        break;
-                    case "rowcount":
-                        baton.rowCount = row0.rowcount;
-                        break;
-                    }
-                });
             });
-        }
+        });
         db.dbtableList = dbtableList;
     }));
     // ui-render databases and tables to html
-    document.querySelector("#sqlqueryList1").innerHTML = "";
+    document.querySelector("#dbchartList1").innerHTML = "";
+    document.querySelector("#dbqueryList1").innerHTML = "";
     document.querySelector("#dbtableList1").innerHTML = "";
-    DB_DICT.forEach(function (db) {
-        db.dbtableList.forEach(function (baton) {
+    DB_DICT.forEach(function ({
+        dbtableList,
+        isDbchart,
+        isDbquery
+    }) {
+        dbtableList.forEach(function (baton) {
             // create uitable
             document.querySelector(
-                db.isDbquery
-                ? "#sqlqueryList1"
+                isDbchart
+                ? "#dbchartList1"
+                : isDbquery
+                ? "#dbqueryList1"
                 : "#dbtableList1"
             ).appendChild(uitableCreate(baton));
         });
@@ -908,31 +941,30 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
     DB_DICT.forEach(function ({
         dbName,
         dbtableList,
-        isDbmain,
+        isDbchart,
         isDbquery
     }) {
-        html += (
-            `<div class="tocTitle">`
-            + (
-                isDbquery
-                ? `sqlite query result`
-                : isDbmain
-                ? `database ${dbName}`
-                : `database ${dbName} (attached)`
-            )
-            + `</div>`
-        );
+        html += `<div class="tocTitle">` + (
+            isDbchart
+            ? "chart"
+            : isDbquery
+            ? `query result`
+            : `database ${dbName.slice(1, -1)}`
+        ) + `</div>`;
         dbtableList.forEach(function ({
             colList,
             dbtableFullname,
+            dbtableName,
             hashtag,
             rowCount
-        }) {
+        }, ii) {
             html += `<a class="tocElemA"`;
             html += ` data-hashtag="${hashtag}"`;
             html += ` href="#${hashtag}"`;
             html += (
-                isDbquery
+                isDbchart
+                ? ` data-dbtype="chart"`
+                : isDbquery
                 ? ` data-dbtype="query"`
                 : ` data-dbtype="table"`
             );
@@ -947,9 +979,15 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
                 }, undefined, 4))
                 + `"`
             );
-            html += `>`;
-            html += stringHtmlSafe(dbtableFullname);
-            html += `</a>\n`;
+            html += `>${ii + 1}. `;
+            html += (
+                isDbchart
+                ? "chart"
+                : isDbquery
+                ? "query"
+                : "table"
+            );
+            html += ` ${stringHtmlSafe(dbtableName.slice(1, -1))}</a>\n`;
         });
     });
     document.querySelector("#tocDbList1").innerHTML = html;
@@ -986,21 +1024,192 @@ async function uiTryCatch(func, ...argList) {
     }
 }
 
+async function uichartCreate(baton) {
+// this function will create xy-line-chart from given sqlite table <baton>
+    let chart;
+    let colorList;
+    let {
+        contentElem,
+        db,
+        dbtableName,
+        elemChart
+    } = baton;
+    let options;
+    options = await dbExecAsync({
+        db,
+        sql: (`
+SELECT
+        json_insert(options, '$.data', json(data)) AS data
+    FROM (SELECT options FROM ${dbtableName} LIMIT 1)
+    JOIN (
+        SELECT
+                json_group_array(data) AS data
+            FROM (
+                SELECT
+                    json_object(
+                        'label', label,
+                        'data', json_group_array(json_array(xx, yy))
+                    ) AS data
+                FROM (SELECT * FROM ${dbtableName} ORDER BY label, xx, yy)
+                WHERE
+                    label IS NOT NULL
+                GROUP BY label
+            )
+    )
+;
+        `)
+    });
+    contentElem.querySelector(".uitable").style.display = "none";
+    elemChart.style.display = "block";
+    options = JSON.parse(options[0][0].data || []);
+    if (options.title) {
+        contentElem.querySelector(".contentElemTitle").textContent += (
+            " - " + options.title
+        );
+    }
+    options = {
+        data: {
+            datasets: options.data.map(function ({
+                data,
+                label
+            }, ii) {
+                return {
+                    borderWidth: 1.5,
+                    data: data.map(function ([
+                        x, y
+                    ]) {
+                        return {
+                            x,
+                            y
+                        };
+                    }),
+                    fill: false,
+                    label: `${ii + 1}. ${label}`,
+                    lineTension: 0,
+                    pointRadius: 0.5,
+                    showLine: true
+                };
+            })
+        },
+        options: {
+            animation: {
+                duration: 0
+            },
+            legend: {
+                display: false
+            },
+            maintainAspectRatio: false,
+            plugins: {
+                zoom: {
+                    zoom: {
+                        drag: {
+                            animationDuration: 500,
+                            backgroundColor: "rgba(127,127,127,0.5)"
+                        },
+                        enabled: true,
+                        mode: "xy"
+                    }
+                }
+            },
+            scales: JSON.parse(JSON.stringify({
+                xAxes: [
+                    {
+                        scaleLabel: {
+                            display: true,
+                            labelString: options.xLabel
+                        },
+                        type: options.xAxesType || undefined
+                    }
+                ],
+                yAxes: [
+                    {
+                        scaleLabel: {
+                            display: true,
+                            labelString: options.yLabel
+                        },
+                        type: options.yAxesType || undefined
+                    }
+                ]
+            })),
+            tooltips: {
+                intersect: false,
+                mode: "nearest"
+            }
+        },
+        type: "scatter"
+    };
+    // init colorList - brewer.Paired12
+    colorList = [
+        "#a6cee3", "#1f78b4", "#b2df8a", "#33a02c",
+        "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00",
+        "#cab2d6", "#6a3d9a", "#d2b48c", "#b15928"
+    ].map(function (color, ii) {
+        let whiteness = (
+            ii % 2 === 0
+            ? 0.875
+            : 1
+        );
+        return (
+            "rgb("
+            + Math.round(whiteness * parseInt(color.slice(1, 3), 16)) + ","
+            + Math.round(whiteness * parseInt(color.slice(3, 5), 16)) + ","
+            + Math.round(whiteness * parseInt(color.slice(5, 7), 16))
+            + ")"
+        );
+    });
+    options.data.datasets.forEach(function (dataset, ii) {
+        let color = colorList[ii % colorList.length];
+        let colorWithAlpha = color.replace("rgb", "rgba").replace(")", ",0.5)");
+        dataset.backgroundColor = colorWithAlpha;
+        dataset.borderColor = color;
+        dataset.pointBackgroundColor = colorWithAlpha;
+        dataset.pointBorderColor = color;
+    });
+    chart = new Chart(elemChart.querySelector("canvas"), options);
+    elemChart.chart = chart;
+    // init zoom-reset
+    chart.resetZoom();
+    // init .uichartLegend
+    elemChart.querySelector(
+        ".uichartLegend"
+    ).innerHTML = chart.data.datasets.map(function ({
+        label,
+        pointBorderColor
+    }, ii) {
+        return (`
+<a
+    class="uichartAction uichartLegendElem"
+    data-action="uichartDatasetHideOrShow"
+    data-hidden="0"
+    data-ii="${ii}"
+    title="${stringHtmlSafe(label)}"
+>
+<span
+    class="uichartLegendElemColor"
+    style="background: ${pointBorderColor};"
+>&nbsp;</span>
+<span>${label}</span>
+</a>
+        `);
+    }).join("");
+    elemChart.querySelector(".uichartNav").onclick = onDbAction;
+}
+
 async function uitableAjax(baton, {
     rowList,
     type
 }) {
     let {
+        colList,
         contentElem,
         db,
+        dbtableName,
         elemInfo,
         elemLoading,
         elemScroller,
         elemTable,
-        isDbquery,
+        isDbchart,
         rowCount,
-        rowList0,
-        rowOffset,
         sortCol,
         sortDir
     } = baton;
@@ -1016,6 +1225,10 @@ async function uitableAjax(baton, {
     // uitableScroll
     case "scroll":
     case "uitableInit":
+        if (type === "uitableInit" && isDbchart) {
+            await uiTryCatch(uichartCreate.bind(undefined, baton));
+            return;
+        }
         viewRowBeg = Math.max(0, Math.round(
             rowCount
             * elemScroller.scrollTop
@@ -1025,20 +1238,20 @@ async function uitableAjax(baton, {
         // update table-view info
         elemInfo.textContent = (
             "showing "
-            + new Intl.NumberFormat("en-US").format(viewRowBeg + 1)
+            + new Intl.NumberFormat().format(viewRowBeg + 1)
             + " to "
-            + new Intl.NumberFormat("en-US").format(viewRowEnd)
+            + new Intl.NumberFormat().format(viewRowEnd)
             + " of "
-            + new Intl.NumberFormat("en-US").format(rowCount)
+            + new Intl.NumberFormat().format(rowCount)
             + " entries"
         );
         // skip expensive table-redraw, if scroll-point is within boundaries
         if (
             contentElem.dataset.init !== "0"
-            && rowOffset <= Math.max(0, viewRowBeg - 1 * UI_VIEW_SIZE)
+            && baton.rowOffset <= Math.max(0, viewRowBeg - 1 * UI_VIEW_SIZE)
             && (
                 Math.min(rowCount, viewRowEnd + 1 * UI_VIEW_SIZE)
-                <= rowOffset + UI_PAGE_SIZE
+                <= baton.rowOffset + UI_PAGE_SIZE
             )
         ) {
             return;
@@ -1055,52 +1268,25 @@ async function uitableAjax(baton, {
         // uitableLoading - show
         uiFadeIn(elemLoading);
         baton.modeAjax = 1;
-        if (isDbquery) {
-            if (sortDir) {
-                rowList0.sort(function (aa, bb) {
-                    aa = aa[sortCol];
-                    bb = bb[sortCol];
-                    return (
-                        aa < bb
-                        ? -1
-                        : aa > bb
-                        ? 1
-                        : 0
-                    );
-                });
-                if (sortDir === "desc") {
-                    rowList0.reverse();
-                }
-            }
-            rowList = rowList0.slice(
-                rowOffset,
-                rowOffset + UI_PAGE_SIZE
-            );
-        } else {
-            // uitable - paginate
-            rowList = await dbExecAsync({
-                db,
-                responseType: "list",
-                sql: String(`
+        // uitable - paginate
+        rowList = await dbExecAsync({
+            db,
+            responseType: "list",
+            sql: (`
 SELECT
         rowid,
         *
-    FROM ${baton.dbtableName}
-    ORDER BY
+    FROM ${dbtableName}
+    ORDER BY [${colList[sortCol]}] ${sortDir}
     LIMIT ${Number(UI_PAGE_SIZE)}
-    OFFSET ${Number(rowOffset)};
-                `).replace("ORDER BY", (
-                    sortDir
-                    ? `ORDER BY [${baton.colList[sortCol]}] ${sortDir}`
-                    : ""
-                ))
-            });
-            rowList = (
-                rowList[0]
-                ? rowList[0].slice(1)
-                : []
-            );
-        }
+    OFFSET ${Number(baton.rowOffset)};
+            `)
+        });
+        rowList = (
+            rowList[0]
+            ? rowList[0].slice(1)
+            : []
+        );
         // recurse - draw
         await uitableAjax(baton, {
             rowList,
@@ -1118,7 +1304,7 @@ SELECT
     // uitableDraw
     // Position the table in the virtual scroller
     elemTable.style.top = Math.max(0, Math.round(
-        elemScroller.scrollHeight * rowOffset / (baton.rowCount + 1)
+        elemScroller.scrollHeight * baton.rowOffset / (baton.rowCount + 1)
     )) + "px";
     // Insert the required TR nodes into the table for display
     jsonHtmlSafe(rowList).forEach(function (row) {
@@ -1152,11 +1338,6 @@ SELECT
 function uitableCreate(baton) {
 // this function will create a dom-datatable-view of sqlite queries and tables
     let contentElem;
-    let elemInfo;
-    let elemLoading;
-    let elemScroller;
-    let elemTable;
-    let elemTitle;
     // All uitables are wrapped in a div
     // Generate the node required for the processing node
     // The HTML structure that we want to generate in this function is:
@@ -1173,46 +1354,81 @@ function uitableCreate(baton) {
         (`
 <div class="contentElem" data-init="0" id="${baton.hashtag}">
 <div class="contentElemTitle title">${stringHtmlSafe(baton.title)}</div>
-<div class="uitablePageInfo">showing 0 to 0 of 0 entries</div>
+<div class="uitableLoading">loading</div>
 <div
-    class="uitableScroller"
-    style="height: ${(UI_VIEW_SIZE + 2) * UI_ROW_HEIGHT}px;"
-    tabindex="-1"
+    class="uichart"
+    style="
+    display: none;
+    height: ${UI_CHART_HEIGHT}px;
+    padding-left: ${UI_CHART_LEGEND_WIDTH}px;
+    "
 >
     <div
-        class="uitableScrollerDummy"
-        style="height: ${baton.rowCount * UI_ROW_HEIGHT}px;"
-    ></div>
-    <table class="uitable">
-        <thead>
-            <tr>
+        class="uichartNav"
+        style="
+        height: ${UI_CHART_HEIGHT}px;
+        margin-left: -${UI_CHART_LEGEND_WIDTH}px;
+        position: absolute;
+        width: ${UI_CHART_LEGEND_WIDTH}px;
+        "
+    >
+        <button
+            class="uichartAction"
+            data-action="uichartZoomReset"
+        >reset zoom</button>
+        <button
+            class="uichartAction"
+            data-action="uichartDatasetHideAll"
+        >hide all</button>
+        <button
+            class="uichartAction"
+            data-action="uichartDatasetShowAll"
+        >show all</button>
+        <div
+            class="uichartLegend"
+            style="height: ${UI_CHART_HEIGHT - 64}px;"
+        ></div>
+    </div>
+    <canvas class="uichartCanvas"></canvas>
+</div>
+<div class="uitable">
+    <div class="uitableInfo">showing 0 to 0 of 0 entries</div>
+    <div
+        class="uitableScroller"
+        style="height: ${(UI_VIEW_SIZE + 2) * UI_ROW_HEIGHT}px;"
+        tabindex="-1"
+    >
+        <div
+            class="uitableScrollerDummy"
+            style="height: ${baton.rowCount * UI_ROW_HEIGHT}px;"
+        ></div>
+        <table class="uitableTable">
+            <thead>
+                <tr>
         `)
-        + jsonHtmlSafe(baton.colList).map(function (col) {
-            return `<th title="${col}">${col}</th>`;
+        + jsonHtmlSafe(baton.colList).map(function (col, ii) {
+            return (
+                ii === 0
+                ? `<th title="${col}" data-sort="asc">${col}</th>`
+                : `<th title="${col}">${col}</th>`
+            );
         }).join("")
         + (`
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-            <td colspan="${baton.colList.length}">
-            No data available in table
-            </td>
-            </tr>
-        </tbody>
-    </table>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                <td colspan="${baton.colList.length}">
+                No data available in table
+                </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </div>
-<div class="uitableLoading">loading</div>
 </div>
         `)
     ).firstElementChild;
-    [
-        elemTitle,
-        elemInfo,
-        elemScroller,
-        elemLoading
-    ] = contentElem.children;
-    elemTable = elemScroller.children[1];
     // init event-handling - sorting
     contentElem.querySelector(
         "thead tr"
@@ -1230,12 +1446,12 @@ function uitableCreate(baton) {
     });
     Object.assign(baton, {
         contentElem,
-        elemInfo,
-        elemLoading,
-        elemScroller,
-        elemTable,
+        elemChart: contentElem.querySelector(".uichart"),
+        elemInfo: contentElem.querySelector(".uitableInfo"),
+        elemLoading: contentElem.querySelector(".uitableLoading"),
+        elemScroller: contentElem.querySelector(".uitableScroller"),
+        elemTable: contentElem.querySelector(".uitableTable"),
         modeAjax: 0,
-        modeInit: 0,
         rowOffset: 0
     });
     return contentElem;

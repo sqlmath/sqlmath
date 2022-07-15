@@ -791,6 +791,10 @@ require("assert")(require("./package.json").name !== "sqlmath");
 shSyncSqlmath() {(set -e
 # this function will sync files with ~/Documents/sqlmath/
     local FILE
+    if [ -f "$HOME/Documents/devenv/lnsync.sh" ]
+    then
+        sh ~/Documents/devenv/lnsync.sh
+    fi
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         shRawLibFetch asset_sqlmath_external_rollup.js
