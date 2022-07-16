@@ -821,7 +821,7 @@ shSyncSqlmath() {(set -e
             sqlite3_shell.c \
             sqlmath.mjs \
             sqlmath_base.c \
-            sqlmath_browser.c \
+            sqlmath_browser.js \
             sqlmath_jenks.c \
             sqlmath_wrapper_wasm.js
         do
