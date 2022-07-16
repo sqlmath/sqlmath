@@ -1,0 +1,11 @@
+*
+.*
+!.npmignore
+!CHANGELOG.md
+!LICENSE
+!README.md
+
+!_binary_*
+!jslint.mjs
+!sqlmath.mjs
+!sqlmath_custom.mjs
