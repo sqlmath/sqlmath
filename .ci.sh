@@ -813,15 +813,15 @@ shSyncSqlmath() {(set -e
     then
         for FILE in \
             .ci.sh \
+            asset_sqlmath_external_rollup.js \
             indent.exe \
             jslint_ci.sh \
-            spa.sqlchart.html \
-            spa.sqlchart.js \
             sqlite3.c \
             sqlite3_ext.c \
             sqlite3_shell.c \
             sqlmath.mjs \
             sqlmath_base.c \
+            sqlmath_browser.c \
             sqlmath_jenks.c \
             sqlmath_wrapper_wasm.js
         do
