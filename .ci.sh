@@ -814,6 +814,7 @@ shSyncSqlmath() {(set -e
         for FILE in \
             .ci.sh \
             asset_sqlmath_external_rollup.js \
+            index.html \
             indent.exe \
             jslint_ci.sh \
             sqlite3.c \
@@ -821,7 +822,7 @@ shSyncSqlmath() {(set -e
             sqlite3_shell.c \
             sqlmath.mjs \
             sqlmath_base.c \
-            sqlmath_browser.js \
+            sqlmath_browser.mjs \
             sqlmath_jenks.c \
             sqlmath_wrapper_wasm.js
         do
