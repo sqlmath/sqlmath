@@ -52,10 +52,10 @@ async function dbFileAttachAsync({
     let dbAttached;
     let dbName;
     DB_II += 1;
-    dbName = `[attached_${String(DB_II).padStart(2, "0")}]`;
+    dbName = `attached_${String(DB_II).padStart(2, "0")}`;
     dbAttached = await dbOpenAsync({
         dbData,
-        filename: `file:${dbName.slice(1, -1)}?mode=memory&cache=shared`
+        filename: `file:${dbName}?mode=memory&cache=shared`
     });
     dbAttached.dbName = dbName;
     await dbExecAsync({
@@ -123,41 +123,40 @@ function fileSave({
 
 async function init() {
     await sqlmathWebworkerInit({});
-    // init DB_CHART
-    DB_CHART = Object.assign(noop(
-        await dbOpenAsync({
-            filename: "file:dbchart?mode=memory&cache=shared"
-        })
-    ), {
-        dbName: "[chart]",
+    // init DB_XXX
+    [
+        DB_CHART, DB_QUERY, DB_MAIN
+    ] = await Promise.all([{
+        dbName: "chart",
+        filename: "file:dbchart?mode=memory&cache=shared",
         isDbchart: true
-    });
-    DB_DICT.set("[chart]", DB_CHART);
-    // init DB_QUERY
-    DB_QUERY = Object.assign(noop(
-        await dbOpenAsync({
-            filename: ":memory:"
-        })
-    ), {
-        dbName: "[query]",
+    }, {
+        dbName: "query",
+        filename: "file:dbquery?mode=memory&cache=shared",
         isDbquery: true
-    });
-    DB_DICT.set("[query]", DB_QUERY);
-    // init DB_MAIN
-    DB_MAIN = Object.assign(noop(
-        await dbOpenAsync({
-            filename: ":memory:"
-        })
-    ), {
-        dbName: "[main]",
+    }, {
+        dbName: "main",
+        filename: ":memory:",
         isDbmain: true
-    });
-    DB_DICT.set("[main]", DB_MAIN);
-    // attach DB_CHART
-    await dbExecAsync({
-        db: DB_MAIN,
-        sql: `ATTACH DATABASE [${DB_CHART.filename}] AS chart;`
-    });
+    }].map(async function (db) {
+        db = Object.assign(noop(
+            await dbOpenAsync({
+                filename: db.filename
+            })
+        ), db);
+        // save db
+        DB_DICT.set(db.dbName, db);
+        return db;
+    }));
+    // attach db
+    await Promise.all([
+        DB_CHART, DB_QUERY
+    ].map(async function (db) {
+        await dbExecAsync({
+            db: DB_MAIN,
+            sql: `ATTACH DATABASE [${db.filename}] AS ${db.dbName};`
+        });
+    }));
     // init UI_FILE_OPEN
     UI_FILE_OPEN.type = "file";
     // init sqlEditor
@@ -231,7 +230,6 @@ function onContextmenu(evt) {
         clientX,
         clientY,
         ctrlKey,
-        datasetCm,
         metaKey,
         shiftKey,
         target,
@@ -256,7 +254,7 @@ function onContextmenu(evt) {
     evt.preventDefault();
     evt.stopPropagation();
     // init target
-    target = target.closest(".tocElemA[data-dbtype]");
+    target = target.closest(`.tocElemA[data-dbtype], tr[data-dbtype="row"]`);
     // contextmenu - hide
     if (!target) {
         uiFadeOut(UI_CONTEXTMENU);
@@ -265,8 +263,8 @@ function onContextmenu(evt) {
     // init UI_CONTEXTMENU_BATON
     UI_CONTEXTMENU_BATON = DBTABLE_DICT.get(target.dataset.hashtag) || {};
     baton = UI_CONTEXTMENU_BATON;
+    baton.rowid = target.dataset.rowid;
     // show / hide .contextmenuElem
-    datasetCm = target.dataset;
     UI_CONTEXTMENU.querySelectorAll(
         ".contextmenuDivider, .contextmenuElem"
     ).forEach(function ({
@@ -274,15 +272,23 @@ function onContextmenu(evt) {
         style
     }) {
         style.display = "none";
-        if (
-            dataset.dbtype === "all"
-            || (dataset.dbtype && dataset.dbtype === datasetCm.dbtype)
-        ) {
-            if (baton.isDbmain && dataset.action === "dbDetach") {
+        if (dataset.dbtype !== target.dataset.dbtype) {
+            return;
+        }
+        switch (dataset.action) {
+        case "dbDetach":
+            if (baton.isDbmain) {
                 return;
             }
-            style.display = "block";
+            break;
+        case "dbrowDelete":
+        case "dbrowUpdate":
+            if (target.dataset.rowid === undefined) {
+                return;
+            }
+            break;
         }
+        style.display = "block";
     });
     // contextmenu - show
     UI_CONTEXTMENU.children[0].innerHTML = (
@@ -325,6 +331,8 @@ async function onDbAction(evt) {
     case "dbcolumnAdd":
     case "dbcolumnDrop":
     case "dbcolumnRename":
+    case "dbrowInsert":
+    case "dbrowUpdate":
     case "dbtableRename":
         title = target.textContent.trim().replace(/\s+/g, " ");
         UI_CRUD.querySelector(".modalTitle").innerHTML = (
@@ -360,7 +368,9 @@ async function onDbAction(evt) {
 </tr>
             `)
         );
-        UI_CRUD.querySelector("textarea").value = String(`
+        UI_CRUD.querySelector("textarea").value = String(
+            `
+
 -- column - add
 ALTER TABLE
     ${baton.dbtableFullname}
@@ -381,13 +391,34 @@ RENAME
 TO
     "{{new_column}}";
 
+-- row - insert
+INSERT INTO ${baton.dbtableFullname} (`
+            + JSON.stringify(baton.colList.slice(1), undefined, 4).slice(1, -1)
+            + `) VALUES (\n`
+            + `${"    NULL,\n".repeat(baton.colList.length - 2)}    NULL`
+            + `
+);
+
+-- row - update
+UPDATE
+    ${baton.dbtableFullname}
+SET
+`
+            + baton.colList.slice(1).map(function (col) {
+                return `    "${col}" = NULL`;
+            }).join(",\n")
+            + `
+WHERE
+    rowid = ${baton.rowid};
+
 -- table - rename
 ALTER TABLE
     ${baton.dbtableFullname}
 RENAME TO
     "{{new_table}}";
-        `).trim().split("\n\n").filter(function (sql) {
-            return sql.indexOf(title) >= 0;
+            `
+        ).trim().split("\n\n").filter(function (sql) {
+            return sql.indexOf(title) === 3;
         })[0] + "\n";
         switch (action) {
         case "dbcolumnAdd":
@@ -513,6 +544,21 @@ RENAME TO
         });
         return;
     case "dbRefresh":
+        await uiRenderDb();
+        return;
+    case "dbrowDelete":
+        if (!window.confirm(
+            `are you sure you want to delete row with rowid = ${baton.rowid}`
+            + ` in table ${baton.dbtableFullname} ?`
+        )) {
+            return;
+        }
+        await dbExecAsync({
+            db: baton.db,
+            sql: (`
+DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
+            `)
+        });
         await uiRenderDb();
         return;
     case "dbscriptSave":
@@ -796,7 +842,7 @@ async function uiRenderDb() {
     dbList = new Set(dbList[0].map(function ({
         name
     }) {
-        return `[${name}]`;
+        return `${name}`;
     }));
     DB_DICT.forEach(function ({
         dbName,
@@ -949,7 +995,7 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
             ? "chart"
             : isDbquery
             ? `query result`
-            : `database ${dbName.slice(1, -1)}`
+            : `database ${dbName}`
         ) + `</div>`;
         dbtableList.forEach(function ({
             colList,
@@ -1208,6 +1254,7 @@ async function uitableAjax(baton, {
         elemLoading,
         elemScroller,
         elemTable,
+        hashtag,
         isDbchart,
         rowCount,
         sortCol,
@@ -1226,7 +1273,12 @@ async function uitableAjax(baton, {
     case "scroll":
     case "uitableInit":
         if (type === "uitableInit" && isDbchart) {
-            await uiTryCatch(uichartCreate.bind(undefined, baton));
+            uiFadeIn(elemLoading);
+            await uiTryCatch(uichartCreate, baton);
+            await new Promise(function (resolve) {
+                setTimeout(resolve, 500);
+            });
+            uiFadeOut(elemLoading);
             return;
         }
         viewRowBeg = Math.max(0, Math.round(
@@ -1243,7 +1295,7 @@ async function uitableAjax(baton, {
             + new Intl.NumberFormat().format(viewRowEnd)
             + " of "
             + new Intl.NumberFormat().format(rowCount)
-            + " entries"
+            + " rows"
         );
         // skip expensive table-redraw, if scroll-point is within boundaries
         if (
@@ -1308,7 +1360,9 @@ SELECT
     )) + "px";
     // Insert the required TR nodes into the table for display
     jsonHtmlSafe(rowList).forEach(function (row) {
-        html += "<tr>";
+        html += (`
+<tr data-dbtype="row" data-hashtag="${hashtag}" data-rowid="${row[0]}">
+        `);
         row.forEach(function (val) {
             html += "<td>" + (val ?? "") + "</td>";
         });
@@ -1417,7 +1471,7 @@ function uitableCreate(baton) {
                 </tr>
             </thead>
             <tbody>
-                <tr>
+                <tr data-dbtype="row" data-hashtag="${baton.hashtag}">
                 <td colspan="${baton.colList.length}">
                 No data available in table
                 </td>
@@ -1429,18 +1483,18 @@ function uitableCreate(baton) {
 </div>
         `)
     ).firstElementChild;
+    // init event-handling - crud
+    contentElem.querySelector(
+        "tbody"
+    ).oncontextmenu = onContextmenu;
     // init event-handling - sorting
     contentElem.querySelector(
         "thead tr"
-    ).addEventListener("click", function (evt) {
-        uitableSort(baton, evt);
-    });
+    ).onclick = uitableSort.bind(undefined, baton);
     // init event-handling - scrolling
     contentElem.querySelector(
         ".uitableScroller"
-    ).addEventListener("scroll", function (evt) {
-        uitableAjax(baton, evt);
-    });
+    ).onscroll = uitableAjax.bind(undefined, baton);
     contentElem.addEventListener("uitableInit", function (evt) {
         uitableAjax(baton, evt);
     });
