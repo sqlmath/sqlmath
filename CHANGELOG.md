@@ -9,6 +9,7 @@
 - demo - add github-fork-banner
 
 # v2022.6.30
+- add dbrow-crud-operations dbrowDelete, dbrowInsert, dbrowUpdate
 - chart - add charting functionality using chart.js
 - add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop
 - demo - add web-demo in README.md
