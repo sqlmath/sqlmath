@@ -6,14 +6,19 @@
 - none
 
 # v2022.7.1-beta
-- demo - add github-fork-banner
-
-# v2022.6.30
+- remove unused files
+    assets.bootstrap-v3.4.1.datatables-v1.10.21.chartjs-v2.9.4.codemirror-5.58.3.rollup.css
+    assets.bootstrap-v3.4.1.datatables-v1.10.21.chartjs-v2.9.4.codemirror-5.58.3.rollup.js
+    spa.sqlchart.html
+    spa.sqlchart.js
 - add dbrow-crud-operations dbrowDelete, dbrowInsert, dbrowUpdate
 - chart - add charting functionality using chart.js
 - add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop
 - demo - add web-demo in README.md
 - webapp - add ui-loading when running onDbAction(), onDbExec()
+- demo - add github-fork-banner
+
+# v2022.6.30
 - add dbtable-crud-operations dbquerySaveCsv, dbquerySaveJson, dbtableDrop, dbtableSaveCsv, dbtableSaveJson
 - add contextmenu and dbtable-crud-operation dbtableDrop
 - add database-crud-operations
