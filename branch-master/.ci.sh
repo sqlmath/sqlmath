@@ -791,6 +791,10 @@ require("assert")(require("./package.json").name !== "sqlmath");
 shSyncSqlmath() {(set -e
 # this function will sync files with ~/Documents/sqlmath/
     local FILE
+    if [ -f "$HOME/Documents/devenv/lnsync.sh" ]
+    then
+        sh ~/Documents/devenv/lnsync.sh
+    fi
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         shRawLibFetch asset_sqlmath_external_rollup.js
@@ -809,15 +813,16 @@ shSyncSqlmath() {(set -e
     then
         for FILE in \
             .ci.sh \
+            asset_sqlmath_external_rollup.js \
             indent.exe \
+            index.html \
             jslint_ci.sh \
-            spa.sqlchart.html \
-            spa.sqlchart.js \
             sqlite3.c \
             sqlite3_ext.c \
             sqlite3_shell.c \
             sqlmath.mjs \
             sqlmath_base.c \
+            sqlmath_browser.mjs \
             sqlmath_jenks.c \
             sqlmath_wrapper_wasm.js
         do

@@ -138,16 +138,16 @@ body {
   <td class="coverageHigh">
       <a href="index.html">. / </a>sqlmath.mjs<br>
     <div class="percentbar">
-      <div style="width: 90.15%;"></div>
+      <div style="width: 91.22%;"></div>
     </div>
   </td>
   <td style="text-align: right;">
-     90.15 %<br>
-    852 / 945
+     91.22 %<br>
+    852 / 934
   </td>
   <td style="text-align: right;">
     <br>
-    93 / 945
+    82 / 934
   </td>
   </tr>
 </tbody>
@@ -239,7 +239,7 @@ body {
 <pre><span class="lineno"><a href="#line_81" id="line_81">   81.</a></span><span class="count        ">      1</span><span>        return argv[0];</span></pre>
 <pre><span class="lineno"><a href="#line_82" id="line_82">   82.</a></span><span class="count        ">      1</span><span>    }</span></pre>
 <pre><span class="lineno"><a href="#line_83" id="line_83">   83.</a></span><span class="count        ">      1</span><span>    debug(); // Coverage-hack.</span></pre>
-<pre><span class="lineno"><a href="#line_84" id="line_84">   84.</a></span><span class="count        ">      1</span><span>    __consoleError = console.error;</span></pre>
+<pre><span class="lineno"><a href="#line_84" id="line_84">   84.</a></span><span class="count        ">      1</span><span>    __consoleError = console.error; //jslint-ignore-line</span></pre>
 <pre><span class="lineno"><a href="#line_85" id="line_85">   85.</a></span><span class="count        ">      1</span><span>    return debug;</span></pre>
 <pre><span class="lineno"><a href="#line_86" id="line_86">   86.</a></span><span class="count        ">      1</span><span>}());</span></pre>
 <pre><span class="lineno"><a href="#line_87" id="line_87">   87.</a></span><span class="count        ">      1</span><span>let sqlMessageDict = {}; // dict of web-worker-callbacks</span></pre>
@@ -1045,62 +1045,51 @@ body {
 <pre><span class="lineno"><a href="#line_887" id="line_887">  887.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    }) {</span></pre>
 <pre><span class="lineno"><a href="#line_888" id="line_888">  888.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        sqlMessageDict[data.id](data);</span></pre>
 <pre><span class="lineno"><a href="#line_889" id="line_889">  889.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    };</span></pre>
-<pre><span class="lineno"><a href="#line_890" id="line_890">  890.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    /*</span></pre>
-<pre><span class="lineno"><a href="#line_891" id="line_891">  891.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    let db = await dbOpenAsync({ //jslint-quiet</span></pre>
-<pre><span class="lineno"><a href="#line_892" id="line_892">  892.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        filename: ":memory:"</span></pre>
-<pre><span class="lineno"><a href="#line_893" id="line_893">  893.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    });</span></pre>
-<pre><span class="lineno"><a href="#line_894" id="line_894">  894.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    debugInline(</span></pre>
-<pre><span class="lineno"><a href="#line_895" id="line_895">  895.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        await dbExecAsync({</span></pre>
-<pre><span class="lineno"><a href="#line_896" id="line_896">  896.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            db,</span></pre>
-<pre><span class="lineno"><a href="#line_897" id="line_897">  897.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">            sql: "aSELECT 1234"</span></pre>
-<pre><span class="lineno"><a href="#line_898" id="line_898">  898.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">        })</span></pre>
-<pre><span class="lineno"><a href="#line_899" id="line_899">  899.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    );</span></pre>
-<pre><span class="lineno"><a href="#line_900" id="line_900">  900.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">    */</span></pre>
-<pre><span class="lineno"><a href="#line_901" id="line_901">  901.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">}</span></pre>
-<pre><span class="lineno"><a href="#line_902" id="line_902">  902.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_903" id="line_903">  903.</a></span><span class="count        ">      1</span><span>await sqlmathInit({});</span></pre>
-<pre><span class="lineno"><a href="#line_904" id="line_904">  904.</a></span><span class="count        ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_905" id="line_905">  905.</a></span><span class="count        ">      1</span><span>export {</span></pre>
-<pre><span class="lineno"><a href="#line_906" id="line_906">  906.</a></span><span class="count        ">      1</span><span>    SQLITE_MAX_LENGTH2,</span></pre>
-<pre><span class="lineno"><a href="#line_907" id="line_907">  907.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_AUTOPROXY,</span></pre>
-<pre><span class="lineno"><a href="#line_908" id="line_908">  908.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_CREATE,</span></pre>
-<pre><span class="lineno"><a href="#line_909" id="line_909">  909.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_DELETEONCLOSE,</span></pre>
-<pre><span class="lineno"><a href="#line_910" id="line_910">  910.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_EXCLUSIVE,</span></pre>
-<pre><span class="lineno"><a href="#line_911" id="line_911">  911.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_FULLMUTEX,</span></pre>
-<pre><span class="lineno"><a href="#line_912" id="line_912">  912.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MAIN_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_913" id="line_913">  913.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MAIN_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_914" id="line_914">  914.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MEMORY,</span></pre>
-<pre><span class="lineno"><a href="#line_915" id="line_915">  915.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_NOFOLLOW,</span></pre>
-<pre><span class="lineno"><a href="#line_916" id="line_916">  916.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_NOMUTEX,</span></pre>
-<pre><span class="lineno"><a href="#line_917" id="line_917">  917.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_PRIVATECACHE,</span></pre>
-<pre><span class="lineno"><a href="#line_918" id="line_918">  918.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_READONLY,</span></pre>
-<pre><span class="lineno"><a href="#line_919" id="line_919">  919.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_READWRITE,</span></pre>
-<pre><span class="lineno"><a href="#line_920" id="line_920">  920.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SHAREDCACHE,</span></pre>
-<pre><span class="lineno"><a href="#line_921" id="line_921">  921.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SUBJOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_922" id="line_922">  922.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SUPER_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_923" id="line_923">  923.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TEMP_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_924" id="line_924">  924.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TEMP_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_925" id="line_925">  925.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TRANSIENT_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_926" id="line_926">  926.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_URI,</span></pre>
-<pre><span class="lineno"><a href="#line_927" id="line_927">  927.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_WAL,</span></pre>
-<pre><span class="lineno"><a href="#line_928" id="line_928">  928.</a></span><span class="count        ">      1</span><span>    assertJsonEqual,</span></pre>
-<pre><span class="lineno"><a href="#line_929" id="line_929">  929.</a></span><span class="count        ">      1</span><span>    assertNumericalEqual,</span></pre>
-<pre><span class="lineno"><a href="#line_930" id="line_930">  930.</a></span><span class="count        ">      1</span><span>    assertOrThrow,</span></pre>
-<pre><span class="lineno"><a href="#line_931" id="line_931">  931.</a></span><span class="count        ">      1</span><span>    dbCloseAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_932" id="line_932">  932.</a></span><span class="count        ">      1</span><span>    dbExecAndReturnLastBlobAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_933" id="line_933">  933.</a></span><span class="count        ">      1</span><span>    dbExecAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_934" id="line_934">  934.</a></span><span class="count        ">      1</span><span>    dbFileExportAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_935" id="line_935">  935.</a></span><span class="count        ">      1</span><span>    dbFileImportAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_936" id="line_936">  936.</a></span><span class="count        ">      1</span><span>    dbNoopAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_937" id="line_937">  937.</a></span><span class="count        ">      1</span><span>    dbOpenAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_938" id="line_938">  938.</a></span><span class="count        ">      1</span><span>    debugInline,</span></pre>
-<pre><span class="lineno"><a href="#line_939" id="line_939">  939.</a></span><span class="count        ">      1</span><span>    jsbatonValueString,</span></pre>
-<pre><span class="lineno"><a href="#line_940" id="line_940">  940.</a></span><span class="count        ">      1</span><span>    noop,</span></pre>
-<pre><span class="lineno"><a href="#line_941" id="line_941">  941.</a></span><span class="count        ">      1</span><span>    objectDeepCopyWithKeysSorted,</span></pre>
-<pre><span class="lineno"><a href="#line_942" id="line_942">  942.</a></span><span class="count        ">      1</span><span>    sqlmathInit,</span></pre>
-<pre><span class="lineno"><a href="#line_943" id="line_943">  943.</a></span><span class="count        ">      1</span><span>    sqlmathWebworkerInit</span></pre>
-<pre><span class="lineno"><a href="#line_944" id="line_944">  944.</a></span><span class="count        ">      1</span><span>};</span></pre>
-<pre><span class="lineno"><a href="#line_945" id="line_945">  945.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_890" id="line_890">  890.</a></span><span class="count        uncovered">     -0</span><span></span><span class="uncovered">}</span></pre>
+<pre><span class="lineno"><a href="#line_891" id="line_891">  891.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_892" id="line_892">  892.</a></span><span class="count        ">      1</span><span>await sqlmathInit({});</span></pre>
+<pre><span class="lineno"><a href="#line_893" id="line_893">  893.</a></span><span class="count        ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_894" id="line_894">  894.</a></span><span class="count        ">      1</span><span>export {</span></pre>
+<pre><span class="lineno"><a href="#line_895" id="line_895">  895.</a></span><span class="count        ">      1</span><span>    SQLITE_MAX_LENGTH2,</span></pre>
+<pre><span class="lineno"><a href="#line_896" id="line_896">  896.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_AUTOPROXY,</span></pre>
+<pre><span class="lineno"><a href="#line_897" id="line_897">  897.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_CREATE,</span></pre>
+<pre><span class="lineno"><a href="#line_898" id="line_898">  898.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_DELETEONCLOSE,</span></pre>
+<pre><span class="lineno"><a href="#line_899" id="line_899">  899.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_EXCLUSIVE,</span></pre>
+<pre><span class="lineno"><a href="#line_900" id="line_900">  900.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_FULLMUTEX,</span></pre>
+<pre><span class="lineno"><a href="#line_901" id="line_901">  901.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MAIN_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_902" id="line_902">  902.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MAIN_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_903" id="line_903">  903.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_MEMORY,</span></pre>
+<pre><span class="lineno"><a href="#line_904" id="line_904">  904.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_NOFOLLOW,</span></pre>
+<pre><span class="lineno"><a href="#line_905" id="line_905">  905.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_NOMUTEX,</span></pre>
+<pre><span class="lineno"><a href="#line_906" id="line_906">  906.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_PRIVATECACHE,</span></pre>
+<pre><span class="lineno"><a href="#line_907" id="line_907">  907.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_READONLY,</span></pre>
+<pre><span class="lineno"><a href="#line_908" id="line_908">  908.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_READWRITE,</span></pre>
+<pre><span class="lineno"><a href="#line_909" id="line_909">  909.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SHAREDCACHE,</span></pre>
+<pre><span class="lineno"><a href="#line_910" id="line_910">  910.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SUBJOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_911" id="line_911">  911.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_SUPER_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_912" id="line_912">  912.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TEMP_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_913" id="line_913">  913.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TEMP_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_914" id="line_914">  914.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_TRANSIENT_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_915" id="line_915">  915.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_URI,</span></pre>
+<pre><span class="lineno"><a href="#line_916" id="line_916">  916.</a></span><span class="count        ">      1</span><span>    SQLITE_OPEN_WAL,</span></pre>
+<pre><span class="lineno"><a href="#line_917" id="line_917">  917.</a></span><span class="count        ">      1</span><span>    assertJsonEqual,</span></pre>
+<pre><span class="lineno"><a href="#line_918" id="line_918">  918.</a></span><span class="count        ">      1</span><span>    assertNumericalEqual,</span></pre>
+<pre><span class="lineno"><a href="#line_919" id="line_919">  919.</a></span><span class="count        ">      1</span><span>    assertOrThrow,</span></pre>
+<pre><span class="lineno"><a href="#line_920" id="line_920">  920.</a></span><span class="count        ">      1</span><span>    dbCloseAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_921" id="line_921">  921.</a></span><span class="count        ">      1</span><span>    dbExecAndReturnLastBlobAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_922" id="line_922">  922.</a></span><span class="count        ">      1</span><span>    dbExecAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_923" id="line_923">  923.</a></span><span class="count        ">      1</span><span>    dbFileExportAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_924" id="line_924">  924.</a></span><span class="count        ">      1</span><span>    dbFileImportAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_925" id="line_925">  925.</a></span><span class="count        ">      1</span><span>    dbNoopAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_926" id="line_926">  926.</a></span><span class="count        ">      1</span><span>    dbOpenAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_927" id="line_927">  927.</a></span><span class="count        ">      1</span><span>    debugInline,</span></pre>
+<pre><span class="lineno"><a href="#line_928" id="line_928">  928.</a></span><span class="count        ">      1</span><span>    jsbatonValueString,</span></pre>
+<pre><span class="lineno"><a href="#line_929" id="line_929">  929.</a></span><span class="count        ">      1</span><span>    noop,</span></pre>
+<pre><span class="lineno"><a href="#line_930" id="line_930">  930.</a></span><span class="count        ">      1</span><span>    objectDeepCopyWithKeysSorted,</span></pre>
+<pre><span class="lineno"><a href="#line_931" id="line_931">  931.</a></span><span class="count        ">      1</span><span>    sqlmathInit,</span></pre>
+<pre><span class="lineno"><a href="#line_932" id="line_932">  932.</a></span><span class="count        ">      1</span><span>    sqlmathWebworkerInit</span></pre>
+<pre><span class="lineno"><a href="#line_933" id="line_933">  933.</a></span><span class="count        ">      1</span><span>};</span></pre>
+<pre><span class="lineno"><a href="#line_934" id="line_934">  934.</a></span><span class="count        ">      1</span><span></span></pre>
 </div>
 <!-- content end -->
 <div class="footer">

@@ -49,7 +49,7 @@ let debugInline = (function () {
         return argv[0];
     }
     debug(); // Coverage-hack.
-    __consoleError = console.error;
+    __consoleError = console.error; //jslint-ignore-line
     return debug;
 }());
 

@@ -84,7 +84,7 @@ extern "C" {
 #define SQLITE_ERROR_DATATYPE_INVALID 0x10003
 #define SQLITE_ERROR_ZSQL_NULL        0x10004
 #define SQLITE_MAX_LENGTH2 1000000000
-#define SQLITE_RESPONSETYPE_LAST_VALUE 1
+#define SQLITE_RESPONSETYPE_LASTBLOB 1
 #define SQLMATH_API
 #define SQLMATH_FNC
 #define SWAP(aa, bb) tmp = (aa); (aa) = (bb); (bb) = tmp
@@ -622,91 +622,95 @@ SQLMATH_API void dbExec(
                 JSBATON_ASSERT_OK();
                 break;
             }
-            // insert row of column-names
-            if (nCol == -1) {
-                if (str99->nUsed > 1) {
-                    STR99_APPEND_CHAR2(',');
-                    STR99_APPEND_CHAR2('\n');
-                    STR99_APPEND_CHAR2('\n');
+            switch (responseType) {
+            case SQLITE_RESPONSETYPE_LASTBLOB:
+                // export last-value as blob
+                if (nCol == -1) {
+                    nCol = sqlite3_column_count(pStmt);
                 }
-                // bracket table [
+                str99->nUsed = 0;
+                STR99_APPEND_RAW((const char *) sqlite3_column_blob(pStmt,
+                        nCol - 1), sqlite3_column_bytes(pStmt, nCol - 1));
+                break;
+            default:
+                // insert row of column-names
+                if (nCol == -1) {
+                    nCol = sqlite3_column_count(pStmt);
+                    if (str99->nUsed > 1) {
+                        STR99_APPEND_CHAR2(',');
+                        STR99_APPEND_CHAR2('\n');
+                        STR99_APPEND_CHAR2('\n');
+                    }
+                    // bracket table [
+                    STR99_APPEND_CHAR2('[');
+                    // bracket column [
+                    STR99_APPEND_CHAR2('[');
+                    // loop over each column-name
+                    ii = 0;
+                    while (ii < nCol) {
+                        if (ii > 0) {
+                            STR99_APPEND_CHAR2(',');
+                        }
+                        zTmp = sqlite3_column_name(pStmt, ii);
+                        STR99_APPEND_JSON(zTmp, strlen(zTmp));
+                        ii += 1;
+                    }
+                    // bracket column ]
+                    STR99_APPEND_CHAR2(']');
+                }
+                // bracket row [
+                STR99_APPEND_CHAR2(',');
+                STR99_APPEND_CHAR2('\n');
                 STR99_APPEND_CHAR2('[');
-                // bracket column [
-                STR99_APPEND_CHAR2('[');
-                // loop over each column-name
-                nCol = sqlite3_column_count(pStmt);
+                // loop over each column-value
                 ii = 0;
                 while (ii < nCol) {
                     if (ii > 0) {
                         STR99_APPEND_CHAR2(',');
                     }
-                    zTmp = sqlite3_column_name(pStmt, ii);
-                    STR99_APPEND_JSON(zTmp, strlen(zTmp));
-                    ii += 1;
-                }
-                // bracket column ]
-                STR99_APPEND_CHAR2(']');
-            }
-            // bracket row [
-            STR99_APPEND_CHAR2(',');
-            STR99_APPEND_CHAR2('\n');
-            STR99_APPEND_CHAR2('[');
-            ii = 0;
-            // loop over each column-value
-            while (ii < nCol) {
-                switch (responseType) {
-                case SQLITE_RESPONSETYPE_LAST_VALUE:
-                    // export last-value as blob
-                    str99->nUsed = 0;
-                    STR99_APPEND_RAW((const char *) sqlite3_column_blob(pStmt,
-                            ii), sqlite3_column_bytes(pStmt, ii));
-                    ii += 1;
-                    continue;
-                }
-                if (ii > 0) {
-                    STR99_APPEND_CHAR2(',');
-                }
-                switch (sqlite3_column_type(pStmt, ii)) {
-                case SQLITE_INTEGER:
-                    iTmp = sqlite3_column_int64(pStmt, ii);
-                    if (JS_MIN_SAFE_INTEGER <= iTmp
-                        // convert integer to double
-                        && iTmp <= JS_MAX_SAFE_INTEGER) {
-                        STR99_APPEND_RAW((const char *)
-                            sqlite3_column_text(pStmt, ii),
-                            sqlite3_column_bytes(pStmt, ii));
-                    } else {
-                        // convert integer to string
+                    switch (sqlite3_column_type(pStmt, ii)) {
+                    case SQLITE_INTEGER:
+                        iTmp = sqlite3_column_int64(pStmt, ii);
+                        if (JS_MIN_SAFE_INTEGER <= iTmp
+                            // convert integer to double
+                            && iTmp <= JS_MAX_SAFE_INTEGER) {
+                            STR99_APPEND_RAW((const char *)
+                                sqlite3_column_text(pStmt, ii),
+                                sqlite3_column_bytes(pStmt, ii));
+                        } else {
+                            // convert integer to string
+                            STR99_APPEND_JSON((const char *)
+                                sqlite3_column_text(pStmt, ii),
+                                sqlite3_column_bytes(pStmt, ii));
+                        }
+                        break;
+                    case SQLITE_FLOAT:
+                        rTmp = sqlite3_column_double(pStmt, ii);
+                        if (isnan(rTmp) || rTmp == -INFINITY
+                            || rTmp == INFINITY) {
+                            STR99_APPEND_RAW("null", 4);
+                        } else {
+                            STR99_APPEND_RAW((const char *)
+                                sqlite3_column_text(pStmt, ii),
+                                sqlite3_column_bytes(pStmt, ii));
+                        }
+                        break;
+                    case SQLITE_TEXT:
+                        // append text as json-escaped string
                         STR99_APPEND_JSON((const char *)
                             sqlite3_column_text(pStmt, ii),
                             sqlite3_column_bytes(pStmt, ii));
-                    }
-                    break;
-                case SQLITE_FLOAT:
-                    rTmp = sqlite3_column_double(pStmt, ii);
-                    if (isnan(rTmp) || rTmp == -INFINITY || rTmp == INFINITY) {
+                        break;
+                        // case SQLITE_BLOB:
+                    default:   /* case SQLITE_NULL: */
                         STR99_APPEND_RAW("null", 4);
-                    } else {
-                        STR99_APPEND_RAW((const char *)
-                            sqlite3_column_text(pStmt, ii),
-                            sqlite3_column_bytes(pStmt, ii));
+                        break;
                     }
-                    break;
-                case SQLITE_TEXT:
-                    // append text as json-escaped string
-                    STR99_APPEND_JSON((const char *)
-                        sqlite3_column_text(pStmt, ii),
-                        sqlite3_column_bytes(pStmt, ii));
-                    break;
-                    // case SQLITE_BLOB:
-                default:       /* case SQLITE_NULL: */
-                    STR99_APPEND_RAW("null", 4);
-                    break;
+                    ii += 1;
                 }
-                ii += 1;
+                // bracket row ]
+                STR99_APPEND_CHAR2(']');
             }
-            // bracket row ]
-            STR99_APPEND_CHAR2(']');
         }
         if (nCol != -1) {
             // bracket table ]

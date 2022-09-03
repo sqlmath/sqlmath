@@ -1,5 +1,5 @@
-<svg height="1262" width="800" xmlns="http://www.w3.org/2000/svg">
-<rect height="1262" fill="#222" width="800"></rect>
+<svg height="1174" width="800" xmlns="http://www.w3.org/2000/svg">
+<rect height="1174" fill="#222" width="800"></rect>
 <text
     fill="#7f7"
     font-family="consolas, menlo, monospace"
@@ -53,295 +53,271 @@
     textLength="768"
     x="10"
     y="186"
-># v2022.6.30                                                                                     </tspan>
+># v2022.8.20                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="208"
->- add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop           </tspan>
+>- chart-revamp - switch from chart.js to using svg-elements for plots                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="230"
->- demo - add web-demo in README.md                                                               </tspan>
+>--                                                                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="252"
->- webapp - add ui-loading when running onDbAction(), onDbExec()                                  </tspan>
+>- chart - add optional easeout ui-animation, in addition to linear                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
->- add dbtable-crud-operations dbquerySaveCsv, dbquerySaveJson, dbtableDrop, dbtableSaveCsv, dbta\</tspan>
+>- chart - fix render-bug when zooming with no data                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->  bleSaveJson                                                                                    </tspan>
+>- chart - bugfix - fix xrangeMin being NaN                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="318"
->- add contextmenu and dbtable-crud-operation dbtableDrop                                         </tspan>
+>- chart - animate crosshair, similar to tooltip                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="340"
->- add database-crud-operations                                                                   </tspan>
+>- chart - remove gridband code                                                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
->- merge rendering of sql-queries and sql-tables into one                                         </tspan>
+>- chart - remove all classes, and instances of this                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
->- optimization - defer rendering data in dttable until you scroll into it in viewport            </tspan>
+>- chart - bugfix - fix x-axis having no padding                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->- add modal to display sql-query errors                                                          </tspan>
+>- chart - bugfix - fix chart failing to re-scale after hiding/showing series                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->- bugfix - fix broken sorting                                                                    </tspan>
+>- chart - fix tooltip-indent-bug                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->- merge datatables css into file index.html                                                      </tspan>
+>- chart - revamp tooltip-popup in barchart - part1                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
->- merge datatables code into file sqlmath_browser.mjs and remove jquery-dependency               </tspan>
+>- chart - replace Tick class with static-functions uichartAxistickCreate and uichartAxistickRend\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
->- bugfix - fix ci-function shCiBuildWasm() not updating output sqlmath_wasm.wasm                 </tspan>
+>  er                                                                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->- wasm - rewrite file sqlmath_wrapper_wasm.js to pass jslint                                     </tspan>
+>- chart - bugfix - fix tick-cleanup                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="538"
->- datatables - rewrite datatables-function _fnDraw() for faster rendering                        </tspan>
+>- chart - fix seriestracker z-index in reverse-order of series-render                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
->- sqlmath - milestone - functional index.html                                                    </tspan>
+>- chart - bugfix - fix annoying clip-path drifting down-right during startup-animation           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="582"
->- add files asset_sqlmath_external_rollup.css, asset_sqlmath_external_rollup.js                  </tspan>
+>- chart - remove jquery-dependency                                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="604"
->- bugfix - fix memory-leak by replacing all free()/malloc() with sqlite3_free()/sqlite3_malloc() </tspan>
+>- chart - fix again, zoomout cropping too much of one side, in line-charts                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="626"
->- wasm - update functions dbFileExportAsync(), dbFileImportAsync() to be able to export/import r\</tspan>
+>--                                                                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->  aw-db-arraybuffer                                                                              </tspan>
+>- remove unused files                                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->- remove obsolete csv-json-import functions like dbTableInsert(), superseded by json_each()      </tspan>
+>    assets.bootstrap-v3.4.1.datatables-v1.10.21.chartjs-v2.9.4.codemirror-5.58.3.rollup.css      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->- wasm - update function dbOpen() to be able to import raw dbData arraybuffer                    </tspan>
+>    assets.bootstrap-v3.4.1.datatables-v1.10.21.chartjs-v2.9.4.codemirror-5.58.3.rollup.js       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->- merge function dbExecWithRetryAsync() into dbExecAsync()                                       </tspan>
+>    spa.sqlchart.html                                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="736"
->- rename function dbMemoryLoadOrSave to dbFileImportOrExport()                                   </tspan>
+>    spa.sqlchart.js                                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="758"
->- add file csslint.js                                                                            </tspan>
+>- add dbrow-crud-operations dbrowDelete, dbrowInsert, dbrowUpdate                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="780"
->- wasm - replace sqljs-api with sqlmath-api in wasm - part1                                      </tspan>
+>- chart - add charting functionality using chart.js                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="802"
->- remove jslint-dependency in sqlmath-core to prepare sqlmath for browser/wasm env               </tspan>
+>- add dbtable-crud-operations dbtableRename, dbcolumnAdd, dbcolumnRename, dbcolumnDrop           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="824"
->- emscripten updated to v3.1.3, allowing es6 syntax in sqlmath_wrapper_wasm.js                   </tspan>
+>- demo - add web-demo in README.md                                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="846"
->- jenks - streamline jenksCreate() return object to simple double-array instead of struct        </tspan>
+>- webapp - add ui-loading when running onDbAction(), onDbExec()                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="868"
->- jenks - inline jenks-function jenksCalcRange() from recursion to iteration                     </tspan>
+>- demo - add github-fork-banner                                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="890"
->- jenks - optimize jenks-function jenksCalcRange() from recursion to iteration                   </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="912"
->- jenks - replace class-based api with static-function                                           </tspan>
+># v2022.6.30                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="934"
->- jsbaton - migrate function dbExec() to new unified jsbaton                                     </tspan>
+>- add dbtable-crud-operations dbquerySaveCsv, dbquerySaveJson, dbtableDrop, dbtableSaveCsv, dbta\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="956"
->- error - add sqlite errcode SQLITE_ERROR_ZSQL_NULL                                              </tspan>
+>  bleSaveJson                                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="978"
->- jsbaton - migrate function dbTableInsert() to new unified jsbaton                              </tspan>
+>- add contextmenu and dbtable-crud-operation dbtableDrop                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1000"
->- jsbaton - migrate functions dbClose(), dbMemoryLoadOrSave(), dbNoop(), dbOpen() to new, stream\</tspan>
+>- add database-crud-operations                                                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1022"
->  lined jsbaton2                                                                                 </tspan>
+>- merge rendering of sql-queries and sql-tables into one                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1044"
->- add js-function jsbatonPushValue() to dynamically push value to jsbaton                        </tspan>
+>- optimization - defer rendering data in dttable until you scroll into it in viewport            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1066"
->- napi - decouple c-functions dbClose(), dbExec(), dbMemoryLoadOrSave(), dbNoop(), dbOpen(), dbT\</tspan>
+>- add modal to display sql-query errors                                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1088"
->  ableInsert() from napi                                                                         </tspan>
+>- bugfix - fix broken sorting                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1110"
->- perf - reduce unnecessary copying, replacing SQLITE_TRANSIENT with SQLITE_STATIC               </tspan>
+>- merge datatables css into file index.html                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1132"
->- sqlmath - wrap c-functions jsonInit(), jsonInitNoContext() with jsonInit2() that auto jsonGrow\</tspan>
+>- merge datatables code into file sqlmath_browser.mjs and remove jquery-dependency               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1154"
->  /malloc str99-&gt;zBuf                                                                            </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1176"
->- sqlmath - streamline function cCall() to cCallAsync(), which only returns a promise            </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1198"
->- wasm - migrate from sqljs-api to sqlmath-api in wasm - part1                                   </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1220"
->- gc - replace node-specific-gc __dbFinalizerCreate() with more-webassembly-friendly Finalizatio\</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1242"
->  nRegistry()                                                                                    </tspan>
+>- bugfix - fix ci-function shCiBuildWasm() not updating output sqlmath_wasm.wasm                 </tspan>
 
 </text>
 </svg>

@@ -81,7 +81,7 @@ let debugInline = (function () {
         return argv[0];
     }
     debug(); // Coverage-hack.
-    __consoleError = console.error;
+    __consoleError = console.error; //jslint-ignore-line
     return debug;
 }());
 let sqlMessageDict = {}; // dict of web-worker-callbacks
@@ -887,17 +887,6 @@ function sqlmathWebworkerInit({
     }) {
         sqlMessageDict[data.id](data);
     };
-    /*
-    let db = await dbOpenAsync({ //jslint-quiet
-        filename: ":memory:"
-    });
-    debugInline(
-        await dbExecAsync({
-            db,
-            sql: "aSELECT 1234"
-        })
-    );
-    */
 }
 
 await sqlmathInit({});
