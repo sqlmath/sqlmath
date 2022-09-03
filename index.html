@@ -15,10 +15,6 @@ shRawLibFetch
 {
     "fetchList": [
         {
-            "comment": true,
-            "url": "https://github.com/codemirror/CodeMirror5/blob/5.65.5/LICENSE"
-        },
-        {
             "url": "https://github.com/codemirror/CodeMirror5/blob/5.65.5/lib/codemirror.css"
         }
     ],
@@ -30,34 +26,6 @@ shRawLibFetch
 /*
 repo https://github.com/codemirror/CodeMirror5/tree/5.65.5
 committed 2022-05-30T09:58:15Z
-*/
-
-
-/*
-file https://github.com/codemirror/CodeMirror5/blob/5.65.5/LICENSE
-*/
-/*
-MIT License
-
-Copyright (C) 2017 by Marijn Haverbeke <marijnh@gmail.com> and others
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
 */
 
 
@@ -473,6 +441,7 @@ textarea {
 .modalContent {
     padding: 1rem;
     width: 100%;
+    white-space: normal;
 }
 .modalPanel {
     background: #fff;
@@ -496,59 +465,6 @@ textarea {
     height: 300px;
 }
 
-/*css section chart*/
-.uichart {
-    box-sizing: content-box;
-    font-size: 12px;
-    line-height: normal;
-    overflow: hidden;
-    position: relative;
-    text-align: left;
-    z-index: 0;
-}
-.uichartCanvas {
-    padding: 12px 12px 0 0;
-}
-.uichartLegend {
-    border: 1px solid #999;
-    flex: 1;
-    font-size: 11px;
-    overflow-x: hidden;
-    overflow-y: scroll;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.uichartLegendElem {
-    cursor: pointer;
-    display: block;
-    height: 16px;
-    line-height: 16px;
-    position: relative;
-}
-.uichartLegendElem[data-hidden="1"] {
-    opacity: 0.5;
-}
-.uichartLegendElem:hover {
-    background: #ddd;
-}
-.uichartLegendElemColor {
-    display: inline-block;
-    height: 8px;
-    line-height: 8px;
-    margin-left: 4px;
-    width: 16px;
-}
-.uichartNav {
-    display: flex;
-    flex-direction: column;
-    padding: 12px 0 12px 12px;
-    user-select: none;
-}
-.uichartNav button.uichartAction {
-    margin-bottom: 12px;
-    width: 100%
-}
-
 /*css section content*/
 .contentSectionTitle {
     font-size: x-large;
@@ -557,7 +473,7 @@ textarea {
 }
 #contentPanel1 {
     overflow: hidden;
-    padding: 0 2rem 2rem 18rem;
+    padding: 0 48px 2rem 304px;
     width: 100%;
 }
 #contentPanel1 tbody {
@@ -574,7 +490,6 @@ textarea {
     background: #bbd;
     cursor: pointer;
     height: 16px;
-    max-width: 48px;
     padding-left: 12px;
     position: sticky;
     top: 0;
@@ -811,6 +726,74 @@ textarea {
     border-bottom: 1px solid #777;
 }
 
+
+/*css section uichart*/
+.uichart {
+    font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    user-select: none;
+}
+.uichartCanvasFlex {
+    border: 2px solid transparent;
+    border-radius: 4px;
+    cursor: crosshair;
+    margin-right: 16px;
+    overflow: hidden;
+    position: relative;
+}
+.uichartAxislabel0,
+.uichartAxislabel1,
+.uichartTitle {
+    color: #333;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+}
+.uichartAxislabel1 {
+    left: 50%;
+    margin-left: -4px;
+    position: absolute;
+    top: 50%;
+    transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
+    white-space: nowrap;
+}
+.uichartLegend {
+    border: 1px solid #999;
+    flex: 1;
+    font-size: 11px;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.uichartLegendElem {
+    display: block;
+    height: 16px;
+    line-height: 16px;
+    padding-left: 2px;
+    position: relative;
+}
+.uichartLegendElem[data-dummy="1"],
+.uichartLegendElem[data-hidden="1"] {
+    opacity: 0.5;
+}
+.uichartLegendElemSvg {
+    height: 16px;
+    position: absolute;
+}
+.uichartNav {
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0 16px 16px;
+}
+.uichartNav button.uichartAction {
+    margin-bottom: 10px;
+    width: 100%
+}
+.uichartTitle {
+    font-size: 16px;
+}
+
 /* section misc */
 button:hover {
     background: #999;
@@ -839,7 +822,13 @@ button:hover {
     box-shadow: 4px 4px 8px 2px #777;
     opacity: 0;
     transition: visibility 0.5s, opacity 0.5s;
-    visibility: hidden;
+}
+.uichartCanvasFlex:hover {
+    border-color: #bbb;
+}
+.uichartLegendElem[data-dummy="0"]:hover {
+    background: #ddd;
+    cursor: pointer;
 }
 #contentPanel1 .contentElem,
 #tocPanel1 {
@@ -857,135 +846,7 @@ button:hover {
 <div class="contentSectionTitle" style="margin-top: 0.5rem;">sqlite editor</div>
 <div class="contentElem" id="editor1">
 <div class="contentElemTitle title">script editor</div>
-<textarea id="sqliteEditor1" style="border: 0; padding-left: 30px;">
-DROP TABLE IF EXISTS __stock_historical;
-CREATE TABLE __stock_historical(ticker TEXT, date TEXT, price FLOAT);
-INSERT INTO __stock_historical (ticker, date, price) VALUES
-    ('aapl', '2020-01-01', 77.37),  ('aapl', '2020-02-01', 68.33),
-    ('aapl', '2020-03-01', 63.57),  ('aapl', '2020-04-01', 73.44),
-    ('aapl', '2020-05-01', 79.48),  ('aapl', '2020-06-01', 91.19),
-    ('aapl', '2020-07-01', 106.26),  ('aapl', '2020-08-01', 129.03),
-    ('aapl', '2020-09-01', 115.80),  ('aapl', '2020-10-01', 108.86),
-    ('aapl', '2020-11-01', 119.05),  ('aapl', '2020-12-01', 132.69),
-    ('goog', '2020-01-01', 1434.23),  ('goog', '2020-02-01', 1339.33),
-    ('goog', '2020-03-01', 1162.81),  ('goog', '2020-04-01', 1348.66),
-    ('goog', '2020-05-01', 1428.92),  ('goog', '2020-06-01', 1413.61),
-    ('goog', '2020-07-01', 1482.96),  ('goog', '2020-08-01', 1634.18),
-    ('goog', '2020-09-01', 1469.60),  ('goog', '2020-10-01', 1621.01),
-    ('goog', '2020-11-01', 1760.74),  ('goog', '2020-12-01', 1751.88);
-
-DROP TABLE IF EXISTS __test1;
-CREATE TABLE __test1(
-    col1,
-    col2,
-    column_long_name_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-);
-
-DROP TABLE IF EXISTS __test2;
-CREATE TABLE __test2 AS
-    SELECT * FROM __test1
-    UNION ALL SELECT 1, 2, 3
-    UNION ALL SELECT 4, 5, 6;
-
-DROP TABLE IF EXISTS attached_01.__test3;
-CREATE TABLE attached_01.__test3 AS SELECT * FROM __test2;
-
-SELECT
-        *,
-        random() AS c1,
-        random() AS c2,
-        random() AS c3,
-        random() AS c4,
-        random(),
-        random(),
-        random(),
-        random(),
-        1 AS sentinel
-    FROM __stock_historical
-    LEFT JOIN __test1 ON __test1.col1 = __stock_historical.ticker
-    CROSS JOIN (SELECT random() FROM __stock_historical);
-
-DROP TABLE IF EXISTS chart.__stock_chart;
-CREATE TABLE chart.__stock_chart (
-    label TEXT,
-    xx TEXT,
-    yy REAL,
-    options TEXT
-);
-INSERT INTO chart.__stock_chart (options) VALUES (
-    '{
-        "title":"price vs. date comparison of multiple stocks",
-        "xAxesType": "time",
-        "xLabel": "date",
-        "yLabel": "price"
-    }'
-);
-INSERT INTO chart.__stock_chart (label, xx, yy)
-    SELECT
-        ticker AS label,
-        date AS xx,
-        price AS yy
-    FROM __stock_historical;
-UPDATE chart.__stock_chart
-    SET
-        yy = yy * inv
-    FROM (SELECT 1)
-    JOIN (
-        SELECT
-            1.0 / yy AS inv,
-            label
-        FROM (
-            SELECT
-                ROW_NUMBER() OVER (PARTITION BY label ORDER BY xx) AS rownum,
-                yy,
-                label
-            FROM chart.__stock_chart
-            WHERE yy > 0
-        )
-        WHERE rownum = 1
-    ) USING (label);
-
-DROP TABLE IF EXISTS chart.__test_chart;
-CREATE TABLE chart.__test_chart (
-    label TEXT,
-    xx TEXT,
-    yy REAL,
-    options TEXT
-);
-INSERT INTO chart.__test_chart (options) VALUES (
-    '{
-        "xAxesType": "linear",
-        "xLabel": "random x",
-        "yAxesType": "logarithmic",
-        "yLabel": "random y (logarithmic)"
-    }'
-);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
-        RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data1', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data2', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data3', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data4', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data4', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data4', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data4', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data5', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data6', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data7', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-INSERT INTO chart.__test_chart (label, xx, yy)
-    SELECT 'data8', RANDOM1(), RANDOM1() FROM generate_series(1, 100);
-</textarea>
+<textarea id="sqliteEditor1" style="border: 0; padding-left: 30px;"></textarea>
 </div>
 <button class="dbExec" style="margin-top: 1rem;">script - execute</button>
 
@@ -1008,6 +869,7 @@ INSERT INTO chart.__test_chart (label, xx, yy)
     <button data-action="dbRefresh">database - refresh</button>
     <button data-action="dbOpen">database - open</button>
     <button data-action="dbAttach" style="border-bottom: 1px solid #999;">database - open and attach</button>
+    <button data-action="dbExportMain" style="border-bottom: 1px solid #999;">database - save</button>
 </div>
 <div id="tocEditor1">
     <div class="tocTitle">sqlite editor</div>
@@ -1085,7 +947,7 @@ fork on github
 
 
 <!-- crudPanel1 start -->
-<div id="crudPanel1" class="modalPanel">
+<div id="crudPanel1" class="modalPanel" style="z-index: -1;">
 <span class="modalClose">&times;</span>
 <div class="modalTitle title"></div>
 <div class="modalContent">
@@ -1119,15 +981,8 @@ fork on github
 
 
 <!-- loadingPanel1 start -->
-<div id="loadingPanel1"><div class="uiLoading"></div></div>
+<div id="loadingPanel1" style="opacity: 1;"><div class="uiLoading"></div></div>
 <!-- loadingPanel1 end -->
-
-
-<!-- script start -->
-<script type="module">
-</script>
-<!-- script end -->
-
 
 </body>
 </html>

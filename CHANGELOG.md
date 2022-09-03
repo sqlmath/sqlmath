@@ -6,6 +6,25 @@
 - none
 
 # v2022.7.1-beta
+- chart-revamp - switch from chart.js to using svg-elements for plots
+--
+- chart - add optional easeout ui-animation, in addition to linear
+- chart - fix render-bug when zooming with no data
+- chart - bugfix - fix xrangeMin being NaN
+- chart - animate crosshair, similar to tooltip
+- chart - remove gridband code
+- chart - remove all classes, and instances of this
+- chart - bugfix - fix x-axis having no padding
+- chart - bugfix - fix chart failing to re-scale after hiding/showing series
+- chart - fix tooltip-indent-bug
+- chart - revamp tooltip-popup in barchart - part1
+- chart - replace Tick class with static-functions uichartAxistickCreate and uichartAxistickRender
+- chart - bugfix - fix tick-cleanup
+- chart - fix seriestracker z-index in reverse-order of series-render
+- chart - bugfix - fix annoying clip-path drifting down-right during startup-animation
+- chart - remove jquery-dependency
+- chart - fix again, zoomout cropping too much of one side, in line-charts
+--
 - remove unused files
     assets.bootstrap-v3.4.1.datatables-v1.10.21.chartjs-v2.9.4.codemirror-5.58.3.rollup.css
     assets.bootstrap-v3.4.1.datatables-v1.10.21.chartjs-v2.9.4.codemirror-5.58.3.rollup.js
