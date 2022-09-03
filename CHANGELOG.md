@@ -5,7 +5,7 @@
 - sqlmath - add sql-extension carrayblob()
 - none
 
-# v2022.7.1-beta
+# v2022.8.20
 - chart-revamp - switch from chart.js to using svg-elements for plots
 --
 - chart - add optional easeout ui-animation, in addition to linear
