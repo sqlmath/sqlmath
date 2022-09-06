@@ -35,31 +35,31 @@ shRawLibFetch
     "fetchList": [
         {
             "comment": true,
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/LICENSE.md"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.39.2/LICENSE.md"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/carray.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/carray.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/compress.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/compress.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/csv.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/csv.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/noop.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/noop.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/regexp.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/regexp.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/series.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/series.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/shathree.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/shathree.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/tree/version-3.38.5/contrib/download/extension-functions.c/download/extension-functions.c",
+            "url": "https://github.com/sqlite/sqlite/tree/version-3.39.2/contrib/download/extension-functions.c/download/extension-functions.c",
             "url2": "https://www.sqlite.org/contrib/download/extension-functions.c/download/extension-functions.c?get=25"
         }
     ],
@@ -243,13 +243,13 @@ shRawLibFetch
 
 
 /*
-repo https://github.com/sqlite/sqlite/tree/version-3.38.5
-committed 2022-05-06T15:25:27Z
+repo https://github.com/sqlite/sqlite/tree/version-3.39.2
+committed 2022-07-21T15:24:47Z
 */
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.5/LICENSE.md
+file https://github.com/sqlite/sqlite/blob/version-3.39.2/LICENSE.md
 */
 /*
 The author disclaims copyright to this source code.  In place of
@@ -262,7 +262,7 @@ a legal notice, here is a blessing:
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/carray.c
+file https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/carray.c
 */
 /*
 ** 2016-06-29
@@ -807,7 +807,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/compress.c
+file https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/compress.c
 */
 /*
 ** 2014-06-13
@@ -953,7 +953,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/csv.c
+file https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/csv.c
 */
 /*
 ** 2016-05-28
@@ -1931,7 +1931,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/noop.c
+file https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/noop.c
 */
 /*
 ** 2020-01-08
@@ -2006,7 +2006,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/regexp.c
+file https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/regexp.c
 */
 /*
 ** 2012-11-13
@@ -2695,7 +2695,7 @@ static const char *re_compile(ReCompiled **ppRe, const char *zIn, int noCase){
         pRe->zInit[j++] = (unsigned char)(0xc0 | (x>>6));
         pRe->zInit[j++] = 0x80 | (x&0x3f);
       }else if( x<=0xffff ){
-        pRe->zInit[j++] = (unsigned char)(0xd0 | (x>>12));
+        pRe->zInit[j++] = (unsigned char)(0xe0 | (x>>12));
         pRe->zInit[j++] = 0x80 | ((x>>6)&0x3f);
         pRe->zInit[j++] = 0x80 | (x&0x3f);
       }else{
@@ -2786,7 +2786,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/series.c
+file https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/series.c
 */
 /*
 ** 2015-08-18
@@ -3254,7 +3254,7 @@ UNUSED(pzErrMsg);
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/shathree.c
+file https://github.com/sqlite/sqlite/blob/version-3.39.2/ext/misc/shathree.c
 */
 /*
 ** 2017-03-08
@@ -3277,7 +3277,7 @@ file https://github.com/sqlite/sqlite/blob/version-3.38.5/ext/misc/shathree.c
 ** The sha3(X) function computes the SHA3 hash of the input X, or NULL if
 ** X is NULL.
 **
-** The sha3_query(Y) function evalutes all queries in the SQL statements of Y
+** The sha3_query(Y) function evaluates all queries in the SQL statements of Y
 ** and returns a hash of their results.
 **
 ** The SIZE argument is optional.  If omitted, the SHA3-256 hash algorithm
@@ -3986,13 +3986,13 @@ UNUSED(pzErrMsg);
 
 
 /*
-repo https://github.com/sqlite/sqlite/tree/version-3.38.5
+repo https://github.com/sqlite/sqlite/tree/version-3.39.2
 committed
 */
 
 
 /*
-file https://github.com/sqlite/sqlite/tree/version-3.38.5/contrib/download/extension-functions.c/download/extension-functions.c
+file https://github.com/sqlite/sqlite/tree/version-3.39.2/contrib/download/extension-functions.c/download/extension-functions.c
 */
 /*
 This library will provide common mathematical and string functions in

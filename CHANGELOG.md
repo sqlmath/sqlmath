@@ -5,6 +5,9 @@
 - sqlmath - add sql-extension carrayblob()
 - none
 
+# v2022.9.1-beta
+- sqlite - update to sqlite v3.39.2
+
 # v2022.8.20
 - chart-revamp - switch from chart.js to using svg-elements for plots
 --

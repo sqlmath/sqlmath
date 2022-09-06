@@ -2613,12 +2613,12 @@ SELECT
     )
     JOIN (
         SELECT
-            json_group_array(json_set(
+            json_group_array(json(json_set(
                 COALESCE(options, '{}'),
                 '$.seriesName', series_label,
                 '$.xdata', json(xdata),
                 '$.ydata', json(ydata)
-            )) AS seriesList
+            ))) AS seriesList
         FROM (
             SELECT
                 options,
