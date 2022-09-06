@@ -6,6 +6,7 @@
 - none
 
 # v2022.9.1-beta
+- sqlite - revert back to v3.38.5 due to performance-regression
 - sqlmath - add sql-function tofloat64array()
 - sqlite - update to sqlite v3.39.2
 
