@@ -6,6 +6,7 @@
 - none
 
 # v2022.9.1-beta
+- sqlmath - add sql-function tofloat64array()
 - sqlite - update to sqlite v3.39.2
 
 # v2022.8.20

@@ -431,12 +431,9 @@ SQLMATH_API void dbExec(
 // containing rows from SELECT/pragma/etc) as serialized json-string in <str99>.
     // coverage-hack
     noop();
-    // declare var0
-    JsonString __str99 = { 0 };
     // declare var
     DbExecBindElem *bindElem = NULL;
     DbExecBindElem *bindList = NULL;
-    JsonString *str99 = &__str99;
     const char **pzShared = ((const char **) baton->argv) + 8;
     const char *zBind = (const char *) baton + SQLITE_DATATYPE_OFFSET;
     const char *zSql = jsbatonValueStringArgi(baton, 1);
@@ -518,6 +515,8 @@ SQLMATH_API void dbExec(
         ii += 1;
     }
     // init str99
+    JsonString __str99 = { 0 };
+    JsonString *str99 = &__str99;
     jsonInit2(str99, NULL);
     // bracket database [
     STR99_APPEND_CHAR2('[');
@@ -1417,6 +1416,43 @@ SQLMATH_FNC static void sql_tobase64_func(
 
 // SQLMATH_FNC sql_tobase64_func - end
 
+SQLMATH_FNC static void sql_tofloat64array_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will convert blob to json-encoded Float64Array
+    UNUSED(argc);
+    // declare var
+    double *arr = (double *) sqlite3_value_blob(argv[0]);
+    int nn = sqlite3_value_int(argv[1]);
+    static const size_t wordsize = 32;
+    if (nn == 0) {
+        nn = sqlite3_value_bytes(argv[0]) / 8;
+    }
+    // init str99
+    JsonString __str99 = { 0 };
+    JsonString *str99 = &__str99;
+    jsonInit2(str99, NULL);
+    jsonAppendChar(str99, '[');
+    // str99 - append double
+    for (int ii = 0; ii < nn; ii += 1) {
+        if (str99->nUsed + wordsize >= str99->nAlloc) {
+            jsonGrow(str99, wordsize);
+        }
+        str99->nUsed +=
+            snprintf(str99->zBuf + str99->nUsed, wordsize, "%f", arr[ii]);
+        if (ii + 1 < nn) {
+            jsonAppendChar(str99, ',');
+        }
+    }
+    jsonAppendChar(str99, ']');
+    STR99_RESULT_ERROR_NOMEM_IF_BERR();
+    sqlite3_result_text(context, (const char *) str99->zBuf, str99->nUsed,
+        // cleanup buffer
+        sqlite3_free);
+}
+
 SQLMATH_FNC static void sql_tostring_func(
     sqlite3_context * context,
     int argc,
@@ -1451,6 +1487,7 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION1(tobase64, 1);
+    SQLITE3_CREATE_FUNCTION1(tofloat64array, 2);
     SQLITE3_CREATE_FUNCTION1(tostring, 1);
     SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
     SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);

@@ -217,7 +217,7 @@ INSERT INTO chart.__stock_chart (datatype, series_index, xx, yy)
 UPDATE chart.__stock_chart
     SET
         yy = yy * inv - 1
-    FROM (SELECT 1)
+    FROM (SELECT series_index FROM chart.__stock_chart) AS __join1
     JOIN (
         SELECT
             1.0 / yy AS inv,
@@ -236,7 +236,9 @@ UPDATE chart.__stock_chart
         )
         WHERE
             rownum = 1
-    ) USING (series_index);
+    ) USING (series_index)
+    WHERE
+        __join1.series_index = chart.__stock_chart.series_index;
     `).trim() + "\n");
     // exec demo-sql-query
     await onDbExec({});
@@ -1120,7 +1122,7 @@ INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
 UPDATE chart.${tableName}
     SET
         yy = ROUND(100 * (yy * inv - 1), 4)
-    FROM (SELECT 1)
+    FROM (SELECT series_index FROM chart.${tableName}) AS __join1
     JOIN (
         SELECT
             1.0 / yy AS inv,
@@ -1139,16 +1141,18 @@ UPDATE chart.${tableName}
         )
         WHERE
             rownum = 1
-    ) USING (series_index);
+    ) USING (series_index)
+    WHERE
+        __join1.series_index = chart.${tableName}.series_index;
 UPDATE chart.${tableName}
     SET
         series_label = printf(
             '%+06.2f%% - %s%s',
             yy_today,
-            series_label,
+            __join1.series_label,
             IIF(CASTTEXTOREMPTY(company_name) = '', '', ' - ' || company_name)
         )
-    FROM (SELECT 1)
+    FROM (SELECT series_index, series_label FROM chart.${tableName}) AS __join1
     LEFT JOIN (
         SELECT
             *
@@ -1167,9 +1171,10 @@ UPDATE chart.${tableName}
         WHERE
             rownum = 1
     ) USING (series_index)
-    LEFT JOIN tradebot_stock_basket ON sym = series_label
+    LEFT JOIN tradebot_stock_basket ON sym = __join1.series_label
     WHERE
-        datatype = 'series_label';
+        __join1.series_index = chart.${tableName}.series_index
+        AND datatype = 'series_label';
             `);
         })
     ].flat().map(function (sql, ii) {
