@@ -157,17 +157,43 @@ extern "C" {
 #define STR99_ASSERT_NOT_NOMEM() \
     if (str99->bErr != 0) { errcode = SQLITE_NOMEM; JSBATON_ASSERT_OK(); }
 
-#define STR99_RESULT_ERROR_NOMEM_IF_BERR() \
-    if (str99->bErr != 0) { sqlite3_result_error_nomem(context); return; }
+#define STR99_AGGREGATE_CLEANUP() \
+    if (str99->zText) { sqlite3_free(str99->zText); str99->zText = NULL; }
+
+#define STR99_AGGREGATE_RESULT_ERROR() \
+    if (str99->accError != 0) { \
+        sqlite3_result_error_code(context, str99->accError); \
+        STR99_AGGREGATE_CLEANUP(); \
+        return; \
+    }
 
 
 // file sqlmath_h - sqlite3
 // *INDENT-OFF*
 SQLITE_API const sqlite3_api_routines *sqlite3ApiGet();
 typedef struct JsonString JsonString;
+typedef struct sqlite3_str sqlite3_str;
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint8_t u8;
+
+
+// file sqlmath_h - str99
+/*
+** An objected used to accumulate the text of a string where we
+** do not necessarily know how big the string will be in the end.
+*/
+struct sqlite3_str {
+  sqlite3 *db;         /* Optional database for lookaside.  Can be NULL */
+  char *zText;         /* The string collected so far */
+  u32  nAlloc;         /* Amount of space allocated in zText */
+  u32  mxAlloc;        /* Maximum allowed allocation.  0 for no malloc usage */
+  u32  nChar;          /* Length of the string so far */
+  u8   accError;       /* SQLITE_NOMEM or SQLITE_TOOBIG */
+  u8   printfFlags;    /* SQLITE_PRINTF flags below */
+};
+
+SQLMATH_API void str99VectorDoubleAppend(sqlite3_str *str99, double val);
 
 
 // file sqlmath_h - JsonString
@@ -213,6 +239,10 @@ SQLITE_API void jsonInitNoContext(JsonString *p);
 /* Free all allocated memory and reset the JsonString object back to its
 ** initial state. */
 SQLITE_API void jsonReset(JsonString *p);
+
+SQLITE_API char *sqlite3_str_finish_stack(sqlite3_str *p);
+
+SQLITE_API sqlite3_str *sqlite3_str_new_stack(sqlite3 *db, sqlite3_str *p);
 // *INDENT-ON*
 
 
@@ -282,11 +312,6 @@ SQLMATH_API const char *jsbatonValueStringArgi(
 SQLMATH_API void jsonInit2(
     JsonString * pp,
     sqlite3_context * context
-);
-
-SQLMATH_API void jsonVectorDoubleAppend(
-    JsonString * pp,
-    const double val
 );
 
 SQLMATH_API double kthpercentile(
@@ -840,21 +865,6 @@ SQLMATH_API void jsonInit2(
     jsonGrow(pp, sizeof(pp->zSpace));
 }
 
-SQLMATH_API void jsonVectorDoubleAppend(
-    JsonString * pp,
-    double val
-) {
-// this function will append double <val> to <pp>
-    static const uint64_t NN = 8;
-    if ((NN + pp->nUsed >= pp->nAlloc) && jsonGrow(pp, NN) != 0) {
-        return;
-    }
-    // pp - append double
-    double *arr = (double *) &pp->zBuf[pp->nUsed];
-    *arr = val;
-    pp->nUsed += NN;
-}
-
 SQLMATH_API int noop(
 ) {
 // this function will do nothing except return 0
@@ -875,6 +885,14 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
         abort();
     }
     return (const char *) buf;
+}
+
+SQLMATH_API void str99VectorDoubleAppend(
+    sqlite3_str * str99,
+    double val
+) {
+// this function will append double <val> to vector <str99>
+    sqlite3_str_append(str99, (const char *) &val, 8);
 }
 
 
@@ -1105,21 +1123,23 @@ SQLMATH_FNC static void sql_kthpercentile_final(
 ) {
 // this function will aggregate kth-percentile element
     // str99 - init
-    JsonString *str99 = (JsonString *) sqlite3_aggregate_context(context, 0);
+    sqlite3_str *str99 =
+        (sqlite3_str *) sqlite3_aggregate_context(context, 0);
     if (str99 == NULL) {
         sqlite3_result_null(context);
         return;
     }
-    STR99_RESULT_ERROR_NOMEM_IF_BERR();
-    int nn = str99->nUsed / 8 - 1;
+    // str99 - result
+    STR99_AGGREGATE_RESULT_ERROR();
+    int nn = str99->nChar / 8 - 1;
     if (nn <= 0) {
-        jsonReset(str99);
+        STR99_AGGREGATE_CLEANUP();
         sqlite3_result_null(context);
         return;
     }
-    sqlite3_result_double(context, kthpercentile(((double *) str99->zBuf) + 1,
-            nn, ((double *) str99->zBuf)[0]));
-    jsonReset(str99);
+    sqlite3_result_double(context,
+        kthpercentile(((double *) str99->zText) + 1, nn,
+            ((double *) str99->zText)[0]));
 }
 
 SQLMATH_FNC static void sql_kthpercentile_step(
@@ -1130,24 +1150,24 @@ SQLMATH_FNC static void sql_kthpercentile_step(
 // this function will aggregate kth-percentile element
     UNUSED(argc);
     // str99 - init
-    JsonString *str99 =
-        (JsonString *) sqlite3_aggregate_context(context, sizeof(*str99));
+    sqlite3_str *str99 =
+        (sqlite3_str *) sqlite3_aggregate_context(context, sizeof(*str99));
     if (str99 == NULL) {
         return;
     }
-    // str99 - init zBuf
-    if (str99->zBuf == 0) {
-        jsonInit2(str99, context);
-        jsonVectorDoubleAppend(str99, sqlite3_value_double(argv[1]));
-        STR99_RESULT_ERROR_NOMEM_IF_BERR();
+    // str99 - init zText
+    if (str99->zText == NULL) {
+        str99->mxAlloc = SQLITE_MAX_LENGTH2;
+        str99VectorDoubleAppend(str99, sqlite3_value_double(argv[1]));
+        STR99_AGGREGATE_RESULT_ERROR();
     }
     // str99 - handle null-case
     if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
         return;
     }
     // str99 - append double
-    jsonVectorDoubleAppend(str99, sqlite3_value_double(argv[0]));
-    STR99_RESULT_ERROR_NOMEM_IF_BERR();
+    str99VectorDoubleAppend(str99, sqlite3_value_double(argv[0]));
+    STR99_AGGREGATE_RESULT_ERROR();
 }
 
 // SQLMATH_FNC sql_kthpercentile_func - end
@@ -1187,23 +1207,24 @@ SQLMATH_FNC static void sql_matrix2d_concat_final(
 ) {
 // this function will concat rows of nCol doubles to a 2d-matrix
     // str99 - init
-    JsonString *str99 = (JsonString *) sqlite3_aggregate_context(context, 0);
+    sqlite3_str *str99 =
+        (sqlite3_str *) sqlite3_aggregate_context(context, 0);
     if (str99 == NULL) {
         sqlite3_result_null(context);
         return;
     }
-    STR99_RESULT_ERROR_NOMEM_IF_BERR();
-    if (str99->nUsed <= 2 * 8) {
-        jsonReset(str99);
+    // str99 - result
+    STR99_AGGREGATE_RESULT_ERROR();
+    if (str99->nChar <= 2 * 8) {
+        STR99_AGGREGATE_CLEANUP();
         sqlite3_result_null(context);
         return;
     }
-    double *arr = (double *) str99->zBuf;
-    arr[0] = (0.125 * ((double) str99->nUsed) - 2) / arr[1];
-    sqlite3_result_blob(context, arr, str99->nUsed,
-        // cleanup jsonVectorDoubleAppend
+    double *arr = (double *) str99->zText;
+    arr[0] = (0.125 * ((double) str99->nChar) - 2) / arr[1];
+    sqlite3_result_blob(context, arr, str99->nChar,
+        // destructor
         sqlite3_free);
-    // jsonReset();
 }
 
 SQLMATH_FNC static void sql_matrix2d_concat_step(
@@ -1214,23 +1235,23 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 // this function will concat rows of nCol doubles to a 2d-matrix
     UNUSED(argc);
     // str99 - init
-    JsonString *str99 =
-        (JsonString *) sqlite3_aggregate_context(context, sizeof(*str99));
+    sqlite3_str *str99 =
+        (sqlite3_str *) sqlite3_aggregate_context(context, sizeof(*str99));
     if (str99 == NULL) {
         return;
     }
-    // str99 - init zBuf
-    if (str99->zBuf == 0) {
-        jsonInit2(str99, context);
-        jsonVectorDoubleAppend(str99, 0);
-        jsonVectorDoubleAppend(str99, (double) argc);
-        STR99_RESULT_ERROR_NOMEM_IF_BERR();
+    // str99 - init zText
+    if (str99->zText == NULL) {
+        str99->mxAlloc = SQLITE_MAX_LENGTH2;
+        str99VectorDoubleAppend(str99, 0);
+        str99VectorDoubleAppend(str99, (double) argc);
+        STR99_AGGREGATE_RESULT_ERROR();
     }
     // str99 - append double
     for (int ii = 0; ii < argc; ii += 1) {
-        jsonVectorDoubleAppend(str99, sqlite3_value_double(argv[ii]));
+        str99VectorDoubleAppend(str99, sqlite3_value_double(argv[ii]));
     }
-    STR99_RESULT_ERROR_NOMEM_IF_BERR();
+    STR99_AGGREGATE_RESULT_ERROR();
 }
 
 // SQLMATH_FNC sql_matrix2d_concat_func - end
@@ -1426,30 +1447,27 @@ SQLMATH_FNC static void sql_tofloat64array_func(
     // declare var
     double *arr = (double *) sqlite3_value_blob(argv[0]);
     int nn = sqlite3_value_int(argv[1]);
-    static const size_t wordsize = 32;
-    if (nn == 0) {
+    if (nn < 0) {
         nn = sqlite3_value_bytes(argv[0]) / 8;
     }
-    // init str99
-    JsonString __str99 = { 0 };
-    JsonString *str99 = &__str99;
-    jsonInit2(str99, NULL);
-    jsonAppendChar(str99, '[');
+    // str99 - init
+    sqlite3_str __str99 = { 0 };
+    sqlite3_str *str99 = &__str99;
+    str99->mxAlloc = SQLITE_MAX_LENGTH2;
     // str99 - append double
+    sqlite3_str_appendchar(str99, 1, '[');
     for (int ii = 0; ii < nn; ii += 1) {
-        if (str99->nUsed + wordsize >= str99->nAlloc) {
-            jsonGrow(str99, wordsize);
-        }
-        str99->nUsed +=
-            snprintf(str99->zBuf + str99->nUsed, wordsize, "%f", arr[ii]);
-        if (ii + 1 < nn) {
-            jsonAppendChar(str99, ',');
-        }
+        sqlite3_str_appendf(str99, ii + 1 == nn ? "%!.15g" : "%!.15g,",
+            arr[ii]);
     }
-    jsonAppendChar(str99, ']');
-    STR99_RESULT_ERROR_NOMEM_IF_BERR();
-    sqlite3_result_text(context, (const char *) str99->zBuf, str99->nUsed,
-        // cleanup buffer
+    sqlite3_str_appendchar(str99, 1, ']');
+    sqlite3_str_appendchar(str99, 1, '\x00');
+    if (str99->accError != 0) {
+        sqlite3_result_error_code(context, str99->accError);
+        return;
+    }
+    sqlite3_result_text(context, (const char *) str99->zText, str99->nChar,
+        // destructor
         sqlite3_free);
 }
 
