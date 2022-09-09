@@ -142,21 +142,6 @@ extern "C" {
         NULL, sql_##func##_step, sql_##func##_final); \
     if (errcode != SQLITE_OK) { return errcode; }
 
-#define SQLMATH_IS_OK_OR_RETURN_ERRCODE() \
-    if (errcode != SQLITE_OK) { return errcode; }
-
-#define STR99_APPEND_CHAR2(cc) \
-    if (!responseType) { jsonAppendChar(str99, cc); STR99_ASSERT_NOT_NOMEM(); }
-
-#define STR99_APPEND_JSON(zz, nn) \
-    jsonAppendString(str99, zz, nn); STR99_ASSERT_NOT_NOMEM();
-
-#define STR99_APPEND_RAW(zz, nn) \
-    jsonAppendRaw(str99, zz, nn); STR99_ASSERT_NOT_NOMEM();
-
-#define STR99_ASSERT_NOT_NOMEM() \
-    if (str99->bErr != 0) { errcode = SQLITE_NOMEM; JSBATON_ASSERT_OK(); }
-
 #define STR99_AGGREGATE_CLEANUP() \
     if (str99->zText) { sqlite3_free(str99->zText); str99->zText = NULL; }
 
@@ -171,7 +156,6 @@ extern "C" {
 // file sqlmath_h - sqlite3
 // *INDENT-OFF*
 SQLITE_API const sqlite3_api_routines *sqlite3ApiGet();
-typedef struct JsonString JsonString;
 typedef struct sqlite3_str sqlite3_str;
 typedef uint32_t u32;
 typedef uint64_t u64;
@@ -192,57 +176,9 @@ struct sqlite3_str {
   u8   accError;       /* SQLITE_NOMEM or SQLITE_TOOBIG */
   u8   printfFlags;    /* SQLITE_PRINTF flags below */
 };
-
+SQLITE_API int sqlite3_str_enlarge(sqlite3_str *p, int nn);
+SQLMATH_API void str99JsonAppend(sqlite3_str *str99, const char *zIn, u32 nn);
 SQLMATH_API void str99VectorDoubleAppend(sqlite3_str *str99, double val);
-
-
-// file sqlmath_h - JsonString
-/* An instance of this object represents a JSON string
-** under construction.  Really, this is a generic string accumulator
-** that can be and is used to create strings other than JSON. */
-struct JsonString {
-  sqlite3_context *pCtx;   /* Function context - put error messages here */
-  char *zBuf;              /* Append JSON content here */
-  u64 nAlloc;              /* Bytes of storage available in zBuf[] */
-  u64 nUsed;               /* Bytes of zBuf[] currently used */
-  u8 bStatic;              /* True if zBuf is static space */
-  u8 bErr;                 /* True if an error has been encountered */
-  char zSpace[100];        /* Initial static space */
-};
-
-/* Enlarge pJson->zBuf so that it can hold at least N more bytes.
-** Return zero on success.  Return non-zero on an OOM error */
-SQLITE_API int jsonGrow(JsonString *p, u32 N);
-
-/* Append a single character */
-SQLITE_API void jsonAppendChar(JsonString *p, char c);
-
-/* Append N bytes from zIn onto the end of the JsonString string. */
-SQLITE_API void jsonAppendRaw(JsonString *p, const char *zIn, u32 N);
-
-/* Append a comma separator to the output buffer, if the previous
-** character is not '[' or '{'. */
-SQLITE_API void jsonAppendSeparator(JsonString *p);
-
-/* Append the N-byte string in zIn to the end of the JsonString string
-** under construction.  Enclose the string in "..." and escape
-** any double-quotes or backslash characters contained within the
-** string. */
-SQLITE_API void jsonAppendString(JsonString *p, const char *zIn, u32 N);
-
-/* Initialize the JsonString object */
-SQLITE_API void jsonInit(JsonString *p, sqlite3_context *pCtx);
-
-/* Initialize the JsonString object with no context */
-SQLITE_API void jsonInitNoContext(JsonString *p);
-
-/* Free all allocated memory and reset the JsonString object back to its
-** initial state. */
-SQLITE_API void jsonReset(JsonString *p);
-
-SQLITE_API char *sqlite3_str_finish_stack(sqlite3_str *p);
-
-SQLITE_API sqlite3_str *sqlite3_str_new_stack(sqlite3 *db, sqlite3_str *p);
 // *INDENT-ON*
 
 
@@ -307,11 +243,6 @@ SQLMATH_API const char *jsbatonValueErrmsg(
 SQLMATH_API const char *jsbatonValueStringArgi(
     Jsbaton * baton,
     int argi
-);
-
-SQLMATH_API void jsonInit2(
-    JsonString * pp,
-    sqlite3_context * context
 );
 
 SQLMATH_API double kthpercentile(
@@ -539,13 +470,13 @@ SQLMATH_API void dbExec(
         bindElem += 1;
         ii += 1;
     }
-    // init str99
-    JsonString __str99 = { 0 };
-    JsonString *str99 = &__str99;
-    jsonInit2(str99, NULL);
+    // str99 - init
+    sqlite3_str __str99 = { 0 };
+    sqlite3_str *str99 = &__str99;
+    str99->mxAlloc = SQLITE_MAX_LENGTH2;
     // bracket database [
-    STR99_APPEND_CHAR2('[');
-    // loop over each table
+    sqlite3_str_appendchar(str99, 1, '[');
+    // loop over each table - start
     while (1) {
         // ignore whitespace
         while (*zSql == ' ' || *zSql == '\t' || *zSql == '\n'
@@ -632,7 +563,7 @@ SQLMATH_API void dbExec(
             ii += 1;
         }
         nCol = -1;
-        // loop over each row
+        // loop over each row - start
         while (1) {
             errcode = sqlite3_step(pStmt);
             if (errcode == SQLITE_DONE) {
@@ -646,51 +577,53 @@ SQLMATH_API void dbExec(
                 JSBATON_ASSERT_OK();
                 break;
             }
+            // switch (responseType) - start
             switch (responseType) {
             case SQLITE_RESPONSETYPE_LASTBLOB:
                 // export last-value as blob
                 if (nCol == -1) {
                     nCol = sqlite3_column_count(pStmt);
                 }
-                str99->nUsed = 0;
-                STR99_APPEND_RAW((const char *) sqlite3_column_blob(pStmt,
-                        nCol - 1), sqlite3_column_bytes(pStmt, nCol - 1));
+                str99->nChar = 0;
+                sqlite3_str_append(str99,
+                    (const char *) sqlite3_column_blob(pStmt, nCol - 1),
+                    sqlite3_column_bytes(pStmt, nCol - 1));
                 break;
             default:
                 // insert row of column-names
                 if (nCol == -1) {
                     nCol = sqlite3_column_count(pStmt);
-                    if (str99->nUsed > 1) {
-                        STR99_APPEND_CHAR2(',');
-                        STR99_APPEND_CHAR2('\n');
-                        STR99_APPEND_CHAR2('\n');
+                    if (str99->nChar > 1) {
+                        sqlite3_str_appendchar(str99, 1, ',');
+                        sqlite3_str_appendchar(str99, 1, '\n');
+                        sqlite3_str_appendchar(str99, 1, '\n');
                     }
                     // bracket table [
-                    STR99_APPEND_CHAR2('[');
+                    sqlite3_str_appendchar(str99, 1, '[');
                     // bracket column [
-                    STR99_APPEND_CHAR2('[');
+                    sqlite3_str_appendchar(str99, 1, '[');
                     // loop over each column-name
                     ii = 0;
                     while (ii < nCol) {
                         if (ii > 0) {
-                            STR99_APPEND_CHAR2(',');
+                            sqlite3_str_appendchar(str99, 1, ',');
                         }
                         zTmp = sqlite3_column_name(pStmt, ii);
-                        STR99_APPEND_JSON(zTmp, strlen(zTmp));
+                        str99JsonAppend(str99, zTmp, strlen(zTmp));
                         ii += 1;
                     }
                     // bracket column ]
-                    STR99_APPEND_CHAR2(']');
+                    sqlite3_str_appendchar(str99, 1, ']');
                 }
                 // bracket row [
-                STR99_APPEND_CHAR2(',');
-                STR99_APPEND_CHAR2('\n');
-                STR99_APPEND_CHAR2('[');
+                sqlite3_str_appendchar(str99, 1, ',');
+                sqlite3_str_appendchar(str99, 1, '\n');
+                sqlite3_str_appendchar(str99, 1, '[');
                 // loop over each column-value
                 ii = 0;
                 while (ii < nCol) {
                     if (ii > 0) {
-                        STR99_APPEND_CHAR2(',');
+                        sqlite3_str_appendchar(str99, 1, ',');
                     }
                     switch (sqlite3_column_type(pStmt, ii)) {
                     case SQLITE_INTEGER:
@@ -698,13 +631,13 @@ SQLMATH_API void dbExec(
                         if (JS_MIN_SAFE_INTEGER <= iTmp
                             // convert integer to double
                             && iTmp <= JS_MAX_SAFE_INTEGER) {
-                            STR99_APPEND_RAW((const char *)
-                                sqlite3_column_text(pStmt, ii),
+                            sqlite3_str_append(str99,
+                                (const char *) sqlite3_column_text(pStmt, ii),
                                 sqlite3_column_bytes(pStmt, ii));
                         } else {
                             // convert integer to string
-                            STR99_APPEND_JSON((const char *)
-                                sqlite3_column_text(pStmt, ii),
+                            str99JsonAppend(str99,
+                                (const char *) sqlite3_column_text(pStmt, ii),
                                 sqlite3_column_bytes(pStmt, ii));
                         }
                         break;
@@ -712,48 +645,66 @@ SQLMATH_API void dbExec(
                         rTmp = sqlite3_column_double(pStmt, ii);
                         if (isnan(rTmp) || rTmp == -INFINITY
                             || rTmp == INFINITY) {
-                            STR99_APPEND_RAW("null", 4);
+                            sqlite3_str_append(str99, "null", 4);
                         } else {
-                            STR99_APPEND_RAW((const char *)
-                                sqlite3_column_text(pStmt, ii),
+                            sqlite3_str_append(str99,
+                                (const char *) sqlite3_column_text(pStmt, ii),
                                 sqlite3_column_bytes(pStmt, ii));
                         }
                         break;
                     case SQLITE_TEXT:
                         // append text as json-escaped string
-                        STR99_APPEND_JSON((const char *)
-                            sqlite3_column_text(pStmt, ii),
+                        str99JsonAppend(str99,
+                            (const char *) sqlite3_column_text(pStmt, ii),
                             sqlite3_column_bytes(pStmt, ii));
                         break;
                         // case SQLITE_BLOB:
                     default:   /* case SQLITE_NULL: */
-                        STR99_APPEND_RAW("null", 4);
+                        sqlite3_str_append(str99, "null", 4);
                         break;
                     }
                     ii += 1;
                 }
                 // bracket row ]
-                STR99_APPEND_CHAR2(']');
+                sqlite3_str_appendchar(str99, 1, ']');
+            }
+            // switch (responseType) - end
+        }
+        // while (1)
+        // loop over each row - end
+        switch (responseType) {
+        case SQLITE_RESPONSETYPE_LASTBLOB:
+            break;
+        default:
+            if (nCol != -1) {
+                // bracket table ]
+                sqlite3_str_appendchar(str99, 1, ']');
             }
         }
-        if (nCol != -1) {
-            // bracket table ]
-            STR99_APPEND_CHAR2(']');
-        }
     }
-    // bracket database ]
-    STR99_APPEND_CHAR2(']');
-    STR99_APPEND_CHAR2('\n');
+    // while (1)
+    // loop over each table - end
+    switch (responseType) {
+    case SQLITE_RESPONSETYPE_LASTBLOB:
+        break;
+    default:
+        // bracket database ]
+        sqlite3_str_appendchar(str99, 1, ']');
+        sqlite3_str_appendchar(str99, 1, '\n');
+    }
+    errcode = str99->accError;
+    JSBATON_ASSERT_OK();
     // copy str99 to baton
-    baton->argv[7] = str99->nUsed;
-    baton->bufv[7] = (int64_t) str99->zBuf;
+    baton->argv[7] = str99->nChar;
+    baton->bufv[7] = (int64_t) str99->zText;
   catch_error:
     // cleanup pStmt
     sqlite3_finalize(pStmt);
     // cleanup bindList
     sqlite3_free(bindList);
-    if (errcode != SQLITE_OK) {
-        jsonReset(str99);
+    // cleanup str99
+    if (errcode != SQLITE_OK && str99->zText) {
+        sqlite3_free(str99->zText);
     }
 #ifndef EMSCRIPTEN
     // mutex leave
@@ -851,20 +802,6 @@ SQLMATH_API const char *jsbatonValueStringArgi(
     return ((const char *) baton) + ((size_t) baton->argv[argi] + 1 + 4);
 }
 
-SQLMATH_API void jsonInit2(
-    JsonString * pp,
-    sqlite3_context * context
-) {
-// this function will initialize JsonString <pp> with sqlite3_context <context>
-    if (context == NULL) {
-        jsonInitNoContext(pp);
-    } else {
-        jsonInit(pp, context);
-    }
-    // force pp.bStatic = 0
-    jsonGrow(pp, sizeof(pp->zSpace));
-}
-
 SQLMATH_API int noop(
 ) {
 // this function will do nothing except return 0
@@ -887,6 +824,60 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
     return (const char *) buf;
 }
 
+SQLITE_API void str99JsonAppend(
+    sqlite3_str * str99,
+    const char *zIn,
+    u32 nn
+) {
+/* Append the nn-byte string in zIn to the end of the JsonString string
+** under construction.  Enclose the string in "..." and escape
+** any double-quotes or backslash characters contained within the
+** string.
+*/
+    u32 i;
+    if (zIn == 0 || ((nn + str99->nChar + 2 >= str99->nAlloc)
+            && sqlite3_str_enlarge(str99, nn + 2) == 0))
+        return;
+    str99->zText[str99->nChar++] = '"';
+    for (i = 0; i < nn; i++) {
+        unsigned char c = ((unsigned const char *) zIn)[i];
+        if (c == '"' || c == '\\') {
+          json_simple_escape:
+            if ((str99->nChar + nn + 3 - i > str99->nAlloc)
+                && sqlite3_str_enlarge(str99, nn + 3 - i) == 0)
+                return;
+            str99->zText[str99->nChar++] = '\\';
+        } else if (c <= 0x1f) {
+            static const char aSpecial[] = {
+                0, 0, 0, 0, 0, 0, 0, 0, 'b', 't', 'n', 0, 'f', 'r', 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+            };
+            assert(sizeof(aSpecial) == 32);
+            assert(aSpecial['\b'] == 'b');
+            assert(aSpecial['\f'] == 'f');
+            assert(aSpecial['\n'] == 'n');
+            assert(aSpecial['\r'] == 'r');
+            assert(aSpecial['\t'] == 't');
+            if (aSpecial[c]) {
+                c = aSpecial[c];
+                goto json_simple_escape;
+            }
+            if ((str99->nChar + nn + 7 + i > str99->nAlloc)
+                && sqlite3_str_enlarge(str99, nn + 7 - i) == 0)
+                return;
+            str99->zText[str99->nChar++] = '\\';
+            str99->zText[str99->nChar++] = 'u';
+            str99->zText[str99->nChar++] = '0';
+            str99->zText[str99->nChar++] = '0';
+            str99->zText[str99->nChar++] = '0' + (c >> 4);
+            c = "0123456789abcdef"[c & 0xf];
+        }
+        str99->zText[str99->nChar++] = c;
+    }
+    str99->zText[str99->nChar++] = '"';
+    assert(str99->nChar < str99->nAlloc);
+}
+
 SQLMATH_API void str99VectorDoubleAppend(
     sqlite3_str * str99,
     double val
@@ -897,6 +888,141 @@ SQLMATH_API void str99VectorDoubleAppend(
 
 
 // file sqlmath_ext - SQLMATH_FNC
+// SQLMATH_FNC sql_btobase64_func - start
+static char *base64Encode(
+    const unsigned char *blob,
+    int *nn
+) {
+// this function will base64-encode <blob> to <text>
+    if (blob == NULL || *nn < 0) {
+        *nn = 0;
+    }
+    // declare var
+    char *text = NULL;
+    int aa = *nn - 3;
+    int bb = 0;
+    int ii = 0;
+    int triplet = 0;
+    static const char BASE64_ENCODE_TABLE[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    // init bb
+    bb = 4 * ceil((double) *nn / 3);
+    // init text
+    text = sqlite3_malloc(MAX(bb, 4));
+    // handle nomem
+    if (text == NULL) {
+        return NULL;
+    }
+    // handle null-case
+    if (bb < 4) {
+        text[0] = '\x00';
+    }
+    // base64-encode loop
+    while (ii < aa) {
+        triplet = blob[0];
+        triplet = triplet << 8 | blob[1];
+        triplet = triplet << 8 | blob[2];
+        blob += 3;
+        text[0] = BASE64_ENCODE_TABLE[(triplet >> 18) & 0x3f];
+        text[1] = BASE64_ENCODE_TABLE[(triplet >> 12) & 0x3f];
+        text[2] = BASE64_ENCODE_TABLE[(triplet >> 6) & 0x3f];
+        text[3] = BASE64_ENCODE_TABLE[triplet & 0x3f];
+        text += 4;
+        ii += 3;
+    }
+    // base64-encode '='
+    if (bb >= 4 && blob != NULL) {
+        aa += 3;
+        triplet = blob[0];
+        triplet = ii + 1 < aa ? triplet << 8 | blob[1] : triplet << 8;
+        triplet = ii + 2 < aa ? triplet << 8 | blob[2] : triplet << 8;
+        blob += 3;
+        text[0] = BASE64_ENCODE_TABLE[(triplet >> 18) & 0x3f];
+        text[1] = BASE64_ENCODE_TABLE[(triplet >> 12) & 0x3f];
+        text[2] =
+            (ii + 1 < aa) ? BASE64_ENCODE_TABLE[(triplet >> 6) & 0x3f] : '=';
+        text[3] = (ii + 2 < aa) ? BASE64_ENCODE_TABLE[triplet & 0x3f] : '=';
+        text += 4;
+        ii += 3;
+    }
+    // save bb
+    *nn = bb;
+    // return text
+    return text - bb;
+}
+
+SQLMATH_FNC static void sql_btobase64_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will convert blob to base64-encoded-text
+    UNUSED(argc);
+    // declare var
+    char *text = NULL;
+    int nn = sqlite3_value_bytes(argv[0]);
+    // base64-encode blob to text
+    text =
+        base64Encode((const unsigned char *) sqlite3_value_blob(argv[0]),
+        &nn);
+    // handle nomem
+    if (text == NULL) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
+    sqlite3_result_text(context, (const char *) text, nn,
+        // cleanup base64Encode()
+        sqlite3_free);
+}
+
+// SQLMATH_FNC sql_btobase64_func - end
+
+SQLMATH_FNC static void sql_btofloat64array_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will convert blob to json-encoded Float64Array
+    UNUSED(argc);
+    // declare var
+    double *arr = (double *) sqlite3_value_blob(argv[0]);
+    int nn = sqlite3_value_int(argv[1]);
+    if (nn < 0) {
+        nn = sqlite3_value_bytes(argv[0]) / 8;
+    }
+    // str99 - init
+    sqlite3_str __str99 = { 0 };
+    sqlite3_str *str99 = &__str99;
+    str99->mxAlloc = SQLITE_MAX_LENGTH2;
+    // str99 - append double
+    sqlite3_str_appendchar(str99, 1, '[');
+    for (int ii = 0; ii < nn; ii += 1) {
+        sqlite3_str_appendf(str99, ii + 1 == nn ? "%!.15g" : "%!.15g,",
+            arr[ii]);
+    }
+    sqlite3_str_appendchar(str99, 1, ']');
+    sqlite3_str_appendchar(str99, 1, '\x00');
+    if (str99->accError != 0) {
+        sqlite3_result_error_code(context, str99->accError);
+        return;
+    }
+    sqlite3_result_text(context, (const char *) str99->zText, str99->nChar,
+        // destructor
+        sqlite3_free);
+}
+
+SQLMATH_FNC static void sql_btotext_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will convert blob to text
+    UNUSED(argc);
+    sqlite3_result_text(context, (const char *) sqlite3_value_text(argv[0]),
+        -1, SQLITE_TRANSIENT);
+}
+
+
 SQLMATH_FNC static void sql_castrealorzero_func(
     sqlite3_context * context,
     int argc,
@@ -1348,141 +1474,6 @@ SQLMATH_FNC static void sql_throwerror_func(
 }
 
 
-// SQLMATH_FNC sql_tobase64_func - start
-static char *base64Encode(
-    const unsigned char *blob,
-    int *nn
-) {
-// this function will base64-encode <blob> to <text>
-    if (blob == NULL || *nn < 0) {
-        *nn = 0;
-    }
-    // declare var
-    char *text = NULL;
-    int aa = *nn - 3;
-    int bb = 0;
-    int ii = 0;
-    int triplet = 0;
-    static const char BASE64_ENCODE_TABLE[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    // init bb
-    bb = 4 * ceil((double) *nn / 3);
-    // init text
-    text = sqlite3_malloc(MAX(bb, 4));
-    // handle nomem
-    if (text == NULL) {
-        return NULL;
-    }
-    // handle null-case
-    if (bb < 4) {
-        text[0] = '\x00';
-    }
-    // base64-encode loop
-    while (ii < aa) {
-        triplet = blob[0];
-        triplet = triplet << 8 | blob[1];
-        triplet = triplet << 8 | blob[2];
-        blob += 3;
-        text[0] = BASE64_ENCODE_TABLE[(triplet >> 18) & 0x3f];
-        text[1] = BASE64_ENCODE_TABLE[(triplet >> 12) & 0x3f];
-        text[2] = BASE64_ENCODE_TABLE[(triplet >> 6) & 0x3f];
-        text[3] = BASE64_ENCODE_TABLE[triplet & 0x3f];
-        text += 4;
-        ii += 3;
-    }
-    // base64-encode '='
-    if (bb >= 4 && blob != NULL) {
-        aa += 3;
-        triplet = blob[0];
-        triplet = ii + 1 < aa ? triplet << 8 | blob[1] : triplet << 8;
-        triplet = ii + 2 < aa ? triplet << 8 | blob[2] : triplet << 8;
-        blob += 3;
-        text[0] = BASE64_ENCODE_TABLE[(triplet >> 18) & 0x3f];
-        text[1] = BASE64_ENCODE_TABLE[(triplet >> 12) & 0x3f];
-        text[2] =
-            (ii + 1 < aa) ? BASE64_ENCODE_TABLE[(triplet >> 6) & 0x3f] : '=';
-        text[3] = (ii + 2 < aa) ? BASE64_ENCODE_TABLE[triplet & 0x3f] : '=';
-        text += 4;
-        ii += 3;
-    }
-    // save bb
-    *nn = bb;
-    // return text
-    return text - bb;
-}
-
-SQLMATH_FNC static void sql_tobase64_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will convert blob to base64-encoded-text
-    UNUSED(argc);
-    // declare var
-    char *text = NULL;
-    int nn = sqlite3_value_bytes(argv[0]);
-    // base64-encode blob to text
-    text =
-        base64Encode((const unsigned char *) sqlite3_value_blob(argv[0]),
-        &nn);
-    // handle nomem
-    if (text == NULL) {
-        sqlite3_result_error_nomem(context);
-        return;
-    }
-    sqlite3_result_text(context, (const char *) text, nn,
-        // cleanup base64Encode()
-        sqlite3_free);
-}
-
-// SQLMATH_FNC sql_tobase64_func - end
-
-SQLMATH_FNC static void sql_tofloat64array_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will convert blob to json-encoded Float64Array
-    UNUSED(argc);
-    // declare var
-    double *arr = (double *) sqlite3_value_blob(argv[0]);
-    int nn = sqlite3_value_int(argv[1]);
-    if (nn < 0) {
-        nn = sqlite3_value_bytes(argv[0]) / 8;
-    }
-    // str99 - init
-    sqlite3_str __str99 = { 0 };
-    sqlite3_str *str99 = &__str99;
-    str99->mxAlloc = SQLITE_MAX_LENGTH2;
-    // str99 - append double
-    sqlite3_str_appendchar(str99, 1, '[');
-    for (int ii = 0; ii < nn; ii += 1) {
-        sqlite3_str_appendf(str99, ii + 1 == nn ? "%!.15g" : "%!.15g,",
-            arr[ii]);
-    }
-    sqlite3_str_appendchar(str99, 1, ']');
-    sqlite3_str_appendchar(str99, 1, '\x00');
-    if (str99->accError != 0) {
-        sqlite3_result_error_code(context, str99->accError);
-        return;
-    }
-    sqlite3_result_text(context, (const char *) str99->zText, str99->nChar,
-        // destructor
-        sqlite3_free);
-}
-
-SQLMATH_FNC static void sql_tostring_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will convert blob to text
-    UNUSED(argc);
-    sqlite3_result_text(context, (const char *) sqlite3_value_text(argv[0]),
-        -1, SQLITE_TRANSIENT);
-}
-
-
 // file sqlmath_ext - init
 int sqlite3_sqlmath_ext_base_init(
     sqlite3 * db,
@@ -1494,6 +1485,9 @@ int sqlite3_sqlmath_ext_base_init(
     int errcode = 0;
     // init sqlite3_api
     sqlite3_api = pApi;
+    SQLITE3_CREATE_FUNCTION1(btobase64, 1);
+    SQLITE3_CREATE_FUNCTION1(btofloat64array, 2);
+    SQLITE3_CREATE_FUNCTION1(btotext, 1);
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
     SQLITE3_CREATE_FUNCTION1(copyblob, 1);
@@ -1504,15 +1498,14 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
-    SQLITE3_CREATE_FUNCTION1(tobase64, 1);
-    SQLITE3_CREATE_FUNCTION1(tofloat64array, 2);
-    SQLITE3_CREATE_FUNCTION1(tostring, 1);
     SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
     SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
-    SQLMATH_IS_OK_OR_RETURN_ERRCODE();
+    if (errcode != SQLITE_OK) {
+        return errcode;
+    }
     return 0;
 }
 #endif                          // SQLITE3_EXT_C2

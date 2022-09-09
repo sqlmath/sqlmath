@@ -6,7 +6,8 @@
 - none
 
 # v2022.9.1-beta
-- sqlmath - revamp str99 with sqlite3_str part 1
+- sqlmath - revamp str99 with sqlite3_str
+- jslint - update jslint v2022.9.9
 - sqlite - revert back to v3.38.5 due to performance-regression
 - sqlmath - add sql-function tofloat64array()
 - sqlite - update to sqlite v3.39.2
