@@ -443,12 +443,12 @@ VALUES
     (501, 502.0123, 5030123456789),
     (601, '602', '603_\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e'),
     (?1, ?2, ?3),
-    (tostring(?1), tostring(?2), tostring(?3)),
-    (tobase64(?1), tobase64(?2), tobase64(?3)),
+    (btotext(?1), btotext(?2), btotext(?3)),
+    (btobase64(?1), btobase64(?2), btobase64(?3)),
     (
-        tobase64(uncompress(compress(?1))),
-        tobase64(uncompress(compress(?2))),
-        tobase64(uncompress(compress(?3)))
+        btobase64(uncompress(compress(?1))),
+        btobase64(uncompress(compress(?2))),
+        btobase64(uncompress(compress(?3)))
     );
 SELECT * FROM testDbExecAsync1;
 SELECT * FROM testDbExecAsync2;
@@ -667,7 +667,7 @@ jstestDescribe((
         });
         [
             {
-                sql: "SELECT tobase64(NULL) AS c01",
+                sql: "SELECT btobase64(NULL) AS c01",
                 valExpected: [
                     [
                         {
@@ -677,7 +677,7 @@ jstestDescribe((
                 ]
             },
             {
-                sql: "SELECT tobase64(?) AS c01",
+                sql: "SELECT btobase64(?) AS c01",
                 valExpected: [
                     [
                         {
@@ -690,7 +690,7 @@ jstestDescribe((
                 bindList: [
                     new Uint8Array(8)
                 ],
-                sql: "SELECT tobase64(uncompress(compress(?))) AS c01",
+                sql: "SELECT btobase64(uncompress(compress(?))) AS c01",
                 valExpected: [
                     [
                         {
