@@ -217,7 +217,7 @@ INSERT INTO chart.__stock_chart (datatype, series_index, xx, yy)
 UPDATE chart.__stock_chart
     SET
         yy = yy * inv - 1
-    FROM (SELECT 1)
+    FROM (SELECT 0)
     JOIN (
         SELECT
             1.0 / yy AS inv,
@@ -1120,7 +1120,7 @@ INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
 UPDATE chart.${tableName}
     SET
         yy = ROUND(100 * (yy * inv - 1), 4)
-    FROM (SELECT 1)
+    FROM (SELECT 0)
     JOIN (
         SELECT
             1.0 / yy AS inv,
@@ -1148,7 +1148,7 @@ UPDATE chart.${tableName}
             series_label,
             IIF(CASTTEXTOREMPTY(company_name) = '', '', ' - ' || company_name)
         )
-    FROM (SELECT 1)
+    FROM (SELECT 0)
     LEFT JOIN (
         SELECT
             *
@@ -2595,11 +2595,11 @@ CREATE TEMP TABLE __chart_series_maxmin1 AS
 SELECT
         json_set(
             options,
-            '$.seriesList', json(seriesList),
+            '$.seriesList', json(COALESCE(seriesList, '[]')),
             '$.xdataDxx', COALESCE(xdataDxx, 1),
             '$.xdataMax', xdataMax,
             '$.xdataMin', xdataMin,
-            '$.xlabelList', json(xlabelList),
+            '$.xlabelList', json(COALESCE(xlabelList, '[]')),
             '$.ydataMax', ydataMax,
             '$.ydataMin', ydataMin
         ) AS options
@@ -2613,12 +2613,12 @@ SELECT
     )
     JOIN (
         SELECT
-            json_group_array(json_set(
+            json_group_array(json(json_set(
                 COALESCE(options, '{}'),
                 '$.seriesName', series_label,
-                '$.xdata', json(xdata),
-                '$.ydata', json(ydata)
-            )) AS seriesList
+                '$.xdata', json(COALESCE(xdata, '[]')),
+                '$.ydata', json(COALESCE(ydata, '[]'))
+            ))) AS seriesList
         FROM (
             SELECT
                 options,
