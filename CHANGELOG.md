@@ -2,10 +2,10 @@
 
 # Todo
 - add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson
-- sqlmath - add sql-extension carrayblob()
 - none
 
 # v2022.9.1-beta
+- sqlmath - bugfix - handle null seriesList, xlabelList, xdata, ydata
 - sqlmath - revamp str99 with sqlite3_str
 - jslint - update jslint v2022.9.9
 - sqlite - revert back to v3.38.5 due to performance-regression

@@ -2595,11 +2595,11 @@ CREATE TEMP TABLE __chart_series_maxmin1 AS
 SELECT
         json_set(
             options,
-            '$.seriesList', json(seriesList),
+            '$.seriesList', json(COALESCE(seriesList, '[]')),
             '$.xdataDxx', COALESCE(xdataDxx, 1),
             '$.xdataMax', xdataMax,
             '$.xdataMin', xdataMin,
-            '$.xlabelList', json(xlabelList),
+            '$.xlabelList', json(COALESCE(xlabelList, '[]')),
             '$.ydataMax', ydataMax,
             '$.ydataMin', ydataMin
         ) AS options
@@ -2616,8 +2616,8 @@ SELECT
             json_group_array(json(json_set(
                 COALESCE(options, '{}'),
                 '$.seriesName', series_label,
-                '$.xdata', json(xdata),
-                '$.ydata', json(ydata)
+                '$.xdata', json(COALESCE(xdata, '[]')),
+                '$.ydata', json(COALESCE(ydata, '[]'))
             ))) AS seriesList
         FROM (
             SELECT
