@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# sqlite autoconf-3380500 version-3.38.5
 # curl -L https://www.sqlite.org/2022/sqlite-autoconf-3380500.tar.gz | tar -xz
 # https://www.sqlite.org/2022/sqlite-tools-linux-x86-3380500.zip
 # https://www.sqlite.org/2022/sqlite-tools-osx-x86-3380500.zip
@@ -806,7 +807,10 @@ shSyncSqlmath() {(set -e
             ":(exclude)CHANGELOG.md" \
             ":(exclude)sqlite3.c" \
             || true
-        git grep '3380[^5]00' || true
+        git grep 'autoconf-[0-9]' | grep -v CHANGELOG \
+            | grep -v '3380500' || true
+        git grep 'sqlite.*version-[0-9]' | grep -v CHANGELOG \
+            | grep -v '3\.38\.5' || true
         return
     fi
     if [ -d "$HOME/Documents/sqlmath/" ]

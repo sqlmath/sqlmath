@@ -601,12 +601,12 @@ body {
 <pre><span class="lineno"><a href="#line_443" id="line_443">  443.</a></span><span class="count        ">      4</span><span>    (501, 502.0123, 5030123456789),</span></pre>
 <pre><span class="lineno"><a href="#line_444" id="line_444">  444.</a></span><span class="count        ">      4</span><span>    (601, '602', '603_\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e'),</span></pre>
 <pre><span class="lineno"><a href="#line_445" id="line_445">  445.</a></span><span class="count        ">      4</span><span>    (?1, ?2, ?3),</span></pre>
-<pre><span class="lineno"><a href="#line_446" id="line_446">  446.</a></span><span class="count        ">      4</span><span>    (tostring(?1), tostring(?2), tostring(?3)),</span></pre>
-<pre><span class="lineno"><a href="#line_447" id="line_447">  447.</a></span><span class="count        ">      4</span><span>    (tobase64(?1), tobase64(?2), tobase64(?3)),</span></pre>
+<pre><span class="lineno"><a href="#line_446" id="line_446">  446.</a></span><span class="count        ">      4</span><span>    (btotext(?1), btotext(?2), btotext(?3)),</span></pre>
+<pre><span class="lineno"><a href="#line_447" id="line_447">  447.</a></span><span class="count        ">      4</span><span>    (btobase64(?1), btobase64(?2), btobase64(?3)),</span></pre>
 <pre><span class="lineno"><a href="#line_448" id="line_448">  448.</a></span><span class="count        ">      4</span><span>    (</span></pre>
-<pre><span class="lineno"><a href="#line_449" id="line_449">  449.</a></span><span class="count        ">      4</span><span>        tobase64(uncompress(compress(?1))),</span></pre>
-<pre><span class="lineno"><a href="#line_450" id="line_450">  450.</a></span><span class="count        ">      4</span><span>        tobase64(uncompress(compress(?2))),</span></pre>
-<pre><span class="lineno"><a href="#line_451" id="line_451">  451.</a></span><span class="count        ">      4</span><span>        tobase64(uncompress(compress(?3)))</span></pre>
+<pre><span class="lineno"><a href="#line_449" id="line_449">  449.</a></span><span class="count        ">      4</span><span>        btobase64(uncompress(compress(?1))),</span></pre>
+<pre><span class="lineno"><a href="#line_450" id="line_450">  450.</a></span><span class="count        ">      4</span><span>        btobase64(uncompress(compress(?2))),</span></pre>
+<pre><span class="lineno"><a href="#line_451" id="line_451">  451.</a></span><span class="count        ">      4</span><span>        btobase64(uncompress(compress(?3)))</span></pre>
 <pre><span class="lineno"><a href="#line_452" id="line_452">  452.</a></span><span class="count        ">      4</span><span>    );</span></pre>
 <pre><span class="lineno"><a href="#line_453" id="line_453">  453.</a></span><span class="count        ">      4</span><span>SELECT * FROM testDbExecAsync1;</span></pre>
 <pre><span class="lineno"><a href="#line_454" id="line_454">  454.</a></span><span class="count        ">      4</span><span>SELECT * FROM testDbExecAsync2;</span></pre>
@@ -825,7 +825,7 @@ body {
 <pre><span class="lineno"><a href="#line_667" id="line_667">  667.</a></span><span class="count        ">      1</span><span>        });</span></pre>
 <pre><span class="lineno"><a href="#line_668" id="line_668">  668.</a></span><span class="count        ">      1</span><span>        [</span></pre>
 <pre><span class="lineno"><a href="#line_669" id="line_669">  669.</a></span><span class="count        ">      1</span><span>            {</span></pre>
-<pre><span class="lineno"><a href="#line_670" id="line_670">  670.</a></span><span class="count        ">      1</span><span>                sql: "SELECT tobase64(NULL) AS c01",</span></pre>
+<pre><span class="lineno"><a href="#line_670" id="line_670">  670.</a></span><span class="count        ">      1</span><span>                sql: "SELECT btobase64(NULL) AS c01",</span></pre>
 <pre><span class="lineno"><a href="#line_671" id="line_671">  671.</a></span><span class="count        ">      1</span><span>                valExpected: [</span></pre>
 <pre><span class="lineno"><a href="#line_672" id="line_672">  672.</a></span><span class="count        ">      1</span><span>                    [</span></pre>
 <pre><span class="lineno"><a href="#line_673" id="line_673">  673.</a></span><span class="count        ">      1</span><span>                        {</span></pre>
@@ -835,7 +835,7 @@ body {
 <pre><span class="lineno"><a href="#line_677" id="line_677">  677.</a></span><span class="count        ">      1</span><span>                ]</span></pre>
 <pre><span class="lineno"><a href="#line_678" id="line_678">  678.</a></span><span class="count        ">      1</span><span>            },</span></pre>
 <pre><span class="lineno"><a href="#line_679" id="line_679">  679.</a></span><span class="count        ">      1</span><span>            {</span></pre>
-<pre><span class="lineno"><a href="#line_680" id="line_680">  680.</a></span><span class="count        ">      1</span><span>                sql: "SELECT tobase64(?) AS c01",</span></pre>
+<pre><span class="lineno"><a href="#line_680" id="line_680">  680.</a></span><span class="count        ">      1</span><span>                sql: "SELECT btobase64(?) AS c01",</span></pre>
 <pre><span class="lineno"><a href="#line_681" id="line_681">  681.</a></span><span class="count        ">      1</span><span>                valExpected: [</span></pre>
 <pre><span class="lineno"><a href="#line_682" id="line_682">  682.</a></span><span class="count        ">      1</span><span>                    [</span></pre>
 <pre><span class="lineno"><a href="#line_683" id="line_683">  683.</a></span><span class="count        ">      1</span><span>                        {</span></pre>
@@ -848,7 +848,7 @@ body {
 <pre><span class="lineno"><a href="#line_690" id="line_690">  690.</a></span><span class="count        ">      1</span><span>                bindList: [</span></pre>
 <pre><span class="lineno"><a href="#line_691" id="line_691">  691.</a></span><span class="count        ">      1</span><span>                    new Uint8Array(8)</span></pre>
 <pre><span class="lineno"><a href="#line_692" id="line_692">  692.</a></span><span class="count        ">      1</span><span>                ],</span></pre>
-<pre><span class="lineno"><a href="#line_693" id="line_693">  693.</a></span><span class="count        ">      1</span><span>                sql: "SELECT tobase64(uncompress(compress(?))) AS c01",</span></pre>
+<pre><span class="lineno"><a href="#line_693" id="line_693">  693.</a></span><span class="count        ">      1</span><span>                sql: "SELECT btobase64(uncompress(compress(?))) AS c01",</span></pre>
 <pre><span class="lineno"><a href="#line_694" id="line_694">  694.</a></span><span class="count        ">      1</span><span>                valExpected: [</span></pre>
 <pre><span class="lineno"><a href="#line_695" id="line_695">  695.</a></span><span class="count        ">      1</span><span>                    [</span></pre>
 <pre><span class="lineno"><a href="#line_696" id="line_696">  696.</a></span><span class="count        ">      1</span><span>                        {</span></pre>
