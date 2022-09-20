@@ -4,7 +4,7 @@
 - add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson
 - none
 
-# v2022.9.1-beta
+# v2022.9.20
 - sqlmath - bugfix - handle null seriesList, xlabelList, xdata, ydata
 - sqlmath - revamp str99 with sqlite3_str
 - jslint - update jslint v2022.9.9

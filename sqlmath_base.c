@@ -385,8 +385,6 @@ SQLMATH_API void dbExec(
 ) {
 // This function will run <zSql> in <db> and save any result (list of tables
 // containing rows from SELECT/pragma/etc) as serialized json-string in <str99>.
-    // coverage-hack
-    noop();
     // declare var
     DbExecBindElem *bindElem = NULL;
     DbExecBindElem *bindList = NULL;
@@ -407,6 +405,10 @@ SQLMATH_API void dbExec(
     sqlite3 *db = (sqlite3 *) baton->argv[0];
     sqlite3_stmt *pStmt = NULL; /* The current SQL statement */
     static const char bindPrefix[] = "$:@";
+    // str99 - init
+    sqlite3_str __str99 = { 0 };
+    sqlite3_str *str99 = &__str99;
+    str99->mxAlloc = SQLITE_MAX_LENGTH2;
     // fprintf(stderr, "\nsqlmath.dbExec(db=%lld blen=%d sql=%s)\n",
     //     (int64_t) db, bindListLength, zSql);
 #ifndef EMSCRIPTEN
@@ -470,10 +472,6 @@ SQLMATH_API void dbExec(
         bindElem += 1;
         ii += 1;
     }
-    // str99 - init
-    sqlite3_str __str99 = { 0 };
-    sqlite3_str *str99 = &__str99;
-    str99->mxAlloc = SQLITE_MAX_LENGTH2;
     // bracket database [
     sqlite3_str_appendchar(str99, 1, '[');
     // loop over each table - start
