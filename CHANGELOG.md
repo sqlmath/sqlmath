@@ -4,6 +4,9 @@
 - add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson
 - none
 
+# v2022.10.1-beta
+- sqlmath - re-enable sql-function squared()
+
 # v2022.9.20
 - sqlmath - bugfix - handle null seriesList, xlabelList, xdata, ydata
 - sqlmath - revamp str99 with sqlite3_str

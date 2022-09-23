@@ -1455,6 +1455,28 @@ SQLMATH_FNC static void sql_sign_func(
     }
 }
 
+SQLMATH_FNC static void sql_squared_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+/*
+** Implementation of the squared() function
+** the argument is an integer.
+** Since SQLite isn't strongly typed (almost untyped actually) this is a bit pedantic
+*/
+    UNUSED(argc);
+    switch (sqlite3_value_numeric_type(argv[0])) {
+    case SQLITE_INTEGER:
+    case SQLITE_FLOAT:
+        {
+            double rVal = sqlite3_value_double(argv[0]);
+            sqlite3_result_double(context, rVal * rVal);
+        }
+        return;
+    }
+}
+
 SQLMATH_FNC static void sql_throwerror_func(
     sqlite3_context * context,
     int argc,
@@ -1495,6 +1517,7 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);
+    SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
     SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
