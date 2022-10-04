@@ -413,7 +413,7 @@ CREATE TEMP TABLE __tmp1 AS
         *
     FROM (
         SELECT
-            grouping_index AS series_color,
+            IIF(category = 'short', 1, grouping_index) AS series_color,
             category LIKE '-%' AS is_dummy,
             printf(
                 '%05.2f%% - %s - %s',
@@ -514,7 +514,7 @@ CREATE TEMP TABLE __tmp1 AS
         *
     FROM (
         SELECT
-            grouping_index AS series_color,
+            IIF(category = 'short____short', 1, grouping_index) AS series_color,
             printf(
                 '%05.2f%% - %s',
                 perc_gain_today,
@@ -757,7 +757,7 @@ CREATE TEMP TABLE __tmp1 AS
         *
     FROM (
         SELECT
-            grouping_index AS series_color,
+            IIF(category = 'short', 1, grouping_index) AS series_color,
             category LIKE '-%' AS is_dummy,
             printf(
                 '%05.2f%% - %s - %s',
@@ -858,7 +858,7 @@ CREATE TEMP TABLE __tmp1 AS
         *
     FROM (
         SELECT
-            grouping_index AS series_color,
+            IIF(category = 'short____short', 1, grouping_index) AS series_color,
             printf(
                 '%05.2f%% - %s',
                 perc_holding,
