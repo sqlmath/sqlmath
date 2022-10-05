@@ -5,6 +5,7 @@
 - none
 
 # v2022.10.1-beta
+- coverage - add test-coverage for function sqlmathWebworkerInit()
 - chart - use different color for category - short
 - sqlmath - re-enable sql-function squared()
 
