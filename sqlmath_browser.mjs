@@ -1085,7 +1085,7 @@ INSERT INTO chart.${tableName} (datatype, xx, xx_label)
             ydate
         FROM (SELECT DISTINCT ydate FROM tradebot_historical)
         WHERE
-            ydate >= DATE('NOW', '-${dateInterval}')
+            ydate >= DATE(DATETIME('NOW', '-${dateInterval}'), '-0.5 DAY')
     );
 INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
     SELECT
@@ -1301,7 +1301,10 @@ async function init() {
     });
     // init event-handling - override window.onscroll
     window.onscroll = uitableInitWithinView;
-    window.scroll(0, 0);
+    window.scroll({
+        behavior: "smooth",
+        top: 0
+    });
     // init location.search
     await Promise.all(Array.from(
         location.search.slice(1).split("&")
@@ -2494,7 +2497,10 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
     });
     document.querySelector("#tocDbList1").innerHTML = html;
     // restore window.scrollY
-    window.scroll(0, windowScrollY);
+    window.scroll({
+        behavior: "smooth",
+        top: windowScrollY
+    });
     uitableInitWithinView({});
 }
 
@@ -3046,7 +3052,7 @@ SELECT
         }
         pointHovered = pointObj;
         // redraw seriesHovered
-        onSeriesHover(pointObj.series);
+        onSeriesHover(pointObj.series, true);
         // redraw tooltip around pointHovered
         let { //jslint-ignore-line
             pointX,
@@ -3118,7 +3124,7 @@ SELECT
         elemCrosshairList.children[1].setAttribute("visibility", "hidden");
         elemTooltip.setAttribute("visibility", "hidden");
     }
-    function onSeriesHover(evt) {
+    function onSeriesHover(evt, scrollTo) {
     // this function will handle <evt> when mouse hover over series
         let series = (
             evt.target
@@ -3128,7 +3134,7 @@ SELECT
             : evt
         );
         let seriesColor;
-        if (!series || !series.isVisible) {
+        if (!series?.isVisible) {
             onSeriesUnhover();
             return;
         }
@@ -3161,6 +3167,31 @@ SELECT
                 "stroke-width": ELEM_GRAPH_LINE_WIDTH + 4
             });
         }
+        Array.from(elemLegend.children).forEach(function (elem, seriesIi) {
+            if (seriesIi !== seriesHovered.seriesIi) {
+                elem.style.background = "none";
+                return;
+            }
+            // hover series in legend
+            elem.style.background = "#ccc";
+            // scroll to series in legend
+            if (scrollTo) {
+                debounce("onSeriesScroll", function () {
+                    elemLegend.scroll({
+                        behavior: "smooth",
+                        top: elem.offsetTop - elemLegend.offsetHeight
+                    });
+                });
+            }
+        });
+    }
+    function onSeriesHoveredHide() {
+    // this function will handle <evt> to hide hovered-series
+        if (seriesHovered) {
+            uichartSeriesHideOrShow(seriesHovered, false);
+            uichartRedraw();
+            return;
+        }
     }
     function onSeriesUnhover() {
     // this function will handle <evt> when mouse un-hover from series
@@ -3181,12 +3212,14 @@ SELECT
                 "stroke-width": ELEM_GRAPH_LINE_WIDTH
             });
         }
+        // un-hover series in legend
+        elemLegend.children[seriesHovered.seriesIi].style.background = "none";
+        seriesHovered = undefined;
     }
     async function onUichartAction(evt) {
     // this function will handle uichart event <evt>
         let action;
-        let data;
-        let series;
+        let isVisible;
         let target;
         evt.preventDefault();
         evt.stopPropagation();
@@ -3206,28 +3239,22 @@ SELECT
         case "uichartSeriesShowAll":
             uiFadeIn(baton.elemLoading);
             await waitAsync(50);
-            data = action === "uichartSeriesShowAll";
-            // hide or show legend
-            target.parentElement.querySelectorAll(
-                ".uichartLegendElem"
-            ).forEach(function (elem) {
-                elem.dataset.hidden = Number(!data);
-            });
+            isVisible = action === "uichartSeriesShowAll";
             // hide or show series
             seriesList.forEach(function (series) {
-                uichartSeriesHideOrShow(series, data);
+                uichartSeriesHideOrShow(series, isVisible);
             });
             uichartRedraw();
             await waitAsync(200);
             uiFadeOut(baton.elemLoading);
             return;
         case "uichartSeriesHideOrShow":
-            series = seriesList[target.dataset.seriesIi];
-            data = target.dataset.hidden === "1";
-            // hide or show legend
-            target.dataset.hidden = Number(!data);
+            isVisible = target.dataset.hidden === "1";
             // hide or show series
-            uichartSeriesHideOrShow(series, data);
+            uichartSeriesHideOrShow(
+                seriesList[target.dataset.seriesIi],
+                isVisible
+            );
             uichartRedraw();
             return;
         case "uichartZoomReset":
@@ -3764,6 +3791,10 @@ SELECT
                 ));
             }
         });
+        // hide or show legend
+        elemLegend.children[
+            series.seriesIi
+        ].dataset.hidden = Number(!isVisible);
     }
     function xaxisTranslate(xval) {
     // this function will translate <xval> to xpixel position on chart
@@ -3812,13 +3843,14 @@ SELECT
         width: canvasWidth
     });
     // init event-handling
+    elemCanvasFlex.onclick = onSeriesHoveredHide;
     elemCanvasFlex.onmouseenter = onPointUnhover;
     elemCanvasFlex.onmouseleave = onPointUnhover;
     elemCanvasFlex.onmousemove = onPointHover;
+    elemCanvasFlex.onwheel = onCanvasZoom;
     elemLegend.onmouseleave = onPointUnhover;
     elemLegend.onmouseover = onSeriesHover;
     elemUichart.querySelector(".uichartNav").onclick = onUichartAction;
-    elemCanvasFlex.onwheel = onCanvasZoom;
     // init seriesList
     seriesList.forEach(function (series, seriesIi) {
         let elemGraph;
@@ -3881,7 +3913,9 @@ SELECT
             elemGraphtracker.classList.add(`series_${seriesIi}`);
             // init event-handling
             elemGraphtracker.dataset.seriesIi = seriesIi;
-            elemGraphtracker.onmouseover = onSeriesHover;
+            elemGraphtracker.onmouseover = function (evt) {
+                onSeriesHover(evt, true);
+            };
         }
         // init pointListSeries
         pointListSeries = Array.from(ydata).map(function (yval, ii) {
@@ -3933,6 +3967,7 @@ SELECT
             isVisible: !series.isHidden,
             pointListSeries,
             seriesColor,
+            seriesIi,
             seriesShape,
             xdata,
             xpixelToPointDict: [],

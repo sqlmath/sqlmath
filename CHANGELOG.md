@@ -5,6 +5,7 @@
 - none
 
 # v2022.10.1-beta
+- chart - allow hiding series by clicking it in plot-area
 - coverage - add test-coverage for function sqlmathWebworkerInit()
 - chart - use different color for category - short
 - sqlmath - re-enable sql-function squared()
