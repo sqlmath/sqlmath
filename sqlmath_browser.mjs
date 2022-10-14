@@ -1006,12 +1006,14 @@ INSERT INTO chart._{{ii}}_tradebot_position_stock (
     FROM __tmp1;
         `),
         [
-            "7 day",
+            "1 week",
             "1 month",
             "3 month",
             "6 month",
+            "ytd",
             "1 year",
-            "2 year"
+            "2 year",
+            "backtrack"
         ].map(function (dateInterval) {
             let tableName = (
                 `_{{ii}}_tradebot_historical_`
@@ -1074,6 +1076,42 @@ INSERT INTO chart.${tableName} (datatype, options, series_index, series_label)
             SELECT '---- '
         )
     );
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 AS
+    SELECT
+        *
+    FROM (SELECT DISTINCT ydate FROM tradebot_historical)
+    JOIN (SELECT MIN(ydate) AS aa, MAX(ydate) AS bb FROM tradebot_historical);
+UPDATE __tmp1
+    SET
+        aa = aa2
+    FROM (
+        SELECT
+            ydate AS aa2
+        FROM __tmp1
+        JOIN (
+            SELECT
+                MAX(aa,
+            ${
+                (
+                    dateInterval === "1 week"
+                    ? "DATE(bb, '-7 DAY')"
+                    : dateInterval === "backtrack"
+                    ? "DATE(bb, '-5 YEAR')"
+                    : dateInterval === "ytd"
+                    ? "DATE(STRFTIME('%Y', bb) || '-01-01', '-1 DAY')"
+                    : "DATE(bb, '-" + dateInterval + "')"
+                )
+            }
+                ) AS aa2
+            FROM (SELECT aa, bb FROM __tmp1 LIMIT 1)
+        )
+        WHERE
+            ydate <= aa2
+        ORDER BY
+            ydate DESC
+        LIMIT 1
+    );
 INSERT INTO chart.${tableName} (datatype, xx, xx_label)
     SELECT
         'xx_label' AS datatype,
@@ -1081,11 +1119,20 @@ INSERT INTO chart.${tableName} (datatype, xx, xx_label)
         ydate AS xx_label
     FROM (
         SELECT
-            ROW_NUMBER() OVER (ORDER BY ydate) AS rownum,
+            ROW_NUMBER() OVER (
+                ORDER BY ydate
+            ${
+                (
+                    dateInterval === "backtrack"
+                    ? "DESC"
+                    : "ASC"
+                )
+            }
+            ) AS rownum,
             ydate
-        FROM (SELECT DISTINCT ydate FROM tradebot_historical)
+        FROM __tmp1
         WHERE
-            ydate >= DATE(DATETIME('NOW', '-${dateInterval}'), '-0.5 DAY')
+            aa <= ydate AND ydate <= bb
     );
 INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
     SELECT
@@ -1119,7 +1166,13 @@ INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
         AND ydate = xx_label;
 UPDATE chart.${tableName}
     SET
-        yy = ROUND(100 * (yy * inv - 1), 4)
+            ${
+                (
+                    dateInterval === "backtrack"
+                    ? "yy = ROUND(100 * (1.0 / (yy * inv) - 1), 4)"
+                    : "yy = ROUND(100 * (yy * inv - 1), 4)"
+                )
+            }
     FROM (SELECT 0)
     JOIN (
         SELECT
@@ -3637,7 +3690,7 @@ SELECT
                 return;
             }
             // redraw pointListSeries
-            pointListSeries.forEach(function (pointObj) {
+            pointListSeries.forEach(function (pointObj, ii) {
                 let barY;
                 let {
                     elemPoint,
@@ -3673,10 +3726,13 @@ SELECT
                     });
                     return;
                 }
-                if (128 <= (
-                    Math.pow(pointX - pointXPrv, 2)
-                    + Math.pow(pointY - pointYPrv, 2)
-                )) {
+                if (
+                    128 <= (
+                        Math.pow(pointX - pointXPrv, 2)
+                        + Math.pow(pointY - pointYPrv, 2)
+                    )
+                    || ii + 1 === pointListSeries.length
+                ) {
                     pointXPrv = pointX;
                     pointYPrv = pointY;
                 }
