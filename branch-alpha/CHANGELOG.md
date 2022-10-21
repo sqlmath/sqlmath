@@ -4,6 +4,13 @@
 - add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson
 - none
 
+# v2022.10.20
+- demo - add chart tradebot_historical_backtrack
+- chart - allow hiding series by clicking it in plot-area
+- coverage - add test-coverage for function sqlmathWebworkerInit()
+- chart - use different color for category - short
+- sqlmath - re-enable sql-function squared()
+
 # v2022.9.20
 - sqlmath - bugfix - handle null seriesList, xlabelList, xdata, ydata
 - sqlmath - revamp str99 with sqlite3_str

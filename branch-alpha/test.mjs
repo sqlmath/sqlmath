@@ -36,7 +36,8 @@ import {
     dbOpenAsync,
     debugInline,
     jsbatonValueString,
-    noop
+    noop,
+    sqlmathWebworkerInit
 } from "./sqlmath.mjs";
 let {
     assertErrorThrownAsync,
@@ -1268,6 +1269,23 @@ SELECT
                 valActual,
                 valExpected
             });
+        });
+    });
+});
+
+jstestDescribe((
+    "test sqlmathWebworkerInit handling-behavior"
+), function test_sqlmathWebworkerInit() {
+    jstestIt((
+        "test sqlmathWebworkerInit handling-behavior"
+    ), async function () {
+        let db = await dbOpenAsync({
+            dbData: new ArrayBuffer(),
+            filename: ":memory:"
+        });
+        sqlmathWebworkerInit({
+            db,
+            modeTest: true
         });
     });
 });
