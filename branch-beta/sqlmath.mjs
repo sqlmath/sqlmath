@@ -439,7 +439,6 @@ async function dbOpenAsync({
     dbData,
     filename,
     flags,
-    rawPtr,
     threadCount = 1
 }) {
 // this function will open and return sqlite-database-connection <db>
@@ -461,16 +460,10 @@ async function dbOpenAsync({
         !dbData || isExternalBuffer(dbData),
         "dbData must be ArrayBuffer"
     );
-    if (rawPtr) {
-        rawPtr = [
-            BigInt(rawPtr)
-        ];
-        threadCount = 1;
-    }
     connPool = await Promise.all(Array.from(new Array(
         threadCount
     ), async function () {
-        let ptr = rawPtr || await cCallAsync(
+        let ptr = await cCallAsync(
             undefined,
             "_dbOpen",
             // 0. const char *filename,   Database filename (UTF-8)
@@ -486,7 +479,7 @@ async function dbOpenAsync({
             // 4. wasm-only - arraybuffer of raw sqlite-database to open in wasm
             dbData
         );
-        ptr = rawPtr || [
+        ptr = [
             ptr[0].getBigInt64(4 + 4, true)
         ];
         dbFinalizationRegistry.register(db, {
@@ -824,7 +817,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     delete sqlMessageDict[id];
     // debug slow postMessage
     timeElapsed = Date.now() - timeElapsed;
-    if (timeElapsed > 500) {
+    if (timeElapsed > 500 || cFuncName === "testTimeElapsed") {
         consoleError(
             "sqlMessagePost - " + JSON.stringify({
                 cFuncName,
@@ -874,19 +867,44 @@ async function sqlmathInit() {
 }
 
 function sqlmathWebworkerInit({
-    Worker
+    db,
+    modeTest
 }) {
 
 // Feature-detect browser.
 
+    let Worker = globalThis.Worker;
     IS_BROWSER = true;
-    Worker = Worker || globalThis.Worker;
+    if (modeTest) {
+        Worker = function () {
+            return;
+        };
+    }
     sqlWorker = new Worker("sqlmath_wasm.js");
     sqlWorker.onmessage = function ({
         data
     }) {
         sqlMessageDict[data.id](data);
     };
+    if (modeTest) {
+        sqlWorker.postMessage = function (data) {
+            setTimeout(function () {
+                sqlWorker.onmessage({
+                    data
+                });
+            });
+        };
+        // test cCallAsync handling-behavior
+        cCallAsync(undefined, "testTimeElapsed", true);
+        // test dbFileExportAsync handling-behavior
+        dbFileExportAsync({
+            db,
+            filename: "aa",
+            modeTest
+        });
+        // revert IS_BROWSER
+        IS_BROWSER = undefined;
+    }
 }
 
 await sqlmathInit({});
