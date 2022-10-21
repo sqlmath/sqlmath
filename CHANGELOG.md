@@ -4,7 +4,7 @@
 - add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson
 - none
 
-# v2022.10.1-beta
+# v2022.10.20
 - demo - add chart tradebot_historical_backtrack
 - chart - allow hiding series by clicking it in plot-area
 - coverage - add test-coverage for function sqlmathWebworkerInit()
