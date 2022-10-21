@@ -413,7 +413,7 @@ CREATE TEMP TABLE __tmp1 AS
         *
     FROM (
         SELECT
-            grouping_index AS series_color,
+            IIF(category = 'short', 1, grouping_index) AS series_color,
             category LIKE '-%' AS is_dummy,
             printf(
                 '%05.2f%% - %s - %s',
@@ -514,7 +514,7 @@ CREATE TEMP TABLE __tmp1 AS
         *
     FROM (
         SELECT
-            grouping_index AS series_color,
+            IIF(category = 'short____short', 1, grouping_index) AS series_color,
             printf(
                 '%05.2f%% - %s',
                 perc_gain_today,
@@ -757,7 +757,7 @@ CREATE TEMP TABLE __tmp1 AS
         *
     FROM (
         SELECT
-            grouping_index AS series_color,
+            IIF(category = 'short', 1, grouping_index) AS series_color,
             category LIKE '-%' AS is_dummy,
             printf(
                 '%05.2f%% - %s - %s',
@@ -858,7 +858,7 @@ CREATE TEMP TABLE __tmp1 AS
         *
     FROM (
         SELECT
-            grouping_index AS series_color,
+            IIF(category = 'short____short', 1, grouping_index) AS series_color,
             printf(
                 '%05.2f%% - %s',
                 perc_holding,
@@ -1006,12 +1006,14 @@ INSERT INTO chart._{{ii}}_tradebot_position_stock (
     FROM __tmp1;
         `),
         [
-            "7 day",
+            "1 week",
             "1 month",
             "3 month",
             "6 month",
+            "ytd",
             "1 year",
-            "2 year"
+            "2 year",
+            "backtrack"
         ].map(function (dateInterval) {
             let tableName = (
                 `_{{ii}}_tradebot_historical_`
@@ -1074,6 +1076,42 @@ INSERT INTO chart.${tableName} (datatype, options, series_index, series_label)
             SELECT '---- '
         )
     );
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 AS
+    SELECT
+        *
+    FROM (SELECT DISTINCT ydate FROM tradebot_historical)
+    JOIN (SELECT MIN(ydate) AS aa, MAX(ydate) AS bb FROM tradebot_historical);
+UPDATE __tmp1
+    SET
+        aa = aa2
+    FROM (
+        SELECT
+            ydate AS aa2
+        FROM __tmp1
+        JOIN (
+            SELECT
+                MAX(aa,
+            ${
+                (
+                    dateInterval === "1 week"
+                    ? "DATE(bb, '-7 DAY')"
+                    : dateInterval === "backtrack"
+                    ? "DATE(bb, '-5 YEAR')"
+                    : dateInterval === "ytd"
+                    ? "DATE(STRFTIME('%Y', bb) || '-01-01', '-1 DAY')"
+                    : "DATE(bb, '-" + dateInterval + "')"
+                )
+            }
+                ) AS aa2
+            FROM (SELECT aa, bb FROM __tmp1 LIMIT 1)
+        )
+        WHERE
+            ydate <= aa2
+        ORDER BY
+            ydate DESC
+        LIMIT 1
+    );
 INSERT INTO chart.${tableName} (datatype, xx, xx_label)
     SELECT
         'xx_label' AS datatype,
@@ -1081,11 +1119,20 @@ INSERT INTO chart.${tableName} (datatype, xx, xx_label)
         ydate AS xx_label
     FROM (
         SELECT
-            ROW_NUMBER() OVER (ORDER BY ydate) AS rownum,
+            ROW_NUMBER() OVER (
+                ORDER BY ydate
+            ${
+                (
+                    dateInterval === "backtrack"
+                    ? "DESC"
+                    : "ASC"
+                )
+            }
+            ) AS rownum,
             ydate
-        FROM (SELECT DISTINCT ydate FROM tradebot_historical)
+        FROM __tmp1
         WHERE
-            ydate >= DATE('NOW', '-${dateInterval}')
+            aa <= ydate AND ydate <= bb
     );
 INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
     SELECT
@@ -1119,7 +1166,13 @@ INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
         AND ydate = xx_label;
 UPDATE chart.${tableName}
     SET
-        yy = ROUND(100 * (yy * inv - 1), 4)
+            ${
+                (
+                    dateInterval === "backtrack"
+                    ? "yy = ROUND(100 * (1.0 / (yy * inv) - 1), 4)"
+                    : "yy = ROUND(100 * (yy * inv - 1), 4)"
+                )
+            }
     FROM (SELECT 0)
     JOIN (
         SELECT
@@ -1301,7 +1354,10 @@ async function init() {
     });
     // init event-handling - override window.onscroll
     window.onscroll = uitableInitWithinView;
-    window.scroll(0, 0);
+    window.scroll({
+        behavior: "smooth",
+        top: 0
+    });
     // init location.search
     await Promise.all(Array.from(
         location.search.slice(1).split("&")
@@ -2494,7 +2550,10 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
     });
     document.querySelector("#tocDbList1").innerHTML = html;
     // restore window.scrollY
-    window.scroll(0, windowScrollY);
+    window.scroll({
+        behavior: "smooth",
+        top: windowScrollY
+    });
     uitableInitWithinView({});
 }
 
@@ -3046,7 +3105,7 @@ SELECT
         }
         pointHovered = pointObj;
         // redraw seriesHovered
-        onSeriesHover(pointObj.series);
+        onSeriesHover(pointObj.series, true);
         // redraw tooltip around pointHovered
         let { //jslint-ignore-line
             pointX,
@@ -3118,7 +3177,7 @@ SELECT
         elemCrosshairList.children[1].setAttribute("visibility", "hidden");
         elemTooltip.setAttribute("visibility", "hidden");
     }
-    function onSeriesHover(evt) {
+    function onSeriesHover(evt, scrollTo) {
     // this function will handle <evt> when mouse hover over series
         let series = (
             evt.target
@@ -3128,7 +3187,7 @@ SELECT
             : evt
         );
         let seriesColor;
-        if (!series || !series.isVisible) {
+        if (!series?.isVisible) {
             onSeriesUnhover();
             return;
         }
@@ -3161,6 +3220,31 @@ SELECT
                 "stroke-width": ELEM_GRAPH_LINE_WIDTH + 4
             });
         }
+        Array.from(elemLegend.children).forEach(function (elem, seriesIi) {
+            if (seriesIi !== seriesHovered.seriesIi) {
+                elem.style.background = "none";
+                return;
+            }
+            // hover series in legend
+            elem.style.background = "#ccc";
+            // scroll to series in legend
+            if (scrollTo) {
+                debounce("onSeriesScroll", function () {
+                    elemLegend.scroll({
+                        behavior: "smooth",
+                        top: elem.offsetTop - elemLegend.offsetHeight
+                    });
+                });
+            }
+        });
+    }
+    function onSeriesHoveredHide() {
+    // this function will handle <evt> to hide hovered-series
+        if (seriesHovered) {
+            uichartSeriesHideOrShow(seriesHovered, false);
+            uichartRedraw();
+            return;
+        }
     }
     function onSeriesUnhover() {
     // this function will handle <evt> when mouse un-hover from series
@@ -3181,12 +3265,14 @@ SELECT
                 "stroke-width": ELEM_GRAPH_LINE_WIDTH
             });
         }
+        // un-hover series in legend
+        elemLegend.children[seriesHovered.seriesIi].style.background = "none";
+        seriesHovered = undefined;
     }
     async function onUichartAction(evt) {
     // this function will handle uichart event <evt>
         let action;
-        let data;
-        let series;
+        let isVisible;
         let target;
         evt.preventDefault();
         evt.stopPropagation();
@@ -3206,28 +3292,22 @@ SELECT
         case "uichartSeriesShowAll":
             uiFadeIn(baton.elemLoading);
             await waitAsync(50);
-            data = action === "uichartSeriesShowAll";
-            // hide or show legend
-            target.parentElement.querySelectorAll(
-                ".uichartLegendElem"
-            ).forEach(function (elem) {
-                elem.dataset.hidden = Number(!data);
-            });
+            isVisible = action === "uichartSeriesShowAll";
             // hide or show series
             seriesList.forEach(function (series) {
-                uichartSeriesHideOrShow(series, data);
+                uichartSeriesHideOrShow(series, isVisible);
             });
             uichartRedraw();
             await waitAsync(200);
             uiFadeOut(baton.elemLoading);
             return;
         case "uichartSeriesHideOrShow":
-            series = seriesList[target.dataset.seriesIi];
-            data = target.dataset.hidden === "1";
-            // hide or show legend
-            target.dataset.hidden = Number(!data);
+            isVisible = target.dataset.hidden === "1";
             // hide or show series
-            uichartSeriesHideOrShow(series, data);
+            uichartSeriesHideOrShow(
+                seriesList[target.dataset.seriesIi],
+                isVisible
+            );
             uichartRedraw();
             return;
         case "uichartZoomReset":
@@ -3610,7 +3690,7 @@ SELECT
                 return;
             }
             // redraw pointListSeries
-            pointListSeries.forEach(function (pointObj) {
+            pointListSeries.forEach(function (pointObj, ii) {
                 let barY;
                 let {
                     elemPoint,
@@ -3646,10 +3726,13 @@ SELECT
                     });
                     return;
                 }
-                if (128 <= (
-                    Math.pow(pointX - pointXPrv, 2)
-                    + Math.pow(pointY - pointYPrv, 2)
-                )) {
+                if (
+                    128 <= (
+                        Math.pow(pointX - pointXPrv, 2)
+                        + Math.pow(pointY - pointYPrv, 2)
+                    )
+                    || ii + 1 === pointListSeries.length
+                ) {
                     pointXPrv = pointX;
                     pointYPrv = pointY;
                 }
@@ -3764,6 +3847,10 @@ SELECT
                 ));
             }
         });
+        // hide or show legend
+        elemLegend.children[
+            series.seriesIi
+        ].dataset.hidden = Number(!isVisible);
     }
     function xaxisTranslate(xval) {
     // this function will translate <xval> to xpixel position on chart
@@ -3812,13 +3899,14 @@ SELECT
         width: canvasWidth
     });
     // init event-handling
+    elemCanvasFlex.onclick = onSeriesHoveredHide;
     elemCanvasFlex.onmouseenter = onPointUnhover;
     elemCanvasFlex.onmouseleave = onPointUnhover;
     elemCanvasFlex.onmousemove = onPointHover;
+    elemCanvasFlex.onwheel = onCanvasZoom;
     elemLegend.onmouseleave = onPointUnhover;
     elemLegend.onmouseover = onSeriesHover;
     elemUichart.querySelector(".uichartNav").onclick = onUichartAction;
-    elemCanvasFlex.onwheel = onCanvasZoom;
     // init seriesList
     seriesList.forEach(function (series, seriesIi) {
         let elemGraph;
@@ -3881,7 +3969,9 @@ SELECT
             elemGraphtracker.classList.add(`series_${seriesIi}`);
             // init event-handling
             elemGraphtracker.dataset.seriesIi = seriesIi;
-            elemGraphtracker.onmouseover = onSeriesHover;
+            elemGraphtracker.onmouseover = function (evt) {
+                onSeriesHover(evt, true);
+            };
         }
         // init pointListSeries
         pointListSeries = Array.from(ydata).map(function (yval, ii) {
@@ -3933,6 +4023,7 @@ SELECT
             isVisible: !series.isHidden,
             pointListSeries,
             seriesColor,
+            seriesIi,
             seriesShape,
             xdata,
             xpixelToPointDict: [],
