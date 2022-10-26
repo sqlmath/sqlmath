@@ -37,5 +37,5 @@
         "test2": "sh jslint_ci.sh shCiBase",
         "test_win32": "node -e \"require('child_process').spawn('C:\\\\Program Files\\\\Git\\\\bin\\\\bash.exe',['-c','npm run test' + ' ' + process.argv.slice(1).join(' ')],{stdio:['ignore',1,2]});\""
     },
-    "version": "2022.10.20"
+    "version": "2022.11.1-beta"
 }

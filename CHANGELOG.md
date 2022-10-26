@@ -4,6 +4,9 @@
 - add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson
 - none
 
+# v2022.11.1-beta
+- chart - add intraday, 1-min chart
+
 # v2022.10.20
 - demo - add chart tradebot_historical_backtrack
 - chart - allow hiding series by clicking it in plot-area

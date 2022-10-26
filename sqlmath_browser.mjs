@@ -415,6 +415,7 @@ CREATE TEMP TABLE __tmp1 AS
         SELECT
             IIF(category = 'short', 1, grouping_index) AS series_color,
             category LIKE '-%' AS is_dummy,
+            grouping IN ('account', 'exchange') AS is_hidden,
             printf(
                 '%05.2f%% - %s - %s',
                 perc_gain_today,
@@ -488,6 +489,7 @@ INSERT INTO chart._{{ii}}_tradebot_performance_sector (
         'series_label' AS datatype,
         json_object(
             'isDummy', is_dummy,
+            'isHidden', is_hidden,
             'seriesColor', series_color
         ) AS options,
         xx AS series_index,
@@ -759,6 +761,7 @@ CREATE TEMP TABLE __tmp1 AS
         SELECT
             IIF(category = 'short', 1, grouping_index) AS series_color,
             category LIKE '-%' AS is_dummy,
+            grouping IN ('account', 'exchange') AS is_hidden,
             printf(
                 '%05.2f%% - %s - %s',
                 perc_holding,
@@ -832,6 +835,7 @@ INSERT INTO chart._{{ii}}_tradebot_position_sector (
         'series_label' AS datatype,
         json_object(
             'isDummy', is_dummy,
+            'isHidden', is_hidden,
             'seriesColor', series_color
         ) AS options,
         xx AS series_index,
@@ -1006,6 +1010,7 @@ INSERT INTO chart._{{ii}}_tradebot_position_stock (
     FROM __tmp1;
         `),
         [
+            "1 day",
             "1 week",
             "1 month",
             "3 month",
@@ -1015,9 +1020,13 @@ INSERT INTO chart._{{ii}}_tradebot_position_stock (
             "2 year",
             "backtrack"
         ].map(function (dateInterval) {
+            let tableData = (
+                dateInterval === "1 day"
+                ? "tradebot_intraday"
+                : "tradebot_historical"
+            );
             let tableName = (
-                `_{{ii}}_tradebot_historical_`
-                + dateInterval.replace(" ", "_")
+                `_{{ii}}_tradebot_historical_${dateInterval.replace(" ", "_")}`
             );
             return (`
 -- chart - tradebot_historical
@@ -1065,7 +1074,7 @@ INSERT INTO chart.${tableName} (datatype, options, series_index, series_label)
             ) AS rownum,
             sym
         FROM (
-            SELECT DISTINCT sym FROM tradebot_historical
+            SELECT DISTINCT sym FROM ${tableData}
             --
             UNION ALL
             --
@@ -1080,8 +1089,8 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 AS
     SELECT
         *
-    FROM (SELECT DISTINCT ydate FROM tradebot_historical)
-    JOIN (SELECT MIN(ydate) AS aa, MAX(ydate) AS bb FROM tradebot_historical);
+    FROM (SELECT DISTINCT ydate FROM ${tableData})
+    JOIN (SELECT MIN(ydate) AS aa, MAX(ydate) AS bb FROM ${tableData});
 UPDATE __tmp1
     SET
         aa = aa2
@@ -1160,7 +1169,7 @@ INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
                 datatype = 'xx_label'
         )
     )
-    LEFT JOIN tradebot_historical
+    LEFT JOIN ${tableData}
     ON
         sym = series_label
         AND ydate = xx_label;
@@ -1425,7 +1434,7 @@ async function init() {
         });
     }, 16);
     if (!modeDemo) {
-        await uiRenderDb();
+        await onDbExec({});
         return;
     }
     // init demo
@@ -2183,7 +2192,7 @@ function svgAnimate(elem, attrDict, mode) {
                     if (fx_rotate) {
                         elem.setAttribute(
                             "transform",
-                            `rotate(-15 ${fxnow} ${elem.fx_y || 0})`
+                            `rotate(-11.25 ${fxnow} ${elem.fx_y || 0})`
                         );
                     }
                 }
