@@ -1,10 +1,10 @@
 # Changelog
 
 # Todo
-- add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson
 - none
 
 # v2022.11.1-beta
+- chart - add dbtable-crud-operations dbtableImportCsv, dbtableImportJson
 - chart - add intraday, 1-min chart
 
 # v2022.10.20
