@@ -394,9 +394,13 @@ async function dbFileExportAsync({
     db,
     dbData,
     filename,
-    modeExport = 1
+    modeExport = 1,
+    modeNoop
 }) {
 // This function will export <db> to <filename>
+    if (modeNoop) {
+        return;
+    }
     if (IS_BROWSER) {
         filename = FILENAME_DBTMP;
     }
