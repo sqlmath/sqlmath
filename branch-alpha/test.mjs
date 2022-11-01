@@ -514,6 +514,9 @@ SELECT * FROM testDbExecAsync2;
             filename: ":memory:"
         });
         // test null-case handling-behavior
+        dbFileExportAsync({
+            modeNoop: true
+        });
         assertErrorThrownAsync(function () {
             return dbFileImportAsync({
                 db
