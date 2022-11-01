@@ -376,11 +376,10 @@ async function demoTradebot() {
             "1 day",
             "1 week",
             "1 month",
-            "3 month",
             "6 month",
             "ytd",
             "1 year",
-            "2 year",
+            "5 year",
             "backtrack"
         ].map(function (dateInterval) {
             let optionDict;
@@ -400,17 +399,17 @@ async function demoTradebot() {
                     + dateInterval
                     + (
                         dateInterval === "1 day"
-                        ? " - updated " + new Date(
+                        ? "\n[ updated " + new Date(
                             tradebotState.datenow + "Z"
-                        ).toLocaleString()
+                        ).toUTCString() + " ]"
                         : ""
                     )
                 ),
                 xaxisTitle: "date",
                 xvalueConvert: (
                     dateInterval === "1 day"
-                    ? "epochToTimeLocal"
-                    : "epochToDate"
+                    ? "unixepochToTimeutc"
+                    : "juliandayToDate"
                 ),
                 yaxisTitle: "percent gain",
                 yvalueSuffix: " %"
@@ -487,7 +486,7 @@ UPDATE __tmp1
                     dateInterval === "1 week"
                     ? "DATE(bb, '-7 DAY')"
                     : dateInterval === "backtrack"
-                    ? "DATE(bb, '-5 YEAR')"
+                    ? "DATE(bb, '-100 YEAR')"
                     : dateInterval === "ytd"
                     ? "DATE(STRFTIME('%Y', bb) || '-01-01', '-1 DAY')"
                     : "DATE(bb, '-" + dateInterval + "')"
@@ -618,7 +617,11 @@ DELETE FROM chart.${tableName} WHERE
     AND xx = 1;
 UPDATE chart.${tableName}
     SET
-        xx = UNIXEPOCH(tt)
+        xx = ${(
+                dateInterval === "1 day"
+                ? "UNIXEPOCH(tt)"
+                : "ROUND(JULIANDAY(tt))"
+            )}
     FROM (SELECT 0)
     JOIN (
         SELECT
@@ -1207,7 +1210,7 @@ CREATE TEMP TABLE __tmp1 AS
         FROM tradebot_account
         JOIN tradebot_buysell_history
         ORDER BY
-            time_filled DESC
+            time_filled
     );
 DROP TABLE IF EXISTS chart._{{ii}}_tradebot_buysell_history;
 CREATE TABLE chart._{{ii}}_tradebot_buysell_history (
@@ -1224,11 +1227,11 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (datatype, options)
         'options' AS datatype,
         '{
             "isBarchart": true,
-            "title": "tradebot buy/sell history today - updated '
-                || '${new Date(tradebotState.datenow + "Z").toLocaleString()}'
-                || '",
+            "title": "tradebot buy/sell history today\\n[ updated '
+                || '${new Date(tradebotState.datenow + "Z").toUTCString()}'
+                || ' ]",
             "xaxisTitle": "time",
-            "xvalueConvert": "epochToTimeLocal",
+            "xvalueConvert": "unixepochToTimeutc",
             "yaxisTitle": "buy/sell value as percentage of account",
             "yvalueSuffix": " %"
         }' AS options
@@ -1242,7 +1245,7 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
     SELECT
         'series_label' AS datatype,
         json_object('seriesColor', series_color) AS options,
-        -xx AS series_index,
+        xx AS series_index,
         series_label
     FROM __tmp1;
 INSERT INTO chart._{{ii}}_tradebot_buysell_history (
@@ -1253,7 +1256,7 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
 )
     SELECT
         'yy_value' AS datatype,
-        -xx AS series_index,
+        xx AS series_index,
         xx,
         yy
     FROM __tmp1;
@@ -2388,7 +2391,7 @@ function svgAnimate(elem, attrDict, mode) {
                     if (fx_rotate) {
                         elem.setAttribute(
                             "transform",
-                            `rotate(-11.25 ${fxnow} ${elem.fx_y || 0})`
+                            `rotate(-15 ${fxnow} ${elem.fx_y || 0})`
                         );
                     }
                 }
@@ -2941,10 +2944,7 @@ SELECT
     elemUichart.innerHTML = (`
 <div
     class="uichartNav"
-    style="
-    height: ${elemUichartHeight}px;
-    width: ${elemLegendWidth}px;
-    "
+    style="height: ${elemUichartHeight}px; width: ${elemLegendWidth}px;"
 >
     <button
         class="uichartAction"
@@ -2966,8 +2966,14 @@ SELECT
 <div style="position: relative; margin-left: 16px; width: 16px;">
     <div class="uichartAxislabel1">${stringHtmlSafe(uichart.yaxisTitle)}</div>
 </div>
-<div style="display: flex; flex: 1; flex-direction: column; padding: 5px 0">
-    <div class="uichartTitle">${stringHtmlSafe(uichart.title)}</div>
+<div style="display: flex; flex: 1; flex-direction: column; padding: 5px 0;">
+    <div class="uichartTitle">
+    ${
+        stringHtmlSafe(uichart.title).replace((
+            /\n/g
+        ), "<br>")
+    }
+    </div>
     <div class="uichartCanvasFlex" style="flex: 1;">
     <svg
         class="uichartCanvasFixed"
@@ -2987,7 +2993,7 @@ SELECT
         <g class="uichartTooltip" visibility="hidden">
             <rect
                 class="uichartTooltipBorder"
-                fill-opacity="0.6667"
+                fill-opacity="0.8000"
                 fill="#fff"
                 rx="5"
                 ry="5"
@@ -2996,7 +3002,7 @@ SELECT
                 y="0"
             >
             </rect>
-            <text class="uichartTooltipText" x="5" y="17"></text>
+            <text class="uichartTooltipText"></text>
         </g>
         <g class="uichartMousetrackerList">/g>
     </svg>
@@ -3132,7 +3138,7 @@ SELECT
         // create elemTick
         elemTick = svgAttrSet("path", {
             fill: "none",
-            stroke: "#33f",
+            stroke: "#33b",
             "stroke-width": 3
         });
         elemTick.isFirstDraw = true;
@@ -3169,6 +3175,7 @@ SELECT
             );
             num = numberFormat({
                 convert: uichart[xOrY + "valueConvert"],
+                modeTick: true,
                 num: (
                     isXaxis
                     ? xlabelList[tickx - 1] ?? tickx
@@ -3234,17 +3241,38 @@ SELECT
     }
     function numberFormat({
         convert,
+        modeTick,
         num,
         prefix,
         suffix
     }) {
     // this function will format <num>
         switch (convert) {
-        case "epochToDate":
-            num = new Date(1000 * num).toISOString().slice(0, 10);
+        case "juliandayToDate":
+            num = new Date((num - 2440587.5) * 86400 * 1000);
+            // num = num.toUTCString().slice(0, 16);
+            num = (
+                modeTick
+                ? num.toUTCString().slice(5, 16)
+                : num.toUTCString().slice(0, 16)
+            );
             break;
-        case "epochToTimeLocal":
-            num = new Date(1000 * num).toLocaleTimeString();
+        case "unixepochToTimelocal":
+            num = new Date(num * 1000);
+            num = (
+                modeTick
+                ? num.toLocaleTimeString()
+                : num.toLocaleString()
+            );
+            break;
+        case "unixepochToTimeutc":
+            // num = new Date(num * 1000).toISOString().slice(11, 19) + "Z";
+            num = new Date(num * 1000);
+            num = (
+                modeTick
+                ? num.toUTCString().slice(17)
+                : num.toUTCString()
+            );
             break;
         }
         if (prefix) {
@@ -3253,7 +3281,7 @@ SELECT
         if (suffix) {
             num += suffix;
         }
-        return stringHtmlSafe(num);
+        return num;
     }
     function onCanvasZoom(evt) {
     // this function will zoom/un-zoom at current mouse-location on canvas-area
@@ -3318,19 +3346,36 @@ SELECT
         let { //jslint-ignore-line
             pointX,
             pointY,
-            xlabel,
             xval,
             yval
         } = pointHovered;
+        let xlabel;
+        let ylabel;
         if (redrawTimer || pointY === undefined) {
             return;
         }
+        xlabel = numberFormat({
+            convert: uichart.xvalueConvert,
+            num: xlabelList[xval - 1] ?? xval,
+            prefix: uichart.xvaluePrefix,
+            suffix: uichart.xvalueSuffix
+        });
+        ylabel = numberFormat({
+            convert: uichart.yvalueConvert,
+            num: yval,
+            prefix: uichart.yvaluePrefix,
+            suffix: uichart.yvalueSuffix
+        });
         // update elemTooltipText
         elemTooltip.setAttribute("visibility", "visible");
         elemTooltipText.innerHTML = (`
-<tspan style="font-size: 10px" x="5">${xlabel}</tspan>
-<tspan style="fill:#000" dy="17" x="5">${seriesHovered.seriesName} : </tspan>
-<tspan style="font-weight:bold">${Number(yval).toLocaleString()}</tspan>
+<tspan dy="17" x="6">${stringHtmlSafe(seriesHovered.seriesName)}</tspan>
+<tspan dy="17" x="6">x: ${stringHtmlSafe(xlabel)}</tspan>
+<tspan
+    dy="19"
+    style="font-size: 14px; font-weight: bold;"
+    x="6"
+>y: ${stringHtmlSafe(ylabel)}</tspan>
         `);
         // update elemTooltipBorder after text-update
         tooltipBbox = elemTooltipText.getBBox();
@@ -4208,12 +4253,6 @@ SELECT
             pointObj = {
                 elemPoint,
                 series,
-                xlabel: numberFormat({
-                    convert: uichart.xvalueConvert,
-                    num: xlabelList[xval - 1] ?? xval,
-                    prefix: uichart.xvaluePrefix,
-                    suffix: uichart.xvalueSuffix
-                }),
                 xval,
                 yval: (
                     Number.isNaN(yval)

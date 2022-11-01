@@ -4,6 +4,9 @@
 - none
 
 # v2022.11.1-beta
+- ci - update to nodejs v18
+- chart - redesign tooltip
+- chart - add xvalueConvert option juliandayToDate
 - chart - add dbtable-crud-operations dbtableImportCsv, dbtableImportJson
 - chart - add intraday, 1-min chart
 

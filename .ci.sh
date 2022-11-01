@@ -830,7 +830,7 @@ shSyncSqlmath() {(set -e
             sqlmath_jenks.c \
             sqlmath_wrapper_wasm.js
         do
-            ln -f "$HOME/Documents/sqlmath/$FILE"
+            ln -f "$HOME/Documents/sqlmath/$FILE" "$FILE"
         done
     fi
     git diff
