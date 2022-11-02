@@ -406,6 +406,11 @@ async function demoTradebot() {
                     )
                 ),
                 xaxisTitle: "date",
+                xstep: (
+                    dateInterval === "1 day"
+                    ? 60
+                    : 1
+                ),
                 xvalueConvert: (
                     dateInterval === "1 day"
                     ? "unixepochToTimeutc"
@@ -620,7 +625,7 @@ UPDATE chart.${tableName}
         xx = ${(
                 dateInterval === "1 day"
                 ? "UNIXEPOCH(tt)"
-                : "ROUND(JULIANDAY(tt))"
+                : "JULIANDAY(tt)"
             )}
     FROM (SELECT 0)
     JOIN (
@@ -2808,6 +2813,19 @@ async function uichartCreate(baton) {
     let uichart = await dbExecAsync({
         db,
         sql: (`
+-- table - __chart_options1 - insert
+DROP TABLE IF EXISTS __chart_options1;
+CREATE TEMP TABLE __chart_options1 AS
+    SELECT
+        json(options) AS options,
+        CASTREALORZERO(options->>'$.xstep') AS xstep,
+        CASTREALORZERO(1.0 / options->>'$.xstep') AS xstep_inv,
+        CASTREALORZERO(options->>'$.ystep') AS ystep,
+        CASTREALORZERO(1.0 / options->>'$.ystep') AS ystep_inv
+    FROM (
+        SELECT options FROM ${dbtableName} WHERE datatype = 'options' LIMIT 1
+    );
+
 -- table - __chart_series_xy1 - insert
 DROP TABLE IF EXISTS __chart_series_xy1;
 CREATE TEMP TABLE __chart_series_xy1 AS
@@ -2832,10 +2850,18 @@ CREATE TEMP TABLE __chart_series_xy1 AS
                 series_index,
                 xx,
                 yy
-            FROM ${dbtableName}
-            WHERE
-                datatype = 'yy_value'
-                AND xx IS NOT NULL
+            FROM (
+                SELECT
+                    ${dbtableName}.rowid,
+                    series_index,
+                    IIF(xstep_inv, ROUND(xstep_inv * xx), xx) AS xx,
+                    IIF(ystep_inv, ROUND(ystep_inv * yy), yy) AS yy
+                FROM ${dbtableName}
+                JOIN __chart_options1
+                WHERE
+                    datatype = 'yy_value'
+                    AND xx IS NOT NULL
+            )
             ORDER BY
                 series_index,
                 xx
@@ -2859,6 +2885,7 @@ CREATE TEMP TABLE __chart_series_maxmin1 AS
     GROUP BY
         series_index;
 
+-- table - __chart_options1 - select - options
 SELECT
         json_set(
             options,
@@ -2870,7 +2897,7 @@ SELECT
             '$.ydataMax', ydataMax,
             '$.ydataMin', ydataMin
         ) AS options
-    FROM (SELECT options FROM ${dbtableName} WHERE datatype = 'options' LIMIT 1)
+    FROM __chart_options1
     JOIN (
         SELECT
             json_group_array(xx_label) AS xlabelList
@@ -3182,6 +3209,7 @@ SELECT
                     : tickx
                 ),
                 prefix: uichart[xOrY + "valuePrefix"],
+                step: uichart[xOrY + "step"],
                 suffix: uichart[xOrY + "valueSuffix"]
             });
             // number already formatted
@@ -3244,9 +3272,13 @@ SELECT
         modeTick,
         num,
         prefix,
+        step,
         suffix
     }) {
     // this function will format <num>
+        if (step && typeof num === "number") {
+            num *= step;
+        }
         switch (convert) {
         case "juliandayToDate":
             num = new Date((num - 2440587.5) * 86400 * 1000);
@@ -3358,12 +3390,14 @@ SELECT
             convert: uichart.xvalueConvert,
             num: xlabelList[xval - 1] ?? xval,
             prefix: uichart.xvaluePrefix,
+            step: uichart.xstep,
             suffix: uichart.xvalueSuffix
         });
         ylabel = numberFormat({
             convert: uichart.yvalueConvert,
             num: yval,
             prefix: uichart.yvaluePrefix,
+            step: uichart.ystep,
             suffix: uichart.yvalueSuffix
         });
         // update elemTooltipText

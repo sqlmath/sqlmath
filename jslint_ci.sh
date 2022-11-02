@@ -3245,6 +3245,6 @@ shCiMain() {(set -e
 )}
 
 # init ubuntu .bashrc
-shBashrcDebianInit || return "$?"
+shBashrcDebianInit || exit "$?"
 
 shCiMain "$@"

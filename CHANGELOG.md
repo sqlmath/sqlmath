@@ -4,6 +4,8 @@
 - none
 
 # v2022.11.1-beta
+- sqlmath - remove unused sqlite-extensions carray, csv from file sqlite3_ext.c
+- chart - add chart-options xstep, ystep
 - ci - update to nodejs v18
 - chart - redesign tooltip
 - chart - add xvalueConvert option juliandayToDate
