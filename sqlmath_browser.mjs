@@ -383,15 +383,16 @@ async function demoTradebot() {
             "backtrack"
         ].map(function (dateInterval) {
             let optionDict;
+            let tableChart;
             let tableData;
-            let tableName;
             tableData = (
                 dateInterval === "1 day"
                 ? "tradebot_intraday"
                 : "tradebot_historical"
             );
-            tableName = (
-                `_{{ii}}_tradebot_historical_${dateInterval.replace(" ", "_")}`
+            tableChart = (
+                "chart._{{ii}}_tradebot_historical_"
+                + dateInterval.replace(" ", "_")
             );
             optionDict = {
                 title: (
@@ -420,9 +421,9 @@ async function demoTradebot() {
                 yvalueSuffix: " %"
             };
             return (`
--- chart - tradebot_historical
-DROP TABLE IF EXISTS chart.${tableName};
-CREATE TABLE chart.${tableName} (
+-- chart - ${tableChart} - create
+DROP TABLE IF EXISTS ${tableChart};
+CREATE TABLE ${tableChart} (
     datatype TEXT NOT NULL,
     series_index INTEGER,
     xx REAL,
@@ -431,11 +432,11 @@ CREATE TABLE chart.${tableName} (
     xx_label TEXT,
     options TEXT
 );
-INSERT INTO chart.${tableName} (datatype, options)
+INSERT INTO ${tableChart} (datatype, options)
     SELECT
         'options' AS datatype,
         '${JSON.stringify(optionDict)}' AS options;
-INSERT INTO chart.${tableName} (datatype, options, series_index, series_label)
+INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
         json_object(
@@ -506,7 +507,7 @@ UPDATE __tmp1
             ydate DESC
         LIMIT 1
     );
-INSERT INTO chart.${tableName} (datatype, xx, xx_label)
+INSERT INTO ${tableChart} (datatype, xx, xx_label)
     SELECT
         'xx_label' AS datatype,
         rownum AS xx,
@@ -519,7 +520,7 @@ INSERT INTO chart.${tableName} (datatype, xx, xx_label)
         WHERE
             aa <= ydate AND ydate <= bb
     );
-INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
+INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
     SELECT
         'yy_value' AS datatype,
         series_index,
@@ -532,7 +533,7 @@ INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
             SELECT
                 series_index,
                 series_label
-            FROM chart.${tableName}
+            FROM ${tableChart}
             WHERE
                 datatype = 'series_label'
         )
@@ -540,7 +541,7 @@ INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
             SELECT
                 xx,
                 xx_label
-            FROM chart.${tableName}
+            FROM ${tableChart}
             WHERE
                 datatype = 'xx_label'
         )
@@ -549,7 +550,7 @@ INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
     ON
         sym = series_label
         AND ydate = xx_label;
-UPDATE chart.${tableName}
+UPDATE ${tableChart}
     SET
             ${
                 (
@@ -577,7 +578,7 @@ UPDATE chart.${tableName}
                 ) AS rownum,
                 yy,
                 series_index
-            FROM chart.${tableName}
+            FROM ${tableChart}
             WHERE
                 datatype = 'yy_value'
                 AND yy > 0
@@ -585,7 +586,7 @@ UPDATE chart.${tableName}
         WHERE
             rownum = 1
     ) USING (series_index);
-UPDATE chart.${tableName}
+UPDATE ${tableChart}
     SET
         series_label = printf(
             '%+06.2f%% - %s%s',
@@ -605,7 +606,7 @@ UPDATE chart.${tableName}
                 ) AS rownum,
                 series_index,
                 yy AS yy_today
-            FROM chart.${tableName}
+            FROM ${tableChart}
             WHERE
                 datatype = 'yy_value'
         )
@@ -616,11 +617,11 @@ UPDATE chart.${tableName}
     WHERE
         datatype = 'series_label';
 -- chart - tradebot_historical - normalize xx to unixepoch
-DELETE FROM chart.${tableName} WHERE
+DELETE FROM ${tableChart} WHERE
     '${dateInterval}' = '1 day'
     AND datatype = 'yy_value'
     AND xx = 1;
-UPDATE chart.${tableName}
+UPDATE ${tableChart}
     SET
         xx = ${(
                 dateInterval === "1 day"
@@ -632,13 +633,13 @@ UPDATE chart.${tableName}
         SELECT
             xx,
             xx_label AS tt
-        FROM chart.${tableName}
+        FROM ${tableChart}
         WHERE
             datatype = 'xx_label'
     ) USING (xx)
     WHERE
         datatype = 'yy_value';
-INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
+INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
     SELECT
         'yy_value' AS datatype,
         series_index,
@@ -647,77 +648,154 @@ INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
     FROM (
         SELECT
             series_index
-        FROM chart.${tableName}
+        FROM ${tableChart}
         WHERE datatype = 'series_label'
     )
     JOIN (
         SELECT
             MIN(xx) AS xx0
-        FROM chart.${tableName}
+        FROM ${tableChart}
         WHERE
             datatype = 'yy_value'
     )
     WHERE
         '${dateInterval}' = '1 day';
-DELETE FROM chart.${tableName} WHERE datatype = 'xx_label';
+DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
             `);
         }),
-        (`
--- chart - tradebot_performance_sector
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
+        [
+            "sector",
+            "subsector",
+            "stock"
+        ].map(function (grouping) {
+            return [
+                "performance",
+                "holding"
+            ].map(function (ptype) {
+                let columnData;
+                let optionDict;
+                let sqlSelect;
+                let tableChart;
+                columnData = (
+                    ptype === "performance"
+                    ? "perc_gain_today"
+                    : "perc_holding"
+                );
+                optionDict = {
+                    isBarchart: true,
+                    title: `tradebot ${ptype} today by ${grouping}`,
+                    xaxisTitle: grouping,
+                    yaxisTitle: (
+                        ptype === "performance"
+                        ? "percent gain"
+                        : "percent holding"
+                    ),
+                    yvalueSuffix: " %"
+                };
+                sqlSelect = (
+                    grouping === "sector"
+                    ? (`
+SELECT
+        IIF(category LIKE 'short%', 1, grouping_index) AS series_color,
+        category LIKE '-%' AS is_dummy,
+        grouping IN ('account', 'exchange') AS is_hidden,
+        printf(
+            '%05.2f%% - %s - %s',
+            ${columnData},
+            grouping,
+            category
+        ) AS series_label,
+        ROW_NUMBER() OVER (
+            ORDER BY
+                grouping_index,
+                category != '----' DESC,
+                ${columnData} DESC
+        ) AS xx,
+        SUBSTR(category, 1, 16) AS xx_label,
+        ${columnData} AS yy
     FROM (
         SELECT
-            IIF(category = 'short', 1, grouping_index) AS series_color,
-            category LIKE '-%' AS is_dummy,
-            grouping IN ('account', 'exchange') AS is_hidden,
-            printf(
-                '%05.2f%% - %s - %s',
-                perc_gain_today,
-                grouping,
-                category
-            ) AS series_label,
-            ROW_NUMBER() OVER (
-                ORDER BY
-                    grouping_index,
-                    category != '----' DESC,
-                    perc_gain_today DESC
-            ) AS xx,
-            perc_gain_today AS yy
+            category,
+            grouping,
+            grouping_index,
+            ${columnData},
+            perc_holding
+        FROM tradebot_position_category
+        WHERE
+            grouping != 'subsector'
+        --
+        UNION ALL
+        --
+        SELECT
+            '----' AS category,
+            '----' AS grouping,
+            grouping_index,
+            NULL AS ${columnData},
+            NULL perc_holding
         FROM (
-            SELECT
-                category,
+            SELECT DISTINCT
                 grouping,
-                grouping_index,
-                perc_gain_today,
-                perc_holding
+                grouping_index
             FROM tradebot_position_category
-            WHERE
-                grouping != 'subsector'
-            --
-            UNION ALL
-            --
-            SELECT
-                '----' AS category,
-                '----' AS grouping,
-                grouping_index,
-                NULL AS perc_gain_today,
-                NULL perc_holding
-            FROM (
-                SELECT DISTINCT
-                    grouping,
-                    grouping_index
-                FROM tradebot_position_category
-            )
         )
     )
-    ORDER BY
-        series_color,
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_performance_sector;
-CREATE TABLE chart._{{ii}}_tradebot_performance_sector (
+                    `)
+                    : grouping === "subsector"
+                    ? (`
+SELECT
+        IIF(category LIKE 'short%', 1, grouping_index) AS series_color,
+        category LIKE '-%' AS is_dummy,
+        0 AS is_hidden,
+        printf('%05.2f%% - %s', ${columnData}, category) AS series_label,
+        ROW_NUMBER() OVER (
+            ORDER BY
+                grouping_index,
+                category != '----' DESC,
+                ${columnData} DESC
+        ) AS xx,
+        SUBSTR(
+            SUBSTR(category, INSTR(category, '____') + 4),
+            0,
+            16
+        ) AS xx_label,
+        ${columnData} AS yy
+    FROM (
+        SELECT
+            category,
+            grouping,
+            grouping_index,
+            ${columnData},
+            perc_holding
+        FROM tradebot_position_category
+        WHERE
+            grouping = 'subsector'
+    )
+                    `)
+                    : (`
+SELECT
+        IIF(is_short, 1, 2) AS series_color,
+        0 AS is_dummy,
+        0 AS is_hidden,
+        printf(
+            '%+.2f%% - %s - %s - %s',
+            ${columnData},
+            IIF(is_short, 'short', 'long'),
+            sym,
+            company_name
+        ) AS series_label,
+        ROW_NUMBER() OVER (ORDER BY ${columnData} DESC) AS xx,
+        sym AS xx_label,
+        ${columnData} AS yy
+    FROM tradebot_position_stock
+                    `)
+                );
+                tableChart = `chart._{{ii}}_tradebot_${grouping}_${ptype}`;
+                return (`
+-- chart - ${tableChart} - create
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 AS SELECT * FROM (${sqlSelect}) ORDER BY xx;
+DROP TABLE IF EXISTS ${tableChart};
+CREATE TABLE ${tableChart} (
     datatype TEXT NOT NULL,
     series_index INTEGER,
     xx REAL,
@@ -726,17 +804,11 @@ CREATE TABLE chart._{{ii}}_tradebot_performance_sector (
     xx_label TEXT,
     options TEXT
 );
-INSERT INTO chart._{{ii}}_tradebot_performance_sector (datatype, options)
+INSERT INTO ${tableChart} (datatype, options)
     SELECT
         'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot performance today by sector",
-            "xaxisTitle": "category",
-            "yaxisTitle": "percent gain",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_performance_sector (
+        '${JSON.stringify(optionDict)}' AS options;
+INSERT INTO ${tableChart} (
     datatype,
     options,
     series_index,
@@ -752,162 +824,13 @@ INSERT INTO chart._{{ii}}_tradebot_performance_sector (
         xx AS series_index,
         series_label
     FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_performance_sector (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_performance_subsector
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (
-        SELECT
-            IIF(category = 'short____short', 1, grouping_index) AS series_color,
-            printf(
-                '%05.2f%% - %s',
-                perc_gain_today,
-                category
-            ) AS series_label,
-            ROW_NUMBER() OVER (
-                ORDER BY
-                    grouping_index,
-                    category != '----' DESC,
-                    perc_gain_today DESC
-            ) AS xx,
-            perc_gain_today AS yy
-        FROM (
-            SELECT
-                category,
-                grouping,
-                grouping_index,
-                perc_gain_today,
-                perc_holding
-            FROM tradebot_position_category
-            WHERE
-                grouping = 'subsector'
-        )
-    )
-    ORDER BY
-        series_color,
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_performance_subsector;
-CREATE TABLE chart._{{ii}}_tradebot_performance_subsector (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart._{{ii}}_tradebot_performance_subsector (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot performance today by subsector",
-            "xaxisTitle": "category",
-            "yaxisTitle": "percent gain",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_performance_subsector (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
-    SELECT
-        'series_label' AS datatype,
-        json_object('seriesColor', series_color) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_performance_subsector (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_performance_stock
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (
-        SELECT
-            IIF(is_short, 1, 2) AS series_color,
-            printf(
-                '%+.2f%% - %s - %s - %s',
-                perc_gain_today,
-                IIF(is_short, 'short', 'long'),
-                sym,
-                company_name
-            ) AS series_label,
-            ROW_NUMBER() OVER (ORDER BY perc_gain_today DESC) xx,
-            sym AS xx_label,
-            perc_gain_today AS yy
-        FROM tradebot_position_stock
-    )
-    ORDER BY
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_performance_stock;
-CREATE TABLE chart._{{ii}}_tradebot_performance_stock (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart._{{ii}}_tradebot_performance_stock (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot performance today by stock",
-            "xaxisTitle": "stock",
-            "yaxisTitle": "percent gain",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_performance_stock (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
-    SELECT
-        'series_label' AS datatype,
-        json_object('seriesColor', series_color) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_performance_stock (datatype, xx, xx_label)
+INSERT INTO ${tableChart} (datatype, xx, xx_label)
     SELECT
         'xx_label' AS datatype,
         xx,
         xx_label
     FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_performance_stock (
+INSERT INTO ${tableChart} (
     datatype,
     series_index,
     xx,
@@ -919,265 +842,9 @@ INSERT INTO chart._{{ii}}_tradebot_performance_stock (
         xx,
         yy
     FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_position_sector
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (
-        SELECT
-            IIF(category = 'short', 1, grouping_index) AS series_color,
-            category LIKE '-%' AS is_dummy,
-            grouping IN ('account', 'exchange') AS is_hidden,
-            printf(
-                '%05.2f%% - %s - %s',
-                perc_holding,
-                grouping,
-                category
-            ) AS series_label,
-            ROW_NUMBER() OVER (
-                ORDER BY
-                    grouping_index,
-                    category != '----' DESC,
-                    perc_holding DESC
-            ) AS xx,
-            perc_holding AS yy
-        FROM (
-            SELECT
-                category,
-                grouping,
-                grouping_index,
-                perc_gain_today,
-                perc_holding
-            FROM tradebot_position_category
-            WHERE
-                grouping != 'subsector'
-            --
-            UNION ALL
-            --
-            SELECT
-                '----' AS category,
-                '----' AS grouping,
-                grouping_index,
-                NULL AS perc_gain_today,
-                NULL perc_holding
-            FROM (
-                SELECT DISTINCT
-                    grouping,
-                    grouping_index
-                FROM tradebot_position_category
-            )
-        )
-    )
-    ORDER BY
-        series_color,
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_position_sector;
-CREATE TABLE chart._{{ii}}_tradebot_position_sector (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart._{{ii}}_tradebot_position_sector (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot position today by sector",
-            "xaxisTitle": "category",
-            "yaxisTitle": "percent holding",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_position_sector (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
-    SELECT
-        'series_label' AS datatype,
-        json_object(
-            'isDummy', is_dummy,
-            'isHidden', is_hidden,
-            'seriesColor', series_color
-        ) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_position_sector (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_position_subsector
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (
-        SELECT
-            IIF(category = 'short____short', 1, grouping_index) AS series_color,
-            printf(
-                '%05.2f%% - %s',
-                perc_holding,
-                category
-            ) AS series_label,
-            ROW_NUMBER() OVER (
-                ORDER BY
-                    grouping_index,
-                    category != '----' DESC,
-                    perc_holding DESC
-            ) AS xx,
-            perc_holding AS yy
-        FROM (
-            SELECT
-                category,
-                grouping,
-                grouping_index,
-                perc_gain_today,
-                perc_holding
-            FROM tradebot_position_category
-            WHERE
-                grouping = 'subsector'
-        )
-    )
-    ORDER BY
-        series_color,
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_position_subsector;
-CREATE TABLE chart._{{ii}}_tradebot_position_subsector (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart._{{ii}}_tradebot_position_subsector (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot position today by subsector",
-            "xaxisTitle": "category",
-            "yaxisTitle": "percent holding",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_position_subsector (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
-    SELECT
-        'series_label' AS datatype,
-        json_object('seriesColor', series_color) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_position_subsector (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_position_stock
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (
-        SELECT
-            IIF(is_short, 1, 2) AS series_color,
-            printf(
-                '%05.2f%% - %s - %s - %s',
-                perc_holding,
-                IIF(is_short, 'short', 'long'),
-                sym,
-                company_name
-            ) AS series_label,
-            ROW_NUMBER() OVER (ORDER BY perc_holding DESC) xx,
-            sym AS xx_label,
-            perc_holding AS yy
-        FROM tradebot_position_stock
-    )
-    ORDER BY
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_position_stock;
-CREATE TABLE chart._{{ii}}_tradebot_position_stock (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart._{{ii}}_tradebot_position_stock (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot position today by stock",
-            "xaxisTitle": "stock",
-            "yaxisTitle": "percent holding",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_position_stock (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
-    SELECT
-        'series_label' AS datatype,
-        json_object('seriesColor', series_color) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_position_stock (datatype, xx, xx_label)
-    SELECT
-        'xx_label' AS datatype,
-        xx,
-        xx_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_position_stock (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
+                `);
+            });
+        }),
         (`
 -- chart - tradebot_buysell_history
 DROP TABLE IF EXISTS __tmp1;
@@ -1250,7 +917,7 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
     SELECT
         'series_label' AS datatype,
         json_object('seriesColor', series_color) AS options,
-        xx AS series_index,
+        __tmp1.rowid AS series_index,
         series_label
     FROM __tmp1;
 INSERT INTO chart._{{ii}}_tradebot_buysell_history (
@@ -1261,12 +928,12 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
 )
     SELECT
         'yy_value' AS datatype,
-        xx AS series_index,
+        __tmp1.rowid AS series_index,
         xx,
         yy
     FROM __tmp1;
         `)
-    ].flat().map(function (sql, ii) {
+    ].flat().flat().map(function (sql, ii) {
         return sql.trim().replace((
             /\{\{ii\}\}/g
         ), String(ii + 1).padStart(2, "0"));
@@ -1376,8 +1043,8 @@ async function init() {
         [".modalClose", "click", onModalClose],
         ["body", "click", onContextmenu],
         ["body", "contextmenu", onContextmenu],
+        ["body", "keydown", onKeyDown],
         [UI_FILE_OPEN, "change", onDbAction],
-        [document, "keyup", onKeyUp],
         [window, "hashchange", uitableInitWithinView],
         [window, "resize", onResize]
     ].forEach(function ([
@@ -2151,10 +1818,10 @@ async function onDbcrudExec({
     UI_CRUD.style.zIndex = -1;
 }
 
-function onKeyUp(evt) {
+function onKeyDown(evt) {
 // this function will handle event keyup
     if (!evt.modeDebounce) {
-        debounce("onKeyUp", onKeyUp, Object.assign(evt, {
+        debounce("onKeyDown", onKeyDown, Object.assign(evt, {
             modeDebounce: true
         }));
         return;
@@ -2168,8 +1835,21 @@ function onKeyUp(evt) {
         return;
     }
     switch ((evt.ctrlKey || evt.metaKey) && evt.key) {
+    // database - execute
     case "Enter":
         onDbExec({});
+        return;
+    // database - open
+    case "o":
+        evt.preventDefault();
+        evt.stopPropagation();
+        document.querySelector("button[data-action='dbOpen']").click();
+        return;
+    // database - save
+    case "s":
+        evt.preventDefault();
+        evt.stopPropagation();
+        document.querySelector("button[data-action='dbExportMain']").click();
         return;
     }
 }

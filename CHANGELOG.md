@@ -4,6 +4,8 @@
 - none
 
 # v2022.11.1-beta
+- demo - add hotkeys ctrl-o to open database, ctrl-s to save database
+- demo - streamline charts sector, subsector, stock into single logic
 - sqlmath - remove unused sqlite-extensions carray, csv from file sqlite3_ext.c
 - chart - add chart-options xstep, ystep
 - ci - update to nodejs v18

@@ -331,6 +331,7 @@ import modulePath from "path";
                 //
                 // extra feature
                 //
+                // "SQLITE_ENABLE_ICU",
                 "SQLITE_ENABLE_MATH_FUNCTIONS",
                 // "SQLITE_ENABLE_STMTVTAB",
                 "SQLITE_HAVE_ZLIB",
