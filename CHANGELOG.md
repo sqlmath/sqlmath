@@ -15,6 +15,7 @@
 - chart - add intraday, 1-min chart
 
 # v2022.10.20
+- chart - improve ergonomics to attach database and import csv/json
 - demo - add chart tradebot_historical_backtrack
 - chart - allow hiding series by clicking it in plot-area
 - coverage - add test-coverage for function sqlmathWebworkerInit()

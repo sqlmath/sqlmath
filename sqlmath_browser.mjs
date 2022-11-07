@@ -19,7 +19,6 @@ let {
 let DBTABLE_DICT = new Map();
 let DB_CHART;
 let DB_DICT = new Map();
-let DB_II = 0;
 let DB_MAIN;
 let DB_QUERY;
 let DEBOUNCE_DICT = Object.create(null);
@@ -52,9 +51,7 @@ async function dbFileAttachAsync({
 }) {
 // this function will attach database <dbData> to <db>
     let dbAttached;
-    let dbName;
-    DB_II += 1;
-    dbName = `attached_${String(DB_II).padStart(2, "0")}`;
+    let dbName = dbNameNext("attach{{ii}}", new Set(DB_DICT.keys()));
     dbAttached = await dbOpenAsync({
         dbData,
         filename: `file:${dbName}?mode=memory&cache=shared`
@@ -65,6 +62,37 @@ async function dbFileAttachAsync({
         sql: `ATTACH DATABASE '${dbAttached.filename}' AS ${dbName}`
     });
     DB_DICT.set(dbName, dbAttached);
+    // normalize order
+    DB_DICT = Array.from(DB_DICT.values());
+    DB_DICT = new Map([
+        DB_DICT.slice(0, 3),
+        DB_DICT.slice(3).sort(function (aa, bb) {
+            aa = aa.dbName;
+            bb = bb.dbName;
+            return (
+                aa < bb
+                ? -1
+                : 1
+            );
+        })
+    ].flat().map(function (db) {
+        return [
+            db.dbName, db
+        ];
+    }));
+}
+
+function dbNameNext(template, bag) {
+// this function will get next incremental name in <bag> from given <template>
+    let ii = 0;
+    let name;
+    while (true) {
+        ii += 1;
+        name = template.replace("{{ii}}", String(ii).padStart(2, "0"));
+        if (!bag.has(name)) {
+            return name;
+        }
+    }
 }
 
 async function dbTableImportAsync({
@@ -136,7 +164,7 @@ async function dbTableImportAsync({
     colList = colList.map(function (colName) {
         let colName2;
         let duplicate = 0;
-        colName = "c_" + colName.replace((
+        colName = "c_" + colName.toLowerCase().replace((
             /\W/g
         ), "_");
         while (true) {
@@ -228,8 +256,8 @@ CREATE TABLE __test2 AS
     UNION ALL SELECT 1, 2, 3
     UNION ALL SELECT 4, 5, 6;
 
-DROP TABLE IF EXISTS attached_01.__test3;
-CREATE TABLE attached_01.__test3 AS SELECT * FROM __test2;
+DROP TABLE IF EXISTS attach01.__test3;
+CREATE TABLE attach01.__test3 AS SELECT * FROM __test2;
 
 SELECT
         *,
@@ -1043,8 +1071,8 @@ async function init() {
         [".modalClose", "click", onModalClose],
         ["body", "click", onContextmenu],
         ["body", "contextmenu", onContextmenu],
-        ["body", "keydown", onKeyDown],
         [UI_FILE_OPEN, "change", onDbAction],
+        [document, "keydown", onKeyDown],
         [window, "hashchange", uitableInitWithinView],
         [window, "resize", onResize]
     ].forEach(function ([
@@ -1534,6 +1562,12 @@ RENAME TO
         }
         uiFadeIn(UI_CRUD);
         UI_CRUD.style.zIndex = 1;
+        // ergonomy - auto-focus first input
+        Array.from(UI_CRUD.querySelectorAll(
+            ".modalContent input"
+        )).every(function (elem) {
+            elem.focus();
+        });
         return;
     }
     // slow actions that require loading
@@ -1587,11 +1621,10 @@ RENAME TO
                 ? "csv"
                 : "json"
             ),
-            tableName: (
-                action === "dbtableImportCsv"
-                ? `__file_csv_${Date.now()}`
-                : `__file_json_${Date.now()}`
-            ),
+            tableName: dbNameNext(
+                "[__file{{ii}}]",
+                new Set(DB_MAIN.dbtableList.keys())
+            ).slice(1, -1),
             textData: (
                 await target.files[0].text()
             )
@@ -1820,12 +1853,6 @@ async function onDbcrudExec({
 
 function onKeyDown(evt) {
 // this function will handle event keyup
-    if (!evt.modeDebounce) {
-        debounce("onKeyDown", onKeyDown, Object.assign(evt, {
-            modeDebounce: true
-        }));
-        return;
-    }
     switch (evt.key) {
     case "Escape":
         // close error-modal
@@ -2267,9 +2294,7 @@ async function uiRenderDb() {
         }
     });
     // DBTABLE_DICT - sync
-    await Promise.all(Array.from(
-        DB_DICT.values()
-    ).map(async function (db) {
+    await Promise.all(Array.from(DB_DICT.values()).map(async function (db) {
         let baton;
         let {
             dbName,
@@ -2279,7 +2304,7 @@ async function uiRenderDb() {
         } = db;
         let dbtableList;
         let tmp;
-        db.dbtableList = [];
+        db.dbtableList = new Map();
         dbtableList = noop(
             await dbExecAsync({
                 db,
@@ -2291,14 +2316,14 @@ SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
         if (!dbtableList) {
             return;
         }
-        dbtableList = dbtableList.map(function ({
+        dbtableList = new Map(dbtableList.map(function ({
             colList = [],
             dbtableFullname,
             rowCount = 0,
             rowList0,
             sql,
             tbl_name
-        }) {
+        }, ii) {
             dbtableFullname = dbtableFullname || `${dbName}.[${tbl_name}]`;
             dbtableIi += 1;
             baton = {
@@ -2309,6 +2334,7 @@ SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
                 dbtableIi,
                 dbtableName: `[${tbl_name}]`,
                 hashtag: `dbtable_${String(dbtableIi).padStart(2, "0")}`,
+                ii,
                 isDbchart,
                 isDbmain,
                 isDbquery,
@@ -2320,8 +2346,10 @@ SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
                 title: `table ${dbtableFullname}`
             };
             DBTABLE_DICT.set(baton.hashtag, baton);
-            return baton;
-        });
+            return [
+                baton.dbtableName, baton
+            ];
+        }));
         tmp = "";
         dbtableList.forEach(function ({
             dbtableName,
@@ -2407,8 +2435,9 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
             dbtableFullname,
             dbtableName,
             hashtag,
+            ii,
             rowCount
-        }, ii) {
+        }) {
             html += `<a class="tocElemA"`;
             html += ` data-hashtag="${hashtag}"`;
             html += ` href="#${hashtag}"`;
@@ -4359,25 +4388,3 @@ function waitAsync(timeout) {
 
 // init
 window.addEventListener("load", init);
-
-export {
-    DB_MAIN,
-    UI_EDITOR,
-    assertOrThrow,
-    dbCloseAsync,
-    dbExecAsync,
-    dbFileAttachAsync,
-    dbFileExportAsync,
-    dbFileImportAsync,
-    dbOpenAsync,
-    debugInline,
-    domDivCreate,
-    jsonHtmlSafe,
-    noop,
-    onDbExec,
-    sqlmathWebworkerInit,
-    stringHtmlSafe,
-    uiFadeIn,
-    uiFadeOut,
-    uiRenderDb
-};
