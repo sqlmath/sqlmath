@@ -739,7 +739,7 @@ SELECT
                 category != '----' DESC,
                 ${columnData} DESC
         ) AS xx,
-        SUBSTR(category, 1, 16) AS xx_label,
+        category AS xx_label,
         ${columnData} AS yy
     FROM (
         SELECT
@@ -781,11 +781,7 @@ SELECT
                 category != '----' DESC,
                 ${columnData} DESC
         ) AS xx,
-        SUBSTR(
-            SUBSTR(category, INSTR(category, '____') + 4),
-            0,
-            16
-        ) AS xx_label,
+        SUBSTR(category, INSTR(category, '____') + 4) AS xx_label,
         ${columnData} AS yy
     FROM (
         SELECT
@@ -2920,7 +2916,7 @@ SELECT
                 prefix: uichart[xOrY + "valuePrefix"],
                 step: uichart[xOrY + "step"],
                 suffix: uichart[xOrY + "valueSuffix"]
-            });
+            }).slice(0, 16);
             // number already formatted
             if (typeof num !== "number") {
                 return num;
