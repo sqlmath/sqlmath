@@ -469,7 +469,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         json_object(
             'isDummy', is_dummy,
-            'isHidden', sym NOT in ('__tradebot1', 'spy', 'dia', 'qqq')
+            'isHidden', sym NOT in ('01_mybot', 'spy', 'dia', 'qqq')
         ) AS options,
         rownum AS series_index,
         sym AS series_label
@@ -478,7 +478,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
             sym LIKE '-%' AS is_dummy,
             ROW_NUMBER() OVER (
                 ORDER BY
-                    sym = '__tradebot1' DESC,
+                    sym = '01_mybot' DESC,
                     sym = '----' DESC,
                     sym = 'spy' DESC,
                     sym = 'dia' DESC,
