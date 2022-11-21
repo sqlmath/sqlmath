@@ -110,7 +110,7 @@ function assertJsonEqual(aa, bb, message) {
 
 function assertNumericalEqual(aa, bb, message) {
 
-// This function will assert aa - bb <= Number.EPSILON
+// This function will assert aa - bb <= Number.EPSILON.
 
     assertOrThrow(aa, "value cannot be 0 or falsy");
     if (!(Math.abs((aa - bb) / Math.max(aa, bb)) <= 256 * Number.EPSILON)) {
@@ -138,8 +138,10 @@ function assertOrThrow(condition, message) {
 }
 
 async function cCallAsync(baton, cFuncName, ...argList) {
-// this function will serialize <argList> to a c <baton>,
-// suitable for passing into napi
+
+// This function will serialize <argList> to a c <baton>,
+// suitable for passing into napi.
+
     let argi = 0;
     let errStack;
     assertOrThrow(
@@ -227,7 +229,9 @@ async function cCallAsync(baton, cFuncName, ...argList) {
 }
 
 function dbCallAsync(baton, cFuncName, db, ...argList) {
-// this function will call <cFuncName> using db <argList>[0]
+
+// This function will call <cFuncName> using db <argList>[0].
+
     let __db = dbDeref(db);
     // increment __db.busy
     __db.busy += 1;
@@ -246,7 +250,9 @@ function dbCallAsync(baton, cFuncName, db, ...argList) {
 async function dbCloseAsync({
     db
 }) {
-// this function will close sqlite-database-connection <db>
+
+// This function will close sqlite-database-connection <db>.
+
     let __db = dbDeref(db);
     // prevent segfault - do not close db if actions are pending
     assertOrThrow(
@@ -268,7 +274,9 @@ async function dbCloseAsync({
 }
 
 function dbDeref(db) {
-// this function will get private-object mapped to <db>
+
+// This function will get private-object mapped to <db>.
+
     let __db = dbDict.get(db);
     assertOrThrow(__db?.connPool[0] > 0, "invalid or closed db");
     assertOrThrow(__db.busy >= 0, "invalid db.busy " + __db.busy);
@@ -283,8 +291,10 @@ function dbExecAndReturnLastBlobAsync({
     db,
     sql
 }) {
-// this function will exec <sql> in <db> and return last value retrieved
-// from execution as raw blob/buffer
+
+// This function will exec <sql> in <db> and return last value retrieved
+// from execution as raw blob/buffer.
+
     return dbExecAsync({
         bindList,
         db,
@@ -300,7 +310,9 @@ async function dbExecAsync({
     responseType,
     sql
 }) {
-// this function will exec <sql> in <db> and return <result>
+
+// This function will exec <sql> in <db> and return <result>.
+
     let baton;
     let bindByKey;
     let bindListLength;
@@ -397,7 +409,9 @@ async function dbFileExportAsync({
     modeExport = 1,
     modeNoop
 }) {
-// This function will export <db> to <filename>
+
+// This function will export <db> to <filename>.
+
     if (modeNoop) {
         return;
     }
@@ -424,7 +438,9 @@ async function dbFileImportAsync({
     dbData,
     filename
 }) {
-// This function will import <filename> to <db>
+
+// This function will import <filename> to <db>.
+
     await dbFileExportAsync({
         db,
         dbData,
@@ -434,7 +450,9 @@ async function dbFileImportAsync({
 }
 
 async function dbNoopAsync(...argList) {
-// this function will do nothing except return argList
+
+// This function will do nothing except return argList.
+
     return await cCallAsync(undefined, "_dbNoop", ...argList);
 }
 
@@ -445,7 +463,9 @@ async function dbOpenAsync({
     flags,
     threadCount = 1
 }) {
-// this function will open and return sqlite-database-connection <db>
+
+// This function will open and return sqlite-database-connection <db>.
+
 // int sqlite3_open_v2(
 //   const char *filename,   /* Database filename (UTF-8) */
 //   sqlite3 **ppDb,         /* OUT: SQLite db handle */
@@ -502,7 +522,9 @@ async function dbOpenAsync({
 }
 
 function isExternalBuffer(buf) {
-// this function will check if <buf> is ArrayBuffer or SharedArrayBuffer
+
+// This function will check if <buf> is ArrayBuffer or SharedArrayBuffer.
+
     return buf && (
         buf.constructor === ArrayBuffer
         || (
@@ -513,7 +535,9 @@ function isExternalBuffer(buf) {
 }
 
 function jsbatonCreate() {
-// this function will create buffer <baton>
+
+// This function will create buffer <baton>.
+
     let baton = new DataView(new ArrayBuffer(1024));
     // offset nalloc, nused
     baton.setInt32(4, SQLITE_DATATYPE_OFFSET, true);
@@ -526,7 +550,9 @@ function jsbatonValuePush({
     externalbufferList,
     value
 }) {
-// this function will push <value> to buffer <baton>
+
+// This function will push <value> to buffer <baton>.
+
     let nn;
     let nused;
     let tmp;
@@ -741,7 +767,9 @@ function jsbatonValueString({
     argi,
     baton
 }) {
-// this function will return string-value from <baton> at given <offset>
+
+// This function will return string-value from <baton> at given <offset>.
+
     let offset = baton.getInt32(4 + 4 + argi * 8, true);
     return new TextDecoder().decode(new Uint8Array(
         baton.buffer,
@@ -784,7 +812,7 @@ function objectDeepCopyWithKeysSorted(obj) {
 
 async function sqlMessagePost(baton, cFuncName, ...argList) {
 
-// This function will post msg to <sqlWorker> and return result
+// This function will post msg to <sqlWorker> and return result.
 
     let errStack;
     let id;
@@ -836,12 +864,17 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 }
 
 async function sqlmathInit() {
+
+// This function will init sqlmath.
+
     dbFinalizationRegistry = new FinalizationRegistry(function ({
         afterFinalization,
         ptr
     }) {
+
     // This function will auto-close any open sqlite3-db-pointer,
-    // after its js-wrapper has been garbage-collected
+    // after its js-wrapper has been garbage-collected.
+
         cCallAsync(undefined, "_dbClose", ptr[0]);
         if (afterFinalization) {
             afterFinalization();
@@ -874,6 +907,8 @@ function sqlmathWebworkerInit({
     db,
     modeTest
 }) {
+
+// This function will init sqlmath web-worker.
 
 // Feature-detect browser.
 

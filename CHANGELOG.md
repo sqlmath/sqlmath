@@ -4,6 +4,11 @@
 - none
 
 # v2022.11.1-beta
+- editor - update codemirror-editor to v5.65.10
+- doc - add api-doc
+- doc - document quickstart-build, quickstart-website
+- sqlmath - bugfix - fix function dbFileImportOrExport() throwing incorrect error
+- chart - improve ergonomics to attach database and import csv/json
 - demo - add hotkeys ctrl-o to open database, ctrl-s to save database
 - demo - streamline charts sector, subsector, stock into single logic
 - sqlmath - remove unused sqlite-extensions carray, csv from file sqlite3_ext.c
@@ -15,7 +20,6 @@
 - chart - add intraday, 1-min chart
 
 # v2022.10.20
-- chart - improve ergonomics to attach database and import csv/json
 - demo - add chart tradebot_historical_backtrack
 - chart - allow hiding series by clicking it in plot-area
 - coverage - add test-coverage for function sqlmathWebworkerInit()

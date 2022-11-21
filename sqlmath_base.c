@@ -100,7 +100,8 @@ extern "C" {
                 errcode == SQLITE_ERROR_DATATYPE_INVALID ? "invalid datatype" \
                 : errcode == SQLITE_ERROR_ZSQL_NULL \
                     ? "sqlite - cannot execute null sql-string" \
-                : db == NULL ? sqlite3_errstr(errcode) \
+                : db == NULL || sqlite3_errcode(db) == SQLITE_OK \
+                    ? sqlite3_errstr(errcode) \
                 : sqlite3_errmsg(db)), __func__, __FILE__, __LINE__); \
         } \
         goto catch_error; \

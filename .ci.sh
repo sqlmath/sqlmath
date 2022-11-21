@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# sh one-liner
+# sh jslint_ci.sh shSyncSqlmath
+
 # sqlite autoconf-3380500 version-3.38.5
 # curl -L https://www.sqlite.org/2022/sqlite-autoconf-3380500.tar.gz | tar -xz
 # https://www.sqlite.org/2022/sqlite-tools-linux-x86-3380500.zip
@@ -23,7 +26,8 @@ import moduleChildProcess from "child_process";
         (
             `https://${GITHUB_GITHUB_IO}/branch-${GITHUB_BRANCH0}`
             + `/index.html`
-        )
+        ),
+        ".artifact/apidoc.html"
     ].map(async function (url) {
         await new Promise(function (resolve) {
             moduleChildProcess.spawn(
