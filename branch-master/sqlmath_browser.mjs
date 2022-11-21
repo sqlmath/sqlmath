@@ -19,7 +19,6 @@ let {
 let DBTABLE_DICT = new Map();
 let DB_CHART;
 let DB_DICT = new Map();
-let DB_II = 0;
 let DB_MAIN;
 let DB_QUERY;
 let DEBOUNCE_DICT = Object.create(null);
@@ -52,9 +51,7 @@ async function dbFileAttachAsync({
 }) {
 // this function will attach database <dbData> to <db>
     let dbAttached;
-    let dbName;
-    DB_II += 1;
-    dbName = `attached_${String(DB_II).padStart(2, "0")}`;
+    let dbName = dbNameNext("attach{{ii}}", new Set(DB_DICT.keys()));
     dbAttached = await dbOpenAsync({
         dbData,
         filename: `file:${dbName}?mode=memory&cache=shared`
@@ -65,6 +62,142 @@ async function dbFileAttachAsync({
         sql: `ATTACH DATABASE '${dbAttached.filename}' AS ${dbName}`
     });
     DB_DICT.set(dbName, dbAttached);
+    // normalize order
+    DB_DICT = Array.from(DB_DICT.values());
+    DB_DICT = new Map([
+        DB_DICT.slice(0, 3),
+        DB_DICT.slice(3).sort(function (aa, bb) {
+            aa = aa.dbName;
+            bb = bb.dbName;
+            return (
+                aa < bb
+                ? -1
+                : 1
+            );
+        })
+    ].flat().map(function (db) {
+        return [
+            db.dbName, db
+        ];
+    }));
+}
+
+function dbNameNext(template, bag) {
+// this function will get next incremental name in <bag> from given <template>
+    let ii = 0;
+    let name;
+    while (true) {
+        ii += 1;
+        name = template.replace("{{ii}}", String(ii).padStart(2, "0"));
+        if (!bag.has(name)) {
+            return name;
+        }
+    }
+}
+
+async function dbTableImportAsync({
+    db,
+    mode,
+    tableName,
+    textData
+}) {
+// this function will create table from imported csv/json <textData>
+    let colList;
+    let rowList;
+    let rowidList;
+    let tmp;
+    switch (mode) {
+    case "csv":
+        rowList = jsonRowListFromCsv({
+            csv: textData
+        });
+        break;
+    // case "json":
+    default:
+        rowList = JSON.parse(textData);
+    }
+    if (!(typeof rowList === "object" && rowList)) {
+        rowList = [];
+    }
+    // normalize rowList to list
+    if (!Array.isArray(rowList)) {
+        rowidList = [];
+        rowList = Object.entries(rowList).map(function ([
+            key, val
+        ]) {
+            rowidList.push(key);
+            return val;
+        });
+    }
+    // normalize rowList[ii] to list
+    if (rowList.length === 0) {
+        rowList.push([
+            "undefined"
+        ]);
+    }
+    if (!Array.isArray(rowList[0])) {
+        colList = Array.from(
+            new Set(
+                rowList.map(function (obj) {
+                    return Object.keys(obj);
+                }).flat()
+            )
+        );
+        rowList = rowList.map(function (obj) {
+            return colList.map(function (key) {
+                return obj[key];
+            });
+        });
+        rowList.unshift(colList);
+    }
+    // init colList
+    colList = rowList.shift();
+    // preserve rowid
+    if (rowidList) {
+        colList.unshift("rowid");
+        rowList.forEach(function (row, ii) {
+            row.unshift(rowidList[ii]);
+        });
+    }
+    // normalize colList
+    tmp = new Set();
+    colList = colList.map(function (colName) {
+        let colName2;
+        let duplicate = 0;
+        colName = "c_" + colName.toLowerCase().replace((
+            /\W/g
+        ), "_");
+        while (true) {
+            duplicate += 1;
+            colName2 = (
+                duplicate === 1
+                ? colName
+                : colName + "_" + duplicate
+            );
+            if (!tmp.has(colName2)) {
+                tmp.add(colName2);
+                return colName2;
+            }
+        }
+    });
+    // create dbtable from rowList
+    await dbExecAsync({
+        bindList: {
+            rowList: JSON.stringify(rowList)
+        },
+        db,
+        sql: (
+            rowList.length === 0
+            ? `CREATE TABLE ${tableName} (${colList.join(",")});`
+            : (
+                `CREATE TABLE ${tableName} AS SELECT `
+                + colList.map(function (colName, ii) {
+                    return "value->>" + ii + " AS " + colName;
+                }).join(",")
+                + " FROM json_each($rowList);"
+            )
+        )
+    });
 }
 
 function debounce(key, func, ...argList) {
@@ -123,8 +256,8 @@ CREATE TABLE __test2 AS
     UNION ALL SELECT 1, 2, 3
     UNION ALL SELECT 4, 5, 6;
 
-DROP TABLE IF EXISTS attached_01.__test3;
-CREATE TABLE attached_01.__test3 AS SELECT * FROM __test2;
+DROP TABLE IF EXISTS attach01.__test3;
+CREATE TABLE attach01.__test3 AS SELECT * FROM __test2;
 
 SELECT
         *,
@@ -267,89 +400,58 @@ async function demoTradebot() {
         })
     )[0][0];
     UI_EDITOR.setValue([
-        (`
--- chart - tradebot_performance_market
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        xx_label LIKE '-%' AS is_dummy,
-        0 AS is_hidden,
-        -- xx_label NOT in ('__tradebot1', 'spy', 'dia', 'qqq') AS is_hidden,
-        xx,
-        printf(
-            '%+.2f%% - %s',
-            yy,
-            series_label
-        ) AS series_label,
-        xx_label,
-        yy
-    FROM (
-        SELECT
-            ROW_NUMBER() OVER (ORDER BY grouping, yy DESC) AS xx,
-            series_label,
-            xx_label,
-            yy
-        FROM (
-            SELECT
-                1 AS grouping,
-                acc_name AS series_label,
-                acc_name AS xx_label,
-                perc_change AS yy
-            FROM tradebot_account
-            --
-            UNION ALL
-            --
-            SELECT
-                2 AS grouping,
-                '----' AS series_label,
-                '----' AS xx_label,
-                NULL AS yy
-            --
-            UNION ALL
-            --
-            SELECT
-                3 AS grouping,
-                sym || ' - ' || company_name AS series_label,
-                sym AS xx_label,
-                perc_change AS yy
-            FROM tradebot_stock_basket
-            WHERE
-                sym IN (
-                    'dia',
-                    'qqq',
-                    'spy'
-                )
-            --
-            UNION ALL
-            --
-            SELECT
-                4 AS grouping,
-                '----' AS series_label,
-                '----' AS xx_label,
-                NULL AS yy
-            --
-            UNION ALL
-            --
-            SELECT
-                5 AS grouping,
-                sym || ' - ' || company_name AS series_label,
-                sym AS xx_label,
-                perc_change AS yy
-            FROM tradebot_stock_basket
-            WHERE
-                sym IN (
-                    'bito',
-                    'gld',
-                    'sqqq',
-                    'tip',
-                    'tqqq',
-                    'vxx',
-                    'undefined'
-                )
-        )
-    );
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_performance_market;
-CREATE TABLE chart._{{ii}}_tradebot_performance_market (
+        [
+            "1 day",
+            "1 week",
+            "1 month",
+            "6 month",
+            "ytd",
+            "1 year",
+            "5 year",
+            "backtrack"
+        ].map(function (dateInterval) {
+            let optionDict;
+            let tableChart;
+            let tableData;
+            tableData = (
+                dateInterval === "1 day"
+                ? "tradebot_intraday"
+                : "tradebot_historical"
+            );
+            tableChart = (
+                "chart._{{ii}}_tradebot_historical_"
+                + dateInterval.replace(" ", "_")
+            );
+            optionDict = {
+                title: (
+                    "tradebot historical performance vs market - "
+                    + dateInterval
+                    + (
+                        dateInterval === "1 day"
+                        ? "\n[ updated " + new Date(
+                            tradebotState.datenow + "Z"
+                        ).toUTCString() + " ]"
+                        : ""
+                    )
+                ),
+                xaxisTitle: "date",
+                xstep: (
+                    dateInterval === "1 day"
+                    ? 60
+                    : 1
+                ),
+                xvalueConvert: (
+                    dateInterval === "1 day"
+                    ? "unixepochToTimeutc"
+                    : "juliandayToDate"
+                ),
+                yaxisTitle: "percent gain",
+                yvalueSuffix: " %"
+            };
+            return (`
+-- chart - ${tableChart} - create
+DROP TABLE IF EXISTS ${tableChart};
+CREATE TABLE ${tableChart} (
     datatype TEXT NOT NULL,
     series_index INTEGER,
     xx REAL,
@@ -358,108 +460,366 @@ CREATE TABLE chart._{{ii}}_tradebot_performance_market (
     xx_label TEXT,
     options TEXT
 );
-INSERT INTO chart._{{ii}}_tradebot_performance_market (datatype, options)
+INSERT INTO ${tableChart} (datatype, options)
     SELECT
         'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot performance today vs market - updated '
-                || '${new Date(tradebotState.datenow + "Z").toLocaleString()}'
-                || '",
-            "xaxisTitle": "market index",
-            "yaxisTitle": "percent gain",
-            "yvalueSuffix": " %"
-        }' AS options
-    FROM tradebot_state;
-INSERT INTO chart._{{ii}}_tradebot_performance_market (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
+        '${JSON.stringify(optionDict)}' AS options;
+INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
         json_object(
             'isDummy', is_dummy,
-            'isHidden', is_hidden
+            'isHidden', sym NOT in ('01_mybot', 'spy', 'dia', 'qqq')
         ) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_performance_market (datatype, xx, xx_label)
-    SELECT
-        'xx_label' AS datatype,
-        xx,
-        xx_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_performance_market (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_performance_sector
+        rownum AS series_index,
+        sym AS series_label
+    FROM (
+        SELECT
+            sym LIKE '-%' AS is_dummy,
+            ROW_NUMBER() OVER (
+                ORDER BY
+                    sym = '01_mybot' DESC,
+                    sym = '----' DESC,
+                    sym = 'spy' DESC,
+                    sym = 'dia' DESC,
+                    sym = 'qqq' DESC,
+                    sym = '---- ' DESC,
+                    sym
+            ) AS rownum,
+            sym
+        FROM (
+            SELECT DISTINCT sym FROM ${tableData}
+            --
+            UNION ALL
+            --
+            SELECT '----'
+            --
+            UNION ALL
+            --
+            SELECT '---- '
+        )
+    );
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 AS
     SELECT
         *
+    FROM (SELECT DISTINCT ydate FROM ${tableData})
+    JOIN (SELECT MIN(ydate) AS aa, MAX(ydate) AS bb FROM ${tableData});
+UPDATE __tmp1
+    SET
+        aa = aa2
     FROM (
         SELECT
-            IIF(category = 'short', 1, grouping_index) AS series_color,
-            category LIKE '-%' AS is_dummy,
-            printf(
-                '%05.2f%% - %s - %s',
-                perc_gain_today,
-                grouping,
-                category
-            ) AS series_label,
-            ROW_NUMBER() OVER (
-                ORDER BY
-                    grouping_index,
-                    category != '----' DESC,
-                    perc_gain_today DESC
-            ) AS xx,
-            perc_gain_today AS yy
+            ydate AS aa2
+        FROM __tmp1
+        JOIN (
+            SELECT
+                MAX(aa,
+            ${
+                (
+                    dateInterval === "1 week"
+                    ? "DATE(bb, '-7 DAY')"
+                    : dateInterval === "backtrack"
+                    ? "DATE(bb, '-100 YEAR')"
+                    : dateInterval === "ytd"
+                    ? "DATE(STRFTIME('%Y', bb) || '-01-01', '-1 DAY')"
+                    : "DATE(bb, '-" + dateInterval + "')"
+                )
+            }
+                ) AS aa2
+            FROM (SELECT aa, bb FROM __tmp1 LIMIT 1)
+        )
+        WHERE
+            ydate <= aa2
+        ORDER BY
+            ydate DESC
+        LIMIT 1
+    );
+INSERT INTO ${tableChart} (datatype, xx, xx_label)
+    SELECT
+        'xx_label' AS datatype,
+        rownum AS xx,
+        ydate AS xx_label
+    FROM (
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY ydate ASC) AS rownum,
+            ydate
+        FROM __tmp1
+        WHERE
+            aa <= ydate AND ydate <= bb
+    );
+INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
+    SELECT
+        'yy_value' AS datatype,
+        series_index,
+        xx,
+        price AS yy
+    FROM (
+        SELECT
+            *
         FROM (
             SELECT
-                category,
-                grouping,
-                grouping_index,
-                perc_gain_today,
-                perc_holding
-            FROM tradebot_position_category
+                series_index,
+                series_label
+            FROM ${tableChart}
             WHERE
-                grouping != 'subsector'
-            --
-            UNION ALL
-            --
+                datatype = 'series_label'
+        )
+        JOIN (
             SELECT
-                '----' AS category,
-                '----' AS grouping,
-                grouping_index,
-                NULL AS perc_gain_today,
-                NULL perc_holding
-            FROM (
-                SELECT DISTINCT
-                    grouping,
-                    grouping_index
-                FROM tradebot_position_category
-            )
+                xx,
+                xx_label
+            FROM ${tableChart}
+            WHERE
+                datatype = 'xx_label'
         )
     )
-    ORDER BY
-        series_color,
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_performance_sector;
-CREATE TABLE chart._{{ii}}_tradebot_performance_sector (
+    LEFT JOIN ${tableData}
+    ON
+        sym = series_label
+        AND ydate = xx_label;
+UPDATE ${tableChart}
+    SET
+            ${
+                (
+                    dateInterval === "backtrack"
+                    ? "yy = ROUND(100 * (1.0 / (yy * inv) - 1), 4)"
+                    : "yy = ROUND(100 * (yy * inv - 1), 4)"
+                )
+            }
+    FROM (SELECT 0)
+    JOIN (
+        SELECT
+            1.0 / yy AS inv,
+            series_index
+        FROM (
+            SELECT
+                ROW_NUMBER() OVER (
+                    PARTITION BY series_index ORDER BY xx
+            ${
+                (
+                    dateInterval === "backtrack"
+                    ? "DESC"
+                    : "ASC"
+                )
+            }
+                ) AS rownum,
+                yy,
+                series_index
+            FROM ${tableChart}
+            WHERE
+                datatype = 'yy_value'
+                AND yy > 0
+        )
+        WHERE
+            rownum = 1
+    ) USING (series_index);
+UPDATE ${tableChart}
+    SET
+        series_label = printf(
+            '%+06.2f%% - %s%s',
+            yy_today,
+            series_label,
+            IIF(CASTTEXTOREMPTY(company_name) = '', '', ' - ' || company_name)
+        )
+    FROM (SELECT 0)
+    LEFT JOIN (
+        SELECT
+            *
+        FROM (
+            SELECT
+                ROW_NUMBER() OVER (
+                    PARTITION BY series_index
+                    ORDER BY xx DESC
+                ) AS rownum,
+                series_index,
+                yy AS yy_today
+            FROM ${tableChart}
+            WHERE
+                datatype = 'yy_value'
+        )
+        WHERE
+            rownum = 1
+    ) USING (series_index)
+    LEFT JOIN tradebot_stock_basket ON sym = series_label
+    WHERE
+        datatype = 'series_label';
+-- chart - tradebot_historical - normalize xx to unixepoch
+DELETE FROM ${tableChart} WHERE
+    '${dateInterval}' = '1 day'
+    AND datatype = 'yy_value'
+    AND xx = 1;
+UPDATE ${tableChart}
+    SET
+        xx = ${(
+                dateInterval === "1 day"
+                ? "UNIXEPOCH(tt)"
+                : "JULIANDAY(tt)"
+            )}
+    FROM (SELECT 0)
+    JOIN (
+        SELECT
+            xx,
+            xx_label AS tt
+        FROM ${tableChart}
+        WHERE
+            datatype = 'xx_label'
+    ) USING (xx)
+    WHERE
+        datatype = 'yy_value';
+INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
+    SELECT
+        'yy_value' AS datatype,
+        series_index,
+        xx0 AS xx,
+        0 AS yy
+    FROM (
+        SELECT
+            series_index
+        FROM ${tableChart}
+        WHERE datatype = 'series_label'
+    )
+    JOIN (
+        SELECT
+            MIN(xx) AS xx0
+        FROM ${tableChart}
+        WHERE
+            datatype = 'yy_value'
+    )
+    WHERE
+        '${dateInterval}' = '1 day';
+DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
+            `);
+        }),
+        [
+            "sector",
+            "subsector",
+            "stock"
+        ].map(function (grouping) {
+            return [
+                "performance",
+                "holding"
+            ].map(function (ptype) {
+                let columnData;
+                let optionDict;
+                let sqlSelect;
+                let tableChart;
+                columnData = (
+                    ptype === "performance"
+                    ? "perc_gain_today"
+                    : "perc_holding"
+                );
+                optionDict = {
+                    isBarchart: true,
+                    title: `tradebot ${ptype} today by ${grouping}`,
+                    xaxisTitle: grouping,
+                    yaxisTitle: (
+                        ptype === "performance"
+                        ? "percent gain"
+                        : "percent holding"
+                    ),
+                    yvalueSuffix: " %"
+                };
+                sqlSelect = (
+                    grouping === "sector"
+                    ? (`
+SELECT
+        IIF(category LIKE 'short%', 1, grouping_index) AS series_color,
+        category LIKE '-%' AS is_dummy,
+        grouping IN ('account', 'exchange') AS is_hidden,
+        printf(
+            '%05.2f%% - %s - %s',
+            ${columnData},
+            grouping,
+            category
+        ) AS series_label,
+        ROW_NUMBER() OVER (
+            ORDER BY
+                grouping_index,
+                category != '----' DESC,
+                ${columnData} DESC
+        ) AS xx,
+        category AS xx_label,
+        ${columnData} AS yy
+    FROM (
+        SELECT
+            category,
+            grouping,
+            grouping_index,
+            ${columnData},
+            perc_holding
+        FROM tradebot_position_category
+        WHERE
+            grouping != 'subsector'
+        --
+        UNION ALL
+        --
+        SELECT
+            '----' AS category,
+            '----' AS grouping,
+            grouping_index,
+            NULL AS ${columnData},
+            NULL perc_holding
+        FROM (
+            SELECT DISTINCT
+                grouping,
+                grouping_index
+            FROM tradebot_position_category
+        )
+    )
+                    `)
+                    : grouping === "subsector"
+                    ? (`
+SELECT
+        IIF(category LIKE 'short%', 1, grouping_index) AS series_color,
+        category LIKE '-%' AS is_dummy,
+        0 AS is_hidden,
+        printf('%05.2f%% - %s', ${columnData}, category) AS series_label,
+        ROW_NUMBER() OVER (
+            ORDER BY
+                grouping_index,
+                category != '----' DESC,
+                ${columnData} DESC
+        ) AS xx,
+        SUBSTR(category, INSTR(category, '____') + 4) AS xx_label,
+        ${columnData} AS yy
+    FROM (
+        SELECT
+            category,
+            grouping,
+            grouping_index,
+            ${columnData},
+            perc_holding
+        FROM tradebot_position_category
+        WHERE
+            grouping = 'subsector'
+    )
+                    `)
+                    : (`
+SELECT
+        IIF(is_short, 1, 2) AS series_color,
+        0 AS is_dummy,
+        0 AS is_hidden,
+        printf(
+            '%+.2f%% - %s - %s - %s',
+            ${columnData},
+            IIF(is_short, 'short', 'long'),
+            sym,
+            company_name
+        ) AS series_label,
+        ROW_NUMBER() OVER (ORDER BY ${columnData} DESC) AS xx,
+        sym AS xx_label,
+        ${columnData} AS yy
+    FROM tradebot_position_stock
+                    `)
+                );
+                tableChart = `chart._{{ii}}_tradebot_${grouping}_${ptype}`;
+                return (`
+-- chart - ${tableChart} - create
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 AS SELECT * FROM (${sqlSelect}) ORDER BY xx;
+DROP TABLE IF EXISTS ${tableChart};
+CREATE TABLE ${tableChart} (
     datatype TEXT NOT NULL,
     series_index INTEGER,
     xx REAL,
@@ -468,17 +828,11 @@ CREATE TABLE chart._{{ii}}_tradebot_performance_sector (
     xx_label TEXT,
     options TEXT
 );
-INSERT INTO chart._{{ii}}_tradebot_performance_sector (datatype, options)
+INSERT INTO ${tableChart} (datatype, options)
     SELECT
         'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot performance today by sector",
-            "xaxisTitle": "category",
-            "yaxisTitle": "percent gain",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_performance_sector (
+        '${JSON.stringify(optionDict)}' AS options;
+INSERT INTO ${tableChart} (
     datatype,
     options,
     series_index,
@@ -488,167 +842,19 @@ INSERT INTO chart._{{ii}}_tradebot_performance_sector (
         'series_label' AS datatype,
         json_object(
             'isDummy', is_dummy,
+            'isHidden', is_hidden,
             'seriesColor', series_color
         ) AS options,
         xx AS series_index,
         series_label
     FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_performance_sector (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_performance_subsector
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (
-        SELECT
-            IIF(category = 'short____short', 1, grouping_index) AS series_color,
-            printf(
-                '%05.2f%% - %s',
-                perc_gain_today,
-                category
-            ) AS series_label,
-            ROW_NUMBER() OVER (
-                ORDER BY
-                    grouping_index,
-                    category != '----' DESC,
-                    perc_gain_today DESC
-            ) AS xx,
-            perc_gain_today AS yy
-        FROM (
-            SELECT
-                category,
-                grouping,
-                grouping_index,
-                perc_gain_today,
-                perc_holding
-            FROM tradebot_position_category
-            WHERE
-                grouping = 'subsector'
-        )
-    )
-    ORDER BY
-        series_color,
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_performance_subsector;
-CREATE TABLE chart._{{ii}}_tradebot_performance_subsector (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart._{{ii}}_tradebot_performance_subsector (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot performance today by subsector",
-            "xaxisTitle": "category",
-            "yaxisTitle": "percent gain",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_performance_subsector (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
-    SELECT
-        'series_label' AS datatype,
-        json_object('seriesColor', series_color) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_performance_subsector (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_performance_stock
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (
-        SELECT
-            IIF(is_short, 1, 2) AS series_color,
-            printf(
-                '%+.2f%% - %s - %s - %s',
-                perc_gain_today,
-                IIF(is_short, 'short', 'long'),
-                sym,
-                company_name
-            ) AS series_label,
-            ROW_NUMBER() OVER (ORDER BY perc_gain_today DESC) xx,
-            sym AS xx_label,
-            perc_gain_today AS yy
-        FROM tradebot_position_stock
-    )
-    ORDER BY
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_performance_stock;
-CREATE TABLE chart._{{ii}}_tradebot_performance_stock (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart._{{ii}}_tradebot_performance_stock (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot performance today by stock",
-            "xaxisTitle": "stock",
-            "yaxisTitle": "percent gain",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_performance_stock (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
-    SELECT
-        'series_label' AS datatype,
-        json_object('seriesColor', series_color) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_performance_stock (datatype, xx, xx_label)
+INSERT INTO ${tableChart} (datatype, xx, xx_label)
     SELECT
         'xx_label' AS datatype,
         xx,
         xx_label
     FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_performance_stock (
+INSERT INTO ${tableChart} (
     datatype,
     series_index,
     xx,
@@ -660,7 +866,9 @@ INSERT INTO chart._{{ii}}_tradebot_performance_stock (
         xx,
         yy
     FROM __tmp1;
-        `),
+                `);
+            });
+        }),
         (`
 -- chart - tradebot_buysell_history
 DROP TABLE IF EXISTS __tmp1;
@@ -698,7 +906,7 @@ CREATE TEMP TABLE __tmp1 AS
         FROM tradebot_account
         JOIN tradebot_buysell_history
         ORDER BY
-            time_filled DESC
+            time_filled
     );
 DROP TABLE IF EXISTS chart._{{ii}}_tradebot_buysell_history;
 CREATE TABLE chart._{{ii}}_tradebot_buysell_history (
@@ -715,11 +923,11 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (datatype, options)
         'options' AS datatype,
         '{
             "isBarchart": true,
-            "title": "tradebot buy/sell history today - updated '
-                || '${new Date(tradebotState.datenow + "Z").toLocaleString()}'
-                || '",
+            "title": "tradebot buy/sell history today\\n[ updated '
+                || '${new Date(tradebotState.datenow + "Z").toUTCString()}'
+                || ' ]",
             "xaxisTitle": "time",
-            "xvalueConvert": "epochToTimeLocal",
+            "xvalueConvert": "unixepochToTimeutc",
             "yaxisTitle": "buy/sell value as percentage of account",
             "yvalueSuffix": " %"
         }' AS options
@@ -733,7 +941,7 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
     SELECT
         'series_label' AS datatype,
         json_object('seriesColor', series_color) AS options,
-        -xx AS series_index,
+        __tmp1.rowid AS series_index,
         series_label
     FROM __tmp1;
 INSERT INTO chart._{{ii}}_tradebot_buysell_history (
@@ -744,488 +952,12 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
 )
     SELECT
         'yy_value' AS datatype,
-        -xx AS series_index,
+        __tmp1.rowid AS series_index,
         xx,
         yy
     FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_position_sector
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (
-        SELECT
-            IIF(category = 'short', 1, grouping_index) AS series_color,
-            category LIKE '-%' AS is_dummy,
-            printf(
-                '%05.2f%% - %s - %s',
-                perc_holding,
-                grouping,
-                category
-            ) AS series_label,
-            ROW_NUMBER() OVER (
-                ORDER BY
-                    grouping_index,
-                    category != '----' DESC,
-                    perc_holding DESC
-            ) AS xx,
-            perc_holding AS yy
-        FROM (
-            SELECT
-                category,
-                grouping,
-                grouping_index,
-                perc_gain_today,
-                perc_holding
-            FROM tradebot_position_category
-            WHERE
-                grouping != 'subsector'
-            --
-            UNION ALL
-            --
-            SELECT
-                '----' AS category,
-                '----' AS grouping,
-                grouping_index,
-                NULL AS perc_gain_today,
-                NULL perc_holding
-            FROM (
-                SELECT DISTINCT
-                    grouping,
-                    grouping_index
-                FROM tradebot_position_category
-            )
-        )
-    )
-    ORDER BY
-        series_color,
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_position_sector;
-CREATE TABLE chart._{{ii}}_tradebot_position_sector (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart._{{ii}}_tradebot_position_sector (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot position today by sector",
-            "xaxisTitle": "category",
-            "yaxisTitle": "percent holding",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_position_sector (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
-    SELECT
-        'series_label' AS datatype,
-        json_object(
-            'isDummy', is_dummy,
-            'seriesColor', series_color
-        ) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_position_sector (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_position_subsector
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (
-        SELECT
-            IIF(category = 'short____short', 1, grouping_index) AS series_color,
-            printf(
-                '%05.2f%% - %s',
-                perc_holding,
-                category
-            ) AS series_label,
-            ROW_NUMBER() OVER (
-                ORDER BY
-                    grouping_index,
-                    category != '----' DESC,
-                    perc_holding DESC
-            ) AS xx,
-            perc_holding AS yy
-        FROM (
-            SELECT
-                category,
-                grouping,
-                grouping_index,
-                perc_gain_today,
-                perc_holding
-            FROM tradebot_position_category
-            WHERE
-                grouping = 'subsector'
-        )
-    )
-    ORDER BY
-        series_color,
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_position_subsector;
-CREATE TABLE chart._{{ii}}_tradebot_position_subsector (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart._{{ii}}_tradebot_position_subsector (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot position today by subsector",
-            "xaxisTitle": "category",
-            "yaxisTitle": "percent holding",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_position_subsector (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
-    SELECT
-        'series_label' AS datatype,
-        json_object('seriesColor', series_color) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_position_subsector (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
-        (`
--- chart - tradebot_position_stock
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (
-        SELECT
-            IIF(is_short, 1, 2) AS series_color,
-            printf(
-                '%05.2f%% - %s - %s - %s',
-                perc_holding,
-                IIF(is_short, 'short', 'long'),
-                sym,
-                company_name
-            ) AS series_label,
-            ROW_NUMBER() OVER (ORDER BY perc_holding DESC) xx,
-            sym AS xx_label,
-            perc_holding AS yy
-        FROM tradebot_position_stock
-    )
-    ORDER BY
-        xx;
-DROP TABLE IF EXISTS chart._{{ii}}_tradebot_position_stock;
-CREATE TABLE chart._{{ii}}_tradebot_position_stock (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart._{{ii}}_tradebot_position_stock (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "isBarchart": true,
-            "title": "tradebot position today by stock",
-            "xaxisTitle": "stock",
-            "yaxisTitle": "percent holding",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart._{{ii}}_tradebot_position_stock (
-    datatype,
-    options,
-    series_index,
-    series_label
-)
-    SELECT
-        'series_label' AS datatype,
-        json_object('seriesColor', series_color) AS options,
-        xx AS series_index,
-        series_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_position_stock (datatype, xx, xx_label)
-    SELECT
-        'xx_label' AS datatype,
-        xx,
-        xx_label
-    FROM __tmp1;
-INSERT INTO chart._{{ii}}_tradebot_position_stock (
-    datatype,
-    series_index,
-    xx,
-    yy
-)
-    SELECT
-        'yy_value' AS datatype,
-        xx AS series_index,
-        xx,
-        yy
-    FROM __tmp1;
-        `),
-        [
-            "1 week",
-            "1 month",
-            "3 month",
-            "6 month",
-            "ytd",
-            "1 year",
-            "2 year",
-            "backtrack"
-        ].map(function (dateInterval) {
-            let tableName = (
-                `_{{ii}}_tradebot_historical_`
-                + dateInterval.replace(" ", "_")
-            );
-            return (`
--- chart - tradebot_historical
-DROP TABLE IF EXISTS chart.${tableName};
-CREATE TABLE chart.${tableName} (
-    datatype TEXT NOT NULL,
-    series_index INTEGER,
-    xx REAL,
-    yy REAL,
-    series_label REAL,
-    xx_label TEXT,
-    options TEXT
-);
-INSERT INTO chart.${tableName} (datatype, options)
-    SELECT
-        'options' AS datatype,
-        '{
-            "title":
-                "tradebot historical performance vs market - ${dateInterval}",
-            "xaxisTitle": "date",
-            "yaxisTitle": "percent gain",
-            "yvalueSuffix": " %"
-        }' AS options;
-INSERT INTO chart.${tableName} (datatype, options, series_index, series_label)
-    SELECT
-        'series_label' AS datatype,
-        json_object(
-            'isDummy', is_dummy,
-            'isHidden', sym NOT in ('__tradebot1', 'spy', 'dia', 'qqq')
-        ) AS options,
-        rownum AS series_index,
-        sym AS series_label
-    FROM (
-        SELECT
-            sym LIKE '-%' AS is_dummy,
-            ROW_NUMBER() OVER (
-                ORDER BY
-                    sym = '__tradebot1' DESC,
-                    sym = '----' DESC,
-                    sym = 'spy' DESC,
-                    sym = 'dia' DESC,
-                    sym = 'qqq' DESC,
-                    sym = '---- ' DESC,
-                    sym
-            ) AS rownum,
-            sym
-        FROM (
-            SELECT DISTINCT sym FROM tradebot_historical
-            --
-            UNION ALL
-            --
-            SELECT '----'
-            --
-            UNION ALL
-            --
-            SELECT '---- '
-        )
-    );
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
-    SELECT
-        *
-    FROM (SELECT DISTINCT ydate FROM tradebot_historical)
-    JOIN (SELECT MIN(ydate) AS aa, MAX(ydate) AS bb FROM tradebot_historical);
-UPDATE __tmp1
-    SET
-        aa = aa2
-    FROM (
-        SELECT
-            ydate AS aa2
-        FROM __tmp1
-        JOIN (
-            SELECT
-                MAX(aa,
-            ${
-                (
-                    dateInterval === "1 week"
-                    ? "DATE(bb, '-7 DAY')"
-                    : dateInterval === "backtrack"
-                    ? "DATE(bb, '-5 YEAR')"
-                    : dateInterval === "ytd"
-                    ? "DATE(STRFTIME('%Y', bb) || '-01-01', '-1 DAY')"
-                    : "DATE(bb, '-" + dateInterval + "')"
-                )
-            }
-                ) AS aa2
-            FROM (SELECT aa, bb FROM __tmp1 LIMIT 1)
-        )
-        WHERE
-            ydate <= aa2
-        ORDER BY
-            ydate DESC
-        LIMIT 1
-    );
-INSERT INTO chart.${tableName} (datatype, xx, xx_label)
-    SELECT
-        'xx_label' AS datatype,
-        rownum AS xx,
-        ydate AS xx_label
-    FROM (
-        SELECT
-            ROW_NUMBER() OVER (
-                ORDER BY ydate
-            ${
-                (
-                    dateInterval === "backtrack"
-                    ? "DESC"
-                    : "ASC"
-                )
-            }
-            ) AS rownum,
-            ydate
-        FROM __tmp1
-        WHERE
-            aa <= ydate AND ydate <= bb
-    );
-INSERT INTO chart.${tableName} (datatype, series_index, xx, yy)
-    SELECT
-        'yy_value' AS datatype,
-        series_index,
-        xx,
-        price AS yy
-    FROM (
-        SELECT
-            *
-        FROM (
-            SELECT
-                series_index,
-                series_label
-            FROM chart.${tableName}
-            WHERE
-                datatype = 'series_label'
-        )
-        JOIN (
-            SELECT
-                xx,
-                xx_label
-            FROM chart.${tableName}
-            WHERE
-                datatype = 'xx_label'
-        )
-    )
-    LEFT JOIN tradebot_historical
-    ON
-        sym = series_label
-        AND ydate = xx_label;
-UPDATE chart.${tableName}
-    SET
-            ${
-                (
-                    dateInterval === "backtrack"
-                    ? "yy = ROUND(100 * (1.0 / (yy * inv) - 1), 4)"
-                    : "yy = ROUND(100 * (yy * inv - 1), 4)"
-                )
-            }
-    FROM (SELECT 0)
-    JOIN (
-        SELECT
-            1.0 / yy AS inv,
-            series_index
-        FROM (
-            SELECT
-                ROW_NUMBER() OVER (
-                    PARTITION BY series_index ORDER BY xx
-                ) AS rownum,
-                yy,
-                series_index
-            FROM chart.${tableName}
-            WHERE
-                datatype = 'yy_value'
-                AND yy > 0
-        )
-        WHERE
-            rownum = 1
-    ) USING (series_index);
-UPDATE chart.${tableName}
-    SET
-        series_label = printf(
-            '%+06.2f%% - %s%s',
-            yy_today,
-            series_label,
-            IIF(CASTTEXTOREMPTY(company_name) = '', '', ' - ' || company_name)
-        )
-    FROM (SELECT 0)
-    LEFT JOIN (
-        SELECT
-            *
-        FROM (
-            SELECT
-                ROW_NUMBER() OVER (
-                    PARTITION BY series_index
-                    ORDER BY xx DESC
-                ) AS rownum,
-                series_index,
-                yy AS yy_today
-            FROM chart.${tableName}
-            WHERE
-                datatype = 'yy_value'
-        )
-        WHERE
-            rownum = 1
-    ) USING (series_index)
-    LEFT JOIN tradebot_stock_basket ON sym = series_label
-    WHERE
-        datatype = 'series_label';
-            `);
-        })
-    ].flat().map(function (sql, ii) {
+        `)
+    ].flat().flat().map(function (sql, ii) {
         return sql.trim().replace((
             /\{\{ii\}\}/g
         ), String(ii + 1).padStart(2, "0"));
@@ -1336,7 +1068,7 @@ async function init() {
         ["body", "click", onContextmenu],
         ["body", "contextmenu", onContextmenu],
         [UI_FILE_OPEN, "change", onDbAction],
-        [document, "keyup", onKeyUp],
+        [document, "keydown", onKeyDown],
         [window, "hashchange", uitableInitWithinView],
         [window, "resize", onResize]
     ].forEach(function ([
@@ -1425,7 +1157,7 @@ async function init() {
         });
     }, 16);
     if (!modeDemo) {
-        await uiRenderDb();
+        await onDbExec({});
         return;
     }
     // init demo
@@ -1447,6 +1179,153 @@ function jsonHtmlSafe(obj) {
     ), "&lt;").replace((
         />/gu
     ), "&gt;"));
+}
+
+function jsonRowListFromCsv({
+    csv
+}) {
+// this function will convert <csv>-text to json list-of-list
+//
+// https://tools.ietf.org/html/rfc4180#section-2
+// Definition of the CSV Format
+// While there are various specifications and implementations for the
+// CSV format (for ex. [4], [5], [6] and [7]), there is no formal
+// specification in existence, which allows for a wide variety of
+// interpretations of CSV files.  This section documents the format that
+// seems to be followed by most implementations:
+//
+// 1.  Each record is located on a separate line, delimited by a line
+//     break (CRLF).  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+//
+// 2.  The last record in the file may or may not have an ending line
+//     break.  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx
+//
+// 3.  There maybe an optional header line appearing as the first line
+//     of the file with the same format as normal record lines.  This
+//     header will contain names corresponding to the fields in the file
+//     and should contain the same number of fields as the records in
+//     the rest of the file (the presence or absence of the header line
+//     should be indicated via the optional "header" parameter of this
+//     MIME type).  For example:
+//     field_name,field_name,field_name CRLF
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+//
+// 4.  Within the header and each record, there may be one or more
+//     fields, separated by commas.  Each line should contain the same
+//     number of fields throughout the file.  Spaces are considered part
+//     of a field and should not be ignored.  The last field in the
+//     record must not be followed by a comma.  For example:
+//     aaa,bbb,ccc
+//
+// 5.  Each field may or may not be enclosed in double quotes (however
+//     some programs, such as Microsoft Excel, do not use double quotes
+//     at all).  If fields are not enclosed with double quotes, then
+//     double quotes may not appear inside the fields.  For example:
+//     "aaa","bbb","ccc" CRLF
+//     zzz,yyy,xxx
+//
+// 6.  Fields containing line breaks (CRLF), double quotes, and commas
+//     should be enclosed in double-quotes.  For example:
+//     "aaa","b CRLF
+//     bb","ccc" CRLF
+//     zzz,yyy,xxx
+//
+// 7.  If double-quotes are used to enclose fields, then a double-quote
+//     appearing inside a field must be escaped by preceding it with
+//     another double quote.  For example:
+//     "aaa","b""bb","ccc"
+    let match;
+    let quote;
+    let rgx;
+    let row;
+    let rowList;
+    let val;
+    // normalize "\r\n" to "\n"
+    csv = csv.replace((
+        /\r\n?/gu
+    ), "\n");
+    rgx = (
+        /(.*?)(""|"|,|\n)/gu
+    );
+    rowList = [];
+    // reset row
+    row = [];
+    val = "";
+    while (true) {
+        match = rgx.exec(csv);
+        if (!match) {
+// 2.  The last record in the file may or may not have an ending line
+//     break.  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx
+            if (!row.length) {
+                break;
+            }
+            // if eof missing crlf, then mock it
+            rgx.lastIndex = csv.length;
+            match = [
+                "\n", "", "\n"
+            ];
+        }
+        // build val
+        val += match[1];
+        if (match[2] === "\"") {
+// 5.  Each field may or may not be enclosed in double quotes (however
+//     some programs, such as Microsoft Excel, do not use double quotes
+//     at all).  If fields are not enclosed with double quotes, then
+//     double quotes may not appear inside the fields.  For example:
+//     "aaa","bbb","ccc" CRLF
+//     zzz,yyy,xxx
+            quote = !quote;
+        } else if (quote) {
+// 7.  If double-quotes are used to enclose fields, then a double-quote
+//     appearing inside a field must be escaped by preceding it with
+//     another double quote.  For example:
+//     "aaa","b""bb","ccc"
+            if (match[2] === "\"\"") {
+                val += "\"";
+// 6.  Fields containing line breaks (CRLF), double quotes, and commas
+//     should be enclosed in double-quotes.  For example:
+//     "aaa","b CRLF
+//     bb","ccc" CRLF
+//     zzz,yyy,xxx
+            } else {
+                val += match[2];
+            }
+        } else if (match[2] === ",") {
+// 4.  Within the header and each record, there may be one or more
+//     fields, separated by commas.  Each line should contain the same
+//     number of fields throughout the file.  Spaces are considered part
+//     of a field and should not be ignored.  The last field in the
+//     record must not be followed by a comma.  For example:
+//     aaa,bbb,ccc
+            // delimit val
+            row.push(val);
+            val = "";
+        } else if (match[2] === "\n") {
+// 1.  Each record is located on a separate line, delimited by a line
+//     break (CRLF).  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+            // delimit val
+            row.push(val);
+            val = "";
+            // append row
+            rowList.push(row);
+            // reset row
+            row = [];
+        }
+    }
+    // append row
+    if (row.length) {
+        rowList.push(row);
+    }
+    return rowList;
 }
 
 function onContextmenu(evt) {
@@ -1549,6 +1428,8 @@ async function onDbAction(evt) {
     case "dbAttach":
     case "dbOpen":
     case "dbscriptOpen":
+    case "dbtableImportCsv":
+    case "dbtableImportJson":
         UI_FILE_OPEN.dataset.action = action;
         UI_FILE_OPEN.value = "";
         UI_FILE_OPEN.click();
@@ -1677,6 +1558,12 @@ RENAME TO
         }
         uiFadeIn(UI_CRUD);
         UI_CRUD.style.zIndex = 1;
+        // ergonomy - auto-focus first input
+        Array.from(UI_CRUD.querySelectorAll(
+            ".modalContent input"
+        )).every(function (elem) {
+            elem.focus();
+        });
         return;
     }
     // slow actions that require loading
@@ -1716,6 +1603,28 @@ RENAME TO
         UI_EDITOR.setValue(
             await target.files[0].text()
         );
+        await uiRenderDb();
+        return;
+    case "dbtableImportCsv":
+    case "dbtableImportJson":
+        if (target.files.length === 0) {
+            return;
+        }
+        await dbTableImportAsync({
+            db: DB_MAIN,
+            mode: (
+                action === "dbtableImportCsv"
+                ? "csv"
+                : "json"
+            ),
+            tableName: dbNameNext(
+                "[__file{{ii}}]",
+                new Set(DB_MAIN.dbtableList.keys())
+            ).slice(1, -1),
+            textData: (
+                await target.files[0].text()
+            )
+        });
         await uiRenderDb();
         return;
     }
@@ -1938,14 +1847,8 @@ async function onDbcrudExec({
     UI_CRUD.style.zIndex = -1;
 }
 
-function onKeyUp(evt) {
+function onKeyDown(evt) {
 // this function will handle event keyup
-    if (!evt.modeDebounce) {
-        debounce("onKeyUp", onKeyUp, Object.assign(evt, {
-            modeDebounce: true
-        }));
-        return;
-    }
     switch (evt.key) {
     case "Escape":
         // close error-modal
@@ -1955,8 +1858,21 @@ function onKeyUp(evt) {
         return;
     }
     switch ((evt.ctrlKey || evt.metaKey) && evt.key) {
+    // database - execute
     case "Enter":
         onDbExec({});
+        return;
+    // database - open
+    case "o":
+        evt.preventDefault();
+        evt.stopPropagation();
+        document.querySelector("button[data-action='dbOpen']").click();
+        return;
+    // database - save
+    case "s":
+        evt.preventDefault();
+        evt.stopPropagation();
+        document.querySelector("button[data-action='dbExportMain']").click();
         return;
     }
 }
@@ -2374,9 +2290,7 @@ async function uiRenderDb() {
         }
     });
     // DBTABLE_DICT - sync
-    await Promise.all(Array.from(
-        DB_DICT.values()
-    ).map(async function (db) {
+    await Promise.all(Array.from(DB_DICT.values()).map(async function (db) {
         let baton;
         let {
             dbName,
@@ -2386,7 +2300,7 @@ async function uiRenderDb() {
         } = db;
         let dbtableList;
         let tmp;
-        db.dbtableList = [];
+        db.dbtableList = new Map();
         dbtableList = noop(
             await dbExecAsync({
                 db,
@@ -2398,14 +2312,14 @@ SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
         if (!dbtableList) {
             return;
         }
-        dbtableList = dbtableList.map(function ({
+        dbtableList = new Map(dbtableList.map(function ({
             colList = [],
             dbtableFullname,
             rowCount = 0,
             rowList0,
             sql,
             tbl_name
-        }) {
+        }, ii) {
             dbtableFullname = dbtableFullname || `${dbName}.[${tbl_name}]`;
             dbtableIi += 1;
             baton = {
@@ -2416,6 +2330,7 @@ SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
                 dbtableIi,
                 dbtableName: `[${tbl_name}]`,
                 hashtag: `dbtable_${String(dbtableIi).padStart(2, "0")}`,
+                ii,
                 isDbchart,
                 isDbmain,
                 isDbquery,
@@ -2427,8 +2342,10 @@ SELECT * FROM sqlite_schema WHERE type = 'table' ORDER BY tbl_name;
                 title: `table ${dbtableFullname}`
             };
             DBTABLE_DICT.set(baton.hashtag, baton);
-            return baton;
-        });
+            return [
+                baton.dbtableName, baton
+            ];
+        }));
         tmp = "";
         dbtableList.forEach(function ({
             dbtableName,
@@ -2514,8 +2431,9 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
             dbtableFullname,
             dbtableName,
             hashtag,
+            ii,
             rowCount
-        }, ii) {
+        }) {
             html += `<a class="tocElemA"`;
             html += ` data-hashtag="${hashtag}"`;
             html += ` href="#${hashtag}"`;
@@ -2600,6 +2518,19 @@ async function uichartCreate(baton) {
     let uichart = await dbExecAsync({
         db,
         sql: (`
+-- table - __chart_options1 - insert
+DROP TABLE IF EXISTS __chart_options1;
+CREATE TEMP TABLE __chart_options1 AS
+    SELECT
+        json(options) AS options,
+        CASTREALORZERO(options->>'$.xstep') AS xstep,
+        CASTREALORZERO(1.0 / options->>'$.xstep') AS xstep_inv,
+        CASTREALORZERO(options->>'$.ystep') AS ystep,
+        CASTREALORZERO(1.0 / options->>'$.ystep') AS ystep_inv
+    FROM (
+        SELECT options FROM ${dbtableName} WHERE datatype = 'options' LIMIT 1
+    );
+
 -- table - __chart_series_xy1 - insert
 DROP TABLE IF EXISTS __chart_series_xy1;
 CREATE TEMP TABLE __chart_series_xy1 AS
@@ -2624,10 +2555,18 @@ CREATE TEMP TABLE __chart_series_xy1 AS
                 series_index,
                 xx,
                 yy
-            FROM ${dbtableName}
-            WHERE
-                datatype = 'yy_value'
-                AND xx IS NOT NULL
+            FROM (
+                SELECT
+                    ${dbtableName}.rowid,
+                    series_index,
+                    IIF(xstep_inv, ROUND(xstep_inv * xx), xx) AS xx,
+                    IIF(ystep_inv, ROUND(ystep_inv * yy), yy) AS yy
+                FROM ${dbtableName}
+                JOIN __chart_options1
+                WHERE
+                    datatype = 'yy_value'
+                    AND xx IS NOT NULL
+            )
             ORDER BY
                 series_index,
                 xx
@@ -2651,6 +2590,7 @@ CREATE TEMP TABLE __chart_series_maxmin1 AS
     GROUP BY
         series_index;
 
+-- table - __chart_options1 - select - options
 SELECT
         json_set(
             options,
@@ -2662,7 +2602,7 @@ SELECT
             '$.ydataMax', ydataMax,
             '$.ydataMin', ydataMin
         ) AS options
-    FROM (SELECT options FROM ${dbtableName} WHERE datatype = 'options' LIMIT 1)
+    FROM __chart_options1
     JOIN (
         SELECT
             json_group_array(xx_label) AS xlabelList
@@ -2736,10 +2676,7 @@ SELECT
     elemUichart.innerHTML = (`
 <div
     class="uichartNav"
-    style="
-    height: ${elemUichartHeight}px;
-    width: ${elemLegendWidth}px;
-    "
+    style="height: ${elemUichartHeight}px; width: ${elemLegendWidth}px;"
 >
     <button
         class="uichartAction"
@@ -2761,8 +2698,14 @@ SELECT
 <div style="position: relative; margin-left: 16px; width: 16px;">
     <div class="uichartAxislabel1">${stringHtmlSafe(uichart.yaxisTitle)}</div>
 </div>
-<div style="display: flex; flex: 1; flex-direction: column; padding: 5px 0">
-    <div class="uichartTitle">${stringHtmlSafe(uichart.title)}</div>
+<div style="display: flex; flex: 1; flex-direction: column; padding: 5px 0;">
+    <div class="uichartTitle">
+    ${
+        stringHtmlSafe(uichart.title).replace((
+            /\n/g
+        ), "<br>")
+    }
+    </div>
     <div class="uichartCanvasFlex" style="flex: 1;">
     <svg
         class="uichartCanvasFixed"
@@ -2782,7 +2725,7 @@ SELECT
         <g class="uichartTooltip" visibility="hidden">
             <rect
                 class="uichartTooltipBorder"
-                fill-opacity="0.6667"
+                fill-opacity="0.8000"
                 fill="#fff"
                 rx="5"
                 ry="5"
@@ -2791,7 +2734,7 @@ SELECT
                 y="0"
             >
             </rect>
-            <text class="uichartTooltipText" x="5" y="17"></text>
+            <text class="uichartTooltipText"></text>
         </g>
         <g class="uichartMousetrackerList">/g>
     </svg>
@@ -2927,8 +2870,8 @@ SELECT
         // create elemTick
         elemTick = svgAttrSet("path", {
             fill: "none",
-            stroke: "#333",
-            "stroke-width": 1
+            stroke: "#33b",
+            "stroke-width": 3
         });
         elemTick.isFirstDraw = true;
         elemTick.isXaxis = isXaxis;
@@ -2964,14 +2907,16 @@ SELECT
             );
             num = numberFormat({
                 convert: uichart[xOrY + "valueConvert"],
+                modeTick: true,
                 num: (
                     isXaxis
                     ? xlabelList[tickx - 1] ?? tickx
                     : tickx
                 ),
                 prefix: uichart[xOrY + "valuePrefix"],
+                step: uichart[xOrY + "step"],
                 suffix: uichart[xOrY + "valueSuffix"]
-            });
+            }).slice(0, 16);
             // number already formatted
             if (typeof num !== "number") {
                 return num;
@@ -3029,14 +2974,42 @@ SELECT
     }
     function numberFormat({
         convert,
+        modeTick,
         num,
         prefix,
+        step,
         suffix
     }) {
     // this function will format <num>
+        if (step && typeof num === "number") {
+            num *= step;
+        }
         switch (convert) {
-        case "epochToTimeLocal":
-            num = new Date(1000 * num).toLocaleTimeString();
+        case "juliandayToDate":
+            num = new Date((num - 2440587.5) * 86400 * 1000);
+            // num = num.toUTCString().slice(0, 16);
+            num = (
+                modeTick
+                ? num.toUTCString().slice(5, 16)
+                : num.toUTCString().slice(0, 16)
+            );
+            break;
+        case "unixepochToTimelocal":
+            num = new Date(num * 1000);
+            num = (
+                modeTick
+                ? num.toLocaleTimeString()
+                : num.toLocaleString()
+            );
+            break;
+        case "unixepochToTimeutc":
+            // num = new Date(num * 1000).toISOString().slice(11, 19) + "Z";
+            num = new Date(num * 1000);
+            num = (
+                modeTick
+                ? num.toUTCString().slice(17)
+                : num.toUTCString()
+            );
             break;
         }
         if (prefix) {
@@ -3099,7 +3072,7 @@ SELECT
         if (
             !pointObj
             || pointObj === pointHovered
-            || !pointObj.series.isVisible
+            || pointObj.series.isHidden
         ) {
             return;
         }
@@ -3110,19 +3083,38 @@ SELECT
         let { //jslint-ignore-line
             pointX,
             pointY,
-            xlabel,
             xval,
             yval
         } = pointHovered;
+        let xlabel;
+        let ylabel;
         if (redrawTimer || pointY === undefined) {
             return;
         }
+        xlabel = numberFormat({
+            convert: uichart.xvalueConvert,
+            num: xlabelList[xval - 1] ?? xval,
+            prefix: uichart.xvaluePrefix,
+            step: uichart.xstep,
+            suffix: uichart.xvalueSuffix
+        });
+        ylabel = numberFormat({
+            convert: uichart.yvalueConvert,
+            num: yval,
+            prefix: uichart.yvaluePrefix,
+            step: uichart.ystep,
+            suffix: uichart.yvalueSuffix
+        });
         // update elemTooltipText
         elemTooltip.setAttribute("visibility", "visible");
         elemTooltipText.innerHTML = (`
-<tspan style="font-size: 10px" x="5">${xlabel}</tspan>
-<tspan style="fill:#000" dy="17" x="5">${seriesHovered.seriesName} : </tspan>
-<tspan style="font-weight:bold">${Number(yval).toLocaleString()}</tspan>
+<tspan dy="17" x="6">${stringHtmlSafe(seriesHovered.seriesName)}</tspan>
+<tspan dy="17" x="6">x: ${stringHtmlSafe(xlabel)}</tspan>
+<tspan
+    dy="19"
+    style="font-size: 14px; font-weight: bold;"
+    x="6"
+>y: ${stringHtmlSafe(ylabel)}</tspan>
         `);
         // update elemTooltipBorder after text-update
         tooltipBbox = elemTooltipText.getBBox();
@@ -3187,7 +3179,7 @@ SELECT
             : evt
         );
         let seriesColor;
-        if (!series?.isVisible) {
+        if (!series || series.isHidden) {
             onSeriesUnhover();
             return;
         }
@@ -3241,7 +3233,7 @@ SELECT
     function onSeriesHoveredHide() {
     // this function will handle <evt> to hide hovered-series
         if (seriesHovered) {
-            uichartSeriesHideOrShow(seriesHovered, false);
+            uichartSeriesHideOrShow(seriesHovered, true);
             uichartRedraw();
             return;
         }
@@ -3272,7 +3264,7 @@ SELECT
     async function onUichartAction(evt) {
     // this function will handle uichart event <evt>
         let action;
-        let isVisible;
+        let modeHide;
         let target;
         evt.preventDefault();
         evt.stopPropagation();
@@ -3292,21 +3284,21 @@ SELECT
         case "uichartSeriesShowAll":
             uiFadeIn(baton.elemLoading);
             await waitAsync(50);
-            isVisible = action === "uichartSeriesShowAll";
+            modeHide = action === "uichartSeriesHideAll";
             // hide or show series
             seriesList.forEach(function (series) {
-                uichartSeriesHideOrShow(series, isVisible);
+                uichartSeriesHideOrShow(series, modeHide);
             });
             uichartRedraw();
             await waitAsync(200);
             uiFadeOut(baton.elemLoading);
             return;
         case "uichartSeriesHideOrShow":
-            isVisible = target.dataset.hidden === "1";
+            modeHide = target.dataset.hidden !== "1";
             // hide or show series
             uichartSeriesHideOrShow(
                 seriesList[target.dataset.seriesIi],
-                isVisible
+                modeHide
             );
             uichartRedraw();
             return;
@@ -3396,7 +3388,7 @@ SELECT
                     ydata
                 } = series;
                 let yval;
-                if (isXaxis || !series.isVisible) {
+                if (isXaxis || series.isHidden) {
                     return;
                 }
                 nn = xdata.length;
@@ -3686,7 +3678,7 @@ SELECT
             let elemGraphD = "";
             let pointXPrv = 0;
             let pointYPrv = 0;
-            if (!series.isVisible) {
+            if (series.isHidden) {
                 return;
             }
             // redraw pointListSeries
@@ -3782,7 +3774,7 @@ SELECT
         }
         // reset seriesHovered
         seriesList.forEach(function (series) {
-            if (!seriesHovered?.isVisible) {
+            if (!seriesHovered || seriesHovered.isHidden) {
                 onSeriesHover(series);
                 onSeriesUnhover();
             }
@@ -3813,13 +3805,13 @@ SELECT
         // redraw from uichartResize
         uichartRedraw();
     }
-    function uichartSeriesHideOrShow(series, isVisible) {
+    function uichartSeriesHideOrShow(series, modeHide) {
     // this function will hide-or-show <series>
         if (!series || series.isDummy) {
             return;
         }
         // reset previously hidden points to yaxis
-        if (isBarchart && isVisible && !series.isVisible) {
+        if (isBarchart && !modeHide && series.isHidden) {
             series.pointListSeries.forEach(function ({
                 elemPoint,
                 pointY
@@ -3832,8 +3824,8 @@ SELECT
                 }
             });
         }
-        series.isVisible = isVisible;
-        if (isVisible) {
+        series.isHidden = modeHide;
+        if (!modeHide) {
             onSeriesHover(series);
         }
         [
@@ -3841,16 +3833,14 @@ SELECT
         ].forEach(function (elem) {
             if (elem) {
                 elem.setAttribute("visibility", (
-                    isVisible
-                    ? "visible"
-                    : "hidden"
+                    modeHide
+                    ? "hidden"
+                    : "visible"
                 ));
             }
         });
         // hide or show legend
-        elemLegend.children[
-            series.seriesIi
-        ].dataset.hidden = Number(!isVisible);
+        elemLegend.children[series.seriesIi].dataset.hidden = Number(modeHide);
     }
     function xaxisTranslate(xval) {
     // this function will translate <xval> to xpixel position on chart
@@ -3868,7 +3858,7 @@ SELECT
         let xpixelEnd;
         while (ii < nn) {
             pointObj = pointList[ii];
-            if (pointObj.pointY !== undefined && pointObj.series.isVisible) {
+            if (pointObj.pointY !== undefined && !pointObj.series.isHidden) {
                 if (pointObjPrv) {
                     xpixelEnd = 0.5 * (pointObjPrv.pointX + pointObj.pointX);
                     while (xpixel < xpixelEnd) {
@@ -4002,7 +3992,6 @@ SELECT
             pointObj = {
                 elemPoint,
                 series,
-                xlabel: xlabelList[xval - 1] ?? xval,
                 xval,
                 yval: (
                     Number.isNaN(yval)
@@ -4020,7 +4009,7 @@ SELECT
             elemGraph,
             elemGraphtracker,
             elemSeries,
-            isVisible: !series.isHidden,
+            isHidden: series.isDummy || series.isHidden,
             pointListSeries,
             seriesColor,
             seriesIi,
@@ -4395,25 +4384,3 @@ function waitAsync(timeout) {
 
 // init
 window.addEventListener("load", init);
-
-export {
-    DB_MAIN,
-    UI_EDITOR,
-    assertOrThrow,
-    dbCloseAsync,
-    dbExecAsync,
-    dbFileAttachAsync,
-    dbFileExportAsync,
-    dbFileImportAsync,
-    dbOpenAsync,
-    debugInline,
-    domDivCreate,
-    jsonHtmlSafe,
-    noop,
-    onDbExec,
-    sqlmathWebworkerInit,
-    stringHtmlSafe,
-    uiFadeIn,
-    uiFadeOut,
-    uiRenderDb
-};

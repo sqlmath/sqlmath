@@ -37,7 +37,8 @@ import {
     debugInline,
     jsbatonValueString,
     noop,
-    sqlmathWebworkerInit
+    sqlmathWebworkerInit,
+    version
 } from "./sqlmath.mjs";
 let {
     assertErrorThrownAsync,
@@ -45,6 +46,31 @@ let {
     jstestIt
 } = jslint;
 noop(debugInline);
+
+jstestDescribe((
+    "test apidoc handling-behavior"
+), function test_apidoc() {
+    jstestIt((
+        "test apidoc handling-behavior"
+    ), function () {
+        jslint.jslint_apidoc({
+            example_list: [
+                "README.md",
+                "test.mjs",
+                "sqlmath.mjs"
+            ],
+            github_repo: "https://github.com/sqlmath/sqlmath",
+            module_list: [
+                {
+                    pathname: "./sqlmath.mjs"
+                }
+            ],
+            package_name: "sqlmath",
+            pathname: ".artifact/apidoc.html",
+            version
+        });
+    });
+});
 
 jstestDescribe((
     "test assertXxx handling-behavior"
@@ -514,6 +540,9 @@ SELECT * FROM testDbExecAsync2;
             filename: ":memory:"
         });
         // test null-case handling-behavior
+        dbFileExportAsync({
+            modeNoop: true
+        });
         assertErrorThrownAsync(function () {
             return dbFileImportAsync({
                 db

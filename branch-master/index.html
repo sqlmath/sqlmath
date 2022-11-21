@@ -15,7 +15,7 @@ shRawLibFetch
 {
     "fetchList": [
         {
-            "url": "https://github.com/codemirror/CodeMirror5/blob/5.65.5/lib/codemirror.css"
+            "url": "https://github.com/codemirror/codemirror5/blob/5.65.10/lib/codemirror.css"
         }
     ],
     "replaceList": []
@@ -24,13 +24,13 @@ shRawLibFetch
 
 
 /*
-repo https://github.com/codemirror/CodeMirror5/tree/5.65.5
-committed 2022-05-30T09:58:15Z
+repo https://github.com/codemirror/codemirror5/tree/5.65.10
+committed 2022-11-20T15:35:33Z
 */
 
 
 /*
-file https://github.com/codemirror/CodeMirror5/blob/5.65.5/lib/codemirror.css
+file https://github.com/codemirror/codemirror5/blob/5.65.10/lib/codemirror.css
 */
 /* BASICS */
 
@@ -401,9 +401,11 @@ file none
     padding: 0;
     text-decoration: none;
 }
+/*
 *:focus {
     outline: none;
 }
+*/
 body {
     font-family: sans-serif;
     font-size: 0.75rem;
@@ -730,7 +732,7 @@ textarea {
 /*css section uichart*/
 .uichart {
     font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Arial, Helvetica, sans-serif;
-    font-size: 12px;
+    font-size: 11px;
     user-select: none;
 }
 .uichartCanvasFlex {
@@ -760,7 +762,6 @@ textarea {
 .uichartLegend {
     border: 1px solid #999;
     flex: 1;
-    font-size: 11px;
     overflow-x: hidden;
     overflow-y: scroll;
     text-overflow: ellipsis;
@@ -789,9 +790,6 @@ textarea {
 .uichartNav button.uichartAction {
     margin-bottom: 10px;
     width: 100%
-}
-.uichartTitle {
-    font-size: 16px;
 }
 
 /* section misc */
@@ -867,8 +865,10 @@ button:hover {
 <div id="tocDatabase1">
     <button data-action="dbRefresh">ui - refresh</button>
     <button data-action="dbOpen">database - open</button>
-    <button data-action="dbAttach" style="border-bottom: 1px solid #999;">database - open and attach</button>
     <button data-action="dbExportMain" style="border-bottom: 1px solid #999;">database - save</button>
+    <button data-action="dbAttach" style="border-bottom: 1px solid #999;">database - attach</button>
+    <button data-action="dbtableImportCsv" style="border-bottom: 1px solid #999;">table - import from csv file</button>
+    <button data-action="dbtableImportJson" style="border-bottom: 1px solid #999;">table - import from json file</button>
 </div>
 <div id="tocEditor1">
     <div class="tocTitle">sqlite editor</div>

@@ -2,7 +2,7 @@
 
 
 # Status
-| Branch | [master<br>(v2022.10.20)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
+| Branch | [master<br>(v2022.11.20)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
 |--:|:--:|:--:|:--:|
 | CI | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Amaster) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=beta)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Abeta) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=alpha)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Aalpha) |
 | Coverage | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) |
@@ -15,11 +15,20 @@
 
 1. [Web Demo](#web-demo)
 
-2. [Package Listing](#package-listing)
+2. [Quickstart Build](#quickstart-build)
+    - [To build sqlmath:](#to-build-sqlmath)
 
-3. [Changelog](#changelog)
+3. [Quickstart Website](#quickstart-website)
+    - [To serve your own sqlmath website:](#to-serve-your-own-sqlmath-website)
 
-4. [License](#license)
+4. [Documentation](#documentation)
+    - [API Doc](#api-doc)
+
+5. [Package Listing](#package-listing)
+
+6. [Changelog](#changelog)
+
+7. [License](#license)
 
 
 <br><br>
@@ -27,6 +36,54 @@
 - https://sqlmath.github.io/sqlmath/index.html
 
 [![screenshot](https://sqlmath.github.io/sqlmath/branch-master/.artifact/screenshot_browser__2fsqlmath_2fbranch-master_2findex.html.png)](https://sqlmath.github.io/sqlmath/index.html)
+
+
+<br><br>
+# Quickstart Build
+
+
+<br><br>
+### To build sqlmath:
+```shell
+#!/bin/sh
+
+# git clone sqlmath repo
+git clone https://github.com/sqlmath/sqlmath --branch=beta --single-branch
+cd sqlmath
+
+# build nodejs binary ./_binary_sqlmath_napi8_xxx_x64.node
+npm run test2
+
+# build webassembly binary ./sqlmath_wasm.wasm
+sh jslint_ci.sh shCiBuildWasm
+```
+
+
+<br><br>
+# Quickstart Website
+
+
+<br><br>
+### To serve your own sqlmath website:
+```shell
+#!/bin/sh
+
+# cd <sqlmath repo>
+
+# serve website at http://localhost:8080/index.html
+PORT=8080 sh jslint_ci.sh shHttpFileServer
+```
+
+
+<br><br>
+# Documentation
+
+
+<br><br>
+### API Doc
+- https://sqlmath.github.io/sqlmath/apidoc.html
+
+[![screenshot](https://sqlmath.github.io/sqlmath/branch-master/.artifact/screenshot_browser__2f.artifact_2fapidoc.html.png)](https://sqlmath.github.io/sqlmath/apidoc.html)
 
 
 <br><br>

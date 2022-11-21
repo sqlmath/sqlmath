@@ -1,8 +1,24 @@
 # Changelog
 
 # Todo
-- add dbtable-crud-operations dbtableOpenCsv, dbtableOpenJson
 - none
+
+# v2022.11.20
+- ci - auto-update version-number in main mjs-module
+- editor - update codemirror-editor to v5.65.10
+- doc - add api-doc
+- doc - document quickstart-build, quickstart-website
+- sqlmath - bugfix - fix function dbFileImportOrExport() throwing incorrect error
+- chart - improve ergonomics to attach database and import csv/json
+- demo - add hotkeys ctrl-o to open database, ctrl-s to save database
+- demo - streamline charts sector, subsector, stock into single logic
+- sqlmath - remove unused sqlite-extensions carray, csv from file sqlite3_ext.c
+- chart - add chart-options xstep, ystep
+- ci - update to nodejs v18
+- chart - redesign tooltip
+- chart - add xvalueConvert option juliandayToDate
+- chart - add dbtable-crud-operations dbtableImportCsv, dbtableImportJson
+- chart - add intraday, 1-min chart
 
 # v2022.10.20
 - demo - add chart tradebot_historical_backtrack
