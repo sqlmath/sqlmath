@@ -37,7 +37,8 @@ import {
     debugInline,
     jsbatonValueString,
     noop,
-    sqlmathWebworkerInit
+    sqlmathWebworkerInit,
+    version
 } from "./sqlmath.mjs";
 let {
     assertErrorThrownAsync,
@@ -58,15 +59,15 @@ jstestDescribe((
                 "test.mjs",
                 "sqlmath.mjs"
             ],
-            github_repo: "https://github.com/jslint-org/jslint",
+            github_repo: "https://github.com/sqlmath/sqlmath",
             module_list: [
                 {
                     pathname: "./sqlmath.mjs"
                 }
             ],
-            package_name: "JSLint",
+            package_name: "sqlmath",
             pathname: ".artifact/apidoc.html",
-            version: jslint.jslint_edition
+            version
         });
     });
 });
