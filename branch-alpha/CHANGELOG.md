@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2022.11.1-beta
+# v2022.11.20
 - editor - update codemirror-editor to v5.65.10
 - doc - add api-doc
 - doc - document quickstart-build, quickstart-website
