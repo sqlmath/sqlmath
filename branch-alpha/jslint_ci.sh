@@ -483,9 +483,7 @@ import moduleFs from "fs";
         }
     }));
     if (fileModified) {
-        setTimeout(function () {
-            throw new Error("modified file " + fileModified);
-        }, 1000);
+        throw new Error("modified file " + fileModified);
     }
 }());
 ' "$@" # '
