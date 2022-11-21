@@ -47,6 +47,31 @@ let {
 noop(debugInline);
 
 jstestDescribe((
+    "test apidoc handling-behavior"
+), function test_apidoc() {
+    jstestIt((
+        "test apidoc handling-behavior"
+    ), function () {
+        jslint.jslint_apidoc({
+            example_list: [
+                "README.md",
+                "test.mjs",
+                "sqlmath.mjs"
+            ],
+            github_repo: "https://github.com/jslint-org/jslint",
+            module_list: [
+                {
+                    pathname: "./sqlmath.mjs"
+                }
+            ],
+            package_name: "JSLint",
+            pathname: ".artifact/apidoc.html",
+            version: jslint.jslint_edition
+        });
+    });
+});
+
+jstestDescribe((
     "test assertXxx handling-behavior"
 ), function test_assertXxx() {
     jstestIt((
