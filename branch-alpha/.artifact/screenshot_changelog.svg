@@ -47,271 +47,271 @@
     textLength="768"
     x="10"
     y="164"
->- ci - update to nodejs v18                                                                      </tspan>
+>- editor - update codemirror-editor to v5.65.10                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="186"
->- chart - redesign tooltip                                                                       </tspan>
+>- doc - add api-doc                                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="208"
->- chart - add xvalueConvert option juliandayToDate                                               </tspan>
+>- doc - document quickstart-build, quickstart-website                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="230"
->- chart - add dbtable-crud-operations dbtableImportCsv, dbtableImportJson                        </tspan>
+>- sqlmath - bugfix - fix function dbFileImportOrExport() throwing incorrect error                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="252"
->- chart - add intraday, 1-min chart                                                              </tspan>
+>- chart - improve ergonomics to attach database and import csv/json                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
->                                                                                                 </tspan>
+>- demo - add hotkeys ctrl-o to open database, ctrl-s to save database                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
-># v2022.10.20                                                                                    </tspan>
+>- demo - streamline charts sector, subsector, stock into single logic                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="318"
->- demo - add chart tradebot_historical_backtrack                                                 </tspan>
+>- sqlmath - remove unused sqlite-extensions carray, csv from file sqlite3_ext.c                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="340"
->- chart - allow hiding series by clicking it in plot-area                                        </tspan>
+>- chart - add chart-options xstep, ystep                                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
->- coverage - add test-coverage for function sqlmathWebworkerInit()                               </tspan>
+>- ci - update to nodejs v18                                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
->- chart - use different color for category - short                                               </tspan>
+>- chart - redesign tooltip                                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->- sqlmath - re-enable sql-function squared()                                                     </tspan>
+>- chart - add xvalueConvert option juliandayToDate                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->                                                                                                 </tspan>
+>- chart - add dbtable-crud-operations dbtableImportCsv, dbtableImportJson                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
-># v2022.9.20                                                                                     </tspan>
+>- chart - add intraday, 1-min chart                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
->- sqlmath - bugfix - handle null seriesList, xlabelList, xdata, ydata                            </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="494"
->- sqlmath - revamp str99 with sqlite3_str                                                        </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="516"
->- jslint - update jslint v2022.9.9                                                               </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="538"
->- sqlite - revert back to v3.38.5 due to performance-regression                                  </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="560"
->- sqlmath - add sql-function tofloat64array()                                                    </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="582"
->- sqlite - update to sqlite v3.39.2                                                              </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="604"
 >                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="494"
+># v2022.10.20                                                                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="516"
+>- demo - add chart tradebot_historical_backtrack                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="538"
+>- chart - allow hiding series by clicking it in plot-area                                        </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="560"
+>- coverage - add test-coverage for function sqlmathWebworkerInit()                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="582"
+>- chart - use different color for category - short                                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="604"
+>- sqlmath - re-enable sql-function squared()                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="626"
-># v2022.8.20                                                                                     </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->- chart-revamp - switch from chart.js to using svg-elements for plots                            </tspan>
+># v2022.9.20                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->--                                                                                               </tspan>
+>- sqlmath - bugfix - handle null seriesList, xlabelList, xdata, ydata                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->- chart - add optional easeout ui-animation, in addition to linear                               </tspan>
+>- sqlmath - revamp str99 with sqlite3_str                                                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->- chart - fix render-bug when zooming with no data                                               </tspan>
+>- jslint - update jslint v2022.9.9                                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="736"
->- chart - bugfix - fix xrangeMin being NaN                                                       </tspan>
+>- sqlite - revert back to v3.38.5 due to performance-regression                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="758"
->- chart - animate crosshair, similar to tooltip                                                  </tspan>
+>- sqlmath - add sql-function tofloat64array()                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="780"
->- chart - remove gridband code                                                                   </tspan>
+>- sqlite - update to sqlite v3.39.2                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="802"
->- chart - remove all classes, and instances of this                                              </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="824"
->- chart - bugfix - fix x-axis having no padding                                                  </tspan>
+># v2022.8.20                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="846"
->- chart - bugfix - fix chart failing to re-scale after hiding/showing series                     </tspan>
+>- chart-revamp - switch from chart.js to using svg-elements for plots                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="868"
->- chart - fix tooltip-indent-bug                                                                 </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="890"
->- chart - revamp tooltip-popup in barchart - part1                                               </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="912"
->- chart - replace Tick class with static-functions uichartAxistickCreate and uichartAxistickRend\</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="934"
->  er                                                                                             </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="956"
->- chart - bugfix - fix tick-cleanup                                                              </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="978"
->- chart - fix seriestracker z-index in reverse-order of series-render                            </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1000"
->- chart - bugfix - fix annoying clip-path drifting down-right during startup-animation           </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1022"
->- chart - remove jquery-dependency                                                               </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1044"
->- chart - fix again, zoomout cropping too much of one side, in line-charts                       </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1066"
 >--                                                                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="890"
+>- chart - add optional easeout ui-animation, in addition to linear                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="912"
+>- chart - fix render-bug when zooming with no data                                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="934"
+>- chart - bugfix - fix xrangeMin being NaN                                                       </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="956"
+>- chart - animate crosshair, similar to tooltip                                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="978"
+>- chart - remove gridband code                                                                   </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1000"
+>- chart - remove all classes, and instances of this                                              </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1022"
+>- chart - bugfix - fix x-axis having no padding                                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1044"
+>- chart - bugfix - fix chart failing to re-scale after hiding/showing series                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1066"
+>- chart - fix tooltip-indent-bug                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="1088"
->- remove unused files                                                                            </tspan>
+>- chart - revamp tooltip-popup in barchart - part1                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1110"
->    assets.bootstrap-v3.4.1.datatables-v1.10.21.chartjs-v2.9.4.codemirror-5.58.3.rollup.css      </tspan>
+>- chart - replace Tick class with static-functions uichartAxistickCreate and uichartAxistickRend\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1132"
->    assets.bootstrap-v3.4.1.datatables-v1.10.21.chartjs-v2.9.4.codemirror-5.58.3.rollup.js       </tspan>
+>  er                                                                                             </tspan>
 
 </text>
 </svg>
