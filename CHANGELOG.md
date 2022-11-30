@@ -1,7 +1,12 @@
 # Changelog
 
 # Todo
+- chart - allow both bar and line series in same chart
+- chart - use Int32Array to represent pointX, pointY
 - none
+
+# v2022.12.1-beta
+- betadog - rename main-account from 01_mybot to 1a_mybot
 
 # v2022.11.20
 - ci - auto-update version-number in main mjs-module
