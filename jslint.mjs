@@ -4185,7 +4185,8 @@ function jslint_phase3_parse(state) {
             }
         }).reduce(function (aa, bb) {
             if (
-                !option_dict.unordered
+                option_dict.beta
+                && !option_dict.unordered
                 && aa && bb
                 && (
                     aa.order > bb.order
