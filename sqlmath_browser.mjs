@@ -400,6 +400,62 @@ async function demoTradebot() {
         })
     )[0][0];
     UI_EDITOR.setValue([
+        (`
+-- table - tradebot_intraday_day - insert
+DROP TABLE IF EXISTS tradebot_intraday_day;
+CREATE TEMP TABLE tradebot_intraday_day AS
+    SELECT
+        tradebot_intraday.*
+    FROM tradebot_intraday
+    JOIN tradebot_state
+    WHERE
+        DATE(ydate) >= ycls_ydate;
+INSERT INTO tradebot_intraday_day
+    SELECT
+        sym,
+        DATETIME(__ydate, '-1 MINUTE'),
+        0 AS ttt,
+        price,
+        0 AS ydate2
+    FROM tradebot_historical
+    JOIN (SELECT MIN(ydate) AS __ydate FROM tradebot_intraday_day)
+    JOIN (
+        SELECT
+            MAX(ydate) AS ydate
+        FROM tradebot_historical
+        JOIN tradebot_state
+        WHERE
+            ydate < ycls_ydate
+    ) USING (ydate);
+
+-- table - tradebot_intraday_week - insert
+DROP TABLE IF EXISTS tradebot_intraday_week;
+CREATE TEMP TABLE tradebot_intraday_week AS
+    SELECT
+        tradebot_intraday.*
+    FROM tradebot_intraday
+    JOIN (SELECT DATE(ycls_ydate, '-6 DAY') AS ydate_week FROM tradebot_state)
+    WHERE
+        ydate = ydate2
+        AND ydate > ydate_week;
+INSERT INTO tradebot_intraday_week
+    SELECT
+        sym,
+        ydate || ' ' || hhmmss AS ydate,
+        0 AS ttt,
+        price,
+        0 AS ydate2
+    FROM tradebot_historical
+    JOIN (
+        SELECT
+            MAX(ydate) AS ydate
+        FROM tradebot_historical
+        JOIN (SELECT DATE(MIN(ydate)) AS ydate_min FROM tradebot_intraday_week)
+        WHERE
+            ydate < ydate_min
+    ) USING (ydate)
+    JOIN (SELECT SUBSTR(MAX(ydate), 12) AS hhmmss FROM tradebot_intraday_week);
+        `),
         [
             "1 day",
             "1 week",
@@ -415,7 +471,9 @@ async function demoTradebot() {
             let tableData;
             tableData = (
                 dateInterval === "1 day"
-                ? "tradebot_intraday"
+                ? "tradebot_intraday_day"
+                : dateInterval === "1 week"
+                ? "tradebot_intraday_week"
                 : "tradebot_historical"
             );
             tableChart = (
@@ -438,10 +496,12 @@ async function demoTradebot() {
                 xstep: (
                     dateInterval === "1 day"
                     ? 60
+                    : dateInterval === "1 week"
+                    ? 15 * 60
                     : 1
                 ),
                 xvalueConvert: (
-                    dateInterval === "1 day"
+                    (dateInterval === "1 day" || dateInterval === "1 week")
                     ? "unixepochToTimeutc"
                     : "juliandayToDate"
                 ),
@@ -518,10 +578,8 @@ UPDATE __tmp1
                 MAX(aa,
             ${
                 (
-                    dateInterval === "1 week"
-                    ? "DATE(bb, '-7 DAY')"
-                    : dateInterval === "backtrack"
-                    ? "DATE(bb, '-100 YEAR')"
+                    dateInterval === "backtrack"
+                    ? "DATE(bb, '-5 YEAR')"
                     : dateInterval === "ytd"
                     ? "DATE(STRFTIME('%Y', bb) || '-01-01', '-1 DAY')"
                     : "DATE(bb, '-" + dateInterval + "')"
@@ -646,14 +704,10 @@ UPDATE ${tableChart}
     WHERE
         datatype = 'series_label';
 -- chart - tradebot_historical - normalize xx to unixepoch
-DELETE FROM ${tableChart} WHERE
-    '${dateInterval}' = '1 day'
-    AND datatype = 'yy_value'
-    AND xx = 1;
 UPDATE ${tableChart}
     SET
         xx = ${(
-                dateInterval === "1 day"
+                (dateInterval === "1 day" || dateInterval === "1 week")
                 ? "UNIXEPOCH(tt)"
                 : "JULIANDAY(tt)"
             )}
@@ -688,7 +742,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
             datatype = 'yy_value'
     )
     WHERE
-        '${dateInterval}' = '1 day';
+        ${(dateInterval === "1 day" || dateInterval === "1 week")};
 DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
             `);
         }),

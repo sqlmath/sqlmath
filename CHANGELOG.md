@@ -6,6 +6,7 @@
 - none
 
 # v2022.12.1-beta
+- demo - use intraday data for weekly chart
 - demo - allow stock ivv to be used as reference if spy is unavailable
 - demo - rename main-account from 01_mybot to 1a_mybot
 
