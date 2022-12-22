@@ -409,7 +409,7 @@ CREATE TEMP TABLE tradebot_intraday_day AS
     FROM tradebot_intraday
     JOIN tradebot_state
     WHERE
-        DATE(ydate) >= ycls_ydate;
+        DATE(ydate) >= datemkt0;
 INSERT INTO tradebot_intraday_day
     SELECT
         sym,
@@ -425,7 +425,7 @@ INSERT INTO tradebot_intraday_day
         FROM tradebot_historical
         JOIN tradebot_state
         WHERE
-            ydate < ycls_ydate
+            ydate < datemkt0
     ) USING (ydate);
 
 -- table - tradebot_intraday_week - insert
@@ -434,7 +434,7 @@ CREATE TEMP TABLE tradebot_intraday_week AS
     SELECT
         tradebot_intraday.*
     FROM tradebot_intraday
-    JOIN (SELECT DATE(ycls_ydate, '-6 DAY') AS ydate_week FROM tradebot_state)
+    JOIN (SELECT DATE(datemkt0, '-6 DAY') AS ydate_week FROM tradebot_state)
     WHERE
         ydate = ydate2
         AND ydate > ydate_week;
@@ -454,7 +454,7 @@ INSERT INTO tradebot_intraday_week
         WHERE
             ydate < ydate_min
     ) USING (ydate)
-    JOIN (SELECT SUBSTR(MAX(ydate), 12) AS hhmmss FROM tradebot_intraday_week);
+    JOIN (SELECT TIME(MAX(ydate)) AS hhmmss FROM tradebot_intraday_week);
         `),
         [
             "1 day",
@@ -464,7 +464,7 @@ INSERT INTO tradebot_intraday_week
             "ytd",
             "1 year",
             "5 year",
-            "backtrack"
+            "5 year reverse timeline"
         ].map(function (dateInterval) {
             let optionDict;
             let tableChart;
@@ -478,7 +478,9 @@ INSERT INTO tradebot_intraday_week
             );
             tableChart = (
                 "chart._{{ii}}_tradebot_historical_"
-                + dateInterval.replace(" ", "_")
+                + dateInterval.replace((
+                    /\W/g
+                ), "_")
             );
             optionDict = {
                 title: (
@@ -578,7 +580,7 @@ UPDATE __tmp1
                 MAX(aa,
             ${
                 (
-                    dateInterval === "backtrack"
+                    dateInterval === "5 year reverse timeline"
                     ? "DATE(bb, '-5 YEAR')"
                     : dateInterval === "ytd"
                     ? "DATE(STRFTIME('%Y', bb) || '-01-01', '-1 DAY')"
@@ -641,7 +643,7 @@ UPDATE ${tableChart}
     SET
             ${
                 (
-                    dateInterval === "backtrack"
+                    dateInterval === "5 year reverse timeline"
                     ? "yy = ROUND(100 * (1.0 / (yy * inv) - 1), 4)"
                     : "yy = ROUND(100 * (yy * inv - 1), 4)"
                 )
@@ -657,7 +659,7 @@ UPDATE ${tableChart}
                     PARTITION BY series_index ORDER BY xx
             ${
                 (
-                    dateInterval === "backtrack"
+                    dateInterval === "5 year reverse timeline"
                     ? "DESC"
                     : "ASC"
                 )
@@ -3078,7 +3080,7 @@ SELECT
     function onCanvasZoom(evt) {
     // this function will zoom/un-zoom at current mouse-location on canvas-area
         let xmid = 0.5;
-        let xscale = 1.75;
+        let xscale = 1.2500; // zoom-out
         evt.preventDefault();
         evt.stopPropagation();
         if (!evt.modeDebounce) {
@@ -3095,9 +3097,9 @@ SELECT
                 + document.documentElement.clientLeft
                 - plotLeft
             ) / plotWidth;
-            xscale = 0.75;
+            xscale = 0.8000; // zoom-in
         }
-        xmid += 0.5 * (xmid - 0.25);
+        xmid += 0.5 * (xmid - 0.4000);
         xmid = xaxisMin + xmid * (xaxisMax - xaxisMin);
         xzoomMax = xmid + xscale * (xaxisMax - xmid);
         xzoomMin = xmid + xscale * (xaxisMin - xmid);
