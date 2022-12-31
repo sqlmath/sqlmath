@@ -11,13 +11,13 @@
     textLength="768"
     x="10"
     y="32"
-> 0.  755  2022-11-21T05:25:06Z  12295 KB  .                                                      </tspan>
+> 0.  755  2022-12-31T17:11:26Z  12298 KB  .                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="54"
-> 1.  644  2022-11-21T04:38:07Z     26 KB  .ci.sh                                                 </tspan>
+> 1.  644  2022-12-13T16:10:45Z     26 KB  .ci.sh                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -53,7 +53,7 @@
     textLength="768"
     x="10"
     y="186"
-> 7.  644  2022-11-21T05:25:06Z     19 KB  CHANGELOG.md                                           </tspan>
+> 7.  644  2022-12-31T17:11:26Z     20 KB  CHANGELOG.md                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -65,7 +65,7 @@
     textLength="768"
     x="10"
     y="230"
-> 9.  644  2022-11-21T05:25:06Z      5 KB  README.md                                              </tspan>
+> 9.  644  2022-12-31T17:11:26Z      5 KB  README.md                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -107,25 +107,25 @@
     textLength="768"
     x="10"
     y="384"
->16.  644  2022-11-21T04:38:07Z     23 KB  index.html                                             </tspan>
+>16.  644  2022-12-22T16:40:46Z     23 KB  index.html                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->17.  644  2022-11-21T04:38:07Z    328 KB  jslint.mjs                                             </tspan>
+>17.  644  2022-12-02T19:45:59Z    328 KB  jslint.mjs                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->18.  644  2022-11-21T05:25:06Z     90 KB  jslint_ci.sh                                           </tspan>
+>18.  644  2022-11-21T06:23:21Z     90 KB  jslint_ci.sh                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->19.  644  2022-11-21T05:25:06Z      2 KB  package.json                                           </tspan>
+>19.  644  2022-12-31T17:11:26Z      2 KB  package.json                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -149,7 +149,7 @@
     textLength="768"
     x="10"
     y="538"
->23.  644  2022-11-21T05:25:06Z     27 KB  sqlmath.mjs                                            </tspan>
+>23.  644  2022-12-31T17:11:26Z     27 KB  sqlmath.mjs                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -161,7 +161,7 @@
     textLength="768"
     x="10"
     y="582"
->25.  644  2022-11-11T16:40:22Z    128 KB  sqlmath_browser.mjs                                    </tspan>
+>25.  644  2022-12-31T17:11:26Z    130 KB  sqlmath_browser.mjs                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"

@@ -325,7 +325,10 @@ INSERT INTO chart.__stock_chart (datatype, series_index, xx, yy)
         price AS yy
     FROM (
         SELECT
-            *
+            series_index,
+            series_label,
+            xx,
+            xx_label
         FROM (
             SELECT
                 series_index,
@@ -343,33 +346,31 @@ INSERT INTO chart.__stock_chart (datatype, series_index, xx, yy)
                 datatype = 'xx_label'
         )
     )
-    LEFT JOIN __stock_historical
-    ON
-        sym = series_label
-        AND date = xx_label;
+    LEFT JOIN __stock_historical ON sym = series_label AND date = xx_label;
 UPDATE chart.__stock_chart
     SET
         yy = yy * inv - 1
-    FROM (SELECT 0)
-    JOIN (
+    FROM (
+    --
+    SELECT
+        1.0 / yy AS inv,
+        series_index
+    FROM (
         SELECT
-            1.0 / yy AS inv,
+            ROW_NUMBER() OVER (
+                PARTITION BY series_index ORDER BY xx
+            ) AS rownum,
+            yy,
             series_index
-        FROM (
-            SELECT
-                ROW_NUMBER() OVER (
-                    PARTITION BY series_index ORDER BY xx
-                ) AS rownum,
-                yy,
-                series_index
-            FROM chart.__stock_chart
-            WHERE
-                datatype = 'yy_value'
-                AND yy > 0
-        )
+        FROM chart.__stock_chart
         WHERE
-            rownum = 1
-    ) USING (series_index);
+            datatype = 'yy_value'
+            AND yy > 0
+    )
+    WHERE
+        rownum = 1
+    --
+    ) AS __join1 WHERE __join1.series_index = __stock_chart.series_index;
     `).trim() + "\n");
     // exec demo-sql-query
     await onDbExec({});
@@ -400,6 +401,62 @@ async function demoTradebot() {
         })
     )[0][0];
     UI_EDITOR.setValue([
+        (`
+-- table - tradebot_intraday_day - insert
+DROP TABLE IF EXISTS tradebot_intraday_day;
+CREATE TEMP TABLE tradebot_intraday_day AS
+    SELECT
+        tradebot_intraday.*
+    FROM tradebot_intraday
+    JOIN tradebot_state
+    WHERE
+        DATE(ydate) >= datemkt0;
+INSERT INTO tradebot_intraday_day
+    SELECT
+        sym,
+        DATETIME(__ydate, '-1 MINUTE'),
+        0 AS ttt,
+        price,
+        0 AS ydate2
+    FROM tradebot_historical
+    JOIN (SELECT MIN(ydate) AS __ydate FROM tradebot_intraday_day)
+    JOIN (
+        SELECT
+            MAX(ydate) AS ydate
+        FROM tradebot_historical
+        JOIN tradebot_state
+        WHERE
+            ydate < datemkt0
+    ) USING (ydate);
+
+-- table - tradebot_intraday_week - insert
+DROP TABLE IF EXISTS tradebot_intraday_week;
+CREATE TEMP TABLE tradebot_intraday_week AS
+    SELECT
+        tradebot_intraday.*
+    FROM tradebot_intraday
+    JOIN (SELECT DATE(datemkt0, '-6 DAY') AS ydate_week FROM tradebot_state)
+    WHERE
+        ydate = ydate2
+        AND ydate > ydate_week;
+INSERT INTO tradebot_intraday_week
+    SELECT
+        sym,
+        ydate || ' ' || hhmmss AS ydate,
+        0 AS ttt,
+        price,
+        0 AS ydate2
+    FROM tradebot_historical
+    JOIN (
+        SELECT
+            MAX(ydate) AS ydate
+        FROM tradebot_historical
+        JOIN (SELECT DATE(MIN(ydate)) AS ydate_min FROM tradebot_intraday_week)
+        WHERE
+            ydate < ydate_min
+    ) USING (ydate)
+    JOIN (SELECT TIME(MAX(ydate)) AS hhmmss FROM tradebot_intraday_week);
+        `),
         [
             "1 day",
             "1 week",
@@ -408,19 +465,23 @@ async function demoTradebot() {
             "ytd",
             "1 year",
             "5 year",
-            "backtrack"
+            "5 year reverse timeline"
         ].map(function (dateInterval) {
             let optionDict;
             let tableChart;
             let tableData;
             tableData = (
                 dateInterval === "1 day"
-                ? "tradebot_intraday"
+                ? "tradebot_intraday_day"
+                : dateInterval === "1 week"
+                ? "tradebot_intraday_week"
                 : "tradebot_historical"
             );
             tableChart = (
                 "chart._{{ii}}_tradebot_historical_"
-                + dateInterval.replace(" ", "_")
+                + dateInterval.replace((
+                    /\W/g
+                ), "_")
             );
             optionDict = {
                 title: (
@@ -438,10 +499,12 @@ async function demoTradebot() {
                 xstep: (
                     dateInterval === "1 day"
                     ? 60
+                    : dateInterval === "1 week"
+                    ? 15 * 60
                     : 1
                 ),
                 xvalueConvert: (
-                    dateInterval === "1 day"
+                    (dateInterval === "1 day" || dateInterval === "1 week")
                     ? "unixepochToTimeutc"
                     : "juliandayToDate"
                 ),
@@ -469,7 +532,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         json_object(
             'isDummy', is_dummy,
-            'isHidden', sym NOT in ('01_mybot', 'spy', 'dia', 'qqq')
+            'isHidden', sym NOT in ('1a_mybot', 'ivv', 'spy', 'dia', 'qqq')
         ) AS options,
         rownum AS series_index,
         sym AS series_label
@@ -478,8 +541,9 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
             sym LIKE '-%' AS is_dummy,
             ROW_NUMBER() OVER (
                 ORDER BY
-                    sym = '01_mybot' DESC,
+                    sym = '1a_mybot' DESC,
                     sym = '----' DESC,
+                    sym = 'ivv' DESC,
                     sym = 'spy' DESC,
                     sym = 'dia' DESC,
                     sym = 'qqq' DESC,
@@ -517,10 +581,8 @@ UPDATE __tmp1
                 MAX(aa,
             ${
                 (
-                    dateInterval === "1 week"
-                    ? "DATE(bb, '-7 DAY')"
-                    : dateInterval === "backtrack"
-                    ? "DATE(bb, '-100 YEAR')"
+                    dateInterval === "5 year reverse timeline"
+                    ? "DATE(bb, '-5 YEAR')"
                     : dateInterval === "ytd"
                     ? "DATE(STRFTIME('%Y', bb) || '-01-01', '-1 DAY')"
                     : "DATE(bb, '-" + dateInterval + "')"
@@ -556,7 +618,10 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         price AS yy
     FROM (
         SELECT
-            *
+            series_index,
+            series_label,
+            xx,
+            xx_label
         FROM (
             SELECT
                 series_index,
@@ -574,46 +639,44 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
                 datatype = 'xx_label'
         )
     )
-    LEFT JOIN ${tableData}
-    ON
-        sym = series_label
-        AND ydate = xx_label;
+    LEFT JOIN ${tableData} ON sym = series_label AND ydate = xx_label;
 UPDATE ${tableChart}
     SET
             ${
                 (
-                    dateInterval === "backtrack"
+                    dateInterval === "5 year reverse timeline"
                     ? "yy = ROUND(100 * (1.0 / (yy * inv) - 1), 4)"
                     : "yy = ROUND(100 * (yy * inv - 1), 4)"
                 )
             }
-    FROM (SELECT 0)
-    JOIN (
+    FROM (
+    --
+    SELECT
+        1.0 / yy AS inv,
+        series_index
+    FROM (
         SELECT
-            1.0 / yy AS inv,
-            series_index
-        FROM (
-            SELECT
-                ROW_NUMBER() OVER (
-                    PARTITION BY series_index ORDER BY xx
+            ROW_NUMBER() OVER (
+                PARTITION BY series_index ORDER BY xx
             ${
                 (
-                    dateInterval === "backtrack"
+                    dateInterval === "5 year reverse timeline"
                     ? "DESC"
                     : "ASC"
                 )
             }
-                ) AS rownum,
-                yy,
-                series_index
-            FROM ${tableChart}
-            WHERE
-                datatype = 'yy_value'
-                AND yy > 0
-        )
+            ) AS rownum,
+            yy,
+            series_index
+        FROM ${tableChart}
         WHERE
-            rownum = 1
-    ) USING (series_index);
+            datatype = 'yy_value'
+            AND yy > 0
+    )
+    WHERE
+        rownum = 1
+    --
+    ) AS __join1 WHERE __join1.series_index = ${tableChart}.series_index;
 UPDATE ${tableChart}
     SET
         series_label = printf(
@@ -622,15 +685,23 @@ UPDATE ${tableChart}
             series_label,
             IIF(CASTTEXTOREMPTY(company_name) = '', '', ' - ' || company_name)
         )
-    FROM (SELECT 0)
+    FROM (
+    --
+    SELECT
+        ${tableChart}.rowid,
+        --
+        company_name,
+        yy_today
+    FROM ${tableChart}
+    --
     LEFT JOIN (
         SELECT
-            *
+            series_index,
+            yy_today
         FROM (
             SELECT
                 ROW_NUMBER() OVER (
-                    PARTITION BY series_index
-                    ORDER BY xx DESC
+                    PARTITION BY series_index ORDER BY xx DESC
                 ) AS rownum,
                 series_index,
                 yy AS yy_today
@@ -643,20 +714,25 @@ UPDATE ${tableChart}
     ) USING (series_index)
     LEFT JOIN tradebot_stock_basket ON sym = series_label
     WHERE
-        datatype = 'series_label';
+        datatype = 'series_label'
+    --
+    ) AS __join1 WHERE __join1.rowid = ${tableChart}.rowid;
 -- chart - tradebot_historical - normalize xx to unixepoch
-DELETE FROM ${tableChart} WHERE
-    '${dateInterval}' = '1 day'
-    AND datatype = 'yy_value'
-    AND xx = 1;
 UPDATE ${tableChart}
     SET
         xx = ${(
-                dateInterval === "1 day"
+                (dateInterval === "1 day" || dateInterval === "1 week")
                 ? "UNIXEPOCH(tt)"
                 : "JULIANDAY(tt)"
             )}
-    FROM (SELECT 0)
+    FROM (
+    --
+    SELECT
+        ${tableChart}.rowid,
+        --
+        tt
+    FROM ${tableChart}
+    --
     JOIN (
         SELECT
             xx,
@@ -666,7 +742,9 @@ UPDATE ${tableChart}
             datatype = 'xx_label'
     ) USING (xx)
     WHERE
-        datatype = 'yy_value';
+        datatype = 'yy_value'
+    --
+    ) AS __join1 WHERE __join1.rowid = ${tableChart}.rowid;
 INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
     SELECT
         'yy_value' AS datatype,
@@ -677,7 +755,8 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         SELECT
             series_index
         FROM ${tableChart}
-        WHERE datatype = 'series_label'
+        WHERE
+            datatype = 'series_label'
     )
     JOIN (
         SELECT
@@ -687,7 +766,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
             datatype = 'yy_value'
     )
     WHERE
-        '${dateInterval}' = '1 day';
+        ${(dateInterval === "1 day" || dateInterval === "1 week")};
 DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
             `);
         }),
@@ -2546,7 +2625,9 @@ CREATE TEMP TABLE __chart_series_xy1 AS
         yy
     FROM (
         SELECT
-            *
+            series_index,
+            xx,
+            yy
         FROM (
             SELECT
                 ROW_NUMBER() OVER (
@@ -2558,6 +2639,7 @@ CREATE TEMP TABLE __chart_series_xy1 AS
             FROM (
                 SELECT
                     ${dbtableName}.rowid,
+                    --
                     series_index,
                     IIF(xstep_inv, ROUND(xstep_inv * xx), xx) AS xx,
                     IIF(ystep_inv, ROUND(ystep_inv * yy), yy) AS yy
@@ -3023,7 +3105,7 @@ SELECT
     function onCanvasZoom(evt) {
     // this function will zoom/un-zoom at current mouse-location on canvas-area
         let xmid = 0.5;
-        let xscale = 1.75;
+        let xscale = 1.2500; // zoom-out
         evt.preventDefault();
         evt.stopPropagation();
         if (!evt.modeDebounce) {
@@ -3040,9 +3122,9 @@ SELECT
                 + document.documentElement.clientLeft
                 - plotLeft
             ) / plotWidth;
-            xscale = 0.75;
+            xscale = 0.8000; // zoom-in
         }
-        xmid += 0.5 * (xmid - 0.25);
+        xmid += 0.5 * (xmid - 0.4000);
         xmid = xaxisMin + xmid * (xaxisMax - xaxisMin);
         xzoomMax = xmid + xscale * (xaxisMax - xmid);
         xzoomMin = xmid + xscale * (xaxisMin - xmid);
@@ -3209,7 +3291,7 @@ SELECT
         if (!isBarchart) {
             xpixelToPointDictHovered = series.xpixelToPointDict;
             svgAttrSet(seriesHovered.elemGraph, {
-                "stroke-width": ELEM_GRAPH_LINE_WIDTH + 4
+                "stroke-width": ELEM_GRAPH_LINE_WIDTH + 2
             });
         }
         Array.from(elemLegend.children).forEach(function (elem, seriesIi) {
@@ -4175,7 +4257,8 @@ async function uitableAjax(baton, {
             sql: (`
 SELECT
         rowid,
-        *
+        --
+        ${dbtableName}.*
     FROM ${dbtableName}
     ORDER BY [${colList[sortCol]}] ${sortDir}
     LIMIT ${Number(UI_PAGE_SIZE)}
