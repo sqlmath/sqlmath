@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # sh one-liner
+# sh jslint_ci.sh shCiBuildWasm
 # sh jslint_ci.sh shSyncSqlmath
 
 # sqlite autoconf-3380500 version-3.38.5

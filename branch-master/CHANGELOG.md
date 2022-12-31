@@ -3,6 +3,12 @@
 # Todo
 - none
 
+# v2022.12.31
+- chart - bugfix - fix intraday-weekly-chart truncating first datapoint
+- demo - use intraday data for weekly chart
+- demo - allow stock ivv to be used as reference if spy is unavailable
+- demo - rename main-account from 01_mybot to 1a_mybot
+
 # v2022.11.20
 - ci - auto-update version-number in main mjs-module
 - editor - update codemirror-editor to v5.65.10

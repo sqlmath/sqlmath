@@ -694,15 +694,20 @@ textarea {
 }
 
 /*css section toc*/
+.tocDivider,
 .tocElemA,
 .tocTitle,
 #tocPanel1 button {
-    border-bottom: 1px solid #999;
+    border-bottom: 1px solid #777;
     height: 20px;
     line-height: 20px;
     padding-left: 0.5rem;
     text-align: left;
     width: 100%;
+}
+.tocDivider {
+    background: #777;
+    height: 4px;
 }
 .tocElemA {
     color: #037;
@@ -720,12 +725,10 @@ textarea {
     left: 0;
     overflow-x: hidden;
     overflow-y: scroll;
+    padding-bottom: 20px;
     position: fixed;
     top: 0;
     width: 256px;
-}
-#tocPanel1 button {
-    border-bottom: 1px solid #777;
 }
 
 
@@ -864,9 +867,11 @@ button:hover {
 <div id="tocPanel1">
 <div id="tocDatabase1">
     <button data-action="dbRefresh">ui - refresh</button>
+    <div class="tocDivider"></div>
     <button data-action="dbOpen">database - open</button>
     <button data-action="dbExportMain" style="border-bottom: 1px solid #999;">database - save</button>
     <button data-action="dbAttach" style="border-bottom: 1px solid #999;">database - attach</button>
+    <div class="tocDivider"></div>
     <button data-action="dbtableImportCsv" style="border-bottom: 1px solid #999;">table - import from csv file</button>
     <button data-action="dbtableImportJson" style="border-bottom: 1px solid #999;">table - import from json file</button>
 </div>
@@ -876,6 +881,7 @@ button:hover {
     <a class="tocElemA" href="#editor1" data-dbtype="script" title="[right-click for crud operation]">script editor</a>
 </div>
 <div id="tocDbList1"></div>
+<div class="tocDivider"></div>
 </div>
 <!-- tocPanel1 end -->
 
