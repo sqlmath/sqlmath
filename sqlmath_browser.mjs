@@ -325,7 +325,10 @@ INSERT INTO chart.__stock_chart (datatype, series_index, xx, yy)
         price AS yy
     FROM (
         SELECT
-            *
+            series_index,
+            series_label,
+            xx,
+            xx_label
         FROM (
             SELECT
                 series_index,
@@ -343,33 +346,31 @@ INSERT INTO chart.__stock_chart (datatype, series_index, xx, yy)
                 datatype = 'xx_label'
         )
     )
-    LEFT JOIN __stock_historical
-    ON
-        sym = series_label
-        AND date = xx_label;
+    LEFT JOIN __stock_historical ON sym = series_label AND date = xx_label;
 UPDATE chart.__stock_chart
     SET
         yy = yy * inv - 1
-    FROM (SELECT 0)
-    JOIN (
+    FROM (
+    --
+    SELECT
+        1.0 / yy AS inv,
+        series_index
+    FROM (
         SELECT
-            1.0 / yy AS inv,
+            ROW_NUMBER() OVER (
+                PARTITION BY series_index ORDER BY xx
+            ) AS rownum,
+            yy,
             series_index
-        FROM (
-            SELECT
-                ROW_NUMBER() OVER (
-                    PARTITION BY series_index ORDER BY xx
-                ) AS rownum,
-                yy,
-                series_index
-            FROM chart.__stock_chart
-            WHERE
-                datatype = 'yy_value'
-                AND yy > 0
-        )
+        FROM chart.__stock_chart
         WHERE
-            rownum = 1
-    ) USING (series_index);
+            datatype = 'yy_value'
+            AND yy > 0
+    )
+    WHERE
+        rownum = 1
+    --
+    ) AS __join1 WHERE __join1.series_index = __stock_chart.series_index;
     `).trim() + "\n");
     // exec demo-sql-query
     await onDbExec({});
@@ -617,7 +618,10 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         price AS yy
     FROM (
         SELECT
-            *
+            series_index,
+            series_label,
+            xx,
+            xx_label
         FROM (
             SELECT
                 series_index,
@@ -635,10 +639,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
                 datatype = 'xx_label'
         )
     )
-    LEFT JOIN ${tableData}
-    ON
-        sym = series_label
-        AND ydate = xx_label;
+    LEFT JOIN ${tableData} ON sym = series_label AND ydate = xx_label;
 UPDATE ${tableChart}
     SET
             ${
@@ -648,15 +649,15 @@ UPDATE ${tableChart}
                     : "yy = ROUND(100 * (yy * inv - 1), 4)"
                 )
             }
-    FROM (SELECT 0)
-    JOIN (
+    FROM (
+    --
+    SELECT
+        1.0 / yy AS inv,
+        series_index
+    FROM (
         SELECT
-            1.0 / yy AS inv,
-            series_index
-        FROM (
-            SELECT
-                ROW_NUMBER() OVER (
-                    PARTITION BY series_index ORDER BY xx
+            ROW_NUMBER() OVER (
+                PARTITION BY series_index ORDER BY xx
             ${
                 (
                     dateInterval === "5 year reverse timeline"
@@ -664,17 +665,18 @@ UPDATE ${tableChart}
                     : "ASC"
                 )
             }
-                ) AS rownum,
-                yy,
-                series_index
-            FROM ${tableChart}
-            WHERE
-                datatype = 'yy_value'
-                AND yy > 0
-        )
+            ) AS rownum,
+            yy,
+            series_index
+        FROM ${tableChart}
         WHERE
-            rownum = 1
-    ) USING (series_index);
+            datatype = 'yy_value'
+            AND yy > 0
+    )
+    WHERE
+        rownum = 1
+    --
+    ) AS __join1 WHERE __join1.series_index = ${tableChart}.series_index;
 UPDATE ${tableChart}
     SET
         series_label = printf(
@@ -683,15 +685,23 @@ UPDATE ${tableChart}
             series_label,
             IIF(CASTTEXTOREMPTY(company_name) = '', '', ' - ' || company_name)
         )
-    FROM (SELECT 0)
+    FROM (
+    --
+    SELECT
+        ${tableChart}.rowid,
+        --
+        company_name,
+        yy_today
+    FROM ${tableChart}
+    --
     LEFT JOIN (
         SELECT
-            *
+            series_index,
+            yy_today
         FROM (
             SELECT
                 ROW_NUMBER() OVER (
-                    PARTITION BY series_index
-                    ORDER BY xx DESC
+                    PARTITION BY series_index ORDER BY xx DESC
                 ) AS rownum,
                 series_index,
                 yy AS yy_today
@@ -704,7 +714,9 @@ UPDATE ${tableChart}
     ) USING (series_index)
     LEFT JOIN tradebot_stock_basket ON sym = series_label
     WHERE
-        datatype = 'series_label';
+        datatype = 'series_label'
+    --
+    ) AS __join1 WHERE __join1.rowid = ${tableChart}.rowid;
 -- chart - tradebot_historical - normalize xx to unixepoch
 UPDATE ${tableChart}
     SET
@@ -713,7 +725,14 @@ UPDATE ${tableChart}
                 ? "UNIXEPOCH(tt)"
                 : "JULIANDAY(tt)"
             )}
-    FROM (SELECT 0)
+    FROM (
+    --
+    SELECT
+        ${tableChart}.rowid,
+        --
+        tt
+    FROM ${tableChart}
+    --
     JOIN (
         SELECT
             xx,
@@ -723,7 +742,9 @@ UPDATE ${tableChart}
             datatype = 'xx_label'
     ) USING (xx)
     WHERE
-        datatype = 'yy_value';
+        datatype = 'yy_value'
+    --
+    ) AS __join1 WHERE __join1.rowid = ${tableChart}.rowid;
 INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
     SELECT
         'yy_value' AS datatype,
@@ -734,7 +755,8 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         SELECT
             series_index
         FROM ${tableChart}
-        WHERE datatype = 'series_label'
+        WHERE
+            datatype = 'series_label'
     )
     JOIN (
         SELECT
@@ -2603,7 +2625,9 @@ CREATE TEMP TABLE __chart_series_xy1 AS
         yy
     FROM (
         SELECT
-            *
+            series_index,
+            xx,
+            yy
         FROM (
             SELECT
                 ROW_NUMBER() OVER (
@@ -2615,6 +2639,7 @@ CREATE TEMP TABLE __chart_series_xy1 AS
             FROM (
                 SELECT
                     ${dbtableName}.rowid,
+                    --
                     series_index,
                     IIF(xstep_inv, ROUND(xstep_inv * xx), xx) AS xx,
                     IIF(ystep_inv, ROUND(ystep_inv * yy), yy) AS yy
@@ -4232,7 +4257,8 @@ async function uitableAjax(baton, {
             sql: (`
 SELECT
         rowid,
-        *
+        --
+        ${dbtableName}.*
     FROM ${dbtableName}
     ORDER BY [${colList[sortCol]}] ${sortDir}
     LIMIT ${Number(UI_PAGE_SIZE)}

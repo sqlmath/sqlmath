@@ -1,12 +1,10 @@
 # Changelog
 
 # Todo
-- chart - allow both bar and line series in same chart
-- chart - use Int32Array to represent pointX, pointY
 - none
 
-# v2022.12.1-beta
-- demo - replace prm tradebot_state.ycls_ydate with tradebot_state.datemkt0
+# v2022.12.31
+- chart - bugfix - fix intraday-weekly-chart truncating first datapoint
 - demo - use intraday data for weekly chart
 - demo - allow stock ivv to be used as reference if spy is unavailable
 - demo - rename main-account from 01_mybot to 1a_mybot
