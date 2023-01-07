@@ -4,6 +4,7 @@
 - none
 
 # v2023.01.01-beta
+- chart - remove unused external libraries chart.js, moment.js
 - demo - bugfix - fix 1-week-chart ignoring friday before monday-holiday
 
 # v2022.12.31
