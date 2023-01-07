@@ -451,9 +451,9 @@ INSERT INTO tradebot_intraday_week
         SELECT
             MAX(ydate) AS ydate
         FROM tradebot_historical
-        JOIN (SELECT DATE(MIN(ydate)) AS ydate_min FROM tradebot_intraday_week)
+        JOIN tradebot_state
         WHERE
-            ydate < ydate_min
+            ydate < DATE(datemkt0, '-6 DAY')
     ) USING (ydate)
     JOIN (SELECT TIME(MAX(ydate)) AS hhmmss FROM tradebot_intraday_week);
         `),

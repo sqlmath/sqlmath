@@ -914,22 +914,26 @@ import modulePath from "path";
         return new Promise(function (resolve) {
             moduleHttps.request(`${url}?ref=${branch}`, {
                 headers: {
-                    accept: "application/vnd.github.v3+json",
+                    accept: (
+                        content
+                        ? "application/vnd.github.v3+json"
+                        : "application/vnd.github.v3.raw"
+                    ),
                     authorization: `token ${process.env.MY_GITHUB_TOKEN}`,
                     "user-agent": "undefined"
                 },
                 method
             }, function (res) {
-                responseText = "";
-                res.setEncoding("utf8");
+                responseText = [];
                 res.on("data", function (chunk) {
-                    responseText += chunk;
+                    responseText.push(chunk);
                 });
                 res.on("end", function () {
+                    responseText = Buffer.concat(responseText);
                     moduleAssert(res.statusCode === 200, (
                         "shGithubFileUpload"
                         + `- failed to download/upload file ${url} - `
-                        + responseText
+                        + responseText.slice(0, 1024).toString()
                     ));
                     resolve();
                 });
@@ -945,7 +949,7 @@ import modulePath from "path";
     if (!content) {
         await moduleFs.promises.writeFile(
             modulePath.basename(url),
-            Buffer.from(JSON.parse(responseText).content, "base64")
+            responseText
         );
         return;
     }

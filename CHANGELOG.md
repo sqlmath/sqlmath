@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.01.01-beta
+- demo - bugfix - fix 1-week-chart ignoring friday before monday-holiday
+
 # v2022.12.31
 - chart - bugfix - fix intraday-weekly-chart truncating first datapoint
 - demo - use intraday data for weekly chart
