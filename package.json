@@ -34,8 +34,9 @@
     "scripts": {
         "build": "sh jslint_ci.sh shCiBuildNodejs",
         "test": "sh jslint_ci.sh shCiTestNodejs",
-        "test2": "sh jslint_ci.sh shCiBase",
-        "test_win32": "node -e \"require('child_process').spawn('C:\\\\Program Files\\\\Git\\\\bin\\\\bash.exe',['-c','npm run test' + ' ' + process.argv.slice(1).join(' ')],{stdio:['ignore',1,2]});\""
+        "test2": "sh jslint_ci.sh shCiBase"
     },
-    "version": "2023.01.01-beta"
+    "shCiArtifactUpload": 1,
+    "shCiNpmPublish": 1,
+    "version": "2023.1.1-beta"
 }

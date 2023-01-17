@@ -3,7 +3,8 @@
 # Todo
 - none
 
-# v2023.01.01-beta
+# v2023.1.1-beta
+- jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote
 - chart - remove unused external libraries chart.js, moment.js
 - demo - bugfix - fix 1-week-chart ignoring friday before monday-holiday
 

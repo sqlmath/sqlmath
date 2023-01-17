@@ -2,7 +2,7 @@
 
 # sh one-liner
 # sh jslint_ci.sh shCiBuildWasm
-# sh jslint_ci.sh shSyncSqlmath
+# sh jslint_ci.sh shSqlmathUpdate
 
 # sqlite autoconf-3380500 version-3.38.5
 # curl -L https://www.sqlite.org/2022/sqlite-autoconf-3380500.tar.gz | tar -xz
@@ -11,6 +11,7 @@
 # https://www.sqlite.org/2022/sqlite-tools-win32-x86-3380500.zip
 
 shCiArtifactUploadCustom() {(set -e
+# this function will run custom-code to upload build-artifacts
     git fetch origin artifact
     git checkout origin/artifact "branch-$GITHUB_BRANCH0"
     mv "branch-$GITHUB_BRANCH0"/* .
@@ -85,18 +86,10 @@ process.exit(Number(
     git add .
     git commit -am "$COMMIT_MESSAGE" || true
     # git commit --allow-empty -am "$COMMIT_MESSAGE" || true
-    # squash commits
-    if [ "$GITHUB_BRANCH0" = alpha ] \
-        && [ "$(git rev-list --count "$BRANCH_ARTIFACT")" -gt 20 ]
+    # git push
+    if [ "$GITHUB_BRANCH0" = alpha ]
     then
-        # squash commits
-        git checkout --orphan squash1
-        git commit --quiet -am "- squash $COMMIT_MESSAGE" || true
-        # reset $BRANCH_ARTIFACT to squashed-commit
-        git push . -f "squash1:$BRANCH_ARTIFACT"
-        git checkout "$BRANCH_ARTIFACT"
-        # force-push squashed-commit
-        shGitCmdWithGithubToken push origin -f "$BRANCH_ARTIFACT"
+        shGithubPushBackupAndSquash origin "$BRANCH_ARTIFACT" 20
     fi
     # sync before push
     shGitCmdWithGithubToken pull origin "$BRANCH_ARTIFACT"
@@ -108,6 +101,7 @@ process.exit(Number(
 )}
 
 shCiBaseCustom() {(set -e
+# this function will run custom-code for base-ci
     shCiEmsdkExport
     # .github_cache - restore
     if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
@@ -716,6 +710,8 @@ shCiNpmPublishCustom() {(set -e
 shCiTestNodejs() {(set -e
 # this function will run test in nodejs
     local COVERAGE_EXCLUDE
+    # init .tmp
+    mkdir -p .tmp
     # rebuild c-module
     export npm_config_mode_test=1
     if [ "$npm_config_fast" != true ]
@@ -795,13 +791,10 @@ require("assert")(require("./package.json").name !== "sqlmath");
     shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
 )}
 
-shSyncSqlmath() {(set -e
-# this function will sync files with ~/Documents/sqlmath/
+shSqlmathUpdate() {(set -e
+# this function will update files with ~/Documents/sqlmath/
     local FILE
-    if [ -f "$HOME/Documents/devenv/lnsync.sh" ]
-    then
-        sh ~/Documents/devenv/lnsync.sh
-    fi
+    sh myci2.sh shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         shRawLibFetch asset_sqlmath_external_rollup.js
@@ -826,7 +819,6 @@ shSyncSqlmath() {(set -e
             asset_sqlmath_external_rollup.js \
             indent.exe \
             index.html \
-            jslint_ci.sh \
             sqlite3.c \
             sqlite3_ext.c \
             sqlite3_shell.c \
@@ -839,5 +831,5 @@ shSyncSqlmath() {(set -e
             ln -f "$HOME/Documents/sqlmath/$FILE" "$FILE"
         done
     fi
-    git diff
+    git --no-pager diff
 )}
