@@ -49,57 +49,6 @@ import moduleChildProcess from "child_process";
 ' "$@" # '
 )}
 
-shCiArtifactUpload2() {(set -e
-# this function will upload build-artifacts to branch-gh-pages
-    local BRANCH_ARTIFACT=artifact
-    local COMMIT_MESSAGE=\
-" - upload artifact"\
-" - retry$GITHUB_UPLOAD_RETRY"\
-" - $GITHUB_BRANCH0"\
-" - $(printf "$GITHUB_SHA" | cut -c-8)"\
-" - $(uname)"\
-""
-    node --input-type=module --eval '
-process.exit(Number(
-    `${process.version.split(".")[0]}`
-    !== process.env.GITHUB_ARTIFACT_UPLOAD_NODE_VERSION
-));
-' || return 0
-    # init .git/config
-    git config --local user.email "github-actions@users.noreply.github.com"
-    git config --local user.name "github-actions"
-    # git clone origin/artifact
-    rm -rf ".tmp/$BRANCH_ARTIFACT"
-    shGitCmdWithGithubToken clone origin ".tmp/$BRANCH_ARTIFACT" \
-        --branch="$BRANCH_ARTIFACT" \
-        --single-branch
-    (set -e
-    cd ".tmp/$BRANCH_ARTIFACT"
-    cp ../../.git/config .git/config
-    # update dir branch-$GITHUB_BRANCH0
-    mkdir -p "branch-$GITHUB_BRANCH0"
-    cp ../../_binary_* "branch-$GITHUB_BRANCH0"
-    if [ -f ../../sqlmath_wasm.wasm ]
-    then
-        cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
-    fi
-    git add .
-    git commit -am "$COMMIT_MESSAGE" || true
-    # git commit --allow-empty -am "$COMMIT_MESSAGE" || true
-    # git push
-    if [ "$GITHUB_BRANCH0" = alpha ]
-    then
-        shGithubPushBackupAndSquash origin "$BRANCH_ARTIFACT" 20
-    fi
-    # sync before push
-    shGitCmdWithGithubToken pull origin "$BRANCH_ARTIFACT"
-    # push
-    shGitCmdWithGithubToken push origin "$BRANCH_ARTIFACT"
-    # debug
-    shGitLsTree
-    )
-)}
-
 shCiBaseCustom() {(set -e
 # this function will run custom-code for base-ci
     shCiEmsdkExport
@@ -109,7 +58,7 @@ shCiBaseCustom() {(set -e
         cp -a .github_cache/* . || true # js-hack - */
     fi
     shCiBuildNodejs
-    if (shCiIsMainJob)
+    if (shCiMatrixIsmainName)
     then
         shCiBuildWasm
         # .github_cache - save
@@ -120,7 +69,7 @@ shCiBaseCustom() {(set -e
         fi
     fi
     # upload artifact
-    if [ "$GITHUB_ACTION" ] && ( \
+    if (shCiMatrixIsmainNodeversion) && ( \
         [ "$GITHUB_BRANCH0" = alpha ] \
         || [ "$GITHUB_BRANCH0" = beta ] \
         || [ "$GITHUB_BRANCH0" = master ] \
@@ -134,12 +83,68 @@ shCiBaseCustom() {(set -e
             then
                 return 1
             fi
-            if (shCiArtifactUpload2)
+            if (node --input-type=module --eval '
+import moduleChildProcess from "child_process";
+(function () {
+    moduleChildProcess.spawn(
+        "sh",
+        ["jslint_ci.sh", "shCiBaseCustomArtifactUpload"],
+        {stdio: ["ignore", 1, 2]}
+    ).on("exit", process.exit);
+}());
+' "$@") # '
             then
                 break
             fi
         done
     fi
+)}
+
+shCiBaseCustomArtifactUpload() {(set -e
+# this function will upload build-artifacts to branch-gh-pages
+    local COMMIT_MESSAGE=\
+" - upload artifact"\
+" - retry$GITHUB_UPLOAD_RETRY"\
+" - $GITHUB_BRANCH0"\
+" - $(printf "$GITHUB_SHA" | cut -c-8)"\
+" - $(uname)"\
+""
+    printf "\n\n$COMMIT_MESSAGE\n"
+    # init .git/config
+    git config --local user.email "github-actions@users.noreply.github.com"
+    git config --local user.name "github-actions"
+    # git clone origin/artifact
+    rm -rf .tmp/artifact
+    shGitCmdWithGithubToken clone origin .tmp/artifact \
+        --branch=artifact --single-branch
+    (
+    cd .tmp/artifact
+    cp ../../.git/config .git/config
+    # update dir branch-$GITHUB_BRANCH0
+    mkdir -p "branch-$GITHUB_BRANCH0"
+    cp ../../_binary_* "branch-$GITHUB_BRANCH0"
+    if [ -f ../../sqlmath_wasm.wasm ]
+    then
+        cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
+    fi
+    # git commit
+    git add .
+    if (git commit -am "$COMMIT_MESSAGE")
+    then
+        # sync before push
+        shGitCmdWithGithubToken pull origin artifact
+        # git push
+        if (shCiMatrixIsmainName) && [ "$GITHUB_BRANCH0" = alpha ]
+        then
+            shGithubPushBackupAndSquash origin artifact 20
+        else
+            shGitCmdWithGithubToken pull origin artifact
+            shGitCmdWithGithubToken push origin artifact
+        fi
+    fi
+    # debug
+    shGitLsTree
+    )
 )}
 
 shCiBuildNodejs() {(set -e
