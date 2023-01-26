@@ -4,6 +4,7 @@
 - none
 
 # v2023.1.1-beta
+- ci - add auto-logo-creation in private repo
 - ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html
 - jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote
 - chart - remove unused external libraries chart.js, moment.js

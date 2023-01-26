@@ -60,6 +60,7 @@ shCiBaseCustom() {(set -e
     shCiBuildNodejs
     if (shCiMatrixIsmainName)
     then
+        shImageLogoCreate &
         shCiBuildWasm
         # .github_cache - save
         if [ "$GITHUB_ACTION" ] && [ ! -d .github_cache/_emsdk ]
@@ -127,8 +128,13 @@ shCiBaseCustomArtifactUpload() {(set -e
     then
         cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
     fi
+    if [ -f ../../.artifact/asset_image_logo_512.png ]
+    then
+        cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
+    fi
     # git commit
     git add .
+    git add -f "branch-$GITHUB_BRANCH0"/_binary_*
     if (git commit -am "$COMMIT_MESSAGE")
     then
         # sync before push
@@ -799,7 +805,7 @@ require("assert")(require("./package.json").name !== "sqlmath");
 shSqlmathUpdate() {(set -e
 # this function will update files with ~/Documents/sqlmath/
     local FILE
-    sh myci2.sh shMyciUpdate
+    . "$HOME/myci2.sh" : && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         shRawLibFetch asset_sqlmath_external_rollup.js
