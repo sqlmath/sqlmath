@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2023.1.1-beta
+# v2023.1.29
 - ci - add auto-logo-creation in private repo
 - ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html
 - jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote
