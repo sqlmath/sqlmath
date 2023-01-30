@@ -3,6 +3,13 @@
 # Todo
 - none
 
+# v2023.1.29
+- ci - add auto-logo-creation in private repo
+- ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html
+- jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote
+- chart - remove unused external libraries chart.js, moment.js
+- demo - bugfix - fix 1-week-chart ignoring friday before monday-holiday
+
 # v2022.12.31
 - chart - bugfix - fix intraday-weekly-chart truncating first datapoint
 - demo - use intraday data for weekly chart
