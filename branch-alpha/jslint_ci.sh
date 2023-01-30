@@ -658,6 +658,10 @@ import moduleUrl from "url";
             return;
         }
         data = await moduleFs.promises.readFile(file, "utf8");
+        // ignore link-rel-preconnect
+        data = data.replace((
+            /<link\b.*?\brel="preconnect".*?>/g
+        ), "");
         data.replace((
             /\bhttps?:\/\/.*?(?:[\s")\]]|\W?$)/gm
         ), function (url) {
