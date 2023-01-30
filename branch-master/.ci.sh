@@ -2,7 +2,7 @@
 
 # sh one-liner
 # sh jslint_ci.sh shCiBuildWasm
-# sh jslint_ci.sh shSyncSqlmath
+# sh jslint_ci.sh shSqlmathUpdate
 
 # sqlite autoconf-3380500 version-3.38.5
 # curl -L https://www.sqlite.org/2022/sqlite-autoconf-3380500.tar.gz | tar -xz
@@ -11,6 +11,7 @@
 # https://www.sqlite.org/2022/sqlite-tools-win32-x86-3380500.zip
 
 shCiArtifactUploadCustom() {(set -e
+# this function will run custom-code to upload build-artifacts
     git fetch origin artifact
     git checkout origin/artifact "branch-$GITHUB_BRANCH0"
     mv "branch-$GITHUB_BRANCH0"/* .
@@ -48,66 +49,8 @@ import moduleChildProcess from "child_process";
 ' "$@" # '
 )}
 
-shCiArtifactUpload2() {(set -e
-# this function will upload build-artifacts to branch-gh-pages
-    local BRANCH_ARTIFACT=artifact
-    local COMMIT_MESSAGE=\
-" - upload artifact"\
-" - retry$GITHUB_UPLOAD_RETRY"\
-" - $GITHUB_BRANCH0"\
-" - $(printf "$GITHUB_SHA" | cut -c-8)"\
-" - $(uname)"\
-""
-    node --input-type=module --eval '
-process.exit(Number(
-    `${process.version.split(".")[0]}`
-    !== process.env.GITHUB_ARTIFACT_UPLOAD_NODE_VERSION
-));
-' || return 0
-    # init .git/config
-    git config --local user.email "github-actions@users.noreply.github.com"
-    git config --local user.name "github-actions"
-    # git clone origin/artifact
-    rm -rf ".tmp/$BRANCH_ARTIFACT"
-    shGitCmdWithGithubToken clone origin ".tmp/$BRANCH_ARTIFACT" \
-        --branch="$BRANCH_ARTIFACT" \
-        --single-branch
-    (set -e
-    cd ".tmp/$BRANCH_ARTIFACT"
-    cp ../../.git/config .git/config
-    # update dir branch-$GITHUB_BRANCH0
-    mkdir -p "branch-$GITHUB_BRANCH0"
-    cp ../../_binary_* "branch-$GITHUB_BRANCH0"
-    if [ -f ../../sqlmath_wasm.wasm ]
-    then
-        cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
-    fi
-    git add .
-    git commit -am "$COMMIT_MESSAGE" || true
-    # git commit --allow-empty -am "$COMMIT_MESSAGE" || true
-    # squash commits
-    if [ "$GITHUB_BRANCH0" = alpha ] \
-        && [ "$(git rev-list --count "$BRANCH_ARTIFACT")" -gt 20 ]
-    then
-        # squash commits
-        git checkout --orphan squash1
-        git commit --quiet -am "- squash $COMMIT_MESSAGE" || true
-        # reset $BRANCH_ARTIFACT to squashed-commit
-        git push . -f "squash1:$BRANCH_ARTIFACT"
-        git checkout "$BRANCH_ARTIFACT"
-        # force-push squashed-commit
-        shGitCmdWithGithubToken push origin -f "$BRANCH_ARTIFACT"
-    fi
-    # sync before push
-    shGitCmdWithGithubToken pull origin "$BRANCH_ARTIFACT"
-    # push
-    shGitCmdWithGithubToken push origin "$BRANCH_ARTIFACT"
-    # debug
-    shGitLsTree
-    )
-)}
-
 shCiBaseCustom() {(set -e
+# this function will run custom-code for base-ci
     shCiEmsdkExport
     # .github_cache - restore
     if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
@@ -115,8 +58,9 @@ shCiBaseCustom() {(set -e
         cp -a .github_cache/* . || true # js-hack - */
     fi
     shCiBuildNodejs
-    if (shCiIsMainJob)
+    if (shCiMatrixIsmainName)
     then
+        shImageLogoCreate &
         shCiBuildWasm
         # .github_cache - save
         if [ "$GITHUB_ACTION" ] && [ ! -d .github_cache/_emsdk ]
@@ -126,7 +70,7 @@ shCiBaseCustom() {(set -e
         fi
     fi
     # upload artifact
-    if [ "$GITHUB_ACTION" ] && ( \
+    if (shCiMatrixIsmainNodeversion) && ( \
         [ "$GITHUB_BRANCH0" = alpha ] \
         || [ "$GITHUB_BRANCH0" = beta ] \
         || [ "$GITHUB_BRANCH0" = master ] \
@@ -140,12 +84,73 @@ shCiBaseCustom() {(set -e
             then
                 return 1
             fi
-            if (shCiArtifactUpload2)
+            if (node --input-type=module --eval '
+import moduleChildProcess from "child_process";
+(function () {
+    moduleChildProcess.spawn(
+        "sh",
+        ["jslint_ci.sh", "shCiBaseCustomArtifactUpload"],
+        {stdio: ["ignore", 1, 2]}
+    ).on("exit", process.exit);
+}());
+' "$@") # '
             then
                 break
             fi
         done
     fi
+)}
+
+shCiBaseCustomArtifactUpload() {(set -e
+# this function will upload build-artifacts to branch-gh-pages
+    local COMMIT_MESSAGE=\
+" - upload artifact"\
+" - retry$GITHUB_UPLOAD_RETRY"\
+" - $GITHUB_BRANCH0"\
+" - $(printf "$GITHUB_SHA" | cut -c-8)"\
+" - $(uname)"\
+""
+    printf "\n\n$COMMIT_MESSAGE\n"
+    # init .git/config
+    git config --local user.email "github-actions@users.noreply.github.com"
+    git config --local user.name "github-actions"
+    # git clone origin/artifact
+    rm -rf .tmp/artifact
+    shGitCmdWithGithubToken clone origin .tmp/artifact \
+        --branch=artifact --single-branch
+    (
+    cd .tmp/artifact
+    cp ../../.git/config .git/config
+    # update dir branch-$GITHUB_BRANCH0
+    mkdir -p "branch-$GITHUB_BRANCH0"
+    cp ../../_binary_* "branch-$GITHUB_BRANCH0"
+    if [ -f ../../sqlmath_wasm.wasm ]
+    then
+        cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
+    fi
+    if [ -f ../../.artifact/asset_image_logo_512.png ]
+    then
+        cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
+    fi
+    # git commit
+    git add .
+    git add -f "branch-$GITHUB_BRANCH0"/_binary_*
+    if (git commit -am "$COMMIT_MESSAGE")
+    then
+        # sync before push
+        shGitCmdWithGithubToken pull origin artifact
+        # git push
+        if (shCiMatrixIsmainName) && [ "$GITHUB_BRANCH0" = alpha ]
+        then
+            shGithubPushBackupAndSquash origin artifact 20
+        else
+            shGitCmdWithGithubToken pull origin artifact
+            shGitCmdWithGithubToken push origin artifact
+        fi
+    fi
+    # debug
+    shGitLsTree
+    )
 )}
 
 shCiBuildNodejs() {(set -e
@@ -716,6 +721,8 @@ shCiNpmPublishCustom() {(set -e
 shCiTestNodejs() {(set -e
 # this function will run test in nodejs
     local COVERAGE_EXCLUDE
+    # init .tmp
+    mkdir -p .tmp
     # rebuild c-module
     export npm_config_mode_test=1
     if [ "$npm_config_fast" != true ]
@@ -795,13 +802,10 @@ require("assert")(require("./package.json").name !== "sqlmath");
     shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
 )}
 
-shSyncSqlmath() {(set -e
-# this function will sync files with ~/Documents/sqlmath/
+shSqlmathUpdate() {(set -e
+# this function will update files with ~/Documents/sqlmath/
     local FILE
-    if [ -f "$HOME/Documents/devenv/lnsync.sh" ]
-    then
-        sh ~/Documents/devenv/lnsync.sh
-    fi
+    . "$HOME/myci2.sh" : && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         shRawLibFetch asset_sqlmath_external_rollup.js
@@ -826,7 +830,6 @@ shSyncSqlmath() {(set -e
             asset_sqlmath_external_rollup.js \
             indent.exe \
             index.html \
-            jslint_ci.sh \
             sqlite3.c \
             sqlite3_ext.c \
             sqlite3_shell.c \
@@ -839,5 +842,5 @@ shSyncSqlmath() {(set -e
             ln -f "$HOME/Documents/sqlmath/$FILE" "$FILE"
         done
     fi
-    git diff
+    git --no-pager diff
 )}

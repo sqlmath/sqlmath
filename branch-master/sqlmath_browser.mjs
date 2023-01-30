@@ -451,9 +451,9 @@ INSERT INTO tradebot_intraday_week
         SELECT
             MAX(ydate) AS ydate
         FROM tradebot_historical
-        JOIN (SELECT DATE(MIN(ydate)) AS ydate_min FROM tradebot_intraday_week)
+        JOIN tradebot_state
         WHERE
-            ydate < ydate_min
+            ydate < DATE(datemkt0, '-6 DAY')
     ) USING (ydate)
     JOIN (SELECT TIME(MAX(ydate)) AS hhmmss FROM tradebot_intraday_week);
         `),
@@ -807,7 +807,7 @@ SELECT
         category LIKE '-%' AS is_dummy,
         grouping IN ('account', 'exchange') AS is_hidden,
         printf(
-            '%05.2f%% - %s - %s',
+            '%05.4f%% - %s - %s',
             ${columnData},
             grouping,
             category
@@ -853,7 +853,7 @@ SELECT
         IIF(category LIKE 'short%', 1, grouping_index) AS series_color,
         category LIKE '-%' AS is_dummy,
         0 AS is_hidden,
-        printf('%05.2f%% - %s', ${columnData}, category) AS series_label,
+        printf('%05.4f%% - %s', ${columnData}, category) AS series_label,
         ROW_NUMBER() OVER (
             ORDER BY
                 grouping_index,
@@ -880,7 +880,7 @@ SELECT
         0 AS is_dummy,
         0 AS is_hidden,
         printf(
-            '%+.2f%% - %s - %s - %s',
+            '%+.4f%% - %s - %s - %s',
             ${columnData},
             IIF(is_short, 'short', 'long'),
             sym,
@@ -943,7 +943,7 @@ INSERT INTO ${tableChart} (
         'yy_value' AS datatype,
         xx AS series_index,
         xx,
-        yy
+        ROUNDORZERO(yy, 4) AS yy
     FROM __tmp1;
                 `);
             });
