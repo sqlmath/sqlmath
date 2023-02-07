@@ -249,11 +249,7 @@ import moduleUrl from "url";
         })).filter(function (elem) {
             return elem;
         }),
-        {
-            stdio: [
-                "ignore", 1, 2
-            ]
-        }
+        {stdio: ["ignore", 1, 2]}
     );
     exitCode = await new Promise(function (resolve) {
         child.on("exit", resolve);
@@ -329,11 +325,11 @@ import moduleChildProcess from "child_process";
             "shImageLogoCreate"
         ]
     ].forEach(function (argList) {
-        moduleChildProcess.spawn("sh", argList, {
-            stdio: [
-                "ignore", 1, 2
-            ]
-        }).on("exit", function (exitCode) {
+        moduleChildProcess.spawn(
+            "sh",
+            argList,
+            {stdio: ["ignore", 1, 2]}
+        ).on("exit", function (exitCode) {
             if (exitCode) {
                 process.exit(exitCode);
             }
@@ -388,9 +384,8 @@ import moduleChildProcess from "child_process";
         -e "s|_2fbranch-[a-z]*_2f|_2fbranch-${GITHUB_BRANCH0}_2f|g" \
         "branch-$GITHUB_BRANCH0/README.md"
     git status
-    git commit -am "update dir branch-$GITHUB_BRANCH0" || true
     # git push
-    shGithubPushBackupAndSquash origin gh-pages 50
+    shGitCommitPushOrSquash "" 50
     # list files
     shGitLsTree
     # validate http-links
@@ -534,7 +529,7 @@ import moduleFs from "fs";
     await moduleFs.promises.writeFile("README.md", data);
 }());
 ' "$@" # '
-    node jslint.mjs .
+    JSLINT_BETA=1 node jslint.mjs .
     if [ "$(command -v shCiBaseCustom)" = shCiBaseCustom ]
     then
         shCiBaseCustom
@@ -754,32 +749,79 @@ shDuList() {(set -e
 
 shGitCmdWithGithubToken() {(set -e
 # this function will run git $CMD with $MY_GITHUB_TOKEN
-    local CMD
-    local EXIT_CODE
-    local URL
     printf "shGitCmdWithGithubToken $*\n"
-    CMD="$1"
+    if [ -f .git/config ]
+    then
+        # security - scrub token from url
+        sed -i.bak "s|://.*@|://|g" .git/config
+        rm -f .git/config.bak
+    fi
+    local CMD="$1"
+    case "$CMD" in
+    clone)
+        ;;
+    ls-remote)
+        ;;
+    *)
+        if [ ! "$MY_GITHUB_TOKEN" ]
+        then
+            git "$@"
+            return
+        fi
+        ;;
+    esac
     shift
-    URL="$1"
+    local URL="$1"
     shift
     if (printf "$URL" | grep -qv "^https://")
     then
         URL="$(git config "remote.$URL.url")"
     fi
-    URL="$(
-        printf "$URL" \
-        | sed -e "s|https://|https://x-access-token:$MY_GITHUB_TOKEN@|"
-    )"
-    if [ ! "$MY_GITHUB_TOKEN" ]
+    if [ "$MY_GITHUB_TOKEN" ]
     then
-        git "$CMD" "$URL" "$@"
-        return
+        URL="$(
+            printf "$URL" \
+            | sed -e "s|https://|https://x-access-token:$MY_GITHUB_TOKEN@|"
+        )"
     fi
-    EXIT_CODE=0
+    local EXIT_CODE=0
     # hide $MY_GITHUB_TOKEN in case of err
     git "$CMD" "$URL" "$@" 2>/dev/null || EXIT_CODE="$?"
     printf "shGitCmdWithGithubToken - EXIT_CODE=$EXIT_CODE\n" 1>&2
     return "$EXIT_CODE"
+)}
+
+shGitCommitPushOrSquash() {(set -e
+# this function will, if $COMMIT_COUNT > $COMMIT_LIMIT,
+# then backup, squash, force-push,
+# else normal-push
+    GIT_BRANCH="$(git branch --show-current)"
+    COMMIT_MESSAGE="${1:-$(git diff HEAD --stat)}"
+    COMMIT_LIMIT="$2"
+    NOBACKUP="$3"
+    git commit -am "$COMMIT_MESSAGE" || true
+    COMMIT_COUNT="$(git rev-list --count HEAD)"
+    if (! [ "$COMMIT_COUNT" -gt "$COMMIT_LIMIT" ] &>/dev/null)
+    then
+        shGitCmdWithGithubToken push origin "$GIT_BRANCH"
+        return
+    fi
+    # backup
+    if [ "$NOBACKUP" != nobackup ]
+    then
+        shGitCmdWithGithubToken push origin \
+            "$GIT_BRANCH:$GIT_BRANCH.backup_wday$(date -u +%w)" -f
+    fi
+    # squash commits
+    COMMIT_MESSAGE="[squashed $COMMIT_COUNT commits] $COMMIT_MESSAGE"
+    git branch -D __tmp1 &>/dev/null || true
+    git checkout --orphan __tmp1
+    git commit --quiet -am "$COMMIT_MESSAGE" || true
+    # reset branch to squashed-commit
+    git push . "__tmp1:$GIT_BRANCH" -f
+    git checkout "$GIT_BRANCH"
+    # force-push squashed-commit
+    shGitCmdWithGithubToken push origin "$GIT_BRANCH" -f
 )}
 
 shGitGc() {(set -e
@@ -808,7 +850,7 @@ shGitInitBase() {(set -e
         git checkout -b "$BRANCH" base/base
     done
     sed -i.bak "s|owner/repo|${1:-owner/repo}|" .gitconfig
-    rm .gitconfig.bak
+    rm -f .gitconfig.bak
     cp .gitconfig .git/config
     git commit -am "update owner/repo to $1" || true
 )}
@@ -825,14 +867,11 @@ import moduleChildProcess from "child_process";
     // get file, mode, size
     result = await new Promise(function (resolve) {
         result = "";
-        moduleChildProcess.spawn("git", [
-            "ls-tree", "-lr", "HEAD"
-        ], {
-            encoding: "utf8",
-            stdio: [
-                "ignore", "pipe", 2
-            ]
-        }).on("exit", function () {
+        moduleChildProcess.spawn(
+            "git",
+            ["ls-tree", "-lr", "HEAD"],
+            {encoding: "utf8", stdio: ["ignore", "overlapped", 2]}
+        ).on("exit", function () {
             resolve(result);
         }).stdout.on("data", function (chunk) {
             result += chunk;
@@ -861,13 +900,11 @@ import moduleChildProcess from "child_process";
     // get date
     result.forEach(function (elem) {
         result[0].size += elem.size;
-        moduleChildProcess.spawn("git", [
-            "log", "--max-count=1", "--format=%at", elem.file
-        ], {
-            stdio: [
-                "ignore", "pipe", 2
-            ]
-        }).stdout.on("data", function (chunk) {
+        moduleChildProcess.spawn(
+            "git",
+            ["log", "--max-count=1", "--format=%at", elem.file],
+            {stdio: ["ignore", "overlapped", 2]}
+        ).stdout.on("data", function (chunk) {
             elem.date = new Date(
                 Number(chunk) * 1000
             ).toISOString().slice(0, 19) + "Z";
@@ -956,7 +993,7 @@ shGithubFileDownload() {(set -e
 # this function will download file $1 from github repo/branch
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
 # example use:
-# shGithubFileDownload octocat/hello-worId/master/hello.txt
+# shGithubFileDownload octocat/hello-world/master/hello.txt
     shGithubFileUpload $1
 )}
 
@@ -964,7 +1001,7 @@ shGithubFileUpload() {(set -e
 # this function will upload file $2 to github repo/branch $1
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
 # example use:
-# shGithubFileUpload octocat/hello-worId/master/hello.txt hello.txt
+# shGithubFileUpload octocat/hello-world/master/hello.txt hello.txt
     shGithubTokenExport
     node --input-type=module --eval '
 import moduleAssert from "assert";
@@ -991,7 +1028,7 @@ import modulePath from "path";
                         ? "application/vnd.github.v3+json"
                         : "application/vnd.github.v3.raw"
                     ),
-                    authorization: `token ${process.env.MY_GITHUB_TOKEN}`,
+                    authorization: `Bearer ${process.env.MY_GITHUB_TOKEN}`,
                     "user-agent": "undefined"
                 },
                 method
@@ -1052,36 +1089,6 @@ import modulePath from "path";
 ' "$@" # '
 )}
 
-shGithubPushBackupAndSquash() {
-# this function will, if $GIT_BRANCH has more than $COMMITS commits,
-# then backup, squash, force-push,
-# else normal-push
-    local GIT_REPO="$1"
-    shift
-    local GIT_BRANCH="$1"
-    shift
-    local COMMITS="$1"
-    shift
-    local COMMIT_MESSAGE="squash - $(git log "$GIT_BRANCH" -1 --pretty=%B)"
-    if [ "$(git rev-list --count "$GIT_BRANCH")" -gt "$COMMITS" ]
-    then
-        # backup
-        shGitCmdWithGithubToken push "$GIT_REPO" \
-            "$GIT_BRANCH:$GIT_BRANCH.backup_wday$(date -u +%w)" -f
-        # squash commits
-        git branch -D __tmp1 &>/dev/null || true
-        git checkout --orphan __tmp1
-        git commit --quiet -am "$COMMIT_MESSAGE" || true
-        # reset branch to squashed-commit
-        git push . "__tmp1:$GIT_BRANCH" -f
-        git checkout "$GIT_BRANCH"
-        # force-push squashed-commit
-        shGitCmdWithGithubToken push "$GIT_REPO" "$GIT_BRANCH" -f
-    else
-        shGitCmdWithGithubToken push "$GIT_REPO" "$GIT_BRANCH"
-    fi
-}
-
 shGithubTokenExport() {
 # this function will export $MY_GITHUB_TOKEN from file
     if [ ! "$MY_GITHUB_TOKEN" ]
@@ -1093,12 +1100,12 @@ shGithubTokenExport() {
 shGithubWorkflowDispatch() {(set -e
 # this function will trigger-workflow to ci-repo $1 for owner.repo.branch $2
 # example use:
-# shGithubWorkflowDispatch octocat/my-ci octocat/my-project/master
+# shGithubWorkflowDispatch octocat/hello-world alpha
     shGithubTokenExport
     curl "https://api.github.com/repos/$1"\
 "/actions/workflows/ci.yml/dispatches" \
         -H "accept: application/vnd.github.v3+json" \
-        -H "authorization: token $MY_GITHUB_TOKEN" \
+        -H "authorization: Bearer $MY_GITHUB_TOKEN" \
         -X POST \
         -d '{"ref":"'"$2"'"}' \
         -s
@@ -1314,13 +1321,11 @@ import moduleUrl from "url";
         process.env.HOME + "/jslint.mjs"
     ), function (ignore, exists) {
         if (exists) {
-            moduleChildProcess.spawn("node", [
-                process.env.HOME + "/jslint.mjs", "."
-            ], {
-                stdio: [
-                    "ignore", 1, 2
-                ]
-            });
+            moduleChildProcess.spawn(
+                "node",
+                [process.env.HOME + "/jslint.mjs", "."],
+                {stdio: ["ignore", 1, 2]}
+            );
         }
     });
 }());
@@ -1368,13 +1373,12 @@ import moduleUrl from "url";
                 ), "git --no-pager ");
                 // run shell-cmd
                 console.error("$ " + match2);
-                moduleChildProcess.spawn(match2, {
-                    shell: true,
-                    stdio: [
-                        "ignore", 1, 2
-                    ]
-                // print exitCode
-                }).on("exit", function (exitCode) {
+                moduleChildProcess.spawn(
+                    "sh",
+                    ["-c", match2],
+                    {stdio: ["ignore", 1, 2]}
+                ).on("exit", function (exitCode) {
+                    // print exitCode
                     console.error("$ EXIT_CODE=" + exitCode);
                     that.evalDefault("\n", context, file, onError);
                 });
@@ -1580,6 +1584,21 @@ shNpmPublishV0() {(set -e
     npm publish "$@"
 )}
 
+shPidListWait() {
+# this will wait for all process-pid in $PID_LIST to exit
+    local EXIT_CODE=0
+    local PID_LIST="$2"
+    local TASK="$1"
+    for PID in $PID_LIST
+    do
+        printf "$TASK - pid=$PID ...\n"
+        wait "$PID" || EXIT_CODE="$?"
+        printf "$TASK - pid=$PID EXIT_CODE=$EXIT_CODE\n"
+    done
+    printf "$TASK - pid=done EXIT_CODE=$EXIT_CODE\n\n\n\n"
+    return "$EXIT_CODE"
+}
+
 shRawLibFetch() {(set -e
 # this function will fetch raw-lib from $1
     node --input-type=module --eval '
@@ -1681,22 +1700,19 @@ function objectDeepCopyWithKeysSorted(obj) {
         }
         // fetch file
         if (elem.node) {
-            pipeToBuffer(moduleChildProcess.spawn("node", [
-                "-e", elem.node
-            ], {
-                stdio: [
-                    "ignore", "pipe", 2
-                ]
-            }).stdout, elem, "data");
+            pipeToBuffer(moduleChildProcess.spawn(
+                "node",
+                ["-e", elem.node],
+                {stdio: ["ignore", "overlapped", 2]}
+            ).stdout, elem, "data");
             return;
         }
         if (elem.sh) {
-            pipeToBuffer(moduleChildProcess.spawn(elem.sh, {
-                shell: true,
-                stdio: [
-                    "ignore", "pipe", 2
-                ]
-            }).stdout, elem, "data");
+            pipeToBuffer(moduleChildProcess.spawn(
+                "sh",
+                ["-c", elem.sh],
+                {stdio: ["ignore", "overlapped", 2]}
+            ).stdout, elem, "data");
             return;
         }
         moduleHttps.get(elem.url2 || elem.url.replace(
@@ -3029,21 +3045,23 @@ function sentinel() {}
       }
     }));
     exitCode = await new Promise(function (resolve) {
-      moduleChildProcess.spawn((
-        processArgv[0] === "npm"
-        ? process.platform.replace("win32", "npm.cmd").replace(
-          process.platform,
-          "npm"
-        )
-        : processArgv[0]
-      ), processArgv.slice(1), {
-        env: Object.assign({}, process.env, {
-          NODE_V8_COVERAGE: coverageDir
-        }),
-        stdio: [
-          "ignore", 1, 2
-        ]
-      }).on("exit", resolve);
+      moduleChildProcess.spawn(
+        (
+          processArgv[0] === "npm"
+          ? process.platform.replace("win32", "npm.cmd").replace(
+            process.platform,
+            "npm"
+          )
+          : processArgv[0]
+        ),
+        processArgv.slice(1),
+        {
+          env: Object.assign({}, process.env, {
+            NODE_V8_COVERAGE: coverageDir
+          }),
+          stdio: ["ignore", 1, 2]
+        }
+      ).on("exit", resolve);
     });
   }
   v8CoverageObj = await moduleFs.promises.readdir(coverageDir);
@@ -3310,16 +3328,13 @@ shCiMain() {(set -e
     then
         return
     fi
-    # run "$@" with winpty
-    local CI_UNAME="${CI_UNAME:-$(uname)}"
-    case "$CI_UNAME" in
+    # alias node.exe
+    case "$(uname)" in
+    MINGW*)
+        if (! alias node &>/dev/null); then alias node=node.exe; fi
+        ;;
     MSYS*)
-        if [ ! "$CI_WINPTY" ] && [ "$1" != shHttpFileServer ]
-        then
-            export CI_WINPTY=1
-            winpty -Xallow-non-tty -Xplain sh "$0" "$@"
-            return
-        fi
+        if (! alias node &>/dev/null); then alias node=node.exe; fi
         ;;
     esac
     # run "$@"
@@ -3340,5 +3355,11 @@ shCiMain() {(set -e
 
 # init ubuntu .bashrc
 shBashrcDebianInit || exit "$?"
+
+# source myci2.sh
+if [ -f ~/myci2.sh ]
+then
+    . ~/myci2.sh :
+fi
 
 shCiMain "$@"

@@ -34,14 +34,8 @@ import moduleChildProcess from "child_process";
         await new Promise(function (resolve) {
             moduleChildProcess.spawn(
                 "sh",
-                [
-                    "jslint_ci.sh", "shBrowserScreenshot", url
-                ],
-                {
-                    stdio: [
-                        "ignore", 1, 2
-                    ]
-                }
+                ["jslint_ci.sh", "shBrowserScreenshot", url],
+                {stdio: ["ignore", 1, 2]}
             ).on("exit", resolve);
         });
     }));
@@ -103,13 +97,12 @@ import moduleChildProcess from "child_process";
 
 shCiBaseCustomArtifactUpload() {(set -e
 # this function will upload build-artifacts to branch-gh-pages
-    local COMMIT_MESSAGE=\
-" - upload artifact"\
-" - retry$GITHUB_UPLOAD_RETRY"\
-" - $GITHUB_BRANCH0"\
-" - $(printf "$GITHUB_SHA" | cut -c-8)"\
-" - $(uname)"\
-""
+    COMMIT_MESSAGE="- upload artifact
+- retry$GITHUB_UPLOAD_RETRY
+- $GITHUB_BRANCH0
+- $(printf "$GITHUB_SHA" | cut -c-8)
+- $(uname)
+"
     printf "\n\n$COMMIT_MESSAGE\n"
     # init .git/config
     git config --local user.email "github-actions@users.noreply.github.com"
@@ -119,7 +112,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     shGitCmdWithGithubToken clone origin .tmp/artifact \
         --branch=artifact --single-branch
     (
-    cd .tmp/artifact
+    cd .tmp/artifact/
     cp ../../.git/config .git/config
     # update dir branch-$GITHUB_BRANCH0
     mkdir -p "branch-$GITHUB_BRANCH0"
@@ -142,7 +135,7 @@ shCiBaseCustomArtifactUpload() {(set -e
         # git push
         if (shCiMatrixIsmainName) && [ "$GITHUB_BRANCH0" = alpha ]
         then
-            shGithubPushBackupAndSquash origin artifact 20
+            shGitCommitPushOrSquash "" 20
         else
             shGitCmdWithGithubToken pull origin artifact
             shGitCmdWithGithubToken push origin artifact
@@ -155,7 +148,6 @@ shCiBaseCustomArtifactUpload() {(set -e
 
 shCiBuildNodejs() {(set -e
 # this function will build binaries in nodejs
-    local FILE
     # cleanup
     rm -f _binary_*
     rm -rf .tmp
@@ -241,7 +233,7 @@ import modulePath from "path";
         return target;
     }
     process.chdir(".tmp");
-    moduleFs.writeFileSync("binding.gyp", JSON.stringify({ //jslint-quiet
+    moduleFs.writeFileSync("binding.gyp", JSON.stringify({ //jslint-ignore-line
         "target_defaults": {
             "cflags": cflags.cflags,
             "cflags!": cflags["cflags!"],
@@ -490,15 +482,15 @@ import modulePath from "path";
             )
         ];
         console.error(
-            "(cd .tmp && node " + action.map(function (elem) {
+            "(cd .tmp/ && node " + action.map(function (elem) {
                 return "\u0027" + elem + "\u0027";
             }).join(" ") + ")"
         );
-        if (moduleChildProcess.spawnSync("node", action, { //jslint-quiet
-            stdio: [
-                "ignore", 1, 2
-            ]
-        }).status !== 0) {
+        if (moduleChildProcess.spawnSync( //jslint-ignore-line
+            "node",
+            action,
+            {stdio: ["ignore", 1, 2]}
+        ).status !== 0) {
             process.exit(1);
         }
     });
@@ -514,10 +506,6 @@ shCiBuildWasm() {(set -e
     shCiEmsdkInstall
     # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
     # build wasm
-    local FILE
-    local FILE2
-    local OPTION1
-    local OPTION2
     printf "shCiBuildWasm\n" 1>&2
     OPTION1="$OPTION1 -I.tmp"
     OPTION1="$OPTION1 -Wall"
@@ -706,7 +694,6 @@ shCiEmsdkInstall() {(set -e
 
 shCiNpmPublishCustom() {(set -e
 # this function will run custom-code to npm-publish package
-    local FILE
     # fetch artifact
     git fetch origin artifact --depth=1
     git checkout origin/artifact \
@@ -720,7 +707,6 @@ shCiNpmPublishCustom() {(set -e
 
 shCiTestNodejs() {(set -e
 # this function will run test in nodejs
-    local COVERAGE_EXCLUDE
     # init .tmp
     mkdir -p .tmp
     # rebuild c-module
@@ -776,15 +762,15 @@ import modulePath from "path";
             )
         ];
         console.error(
-            "(cd .tmp && node " + action.map(function (elem) {
+            "(cd .tmp/ && node " + action.map(function (elem) {
                 return "\u0027" + elem + "\u0027";
             }).join(" ") + ")"
         );
-        if (moduleChildProcess.spawnSync("node", action, { //jslint-quiet
-            stdio: [
-                "ignore", 1, 2
-            ]
-        }).status !== 0) {
+        if (moduleChildProcess.spawnSync( //jslint-ignore-line
+            "node",
+            action,
+            {stdio: ["ignore", 1, 2]}
+        ).status !== 0) {
             process.exit(1);
         }
     });
@@ -804,7 +790,6 @@ require("assert")(require("./package.json").name !== "sqlmath");
 
 shSqlmathUpdate() {(set -e
 # this function will update files with ~/Documents/sqlmath/
-    local FILE
     . "$HOME/myci2.sh" : && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then

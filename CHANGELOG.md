@@ -3,6 +3,10 @@
 # Todo
 - none
 
+# v2023.2.1-beta
+- ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSquash()
+- ci - in windows-ci-env, alias node=node.exe instead of using winpty for pipes
+
 # v2023.1.29
 - ci - add auto-logo-creation in private repo
 - ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html
