@@ -4,6 +4,7 @@
 - none
 
 # v2023.2.1-beta
+- sqlite - pre - update to sqlite v3.39.4
 - ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSquash()
 - ci - in windows-ci-env, alias node=node.exe instead of using winpty for pipes
 

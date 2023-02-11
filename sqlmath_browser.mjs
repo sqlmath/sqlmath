@@ -194,7 +194,7 @@ async function dbTableImportAsync({
                 + colList.map(function (colName, ii) {
                     return "value->>" + ii + " AS " + colName;
                 }).join(",")
-                + " FROM json_each($rowList);"
+                + " FROM JSON_EACH($rowList);"
             )
         )
     });
@@ -530,7 +530,7 @@ INSERT INTO ${tableChart} (datatype, options)
 INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
-        json_object(
+        JSON_OBJECT(
             'isDummy', is_dummy,
             'isHidden', sym NOT in ('1a_mybot', 'ivv', 'spy', 'dia', 'qqq')
         ) AS options,
@@ -919,7 +919,7 @@ INSERT INTO ${tableChart} (
 )
     SELECT
         'series_label' AS datatype,
-        json_object(
+        JSON_OBJECT(
             'isDummy', is_dummy,
             'isHidden', is_hidden,
             'seriesColor', series_color
@@ -1019,7 +1019,7 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
 )
     SELECT
         'series_label' AS datatype,
-        json_object('seriesColor', series_color) AS options,
+        JSON_OBJECT('seriesColor', series_color) AS options,
         __tmp1.rowid AS series_index,
         series_label
     FROM __tmp1;
@@ -1883,7 +1883,7 @@ BEGIN TRANSACTION;
 CREATE TABLE result_${String(ii).padStart(2, "0")} AS
     SELECT
         ${colList}
-    FROM json_each($tmp1);
+    FROM JSON_EACH($tmp1);
 END TRANSACTION;
             `)
         });
@@ -2601,7 +2601,7 @@ async function uichartCreate(baton) {
 DROP TABLE IF EXISTS __chart_options1;
 CREATE TEMP TABLE __chart_options1 AS
     SELECT
-        json(options) AS options,
+        JSON(options) AS options,
         CASTREALORZERO(options->>'$.xstep') AS xstep,
         CASTREALORZERO(1.0 / options->>'$.xstep') AS xstep_inv,
         CASTREALORZERO(options->>'$.ystep') AS ystep,
@@ -2674,31 +2674,31 @@ CREATE TEMP TABLE __chart_series_maxmin1 AS
 
 -- table - __chart_options1 - select - options
 SELECT
-        json_set(
+        JSON_SET(
             options,
-            '$.seriesList', json(COALESCE(seriesList, '[]')),
+            '$.seriesList', JSON(COALESCE(seriesList, '[]')),
             '$.xdataDxx', COALESCE(xdataDxx, 1),
             '$.xdataMax', xdataMax,
             '$.xdataMin', xdataMin,
-            '$.xlabelList', json(COALESCE(xlabelList, '[]')),
+            '$.xlabelList', JSON(COALESCE(xlabelList, '[]')),
             '$.ydataMax', ydataMax,
             '$.ydataMin', ydataMin
         ) AS options
     FROM __chart_options1
     JOIN (
         SELECT
-            json_group_array(xx_label) AS xlabelList
+            JSON_GROUP_ARRAY(xx_label) AS xlabelList
         FROM ${dbtableName}
         WHERE
             datatype = 'xx_label'
     )
     JOIN (
         SELECT
-            json_group_array(json(json_set(
+            JSON_GROUP_ARRAY(JSON(JSON_SET(
                 COALESCE(options, '{}'),
                 '$.seriesName', series_label,
-                '$.xdata', json(COALESCE(xdata, '[]')),
-                '$.ydata', json(COALESCE(ydata, '[]'))
+                '$.xdata', JSON(COALESCE(xdata, '[]')),
+                '$.ydata', JSON(COALESCE(ydata, '[]'))
             ))) AS seriesList
         FROM (
             SELECT
@@ -2719,8 +2719,8 @@ SELECT
         LEFT JOIN (
             SELECT
                 series_index,
-                json_group_array(xx) AS xdata,
-                json_group_array(yy) AS ydata
+                JSON_GROUP_ARRAY(xx) AS xdata,
+                JSON_GROUP_ARRAY(yy) AS ydata
             FROM __chart_series_xy1
             GROUP BY
                 series_index

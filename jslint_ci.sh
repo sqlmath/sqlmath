@@ -177,6 +177,31 @@ shBashrcDebianInit() {
     fi
 }
 
+shBashrcWindowsInit() {
+# this function will init windows-environment
+    case "$(uname)" in
+    CYGWIN*)
+        ;;
+    MINGW*)
+        ;;
+    MSYS*)
+        ;;
+    *)
+        return
+        ;;
+    esac
+    # alias curl.exe
+    # if (! alias curl &>/dev/null) && [ -f c:/windows/system32/curl.exe ]
+    # then
+    #     alias curl=c:/windows/system32/curl.exe
+    # fi
+    # alias node.exe
+    if (! alias node &>/dev/null)
+    then
+        alias node=node.exe
+    fi
+}
+
 shBrowserScreenshot() {(set -e
 # this function will run headless-chrome to screenshot url $1 with
 # window-size $2
@@ -607,9 +632,14 @@ shCiPre() {(set -e
     fi
 )}
 
-shDiffFileFromDir() {(set -e
-# this function print diff of file $1 against same file in dir $2
-    diff -u "$1" "$2/$1"
+shCurlExe() {(set -e
+# this function will print to stdout "curl.exe", if it exists, else "curl"
+    if [ -f c:/windows/system32/curl.exe ]
+    then
+        printf c:/windows/system32/curl.exe
+        return
+    fi
+    printf curl
 )}
 
 shDirHttplinkValidate() {(set -e
@@ -771,7 +801,7 @@ shGitCmdWithGithubToken() {(set -e
         ;;
     esac
     shift
-    local URL="$1"
+    URL="$1"
     shift
     if (printf "$URL" | grep -qv "^https://")
     then
@@ -784,7 +814,7 @@ shGitCmdWithGithubToken() {(set -e
             | sed -e "s|https://|https://x-access-token:$MY_GITHUB_TOKEN@|"
         )"
     fi
-    local EXIT_CODE=0
+    EXIT_CODE=0
     # hide $MY_GITHUB_TOKEN in case of err
     git "$CMD" "$URL" "$@" 2>/dev/null || EXIT_CODE="$?"
     printf "shGitCmdWithGithubToken - EXIT_CODE=$EXIT_CODE\n" 1>&2
@@ -795,22 +825,28 @@ shGitCommitPushOrSquash() {(set -e
 # this function will, if $COMMIT_COUNT > $COMMIT_LIMIT,
 # then backup, squash, force-push,
 # else normal-push
-    GIT_BRANCH="$(git branch --show-current)"
+    BRANCH="$(git branch --show-current)"
     COMMIT_MESSAGE="${1:-$(git diff HEAD --stat)}"
     COMMIT_LIMIT="$2"
-    NOBACKUP="$3"
+    MODE_NOBACKUP="$3"
+    MODE_FORCE="$4"
     git commit -am "$COMMIT_MESSAGE" || true
     COMMIT_COUNT="$(git rev-list --count HEAD)"
     if (! [ "$COMMIT_COUNT" -gt "$COMMIT_LIMIT" ] &>/dev/null)
     then
-        shGitCmdWithGithubToken push origin "$GIT_BRANCH"
+        if [ "$MODE_FORCE" = force ]
+        then
+            shGitCmdWithGithubToken push origin "$BRANCH" -f
+        else
+            shGitCmdWithGithubToken push origin "$BRANCH"
+        fi
         return
     fi
     # backup
-    if [ "$NOBACKUP" != nobackup ]
+    if [ "$MODE_NOBACKUP" != nobackup ]
     then
         shGitCmdWithGithubToken push origin \
-            "$GIT_BRANCH:$GIT_BRANCH.backup_wday$(date -u +%w)" -f
+            "$BRANCH:$BRANCH.backup_wday$(date -u +%w)" -f
     fi
     # squash commits
     COMMIT_MESSAGE="[squashed $COMMIT_COUNT commits] $COMMIT_MESSAGE"
@@ -818,10 +854,10 @@ shGitCommitPushOrSquash() {(set -e
     git checkout --orphan __tmp1
     git commit --quiet -am "$COMMIT_MESSAGE" || true
     # reset branch to squashed-commit
-    git push . "__tmp1:$GIT_BRANCH" -f
-    git checkout "$GIT_BRANCH"
+    git push . "__tmp1:$BRANCH" -f
+    git checkout "$BRANCH"
     # force-push squashed-commit
-    shGitCmdWithGithubToken push origin "$GIT_BRANCH" -f
+    shGitCmdWithGithubToken push origin "$BRANCH" -f
 )}
 
 shGitGc() {(set -e
@@ -1093,22 +1129,27 @@ shGithubTokenExport() {
 # this function will export $MY_GITHUB_TOKEN from file
     if [ ! "$MY_GITHUB_TOKEN" ]
     then
-        export MY_GITHUB_TOKEN="$(cat "$HOME/.mysecret2/.my_github_token")"
+        export MY_GITHUB_TOKEN="$(cat ~/.mysecret2/.my_github_token)"
     fi
 }
 
 shGithubWorkflowDispatch() {(set -e
-# this function will trigger-workflow to ci-repo $1 for owner.repo.branch $2
+# this function will trigger github-workflow on given $REPO and $BRANCH
 # example use:
-# shGithubWorkflowDispatch octocat/hello-world alpha
+# shGithubWorkflowDispatch octocat/hello-world master
     shGithubTokenExport
-    curl "https://api.github.com/repos/$1"\
-"/actions/workflows/ci.yml/dispatches" \
+    REPO="$1"
+    shift
+    BRANCH="$1"
+    shift
+    "$(shCurlExe)" \
+"https://api.github.com/repos/$REPO/actions/workflows/ci.yml/dispatches" \
         -H "accept: application/vnd.github.v3+json" \
         -H "authorization: Bearer $MY_GITHUB_TOKEN" \
         -X POST \
-        -d '{"ref":"'"$2"'"}' \
-        -s
+        -d '{"ref":"'"$BRANCH"'"}' \
+        -s \
+        "$@"
 )}
 
 shGrep() {(set -e
@@ -3322,22 +3363,24 @@ ${result}
     return "$EXIT_CODE"
 )}
 
-shCiMain() {(set -e
-# this function will run $@
-    if [ "$1" = "" ]
+# init ubuntu .bashrc
+shBashrcDebianInit || exit "$?"
+
+# init windows-environment
+shBashrcWindowsInit
+
+# source myci2.sh
+if [ -f ~/myci2.sh ]
+then
+    . ~/myci2.sh :
+fi
+
+# run "$@"
+(set -e
+    if [ ! "$1" ]
     then
         return
     fi
-    # alias node.exe
-    case "$(uname)" in
-    MINGW*)
-        if (! alias node &>/dev/null); then alias node=node.exe; fi
-        ;;
-    MSYS*)
-        if (! alias node &>/dev/null); then alias node=node.exe; fi
-        ;;
-    esac
-    # run "$@"
     if [ -f ./myci2.sh ]
     then
         . ./myci2.sh :
@@ -3351,15 +3394,4 @@ shCiMain() {(set -e
         . ./.ci2.sh :
     fi
     "$@"
-)}
-
-# init ubuntu .bashrc
-shBashrcDebianInit || exit "$?"
-
-# source myci2.sh
-if [ -f ~/myci2.sh ]
-then
-    . ~/myci2.sh :
-fi
-
-shCiMain "$@"
+)
