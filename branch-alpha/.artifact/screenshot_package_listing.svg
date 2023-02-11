@@ -11,13 +11,13 @@
     textLength="768"
     x="10"
     y="32"
-> 0.  755  2023-01-30T03:32:16Z  11701 KB  .                                                      </tspan>
+> 0.  755  2023-02-11T03:51:27Z  11702 KB  .                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="54"
-> 1.  644  2023-01-26T06:27:05Z     26 KB  .ci.sh                                                 </tspan>
+> 1.  644  2023-02-07T10:40:33Z     26 KB  .ci.sh                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -29,7 +29,7 @@
     textLength="768"
     x="10"
     y="98"
-> 3.  644  2023-01-30T03:32:16Z      3 KB  .github/workflows/ci.yml                               </tspan>
+> 3.  644  2023-02-07T10:40:33Z      3 KB  .github/workflows/ci.yml                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -53,7 +53,7 @@
     textLength="768"
     x="10"
     y="186"
-> 7.  644  2023-01-30T03:32:16Z     20 KB  CHANGELOG.md                                           </tspan>
+> 7.  644  2023-02-11T03:51:27Z     20 KB  CHANGELOG.md                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -131,19 +131,19 @@
     textLength="768"
     x="10"
     y="472"
->20.  644  2023-01-17T02:48:08Z    328 KB  jslint.mjs                                             </tspan>
+>20.  644  2023-02-07T10:40:33Z    329 KB  jslint.mjs                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
->21.  644  2023-01-30T03:32:16Z     93 KB  jslint_ci.sh                                           </tspan>
+>21.  644  2023-02-11T03:51:27Z     94 KB  jslint_ci.sh                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->22.  644  2023-01-30T03:32:16Z      1 KB  package.json                                           </tspan>
+>22.  644  2023-02-07T10:40:33Z      1 KB  package.json                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -167,7 +167,7 @@
     textLength="768"
     x="10"
     y="604"
->26.  644  2023-01-30T03:32:16Z     27 KB  sqlmath.mjs                                            </tspan>
+>26.  644  2023-02-07T10:40:33Z     27 KB  sqlmath.mjs                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -179,7 +179,7 @@
     textLength="768"
     x="10"
     y="648"
->28.  644  2023-01-26T06:27:05Z    130 KB  sqlmath_browser.mjs                                    </tspan>
+>28.  644  2023-02-11T03:51:27Z    130 KB  sqlmath_browser.mjs                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
