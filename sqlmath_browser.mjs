@@ -19,6 +19,7 @@ let {
 let DBTABLE_DICT = new Map();
 let DB_CHART;
 let DB_DICT = new Map();
+let DB_INIT = Promise.resolve();
 let DB_MAIN;
 let DB_QUERY;
 let DEBOUNCE_DICT = Object.create(null);
@@ -228,7 +229,7 @@ async function demoDefault() {
     });
     UI_EDITOR.setValue(String(`
 DROP TABLE IF EXISTS __stock_historical;
-CREATE TABLE __stock_historical(sym TEXT, date TEXT, price FLOAT);
+CREATE TABLE __stock_historical(sym TEXT, date TEXT, price REAL);
 INSERT INTO __stock_historical (sym, date, price) VALUES
     ('aapl', '2020-01-01', 77.37),  ('aapl', '2020-02-01', 68.33),
     ('aapl', '2020-03-01', 63.57),  ('aapl', '2020-04-01', 73.44),
@@ -288,7 +289,7 @@ INSERT INTO chart.__stock_chart (datatype, options)
     SELECT
         'options' AS datatype,
         '{
-            "title":"price vs. date comparison of multiple stocks",
+            "title": "price vs. date comparison of multiple stocks",
             "xaxisTitle": "date",
             "yaxisTitle": "percent gain",
             "yvalueSuffix": " %"
@@ -431,7 +432,7 @@ INSERT INTO tradebot_intraday_day
 
 -- table - tradebot_intraday_week - insert
 DROP TABLE IF EXISTS tradebot_intraday_week;
-CREATE TEMP TABLE tradebot_intraday_week AS
+CREATE TABLE tradebot_intraday_week AS
     SELECT
         tradebot_intraday.*
     FROM tradebot_intraday
@@ -456,7 +457,287 @@ INSERT INTO tradebot_intraday_week
             ydate < DATE(datemkt0, '-6 DAY')
     ) USING (ydate)
     JOIN (SELECT TIME(MAX(ydate)) AS hhmmss FROM tradebot_intraday_week);
+
+-- table - tradebot_technical_week - insert - lmt
+DROP TABLE IF EXISTS tradebot_technical_week;
+CREATE TABLE tradebot_technical_week(tname TEXT, tt REAL, tval REAL);
+INSERT INTO tradebot_technical_week
+    SELECT
+        tname,
+        datemkt_beg AS tt,
+        stk_beg0 AS tval
+    FROM tradebot_state
+    JOIN (
+                  SELECT '1b_stk_lmt' AS tname
+        UNION ALL SELECT '1c_stk_lmb'
+        UNION ALL SELECT '1d_stk_lms'
+        UNION ALL SELECT '1e_stk_pct'
+        UNION ALL SELECT '1f_stk_pnl'
+    );
+INSERT INTO tradebot_technical_week
+    SELECT
+        tname,
+        datemkt_beg AS tt,
+        stk_beg0 AS tval
+    FROM tradebot_state
+    JOIN (
+                  SELECT '1b_stk_lmt' AS tname
+        UNION ALL SELECT '1c_stk_lmb'
+        UNION ALL SELECT '1d_stk_lms'
+        UNION ALL SELECT '1e_stk_pct'
+        UNION ALL SELECT '1f_stk_pnl'
+    )
+    --
+    UNION ALL
+    --
+    SELECT '1b_stk_lmt', ydate, stk_lmt FROM tradebot_intraday_lmt
+    --
+    UNION ALL
+    --
+    SELECT '1c_stk_lmb', ydate, stk_lmb FROM tradebot_intraday_lmt
+    --
+    UNION ALL
+    --
+    SELECT '1d_stk_lms', ydate, stk_lms FROM tradebot_intraday_lmt
+    --
+    UNION ALL
+    --
+    SELECT '1e_stk_pct', ydate, stk_pct FROM tradebot_intraday_lmt
+    --
+    UNION ALL
+    --
+    SELECT '1f_stk_pnl', ydate, stk_pnl FROM tradebot_intraday_lmt;
+
+-- table - tradebot_technical_week - insert - spy
+INSERT INTO tradebot_technical_week
+    SELECT
+        '1a_spy' AS tname,
+        ydate AS tt,
+        price
+    FROM tradebot_intraday_day
+    WHERE
+        sym = 'spy';
+INSERT OR IGNORE INTO tradebot_technical_week
+    SELECT
+        '1a_spy' AS tname,
+        ydate AS tt,
+        price
+    FROM tradebot_intraday_week
+    WHERE
+        sym = 'spy';
+
+-- table - tradebot_technical_day - insert
+CREATE table tradebot_technical_day AS
+    SELECT
+        tradebot_technical_week.*
+    FROM tradebot_state
+    JOIN tradebot_technical_week
+    WHERE
+        datemkt_beg <= tt;
+
+-- table - tradebot_technical_week - cleanup - date2
+DELETE FROM tradebot_technical_week
+    WHERE
+        tt NOT IN (SELECT DISTINCT ydate2 FROM tradebot_intraday_week);
         `),
+        [
+            "1 day",
+            "1 week"
+        ].map(function (dateInterval) {
+            let optionDict;
+            let tableChart;
+            let tableData;
+            tableData = (
+                dateInterval === "1 day"
+                ? "tradebot_technical_day"
+                : dateInterval === "1 week"
+                ? "tradebot_technical_week"
+                : "tradebot_technical"
+            );
+            tableChart = (
+                "chart._{{ii}}_tradebot_technical_"
+                + dateInterval.replace((
+                    /\W/g
+                ), "_")
+            );
+            optionDict = {
+                title: (
+                    "tradebot technical - "
+                    + dateInterval
+                    + (
+                        dateInterval === "1 day"
+                        ? "\n[ updated " + new Date(
+                            tradebotState.datenow + "Z"
+                        ).toUTCString() + " ]"
+                        : ""
+                    )
+                ),
+                xaxisTitle: "date",
+                xstep: (
+                    dateInterval === "1 day"
+                    ? 60
+                    : dateInterval === "1 week"
+                    ? 15 * 60
+                    : 1
+                ),
+                xvalueConvert: (
+                    (dateInterval === "1 day" || dateInterval === "1 week")
+                    ? "unixepochToTimeutc"
+                    : "juliandayToDate"
+                ),
+                yaxisTitle: "percent holding",
+                yvalueSuffix: " %"
+            };
+            return (`
+-- table - ${tableData} - normalize
+--!! DELETE FROM ${tableData}
+    --!! WHERE
+        --!! tname IN ('1a_spy', '1f_stk_pnl')
+        --!! AND tt = (SELECT MIN(tt) FROM ${tableData});
+UPDATE ${tableData}
+    SET
+        tval = (CASE
+            WHEN (tname = '1a_spy') THEN
+                (lmt_eee * 1.0 / spy_eee) * (tval - spy_avg) + lmt_avg
+            WHEN (tname = '1f_stk_pnl') THEN
+                (lmt_eee * 1.0 / pnl_eee) * (tval - pnl_avg) + lmt_avg
+        END)
+    FROM (SELECT
+    -- __join1
+        lmt_avg,
+        lmt_eee,
+        pnl_avg,
+        pnl_eee,
+        spy_avg,
+        spy_eee
+    FROM (SELECT 0)
+    JOIN (SELECT
+        MEDIAN(tval) AS lmt_avg,
+        STDEV(tval) AS lmt_eee
+        FROM ${tableData}
+        WHERE tname = '1b_stk_lmt'
+    )
+    JOIN (SELECT
+        MEDIAN(tval) AS pnl_avg,
+        STDEV(tval) AS pnl_eee
+        FROM ${tableData}
+        WHERE tname = '1f_stk_pnl'
+    )
+    JOIN (SELECT
+        MEDIAN(tval) AS spy_avg,
+        STDEV(tval) AS spy_eee
+        FROM ${tableData}
+        WHERE tname = '1a_spy'
+    )
+    --
+    ) AS __join1
+    WHERE
+        tname IN ('1a_spy', '1f_stk_pnl');
+UPDATE ${tableData}
+    SET
+        tt = UNIXEPOCH(tt),
+        tval = ROUNDORZERO(tval, 4);
+
+-- chart - ${tableChart} - create
+DROP TABLE IF EXISTS ${tableChart};
+CREATE TABLE ${tableChart} (
+    datatype TEXT NOT NULL,
+    series_index INTEGER,
+    xx REAL,
+    yy REAL,
+    series_label REAL,
+    xx_label TEXT,
+    options TEXT
+);
+INSERT INTO ${tableChart} (datatype, options)
+    SELECT
+        'options' AS datatype,
+        '${JSON.stringify(optionDict)}' AS options;
+
+INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
+    SELECT
+        'series_label' AS datatype,
+        JSON_OBJECT(
+            'isHidden', tname NOT IN ('1a_spy', '1b_stk_lmt'),
+            'seriesColor', (CASE
+            WHEN (tname LIKE '%_lmb' OR tname LIKE '%_lms') THEN
+                '#999'
+            ELSE
+                NULL
+                -- (
+                --     '#'
+                --     || printf('%x', 12 - 2 * rownum)
+                --     || printf('%x',  0 + 2 * rownum)
+                --     || printf('%x', 16 - 2 * rownum)
+                -- )
+            END)
+        ) AS options,
+        rownum AS series_index,
+        tname AS series_label
+    FROM (
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY tname) AS rownum,
+            tname
+        FROM (SELECT DISTINCT tname FROM ${tableData})
+        WHERE
+            tname IS NOT NULL
+    );
+INSERT INTO ${tableChart} (datatype, xx, xx_label)
+    SELECT
+        'xx_label' AS datatype,
+        rownum AS xx,
+        tt AS xx_label
+    FROM (
+        SELECT
+            ROW_NUMBER() OVER (ORDER BY tt) AS rownum,
+            tt
+        FROM (SELECT DISTINCT tt FROM ${tableData})
+    );
+INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
+    SELECT
+        'yy_value' AS datatype,
+        series_index,
+        xx_label AS xx,
+        tval AS yy
+    FROM (
+        SELECT
+            series_index,
+            series_label,
+            xx,
+            xx_label
+        FROM (
+            SELECT
+                series_index,
+                series_label
+            FROM ${tableChart}
+            WHERE
+                datatype = 'series_label'
+        )
+        JOIN (
+            SELECT
+                xx,
+                xx_label
+            FROM ${tableChart}
+            WHERE
+                datatype = 'xx_label'
+        )
+    )
+    LEFT JOIN ${tableData} ON tname = series_label AND tt = xx_label;
+DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
+UPDATE ${tableChart}
+    SET
+        series_label = (CASE
+            WHEN (series_label = '1a_spy') THEN '1a spy change'
+            WHEN (series_label = '1b_stk_lmt') THEN '1b stk holding ideal'
+            WHEN (series_label = '1c_stk_lmb') THEN '1c stk holding bracket min'
+            WHEN (series_label = '1d_stk_lms') THEN '1d stk holding bracket max'
+            WHEN (series_label = '1e_stk_pct') THEN '1e stk holding actual'
+            WHEN (series_label = '1f_stk_pnl') THEN '1f stk gain'
+        END)
+    WHERE
+        datatype = 'series_label';
+            `);
+        }),
         [
             "1 day",
             "1 week",
@@ -1039,7 +1320,7 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
     ].flat().flat().map(function (sql, ii) {
         return sql.trim().replace((
             /\{\{ii\}\}/g
-        ), String(ii + 1).padStart(2, "0"));
+        ), String(ii).padStart(2, "0"));
     }).join("\n\n\n\n") + "\n");
     await onDbExec({});
     return true;
@@ -1211,15 +1492,19 @@ async function init() {
             return;
         case "sqlDb":
             modeDemo = undefined;
-            val = await fetch(val);
-            val = await val.arrayBuffer();
-            await dbFileImportAsync({
-                db: DB_MAIN,
-                dbData: val
+            DB_INIT = new Promise(async function (resolve) {
+                val = await fetch(val);
+                val = await val.arrayBuffer();
+                await dbFileImportAsync({
+                    db: DB_MAIN,
+                    dbData: val
+                });
+                resolve();
             });
             return;
         case "sqlScript":
             modeDemo = undefined;
+            await DB_INIT;
             val = await fetch(val);
             val = await val.text();
             UI_EDITOR.setValue(val);
@@ -1236,6 +1521,7 @@ async function init() {
         });
     }, 16);
     if (!modeDemo) {
+        await DB_INIT;
         await onDbExec({});
         return;
     }
@@ -3996,7 +4282,7 @@ SELECT
         // init seriesColor
         if (isDummy) {
             seriesColor = "rgba(192,192,192,0)";
-        } else {
+        } else if (!(seriesColor && typeof seriesColor === "string")) {
             seriesColor = seriesColorList[
                 ((seriesColor ?? counterColor) - 1) % seriesColorList.length
             ];

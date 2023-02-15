@@ -46,7 +46,6 @@
 # head CHANGELOG.md -n50
 # ln -f jslint.mjs ~/jslint.mjs
 # openssl rand -base64 32 # random key
-# sh jslint_ci.sh shCiBranchPromote origin alpha beta
 # sh jslint_ci.sh shRunWithScreenshotTxt .artifact/screenshot_changelog.svg head -n50 CHANGELOG.md
 # vim rgx-lowercase \L\1\e
 
@@ -560,21 +559,6 @@ import moduleFs from "fs";
         shCiBaseCustom
     fi
     git diff
-)}
-
-shCiBranchPromote() {(set -e
-# this function will promote branch $REMOTE/$BRANCH1 to branch $REMOTE/$BRANCH2
-    local BRANCH1
-    local BRANCH2
-    local REMOTE
-    REMOTE="$1"
-    shift
-    BRANCH1="$1"
-    shift
-    BRANCH2="$1"
-    shift
-    git fetch "$REMOTE" "$BRANCH1"
-    git push "$REMOTE" "$REMOTE/$BRANCH1:$BRANCH2" "$@"
 )}
 
 shCiMatrixIsmainName() {(set -e
