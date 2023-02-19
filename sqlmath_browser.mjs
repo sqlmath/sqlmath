@@ -473,12 +473,17 @@ INSERT INTO tradebot_technical_week
         UNION ALL SELECT '1d_stk_lms'
         UNION ALL SELECT '1e_stk_pct'
         UNION ALL SELECT '1f_stk_pnl'
+        UNION ALL SELECT '2b_sqq_lmt'
+        UNION ALL SELECT '2c_sqq_lmb'
+        UNION ALL SELECT '2d_sqq_lms'
+        UNION ALL SELECT '2e_sqq_pct'
+        UNION ALL SELECT '2f_sqq_pnl'
     );
 INSERT INTO tradebot_technical_week
     SELECT
         tname,
         datemkt_beg AS tt,
-        stk_beg0 AS tval
+        IIF(tname LIKE '1%', stk_beg0, sqq_beg0) AS tval
     FROM tradebot_state
     JOIN (
                   SELECT '1b_stk_lmt' AS tname
@@ -486,6 +491,11 @@ INSERT INTO tradebot_technical_week
         UNION ALL SELECT '1d_stk_lms'
         UNION ALL SELECT '1e_stk_pct'
         UNION ALL SELECT '1f_stk_pnl'
+        UNION ALL SELECT '2b_sqq_lmt'
+        UNION ALL SELECT '2c_sqq_lmb'
+        UNION ALL SELECT '2d_sqq_lms'
+        UNION ALL SELECT '2e_sqq_pct'
+        UNION ALL SELECT '2f_sqq_pnl'
     )
     --
     UNION ALL
@@ -506,7 +516,27 @@ INSERT INTO tradebot_technical_week
     --
     UNION ALL
     --
-    SELECT '1f_stk_pnl', ydate, stk_pnl FROM tradebot_intraday_lmt;
+    SELECT '1f_stk_pnl', ydate, stk_pnl FROM tradebot_intraday_lmt
+    --
+    UNION ALL
+    --
+    SELECT '2b_sqq_lmt', ydate, sqq_lmt FROM tradebot_intraday_lmt
+    --
+    UNION ALL
+    --
+    SELECT '2c_sqq_lmb', ydate, sqq_lmb FROM tradebot_intraday_lmt
+    --
+    UNION ALL
+    --
+    SELECT '2d_sqq_lms', ydate, sqq_lms FROM tradebot_intraday_lmt
+    --
+    UNION ALL
+    --
+    SELECT '2e_sqq_pct', ydate, sqq_pct FROM tradebot_intraday_lmt
+    --
+    UNION ALL
+    --
+    SELECT '2f_sqq_pnl', ydate, sqq_pnl FROM tradebot_intraday_lmt;
 
 -- table - tradebot_technical_week - insert - spy
 INSERT INTO tradebot_technical_week
@@ -1171,7 +1201,7 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
 -- table - ${tableData} - normalize
 --!! DELETE FROM ${tableData}
     --!! WHERE
-        --!! tname IN ('1a_spy', '1f_stk_pnl')
+        --!! tname IN ('1a_spy', '1f_stk_pnl', '2f_sqq_pnl')
         --!! AND tt = (SELECT MIN(tt) FROM ${tableData});
 UPDATE ${tableData}
     SET
@@ -1312,6 +1342,11 @@ UPDATE ${tableChart}
             WHEN (series_label = '1d_stk_lms') THEN '1d stk holding bracket max'
             WHEN (series_label = '1e_stk_pct') THEN '1e stk holding actual'
             WHEN (series_label = '1f_stk_pnl') THEN '1f stk gain'
+            WHEN (series_label = '2b_sqq_lmt') THEN '2b sqq holding ideal'
+            WHEN (series_label = '2c_sqq_lmb') THEN '2c sqq holding bracket min'
+            WHEN (series_label = '2d_sqq_lms') THEN '2d sqq holding bracket max'
+            WHEN (series_label = '2e_sqq_pct') THEN '2e sqq holding actual'
+            WHEN (series_label = '2f_sqq_pnl') THEN '2f sqq gain'
         END)
     WHERE
         datatype = 'series_label';
