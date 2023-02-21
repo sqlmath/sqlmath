@@ -29,6 +29,7 @@ import {
     assertOrThrow,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
+    dbExecAndReturnLastJsonAsync,
     dbExecAsync,
     dbFileExportAsync,
     dbFileImportAsync,
@@ -936,11 +937,9 @@ jstestDescribe((
                     2, 2, 2, 2
                 ]
             ], [
-                new Float64Array(
-                    Array.from(new Array(2 ** 20)).map(function (ignore, ii) {
-                        return ii;
-                    })
-                ),
+                Array.from(new Array(2 ** 20)).map(function (ignore, ii) {
+                    return ii;
+                }),
                 4,
                 [
                     0, 262144, 524288, 786432,
@@ -953,16 +952,16 @@ jstestDescribe((
             [
                 input, input.slice().reverse()
             ].forEach(async function (input) {
-                let result = Array.from(new Float64Array(
-                    await dbExecAndReturnLastBlobAsync({
-                        bindList: {
-                            input: new Float64Array(input),
-                            kk
-                        },
-                        db,
-                        sql: "SELECT jenks($kk, $input) AS result;"
-                    })
-                ));
+                let result = await dbExecAndReturnLastJsonAsync({
+                    bindList: {
+                        input: JSON.stringify(input),
+                        kk
+                    },
+                    db,
+                    sql: (`
+SELECT jfromfloat64array(jenks($kk, jtofloat64array($input))) AS result;
+                    `)
+                });
                 kk = result[0];
                 assertJsonEqual(kk, expected.length / 2);
                 assertJsonEqual(

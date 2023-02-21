@@ -4,6 +4,8 @@
 - none
 
 # v2023.2.1-beta
+- chart - bugfix - use spy for reference previous-ydate instead of 1a_mybot
+- sqlmath - add functions dbExecAndReturnLastJsonAsync(), dbExecAndReturnLastTextAsync()
 - sqlmath - add sql-functions jfromfloat64array(), jtofloat64array()
 - sqlite - update to sqlite v3.39.4
 - ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSquash()

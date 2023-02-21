@@ -405,7 +405,7 @@ async function demoTradebot() {
         (`
 -- table - tradebot_intraday_day - insert
 DROP TABLE IF EXISTS tradebot_intraday_day;
-CREATE TEMP TABLE tradebot_intraday_day AS
+CREATE TABLE tradebot_intraday_day AS
     SELECT
         tradebot_intraday.*
     FROM tradebot_intraday
@@ -427,7 +427,8 @@ INSERT INTO tradebot_intraday_day
         FROM tradebot_historical
         JOIN tradebot_state
         WHERE
-            ydate < datemkt0
+            sym = 'spy'
+            AND ydate < datemkt0
     ) USING (ydate);
 
 -- table - tradebot_intraday_week - insert
@@ -645,7 +646,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         JSON_OBJECT(
             'isDummy', is_dummy,
-            'isHidden', sym NOT in ('1a_mybot', 'ivv', 'spy', 'dia', 'qqq')
+            'isHidden', sym NOT in ('1a_mybot', 'spy', 'dia', 'qqq')
         ) AS options,
         rownum AS series_index,
         sym AS series_label
@@ -656,7 +657,6 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
                 ORDER BY
                     sym = '1a_mybot' DESC,
                     sym = '----' DESC,
-                    sym = 'ivv' DESC,
                     sym = 'spy' DESC,
                     sym = 'dia' DESC,
                     sym = 'qqq' DESC,
