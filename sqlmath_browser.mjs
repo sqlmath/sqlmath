@@ -558,6 +558,7 @@ INSERT OR IGNORE INTO tradebot_technical_week
         sym = 'spy';
 
 -- table - tradebot_technical_day - insert
+DROP TABLE IF EXISTS tradebot_technical_day;
 CREATE table tradebot_technical_day AS
     SELECT
         tradebot_technical_week.*

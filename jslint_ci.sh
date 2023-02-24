@@ -1014,10 +1014,10 @@ shGithubFileDownload() {(set -e
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
 # example use:
 # shGithubFileDownload octocat/hello-world/master/hello.txt
-    shGithubFileUpload $1
+    shGithubFileDownloadUpload download "$1" "$2"
 )}
 
-shGithubFileUpload() {(set -e
+shGithubFileDownloadUpload() {(set -e
 # this function will upload file $2 to github repo/branch $1
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
 # example use:
@@ -1030,23 +1030,21 @@ import moduleHttps from "https";
 import modulePath from "path";
 (async function () {
     let branch;
-    let content = process.argv[2];
-    let path = process.argv[1];
+    let [mode, path, content] = process.argv.slice(1);
     let repo;
     let responseBuf;
     let url;
     function httpRequest({
         method,
-        modeSha,
         payload
     }) {
         return new Promise(function (resolve) {
             moduleHttps.request(`${url}?ref=${branch}`, {
                 headers: {
                     accept: (
-                        content
-                        ? "application/vnd.github.v3+json"
-                        : "application/vnd.github.v3.raw"
+                        mode === "download"
+                        ? "application/vnd.github.v3.raw"
+                        : "application/vnd.github.v3+json"
                     ),
                     authorization: `Bearer ${process.env.MY_GITHUB_TOKEN}`,
                     "user-agent": "undefined"
@@ -1062,7 +1060,7 @@ import modulePath from "path";
                     moduleAssert.ok(
                         (
                             res.statusCode < 400
-                            || (res.statusCode === 404 && modeSha)
+                            || (res.statusCode === 404 && mode === "upload")
                         ),
                         (
                             `shGithubFileUpload - ${res.statusCode}`
@@ -1076,21 +1074,19 @@ import modulePath from "path";
         });
     }
     console.error(
-        content
-        ? `shGithubFileUpload - ${process.argv[1]}`
-        : `shGithubFileDownload - ${process.argv[1]}`
+        mode === "download"
+        ? `shGithubFileDownload - ${process.argv[1]}`
+        : `shGithubFileUpload - ${process.argv[1]}`
     );
     path = path.split("/");
     repo = path.slice(0, 2).join("/");
     branch = path[2];
     path = path.slice(3).join("/");
     url = `https://api.github.com/repos/${repo}/contents/${path}`;
-    await httpRequest({
-        modeSha: content
-    });
-    if (!content) {
+    await httpRequest({});
+    if (mode === "download") {
         await moduleFs.promises.writeFile(
-            modulePath.basename(url),
+            content || modulePath.basename(url),
             responseBuf
         );
         return;
@@ -1105,8 +1101,21 @@ import modulePath from "path";
             sha: JSON.parse(responseBuf).sha
         })
     });
+    console.error(
+        mode === "download"
+        ? `shGithubFileDownload - done`
+        : `shGithubFileUpload - done`
+    );
 }());
 ' "$@" # '
+)}
+
+shGithubFileUpload() {(set -e
+# this function will upload file $2 to github repo/branch $1
+# https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
+# example use:
+# shGithubFileUpload octocat/hello-world/master/hello.txt hello.txt
+    shGithubFileDownloadUpload upload "$1" "$2"
 )}
 
 shGithubTokenExport() {
