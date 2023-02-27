@@ -46,7 +46,6 @@
 # head CHANGELOG.md -n50
 # ln -f jslint.mjs ~/jslint.mjs
 # openssl rand -base64 32 # random key
-# sh jslint_ci.sh shCiBranchPromote origin alpha beta
 # sh jslint_ci.sh shRunWithScreenshotTxt .artifact/screenshot_changelog.svg head -n50 CHANGELOG.md
 # vim rgx-lowercase \L\1\e
 
@@ -562,21 +561,6 @@ import moduleFs from "fs";
     git diff
 )}
 
-shCiBranchPromote() {(set -e
-# this function will promote branch $REMOTE/$BRANCH1 to branch $REMOTE/$BRANCH2
-    local BRANCH1
-    local BRANCH2
-    local REMOTE
-    REMOTE="$1"
-    shift
-    BRANCH1="$1"
-    shift
-    BRANCH2="$1"
-    shift
-    git fetch "$REMOTE" "$BRANCH1"
-    git push "$REMOTE" "$REMOTE/$BRANCH1:$BRANCH2" "$@"
-)}
-
 shCiMatrixIsmainName() {(set -e
 # this function will return 0 if current ci-job is main job
     CI_MATRIX_NAME="$(printf "$CI_MATRIX_NAME" | xargs)"
@@ -1030,10 +1014,10 @@ shGithubFileDownload() {(set -e
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
 # example use:
 # shGithubFileDownload octocat/hello-world/master/hello.txt
-    shGithubFileUpload $1
+    shGithubFileDownloadUpload download "$1" "$2"
 )}
 
-shGithubFileUpload() {(set -e
+shGithubFileDownloadUpload() {(set -e
 # this function will upload file $2 to github repo/branch $1
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
 # example use:
@@ -1046,23 +1030,21 @@ import moduleHttps from "https";
 import modulePath from "path";
 (async function () {
     let branch;
-    let content = process.argv[2];
-    let path = process.argv[1];
+    let [mode, path, content] = process.argv.slice(1);
     let repo;
     let responseBuf;
     let url;
     function httpRequest({
         method,
-        modeSha,
         payload
     }) {
         return new Promise(function (resolve) {
             moduleHttps.request(`${url}?ref=${branch}`, {
                 headers: {
                     accept: (
-                        content
-                        ? "application/vnd.github.v3+json"
-                        : "application/vnd.github.v3.raw"
+                        mode === "download"
+                        ? "application/vnd.github.v3.raw"
+                        : "application/vnd.github.v3+json"
                     ),
                     authorization: `Bearer ${process.env.MY_GITHUB_TOKEN}`,
                     "user-agent": "undefined"
@@ -1078,7 +1060,7 @@ import modulePath from "path";
                     moduleAssert.ok(
                         (
                             res.statusCode < 400
-                            || (res.statusCode === 404 && modeSha)
+                            || (res.statusCode === 404 && mode === "upload")
                         ),
                         (
                             `shGithubFileUpload - ${res.statusCode}`
@@ -1092,21 +1074,19 @@ import modulePath from "path";
         });
     }
     console.error(
-        content
-        ? `shGithubFileUpload - ${process.argv[1]}`
-        : `shGithubFileDownload - ${process.argv[1]}`
+        mode === "download"
+        ? `shGithubFileDownload - ${process.argv[1]}`
+        : `shGithubFileUpload - ${process.argv[1]}`
     );
     path = path.split("/");
     repo = path.slice(0, 2).join("/");
     branch = path[2];
     path = path.slice(3).join("/");
     url = `https://api.github.com/repos/${repo}/contents/${path}`;
-    await httpRequest({
-        modeSha: content
-    });
-    if (!content) {
+    await httpRequest({});
+    if (mode === "download") {
         await moduleFs.promises.writeFile(
-            modulePath.basename(url),
+            content || modulePath.basename(url),
             responseBuf
         );
         return;
@@ -1121,8 +1101,21 @@ import modulePath from "path";
             sha: JSON.parse(responseBuf).sha
         })
     });
+    console.error(
+        mode === "download"
+        ? `shGithubFileDownload - done`
+        : `shGithubFileUpload - done`
+    );
 }());
 ' "$@" # '
+)}
+
+shGithubFileUpload() {(set -e
+# this function will upload file $2 to github repo/branch $1
+# https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
+# example use:
+# shGithubFileUpload octocat/hello-world/master/hello.txt hello.txt
+    shGithubFileDownloadUpload upload "$1" "$2"
 )}
 
 shGithubTokenExport() {
