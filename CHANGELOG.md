@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2023.2.1-beta
+# v2023.2.26
 - chart - bugfix - use spy for reference previous-ydate instead of 1a_mybot
 - sqlmath - add functions dbExecAndReturnLastJsonAsync(), dbExecAndReturnLastTextAsync()
 - sqlmath - add sql-functions jfromfloat64array(), jtofloat64array()
