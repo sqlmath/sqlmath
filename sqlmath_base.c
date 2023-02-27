@@ -976,40 +976,6 @@ SQLMATH_FNC static void sql_btobase64_func(
 
 // SQLMATH_FNC sql_btobase64_func - end
 
-SQLMATH_FNC static void sql_btofloat64array_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will convert blob to json-encoded Float64Array
-    UNUSED(argc);
-    // declare var
-    double *arr = (double *) sqlite3_value_blob(argv[0]);
-    int nn = sqlite3_value_int(argv[1]);
-    if (nn < 0) {
-        nn = sqlite3_value_bytes(argv[0]) / 8;
-    }
-    // str99 - init
-    sqlite3_str __str99 = { 0 };
-    sqlite3_str *str99 = &__str99;
-    str99->mxAlloc = SQLITE_MAX_LENGTH2;
-    // str99 - append double
-    sqlite3_str_appendchar(str99, 1, '[');
-    for (int ii = 0; ii < nn; ii += 1) {
-        sqlite3_str_appendf(str99, ii + 1 == nn ? "%!.15g" : "%!.15g,",
-            arr[ii]);
-    }
-    sqlite3_str_appendchar(str99, 1, ']');
-    sqlite3_str_appendchar(str99, 1, '\x00');
-    if (str99->accError != 0) {
-        sqlite3_result_error_code(context, str99->accError);
-        return;
-    }
-    sqlite3_result_text(context, (const char *) str99->zText, str99->nChar,
-        // destructor
-        sqlite3_free);
-}
-
 SQLMATH_FNC static void sql_btotext_func(
     sqlite3_context * context,
     int argc,
@@ -1030,7 +996,7 @@ SQLMATH_FNC static void sql_castrealorzero_func(
 // this function will cast <argv>[0] to double or zero
     UNUSED(argc);
     double num = sqlite3_value_double(argv[0]);
-    sqlite3_result_double(context, isnormal(num) ? num : 0);
+    sqlite3_result_double(context, isfinite(num) ? num : 0);
 }
 
 SQLMATH_FNC static void sql_casttextorempty_func(
@@ -1152,6 +1118,125 @@ SQLMATH_FNC static void sql_jenks_func(
         (1 + (int) result[0] * 2) * 8, sqlite3_free);
 }
 
+SQLMATH_FNC static void sql_jfromfloat64array_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will create json-encoded-flat-array from binary-Float64Array
+    UNUSED(argc);
+    // declare var
+    int ii = sqlite3_value_bytes(argv[0]) / 8;
+    double *arr = (double *) sqlite3_value_blob(argv[0]);
+    // str99 - init
+    sqlite3_str __str99 = { 0 };
+    sqlite3_str *str99 = &__str99;
+    str99->mxAlloc = SQLITE_MAX_LENGTH2;
+    // str99 - append double
+    sqlite3_str_appendchar(str99, 1, '[');
+    while (1) {
+        ii -= 1;
+        if (ii <= 0) {
+            break;
+        }
+        // append with comma
+        sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g," : "null,",
+            *arr);
+        arr += 1;
+    }
+    if (ii == 0) {
+        // append with no comma
+        sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g" : "null", *arr);
+    }
+    sqlite3_str_appendchar(str99, 1, ']');
+    if (str99->accError != 0) {
+        sqlite3_result_error_code(context, str99->accError);
+        return;
+    }
+    sqlite3_result_text(context, (const char *) str99->zText, str99->nChar,
+        // destructor
+        sqlite3_free);
+}
+
+SQLMATH_FNC static void sql_jtofloat64array_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will create binary-Float64Array from json-encoded-flat-array
+    UNUSED(argc);
+    // declare var
+    char *arr = (char *) sqlite3_value_blob(argv[0]);
+    int ii = 0;
+    int jj = 0;
+    int nn = sqlite3_value_bytes(argv[0]);
+    // str99 - init
+    sqlite3_str __str99 = { 0 };
+    sqlite3_str *str99 = &__str99;
+    str99->mxAlloc = SQLITE_MAX_LENGTH2;
+    // validate json
+    for (; ii < nn; ii += 1) {
+        if (arr[ii] == '[') {
+            break;
+        }
+    }
+    for (; nn > ii; nn -= 1) {
+        if (arr[nn - 1] == ']') {
+            break;
+        }
+    }
+    if (nn <= ii) {
+        goto catch_error_json;
+    }
+    jj = ii;
+    // str99 - append double
+    for (; ii < nn; ii += 1) {
+        // skip whitespace
+        switch (arr[jj]) {
+        case '[':
+        case '\x09':
+        case '\x0a':
+        case '\x0d':
+        case '\x20':
+            jj = ii;
+            break;
+        default:
+            switch (arr[ii]) {
+            case ',':
+            case ']':
+                str99VectorDoubleAppend(str99, atof(arr + jj));
+                jj = ii + 1;
+                break;
+            }
+            break;
+        }
+        switch (arr[jj]) {
+        case ',':
+            goto catch_error_json;
+        case ']':
+            if (str99->nChar > 0) {
+                goto catch_error_json;
+            }
+            break;
+        }
+    }
+    // str99 - handle err
+    STR99_AGGREGATE_RESULT_ERROR();
+    if (str99->nChar <= 0) {
+        STR99_AGGREGATE_CLEANUP();
+        sqlite3_result_null(context);
+        return;
+    }
+    // str99 - result
+    sqlite3_result_blob(context, (void *) str99->zText, str99->nChar,
+        sqlite3_free);
+    return;
+  catch_error_json:
+    STR99_AGGREGATE_CLEANUP();
+    sqlite3_result_error(context, "jtofloat64array() - invalid JSON array",
+        -1);
+}
+
 // SQLMATH_FNC sql_kthpercentile_func - start
 SQLMATH_API double kthpercentile(
     double *arr,
@@ -1250,6 +1335,7 @@ SQLMATH_FNC static void sql_kthpercentile_final(
     // str99 - init
     sqlite3_str *str99 =
         (sqlite3_str *) sqlite3_aggregate_context(context, 0);
+    // str99 - handle null-case
     if (str99 == NULL) {
         sqlite3_result_null(context);
         return;
@@ -1507,7 +1593,6 @@ int sqlite3_sqlmath_ext_base_init(
     // init sqlite3_api
     sqlite3_api = pApi;
     SQLITE3_CREATE_FUNCTION1(btobase64, 1);
-    SQLITE3_CREATE_FUNCTION1(btofloat64array, 2);
     SQLITE3_CREATE_FUNCTION1(btotext, 1);
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
@@ -1515,6 +1600,8 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
     SQLITE3_CREATE_FUNCTION1(jenks, 2);
+    SQLITE3_CREATE_FUNCTION1(jfromfloat64array, 1);
+    SQLITE3_CREATE_FUNCTION1(jtofloat64array, 1);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);

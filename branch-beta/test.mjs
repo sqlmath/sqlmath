@@ -29,6 +29,7 @@ import {
     assertOrThrow,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
+    dbExecAndReturnLastJsonAsync,
     dbExecAsync,
     dbFileExportAsync,
     dbFileImportAsync,
@@ -936,11 +937,9 @@ jstestDescribe((
                     2, 2, 2, 2
                 ]
             ], [
-                new Float64Array(
-                    Array.from(new Array(2 ** 20)).map(function (ignore, ii) {
-                        return ii;
-                    })
-                ),
+                Array.from(new Array(2 ** 20)).map(function (ignore, ii) {
+                    return ii;
+                }),
                 4,
                 [
                     0, 262144, 524288, 786432,
@@ -953,16 +952,16 @@ jstestDescribe((
             [
                 input, input.slice().reverse()
             ].forEach(async function (input) {
-                let result = Array.from(new Float64Array(
-                    await dbExecAndReturnLastBlobAsync({
-                        bindList: {
-                            input: new Float64Array(input),
-                            kk
-                        },
-                        db,
-                        sql: "SELECT jenks($kk, $input) AS result;"
-                    })
-                ));
+                let result = await dbExecAndReturnLastJsonAsync({
+                    bindList: {
+                        input: JSON.stringify(input),
+                        kk
+                    },
+                    db,
+                    sql: (`
+SELECT jfromfloat64array(jenks($kk, jtofloat64array($input))) AS result;
+                    `)
+                });
                 kk = result[0];
                 assertJsonEqual(kk, expected.length / 2);
                 assertJsonEqual(
@@ -977,6 +976,69 @@ jstestDescribe((
                     }),
                     expected.slice(kk, kk + kk)
                 );
+            });
+        });
+    });
+    jstestIt((
+        "test sqlite-extension-jfromfloat64array handling-behavior"
+    ), async function test_sqliteExtensionJfromfloat64array() {
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        [
+            [" [ , 1 ] ", "error"],
+            [" [ , ] ", "error"],
+            [" [ 1 , ] ", "error"],
+            [" [ ] ", "[]"],
+            [" [ null ] ", "[0.0]"],
+            ["", "error"],
+            ["1,2]", "error"],
+            ["[,1]", "error"],
+            ["[,]", "error"],
+            ["[0]", "[0.0]"],
+            ["[1,2", "error"],
+            ["[1,2,a]", "[1.0,2.0,0.0]"],
+            ["[1,]", "error"],
+            ["[1,a,3]", "[1.0,0.0,3.0]"],
+            ["[1]", "[1.0]"],
+            ["[]", "[]"],
+            ["[a,2,3]", "[0.0,2.0,3.0]"],
+            [0, "error"],
+            [1, "error"],
+            [`[${"1".repeat(100)}]`, `[1.11111111111111e+99]`],
+            [null, "error"],
+            [undefined, "error"],
+            [{}, "error"]
+        ].forEach(async function ([
+            valInput, valExpected
+        ], ii) {
+            let valActual;
+            try {
+                valActual = noop(
+                    await dbExecAsync({
+                        bindList: {
+                            valInput
+                        },
+                        db,
+                        sql: (`
+SELECT jfromfloat64array(jtofloat64array($valInput)) AS result;
+                        `)
+                    })
+                )[0][0].result;
+            } catch (ignore) {
+                assertOrThrow(valExpected === "error", JSON.stringify({
+                    ii,
+                    valActual,
+                    valExpected,
+                    valInput
+                }, undefined, 4));
+                return;
+            }
+            assertJsonEqual(valActual, valExpected, {
+                ii,
+                valActual,
+                valExpected,
+                valInput
             });
         });
     });
