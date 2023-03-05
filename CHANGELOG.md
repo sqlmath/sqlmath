@@ -3,6 +3,10 @@
 # Todo
 - none
 
+# v2023.3.1-beta
+- sqlmath - add sql-functions jenks_concat(kk, col1, col2, ...), jenks_json(kk, jsonArray)
+- chart - bugfix - fix special-character in col-name being sql-injected
+
 # v2023.2.26
 - chart - bugfix - use spy for reference previous-ydate instead of 1a_mybot
 - sqlmath - add functions dbExecAndReturnLastJsonAsync(), dbExecAndReturnLastTextAsync()

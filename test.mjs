@@ -97,9 +97,9 @@ jstestDescribe((
 ), function test_ccall() {
     jstestIt((
         "test cCallAsync handling-behavior"
-    ), function () {
+    ), async function () {
         // test datatype handling-behavior
-        [
+        await Promise.all([
             ["", ""],
             ["\u0000", ""],
             ["aa", "aa"],
@@ -136,7 +136,7 @@ jstestDescribe((
             [true, 1],
             [undefined, 0],
             [{}, 0]
-        ].forEach(async function ([
+        ].map(async function ([
             valInput, valExpected
         ]) {
             let baton;
@@ -166,7 +166,7 @@ jstestDescribe((
                 valExpected,
                 valInput
             });
-        });
+        }));
     });
 });
 
@@ -198,7 +198,7 @@ jstestDescribe((
             );
         });
         // test datatype handling-behavior
-        [
+        await Promise.all([
             // 1. bigint
             [-0n, -0],
             [-0x8000000000000000n, "-9223372036854775808"],
@@ -253,13 +253,13 @@ jstestDescribe((
             [Symbol(), null],
             // 8. undefined
             [undefined, null]
-        ].forEach(function ([
+        ].map(async function ([
             valInput, valExpected
         ], ii) {
             // test dbExecAndReturnLastBlobAsync's bind handling-behavior
-            [
+            await Promise.all([
                 valInput
-            ].forEach(async function (valInput) {
+            ].map(async function (valInput) {
                 let bufActual = new TextDecoder().decode(
                     await test_dbExecAndReturnLastBlobAsync(valInput)
                 );
@@ -309,13 +309,13 @@ jstestDescribe((
                     valExpected,
                     valInput
                 });
-            });
+            }));
             // test dbExecAsync's responseType handling-behavior
-            [
+            await Promise.all([
                 "arraybuffer",
                 "list",
                 undefined
-            ].forEach(async function (responseType) {
+            ].map(async function (responseType) {
                 let bufActual = await dbExecAsync({
                     bindList: [
                         valInput
@@ -343,9 +343,9 @@ jstestDescribe((
                     valExpected,
                     valInput
                 });
-            });
+            }));
             // test dbExecAsync's bind handling-behavior
-            [
+            await Promise.all([
                 [
                     [
                         valExpected, valExpected, 0
@@ -356,7 +356,8 @@ jstestDescribe((
                         + " UNION ALL SELECT ?1, ?2, ?3, ?4"
                         + " UNION ALL SELECT ?1, ?2, ?3, ?4"
                     )
-                ], [
+                ],
+                [
                     {
                         k1: valExpected,
                         k2: valExpected,
@@ -369,7 +370,7 @@ jstestDescribe((
                         + " UNION ALL SELECT @k1, @k2, @k3, @k4"
                     )
                 ]
-            ].forEach(async function ([
+            ].map(async function ([
                 bindList, sql
             ]) {
                 let valActual = await dbExecAsync({
@@ -381,21 +382,14 @@ jstestDescribe((
                 assertJsonEqual(
                     [
                         [
-                            [
-                                "0"
-                            ], [
-                                0
-                            ]
-                        ], [
-                            [
-                                "c1", "c2", "c3", "c4"
-                            ], [
-                                valExpected, valExpected, 0, undefined
-                            ], [
-                                valExpected, valExpected, 0, undefined
-                            ], [
-                                valExpected, valExpected, 0, undefined
-                            ]
+                            ["0"],
+                            [0]
+                        ],
+                        [
+                            ["c1", "c2", "c3", "c4"],
+                            [valExpected, valExpected, 0, undefined],
+                            [valExpected, valExpected, 0, undefined],
+                            [valExpected, valExpected, 0, undefined]
                         ]
                     ],
                     valActual,
@@ -406,8 +400,8 @@ jstestDescribe((
                         valInput
                     }
                 );
-            });
-        });
+            }));
+        }));
     });
 });
 
@@ -495,18 +489,10 @@ SELECT * FROM testDbExecAsync2;
                         [401, 402, 403],
                         [501, 502.0123, 5030123456789],
                         [601, "602", "603_\"\u0001\b\t\n\u000b\f\r\u000e"],
-                        [
-                            null, null, null
-                        ],
-                        [
-                            "foob", "fooba", "foobar"
-                        ],
-                        [
-                            "Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy"
-                        ],
-                        [
-                            "Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy"
-                        ]
+                        [null, null, null],
+                        ["foob", "fooba", "foobar"],
+                        ["Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy"],
+                        ["Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy"]
                     ]
                 ]));
             } catch (err) {
@@ -648,7 +634,7 @@ jstestDescribe((
                 })
             )[0][0].val
         );
-        [
+        await Promise.all([
             [1, "SQL logic error"],
             [2, "unknown error"],
             [3, "access permission denied"],
@@ -679,16 +665,16 @@ jstestDescribe((
             [28, "warning message"],
             [100, "unknown error"],
             [101, "unknown error"]
-        ].forEach(function ([
+        ].map(async function ([
             errno, errmsg
         ]) {
-            assertErrorThrownAsync(function () {
-                return dbExecAsync({
+            await assertErrorThrownAsync(async function () {
+                return await dbExecAsync({
                     db,
                     sql: `SELECT throwerror(${errno})`
                 });
             }, errmsg);
-        });
+        }));
     });
     jstestIt((
         "test sqlite-extension-base64 handling-behavior"
@@ -696,7 +682,7 @@ jstestDescribe((
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        [
+        await Promise.all([
             {
                 sql: "SELECT btobase64(NULL) AS c01",
                 valExpected: [
@@ -730,7 +716,7 @@ jstestDescribe((
                     ]
                 ]
             }
-        ].forEach(async function ({
+        ].map(async function ({
             bindList,
             sql,
             valExpected
@@ -741,7 +727,7 @@ jstestDescribe((
                 sql
             });
             assertJsonEqual(valActual, valExpected);
-        });
+        }));
     });
     jstestIt((
         "test sqlite-extension-jenks handling-behavior"
@@ -749,98 +735,99 @@ jstestDescribe((
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        [
+        await Promise.all([
             [
+                4,
+                Array.from(new Array(2 ** 20)).map(function (ignore, ii) {
+                    return ii;
+                }),
                 [
-                    1.5
-                ],
+                    0, 262144, 524288, 786432,
+                    262144, 262144, 262144, 262144
+                ]
+            ],
+            [
                 9999,
+                [1.5],
                 [
                     1.5,
                     1
                 ]
-            ], [
-                [
-                    3, 2, 1
-                ],
+            ],
+            [
                 2,
+                [3, 2, 1],
                 [
                     1, 2,
                     1, 2
                 ]
-            ], [
-                [
-                    13.7, 0.1, 0.2, -0.4
-                ],
+            ],
+            [
                 3,
+                [13.7, 0.1, 0.2, -0.4],
                 [
                     -0.4, 0.1, 13.7,
                     1, 2, 1
                 ]
-            ], [
-                [
-                    13.7, 0.1, 0.2, -0.4, 0.5
-                ],
+            ],
+            [
                 4,
+                [13.7, 0.1, 0.2, -0.4, 0.5],
                 [
                     -0.4, 0.1, 0.5, 13.7,
                     1, 2, 1, 1
                 ]
-            ], [
-                [
-                    13.7, 0.1, 0.2, -0.4, 0.5, 0.5
-                ],
+            ],
+            [
                 4,
+                [13.7, 0.1, 0.2, -0.4, 0.5, 0.5],
                 [
                     -0.4, 0.1, 0.5, 13.7,
                     1, 2, 2, 1
                 ]
-            ], [
-                [
-                    13.7, 0.1, 0.2, -0.4, 0.5, 0.5, 12.5
-                ],
+            ],
+            [
                 4,
+                [13.7, 0.1, 0.2, -0.4, 0.5, 0.5, 12.5],
                 [
                     -0.4, 0.1, 12.5, 13.7,
                     1, 4, 1, 1
                 ]
-            ], [
-                [
-                    13.7, 0.1, 0.2, -0.4, 0.5, 0.5, 12.5, 0
-                ],
+            ],
+            [
                 4,
+                [13.7, 0.1, 0.2, -0.4, 0.5, 0.5, 12.5, 0],
                 [
                     -0.4, 0.2, 12.5, 13.7,
                     3, 3, 1, 1
                 ]
-            ], [
-                [
-                    7.1, 3.1, 3, 2.8, 2.7, 2.5, 2.2, 1.6, 1.2, 1.1, 0.1
-                ],
+            ],
+            [
                 4,
+                [7.1, 3.1, 3, 2.8, 2.7, 2.5, 2.2, 1.6, 1.2, 1.1, 0.1],
                 [
                     0.1, 1.1, 2.2, 7.1,
                     1, 3, 6, 1
                 ]
-            ], [
-                [
-                    7.1, 3.1, 3, 2.8, 2.7, 2.5, 2.2, 1.6, 1.2, 1.1, 0.1
-                ],
+            ],
+            [
                 14,
+                [7.1, 3.1, 3, 2.8, 2.7, 2.5, 2.2, 1.6, 1.2, 1.1, 0.1],
                 [
                     0.1, 1.1, 1.2, 1.6, 2.2, 2.5, 2.7, 2.8, 3, 3.1, 7.1,
                     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
                 ]
-            ], [
-                [
-                    7.1, 3.1, 3, 2.8, 2.7, 2.5, 2.2, 1.6, 1.2, 1.1, 0.1
-                ],
+            ],
+            [
                 1,
+                [7.1, 3.1, 3, 2.8, 2.7, 2.5, 2.2, 1.6, 1.2, 1.1, 0.1],
                 [
                     0.1,
                     11
                 ]
-            ], [
+            ],
+            [
+                4,
                 [
                     -9, -6, -3, -3, -1, 1, 2, 2,
                     2, 3, 3, 4, 5, 5, 6, 6,
@@ -856,136 +843,138 @@ jstestDescribe((
                     56, 58, 60, 61, 62, 64, 67, 70,
                     73, 74, 78, 78, 78, 79, 83, 93
                 ],
-                4,
                 [
                     -9, 18, 41, 64,
                     35, 30, 28, 11
                 ]
-                // [-9, 17, 36, 58, 93]
             // 1-peak
-            ], [
-                [
-                    0, 0.1, 5, 5.1, 5.2, 9, 9.1
-                ],
+            ],
+            [
                 2,
+                [0, 0.1, 5, 5.1, 5.2, 9, 9.1],
                 [
                     0, 5,
                     2, 5
                 ]
-            ], [
-                [
-                    0, 0.1, 5, 5.1, 5.2, 9, 9.1
-                ],
+            ],
+            [
                 3,
+                [0, 0.1, 5, 5.1, 5.2, 9, 9.1],
                 [
                     0, 5, 9,
                     2, 3, 2
                 ]
-            ], [
-                [
-                    0, -0.1, -5, -5.1, -5.2, -9, -9.1
-                ],
+            ],
+            [
                 3,
+                [0, -0.1, -5, -5.1, -5.2, -9, -9.1],
                 [
                     -9.1, -5.2, -0.1,
                     2, 3, 2
                 ]
-            ], [
-                [
-                    0, 0.1, 5, 5.1, 5.2, 9, 9.1
-                ],
+            ],
+            [
                 4,
+                [0, 0.1, 5, 5.1, 5.2, 9, 9.1],
                 [
                     0, 5, 5.1, 9,
                     2, 1, 2, 2
                 ]
             // 2-peak
-            ], [
-                [
-                    0, 0.1, 2.5, 2.6, 7.5, 7.6, 9, 9.1
-                ],
+            ],
+            [
                 2,
+                [0, 0.1, 2.5, 2.6, 7.5, 7.6, 9, 9.1],
                 [
                     0, 7.5,
                     4, 4
                 ]
-            ], [
-                [
-                    0, 0.1, 2.5, 2.6, 7.5, 7.6, 9, 9.1
-                ],
+            ],
+            [
                 3,
+                [0, 0.1, 2.5, 2.6, 7.5, 7.6, 9, 9.1],
                 [
                     0, 2.5, 7.5,
                     2, 2, 4
                 ]
-            ], [
-                [
-                    0, -0.1, -2.5, -2.6, -7.5, -7.6, -9, -9.1
-                ],
+            ],
+            [
                 3,
+                [0, -0.1, -2.5, -2.6, -7.5, -7.6, -9, -9.1],
                 [
                     -9.1, -2.6, -0.1,
                     4, 2, 2
                 ]
-            ], [
-                [
-                    0, 0.1, 2.5, 2.6, 7.5, 7.6, 9, 9.1
-                ],
+            ],
+            [
                 4,
+                [0, 0.1, 2.5, 2.6, 7.5, 7.6, 9, 9.1],
                 [
                     0, 2.5, 7.5, 9,
                     2, 2, 2, 2
                 ]
-            ], [
-                Array.from(new Array(2 ** 20)).map(function (ignore, ii) {
-                    return ii;
-                }),
-                4,
-                [
-                    0, 262144, 524288, 786432,
-                    262144, 262144, 262144, 262144
-                ]
             ]
-        ].forEach(function ([
-            input, kk, expected
-        ]) {
-            [
-                input, input.slice().reverse()
-            ].forEach(async function (input) {
-                let result = await dbExecAndReturnLastJsonAsync({
-                    bindList: {
-                        input: JSON.stringify(input),
-                        kk
-                    },
-                    db,
-                    sql: (`
-SELECT jfromfloat64array(jenks($kk, jtofloat64array($input))) AS result;
-                    `)
-                });
-                kk = result[0];
-                assertJsonEqual(kk, expected.length / 2);
-                assertJsonEqual(
-                    result.slice(1).filter(function (ignore, ii) {
-                        return ii % 2 === 0;
-                    }),
-                    expected.slice(0, kk)
-                );
-                assertJsonEqual(
-                    result.slice(1).filter(function (ignore, ii) {
-                        return ii % 2 === 1;
-                    }),
-                    expected.slice(kk, kk + kk)
-                );
-            });
+        ].map(async function ([
+            kk, input, expected
+        ], iiInput) {
+            await Promise.all([
+                (`
+SELECT JSONFROMFLOAT64ARRAY(JENKS_BLOB($kk, JSONTOFLOAT64ARRAY($input)));
+                `),
+                (`
+SELECT JENKS_JSON($kk, $input);
+                `),
+                (`
+SELECT JENKS_CONCAT($kk, value) FROM JSON_EACH($input);
+                `)
+            ].map(async function (sql, iiSql) {
+                // performance-hack
+                if (iiInput === 0 && iiSql > 0) {
+                    return;
+                }
+                await Promise.all([
+                    input, input.slice().reverse()
+                ].map(async function (input) {
+                    let result = await dbExecAndReturnLastJsonAsync({
+                        bindList: {
+                            input: JSON.stringify(input),
+                            kk
+                        },
+                        db,
+                        sql
+                    });
+                    if (Array.isArray(result[0])) {
+                        result = result[0];
+                    }
+                    kk = result[0];
+                    assertJsonEqual(kk, expected.length / 2);
+                    assertJsonEqual(
+                        result.slice(1).filter(function (ignore, ii) {
+                            return ii % 2 === 0;
+                        }),
+                        expected.slice(0, kk)
+                    );
+                    assertJsonEqual(
+                        result.slice(1).filter(function (ignore, ii) {
+                            return ii % 2 === 1;
+                        }),
+                        expected.slice(kk, kk + kk)
+                    );
+                }));
+            }));
+        }));
+        // performance-hack
+        await dbCloseAsync({
+            db
         });
     });
     jstestIt((
-        "test sqlite-extension-jfromfloat64array handling-behavior"
-    ), async function test_sqliteExtensionJfromfloat64array() {
+        "test sqlite-extension-jsonfromfloat64array handling-behavior"
+    ), async function test_sqliteExtensionJsonFromFloat64array() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        [
+        await Promise.all([
             [" [ , 1 ] ", "error"],
             [" [ , ] ", "error"],
             [" [ 1 , ] ", "error"],
@@ -1009,7 +998,7 @@ SELECT jfromfloat64array(jenks($kk, jtofloat64array($input))) AS result;
             [null, "error"],
             [undefined, "error"],
             [{}, "error"]
-        ].forEach(async function ([
+        ].map(async function ([
             valInput, valExpected
         ], ii) {
             let valActual;
@@ -1021,7 +1010,7 @@ SELECT jfromfloat64array(jenks($kk, jtofloat64array($input))) AS result;
                         },
                         db,
                         sql: (`
-SELECT jfromfloat64array(jtofloat64array($valInput)) AS result;
+SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                         `)
                     })
                 )[0][0].result;
@@ -1040,7 +1029,7 @@ SELECT jfromfloat64array(jtofloat64array($valInput)) AS result;
                 valExpected,
                 valInput
             });
-        });
+        }));
     });
     jstestIt((
         "test sqlite-extension-kthpercentile handling-behavior"
@@ -1048,67 +1037,28 @@ SELECT jfromfloat64array(jtofloat64array($valInput)) AS result;
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        [
-            [
-                [], -99, 1
-            ], [
-                [], 0, 1
-            ], [
-                [], 0.125, 1
-            ], [
-                [], 0.25, 2
-            ], [
-                [], 0.375, 3
-            ], [
-                [], 0.5, 4
-            ], [
-                [], 0.625, 5
-            ], [
-                [], 0.75, 6
-            ], [
-                [], 0.875, 7
-            ], [
-                [], 1, 8
-            ], [
-                [], 99, 8
-            ], [
-                [
-                    0.5
-                ], 0, 0.5
-            ], [
-                [
-                    0.5
-                ], 0.125, 0.5
-            ], [
-                [
-                    1.5
-                ], 0.25, 1.5
-            ], [
-                [
-                    2.5
-                ], 0.375, 2.5
-            ], [
-                [
-                    3.5
-                ], 0.5, 3.5
-            ], [
-                [
-                    4.5
-                ], 0.625, 4.5
-            ], [
-                [
-                    5.5
-                ], 0.75, 5.5
-            ], [
-                [
-                    6.5
-                ], 0.875, 6.5
-            ], [
-                [
-                    7.5
-                ], 1, 8
-            ]
-        ].forEach(async function ([
+        await Promise.all([
+            [[], -99, 1],
+            [[], 0, 1],
+            [[], 0.125, 1],
+            [[], 0.25, 2],
+            [[], 0.375, 3],
+            [[], 0.5, 4],
+            [[], 0.625, 5],
+            [[], 0.75, 6],
+            [[], 0.875, 7],
+            [[], 1, 8],
+            [[], 99, 8],
+            [[0.5], 0, 0.5],
+            [[0.5], 0.125, 0.5],
+            [[1.5], 0.25, 1.5],
+            [[2.5], 0.375, 2.5],
+            [[3.5], 0.5, 3.5],
+            [[4.5], 0.625, 4.5],
+            [[5.5], 0.75, 5.5],
+            [[6.5], 0.875, 6.5],
+            [[7.5], 1, 8]
+        ].map(async function ([
             data, kk, valExpected
         ]) {
             let valActual;
@@ -1122,9 +1072,9 @@ SELECT jfromfloat64array(jtofloat64array($valInput)) AS result;
                     },
                     db,
                     sql: (`
-SELECT kthpercentile(value, ${kk}) AS val FROM json_each($tmp1);
+SELECT KTHPERCENTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1);
 -- test null-case handling-behavior
-SELECT kthpercentile(value, ${kk}) AS val FROM json_each($tmp1) WHERE 0;
+SELECT KTHPERCENTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
                     `)
                 })
             )[0][0].val;
@@ -1132,7 +1082,7 @@ SELECT kthpercentile(value, ${kk}) AS val FROM json_each($tmp1) WHERE 0;
                 data,
                 kk
             });
-        });
+        }));
     });
     jstestIt((
         "test sqlite-extension-math handling-behavior"
@@ -1306,7 +1256,7 @@ SELECT kthpercentile(value, ${kk}) AS val FROM json_each($tmp1) WHERE 0;
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        [
+        await Promise.all([
             [
                 (`
 SELECT matrix2d_concat();
@@ -1345,7 +1295,7 @@ SELECT
                     0, 0
                 ]
             ]
-        ].forEach(async function ([
+        ].map(async function ([
             sql, valExpected
         ], ii) {
             let valActual = Array.from(new Float64Array(
@@ -1360,7 +1310,7 @@ SELECT
                 valActual,
                 valExpected
             });
-        });
+        }));
     });
 });
 

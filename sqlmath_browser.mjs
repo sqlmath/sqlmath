@@ -647,7 +647,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         JSON_OBJECT(
             'isDummy', is_dummy,
-            'isHidden', sym NOT in ('1a_mybot', 'spy', 'dia', 'qqq')
+            'isHidden', sym NOT in ('11_mybot', 'spy', 'dia', 'qqq')
         ) AS options,
         rownum AS series_index,
         sym AS series_label
@@ -656,7 +656,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
             sym LIKE '-%' AS is_dummy,
             ROW_NUMBER() OVER (
                 ORDER BY
-                    sym = '1a_mybot' DESC,
+                    sym = '11_mybot' DESC,
                     sym = '----' DESC,
                     sym = 'spy' DESC,
                     sym = 'dia' DESC,
@@ -1200,10 +1200,6 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
             };
             return (`
 -- table - ${tableData} - normalize
---!! DELETE FROM ${tableData}
-    --!! WHERE
-        --!! tname IN ('1a_spy', '1f_stk_pnl', '2f_sqq_pnl')
-        --!! AND tt = (SELECT MIN(tt) FROM ${tableData});
 UPDATE ${tableData}
     SET
         tval = (CASE
@@ -1246,7 +1242,7 @@ UPDATE ${tableData}
 UPDATE ${tableData}
     SET
         tt = UNIXEPOCH(tt),
-        tval = ROUNDORZERO(tval, 4);
+        tval = ROUNDORZERO(100 * tval, 4);
 
 -- chart - ${tableChart} - create
 DROP TABLE IF EXISTS ${tableChart};
@@ -2193,7 +2189,8 @@ END TRANSACTION;
     // 2. save query-result
     await Promise.all(dbqueryList.map(async function (rowList, ii) {
         let colList = rowList.shift().map(function (col, ii) {
-            return `value->>${ii} AS [${col}]`;
+            // bugfix - escape special-character in col
+            return `value->>${ii} AS "${col.replace((/"/g), "\"\"")}"`;
         }).join(",");
         await dbExecAsync({
             bindList: {
@@ -3422,7 +3419,7 @@ SELECT
         if (suffix) {
             num += suffix;
         }
-        return num;
+        return String(num);
     }
     function onCanvasZoom(evt) {
     // this function will zoom/un-zoom at current mouse-location on canvas-area

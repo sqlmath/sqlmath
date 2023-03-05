@@ -29,15 +29,13 @@ let FILENAME_DBTMP = "/tmp/__dbtmp1";
 let IS_BROWSER;
 let JSBATON_ARGC = 16;
 let SQLITE_DATATYPE_BLOB = 0x04;
-// let SQLITE_DATATYPE_BLOB_0 = 0x14;
-let SQLITE_DATATYPE_EXTERNALBUFFER = -0x01;
 let SQLITE_DATATYPE_FLOAT = 0x02;
-// let SQLITE_DATATYPE_FLOAT_0 = 0x12;
 let SQLITE_DATATYPE_INTEGER = 0x01;
 let SQLITE_DATATYPE_INTEGER_0 = 0x11;
 let SQLITE_DATATYPE_INTEGER_1 = 0x21;
 let SQLITE_DATATYPE_NULL = 0x05;
 let SQLITE_DATATYPE_OFFSET = 768;
+let SQLITE_DATATYPE_SHAREDARRAYBUFFER = 0x71;
 let SQLITE_DATATYPE_TEXT = 0x03;
 let SQLITE_DATATYPE_TEXT_0 = 0x13;
 let SQLITE_MAX_LENGTH2 = 1_000_000_000;
@@ -87,7 +85,7 @@ let debugInline = (function () {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2023.2.26";
+let version = "v2023.3.1-beta";
 
 function assertJsonEqual(aa, bb, message) {
 
@@ -357,7 +355,7 @@ async function dbExecAsync({
             );
             modeRetry -= 1;
             await new Promise(function (resolve) {
-                setTimeout(resolve, 50);
+                setTimeout(resolve, 5_000 * !process.env.npm_config_mode_test);
             });
         }
     }
@@ -581,14 +579,13 @@ function jsbatonValuePush({
     let vtype;
 /*
 #define SQLITE_DATATYPE_BLOB            0x04
-// #define SQLITE_DATATYPE_BLOB_0          0x14
 #define SQLITE_DATATYPE_FLOAT           0x02
-// #define SQLITE_DATATYPE_FLOAT_0         0x12
 #define SQLITE_DATATYPE_INTEGER         0x01
 #define SQLITE_DATATYPE_INTEGER_0       0x11
 #define SQLITE_DATATYPE_INTEGER_1       0x21
 #define SQLITE_DATATYPE_NULL            0x05
-#define SQLITE_DATATYPE_EXTERNALBUFFER       -0x01
+#define SQLITE_DATATYPE_OFFSET          768
+#define SQLITE_DATATYPE_SHAREDARRAYBUFFER       0x71
 #define SQLITE_DATATYPE_TEXT            0x03
 #define SQLITE_DATATYPE_TEXT_0          0x13
     //  1. false.bigint
@@ -675,7 +672,7 @@ function jsbatonValuePush({
                 "externalbufferList.length must be less than 8"
             );
             externalbufferList.push(new DataView(value));
-            vtype = SQLITE_DATATYPE_EXTERNALBUFFER;
+            vtype = SQLITE_DATATYPE_SHAREDARRAYBUFFER;
             vsize = 4;
             break;
         }
@@ -752,18 +749,6 @@ function jsbatonValuePush({
             vsize
         ).set(new Uint8Array(value.buffer, value.byteOffset, vsize), 0);
         break;
-    case SQLITE_DATATYPE_EXTERNALBUFFER:
-        vsize = value.byteLength;
-        // push vsize
-        assertOrThrow(
-            0 <= vsize && vsize <= 1_000_000_000,
-            (
-                "sqlite-blob byte-length must be within inclusive-range"
-                + " 0 to 1,000,000,000"
-            )
-        );
-        baton.setInt32(nused + 1, vsize, true);
-        break;
     case SQLITE_DATATYPE_FLOAT:
         baton.setFloat64(nused + 1, value, true);
         break;
@@ -779,6 +764,18 @@ function jsbatonValuePush({
             )
         );
         baton.setBigInt64(nused + 1, value, true);
+        break;
+    case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
+        vsize = value.byteLength;
+        // push vsize
+        assertOrThrow(
+            0 <= vsize && vsize <= 1_000_000_000,
+            (
+                "sqlite-blob byte-length must be within inclusive-range"
+                + " 0 to 1,000,000,000"
+            )
+        );
+        baton.setInt32(nused + 1, vsize, true);
         break;
     }
     return baton;

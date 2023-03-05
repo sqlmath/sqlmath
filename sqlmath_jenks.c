@@ -913,7 +913,7 @@ int main(int c, char** argv) {
     // test aa_big_4
     {
         size_t nn = 1 << 20;
-        double *aa_big_4 = (double *) malloc((size_t) nn * 8);
+        double *aa_big_4 = (double *) sqlite3_malloc((size_t) nn * 8);
         size_t ii = 0;
         for (ii = 0; ii < nn; ii += 1) {
             aa_big_4[ii] = (double) ii;
@@ -939,7 +939,7 @@ int main(int c, char** argv) {
         test(aa_big_4, nn, 4,
             -1048574, -524288, -2, 524287,
             262143, 262143, 262145, 262145);
-        free(aa_big_4);
+        sqlite3_free(aa_big_4);
     }
 } // main
 // *INDENT-ON*
