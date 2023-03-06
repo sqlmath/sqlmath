@@ -4,6 +4,7 @@
 - none
 
 # v2023.3.1-beta
+- sqlmath - merge file sqlite3_ext.c into sqlite3.c
 - sqlmath - streamline str99 c-code
 - sqlmath - add sql-functions jenks_concat(kk, col1, col2, ...), jenks_json(kk, jsonArray)
 - chart - bugfix - fix special-character in col-name being sql-injected
