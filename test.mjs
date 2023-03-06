@@ -963,10 +963,6 @@ SELECT JENKS_CONCAT($kk, value) FROM JSON_EACH($input);
                 }));
             }));
         }));
-        // performance-hack
-        await dbCloseAsync({
-            db
-        });
     });
     jstestIt((
         "test sqlite-extension-jsonfromfloat64array handling-behavior"

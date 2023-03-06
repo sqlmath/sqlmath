@@ -148,21 +148,23 @@ extern "C" {
     str99->mxAlloc = SQLITE_MAX_LENGTH2; \
 
 #define STR99_RESULT_ERROR(str99) \
-    if (str99->accError == SQLITE_ERROR_JSON_ARRAY_INVALID) { \
+    errcode = sqlite3_str_errcode(str99); \
+    if (errcode == SQLITE_ERROR_JSON_ARRAY_INVALID) { \
         sqlite3_str_reset(str99); \
         sqlite3_result_error(context, \
-            "jsontofloat64array() - invalid JSON array", -1); \
-        return; \
+            "str99ArrayAppendJsonarray() - invalid JSON array", \
+            SQLITE_ERROR_JSON_ARRAY_INVALID); \
+        goto catch_error; \
     } \
-    if (str99->accError != 0) { \
+    if (errcode) { \
         sqlite3_str_reset(str99); \
-        sqlite3_result_error_code(context, str99->accError); \
-        return; \
+        sqlite3_result_error_code(context, errcode); \
+        goto catch_error; \
     } \
-    if (str99->nChar <= 0) { \
+    if (sqlite3_str_length(str99) <= 0) { \
         sqlite3_str_reset(str99); \
         sqlite3_result_null(context); \
-        return; \
+        goto catch_error; \
     }
 
 
@@ -202,6 +204,12 @@ SQLMATH_API void str99ArrayAppendJsonarray(
 );
 SQLMATH_API void str99JsonAppendFloat64array(
     sqlite3_str * str99,
+    const double *arr,
+    int nn
+);
+SQLMATH_API void str99JsonAppendJenks(
+    sqlite3_str * str99,
+    int kk,
     const double *arr,
     int nn
 );
@@ -618,7 +626,7 @@ SQLMATH_API void dbExec(
                 if (nCol == -1) {
                     nCol = sqlite3_column_count(pStmt);
                 }
-                str99->nChar = 0;
+                sqlite3_str_reset(str99);
                 sqlite3_str_append(str99,
                     (const char *) sqlite3_column_blob(pStmt, nCol - 1),
                     sqlite3_column_bytes(pStmt, nCol - 1));
@@ -627,7 +635,7 @@ SQLMATH_API void dbExec(
                 // insert row of column-names
                 if (nCol == -1) {
                     nCol = sqlite3_column_count(pStmt);
-                    if (str99->nChar > 1) {
+                    if (sqlite3_str_length(str99) > 1) {
                         sqlite3_str_appendchar(str99, 1, ',');
                         sqlite3_str_appendchar(str99, 1, '\n');
                         sqlite3_str_appendchar(str99, 1, '\n');
@@ -726,10 +734,10 @@ SQLMATH_API void dbExec(
         sqlite3_str_appendchar(str99, 1, ']');
         sqlite3_str_appendchar(str99, 1, '\n');
     }
-    errcode = str99->accError;
+    errcode = sqlite3_str_errcode(str99);
     JSBATON_ASSERT_OK();
     // copy str99 to baton
-    baton->argv[7] = str99->nChar;
+    baton->argv[7] = sqlite3_str_length(str99);
     baton->bufv[7] = (int64_t) str99->zText;
   catch_error:
     // cleanup pStmt
@@ -816,37 +824,6 @@ SQLMATH_API int doubleSortCompare(
 // this function will compare <aa> with <bb>
     const double cc = *(double *) aa - *(double *) bb;
     return cc < 0 ? -1 : cc > 0 ? 1 : 0;
-}
-
-SQLMATH_API double *jenksCreateWithContext(
-    const int kk,
-    const double *values,
-    const int nn,
-    sqlite3_context * context
-) {
-// This function will calculate <kk> jenks-natrual-breaks in given <values>,
-// and return a mallocd (double *) array with length (1 + kk * 2) of form:
-// [
-// (double) kk,
-// (double) break_1, (double) count_1,
-// (double) break_2, (double) count_2,
-// ...,
-// (double) break_k, (double) count_k
-// ]
-    // jenks - null-case
-    if (kk <= 0 || nn <= 0) {
-        sqlite3_result_null(context);
-        return NULL;
-    }
-    // jenks - exec
-    double *result = jenksCreate(kk, values, nn);
-    // jenks - err
-    if (result == NULL) {
-        sqlite3_result_error_nomem(context);
-        return NULL;
-    }
-    // jenks - result
-    return result;
 }
 
 SQLMATH_API const char *jsbatonValueErrmsg(
@@ -946,7 +923,7 @@ SQLMATH_API void str99ArrayAppendJsonarray(
         case ',':
             goto catch_error_json;
         case ']':
-            if (str99->nChar > 0) {
+            if (sqlite3_str_length(str99) > 0) {
                 goto catch_error_json;
             }
             break;
@@ -980,6 +957,30 @@ SQLMATH_API void str99JsonAppendFloat64array(
         sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g" : "null", *arr);
     }
     sqlite3_str_appendchar(str99, 1, ']');
+}
+
+SQLMATH_API void str99JsonAppendJenks(
+    sqlite3_str * str99,
+    int kk,
+    const double *arr,
+    int nn
+) {
+// this function will append json-encoded-flat-array from jenks-result
+    // jenks - null-case
+    if (kk <= 0 || nn <= 0) {
+        sqlite3_str_appendchar(str99, 1, '[');
+        sqlite3_str_appendchar(str99, 1, ']');
+        return;
+    }
+    // jenks - classify
+    double *result = jenksCreate(kk, arr, nn);
+    if (result == NULL) {
+        str99->accError = SQLITE_NOMEM;
+        return;
+    }
+    // str99 - to-json
+    str99JsonAppendFloat64array(str99, result, 1 + ((int) result[0]) * 2);
+    sqlite3_free(result);
 }
 
 SQLMATH_API void str99JsonAppendText(
@@ -1041,7 +1042,8 @@ SQLMATH_API void str99ResultBlob(
     sqlite3_context * context
 ) {
 // this function will return <str99> as result-blob in given <context>
-    sqlite3_result_blob(context, (const char *) str99->zText, str99->nChar,
+    sqlite3_result_blob(context, (const char *) sqlite3_str_value(str99),
+        sqlite3_str_length(str99),
         // destructor
         sqlite3_free);
 }
@@ -1051,7 +1053,8 @@ SQLMATH_API void str99ResultText(
     sqlite3_context * context
 ) {
 // this function will return <str99> as result-text in given <context>
-    sqlite3_result_text(context, (const char *) str99->zText, str99->nChar,
+    sqlite3_result_text(context, (const char *) sqlite3_str_value(str99),
+        sqlite3_str_length(str99),
         // destructor
         sqlite3_free);
 }
@@ -1275,19 +1278,24 @@ SQLMATH_FNC static void sql_jenks_blob_func(
 // (double) break_k, (double) count_k
 // ]
     UNUSED(argc);
+    // declare var
+    const double *arr = (double *) sqlite3_value_blob(argv[1]);
+    const int kk = sqlite3_value_int(argv[0]);
+    const int nn = sqlite3_value_bytes(argv[1]) / sizeof(double);
+    // jenks - null-case
+    if (kk <= 0 || nn <= 0) {
+        sqlite3_result_null(context);
+        return;
+    }
     // jenks - classify
-    double *result = jenksCreateWithContext(    //
-        sqlite3_value_int(argv[0]),     // kk
-        (double *) sqlite3_value_blob(argv[1]), // values
-        sqlite3_value_bytes(argv[1]) / sizeof(double),  // nn
-        context);
-    // jenks - err
+    double *result = jenksCreate(kk, arr, nn);
     if (result == NULL) {
+        sqlite3_result_error_nomem(context);
         return;
     }
     // jenks - result
     sqlite3_result_blob(context, (void *) result,
-        (1 + (int) result[0] * 2) * 8, sqlite3_free);
+        (1 + ((int) result[0]) * 2) * 8, sqlite3_free);
 }
 
 // SQLMATH_FNC sql_jenks_concat_func - start
@@ -1322,40 +1330,33 @@ SQLMATH_FNC static void sql_jenks_concat_final(
     // declare var
     const int argc = ((int *) (str99arr[0]))[0];
     const int kk = ((int *) (str99arr[0]))[1];
+    int errcode = 0;
     // str99arr - cleanup
     str99arrCleanup(1, str99arr);
     // str99json - init
     STR99_ALLOCA(str99json);
-    // str99json - append
     sqlite3_str_appendchar(str99json, 1, '[');
     for (int ii = 1; ii < argc; ii += 1) {
         sqlite3_str *str99 = str99arr[ii];
+        STR99_RESULT_ERROR(str99);
         // jenks - classify
-        double *result = jenksCreate(   //
-            kk,                 // kk
-            (double *) str99->zText,    // values
-            str99->nChar / 8);  // nn
-        // jenks - err
-        if (result == NULL) {
-            // str99arr - cleanup
-            str99arrCleanup(argc, str99arr);
-            sqlite3_result_error_nomem(context);
-            return;
-        }
-        // str99 - jsonfrom
         if (ii > 1) {
             sqlite3_str_appendchar(str99json, 1, ',');
         }
-        str99JsonAppendFloat64array(str99json, result,
-            1 + ((int) result[0]) * 2);
+        str99JsonAppendJenks(   //
+            str99json,          // json
+            kk,                 // kk
+            (double *) str99->zText,    // array
+            sqlite3_str_length(str99) / 8);     // nn
+        STR99_RESULT_ERROR(str99json);
     }
     sqlite3_str_appendchar(str99json, 1, ']');
-    // str99arr - cleanup
-    str99arrCleanup(argc, str99arr);
-    // str99json - err
     STR99_RESULT_ERROR(str99json);
     // str99json - result
     str99ResultText(str99json, context);
+  catch_error:
+    // str99arr - cleanup
+    str99arrCleanup(argc, str99arr);
 }
 
 SQLMATH_FNC static void sql_jenks_concat_step(
@@ -1422,30 +1423,28 @@ SQLMATH_FNC static void sql_jenks_json_func(
 // (double) break_k, (double) count_k
 // ]
     UNUSED(argc);
-    // str99 - to array
-    STR99_ALLOCA(str99);
+    // declare var
+    int errcode = 0;
+    // str99 - to-array
+    STR99_ALLOCA(arr);
     str99ArrayAppendJsonarray(  //
-        str99,                  // array
+        arr,                    // array
         (char *) sqlite3_value_blob(argv[1]),   // json
         sqlite3_value_bytes(argv[1]));  // nn
-    STR99_RESULT_ERROR(str99);
+    STR99_RESULT_ERROR(arr);
     // jenks - classify
-    double *result = jenksCreateWithContext(    //
+    STR99_ALLOCA(str99);
+    str99JsonAppendJenks(       //
+        str99,                  // json
         sqlite3_value_int(argv[0]),     // kk
-        (double *) str99->zText,        // values
-        str99->nChar / 8,       // nn
-        context);
-    // str99 - reset-and-reuse
-    sqlite3_str_reset(str99);
-    // jenks - err
-    if (result == NULL) {
-        return;
-    }
-    // str99 - to json
-    str99JsonAppendFloat64array(str99, result, 1 + ((int) result[0]) * 2);
+        (double *) arr->zText,  // array
+        sqlite3_str_length(arr) / 8);   // nn
+    sqlite3_str_reset(arr);
     STR99_RESULT_ERROR(str99);
     // str99 - result
     str99ResultText(str99, context);
+  catch_error:
+    (void) 0;
 }
 
 SQLMATH_FNC static void sql_jsonfromfloat64array_func(
@@ -1455,6 +1454,8 @@ SQLMATH_FNC static void sql_jsonfromfloat64array_func(
 ) {
 // this function will create json-encoded-flat-array from binary-Float64Array
     UNUSED(argc);
+    // declare var
+    int errcode = 0;
     // str99 - init
     STR99_ALLOCA(str99);
     // str99 - jsonfrom
@@ -1465,6 +1466,8 @@ SQLMATH_FNC static void sql_jsonfromfloat64array_func(
     STR99_RESULT_ERROR(str99);
     // str99 - result
     str99ResultText(str99, context);
+  catch_error:
+    (void) 0;
 }
 
 SQLMATH_FNC static void sql_jsontofloat64array_func(
@@ -1474,7 +1477,9 @@ SQLMATH_FNC static void sql_jsontofloat64array_func(
 ) {
 // this function will create binary-Float64Array from json-encoded-flat-array
     UNUSED(argc);
-    // str99 - to array
+    // declare var
+    int errcode = 0;
+    // str99 - to-array
     STR99_ALLOCA(str99);
     str99ArrayAppendJsonarray(  //
         str99,                  // array
@@ -1483,6 +1488,8 @@ SQLMATH_FNC static void sql_jsontofloat64array_func(
     STR99_RESULT_ERROR(str99);
     // str99 - result
     str99ResultBlob(str99, context);
+  catch_error:
+    (void) 0;
 }
 
 // SQLMATH_FNC sql_kthpercentile_func - start
@@ -1580,6 +1587,8 @@ SQLMATH_FNC static void sql_kthpercentile_final(
     sqlite3_context * context
 ) {
 // this function will aggregate kth-percentile element
+    // declare var
+    int errcode = 0;
     // str99 - init
     sqlite3_str *str99 =
         (sqlite3_str *) sqlite3_aggregate_context(context, 0);
@@ -1589,10 +1598,12 @@ SQLMATH_FNC static void sql_kthpercentile_final(
     }
     STR99_RESULT_ERROR(str99);
     // str99 - result
-    int nn = str99->nChar / 8 - 1;
+    int nn = sqlite3_str_length(str99) / 8 - 1;
     sqlite3_result_double(context,
         kthpercentile(((double *) str99->zText) + 1, nn,
             ((double *) str99->zText)[0]));
+  catch_error:
+    (void) 0;
 }
 
 SQLMATH_FNC static void sql_kthpercentile_step(
@@ -1609,7 +1620,7 @@ SQLMATH_FNC static void sql_kthpercentile_step(
         return;
     }
     // str99 - init zText
-    if (str99->zText == NULL) {
+    if (sqlite3_str_length(str99) == 0) {
         str99->mxAlloc = SQLITE_MAX_LENGTH2;
         str99ArrayAppendDouble(str99, sqlite3_value_double(argv[1]));
     }
@@ -1657,6 +1668,8 @@ SQLMATH_FNC static void sql_matrix2d_concat_final(
     sqlite3_context * context
 ) {
 // this function will concat rows of nCol doubles to a 2d-matrix
+    // declare var
+    int errcode = 0;
     // str99 - init
     sqlite3_str *str99 =
         (sqlite3_str *) sqlite3_aggregate_context(context, 0);
@@ -1666,15 +1679,17 @@ SQLMATH_FNC static void sql_matrix2d_concat_final(
     }
     STR99_RESULT_ERROR(str99);
     // str99 - null-case
-    if (str99->nChar <= 2 * 8) {
+    if (sqlite3_str_length(str99) <= 2 * 8) {
         sqlite3_str_reset(str99);
         sqlite3_result_null(context);
         return;
     }
     double *arr = (double *) str99->zText;
-    arr[0] = (0.125 * ((double) str99->nChar) - 2) / arr[1];
+    arr[0] = (0.125 * ((double) sqlite3_str_length(str99)) - 2) / arr[1];
     // str99 - result
     str99ResultBlob(str99, context);
+  catch_error:
+    (void) 0;
 }
 
 SQLMATH_FNC static void sql_matrix2d_concat_step(
@@ -1690,7 +1705,7 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
         return;
     }
     // str99 - init zText
-    if (str99->zText == NULL) {
+    if (sqlite3_str_length(str99) == 0) {
         str99->mxAlloc = SQLITE_MAX_LENGTH2;
         str99ArrayAppendDouble(str99, 0);
         str99ArrayAppendDouble(str99, (double) argc);
