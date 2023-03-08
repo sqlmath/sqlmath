@@ -171,7 +171,6 @@ extern "C" {
 // file sqlmath_h - sqlite3
 // *INDENT-OFF*
 SQLITE_API const sqlite3_api_routines *sqlite3ApiGet();
-typedef struct sqlite3_str sqlite3_str;
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint8_t u8;
@@ -229,10 +228,6 @@ SQLMATH_API void str99ResultText(
 
 
 // file sqlmath_h - Jsbaton
-typedef struct napi_async_work__ *napi_async_work;
-typedef struct napi_deferred__ *napi_deferred;
-typedef struct napi_value__ *napi_value;
-
 typedef struct Jsbaton {
     int32_t nallc;              // offset - 0-4
     int32_t nused;              // offset - 4-8
@@ -240,9 +235,9 @@ typedef struct Jsbaton {
     int64_t bufv[JSBATON_ARGC]; // offset - 136-264
     int64_t cfuncname;          // offset - 264-272
     char errmsg[SIZEOF_MESSAGE_DEFAULT];        // offset 272-528
-    napi_value napi_argv;
-    napi_async_work napi_work;
-    napi_deferred napi_deferred;
+    void *napi_argv;
+    void *napi_work;
+    void *napi_deferred;
 } Jsbaton;
 
 
@@ -2060,7 +2055,8 @@ static void jspromiseResolve(
     errcode = napi_reference_unref(env, ref, &refcount);
     NAPI_ASSERT_FATAL(errcode == 0, "napi_reference_unref");
     NAPI_ASSERT_FATAL(refcount == 0, "memory leak");
-    errcode = napi_get_reference_value(env, ref, &baton->napi_argv);
+    errcode =
+        napi_get_reference_value(env, ref, (napi_value *) & baton->napi_argv);
     NAPI_ASSERT_FATAL(errcode == 0, "napi_get_reference_value");
     errcode = napi_delete_reference(env, ref);
     NAPI_ASSERT_FATAL(errcode == 0, "napi_delete_reference");
@@ -2127,7 +2123,9 @@ static napi_value jspromiseCreate(
     }
     // Create a deferred promise which we will resolve at the completion of the
     // work.
-    errcode = napi_create_promise(env, &(baton->napi_deferred), &promise);
+    errcode =
+        napi_create_promise(env, (napi_deferred *) & (baton->napi_deferred),
+        &promise);
     NAPI_ASSERT_OK();
     // init async_resource_name
     errcode =
@@ -2142,7 +2140,8 @@ static napi_value jspromiseCreate(
         jspromiseExecute,       // napi_async_execute_callback execute,
         jspromiseResolve,       // napi_async_complete_callback complete,
         baton,                  // void* data,
-        &(baton->napi_work));   // napi_async_work* result);
+        // napi_async_work* result);
+        (napi_async_work *) & (baton->napi_work));
     NAPI_ASSERT_OK();
     // Queue the work item for execution.
     errcode = napi_queue_async_work(env, baton->napi_work);

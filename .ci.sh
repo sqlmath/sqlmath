@@ -378,7 +378,7 @@ import modulePath from "path";
             }
         },
         "targets": [
-            targetWarningLevel(0, {
+            targetWarningLevel(1, {
                 "defines": [
                     "SQLITE3_C2"
                 ],
@@ -393,7 +393,6 @@ import modulePath from "path";
                     "SQLITE3_EXT_C2"
                 ],
                 "sources": [
-                    "../sqlite3_ext.c",
                     "../sqlmath_custom.c"
                 ],
                 "target_name": "sqlmath_c",
@@ -516,7 +515,6 @@ shCiBuildWasm() {(set -e
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
         sqlite3.c \
-        sqlite3_ext.c \
         sqlmath_custom.c
     do
         FILE2=".tmp/$(basename "$FILE").wasm.o"
@@ -611,7 +609,6 @@ shCiBuildWasm() {(set -e
         -s WASM=1 \
         -s WASM_BIGINT \
         .tmp/sqlite3.c.wasm.o \
-        .tmp/sqlite3_ext.c.wasm.o \
         .tmp/sqlmath_custom.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
@@ -726,7 +723,6 @@ shCiTestNodejs() {(set -e
         #         --line-length78 \
         #         --no-tabs \
         #         -bfde \
-        #         sqlite3_ext.c \
         #         sqlmath_base.c \
         #         sqlmath_custom.c \
         #         sqlmath_jenks.c
@@ -796,7 +792,6 @@ shSqlmathUpdate() {(set -e
         shRawLibFetch asset_sqlmath_external_rollup.js
         shRawLibFetch index.html
         shRawLibFetch sqlite3.c
-        shRawLibFetch sqlite3_ext.c
         shRawLibFetch sqlite3_shell.c
         git grep '3\.39\.[^4]' \
             ":(exclude)CHANGELOG.md" \
@@ -816,7 +811,6 @@ shSqlmathUpdate() {(set -e
             indent.exe \
             index.html \
             sqlite3.c \
-            sqlite3_ext.c \
             sqlite3_shell.c \
             sqlmath.mjs \
             sqlmath_base.c \
