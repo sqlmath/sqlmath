@@ -470,14 +470,14 @@ INSERT INTO tradebot_technical_week
     FROM tradebot_state
     JOIN (
                   SELECT '1b_stk_lmt' AS tname
-        UNION ALL SELECT '1c_stk_lmb'
-        UNION ALL SELECT '1d_stk_lms'
-        UNION ALL SELECT '1e_stk_pct'
+        UNION ALL SELECT '1c_stk_pct'
+        UNION ALL SELECT '1d_stk_lmb'
+        UNION ALL SELECT '1e_stk_lms'
         UNION ALL SELECT '1f_stk_pnl'
         UNION ALL SELECT '2b_sqq_lmt'
-        UNION ALL SELECT '2c_sqq_lmb'
-        UNION ALL SELECT '2d_sqq_lms'
-        UNION ALL SELECT '2e_sqq_pct'
+        UNION ALL SELECT '2c_sqq_pct'
+        UNION ALL SELECT '2d_sqq_lmb'
+        UNION ALL SELECT '2e_sqq_lms'
         UNION ALL SELECT '2f_sqq_pnl'
     );
 INSERT INTO tradebot_technical_week
@@ -488,14 +488,14 @@ INSERT INTO tradebot_technical_week
     FROM tradebot_state
     JOIN (
                   SELECT '1b_stk_lmt' AS tname
-        UNION ALL SELECT '1c_stk_lmb'
-        UNION ALL SELECT '1d_stk_lms'
-        UNION ALL SELECT '1e_stk_pct'
+        UNION ALL SELECT '1c_stk_pct'
+        UNION ALL SELECT '1d_stk_lmb'
+        UNION ALL SELECT '1e_stk_lms'
         UNION ALL SELECT '1f_stk_pnl'
         UNION ALL SELECT '2b_sqq_lmt'
-        UNION ALL SELECT '2c_sqq_lmb'
-        UNION ALL SELECT '2d_sqq_lms'
-        UNION ALL SELECT '2e_sqq_pct'
+        UNION ALL SELECT '2c_sqq_pct'
+        UNION ALL SELECT '2d_sqq_lmb'
+        UNION ALL SELECT '2e_sqq_lms'
         UNION ALL SELECT '2f_sqq_pnl'
     )
     --
@@ -505,15 +505,15 @@ INSERT INTO tradebot_technical_week
     --
     UNION ALL
     --
-    SELECT '1c_stk_lmb', ydate, stk_lmb FROM tradebot_intraday_lmt
+    SELECT '1c_stk_pct', ydate, stk_pct FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '1d_stk_lms', ydate, stk_lms FROM tradebot_intraday_lmt
+    SELECT '1d_stk_lmb', ydate, stk_lmb FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '1e_stk_pct', ydate, stk_pct FROM tradebot_intraday_lmt
+    SELECT '1e_stk_lms', ydate, stk_lms FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
@@ -525,15 +525,15 @@ INSERT INTO tradebot_technical_week
     --
     UNION ALL
     --
-    SELECT '2c_sqq_lmb', ydate, sqq_lmb FROM tradebot_intraday_lmt
+    SELECT '2c_sqq_pct', ydate, sqq_pct FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '2d_sqq_lms', ydate, sqq_lms FROM tradebot_intraday_lmt
+    SELECT '2d_sqq_lmb', ydate, sqq_lmb FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '2e_sqq_pct', ydate, sqq_pct FROM tradebot_intraday_lmt
+    SELECT '2e_sqq_lms', ydate, sqq_lms FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
@@ -1264,7 +1264,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
         JSON_OBJECT(
-            'isHidden', tname NOT IN ('1a_spy', '1b_stk_lmt'),
+            'isHidden', tname NOT IN ('1a_spy', '1b_stk_lmt', '1c_stk_pct'),
             'seriesColor', (CASE
             WHEN (tname LIKE '%_lmb' OR tname LIKE '%_lms') THEN
                 '#999'
@@ -1335,14 +1335,14 @@ UPDATE ${tableChart}
         series_label = (CASE
             WHEN (series_label = '1a_spy') THEN '1a spy change'
             WHEN (series_label = '1b_stk_lmt') THEN '1b stk holding ideal'
-            WHEN (series_label = '1c_stk_lmb') THEN '1c stk holding bracket min'
-            WHEN (series_label = '1d_stk_lms') THEN '1d stk holding bracket max'
-            WHEN (series_label = '1e_stk_pct') THEN '1e stk holding actual'
+            WHEN (series_label = '1c_stk_pct') THEN '1c stk holding actual'
+            WHEN (series_label = '1d_stk_lmb') THEN '1d stk holding bracket min'
+            WHEN (series_label = '1e_stk_lms') THEN '1e stk holding bracket max'
             WHEN (series_label = '1f_stk_pnl') THEN '1f stk gain'
             WHEN (series_label = '2b_sqq_lmt') THEN '2b sqq holding ideal'
-            WHEN (series_label = '2c_sqq_lmb') THEN '2c sqq holding bracket min'
-            WHEN (series_label = '2d_sqq_lms') THEN '2d sqq holding bracket max'
-            WHEN (series_label = '2e_sqq_pct') THEN '2e sqq holding actual'
+            WHEN (series_label = '2c_sqq_pct') THEN '2c sqq holding actual'
+            WHEN (series_label = '2d_sqq_lmb') THEN '2d sqq holding bracket min'
+            WHEN (series_label = '2e_sqq_lms') THEN '2e sqq holding bracket max'
             WHEN (series_label = '2f_sqq_pnl') THEN '2f sqq gain'
         END)
     WHERE
@@ -2988,8 +2988,7 @@ CREATE TEMP TABLE __chart_series_maxmin1 AS
     FROM __chart_series_xy1
     WHERE
         yy IS NOT NULL
-    GROUP BY
-        series_index;
+    GROUP BY series_index;
 
 -- table - __chart_options1 - select - options
 SELECT
@@ -3041,8 +3040,7 @@ SELECT
                 JSON_GROUP_ARRAY(xx) AS xdata,
                 JSON_GROUP_ARRAY(yy) AS ydata
             FROM __chart_series_xy1
-            GROUP BY
-                series_index
+            GROUP BY series_index
         ) USING (series_index)
     )
     JOIN (

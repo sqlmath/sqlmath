@@ -190,8 +190,12 @@ struct sqlite3_str {
   u8   accError;       /* SQLITE_NOMEM or SQLITE_TOOBIG */
   u8   printfFlags;    /* SQLITE_PRINTF flags below */
 };
-SQLITE_API int sqlite3_str_enlarge(sqlite3_str * p, int nn);
 // *INDENT-ON*
+SQLITE_API void str99JsonAppendText(
+    sqlite3_str * str99,
+    const char *zIn,
+    u32 nn
+);
 SQLMATH_API void str99ArrayAppendDouble(
     sqlite3_str * str99,
     const double val
@@ -976,60 +980,6 @@ SQLMATH_API void str99JsonAppendJenks(
     // str99 - to-json
     str99JsonAppendFloat64array(str99, result, 1 + ((int) result[0]) * 2);
     sqlite3_free(result);
-}
-
-SQLMATH_API void str99JsonAppendText(
-    sqlite3_str * str99,
-    const char *zIn,
-    u32 nn
-) {
-/* Append the nn-byte string in zIn to the end of the JsonString string
-** under construction.  Enclose the string in "..." and escape
-** any double-quotes or backslash characters contained within the
-** string.
-*/
-    u32 i;
-    if (zIn == 0 || ((nn + str99->nChar + 2 >= str99->nAlloc)
-            && sqlite3_str_enlarge(str99, nn + 2) == 0))
-        return;
-    str99->zText[str99->nChar++] = '"';
-    for (i = 0; i < nn; i++) {
-        unsigned char c = ((unsigned const char *) zIn)[i];
-        if (c == '"' || c == '\\') {
-          json_simple_escape:
-            if ((str99->nChar + nn + 3 - i > str99->nAlloc)
-                && sqlite3_str_enlarge(str99, nn + 3 - i) == 0)
-                return;
-            str99->zText[str99->nChar++] = '\\';
-        } else if (c <= 0x1f) {
-            static const char aSpecial[] = {
-                0, 0, 0, 0, 0, 0, 0, 0, 'b', 't', 'n', 0, 'f', 'r', 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-            };
-            assert(sizeof(aSpecial) == 32);
-            assert(aSpecial['\b'] == 'b');
-            assert(aSpecial['\f'] == 'f');
-            assert(aSpecial['\n'] == 'n');
-            assert(aSpecial['\r'] == 'r');
-            assert(aSpecial['\t'] == 't');
-            if (aSpecial[c]) {
-                c = aSpecial[c];
-                goto json_simple_escape;
-            }
-            if ((str99->nChar + nn + 7 + i > str99->nAlloc)
-                && sqlite3_str_enlarge(str99, nn + 7 - i) == 0)
-                return;
-            str99->zText[str99->nChar++] = '\\';
-            str99->zText[str99->nChar++] = 'u';
-            str99->zText[str99->nChar++] = '0';
-            str99->zText[str99->nChar++] = '0';
-            str99->zText[str99->nChar++] = '0' + (c >> 4);
-            c = "0123456789abcdef"[c & 0xf];
-        }
-        str99->zText[str99->nChar++] = c;
-    }
-    str99->zText[str99->nChar++] = '"';
-    assert(str99->nChar < str99->nAlloc);
 }
 
 SQLMATH_API void str99ResultBlob(
