@@ -3,6 +3,13 @@
 # Todo
 - none
 
+# v2023.3.21
+- sqlmath - move c-function str99JsonAppendText() from file sqlmath_base.c to sqlite3.c
+- sqlmath - merge file sqlite3_ext.c into sqlite3.c
+- sqlmath - streamline str99 c-code
+- sqlmath - add sql-functions jenks_concat(kk, col1, col2, ...), jenks_json(kk, jsonArray)
+- chart - bugfix - fix special-character in col-name being sql-injected
+
 # v2023.2.26
 - chart - bugfix - use spy for reference previous-ydate instead of 1a_mybot
 - sqlmath - add functions dbExecAndReturnLastJsonAsync(), dbExecAndReturnLastTextAsync()
