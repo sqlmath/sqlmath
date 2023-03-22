@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2023.2.26)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2023.3.21)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -449,7 +449,7 @@ string version
             valActual,
             valExpected
         });
-    });
+    }));
 });
 ...</pre></li>
 
@@ -515,7 +515,7 @@ jstestIt((
 <li>Example usage:<pre class="apidocCodePre">...
             db,
             sql: (`
-SELECT jfromfloat64array(jtofloat64array($valInput)) AS result;
+SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
             `)
         })
     )[0][0].result;
@@ -613,7 +613,7 @@ assertErrorThrownAsync(function () {
             0, 0
         ]
     ]
-].forEach(async function ([
+].map(async function ([
     sql, valExpected
 ], ii) {
     let valActual = Array.from(new Float64Array(
@@ -644,21 +644,21 @@ assertErrorThrownAsync(function () {
     );
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-            ]
-        ].forEach(function ([
-            input, kk, expected
-        ]) {
-            [
-                input, input.slice().reverse()
-            ].forEach(async function (input) {
-                let result = await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastJsonAsync</span>({
-                    bindList: {
-                        input: JSON.stringify(input),
-                        kk
-                    },
-                    db,
-                    sql: (`
-SELECT jfromfloat64array(jenks($kk, jtofloat64array($input))) AS result;
+// performance-hack
+if (iiInput === 0 &amp;&amp; iiSql &gt; 0) {
+    return;
+}
+await Promise.all([
+    input, input.slice().reverse()
+].map(async function (input) {
+    let result = await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastJsonAsync</span>({
+        bindList: {
+            input: JSON.stringify(input),
+            kk
+        },
+        db,
+        sql
+    });
 ...</pre></li>
 
 <li>
@@ -741,7 +741,7 @@ async function dbExecAndReturnLastTextAsync(option) {
             );
             modeRetry -= 1;
             await new Promise(function (resolve) {
-                setTimeout(resolve, 50);
+                setTimeout(resolve, 5_000 * !process.env.npm_config_mode_test);
             });
         }
     }
@@ -783,10 +783,7 @@ async function dbExecAndReturnLastTextAsync(option) {
         undefined, // 5
         undefined, // 6
         undefined, // 7 - response
-        ...externalbufferList        // 8
-    );
-    result = result[2 + 7];
-   ...
+        ...externalbufferList        // 8...
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
@@ -926,7 +923,7 @@ data = await dbExecAsync({
 </span>    return await cCallAsync(undefined, "_dbNoop", ...argList);
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-].forEach(async function ([
+].map(async function ([
     valInput, valExpected
 ]) {
     let baton;

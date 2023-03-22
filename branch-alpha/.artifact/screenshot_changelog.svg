@@ -41,91 +41,91 @@
     textLength="768"
     x="10"
     y="142"
-># v2023.2.26                                                                                     </tspan>
+># v2023.3.21                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="164"
->- chart - bugfix - use spy for reference previous-ydate instead of 1a_mybot                      </tspan>
+>- sqlmath - move c-function str99JsonAppendText() from file sqlmath_base.c to sqlite3.c          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="186"
->- sqlmath - add functions dbExecAndReturnLastJsonAsync(), dbExecAndReturnLastTextAsync()         </tspan>
+>- sqlmath - merge file sqlite3_ext.c into sqlite3.c                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="208"
->- sqlmath - add sql-functions jfromfloat64array(), jtofloat64array()                             </tspan>
+>- sqlmath - streamline str99 c-code                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="230"
->- sqlite - update to sqlite v3.39.4                                                              </tspan>
+>- sqlmath - add sql-functions jenks_concat(kk, col1, col2, ...), jenks_json(kk, jsonArray)       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="252"
->- ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSqu\</tspan>
+>- chart - bugfix - fix special-character in col-name being sql-injected                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
->  ash()                                                                                          </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="296"
->- ci - in windows-ci-env, alias node=node.exe instead of using winpty for pipes                  </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="318"
 >                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="296"
+># v2023.2.26                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="318"
+>- chart - bugfix - use spy for reference previous-ydate instead of 1a_mybot                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="340"
-># v2023.1.29                                                                                     </tspan>
+>- sqlmath - add functions dbExecAndReturnLastJsonAsync(), dbExecAndReturnLastTextAsync()         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
->- ci - add auto-logo-creation in private repo                                                    </tspan>
+>- sqlmath - add sql-functions jfromfloat64array(), jtofloat64array()                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
->- ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html                       </tspan>
+>- sqlite - update to sqlite v3.39.4                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->- jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote                 </tspan>
+>- ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSqu\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->- chart - remove unused external libraries chart.js, moment.js                                   </tspan>
+>  ash()                                                                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->- demo - bugfix - fix 1-week-chart ignoring friday before monday-holiday                         </tspan>
+>- ci - in windows-ci-env, alias node=node.exe instead of using winpty for pipes                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -137,175 +137,175 @@
     textLength="768"
     x="10"
     y="494"
-># v2022.12.31                                                                                    </tspan>
+># v2023.1.29                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->- chart - bugfix - fix intraday-weekly-chart truncating first datapoint                          </tspan>
+>- ci - add auto-logo-creation in private repo                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="538"
->- demo - use intraday data for weekly chart                                                      </tspan>
+>- ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
->- demo - allow stock ivv to be used as reference if spy is unavailable                           </tspan>
+>- jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="582"
->- demo - rename main-account from 01_mybot to 1a_mybot                                           </tspan>
+>- chart - remove unused external libraries chart.js, moment.js                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="604"
->                                                                                                 </tspan>
+>- demo - bugfix - fix 1-week-chart ignoring friday before monday-holiday                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="626"
-># v2022.11.20                                                                                    </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="648"
->- ci - auto-update version-number in main mjs-module                                             </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="670"
->- editor - update codemirror-editor to v5.65.10                                                  </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="692"
->- doc - add api-doc                                                                              </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="714"
->- doc - document quickstart-build, quickstart-website                                            </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="736"
->- sqlmath - bugfix - fix function dbFileImportOrExport() throwing incorrect error                </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="758"
->- chart - improve ergonomics to attach database and import csv/json                              </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="780"
->- demo - add hotkeys ctrl-o to open database, ctrl-s to save database                            </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="802"
->- demo - streamline charts sector, subsector, stock into single logic                            </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="824"
->- sqlmath - remove unused sqlite-extensions carray, csv from file sqlite3_ext.c                  </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="846"
->- chart - add chart-options xstep, ystep                                                         </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="868"
->- ci - update to nodejs v18                                                                      </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="890"
->- chart - redesign tooltip                                                                       </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="912"
->- chart - add xvalueConvert option juliandayToDate                                               </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="934"
->- chart - add dbtable-crud-operations dbtableImportCsv, dbtableImportJson                        </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="956"
->- chart - add intraday, 1-min chart                                                              </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="978"
 >                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="648"
+># v2022.12.31                                                                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="670"
+>- chart - bugfix - fix intraday-weekly-chart truncating first datapoint                          </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="692"
+>- demo - use intraday data for weekly chart                                                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="714"
+>- demo - allow stock ivv to be used as reference if spy is unavailable                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="736"
+>- demo - rename main-account from 01_mybot to 1a_mybot                                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="758"
+>                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="780"
+># v2022.11.20                                                                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="802"
+>- ci - auto-update version-number in main mjs-module                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="824"
+>- editor - update codemirror-editor to v5.65.10                                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="846"
+>- doc - add api-doc                                                                              </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="868"
+>- doc - document quickstart-build, quickstart-website                                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="890"
+>- sqlmath - bugfix - fix function dbFileImportOrExport() throwing incorrect error                </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="912"
+>- chart - improve ergonomics to attach database and import csv/json                              </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="934"
+>- demo - add hotkeys ctrl-o to open database, ctrl-s to save database                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="956"
+>- demo - streamline charts sector, subsector, stock into single logic                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="978"
+>- sqlmath - remove unused sqlite-extensions carray, csv from file sqlite3_ext.c                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="1000"
-># v2022.10.20                                                                                    </tspan>
+>- chart - add chart-options xstep, ystep                                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1022"
->- demo - add chart tradebot_historical_backtrack                                                 </tspan>
+>- ci - update to nodejs v18                                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1044"
->- chart - allow hiding series by clicking it in plot-area                                        </tspan>
+>- chart - redesign tooltip                                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1066"
->- coverage - add test-coverage for function sqlmathWebworkerInit()                               </tspan>
+>- chart - add xvalueConvert option juliandayToDate                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1088"
->- chart - use different color for category - short                                               </tspan>
+>- chart - add dbtable-crud-operations dbtableImportCsv, dbtableImportJson                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1110"
->- sqlmath - re-enable sql-function squared()                                                     </tspan>
+>- chart - add intraday, 1-min chart                                                              </tspan>
 
 </text>
 </svg>
