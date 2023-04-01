@@ -85,7 +85,7 @@ let debugInline = (function () {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2023.3.21";
+let version = "v2023.4.1-beta";
 
 function assertJsonEqual(aa, bb, message) {
 

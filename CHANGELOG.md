@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.4.1-beta
+- sqlmath - add file sqlmath_fann.c
+
 # v2023.3.21
 - sqlmath - move c-function str99JsonAppendText() from file sqlmath_base.c to sqlite3.c
 - sqlmath - merge file sqlite3_ext.c into sqlite3.c

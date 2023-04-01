@@ -815,6 +815,7 @@ shSqlmathUpdate() {(set -e
             sqlmath.mjs \
             sqlmath_base.c \
             sqlmath_browser.mjs \
+            sqlmath_fann.c \
             sqlmath_jenks.c \
             sqlmath_wrapper_wasm.js
         do
