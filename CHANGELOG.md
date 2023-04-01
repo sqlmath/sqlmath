@@ -4,6 +4,7 @@
 - none
 
 # v2023.4.1-beta
+- sqlmath - remove file sqlmath_fann.c
 - sqlmath - add file sqlmath_fann.c
 
 # v2023.3.21

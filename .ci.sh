@@ -45,6 +45,10 @@ import moduleChildProcess from "child_process";
 
 shCiBaseCustom() {(set -e
 # this function will run custom-code for base-ci
+    if [ -f requirements.txt ]
+    then
+        pip install -r requirements.txt
+    fi
     shCiEmsdkExport
     # .github_cache - restore
     if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
@@ -815,7 +819,6 @@ shSqlmathUpdate() {(set -e
             sqlmath.mjs \
             sqlmath_base.c \
             sqlmath_browser.mjs \
-            sqlmath_fann.c \
             sqlmath_jenks.c \
             sqlmath_wrapper_wasm.js
         do
