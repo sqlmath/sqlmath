@@ -290,13 +290,13 @@ SQLMATH_API const char *jsbatonValueStringArgi(
     int argi
 );
 
-SQLMATH_API double kthpercentile(
+SQLMATH_API int noop(
+);
+
+SQLMATH_API double percentile(
     double *arr,
     const int nn,
     const double kk
-);
-
-SQLMATH_API int noop(
 );
 
 SQLMATH_API const char *sqlmathSnprintfTrace(
@@ -1437,148 +1437,6 @@ SQLMATH_FNC static void sql_jsontofloat64array_func(
     (void) 0;
 }
 
-// SQLMATH_FNC sql_kthpercentile_func - start
-SQLMATH_API double kthpercentile(
-    double *arr,
-    const int nn,
-    const double kk
-) {
-// this function will find <kk>-th-percentile element in <arr>
-// using quickselect-algorithm
-// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-    if (nn <= 0) {
-        return 0;
-    }
-    double aa = *arr;
-    double tmp;
-    int kk2 = kk * nn - 1;
-    // handle kk <= 0
-    if (kk2 <= 0) {
-        kk2 = nn;
-        while (kk2 > 0) {
-            kk2 -= 1;
-            aa = MIN(aa, arr[kk2]);
-        }
-        return aa;
-    }
-    // handle kk >= nn - 1
-    if (kk2 + 1 >= nn) {
-        kk2 = nn;
-        while (kk2 > 0) {
-            kk2 -= 1;
-            aa = MAX(aa, arr[kk2]);
-        }
-        return aa;
-    }
-    int ii;
-    int ir;
-    int jj;
-    int ll;
-    int mid;
-    ll = 0;
-    ir = nn - 1;
-    while (1) {
-        if (ir <= ll + 1) {
-            if (ir == ll + 1 && arr[ir] < arr[ll]) {
-                SWAP(arr[ll], arr[ir]);
-            }
-            return arr[kk2];
-        } else {
-            mid = (ll + ir) >> 1;
-            SWAP(arr[mid], arr[ll + 1]);
-            if (arr[ll] > arr[ir]) {
-                SWAP(arr[ll], arr[ir]);
-            }
-            if (arr[ll + 1] > arr[ir]) {
-                SWAP(arr[ll + 1], arr[ir]);
-            }
-            if (arr[ll] > arr[ll + 1]) {
-                SWAP(arr[ll], arr[ll + 1]);
-            }
-            ii = ll + 1;
-            jj = ir;
-            aa = arr[ll + 1];
-            while (1) {
-                while (1) {
-                    ii += 1;
-                    if (arr[ii] >= aa) {
-                        break;
-                    }
-                }
-                while (1) {
-                    jj -= 1;
-                    if (arr[jj] <= aa) {
-                        break;
-                    }
-                }
-                if (jj < ii) {
-                    break;
-                }
-                SWAP(arr[ii], arr[jj]);
-            }
-            arr[ll + 1] = arr[jj];
-            arr[jj] = aa;
-            if (jj >= kk2) {
-                ir = jj - 1;
-            }
-            if (jj <= kk2) {
-                ll = ii;
-            }
-        }
-    }
-}
-
-SQLMATH_FNC static void sql_kthpercentile_final(
-    sqlite3_context * context
-) {
-// this function will aggregate kth-percentile element
-    // declare var
-    int errcode = 0;
-    // str99 - init
-    sqlite3_str *str99 =
-        (sqlite3_str *) sqlite3_aggregate_context(context, 0);
-    if (str99 == NULL) {
-        sqlite3_result_null(context);
-        return;
-    }
-    STR99_RESULT_ERROR(str99);
-    // str99 - result
-    int nn = sqlite3_str_length(str99) / 8 - 1;
-    sqlite3_result_double(context,
-        kthpercentile(((double *) str99->zText) + 1, nn,
-            ((double *) str99->zText)[0]));
-  catch_error:
-    (void) 0;
-}
-
-SQLMATH_FNC static void sql_kthpercentile_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// this function will aggregate kth-percentile element
-    UNUSED(argc);
-    // str99 - init
-    sqlite3_str *str99 = (sqlite3_str *) sqlite3_aggregate_context(context,
-        sizeof(sqlite3_str));
-    if (str99 == NULL) {
-        return;
-    }
-    // str99 - init zText
-    if (sqlite3_str_length(str99) == 0) {
-        str99->mxAlloc = SQLITE_MAX_LENGTH2;
-        str99ArrayAppendDouble(str99, sqlite3_value_double(argv[1]));
-    }
-    // str99 - null-case
-    if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
-        return;
-    }
-    // str99 - append double
-    str99ArrayAppendDouble(str99, sqlite3_value_double(argv[0]));
-}
-
-// SQLMATH_FNC sql_kthpercentile_func - end
-
 // SQLMATH_FNC sql_marginoferror95_func - start
 SQLMATH_API double marginoferror95(
     double nn,
@@ -1662,6 +1520,154 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 }
 
 // SQLMATH_FNC sql_matrix2d_concat_func - end
+
+// SQLMATH_FNC sql_percentile_func - start
+static double quickselect(
+    double *arr,
+    const int nn,
+    const int kk
+) {
+// this function will find <kk>-th element in <arr> using quickselect-algorithm
+// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
+    if (nn <= 0) {
+        return 0;
+    }
+    double aa = *arr;
+    double tmp = 0;
+    int ii;
+    int ir;
+    int jj;
+    int ll;
+    int mid;
+    ll = 0;
+    ir = nn - 1;
+    while (1) {
+        if (ir <= ll + 1) {
+            if (ir == ll + 1 && arr[ir] < arr[ll]) {
+                SWAP(arr[ll], arr[ir]);
+            }
+            return arr[kk];
+        } else {
+            mid = (ll + ir) >> 1;
+            SWAP(arr[mid], arr[ll + 1]);
+            if (arr[ll] > arr[ir]) {
+                SWAP(arr[ll], arr[ir]);
+            }
+            if (arr[ll + 1] > arr[ir]) {
+                SWAP(arr[ll + 1], arr[ir]);
+            }
+            if (arr[ll] > arr[ll + 1]) {
+                SWAP(arr[ll], arr[ll + 1]);
+            }
+            ii = ll + 1;
+            jj = ir;
+            aa = arr[ll + 1];
+            while (1) {
+                while (1) {
+                    ii += 1;
+                    if (arr[ii] >= aa) {
+                        break;
+                    }
+                }
+                while (1) {
+                    jj -= 1;
+                    if (arr[jj] <= aa) {
+                        break;
+                    }
+                }
+                if (jj < ii) {
+                    break;
+                }
+                SWAP(arr[ii], arr[jj]);
+            }
+            arr[ll + 1] = arr[jj];
+            arr[jj] = aa;
+            if (jj >= kk) {
+                ir = jj - 1;
+            }
+            if (jj <= kk) {
+                ll = ii;
+            }
+        }
+    }
+}
+
+SQLMATH_API double percentile(
+    double *arr,
+    const int nn,
+    const double pp
+) {
+// this function will find <pp>-th-percentile element in <arr>
+// using quickselect-algorithm
+// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
+    if (nn <= 0) {
+        return 0;
+    }
+    const int kk = MAX(0, MIN(nn - 1, (const int) (pp * nn)));
+    // handle even-case
+    if ((0 < kk && kk + 1 <= nn) && (double) kk == (pp * nn)) {
+        return 0.5 * (quickselect(arr, nn, kk) + quickselect(arr, nn,
+                kk - 1));
+    }
+    // handle odd-case
+    return quickselect(arr, nn, kk);
+}
+
+SQLMATH_FNC static void sql_percentile_final(
+    sqlite3_context * context
+) {
+// this function will aggregate kth-percentile element
+    // declare var
+    int errcode = 0;
+    // str99 - init
+    sqlite3_str *str99 =
+        (sqlite3_str *) sqlite3_aggregate_context(context, 0);
+    if (str99 == NULL) {
+        sqlite3_result_null(context);
+        return;
+    }
+    STR99_RESULT_ERROR(str99);
+    // str99 - result
+    int nn = sqlite3_str_length(str99) / 8 - 1;
+    if (nn == 0) {
+        sqlite3_result_null(context);
+        return;
+    }
+    sqlite3_result_double(context,
+        percentile(((double *) str99->zText) + 1, nn,
+            ((double *) str99->zText)[0]));
+  catch_error:
+    (void) 0;
+}
+
+SQLMATH_FNC static void sql_percentile_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will aggregate kth-percentile element
+    UNUSED(argc);
+    // str99 - init
+    sqlite3_str *str99 = (sqlite3_str *) sqlite3_aggregate_context(context,
+        sizeof(sqlite3_str));
+    if (str99 == NULL) {
+        return;
+    }
+    // str99 - init zText
+    if (sqlite3_str_length(str99) == 0) {
+        str99->mxAlloc = SQLITE_MAX_LENGTH2;
+        str99ArrayAppendDouble(str99, sqlite3_value_double(argv[1]));
+    }
+    // str99 - null-case
+    if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
+        return;
+    }
+    // str99 - append double
+    str99ArrayAppendDouble(str99, sqlite3_value_double(argv[0]));
+}
+
+// SQLMATH_FNC sql_percentile_func - end
+
 
 SQLMATH_FNC static void sql_roundorzero_func(
     sqlite3_context * context,
@@ -1805,8 +1811,8 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION2(jenks_concat, -1);
-    SQLITE3_CREATE_FUNCTION2(kthpercentile, 2);
     SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
+    SQLITE3_CREATE_FUNCTION2(percentile, 2);
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);

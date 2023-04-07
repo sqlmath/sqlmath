@@ -1028,59 +1028,6 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
         }));
     });
     jstestIt((
-        "test sqlite-extension-kthpercentile handling-behavior"
-    ), async function test_sqliteExtensionKthpercentile() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
-        await Promise.all([
-            [[], -99, 1],
-            [[], 0, 1],
-            [[], 0.125, 1],
-            [[], 0.25, 2],
-            [[], 0.375, 3],
-            [[], 0.5, 4],
-            [[], 0.625, 5],
-            [[], 0.75, 6],
-            [[], 0.875, 7],
-            [[], 1, 8],
-            [[], 99, 8],
-            [[0.5], 0, 0.5],
-            [[0.5], 0.125, 0.5],
-            [[1.5], 0.25, 1.5],
-            [[2.5], 0.375, 2.5],
-            [[3.5], 0.5, 3.5],
-            [[4.5], 0.625, 4.5],
-            [[5.5], 0.75, 5.5],
-            [[6.5], 0.875, 6.5],
-            [[7.5], 1, 8]
-        ].map(async function ([
-            data, kk, valExpected
-        ]) {
-            let valActual;
-            data = data.concat([
-                undefined, undefined, 8, 7, 6, 5, 4, 3, 2, 1, undefined
-            ]);
-            valActual = noop(
-                await dbExecAsync({
-                    bindList: {
-                        tmp1: JSON.stringify(data)
-                    },
-                    db,
-                    sql: (`
-SELECT KTHPERCENTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1);
--- test null-case handling-behavior
-SELECT KTHPERCENTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
-                    `)
-                })
-            )[0][0].val;
-            assertJsonEqual(valActual, valExpected, {
-                data,
-                kk
-            });
-        }));
-    });
-    jstestIt((
         "test sqlite-extension-math handling-behavior"
     ), async function test_sqliteExtensionMath() {
         let db = await dbOpenAsync({
@@ -1306,6 +1253,96 @@ SELECT
                 valActual,
                 valExpected
             });
+        }));
+    });
+    jstestIt((
+        "test sqlite-extension-percentile handling-behavior"
+    ), async function test_sqliteExtensionPercentile() {
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        await Promise.all([
+            [
+                [[], -99, null],
+                [[], 0, null],
+                [[], 0.5, null],
+                [[], 1, null],
+                [[], 99, null],
+                [[null, null, 1, 1, 2, 3, 4], 0.5, 2],
+                [[null, null, 1, 2, 3, 4], 0.5, 2.5],
+                [[null], 0.5, null]
+            ],
+            [
+                [[], -99, 1],
+                [[], 0, 1],
+                [[], 0.125, 1.5],
+                [[], 0.250, 2.5],
+                [[], 0.375, 3.5],
+                [[], 0.500, 4.5],
+                [[], 0.625, 5.5],
+                [[], 0.750, 6.5],
+                [[], 0.875, 7.5],
+                [[], 1, 8],
+                [[], 99, 8],
+                [[0.1], 0, 0.1],
+                [[1.1], 0.125, 1.1],
+                [[2.1], 0.250, 2.1],
+                [[3.1], 0.375, 3.1],
+                [[4.1], 0.500, 4.1],
+                [[4.1], 0.625, 5],
+                [[5.1], 0.750, 6],
+                [[6.1], 0.875, 7],
+                [[7.1], 1, 8],
+                [[0], 0, 0],
+                [[1], 0.125, 1],
+                [[2], 0.250, 2],
+                [[3], 0.375, 3],
+                [[4], 0.500, 4],
+                [[5], 0.625, 5],
+                [[6], 0.750, 6],
+                [[7], 0.875, 7],
+                [[8], 1, 8],
+                [[], 0, 1]
+            ].map(function ([
+                data, kk, valExpected
+            ]) {
+                return [
+                    data.concat([
+                        undefined, undefined, undefined, undefined,
+                        8, 7, 6, 5, 4, 3, 2, 1,
+                        undefined
+                    ]),
+                    kk,
+                    valExpected
+                ];
+            })
+        ].flat().map(async function ([
+            data, kk, valExpected
+        ]) {
+            await Promise.all([
+                data,
+                Array.from(data).reverse()
+            ].map(async function (data) {
+                let valActual = noop(
+                    await dbExecAsync({
+                        bindList: {
+                            tmp1: JSON.stringify(data)
+                        },
+                        db,
+                        sql: (`
+SELECT PERCENTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1);
+-- test null-case handling-behavior
+SELECT PERCENTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
+                        `)
+                    })
+                )[0][0].val;
+                assertJsonEqual(valActual, valExpected, {
+                    data,
+                    kk,
+                    valActual,
+                    valExpected
+                });
+            }));
         }));
     });
 });

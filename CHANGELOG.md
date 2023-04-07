@@ -4,6 +4,7 @@
 - none
 
 # v2023.4.1-beta
+- sqlmath - update sql-function percentile() with off-by-one bugfix
 - sqlmath - remove file sqlmath_fann.c
 - sqlmath - add file sqlmath_fann.c
 
