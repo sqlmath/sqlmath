@@ -4,6 +4,9 @@
 - none
 
 # v2023.4.1-beta
+- sqlmath - rename sql-function percentile() to quantile()
+- ci - add shell-function shCiPreCustom2() to setup python in custom-ci
+- ci - remove mandatory python ci
 - sqlmath - update sql-function percentile() with off-by-one bugfix
 - sqlmath - remove file sqlmath_fann.c
 - sqlmath - add file sqlmath_fann.c

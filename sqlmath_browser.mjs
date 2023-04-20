@@ -2847,9 +2847,9 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
                 + stringHtmlSafe((
                     `right-click for crud operation\n\n`
                 ) + JSON.stringify({
-                    colList,
                     dbtableFullname,
-                    rowCount
+                    rowCount,
+                    colList //jslint-ignore-line
                 }, undefined, 4))
                 + `"`
             );
@@ -4586,7 +4586,16 @@ SELECT
             rowList[0]
             ? rowList[0].slice(1)
             : []
-        );
+        ).map(function (row) {
+            return row.map(function (val) {
+                return (
+                    // bugfix - truncate large text to avoid freezing browser
+                    (typeof val === "string" && val.length > 65536)
+                    ? val.slice(0, 65536)
+                    : val
+                );
+            });
+        });
         // recurse - draw
         await uitableAjax(baton, {
             rowList,

@@ -1256,8 +1256,8 @@ SELECT
         }));
     });
     jstestIt((
-        "test sqlite-extension-percentile handling-behavior"
-    ), async function test_sqliteExtensionPercentile() {
+        "test sqlite-extension-quantile handling-behavior"
+    ), async function test_sqliteExtensionQuantile() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1330,9 +1330,9 @@ SELECT
                         },
                         db,
                         sql: (`
-SELECT PERCENTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1);
+SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1);
 -- test null-case handling-behavior
-SELECT PERCENTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
+SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
                         `)
                     })
                 )[0][0].val;

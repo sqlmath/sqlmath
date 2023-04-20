@@ -293,10 +293,10 @@ SQLMATH_API const char *jsbatonValueStringArgi(
 SQLMATH_API int noop(
 );
 
-SQLMATH_API double percentile(
+SQLMATH_API double quantile(
     double *arr,
     const int nn,
-    const double kk
+    const double pp
 );
 
 SQLMATH_API const char *sqlmathSnprintfTrace(
@@ -1521,7 +1521,7 @@ SQLMATH_FNC static void sql_matrix2d_concat_step(
 
 // SQLMATH_FNC sql_matrix2d_concat_func - end
 
-// SQLMATH_FNC sql_percentile_func - start
+// SQLMATH_FNC sql_quantile_func - start
 static double quickselect(
     double *arr,
     const int nn,
@@ -1592,12 +1592,12 @@ static double quickselect(
     }
 }
 
-SQLMATH_API double percentile(
+SQLMATH_API double quantile(
     double *arr,
     const int nn,
     const double pp
 ) {
-// this function will find <pp>-th-percentile element in <arr>
+// this function will find <pp>-th-quantile element in <arr>
 // using quickselect-algorithm
 // https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
     if (nn <= 0) {
@@ -1613,10 +1613,10 @@ SQLMATH_API double percentile(
     return quickselect(arr, nn, kk);
 }
 
-SQLMATH_FNC static void sql_percentile_final(
+SQLMATH_FNC static void sql_quantile_final(
     sqlite3_context * context
 ) {
-// this function will aggregate kth-percentile element
+// this function will aggregate kth-quantile element
     // declare var
     int errcode = 0;
     // str99 - init
@@ -1634,18 +1634,18 @@ SQLMATH_FNC static void sql_percentile_final(
         return;
     }
     sqlite3_result_double(context,
-        percentile(((double *) str99->zText) + 1, nn,
+        quantile(((double *) str99->zText) + 1, nn,
             ((double *) str99->zText)[0]));
   catch_error:
     (void) 0;
 }
 
-SQLMATH_FNC static void sql_percentile_step(
+SQLMATH_FNC static void sql_quantile_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will aggregate kth-percentile element
+// this function will aggregate kth-quantile element
     UNUSED(argc);
     // str99 - init
     sqlite3_str *str99 = (sqlite3_str *) sqlite3_aggregate_context(context,
@@ -1666,7 +1666,7 @@ SQLMATH_FNC static void sql_percentile_step(
     str99ArrayAppendDouble(str99, sqlite3_value_double(argv[0]));
 }
 
-// SQLMATH_FNC sql_percentile_func - end
+// SQLMATH_FNC sql_quantile_func - end
 
 
 SQLMATH_FNC static void sql_roundorzero_func(
@@ -1812,7 +1812,7 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION2(jenks_concat, -1);
     SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
-    SQLITE3_CREATE_FUNCTION2(percentile, 2);
+    SQLITE3_CREATE_FUNCTION2(quantile, 2);
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
