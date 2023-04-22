@@ -52,7 +52,7 @@
      "functionName": "assertJsonEqual",
      "ranges": [
       {
-       "count": 772,
+       "count": 828,
        "endOffset": 4401,
        "startOffset": 3825
       },
@@ -114,7 +114,7 @@
      "functionName": "assertOrThrow",
      "ranges": [
       {
-       "count": 8387,
+       "count": 9227,
        "endOffset": 5141,
        "startOffset": 4843
       },
@@ -140,7 +140,7 @@
      "functionName": "cCallAsync",
      "ranges": [
       {
-       "count": 616,
+       "count": 672,
        "endOffset": 7713,
        "startOffset": 5143
       },
@@ -150,7 +150,7 @@
        "startOffset": 5469
       },
       {
-       "count": 15031,
+       "count": 16375,
        "endOffset": 5610,
        "startOffset": 5577
       },
@@ -160,12 +160,12 @@
        "startOffset": 7522
       },
       {
-       "count": 604,
+       "count": 660,
        "endOffset": 7604,
        "startOffset": 7569
       },
       {
-       "count": 556,
+       "count": 612,
        "endOffset": 7622,
        "startOffset": 7604
       },
@@ -181,32 +181,32 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 19412,
+       "count": 21204,
        "endOffset": 7102,
        "startOffset": 5674
       },
       {
-       "count": 15316,
+       "count": 16716,
        "endOffset": 5770,
        "startOffset": 5756
       },
       {
-       "count": 15879,
+       "count": 17335,
        "endOffset": 5886,
        "startOffset": 5779
       },
       {
-       "count": 1153,
+       "count": 1265,
        "endOffset": 6413,
        "startOffset": 5895
       },
       {
-       "count": 1148,
+       "count": 1260,
        "endOffset": 6106,
        "startOffset": 6073
       },
       {
-       "count": 581,
+       "count": 637,
        "endOffset": 6815,
        "startOffset": 6470
       },
@@ -216,12 +216,12 @@
        "startOffset": 6659
       },
       {
-       "count": 580,
+       "count": 636,
        "endOffset": 6761,
        "startOffset": 6743
       },
       {
-       "count": 1799,
+       "count": 1967,
        "endOffset": 6865,
        "startOffset": 6825
       },
@@ -231,7 +231,7 @@
        "startOffset": 6865
       },
       {
-       "count": 1795,
+       "count": 1963,
        "endOffset": 7059,
        "startOffset": 7021
       },
@@ -247,7 +247,7 @@
      "functionName": "dbCallAsync",
      "ranges": [
       {
-       "count": 565,
+       "count": 621,
        "endOffset": 8170,
        "startOffset": 7715
       }
@@ -258,7 +258,7 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 563,
+       "count": 619,
        "endOffset": 8166,
        "startOffset": 8019
       }
@@ -296,12 +296,12 @@
      "functionName": "dbDeref",
      "ranges": [
       {
-       "count": 568,
+       "count": 624,
        "endOffset": 9198,
        "startOffset": 8782
       },
       {
-       "count": 565,
+       "count": 621,
        "endOffset": 8927,
        "startOffset": 8917
       }
@@ -345,7 +345,7 @@
      "functionName": "dbExecAsync",
      "ranges": [
       {
-       "count": 564,
+       "count": 620,
        "endOffset": 12621,
        "startOffset": 10007
       },
@@ -360,7 +360,7 @@
        "startOffset": 11064
       },
       {
-       "count": 205,
+       "count": 261,
        "endOffset": 11120,
        "startOffset": 11090
       },
@@ -370,12 +370,12 @@
        "startOffset": 11833
       },
       {
-       "count": 397,
+       "count": 453,
        "endOffset": 11852,
        "startOffset": 11849
       },
       {
-       "count": 512,
+       "count": 568,
        "endOffset": 12056,
        "startOffset": 11995
       },
@@ -395,7 +395,7 @@
        "startOffset": 12124
       },
       {
-       "count": 162,
+       "count": 218,
        "endOffset": 12613,
        "startOffset": 12202
       }
@@ -417,12 +417,12 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 750,
+       "count": 806,
        "endOffset": 11515,
        "startOffset": 11194
       },
       {
-       "count": 413,
+       "count": 469,
        "endOffset": 11388,
        "startOffset": 11255
       }
@@ -433,7 +433,7 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 181,
+       "count": 293,
        "endOffset": 12611,
        "startOffset": 12300
       }
@@ -444,7 +444,7 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 181,
+       "count": 293,
        "endOffset": 12599,
        "startOffset": 12395
       }
@@ -455,7 +455,7 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 181,
+       "count": 293,
        "endOffset": 12554,
        "startOffset": 12475
       }
@@ -561,17 +561,17 @@
      "functionName": "isExternalBuffer",
      "ranges": [
       {
-       "count": 3671,
+       "count": 4063,
        "endOffset": 15816,
        "startOffset": 15511
       },
       {
-       "count": 1880,
+       "count": 2104,
        "endOffset": 15813,
        "startOffset": 15635
       },
       {
-       "count": 1878,
+       "count": 2102,
        "endOffset": 15807,
        "startOffset": 15688
       }
@@ -582,7 +582,7 @@
      "functionName": "jsbatonCreate",
      "ranges": [
       {
-       "count": 620,
+       "count": 676,
        "endOffset": 16045,
        "startOffset": 15818
       }
@@ -593,12 +593,12 @@
      "functionName": "jsbatonValuePush",
      "ranges": [
       {
-       "count": 2350,
+       "count": 2574,
        "endOffset": 22284,
        "startOffset": 16047
       },
       {
-       "count": 2335,
+       "count": 2559,
        "endOffset": 17225,
        "startOffset": 17210
       },
@@ -668,7 +668,7 @@
        "startOffset": 18368
       },
       {
-       "count": 1875,
+       "count": 2099,
        "endOffset": 19775,
        "startOffset": 18511
       },
@@ -678,7 +678,7 @@
        "startOffset": 18592
       },
       {
-       "count": 1871,
+       "count": 2095,
        "endOffset": 19123,
        "startOffset": 19056
       },
@@ -698,12 +698,12 @@
        "startOffset": 19276
       },
       {
-       "count": 1842,
+       "count": 2066,
        "endOffset": 19491,
        "startOffset": 19389
       },
       {
-       "count": 1825,
+       "count": 2049,
        "endOffset": 19498,
        "startOffset": 19491
       },
@@ -723,7 +723,7 @@
        "startOffset": 19589
       },
       {
-       "count": 41,
+       "count": 81,
        "endOffset": 20462,
        "startOffset": 20039
       },
@@ -733,12 +733,12 @@
        "startOffset": 20633
       },
       {
-       "count": 1863,
+       "count": 2087,
        "endOffset": 21333,
        "startOffset": 20664
       },
       {
-       "count": 1187,
+       "count": 1299,
        "endOffset": 20835,
        "startOffset": 20769
       },
@@ -763,7 +763,7 @@
        "startOffset": 21875
       },
       {
-       "count": 2348,
+       "count": 2572,
        "endOffset": 22283,
        "startOffset": 22264
       }
@@ -785,7 +785,7 @@
      "functionName": "noop",
      "ranges": [
       {
-       "count": 118,
+       "count": 174,
        "endOffset": 22768,
        "startOffset": 22674
       }
@@ -796,17 +796,17 @@
      "functionName": "objectDeepCopyWithKeysSorted",
      "ranges": [
       {
-       "count": 8000,
+       "count": 8112,
        "endOffset": 23342,
        "startOffset": 22770
       },
       {
-       "count": 2896,
+       "count": 2920,
        "endOffset": 22940,
        "startOffset": 22933
       },
       {
-       "count": 5850,
+       "count": 5962,
        "endOffset": 22969,
        "startOffset": 22942
       },
@@ -970,7 +970,7 @@
      "ranges": [
       {
        "count": 1,
-       "endOffset": 40624,
+       "endOffset": 41912,
        "startOffset": 0
       }
      ],
@@ -1562,7 +1562,7 @@
      "ranges": [
       {
        "count": 1,
-       "endOffset": 40196,
+       "endOffset": 41484,
        "startOffset": 19688
       }
      ],
@@ -1758,34 +1758,12 @@
      "isBlockCoverage": true
     },
     {
-     "functionName": "test_sqliteExtensionKthpercentile",
-     "ranges": [
-      {
-       "count": 1,
-       "endOffset": 33721,
-       "startOffset": 32164
-      }
-     ],
-     "isBlockCoverage": true
-    },
-    {
-     "functionName": "",
-     "ranges": [
-      {
-       "count": 20,
-       "endOffset": 33712,
-       "startOffset": 32914
-      }
-     ],
-     "isBlockCoverage": true
-    },
-    {
      "functionName": "test_sqliteExtensionMath",
      "ranges": [
       {
        "count": 1,
-       "endOffset": 38611,
-       "startOffset": 33801
+       "endOffset": 36965,
+       "startOffset": 32155
       }
      ],
      "isBlockCoverage": true
@@ -1795,8 +1773,8 @@
      "ranges": [
       {
        "count": 28,
-       "endOffset": 38603,
-       "startOffset": 38002
+       "endOffset": 36957,
+       "startOffset": 36356
       }
      ],
      "isBlockCoverage": true
@@ -1806,8 +1784,8 @@
      "ranges": [
       {
        "count": 81,
-       "endOffset": 38591,
-       "startOffset": 38098
+       "endOffset": 36945,
+       "startOffset": 36452
       }
      ],
      "isBlockCoverage": true
@@ -1817,8 +1795,8 @@
      "ranges": [
       {
        "count": 1,
-       "endOffset": 40192,
-       "startOffset": 38702
+       "endOffset": 38546,
+       "startOffset": 37056
       }
      ],
      "isBlockCoverage": true
@@ -1828,8 +1806,52 @@
      "ranges": [
       {
        "count": 3,
-       "endOffset": 40183,
-       "startOffset": 39751
+       "endOffset": 38537,
+       "startOffset": 38105
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqliteExtensionQuantile",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 41480,
+       "startOffset": 38630
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 30,
+       "endOffset": 40528,
+       "startOffset": 40140
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 38,
+       "endOffset": 41471,
+       "startOffset": 40551
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 76,
+       "endOffset": 41458,
+       "startOffset": 40731
       }
      ],
      "isBlockCoverage": true
@@ -1839,8 +1861,8 @@
      "ranges": [
       {
        "count": 1,
-       "endOffset": 40621,
-       "startOffset": 40270
+       "endOffset": 41909,
+       "startOffset": 41558
       }
      ],
      "isBlockCoverage": true
@@ -1850,8 +1872,8 @@
      "ranges": [
       {
        "count": 1,
-       "endOffset": 40617,
-       "startOffset": 40385
+       "endOffset": 41905,
+       "startOffset": 41673
       }
      ],
      "isBlockCoverage": true

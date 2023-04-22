@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2023.3.21)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2023.4.22)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -436,21 +436,21 @@ string version
     }
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-    ], ii) {
-        let valActual = Array.from(new Float64Array(
-            await dbExecAndReturnLastBlobAsync({
-                db,
-                sql
+                sql: (`
+SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1);
+-- test null-case handling-behavior
+SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
+                `)
             })
-        ));
+        )[0][0].val;
         <span class="apidocCodeKeywordSpan">assertJsonEqual</span>(valActual, valExpected, {
-            ii,
-            sql,
+            data,
+            kk,
             valActual,
             valExpected
         });
     }));
-});
+}));
 ...</pre></li>
 
 <li>
@@ -787,21 +787,21 @@ async function dbExecAndReturnLastTextAsync(option) {
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-    arg, funcDict
-]) {
-    Object.entries(funcDict).forEach(async function ([
-        func, valExpected
-    ]) {
-        let sql = `SELECT ${func}(${arg}) AS val`;
-        let valActual = noop(
-            await <span class="apidocCodeKeywordSpan">dbExecAsync</span>({
-                db,
-                sql
-            })
-        )[0][0].val;
-        assertJsonEqual(valActual, valExpected, {
-            sql,
-            valActual,
+            data, kk, valExpected
+        ]) {
+            await Promise.all([
+                data,
+                Array.from(data).reverse()
+            ].map(async function (data) {
+                let valActual = noop(
+                    await <span class="apidocCodeKeywordSpan">dbExecAsync</span>({
+                        bindList: {
+                            tmp1: JSON.stringify(data)
+                        },
+                        db,
+                        sql: (`
+SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1);
+-- test null-case handling-behavior
 ...</pre></li>
 
 <li>
@@ -1110,21 +1110,21 @@ if (typeof valInput === "bigint") {
 </span>    return val;
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-}).forEach(function ([
-    arg, funcDict
-]) {
-    Object.entries(funcDict).forEach(async function ([
-        func, valExpected
-    ]) {
-        let sql = `SELECT ${func}(${arg}) AS val`;
-        let valActual = <span class="apidocCodeKeywordSpan">noop</span>(
-            await dbExecAsync({
-                db,
-                sql
-            })
-        )[0][0].val;
-        assertJsonEqual(valActual, valExpected, {
-            sql,
+        ].flat().map(async function ([
+            data, kk, valExpected
+        ]) {
+            await Promise.all([
+                data,
+                Array.from(data).reverse()
+            ].map(async function (data) {
+                let valActual = <span class="apidocCodeKeywordSpan">noop</span>(
+                    await dbExecAsync({
+                        bindList: {
+                            tmp1: JSON.stringify(data)
+                        },
+                        db,
+                        sql: (`
+SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1);
 ...</pre></li>
 
 <li>
