@@ -3,6 +3,14 @@
 # Todo
 - none
 
+# v2023.4.22
+- sqlmath - rename sql-function percentile() to quantile()
+- ci - add shell-function shCiPreCustom2() to setup python in custom-ci
+- ci - remove mandatory python ci
+- sqlmath - update sql-function percentile() with off-by-one bugfix
+- sqlmath - remove file sqlmath_fann.c
+- sqlmath - add file sqlmath_fann.c
+
 # v2023.3.21
 - sqlmath - move c-function str99JsonAppendText() from file sqlmath_base.c to sqlite3.c
 - sqlmath - merge file sqlite3_ext.c into sqlite3.c
