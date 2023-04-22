@@ -51,6 +51,7 @@ shCiBaseCustom() {(set -e
     then
         cp -a .github_cache/* . || true # js-hack - */
     fi
+    # run nodejs-ci
     shCiBuildNodejs
     if (shCiMatrixIsmainName)
     then
@@ -551,6 +552,7 @@ shCiBuildWasm() {(set -e
         #
         OPTION2="$OPTION2 -DEMSCRIPTEN"
         OPTION2="$OPTION2 -DSQLITE_DISABLE_LFS"
+        OPTION2="$OPTION2 -DSQLITE_ENABLE_DBSTAT_VTAB=1"
         OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3"
         OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3_PARENTHESIS"
         OPTION2="$OPTION2 -DSQLITE_ENABLE_MATH_FUNCTIONS"
@@ -777,7 +779,7 @@ import modulePath from "path";
     COVERAGE_EXCLUDE="--exclude=jslint.mjs"
     if (node --eval '
 require("assert")(require("./package.json").name !== "sqlmath");
-' > /dev/null 2>&1)
+' >/dev/null 2>&1)
     then
         COVERAGE_EXCLUDE="$COVERAGE_EXCLUDE --exclude=sqlmath.mjs"
     fi
