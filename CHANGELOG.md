@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2023.4.1-beta
+# v2023.4.22
 - sqlmath - rename sql-function percentile() to quantile()
 - ci - add shell-function shCiPreCustom2() to setup python in custom-ci
 - ci - remove mandatory python ci
