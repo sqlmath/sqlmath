@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.5.1-beta
+- sqlmath - add sql-function fill_forward()
+
 # v2023.4.22
 - sqlmath - rename sql-function percentile() to quantile()
 - ci - add shell-function shCiPreCustom2() to setup python in custom-ci

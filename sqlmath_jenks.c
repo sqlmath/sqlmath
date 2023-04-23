@@ -58,7 +58,7 @@ file sqlmath_h - start
 #include <string.h>
 #define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
-#define UNUSED(x) ((void)(x))
+#define UNUSED_PARAMETER(x) ((void)(x))
 #define sqlite3_free free
 static void *sqlite3_malloc(
     int size
@@ -122,7 +122,7 @@ SQLMATH_API double *jenksCreate(
     // 64 should be large enough to accomodate most arrays
     int stackList[64][4] = { 0 };
     // int stackList[nnLog][4] = { 0 };
-    UNUSED(nnLog);
+    UNUSED_PARAMETER(nnLog);
     // Allocate pTmp.
     kk = MIN(nn, kk);
     nn = MAX(nn, kk);

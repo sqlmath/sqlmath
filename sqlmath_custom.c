@@ -38,9 +38,9 @@ int sqlite3_sqlmath_ext_custom_init(
 ) {
     // coverage-hack
     noop();
-    UNUSED(db);
-    UNUSED(pApi);
-    UNUSED(pzErrMsg);
+    UNUSED_PARAMETER(db);
+    UNUSED_PARAMETER(pApi);
+    UNUSED_PARAMETER(pzErrMsg);
     return 0;
 }
 

@@ -678,7 +678,7 @@ jstestDescribe((
     });
     jstestIt((
         "test sqlite-extension-base64 handling-behavior"
-    ), async function test_sqliteExtensionBase64() {
+    ), async function test_sqlite_extension_base64() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -730,8 +730,36 @@ jstestDescribe((
         }));
     });
     jstestIt((
+        "test sqlite-extension-fill_forward handling-behavior"
+    ), async function test_sqlite_extension_fill_forward() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let result = await dbExecAsync({
+            db,
+            sql: (`
+SELECT
+    fill_forward(val) OVER (ORDER BY id ASC) AS val
+    FROM (
+        SELECT 10 AS id, NULL AS val
+        UNION ALL SELECT 9 AS id, 9 AS val
+        UNION ALL SELECT 8 AS id, 8 AS val
+        UNION ALL SELECT 7 AS id, NULL AS val
+        UNION ALL SELECT 6 AS id, 6 AS val
+        UNION ALL SELECT 5 AS id, 5 AS val
+        UNION ALL SELECT 4 AS id, NULL AS val
+        UNION ALL SELECT 3 AS id, 3 AS val
+        UNION ALL SELECT 2 AS id, NULL AS val
+        UNION ALL SELECT 1 AS id, NULL AS val
+    );
+            `)
+        });
+        result = result[0].map(function ({val}) {
+            return val;
+        });
+        assertJsonEqual(result, [null, null, 3, 3, 5, 6, 6, 8, 9, 9]);
+    });
+    jstestIt((
         "test sqlite-extension-jenks handling-behavior"
-    ), async function test_sqliteExtensionJenks() {
+    ), async function test_sqlite_extension_jenks() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -966,7 +994,7 @@ SELECT JENKS_CONCAT($kk, value) FROM JSON_EACH($input);
     });
     jstestIt((
         "test sqlite-extension-jsonfromfloat64array handling-behavior"
-    ), async function test_sqliteExtensionJsonFromFloat64array() {
+    ), async function test_sqlite_extension_jsonfromfloat64array() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1029,7 +1057,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
     });
     jstestIt((
         "test sqlite-extension-math handling-behavior"
-    ), async function test_sqliteExtensionMath() {
+    ), async function test_sqlite_extension_math() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1195,7 +1223,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
     });
     jstestIt((
         "test sqlite-extension-matrix2d_concat handling-behavior"
-    ), async function test_sqliteExtensionMatrix2dConcat() {
+    ), async function test_sqlite_extension_matrix2d_concat() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1257,7 +1285,7 @@ SELECT
     });
     jstestIt((
         "test sqlite-extension-quantile handling-behavior"
-    ), async function test_sqliteExtensionQuantile() {
+    ), async function test_sqlite_extension_quantile() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
