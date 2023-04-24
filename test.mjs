@@ -677,6 +677,117 @@ jstestDescribe((
         }));
     });
     jstestIt((
+        "test sqlite-extension-avg_ema handling-behavior"
+    ), async function test_sqlite_extension_avg_ema() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let result;
+        result = await dbExecAsync({
+            db,
+            sql: (`
+SELECT
+    ROUND(
+        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
+            ORDER BY id ASC
+            ROWS BETWEEN 0 PRECEDING AND 4-1 FOLLOWING
+        ),
+        4
+    ) AS val
+    FROM (
+        SELECT 11 AS id, NULL AS val
+        UNION ALL SELECT 10,   10
+        UNION ALL SELECT  9,    9
+        UNION ALL SELECT  8,    8
+        UNION ALL SELECT  7,    7
+        UNION ALL SELECT  6,    6
+        UNION ALL SELECT  5,    5
+        UNION ALL SELECT  4,    4
+        UNION ALL SELECT  3,    3
+        UNION ALL SELECT  2,    2
+        UNION ALL SELECT  1,    1
+        UNION ALL SELECT  0, NULL
+    );
+            `)
+        });
+        result = result[0].map(function ({val}) {
+            return val;
+        });
+        assertJsonEqual(result, [
+            1.824, 2.824, 3.824, 4.824,
+            5.824, 6.824, 7.824, 8.824,
+            5.424, 5.640, 6.000, 0.000
+        ]);
+        result = await dbExecAsync({
+            db,
+            sql: (`
+SELECT
+    ROUND(
+        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
+            ORDER BY id ASC
+            ROWS BETWEEN 3 - 1 PRECEDING AND 2 - 1 FOLLOWING
+        ),
+        4
+    ) AS val
+    FROM (
+        SELECT 11 AS id, NULL AS val
+        UNION ALL SELECT 10,   10
+        UNION ALL SELECT  9,    9
+        UNION ALL SELECT  8,    8
+        UNION ALL SELECT  7,    7
+        UNION ALL SELECT  6,    6
+        UNION ALL SELECT  5,    5
+        UNION ALL SELECT  4,    4
+        UNION ALL SELECT  3,    3
+        UNION ALL SELECT  2,    2
+        UNION ALL SELECT  1,    1
+        UNION ALL SELECT  0, NULL
+    );
+            `)
+        });
+        result = result[0].map(function ({val}) {
+            return val;
+        });
+        assertJsonEqual(result, [
+            0.400, 1.040, 1.824, 2.824,
+            3.824, 4.824, 5.824, 6.824,
+            7.824, 8.824, 5.424, 5.640
+        ]);
+        result = await dbExecAsync({
+            db,
+            sql: (`
+SELECT
+    ROUND(
+        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
+            ORDER BY id ASC
+            ROWS BETWEEN 4 - 1 PRECEDING AND 0 FOLLOWING
+        ),
+        4
+    ) AS val
+    FROM (
+        SELECT 11 AS id, NULL AS val
+        UNION ALL SELECT 10,   10
+        UNION ALL SELECT  9,    9
+        UNION ALL SELECT  8,    8
+        UNION ALL SELECT  7,    7
+        UNION ALL SELECT  6,    6
+        UNION ALL SELECT  5,    5
+        UNION ALL SELECT  4,    4
+        UNION ALL SELECT  3,    3
+        UNION ALL SELECT  2,    2
+        UNION ALL SELECT  1,    1
+        UNION ALL SELECT  0, NULL
+    );
+            `)
+        });
+        result = result[0].map(function ({val}) {
+            return val;
+        });
+        assertJsonEqual(result, [
+            0.000, 0.400, 1.040, 1.824,
+            2.824, 3.824, 4.824, 5.824,
+            6.824, 7.824, 8.824, 5.424
+        ]);
+    });
+    jstestIt((
         "test sqlite-extension-base64 handling-behavior"
     ), async function test_sqlite_extension_base64() {
         let db = await dbOpenAsync({
@@ -1289,6 +1400,20 @@ SELECT
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
+        await (async function () {
+            let valActual = noop(
+                await dbExecAsync({
+                    db,
+                    sql: (`
+-- test null-case handling-behavior
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT 1 AS id, quantile(val, 0.5) AS val FROM __tmp1;
+                    `)
+                })
+            )[0];
+            assertJsonEqual(valActual, [{id: 1, val: null}]);
+        }());
         await Promise.all([
             [
                 [[], -99, null],
@@ -1358,9 +1483,9 @@ SELECT
                         },
                         db,
                         sql: (`
-SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1);
+SELECT quantile(value, ${kk}) AS val FROM JSON_EACH($tmp1);
 -- test null-case handling-behavior
-SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
+SELECT quantile(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
                         `)
                     })
                 )[0][0].val;

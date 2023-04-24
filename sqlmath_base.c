@@ -146,8 +146,20 @@ extern "C" {
     errcode = sqlite3_create_window_function(db, #func, argc, \
         SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         sql_##func##_step, sql_##func##_final, \
-        sql_##func##_final, sql_##func##_inverse, NULL); \
+        sql_##func##_value, sql_##func##_inverse, NULL); \
     if (errcode != SQLITE_OK) { return errcode; }
+
+#define SQLITE3_RESULT_ERROR_CODE(errcode) \
+    if (errcode) { \
+        sqlite3_result_error_code(context, errcode); \
+        goto catch_error; \
+    }
+
+#define SQLITE3_RESULT_ERROR_MALLOC(pp) \
+    if (pp == NULL) { \
+        sqlite3_result_error_nomem(context); \
+        goto catch_error; \
+    }
 
 #define STR99_ALLOCA(str99) \
     sqlite3_str __##str99 = { 0 }; \
@@ -235,6 +247,32 @@ SQLMATH_API void str99ResultBlob(
 SQLMATH_API void str99ResultText(
     sqlite3_str * str99,
     sqlite3_context * context
+);
+
+
+// file sqlmath_h - vector99
+typedef struct vector99 {
+    double *buf;
+    int alloc;
+    int size;
+    double arg0;
+    double arg1;
+} vector99;
+SQLMATH_API void vector99_buf_free(
+    vector99 * vec99
+);
+SQLMATH_API int vector99_buf_malloc(
+    vector99 * vec99
+);
+SQLMATH_API const int vector99_nomem(
+    const vector99 * vec99
+);
+SQLMATH_API double vector99_pop_front(
+    vector99 * vec99
+);
+SQLMATH_API int vector99_push_back(
+    vector99 * vec99,
+    double val
 );
 
 
@@ -816,6 +854,91 @@ SQLMATH_API void dbOpen(
     (void) 0;
 }
 
+SQLMATH_API void vector99_buf_free(
+    vector99 * vec99
+) {
+// this function will free <vec99>->buf and reset everything to zero
+    if (vec99 == NULL) {
+        return;
+    }
+    sqlite3_free(vec99->buf);
+    memset(vec99, 0, sizeof(*vec99));
+}
+
+SQLMATH_API int vector99_buf_malloc(
+    vector99 * vec99
+) {
+// this function will malloc <vec99>->buf, or return SQLITE_NOMEM
+    static const int alloc0 = 256;
+    if (vec99 == NULL) {
+        return SQLITE_NOMEM;
+    }
+    vec99->buf = sqlite3_malloc(alloc0 * sizeof(double));
+    if (vector99_nomem(vec99)) {
+        return SQLITE_NOMEM;
+    }
+    vec99->alloc = alloc0;
+    vec99->size = 0;
+    vec99->arg0 = NAN;
+    vec99->arg1 = NAN;
+    return SQLITE_OK;
+}
+
+SQLMATH_API const int vector99_nomem(
+    const vector99 * vec99
+) {
+// this function will check if <vec99>->buf is null
+    return vec99 == NULL || vec99->buf == NULL;
+}
+
+SQLMATH_API double vector99_pop_front(
+    vector99 * vec99
+) {
+// this function will pop_front <vec99>, or return NAN if empty
+    if (vector99_nomem(vec99) || vec99->size <= 0) {
+        return NAN;
+    }
+    double val = vec99->buf[0];
+    vec99->size -= 1;
+    memmove(vec99->buf, vec99->buf + 1, vec99->size * sizeof(double));
+    return val;
+}
+
+SQLMATH_API int vector99_push_back(
+    vector99 * vec99,
+    double val
+) {
+// this function will push_back <val> to <vec99>,
+// and dynamically grow <vec99> if necessary
+    // error - nomem
+    if (vector99_nomem(vec99)) {
+        return SQLITE_NOMEM;
+    }
+    if (vec99->size >= vec99->alloc) {
+        vec99->alloc *= 2;
+        // error - toobig
+        if (vec99->alloc > SQLITE_MAX_LENGTH2) {
+            vector99_buf_free(vec99);
+            return SQLITE_TOOBIG;
+        }
+        double *buf_old = vec99->buf;
+        vec99->buf =
+            sqlite3_realloc(vec99->buf, vec99->alloc * sizeof(double));
+        // error - nomem
+        if (vector99_nomem(vec99)) {
+            // dont forget to free buf_old
+            vec99->buf = buf_old;
+            vector99_buf_free(vec99);
+            return SQLITE_NOMEM;
+        }
+    }
+    vec99->buf[vec99->size] = val;
+    vec99->size += 1;
+    return SQLITE_OK;
+}
+
+// SQLMATH_API vector99 - end
+
 SQLMATH_API int doubleSign(
     const double aa
 ) {
@@ -1013,6 +1136,87 @@ SQLMATH_API void str99ResultText(
 
 
 // file sqlmath_ext - SQLMATH_FUNC
+// SQLMATH_FUNC sql_avg_ema_func - start
+SQLMATH_FUNC static void sql_avg_ema_value(
+    sqlite3_context * context
+) {
+// this function will aggregate exponential-moving-average
+    // vec99 - init
+    vector99 *vec99 =
+        (vector99 *) sqlite3_aggregate_context(context, sizeof(*vec99));
+    SQLITE3_RESULT_ERROR_MALLOC(vec99);
+    double result = vec99->buf[0];
+    sqlite3_result_double(context, result);
+    return;
+  catch_error:
+    vector99_buf_free(vec99);
+}
+
+SQLMATH_FUNC static void sql_avg_ema_final(
+    sqlite3_context * context
+) {
+// this function will aggregate exponential-moving-average
+    // vec99 - value
+    sql_avg_ema_value(context);
+    // vec99 - cleanup
+    vector99 *vec99 =
+        (vector99 *) sqlite3_aggregate_context(context, sizeof(*vec99));
+    SQLITE3_RESULT_ERROR_MALLOC(vec99);
+  catch_error:
+    vector99_buf_free(vec99);
+}
+
+SQLMATH_FUNC static void sql_avg_ema_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will aggregate exponential-moving-average
+    UNUSED_PARAMETER(argc);
+    UNUSED_PARAMETER(argv);
+    vector99 *vec99 =
+        (vector99 *) sqlite3_aggregate_context(context, sizeof(*vec99));
+    SQLITE3_RESULT_ERROR_MALLOC(vec99);
+    vector99_pop_front(vec99);
+    return;
+  catch_error:
+    vector99_buf_free(vec99);
+}
+
+SQLMATH_FUNC static void sql_avg_ema_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// this function will aggregate exponential-moving-average
+    UNUSED_PARAMETER(argc);
+    // declare var
+    int errcode = 0;
+    // vec99 - init
+    vector99 *vec99 =
+        (vector99 *) sqlite3_aggregate_context(context, sizeof(*vec99));
+    SQLITE3_RESULT_ERROR_MALLOC(vec99);
+    if (vec99->size <= 0) {
+        errcode = vector99_buf_malloc(vec99);
+        SQLITE3_RESULT_ERROR_CODE(errcode);
+        vec99->arg0 = sqlite3_value_double(argv[1]);    // alpha
+    }
+    // vec99 - calculate ema
+    const double alpha = vec99->arg0;
+    const double elem = sqlite3_value_double(argv[0]);
+    for (int ii = 0; ii < vec99->size; ii += 1) {
+        vec99->buf[ii] = alpha * elem + (1 - alpha) * vec99->buf[ii];
+    }
+    // vec99 - push_back elem
+    errcode = vector99_push_back(vec99, elem);
+    SQLITE3_RESULT_ERROR_CODE(errcode);
+    return;
+  catch_error:
+    vector99_buf_free(vec99);
+}
+
+// SQLMATH_FUNC sql_avg_ema_func - end
+
 // SQLMATH_FUNC sql_btobase64_func - start
 static char *base64Encode(
     const unsigned char *blob,
@@ -1624,27 +1828,18 @@ SQLMATH_FUNC static void sql_quantile_final(
     sqlite3_context * context
 ) {
 // this function will aggregate kth-quantile element
-    // declare var
-    int errcode = 0;
-    // str99 - init
-    sqlite3_str *str99 =
-        (sqlite3_str *) sqlite3_aggregate_context(context, 0);
-    if (str99 == NULL) {
+    vector99 *vec99 =
+        (vector99 *) sqlite3_aggregate_context(context, sizeof(*vec99));
+    SQLITE3_RESULT_ERROR_MALLOC(vec99);
+    // vec99 - null-case
+    if (vec99->size <= 0) {
         sqlite3_result_null(context);
-        return;
+        goto catch_error;
     }
-    STR99_RESULT_ERROR(str99);
-    // str99 - result
-    int nn = sqlite3_str_length(str99) / 8 - 1;
-    if (nn == 0) {
-        sqlite3_result_null(context);
-        return;
-    }
-    sqlite3_result_double(context,
-        quantile(((double *) str99->zText) + 1, nn,
-            ((double *) str99->zText)[0]));
+    sqlite3_result_double(context, quantile(vec99->buf, vec99->size,
+            vec99->arg0));
   catch_error:
-    (void) 0;
+    vector99_buf_free(vec99);
 }
 
 SQLMATH_FUNC static void sql_quantile_step(
@@ -1654,23 +1849,26 @@ SQLMATH_FUNC static void sql_quantile_step(
 ) {
 // this function will aggregate kth-quantile element
     UNUSED_PARAMETER(argc);
-    // str99 - init
-    sqlite3_str *str99 =
-        (sqlite3_str *) sqlite3_aggregate_context(context, sizeof(*str99));
-    if (str99 == NULL) {
-        return;
+    // declare var
+    int errcode = 0;
+    // vec99 - init
+    vector99 *vec99 =
+        (vector99 *) sqlite3_aggregate_context(context, sizeof(*vec99));
+    SQLITE3_RESULT_ERROR_MALLOC(vec99);
+    if (vec99->size <= 0) {
+        errcode = vector99_buf_malloc(vec99);
+        SQLITE3_RESULT_ERROR_CODE(errcode);
+        vec99->arg0 = sqlite3_value_double(argv[1]);    // kth-quantile
     }
-    // str99 - init zText
-    if (sqlite3_str_length(str99) == 0) {
-        str99->mxAlloc = SQLITE_MAX_LENGTH2;
-        str99ArrayAppendDouble(str99, sqlite3_value_double(argv[1]));
+    // vec99 - append isfinite
+    const double elem = sqlite3_value_double(argv[0]);
+    if (sqlite3_value_type(argv[0]) != SQLITE_NULL && isfinite(elem)) {
+        errcode = vector99_push_back(vec99, elem);
+        SQLITE3_RESULT_ERROR_CODE(errcode);
     }
-    // str99 - null-case
-    if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
-        return;
-    }
-    // str99 - append double
-    str99ArrayAppendDouble(str99, sqlite3_value_double(argv[0]));
+    return;
+  catch_error:
+    vector99_buf_free(vec99);
 }
 
 // SQLMATH_FUNC sql_quantile_func - end
@@ -1820,6 +2018,7 @@ int sqlite3_sqlmath_ext_base_init(
     SQLITE3_CREATE_FUNCTION2(jenks_concat, -1);
     SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
+    SQLITE3_CREATE_FUNCTION3(avg_ema, 2);
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
