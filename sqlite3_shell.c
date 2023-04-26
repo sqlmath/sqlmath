@@ -14,7 +14,14 @@ shRawLibFetch
             "url": "https://github.com/sqlite/sqlite/blob/version-3.39.4/autoconf/shell.c"
         }
     ],
-    "replaceList": []
+    "replaceList": [
+        {
+            "aa": "^#include \"sqlite3.h\"",
+            "bb": "#include \"sqlite3_rollup.c\"",
+            "flags": "gm",
+            "substr": ""
+        }
+    ]
 }
 -int sqlite3_regexp_init(
 +// hack-sqlite - prevent name-clash with external-function
@@ -154,7 +161,7 @@ file https://github.com/sqlite/sqlite/blob/version-3.39.4/autoconf/shell.c
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
-#include "sqlite3.h"
+#include "sqlite3_rollup.c"
 typedef sqlite3_int64 i64;
 typedef sqlite3_uint64 u64;
 typedef unsigned char u8;

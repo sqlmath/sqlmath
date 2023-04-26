@@ -341,33 +341,7 @@ else
 fi
 )
     ' > .tmp/test_zlib.sh
-    (
-    cd .tmp/
-    cp ../zlib_rollup.c .
-    sh test_zlib.sh
-    )
-    #
-    # patch sqlite3.h
-    printf '
-#ifndef SQLITE3_H_INCLUDED
-    #define SQLITE3_H_INCLUDED
-    #define SQLITE3_H2
-    #undef SQLITE3_C2
-    #undef SQLITE3_EXT_H2
-    #include "../sqlite3_rollup.c"
-#endif
-    ' > .tmp/sqlite3.h
-    #
-    # patch sqlite3ext.h
-    printf '
-#ifndef SQLITE3EXT_H_INCLUDED
-    #define SQLITE3EXT_H_INCLUDED
-    #define SQLITE3_EXT_H2
-    #undef SQLITE3_C2
-    #undef SQLITE3_H2
-    #include "../sqlite3_rollup.c"
-#endif
-    ' > .tmp/sqlite3ext.h
+    # (cd .tmp/ && cp ../zlib_rollup.c . && sh test_zlib.sh)
     #
     # node-gyp - run
     node --input-type=module --eval '
@@ -594,7 +568,7 @@ import modulePath from "path";
             }),
             targetWarningLevel(1, {
                 "defines": [
-                    "SQLITE3_EXT_C2"
+                    "SQLITE3_C2"
                 ],
                 "sources": [
                     "../sqlmath_custom.c"
@@ -719,7 +693,8 @@ shCiBuildWasm() {(set -e
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
         sqlite3_rollup.c \
-        sqlmath_custom.c
+        sqlmath_custom.c \
+        zlib_rollup.c
     do
         FILE2=".tmp/$(basename "$FILE").wasm.o"
         # optimization - skip rebuild of sqlite3_rollup.c if possible
@@ -729,6 +704,7 @@ shCiBuildWasm() {(set -e
             continue
         fi
         OPTION2=""
+        OPTION2="$OPTION2 -DZLIB_C2"
         #
 # https://www.sqlite.org/compile.html#recommended_compile_time_options
         #
@@ -753,7 +729,7 @@ shCiBuildWasm() {(set -e
         #
         # extra feature
         #
-        OPTION2="$OPTION2 -DEMSCRIPTEN"
+        OPTION2="$OPTION2 -DHAVE_UNISTD_H"
         OPTION2="$OPTION2 -DSQLITE_DISABLE_LFS"
         OPTION2="$OPTION2 -DSQLITE_ENABLE_DBSTAT_VTAB=1"
         OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3"
@@ -761,16 +737,11 @@ shCiBuildWasm() {(set -e
         OPTION2="$OPTION2 -DSQLITE_ENABLE_MATH_FUNCTIONS"
         OPTION2="$OPTION2 -DSQLITE_ENABLE_NORMALIZE"
         OPTION2="$OPTION2 -DSQLITE_HAVE_ZLIB"
+        OPTION2="$OPTION2 -DSQLITE3_C2"
+        #
         # file
+        #
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
-        case "$FILE" in
-        sqlite3_rollup.c)
-            OPTION2="$OPTION2 -DSQLITE3_C2"
-            ;;
-        *)
-            OPTION2="$OPTION2 -DSQLITE3_EXT_C2"
-            ;;
-        esac
         emcc $OPTION1 $OPTION2
     done
     OPTION2=""
@@ -810,11 +781,11 @@ shCiBuildWasm() {(set -e
         -s NODEJS_CATCH_REJECTION=0 \
         -s RESERVED_FUNCTION_POINTERS=64 \
         -s SINGLE_FILE=0 \
-        -s USE_ZLIB \
         -s WASM=1 \
         -s WASM_BIGINT \
         .tmp/sqlite3_rollup.c.wasm.o \
         .tmp/sqlmath_custom.c.wasm.o \
+        .tmp/zlib_rollup.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
     printf "/*jslint-disable*/
@@ -888,10 +859,10 @@ shCiEmsdkInstall() {(set -e
     echo "## Done"
     #
     # download ports
-    touch "$EMSDK/.null.c"
-    emcc \
-        -s USE_ZLIB \
-        "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
+    # touch "$EMSDK/.null.c"
+    # emcc \
+    #     -s USE_ZLIB \
+    #     "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
 )}
 
 shCiNpmPublishCustom() {(set -e

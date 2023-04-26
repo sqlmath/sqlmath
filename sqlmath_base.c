@@ -34,18 +34,23 @@ extern "C" {
 // *INDENT-ON*
 
 
-#ifndef SQLMATH_H
-#define SQLMATH_H
+#ifndef SQLMATH_H2
+#define SQLMATH_H2
+#define SQLITE3EXT_H2
+#ifdef SQLITE3_C2
+    #undef SQLITE3_C2
+    #define SQLMATH_C2
+#endif
 
 
 #include <assert.h>
 #include <float.h>
 #include <math.h>
-#include <sqlite3ext.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "sqlite3_rollup.c"
 
 
 /*
@@ -362,13 +367,13 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
 /*
 file sqlmath_h - end
 */
-#endif                          // SQLMATH_H
+#endif                          // SQLMATH_H2
 
 
 /*
 file sqlmath_ext - start
 */
-#ifdef SQLITE3_EXT_C2
+#ifdef SQLMATH_C2
 
 
 static const sqlite3_api_routines *sqlite3_api = NULL;
@@ -2027,7 +2032,7 @@ int sqlite3_sqlmath_ext_base_init(
     }
     return 0;
 }
-#endif                          // SQLITE3_EXT_C2
+#endif                          // SQLMATH_C2
 /*
 file sqlmath_ext - end
 */
