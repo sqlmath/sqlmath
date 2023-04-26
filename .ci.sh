@@ -155,6 +155,198 @@ shCiBuildNodejs() {(set -e
     # init .tmp
     mkdir -p .tmp
     #
+    # patch test_zlib.sh
+    printf '
+(set -ex
+export LD_LIBRARY_PATH="."
+CFLAGS=""
+CFLAGS="$CFLAGS -DHAVE_UNISTD_H"
+# CFLAGS="$CFLAGS -D_LARGEFILE64_SOURCE=1"
+# CFLAGS="$CFLAGS -I."
+# CFLAGS="$CFLAGS -L."
+CFLAGS="$CFLAGS -O3"
+CFLAGS="$CFLAGS -Wall"
+CFLAGS="$CFLAGS -Werror"
+VERSION=1.2.13
+
+
+printf "\n\ntest zlib static\n"
+rm -f \
+  *.a \
+  *.exe \
+  *.o \
+  libz.* \
+  test_file_*
+
+printf "\nbuild static libz.a\n"
+gcc $CFLAGS \
+    -DZLIB_C2 \
+    -c \
+    -o zlib_rollup.o \
+    zlib_rollup.c
+ar rc libz.a zlib_rollup.o
+ranlib libz.a
+
+printf "\nbuild static test_example.exe\n"
+gcc $CFLAGS \
+    -DZLIB_TEST_EXAMPLE_C2 \
+    -c \
+    -o test_example.o \
+    zlib_rollup.c
+gcc $CFLAGS \
+    -o test_example.exe \
+    test_example.o \
+    libz.a
+
+printf "\nbuild static test_minigzip.exe\n"
+gcc $CFLAGS \
+    -DZLIB_TEST_MINIGZIP_C2 \
+    -c \
+    -o test_minigzip.o \
+    zlib_rollup.c
+gcc $CFLAGS \
+    -o test_minigzip.exe \
+    test_minigzip.o \
+    libz.a
+
+printf "\ntest static\n"
+if [ "Hello world!" = "$( \
+    printf "Hello world!\n" | ./test_minigzip.exe | ./test_minigzip.exe -d \
+    )" ] \
+    && ./test_example.exe test_file_static
+then
+    printf "\n    *** zlib test static OK ***\n"
+else
+    printf "\n    *** zlib test static FAILED ***\n"
+    exit 1
+fi
+
+
+printf "\n\ntest zlib shared\n"
+rm -f \
+  *.a \
+  *.exe \
+  *.o \
+  libz.* \
+  test_file_*
+
+printf "\nbuild shared libz.a\n"
+gcc $CFLAGS \
+    -DPIC \
+    -DZLIB_C2 \
+    -c \
+    -fPIC \
+    -o zlib_rollup.o \
+    zlib_rollup.c
+gcc $CFLAGS \
+    -DZLIB_C2 \
+    -fPIC \
+    -o libz.so.$VERSION \
+    -shared \
+    zlib_rollup.o
+ln -s libz.so.$VERSION libz.so
+ln -s libz.so.$VERSION libz.so.1
+
+printf "\nbuild shared test_example.exe\n"
+gcc $CFLAGS \
+    -DZLIB_TEST_EXAMPLE_C2 \
+    -c \
+    -o test_example.o \
+    zlib_rollup.c
+gcc $CFLAGS \
+    -o test_example.exe \
+    test_example.o \
+    libz.so.$VERSION
+
+printf "\nbuild shared test_minigzip.exe\n"
+gcc $CFLAGS \
+    -DZLIB_TEST_MINIGZIP_C2 \
+    -c \
+    -o test_minigzip.o \
+    zlib_rollup.c
+gcc $CFLAGS \
+    -o test_minigzip.exe \
+    test_minigzip.o \
+    libz.so.$VERSION
+
+printf "\ntest shared\n"
+if [ "Hello world!" = "$( \
+    printf "Hello world!\n" | ./test_minigzip.exe | ./test_minigzip.exe -d \
+    )" ] \
+    && ./test_example.exe test_file_shared
+then
+    printf "\n    *** zlib test shared OK ***\n"
+else
+    printf "\n    *** zlib test shared FAILED ***\n"
+    exit 1
+fi
+
+
+printf "\n\ntest zlib 64\n"
+rm -f \
+  *.a \
+  *.exe \
+  *.o \
+  libz.* \
+  test_file_*
+
+printf "\nbuild 64 libz.a\n"
+gcc $CFLAGS \
+    -DZLIB_C2 \
+    -D_LARGEFILE64_SOURCE=1 \
+    -c \
+    -o zlib_rollup.o \
+    zlib_rollup.c
+ar rc libz.a zlib_rollup.o
+ranlib libz.a
+
+printf "\nbuild 64 test_example.exe\n"
+gcc $CFLAGS \
+    -DZLIB_TEST_EXAMPLE_C2 \
+    -D_FILE_OFFSET_BITS=64 \
+    -D_LARGEFILE64_SOURCE=1 \
+    -c \
+    -o test_example.o \
+    zlib_rollup.c
+gcc $CFLAGS \
+    -D_LARGEFILE64_SOURCE=1 \
+    -o test_example.exe \
+    test_example.o \
+    libz.a
+
+printf "\nbuild 64 test_minigzip.exe\n"
+gcc $CFLAGS \
+    -DZLIB_TEST_MINIGZIP_C2 \
+    -D_FILE_OFFSET_BITS=64 \
+    -D_LARGEFILE64_SOURCE=1 \
+    -c \
+    -o test_minigzip.o \
+    zlib_rollup.c
+gcc $CFLAGS \
+    -D_LARGEFILE64_SOURCE=1 \
+    -o test_minigzip.exe \
+    test_minigzip.o \
+    libz.a
+
+printf "\ntest 64\n"
+if [ "Hello world!" = "$( \
+    printf "Hello world!\n" | ./test_minigzip.exe | ./test_minigzip.exe -d \
+    )" ] \
+    && ./test_example.exe test_file_64
+then
+    printf "\n    *** zlib test 64 OK ***\n"
+else
+    printf "\n    *** zlib test 64 FAILED ***\n"
+    exit 1
+fi
+)
+    ' > .tmp/test_zlib.sh
+    (
+    cd .tmp/
+    cp ../zlib_rollup.c .
+    sh test_zlib.sh
+    )
+    #
     # patch sqlite3.h
     printf '
 #ifndef SQLITE3_H_INCLUDED
@@ -162,7 +354,7 @@ shCiBuildNodejs() {(set -e
     #define SQLITE3_H2
     #undef SQLITE3_C2
     #undef SQLITE3_EXT_H2
-    #include "../sqlite3.c"
+    #include "../sqlite3_rollup.c"
 #endif
     ' > .tmp/sqlite3.h
     #
@@ -173,7 +365,7 @@ shCiBuildNodejs() {(set -e
     #define SQLITE3_EXT_H2
     #undef SQLITE3_C2
     #undef SQLITE3_H2
-    #include "../sqlite3.c"
+    #include "../sqlite3_rollup.c"
 #endif
     ' > .tmp/sqlite3ext.h
     #
@@ -249,11 +441,13 @@ import modulePath from "path";
                         ]
                     },
                     {
+                        "defines": [
+                            "HAVE_UNISTD_H"
+                        ],
                         "link_settings": {
                             "libraries": [
                                 "-ldl",
-                                "-lm",
-                                "-lz"
+                                "-lm"
                             ]
                         }
                     }
@@ -319,7 +513,7 @@ import modulePath from "path";
                 "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
                 "SQLITE_LIKE_DOESNT_MATCH_BLOBS",
                 "SQLITE_MAX_EXPR_DEPTH=0",
-                "SQLITE_OMIT_DECLTYPE",
+                // "SQLITE_OMIT_DECLTYPE",
                 "SQLITE_OMIT_DEPRECATED",
                 "SQLITE_OMIT_PROGRESS_CALLBACK",
                 // "SQLITE_OMIT_SHARED_CACHE",
@@ -381,10 +575,19 @@ import modulePath from "path";
         "targets": [
             targetWarningLevel(1, {
                 "defines": [
-                    "SQLITE3_C2"
+                    "SQLITE3_C2",
+                    "ZLIB_C2"
                 ],
+                "msvs_settings": {
+                    "VCCLCompilerTool": {
+                        "DisableSpecificWarnings": [
+                            "4131"
+                        ]
+                    }
+                },
                 "sources": [
-                    "../sqlite3.c"
+                    "../sqlite3_rollup.c",
+                    "../zlib_rollup.c"
                 ],
                 "target_name": "sqlite3_c",
                 "type": "static_library"
@@ -515,12 +718,12 @@ shCiBuildWasm() {(set -e
     OPTION1="$OPTION1 -Os"
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
-        sqlite3.c \
+        sqlite3_rollup.c \
         sqlmath_custom.c
     do
         FILE2=".tmp/$(basename "$FILE").wasm.o"
-        # optimization - skip rebuild of sqlite3.c if possible
-        if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite3.c ]
+        # optimization - skip rebuild of sqlite3_rollup.c if possible
+        if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite3_rollup.c ]
         then
             printf "shCiBuildWasm - skip $FILE\n" 1>&2
             continue
@@ -561,7 +764,7 @@ shCiBuildWasm() {(set -e
         # file
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         case "$FILE" in
-        sqlite3.c)
+        sqlite3_rollup.c)
             OPTION2="$OPTION2 -DSQLITE3_C2"
             ;;
         *)
@@ -610,7 +813,7 @@ shCiBuildWasm() {(set -e
         -s USE_ZLIB \
         -s WASM=1 \
         -s WASM_BIGINT \
-        .tmp/sqlite3.c.wasm.o \
+        .tmp/sqlite3_rollup.c.wasm.o \
         .tmp/sqlmath_custom.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
@@ -793,11 +996,12 @@ shSqlmathUpdate() {(set -e
     then
         shRawLibFetch asset_sqlmath_external_rollup.js
         shRawLibFetch index.html
-        shRawLibFetch sqlite3.c
+        shRawLibFetch sqlite3_rollup.c
         shRawLibFetch sqlite3_shell.c
+        shRawLibFetch zlib_rollup.c
         git grep '3\.39\.[^4]' \
             ":(exclude)CHANGELOG.md" \
-            ":(exclude)sqlite3.c" \
+            ":(exclude)sqlite3_rollup.c" \
             || true
         git grep 'autoconf-[0-9]' | grep -v CHANGELOG \
             | grep -v '3390400' || true
@@ -812,7 +1016,7 @@ shSqlmathUpdate() {(set -e
             asset_sqlmath_external_rollup.js \
             indent.exe \
             index.html \
-            sqlite3.c \
+            sqlite3_rollup.c \
             sqlite3_shell.c \
             sqlmath.mjs \
             sqlmath_base.c \

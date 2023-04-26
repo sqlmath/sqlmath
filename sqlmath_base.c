@@ -264,7 +264,7 @@ SQLMATH_API void vector99_buf_free(
 SQLMATH_API int vector99_buf_malloc(
     vector99 * vec99
 );
-SQLMATH_API const int vector99_nomem(
+SQLMATH_API int vector99_nomem(
     const vector99 * vec99
 );
 SQLMATH_API double vector99_pop_front(
@@ -884,7 +884,7 @@ SQLMATH_API int vector99_buf_malloc(
     return SQLITE_OK;
 }
 
-SQLMATH_API const int vector99_nomem(
+SQLMATH_API int vector99_nomem(
     const vector99 * vec99
 ) {
 // this function will check if <vec99>->buf is null
