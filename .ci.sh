@@ -341,7 +341,10 @@ else
 fi
 )
     ' > .tmp/test_zlib.sh
-    # (cd .tmp/ && cp ../zlib_rollup.c . && sh test_zlib.sh)
+    if [ "$GITHUB_ACTION" ]
+    then
+        (cd .tmp/ && cp ../zlib_rollup.c . && sh test_zlib.sh)
+    fi
     #
     # node-gyp - run
     node --input-type=module --eval '
@@ -421,7 +424,8 @@ import modulePath from "path";
                         "link_settings": {
                             "libraries": [
                                 "-ldl",
-                                "-lm"
+                                "-lm",
+                                "-lz"
                             ]
                         }
                     }
@@ -478,47 +482,13 @@ import modulePath from "path";
                 }
             },
             "defines": [
-                //
-// https://www.sqlite.org/compile.html#recommended_compile_time_options
-                //
-                "SQLITE_DQS=0",
-                // "SQLITE_THREADSAFE=0",
-                "SQLITE_DEFAULT_MEMSTATUS=0",
-                "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
-                "SQLITE_LIKE_DOESNT_MATCH_BLOBS",
-                "SQLITE_MAX_EXPR_DEPTH=0",
-                // "SQLITE_OMIT_DECLTYPE",
-                "SQLITE_OMIT_DEPRECATED",
-                "SQLITE_OMIT_PROGRESS_CALLBACK",
-                // "SQLITE_OMIT_SHARED_CACHE",
-                "SQLITE_USE_ALLOCA",
-                "SQLITE_OMIT_AUTOINIT",
-                //
-                // extra optimization
-                //
-                "HAVE_MALLOC_USABLE_SIZE",
-                "SQLITE_ENABLE_NULL_TRIM",
-                "SQLITE_ENABLE_SORTER_REFERENCES",
-                //
-                // extra feature
-                //
-                // "SQLITE_ENABLE_ICU",
-                "SQLITE_ENABLE_MATH_FUNCTIONS",
-                // "SQLITE_ENABLE_STMTVTAB",
-                "SQLITE_HAVE_ZLIB",
-                //
-                // node-sqlite3
-                //
+                process.argv[1].split(","),
+                // extra-feature - node-sqlite3
+                // "SQLITE_ENABLE_FTS3",
                 "HAVE_USLEEP=1",
                 "NAPI_DISABLE_CPP_EXCEPTIONS=1",
-                "SQLITE_ENABLE_DBSTAT_VTAB=1",
-                "SQLITE_ENABLE_FTS3",
-                "SQLITE_ENABLE_FTS4",
-                "SQLITE_ENABLE_FTS5",
-                "SQLITE_ENABLE_RTREE",
-                "SQLITE_THREADSAFE=1",
                 "_REENTRANT=1"
-            ],
+            ].flat(),
             "include_dirs": [
                 "."
             ],
@@ -549,8 +519,7 @@ import modulePath from "path";
         "targets": [
             targetWarningLevel(1, {
                 "defines": [
-                    "SQLITE3_C2",
-                    "ZLIB_C2"
+                    "SQLITE3_C2"
                 ],
                 "msvs_settings": {
                     "VCCLCompilerTool": {
@@ -560,8 +529,7 @@ import modulePath from "path";
                     }
                 },
                 "sources": [
-                    "../sqlite3_rollup.c",
-                    "../zlib_rollup.c"
+                    "../sqlite3_rollup.c"
                 ],
                 "target_name": "sqlite3_c",
                 "type": "static_library"
@@ -578,7 +546,7 @@ import modulePath from "path";
             }),
             targetWarningLevel(1, {
                 "defines": [
-                    "SQLMATH_NAPI"
+                    "SQLMATH_NODEJS_C2"
                 ],
                 "dependencies": [
                     "sqlite3_c",
@@ -672,7 +640,7 @@ import modulePath from "path";
         }
     });
 }());
-' "$@" # '
+' "$(shSqlmathDefineList)" # '
     shCiTestNodejs
 )}
 
@@ -693,8 +661,7 @@ shCiBuildWasm() {(set -e
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
         sqlite3_rollup.c \
-        sqlmath_custom.c \
-        zlib_rollup.c
+        sqlmath_custom.c
     do
         FILE2=".tmp/$(basename "$FILE").wasm.o"
         # optimization - skip rebuild of sqlite3_rollup.c if possible
@@ -704,43 +671,26 @@ shCiBuildWasm() {(set -e
             continue
         fi
         OPTION2=""
-        OPTION2="$OPTION2 -DZLIB_C2"
-        #
-# https://www.sqlite.org/compile.html#recommended_compile_time_options
-        #
-        OPTION2="$OPTION2 -DSQLITE_DQS=0"
-        OPTION2="$OPTION2 -DSQLITE_THREADSAFE=0"
-        OPTION2="$OPTION2 -DSQLITE_DEFAULT_MEMSTATUS=0"
-        OPTION2="$OPTION2 -DSQLITE_DEFAULT_WAL_SYNCHRONOUS=1"
-        OPTION2="$OPTION2 -DSQLITE_LIKE_DOESNT_MATCH_BLOBS"
-        OPTION2="$OPTION2 -DSQLITE_MAX_EXPR_DEPTH=0"
-        OPTION2="$OPTION2 -DSQLITE_OMIT_DECLTYPE"
-        OPTION2="$OPTION2 -DSQLITE_OMIT_DEPRECATED"
-        OPTION2="$OPTION2 -DSQLITE_OMIT_PROGRESS_CALLBACK"
-        # OPTION2="$OPTION2 -DSQLITE_OMIT_SHARED_CACHE"
-        # OPTION2="$OPTION2 -DSQLITE_USE_ALLOCA"
-        OPTION2="$OPTION2 -DSQLITE_OMIT_AUTOINIT"
-        #
-        # extra optimization
-        #
-        OPTION2="$OPTION2 -DHAVE_MALLOC_USABLE_SIZE"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_NULL_TRIM"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_SORTER_REFERENCES"
-        #
-        # extra feature
-        #
+        OPTION2="$(node --input-type=module --eval '
+process.stdout.write("-D" + process.argv[1].split(
+    ","
+).filter(function (define) {
+    switch (define) {
+    case "SQLITE_THREADSAFE=1":
+    case "SQLITE_USE_ALLOCA":
+        return;
+    default:
+        return true;
+    }
+}).join(" -D"));
+' "$(shSqlmathDefineList)")" # '
+        # extra feature - sql.js
         OPTION2="$OPTION2 -DHAVE_UNISTD_H"
-        OPTION2="$OPTION2 -DSQLITE_DISABLE_LFS"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_DBSTAT_VTAB=1"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3_PARENTHESIS"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_MATH_FUNCTIONS"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_NORMALIZE"
-        OPTION2="$OPTION2 -DSQLITE_HAVE_ZLIB"
         OPTION2="$OPTION2 -DSQLITE3_C2"
-        #
-        # file
-        #
+        OPTION2="$OPTION2 -DSQLITE_DISABLE_LFS"
+        OPTION2="$OPTION2 -DSQLITE_OMIT_DECLTYPE"
+        OPTION2="$OPTION2 -DSQLITE_OMIT_SHARED_CACHE"
+        OPTION2="$OPTION2 -DSQLITE_THREADSAFE=0"
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
     done
@@ -781,11 +731,11 @@ shCiBuildWasm() {(set -e
         -s NODEJS_CATCH_REJECTION=0 \
         -s RESERVED_FUNCTION_POINTERS=64 \
         -s SINGLE_FILE=0 \
+        -s USE_ZLIB \
         -s WASM=1 \
         -s WASM_BIGINT \
         .tmp/sqlite3_rollup.c.wasm.o \
         .tmp/sqlmath_custom.c.wasm.o \
-        .tmp/zlib_rollup.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
     printf "/*jslint-disable*/
@@ -859,10 +809,10 @@ shCiEmsdkInstall() {(set -e
     echo "## Done"
     #
     # download ports
-    # touch "$EMSDK/.null.c"
-    # emcc \
-    #     -s USE_ZLIB \
-    #     "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
+    touch "$EMSDK/.null.c"
+    emcc \
+        -s USE_ZLIB \
+        "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
 )}
 
 shCiNpmPublishCustom() {(set -e
@@ -960,6 +910,59 @@ require("assert")(require("./package.json").name !== "sqlmath");
     shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
 )}
 
+shSqlmathDefineList() {(set -e
+# this function will print list of sqlmath compile-time options
+    node --input-type=module --eval '
+process.stdout.write([
+    //
+    // https://www.sqlite.org/compile.html#recommended_compile_time_options
+    //
+    "SQLITE_DQS=0",
+    // "SQLITE_THREADSAFE=0", // required - sqlmath
+    "SQLITE_DEFAULT_MEMSTATUS=0",
+    "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
+    "SQLITE_LIKE_DOESNT_MATCH_BLOBS",
+    "SQLITE_MAX_EXPR_DEPTH=0",
+    // "SQLITE_OMIT_DECLTYPE", // required - python dbapi2
+    "SQLITE_OMIT_DEPRECATED",
+    "SQLITE_OMIT_PROGRESS_CALLBACK",
+    // "SQLITE_OMIT_SHARED_CACHE", // required - sqlmath
+    "SQLITE_USE_ALLOCA", // performance-regression - wasm
+    "SQLITE_OMIT_AUTOINIT",
+    //
+    // extra-optimization
+    //
+    "HAVE_MALLOC_USABLE_SIZE",
+    "SQLITE_ENABLE_NULL_TRIM",
+    "SQLITE_ENABLE_SORTER_REFERENCES",
+    //
+    // extra-feature
+    //
+    "SQLITE_ENABLE_FTS3",
+    "SQLITE_ENABLE_FTS3_PARENTHESIS",
+    "SQLITE_ENABLE_FTS4",
+    "SQLITE_ENABLE_FTS5",
+    // "SQLITE_ENABLE_ICU", // to_do - regexp-replace
+    "SQLITE_ENABLE_MATH_FUNCTIONS",
+    // "SQLITE_ENABLE_STMTVTAB",
+    "SQLITE_HAVE_ZLIB",
+    "SQLITE_THREADSAFE=1", // performance-regression - wasm
+    //
+    // extra-feature - node-sqlite3
+    //
+    "SQLITE_ENABLE_DBSTAT_VTAB=1",
+    // "SQLITE_ENABLE_RTREE",
+    //
+    // extra-feature - python
+    //
+    // Always use memory for temp store.
+    "SQLITE_TEMP_STORE=3",
+    // "SQLITE_ENABLE_UPDATE_DELETE_LIMIT=1"
+    "SQLITE_USE_URI=1"
+].join(","));
+' "$@" # '
+)}
+
 shSqlmathUpdate() {(set -e
 # this function will update files with ~/Documents/sqlmath/
     . "$HOME/myci2.sh" : && shMyciUpdate
@@ -969,6 +972,7 @@ shSqlmathUpdate() {(set -e
         shRawLibFetch index.html
         shRawLibFetch sqlite3_rollup.c
         shRawLibFetch sqlite3_shell.c
+        shRawLibFetch sqlmath_dbapi2.py
         shRawLibFetch zlib_rollup.c
         git grep '3\.39\.[^4]' \
             ":(exclude)CHANGELOG.md" \

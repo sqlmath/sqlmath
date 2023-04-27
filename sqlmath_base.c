@@ -38,8 +38,8 @@ extern "C" {
 #define SQLMATH_H2
 #define SQLITE3EXT_H2
 #ifdef SQLITE3_C2
-    #undef SQLITE3_C2
-    #define SQLMATH_C2
+#undef SQLITE3_C2
+#define SQLMATH_C2
 #endif
 
 
@@ -2039,9 +2039,9 @@ file sqlmath_ext - end
 
 
 /*
-file sqlmath_napi - start
+file sqlmath_nodejs - start
 */
-#ifdef SQLMATH_NAPI
+#ifdef SQLMATH_NODEJS_C2
 
 
 #ifdef WIN32
@@ -2050,7 +2050,7 @@ file sqlmath_napi - start
 #include <node_api.h>
 
 
-// file sqlmath_napi - assert
+// file sqlmath_nodejs - assert
 static int napiAssertOk(
     napi_env env,
     const char *func,
@@ -2104,7 +2104,7 @@ static int napiAssertOk(
 }
 
 
-// file sqlmath_napi - promise
+// file sqlmath_nodejs - promise
 static void jsbatonBufferFinalize(
     napi_env env,
     void *finalize_data,
@@ -2318,7 +2318,7 @@ static napi_value jspromiseCreate(
 }
 
 
-// file sqlmath_napi - init
+// file sqlmath_nodejs - init
 NAPI_JSPROMISE_CREATE(dbClose);
 NAPI_JSPROMISE_CREATE(dbExec);
 NAPI_JSPROMISE_CREATE(dbFileImportOrExport);
@@ -2363,7 +2363,7 @@ napi_value napi_module_sqlmath_init(
 }
 
 NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_sqlmath_init)
-#endif                          // SQLMATH_NAPI
+#endif                          // SQLMATH_NODEJS_C2
 /*
-file sqlmath_napi - end
+file sqlmath_nodejs - end
 */

@@ -4,6 +4,9 @@
 - none
 
 # v2023.5.1-beta
+- sqlmath - add python c-extension - part1
+- sqlmath - streamline macros SQLITE3_C2, SQLITE_H2, SQLITE3EXT_H2, SQLMATH_C2 in prepartion for python-c-extension
+- sqlmath - add file zlib_rollup.c so sqlmath can be compiled without external zlib-dependency
 - sqlmath - add sql-function avg_ema()
 - sqlmath - add sql-function fill_forward()
 
