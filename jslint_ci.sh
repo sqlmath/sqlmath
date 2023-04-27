@@ -727,7 +727,7 @@ import moduleUrl from "url";
                 );
                 moduleAssert.ok(
                     res.statusCode < 400,
-                    `shDirHttplinkValidate - ${file} - unreachable link ${url}`
+                    `shDirHttplinkValidate - ${file} - unreachable url ${url}`
                 );
                 req.abort();
                 res.destroy();
@@ -763,7 +763,7 @@ import moduleUrl from "url";
                         exists,
                         (
                             `shDirHttplinkValidate - ${file}`
-                            + `- unreachable link ${url}`
+                            + `- unreachable file ${url}`
                         )
                     );
                 });

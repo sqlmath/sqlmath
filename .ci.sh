@@ -743,9 +743,9 @@ shCiTestZlib() {(set -e
     printf "\n\ntest zlib static\n"
     rm -f \
       *.a \
-      *.exe \
       *.o \
       libz.* \
+      test_*.exe \
       test_file_*
     #
     printf "\nbuild static libz.a\n"
@@ -795,9 +795,9 @@ shCiTestZlib() {(set -e
     printf "\n\ntest zlib shared\n"
     rm -f \
       *.a \
-      *.exe \
       *.o \
       libz.* \
+      test_*.exe \
       test_file_*
     #
     printf "\nbuild shared libz.a\n"
@@ -855,9 +855,9 @@ shCiTestZlib() {(set -e
     printf "\n\ntest zlib 64\n"
     rm -f \
       *.a \
-      *.exe \
       *.o \
       libz.* \
+      test_*.exe \
       test_file_*
     #
     printf "\nbuild 64 libz.a\n"
