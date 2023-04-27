@@ -566,7 +566,7 @@ import modulePath from "path";
                     "sqlmath_c"
                 ],
                 "sources": [
-                    "../sqlite3_shell.c"
+                    "../sqlite3_rollup.c"
                 ],
                 "target_name": "<(target_shell)",
                 "type": "executable"
@@ -971,7 +971,6 @@ shSqlmathUpdate() {(set -e
         shRawLibFetch asset_sqlmath_external_rollup.js
         shRawLibFetch index.html
         shRawLibFetch sqlite3_rollup.c
-        shRawLibFetch sqlite3_shell.c
         shRawLibFetch sqlmath_dbapi2.py
         shRawLibFetch zlib_rollup.c
         git grep '3\.39\.[^4]' \
@@ -992,7 +991,6 @@ shSqlmathUpdate() {(set -e
             indent.exe \
             index.html \
             sqlite3_rollup.c \
-            sqlite3_shell.c \
             sqlmath.mjs \
             sqlmath_base.c \
             sqlmath_browser.mjs \
