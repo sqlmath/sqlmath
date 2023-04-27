@@ -1,10 +1,11 @@
 #ifdef ZLIB_C2
-    #define DIST_CODE_LEN 512
-    #define GZIP 2
-    #define ZLIB_INTERNAL
-#endif // ZLIB_C2
+#define DIST_CODE_LEN 512
+#define GZIP 2
+#define ZLIB_INTERNAL
+#endif                          // ZLIB_C2
 
 
+// *INDENT-OFF*
 /*jslint-disable*/
 /*
 shRawLibFetch
@@ -21,8 +22,7 @@ shRawLibFetch
             "url": "https://github.com/madler/zlib/blob/v1.2.13/zlib.h"
         },
         {
-            "footer": "\n// ZLIB_C2\n",
-            "header": "\n#ifdef ZLIB_C2\n",
+            "header": "\n#if defined(ZLIB_C2) && !defined(ZLIB_C3)\n#define ZLIB_C3\n",
             "url": "https://github.com/madler/zlib/blob/v1.2.13/zutil.h"
         },
         {
@@ -94,17 +94,17 @@ shRawLibFetch
             "url": "https://github.com/madler/zlib/blob/v1.2.13/gzread.c"
         },
         {
-            "footer": "\n#endif // ZLIB_C2\n",
+            "footer": "\n#endif // ZLIB_C3\n",
             "url": "https://github.com/madler/zlib/blob/v1.2.13/gzwrite.c"
         },
         {
-            "footer": "\n#endif // ZLIB_TEST_EXAMPLE_C2\n",
-            "header": "\n#ifdef ZLIB_TEST_EXAMPLE_C2\n",
+            "footer": "\n#endif // ZLIB_TEST_EXAMPLE_C3\n",
+            "header": "\n#if defined(ZLIB_TEST_EXAMPLE_C2) && !defined(ZLIB_TEST_EXAMPLE_C3)\n#define ZLIB_TEST_EXAMPLE_C3\n",
             "url": "https://github.com/madler/zlib/blob/v1.2.13/test/example.c"
         },
         {
-            "footer": "\n#endif // ZLIB_TEST_MINIGZIP_C2\n",
-            "header": "\n#ifdef ZLIB_TEST_MINIGZIP_C2\n",
+            "footer": "\n#endif // ZLIB_TEST_MINIGZIP_C3\n",
+            "header": "\n#if defined(ZLIB_TEST_MINIGZIP_C2) && !defined(ZLIB_TEST_MINIGZIP_C3)\n#define ZLIB_TEST_MINIGZIP_C3\n",
             "url": "https://github.com/madler/zlib/blob/v1.2.13/test/minigzip.c"
         }
     ],
@@ -2674,7 +2674,8 @@ ZEXTERN int            ZEXPORTVA gzvprintf Z_ARG((gzFile file,
 file https://github.com/madler/zlib/blob/v1.2.13/zutil.h
 */
 
-#ifdef ZLIB_C2
+#if defined(ZLIB_C2) && !defined(ZLIB_C3)
+#define ZLIB_C3
 /* zutil.h -- internal interface and configuration of the compression library
  * Copyright (C) 1995-2022 Jean-loup Gailly, Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
@@ -2950,7 +2951,6 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
                     (((q) & 0xff00) << 8) + (((q) & 0xff) << 24))
 
 #endif /* ZUTIL_H */
-// ZLIB_C2
 
 
 /*
@@ -22914,14 +22914,15 @@ int ZEXPORT gzclose_w(file)
     free(state);
     return ret;
 }
-#endif // ZLIB_C2
+#endif // ZLIB_C3
 
 
 /*
 file https://github.com/madler/zlib/blob/v1.2.13/test/example.c
 */
 
-#ifdef ZLIB_TEST_EXAMPLE_C2
+#if defined(ZLIB_TEST_EXAMPLE_C2) && !defined(ZLIB_TEST_EXAMPLE_C3)
+#define ZLIB_TEST_EXAMPLE_C3
 /* example.c -- usage example of the zlib compression library
  * Copyright (C) 1995-2006, 2011, 2016 Jean-loup Gailly
  * For conditions of distribution and use, see copyright notice in zlib.h
@@ -23523,14 +23524,15 @@ int main(argc, argv)
 
     return 0;
 }
-#endif // ZLIB_TEST_EXAMPLE_C2
+#endif // ZLIB_TEST_EXAMPLE_C3
 
 
 /*
 file https://github.com/madler/zlib/blob/v1.2.13/test/minigzip.c
 */
 
-#ifdef ZLIB_TEST_MINIGZIP_C2
+#if defined(ZLIB_TEST_MINIGZIP_C2) && !defined(ZLIB_TEST_MINIGZIP_C3)
+#define ZLIB_TEST_MINIGZIP_C3
 /* minigzip.c -- simulate gzip using the zlib compression library
  * Copyright (C) 1995-2006, 2010, 2011, 2016 Jean-loup Gailly
  * For conditions of distribution and use, see copyright notice in zlib.h
@@ -24181,10 +24183,13 @@ int main(argc, argv)
     }
     return 0;
 }
-#endif // ZLIB_TEST_MINIGZIP_C2
+#endif // ZLIB_TEST_MINIGZIP_C3
 
 
 /*
 file none
 */
 /*jslint-enable*/
+
+
+// *INDENT-ON*
