@@ -1,7 +1,11 @@
 #ifdef ZLIB_C2
-#define DIST_CODE_LEN 512
-#define GZIP 2
-#define ZLIB_INTERNAL
+#   define DIST_CODE_LEN 512
+#   define GZIP 2
+#   define ZLIB_INTERNAL
+#   if defined(HAVE_UNISTD_H)
+#       include <stdio.h>
+#       include <unistd.h>
+#   endif
 #endif                          // ZLIB_C2
 
 
@@ -29,6 +33,14 @@ shRawLibFetch
             "url": "https://github.com/madler/zlib/blob/v1.2.13/adler32.c"
         },
         {
+            "replaceList": [
+                {
+                    "aa": "\\n#include \"crc32.h\"\\n[\\S\\s]*?$",
+                    "bb": "",
+                    "flags": "",
+                    "substr": ""
+                }
+            ],
             "url": "https://github.com/madler/zlib/blob/v1.2.13/crc32.c1",
             "url2": "https://raw.githubusercontent.com/madler/zlib/v1.2.13/crc32.c"
         },
@@ -36,6 +48,14 @@ shRawLibFetch
             "url": "https://github.com/madler/zlib/blob/v1.2.13/crc32.h"
         },
         {
+            "replaceList": [
+                {
+                    "aa": "[\\S\\s]*?(\\n#include \"crc32.h\"\\n)",
+                    "bb": "$1",
+                    "flags": "",
+                    "substr": ""
+                }
+            ],
             "url": "https://github.com/madler/zlib/blob/v1.2.13/crc32.c2",
             "url2": "https://raw.githubusercontent.com/madler/zlib/v1.2.13/crc32.c"
         },
@@ -109,18 +129,6 @@ shRawLibFetch
         }
     ],
     "replaceList": [
-        {
-            "aa": "(\\n\\/\\*\\nfile https:.*?\\/crc32.c2\\n\\*\\/\\n)[\\S\\s]*?\\n(#include \"crc32.h\"\\n)",
-            "bb": "$1\n//$2",
-            "flags": "",
-            "substr": ""
-        },
-        {
-            "aa": "\\n(#include \"crc32.h\"\\n)[\\S\\s]*?(\\n\\/\\*\\nfile https:.*?\\/crc32.h\\n\\*\\/\\n)",
-            "bb": "\n//$1$2",
-            "flags": "",
-            "substr": ""
-        },
         {
             "aa": "^# *?define GZIP\\b",
             "bb": "//$&",
@@ -3685,7 +3693,7 @@ local void braid(ltl, big, n, w)
  * Tables for byte-wise and braided CRC-32 calculations, and a table of powers
  * of x for combining CRC-32s, all made by make_crc_table().
  */
-//#include "crc32.h"
+
 
 /*
 file https://github.com/madler/zlib/blob/v1.2.13/crc32.h
@@ -13141,7 +13149,6 @@ local const z_crc_t FAR x2n_table[] = {
 /*
 file https://github.com/madler/zlib/blob/v1.2.13/crc32.c2
 */
-
 //#include "crc32.h"
 #endif /* DYNAMIC_CRC_TABLE */
 

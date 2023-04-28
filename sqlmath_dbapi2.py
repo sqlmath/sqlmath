@@ -5,7 +5,6 @@ rm -rf build/ && python sqlmath_dbapi2.py build_ext -i
 """
 
 import os
-import subprocess
 import sys
 
 import setuptools
@@ -16,73 +15,47 @@ def build_ext():
         os.environ["CFLAGS"] = "-Qunused-arguments"
     # https://setuptools.pypa.io/en/latest/userguide/ext_modules.html
     build_ext_option = {
-        "define_macros": debugInline([
-            ("MODULE_NAME", '"pysqlite3.dbapi2"'),
-            # Increase maximum allowed memory-map size to 1TB
-            ("SQLITE_MAX_MMAP_SIZE", "1099511627776"),
-            #
-            ("SQLITE3_C2", ""),
+        "define_macros": [
+            ("MODULE_NAME", '"sqlmath"'),
             ("SQLMATH_PYTHON_C2", ""),
-            ("ZLIB_C2", ""),
-            *[
-                tuple(f"{val}=".split("=")[:2])
-                for val in subprocess.check_output([
-                    "sh",
-                    "jslint_ci.sh",
-                    "shSqlmathDefineList"
-                ]).decode("ascii").split(",")
-                if not (
-                    False
-                    or val.startswith("SQLITE_OMIT_DEPRECATED")
-                    or val.startswith("SQLITE_OMIT_PROGRESS_CALLBACK")
-                    or val.startswith("SQLITE_OMIT_AUTOINIT")
-                    or val.startswith("HAVE_MALLOC_USABLE_SIZE")
-                )
-            ],
-        ]),
+        ],
         "depends": [
-            "sqlmath_base.c",
             "sqlmath_dbapi2.py",
         ],
         "extra_compile_args": [],
         "extra_link_args": [],
-        "include_dirs": [
-            ".",
-            "/usr/include",
-        ],
-        "library_dirs": [
-            ".",
-            "/usr/lib",
-        ],
-        "libraries": [
-            # !! "sqlite3_c",
-            # !! "sqlmath_c",
-            # !! "zlib_c",
-        ],
-        "name": "pysqlite3._sqlite3",
+        "extra_objects": [],
+        "include_dirs": [],
+        "library_dirs": [],
+        "libraries": [],
+        "name": "_sqlite3",
         "sources": [
             "sqlite3_rollup.c",
-            "sqlmath_custom.c",
-            "zlib_rollup.c",
         ],
     }
     if sys.platform == "win32":
+        build_ext_option["libraries"] += [
+            ".tmp/build/Release/sqlite3_c",
+            ".tmp/build/Release/sqlmath_c",
+            ".tmp/build/Release/zlib_c",
+        ]
         # bugfix - LINK : warning LNK4098: defaultlib 'LIBCMT'
         # conflicts with use of other libs; use /NODEFAULTLIB:library
-        # build_ext_option["extra_compile_args"] += ["/MT"]
-        pass
+        build_ext_option["extra_compile_args"] += ["/MT"]
     else:
-        # Include math library, required for fts5.
-        build_ext_option["extra_link_args"] += ["-lm"]
-    # build_ext_option.libraries.append('sqlite3')
+        build_ext_option["extra_objects"] += [
+            ".tmp/build/Release/sqlite3_c.a",
+            ".tmp/build/Release/sqlmath_c.a",
+            ".tmp/build/Release/zlib_c.a",
+        ]
+        build_ext_option["define_macros"] += []
     setuptools.setup(**{
         "description": "DB-API 2.0 interface for Sqlite 3.x",
         "ext_modules": [
             setuptools.Extension(**build_ext_option),
         ],
-        "name": "pysqlite3",
-        # !! "package_dir": {"pysqlite3": "."},
-        "package_dir": {"pysqlite3": "pysqlite3"},
+        "name": "sqlmath",
+        "package_dir": {"": ""},
         "version": "0.1",
     })
 
@@ -99,27 +72,20 @@ def noop(arg=None):
     return arg
 
 if __name__ == "__main__":
-    for command in sys.argv[1:]:
-        match command:
-            case "build_ext":
-                build_ext()
+    match sys.argv[1]:
+        case "build_ext":
+            build_ext()
 
 def test_suite_run(suite):
-    for command in sys.argv[1:]:
-        match command:
-            case "build_ext":
-                pass
-            case "test":
-                pass
-            case other:
-                noop(other)
-                return
-        results = unittest.TextTestRunner(
-            verbosity=1,
-            failfast=False
-        ).run(suite())
-        if results.failures or results.errors:
-            sys.exit(1)
+    match sys.argv[1]:
+        case "test":
+            pass
+            results = unittest.TextTestRunner(
+                verbosity=1,
+                failfast=False
+            ).run(suite())
+            if results.failures or results.errors:
+                sys.exit(1)
 
 """
 /*jslint-disable*/
@@ -197,12 +163,22 @@ shRawLibFetch
             "bb": "\n    test_suite_run(suite)",
             "flags": "g",
             "substr": ""
+        },
+        {
+            "aa": "from pysqlite3 import dbapi2 as sqlite",
+            "bb": "import sqlmath_dbapi2 as sqlite",
+            "flags": "g",
+            "substr": ""
         }
     ]
 }
 -        con.execute('insert into foo(x) values ("%s")' % unicode_value)
-+# hack-dbapi2 - enforce SQLITE_DQS
++# hack-pysqlite3 - enforce SQLITE_DQS
 +        con.execute('insert into foo(x) values (\'%s\')' % unicode_value)
+
+-    from pysqlite3._sqlite3 import *
++# hack-pysqlite3 - fix import
++    from _sqlite3 import *
 */
 
 
@@ -271,7 +247,8 @@ if __name__ != "__main__":
     import time
     import collections.abc
 
-    from pysqlite3._sqlite3 import *
+# hack-pysqlite3 - fix import
+    from _sqlite3 import *
 
     paramstyle = "qmark"
 
@@ -342,7 +319,7 @@ file https://github.com/coleifer/pysqlite3/blob/0.5.0/test/backup.py
 */
 
 """
-from pysqlite3 import dbapi2 as sqlite
+import sqlmath_dbapi2 as sqlite
 import unittest
 
 
@@ -537,7 +514,7 @@ file https://github.com/coleifer/pysqlite3/blob/0.5.0/test/dbapi.py
 
 import threading
 import unittest
-from pysqlite3 import dbapi2 as sqlite
+import sqlmath_dbapi2 as sqlite
 
 #from test.support import TESTFN, unlink
 TESTFN = '.tmp/pysqlite3_test'
@@ -1744,7 +1721,7 @@ file https://github.com/coleifer/pysqlite3/blob/0.5.0/test/factory.py
 # 3. This notice may not be removed or altered from any source distribution.
 
 import unittest
-from pysqlite3 import dbapi2 as sqlite
+import sqlmath_dbapi2 as sqlite
 from collections.abc import Sequence
 
 class MyConnection(sqlite.Connection):
@@ -2070,7 +2047,7 @@ file https://github.com/coleifer/pysqlite3/blob/0.5.0/test/hooks.py
 # 3. This notice may not be removed or altered from any source distribution.
 
 import unittest
-from pysqlite3 import dbapi2 as sqlite
+import sqlmath_dbapi2 as sqlite
 
 
 class CollationTests(unittest.TestCase):
@@ -2289,7 +2266,7 @@ class TraceCallbackTests(unittest.TestCase):
         # Can't execute bound parameters as their values don't appear
         # in traced statements before SQLite 3.6.21
         # (cf. http://www.sqlite.org/draft/releaselog/3_6_21.html)
-# hack-dbapi2 - enforce SQLITE_DQS
+# hack-pysqlite3 - enforce SQLITE_DQS
         con.execute('insert into foo(x) values (\'%s\')' % unicode_value)
         con.commit()
         self.assertTrue(any(unicode_value in stmt for stmt in traced_statements),
@@ -2362,7 +2339,7 @@ file https://github.com/coleifer/pysqlite3/blob/0.5.0/test/regression.py
 import datetime
 import functools
 import unittest
-from pysqlite3 import dbapi2 as sqlite
+import sqlmath_dbapi2 as sqlite
 import weakref
 #from test import support
 
@@ -2781,7 +2758,7 @@ file https://github.com/coleifer/pysqlite3/blob/0.5.0/test/transactions.py
 # 3. This notice may not be removed or altered from any source distribution.
 
 import os, unittest
-from pysqlite3 import dbapi2 as sqlite
+import sqlmath_dbapi2 as sqlite
 
 def get_db_path():
     return "sqlite_testdb"
@@ -3074,7 +3051,7 @@ file https://github.com/coleifer/pysqlite3/blob/0.5.0/test/ttypes.py
 
 import datetime
 import unittest
-from pysqlite3 import dbapi2 as sqlite
+import sqlmath_dbapi2 as sqlite
 try:
     import zlib
 except ImportError:
@@ -3526,7 +3503,7 @@ file https://github.com/coleifer/pysqlite3/blob/0.5.0/test/userfunctions.py
 
 import unittest
 import unittest.mock
-from pysqlite3 import dbapi2 as sqlite
+import sqlmath_dbapi2 as sqlite
 
 def func_returntext():
     return "foo"

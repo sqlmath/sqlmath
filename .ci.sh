@@ -239,8 +239,8 @@ import modulePath from "path";
                         "link_settings": {
                             "libraries": [
                                 "-ldl",
-                                "-lm",
-                                "-lz"
+                                "-lm"
+                                // "-lz"
                             ]
                         }
                     }
@@ -282,7 +282,7 @@ import modulePath from "path";
                     ],
                     "msvs_settings": {
                         "VCCLCompilerTool": {
-                            "Optimization": 2
+                            "Optimization": 3
                         }
                     },
                     "xcode_settings": {
@@ -298,15 +298,13 @@ import modulePath from "path";
             },
             "defines": [
                 process.argv[1].split(","),
-                // extra-feature - node-sqlite3
-                // "SQLITE_ENABLE_FTS3",
-                "HAVE_USLEEP=1",
                 "NAPI_DISABLE_CPP_EXCEPTIONS=1",
                 "_REENTRANT=1"
             ].flat(),
             "include_dirs": [
                 "."
             ],
+// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings_test.py //jslint-ignore-line
             "msvs_settings": {
                 "VCCLCompilerTool": {
                     "ExceptionHandling": 1,
@@ -316,9 +314,6 @@ import modulePath from "path";
                     // "RuntimeLibrary": 2, // 2 - MultiThreadedDLL (/MD)
                     // "RuntimeLibrary": 3, // 3 - MultiThreadedDebugDLL (/MDd)
                     "WarningLevel": 3
-                },
-                "VCLinkerTool": {
-                    "GenerateDebugInformation": "true"
                 }
             },
             "xcode_settings": {
@@ -334,7 +329,7 @@ import modulePath from "path";
         "targets": [
             targetWarningLevel(1, {
                 "defines": [
-                    "SQLITE3_C2"
+                    "ZLIB_C2"
                 ],
                 "msvs_settings": {
                     "VCCLCompilerTool": {
@@ -343,6 +338,19 @@ import modulePath from "path";
                         ]
                     }
                 },
+                "sources": [
+                    "../zlib_rollup.c"
+                ],
+                "target_name": "zlib_c",
+                "type": "static_library"
+            }),
+            targetWarningLevel(1, {
+                "defines": [
+                    "SQLITE3_C2"
+                ],
+                "dependencies": [
+                    "zlib_c"
+                ],
                 "sources": [
                     "../sqlite3_rollup.c"
                 ],
@@ -425,8 +433,7 @@ import modulePath from "path";
     }, undefined, 4));
     [
         "clean",
-        "configure",
-        "build"
+        "configure"
     ].forEach(function (action) {
         // node-gyp.js
         action = [
@@ -435,6 +442,8 @@ import modulePath from "path";
                 "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
             ).replace("/bin/node_modules/", "/lib/node_modules/"),
             action,
+            // https://github.com/nodejs/node-gyp#command-options
+            "-jobs", "max",
             (
                 process.env.npm_config_mode_debug
                 ? "--debug"
@@ -499,13 +508,25 @@ process.stdout.write("-D" + process.argv[1].split(
     }
 }).join(" -D"));
 ' "$(shSqlmathDefineList)")" # '
-        # extra feature - sql.js
+        #
+        # extra-feature - sql.js
+        # https://github.com/sql-js/sql.js/blob/v1.8.0/Makefile
+        #
+        # OPTION2="$OPTION2 -Oz"
+        # OPTION2="$OPTION2 -DSQLITE_OMIT_LOAD_EXTENSION"
+        OPTION2="$OPTION2 -DSQLITE_DISABLE_LFS"
+        OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3"
+        OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3_PARENTHESIS"
+        OPTION2="$OPTION2 -DSQLITE_THREADSAFE=0"
+        # OPTION2="$OPTION2 -DSQLITE_ENABLE_NORMALIZE"
+        #
+        # extra-feature - misc
+        #
         OPTION2="$OPTION2 -DHAVE_UNISTD_H"
         OPTION2="$OPTION2 -DSQLITE3_C2"
-        OPTION2="$OPTION2 -DSQLITE_DISABLE_LFS"
         OPTION2="$OPTION2 -DSQLITE_OMIT_DECLTYPE"
         OPTION2="$OPTION2 -DSQLITE_OMIT_SHARED_CACHE"
-        OPTION2="$OPTION2 -DSQLITE_THREADSAFE=0"
+        #
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
     done
@@ -643,6 +664,45 @@ shCiNpmPublishCustom() {(set -e
     npm publish --access public
 )}
 
+shCiPreCustom() {(set -e
+# this function will run custom-code for pre-ci
+    if [ "$GITHUB_ACTION" ]
+    then
+        # install python
+        PYTHON_VERSION=3.10
+        case "$(uname)" in
+        Darwin)
+            for FILE in pip python
+            do
+                ln -f "/usr/local/bin/$FILE$PYTHON_VERSION" \
+                    "/usr/local/bin/$FILE"
+            done
+            ;;
+        Linux)
+            for FILE in pip python
+            do
+                sudo ln -f "/usr/bin/$FILE$PYTHON_VERSION" \
+                    "/usr/local/bin/$FILE"
+            done
+            ;;
+        MINGW64_NT*)
+            (
+                cd /c/hostedtoolcache/windows/Python/
+                OLD="$(python --version | grep -o "[0-9.]*")"
+                NEW="$(ls | grep "^$PYTHON_VERSION\>" | head -n 1)"
+                mv "$OLD" "$OLD.backup"
+                powershell \
+                "New-Item -Path $OLD -ItemType SymbolicLink -Value $NEW"
+            )
+            ;;
+        esac
+    fi
+    if [ -f requirements.txt ]
+    then
+        pip install -r requirements.txt
+    fi
+)}
+
 shCiTestNodejs() {(set -e
 # this function will run test in nodejs
     # init .tmp
@@ -677,6 +737,7 @@ shCiTestNodejs() {(set -e
             sqlmath_jenks.c
         # lint js-file
         node jslint.mjs .
+        # build nodejs c-extension
         node --input-type=module --eval '
 import moduleChildProcess from "child_process";
 import modulePath from "path";
@@ -692,6 +753,8 @@ import modulePath from "path";
                 "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
             ).replace("/bin/node_modules/", "/lib/node_modules/"),
             action,
+            // https://github.com/nodejs/node-gyp#command-options
+            "-jobs", "max",
             (
                 process.env.npm_config_mode_debug
                 ? "--debug"
@@ -713,7 +776,10 @@ import modulePath from "path";
     });
 }());
 ' "$@" # '
+        # build python c-extension
+        python sqlmath_dbapi2.py build_ext -i
     fi;
+    # test nodejs
     rm -f *~ .*test.sqlite
     COVERAGE_EXCLUDE="--exclude=jslint.mjs"
     if (node --eval '
@@ -723,6 +789,8 @@ require("assert")(require("./package.json").name !== "sqlmath");
         COVERAGE_EXCLUDE="$COVERAGE_EXCLUDE --exclude=sqlmath.mjs"
     fi
     shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
+    # test python
+    python sqlmath_dbapi2.py test
 )}
 
 shCiTestZlib() {(set -e
@@ -917,6 +985,7 @@ shSqlmathDefineList() {(set -e
     node --input-type=module --eval '
 process.stdout.write([
     //
+    // Recommended Compile-time Options
     // https://www.sqlite.org/compile.html#recommended_compile_time_options
     //
     "SQLITE_DQS=0",
@@ -925,42 +994,58 @@ process.stdout.write([
     "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
     "SQLITE_LIKE_DOESNT_MATCH_BLOBS",
     "SQLITE_MAX_EXPR_DEPTH=0",
-    // "SQLITE_OMIT_DECLTYPE", // required - python dbapi2
-    "SQLITE_OMIT_DEPRECATED",
-    "SQLITE_OMIT_PROGRESS_CALLBACK",
+    // "SQLITE_OMIT_DECLTYPE", // required - python-dbapi2
+    // "SQLITE_OMIT_DEPRECATED", // required - python-dbapi2
+    // "SQLITE_OMIT_PROGRESS_CALLBACK", // required - python-dbapi2
     // "SQLITE_OMIT_SHARED_CACHE", // required - sqlmath
     "SQLITE_USE_ALLOCA", // performance-regression - wasm
     "SQLITE_OMIT_AUTOINIT",
     //
-    // extra-optimization
+    // extra-feature - node-sqlite3
+    // https://github.com/TryGhost/node-sqlite3/blob/v5.1.6/deps/sqlite3.gyp
     //
-    "HAVE_MALLOC_USABLE_SIZE",
-    "SQLITE_ENABLE_NULL_TRIM",
-    "SQLITE_ENABLE_SORTER_REFERENCES",
-    //
-    // extra-feature
-    //
+    "_REENTRANT=1",
+    "SQLITE_THREADSAFE=1",
+    "HAVE_USLEEP=1",
     "SQLITE_ENABLE_FTS3",
-    "SQLITE_ENABLE_FTS3_PARENTHESIS",
     "SQLITE_ENABLE_FTS4",
     "SQLITE_ENABLE_FTS5",
-    // "SQLITE_ENABLE_ICU", // to_do - regexp-replace
-    "SQLITE_ENABLE_MATH_FUNCTIONS",
-    // "SQLITE_ENABLE_STMTVTAB",
-    "SQLITE_HAVE_ZLIB",
-    "SQLITE_THREADSAFE=1", // performance-regression - wasm
-    //
-    // extra-feature - node-sqlite3
-    //
+    "SQLITE_ENABLE_RTREE",
     "SQLITE_ENABLE_DBSTAT_VTAB=1",
-    // "SQLITE_ENABLE_RTREE",
+    "SQLITE_ENABLE_MATH_FUNCTIONS",
     //
-    // extra-feature - python
+    // extra-feature - python-pysqlite3
+    // https://github.com/coleifer/pysqlite3/blob/0.5.0/setup.py
     //
+    "ALLOW_COVERING_INDEX_SCAN=1",
+    "ENABLE_FTS3",
+    "ENABLE_FTS3_PARENTHESIS",
+    "ENABLE_FTS4",
+    "ENABLE_FTS5",
+    "ENABLE_JSON1",
+    // "ENABLE_LOAD_EXTENSION",
+    "ENABLE_MATH_FUNCTIONS",
+    "ENABLE_RTREE",
+    "ENABLE_STAT4",
+    "ENABLE_UPDATE_DELETE_LIMIT",
+    "SOUNDEX",
+    "USE_URI",
     // Always use memory for temp store.
     "SQLITE_TEMP_STORE=3",
-    // "SQLITE_ENABLE_UPDATE_DELETE_LIMIT=1"
-    "SQLITE_USE_URI=1"
+    // Increase the maximum number of "host parameters"
+    // which SQLite will accept
+    // "SQLITE_MAX_VARIABLE_NUMBER=250000",
+    // Increase maximum allowed memory-map size to 1TB
+    // "SQLITE_MAX_MMAP_SIZE=1099511627776",
+    //
+    // extra-feature - misc
+    //
+    // "HAVE_MALLOC_USABLE_SIZE", // required - python-dbapi2
+    // "SQLITE_ENABLE_ICU", // to_do - regexp-replace
+    "SQLITE_ENABLE_NULL_TRIM",
+    "SQLITE_ENABLE_SORTER_REFERENCES",
+    "SQLITE_HAVE_ZLIB",
+    "UNDEFINED"
 ].join(","));
 ' "$@" # '
 )}

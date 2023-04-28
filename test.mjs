@@ -590,8 +590,8 @@ jstestDescribe((
     jstestIt((
         "test misc handling-behavior"
     ), async function () {
-        // test debugInline handling-behavior
-        noop(debugInline);
+        // debug test unfinished
+        setTimeout(console.error, 60_000, "test unfinished").unref();
         // test assertErrorThrownAsync error handling-behavior
         await assertErrorThrownAsync(function () {
             return assertErrorThrownAsync(noop);
