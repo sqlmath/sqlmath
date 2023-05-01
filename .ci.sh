@@ -362,6 +362,7 @@ import modulePath from "path";
                     "SQLITE3_C2"
                 ],
                 "sources": [
+                    "../sqlmath_base.c",
                     "../sqlmath_custom.c"
                 ],
                 "target_name": "sqlmath_c",
@@ -485,6 +486,7 @@ shCiBuildWasm() {(set -e
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
         sqlite3_rollup.c \
+        sqlmath_base.c \
         sqlmath_custom.c
     do
         FILE2=".tmp/$(basename "$FILE").wasm.o"
@@ -525,7 +527,6 @@ process.stdout.write("-D" + process.argv[1].split(
         OPTION2="$OPTION2 -DHAVE_UNISTD_H"
         OPTION2="$OPTION2 -DSQLITE3_C2"
         OPTION2="$OPTION2 -DSQLITE_OMIT_DECLTYPE"
-        OPTION2="$OPTION2 -DSQLITE_OMIT_SHARED_CACHE"
         #
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
@@ -571,6 +572,7 @@ process.stdout.write("-D" + process.argv[1].split(
         -s WASM=1 \
         -s WASM_BIGINT \
         .tmp/sqlite3_rollup.c.wasm.o \
+        .tmp/sqlmath_base.c.wasm.o \
         .tmp/sqlmath_custom.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
@@ -649,6 +651,76 @@ shCiEmsdkInstall() {(set -e
     emcc \
         -s USE_ZLIB \
         "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
+)}
+
+shLintPython() {(set -e
+# this function will lint python file
+    FILE_LIST="$@"
+    printf "\n\nlint ruff\n"
+    OPTION=""
+    # ANN flake8-annotations
+    OPTION="$OPTION --ignore=ANN"
+    # obsolete - one-blank-line-before-class (D203)
+    # * 1 blank line required before class docstring
+    OPTION="$OPTION --ignore=D203"
+    # multi-line-summary-first-line (D212)
+    # * Multi-line docstring summary should start at the first line
+    OPTION="$OPTION --ignore=D212"
+    # non-imperative-mood (D401)
+    # * First line of docstring should be in imperative mood: "{first_line}"
+    OPTION="$OPTION --ignore=D401"
+    # docstring-starts-with-this (D404)
+    # * First word of the docstring should not be "This"
+    OPTION="$OPTION --ignore=D404"
+    # commented-out-code (ERA001)
+    # Commented-out code is dead code, and is often included inadvertently.
+    OPTION="$OPTION --ignore=ERA001"
+    # too-many-statements (PLR0915)
+    # * Too many statements ({statements} > {max_statements})
+    OPTION="$OPTION --ignore=PLR0915"
+    # subprocess-without-shell-equals-true (S603)
+    # * `subprocess` call: check for execution of untrusted input
+    OPTION="$OPTION --ignore=S603"
+    # start-process-with-partial-path (S607)
+    # * Starting a process with a partial executable path
+    OPTION="$OPTION --ignore=S607"
+    # hardcoded-sql-expression (S608)
+    # SQL injection is a common attack vector for web applications.
+    OPTION="$OPTION --ignore=S608"
+    # print (T201)
+    # * `print` found
+    OPTION="$OPTION --ignore=T201"
+    OPTION="$OPTION --select=ALL"
+    if [ "$npm_config_lint_fix" ]
+    then
+        OPTION="$OPTION --fix"
+    fi
+    ruff check $OPTION $FILE_LIST
+    printf "lint pycodestyle\n"
+    OPTION="--ignore="
+    # Unexpected indentation (comment) (E116)
+    # Comments should be indented relative to the code in the block they are in.
+    OPTION="$OPTION,E116"
+    # At least two spaces before inline comment (E261)
+    # Inline comments should have two spaces before them.
+    OPTION="$OPTION,E261"
+    #!! OPTION="$OPTION,S301"
+    # Line break occurred before a binary operator (W503)
+    # Line breaks should occur after the binary operator to keep all variable
+    # names aligned.
+    OPTION="$OPTION,W503"
+    pycodestyle $OPTION $FILE_LIST
+    printf "lint successful\n\n"
+)}
+
+shCiLintCustom() {(set -e
+# this function will run custom-code to lint files
+    if [ "$GITHUB_ACTION" ]
+    then
+        pip install pycodestyle ruff
+    fi
+    shLintPython \
+        setup.py
 )}
 
 shCiNpmPublishCustom() {(set -e
@@ -777,7 +849,7 @@ import modulePath from "path";
 }());
 ' "$@" # '
         # build python c-extension
-        python sqlmath_dbapi2.py build_ext -i
+        python setup.py build_ext -i
     fi;
     # test nodejs
     rm -f *~ .*test.sqlite
@@ -790,7 +862,7 @@ require("assert")(require("./package.json").name !== "sqlmath");
     fi
     shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
     # test python
-    python sqlmath_dbapi2.py test
+    python setup.py test
 )}
 
 shCiTestZlib() {(set -e
@@ -995,9 +1067,9 @@ process.stdout.write([
     "SQLITE_LIKE_DOESNT_MATCH_BLOBS",
     "SQLITE_MAX_EXPR_DEPTH=0",
     // "SQLITE_OMIT_DECLTYPE", // required - python-dbapi2
-    // "SQLITE_OMIT_DEPRECATED", // required - python-dbapi2
+    "SQLITE_OMIT_DEPRECATED", // required - python-dbapi2
     // "SQLITE_OMIT_PROGRESS_CALLBACK", // required - python-dbapi2
-    // "SQLITE_OMIT_SHARED_CACHE", // required - sqlmath
+    // "SQLITE_OMIT_SHARED_CACHE", // required - sqlmath, wasm
     "SQLITE_USE_ALLOCA", // performance-regression - wasm
     "SQLITE_OMIT_AUTOINIT",
     //

@@ -1,92 +1,4 @@
-#!/usr/bin/python3
-
-"""
-rm -rf build/ && python sqlmath_dbapi2.py build_ext -i
-"""
-
-import os
-import sys
-
-import setuptools
-
-def build_ext():
-    # Work around clang raising hard error for unused arguments
-    if sys.platform == "darwin":
-        os.environ["CFLAGS"] = "-Qunused-arguments"
-    # https://setuptools.pypa.io/en/latest/userguide/ext_modules.html
-    build_ext_option = {
-        "define_macros": [
-            ("MODULE_NAME", '"sqlmath"'),
-            ("SQLMATH_PYTHON_C2", ""),
-        ],
-        "depends": [
-            "sqlmath_dbapi2.py",
-        ],
-        "extra_compile_args": [],
-        "extra_link_args": [],
-        "extra_objects": [],
-        "include_dirs": [],
-        "library_dirs": [],
-        "libraries": [],
-        "name": "_sqlite3",
-        "sources": [
-            "sqlite3_rollup.c",
-        ],
-    }
-    if sys.platform == "win32":
-        build_ext_option["libraries"] += [
-            ".tmp/build/Release/sqlite3_c",
-            ".tmp/build/Release/sqlmath_c",
-            ".tmp/build/Release/zlib_c",
-        ]
-        # bugfix - LINK : warning LNK4098: defaultlib 'LIBCMT'
-        # conflicts with use of other libs; use /NODEFAULTLIB:library
-        build_ext_option["extra_compile_args"] += ["/MT"]
-    else:
-        build_ext_option["extra_objects"] += [
-            ".tmp/build/Release/sqlite3_c.a",
-            ".tmp/build/Release/sqlmath_c.a",
-            ".tmp/build/Release/zlib_c.a",
-        ]
-        build_ext_option["define_macros"] += []
-    setuptools.setup(**{
-        "description": "DB-API 2.0 interface for Sqlite 3.x",
-        "ext_modules": [
-            setuptools.Extension(**build_ext_option),
-        ],
-        "name": "sqlmath",
-        "package_dir": {"": ""},
-        "version": "0.1",
-    })
-
-def debugInline(*argv): # noqa=N802
-    """This function will print <arg> to stderr and then return <arg0>."""
-    arg0 = argv[0] if argv else None
-    print("\n\ndebugInline", file=sys.stderr)
-    print(*argv, file=sys.stderr)
-    print("\n")
-    return arg0
-
-def noop(arg=None):
-    """This function will do nothing."""
-    return arg
-
-if __name__ == "__main__":
-    match sys.argv[1]:
-        case "build_ext":
-            build_ext()
-
-def test_suite_run(suite):
-    match sys.argv[1]:
-        case "test":
-            pass
-            results = unittest.TextTestRunner(
-                verbosity=1,
-                failfast=False
-            ).run(suite())
-            if results.failures or results.errors:
-                sys.exit(1)
-
+test_suite_list = []
 """
 /*jslint-disable*/
 /*
@@ -159,8 +71,8 @@ shRawLibFetch
             "substr": ""
         },
         {
-            "aa": "\\n    test\\(\\)|\\n    unittest.main\\(\\)",
-            "bb": "\n    test_suite_run(suite)",
+            "aa": "\\nif __name__ == .__main__.:\\n    .*?test.*?\\n",
+            "bb": "\ntest_suite_list.append(suite)\n",
             "flags": "g",
             "substr": ""
         },
@@ -479,8 +391,7 @@ class BackupTests(unittest.TestCase):
 def suite():
     return unittest.makeSuite(BackupTests)
 
-if __name__ == "__main__":
-    test_suite_run(suite)
+test_suite_list.append(suite)
 """
 
 
@@ -1687,8 +1598,7 @@ def test():
     runner = unittest.TextTestRunner()
     runner.run(suite())
 
-if __name__ == "__main__":
-    test_suite_run(suite)
+test_suite_list.append(suite)
 """
 
 
@@ -2013,8 +1923,7 @@ def test():
     runner = unittest.TextTestRunner()
     runner.run(suite())
 
-if __name__ == "__main__":
-    test_suite_run(suite)
+test_suite_list.append(suite)
 """
 
 
@@ -2303,8 +2212,7 @@ def test():
     runner = unittest.TextTestRunner()
     runner.run(suite())
 
-if __name__ == "__main__":
-    test_suite_run(suite)
+test_suite_list.append(suite)
 """
 
 
@@ -2724,8 +2632,7 @@ def test():
     runner = unittest.TextTestRunner()
     runner.run(suite())
 
-if __name__ == "__main__":
-    test_suite_run(suite)
+test_suite_list.append(suite)
 """
 
 
@@ -3016,8 +2923,7 @@ def test():
     runner = unittest.TextTestRunner()
     runner.run(suite())
 
-if __name__ == "__main__":
-    test_suite_run(suite)
+test_suite_list.append(suite)
 """
 
 
@@ -3467,8 +3373,7 @@ def test():
     runner = unittest.TextTestRunner()
     runner.run(suite())
 
-if __name__ == "__main__":
-    test_suite_run(suite)
+test_suite_list.append(suite)
 """
 
 
@@ -4013,8 +3918,7 @@ def test():
     runner = unittest.TextTestRunner()
     runner.run(suite())
 
-if __name__ == "__main__":
-    test_suite_run(suite)
+test_suite_list.append(suite)
 """
 
 
