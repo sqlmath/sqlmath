@@ -5,12 +5,16 @@ python -m build --wheel
 rm -rf build/ && python setup.py build_ext -i
 """
 
+# import setuptools before distutils
+import setuptools # noqa=I001
+
+import distutils.ccompiler
+import distutils.sysconfig
 import os
+import pathlib
 import subprocess
 import sys
 import unittest
-
-import setuptools
 
 
 def build_ext():
@@ -18,51 +22,92 @@ def build_ext():
     # Work around clang raising hard error for unused arguments
     if sys.platform == "darwin":
         os.environ["CFLAGS"] = "-Qunused-arguments"
-    # https://setuptools.pypa.io/en/latest/userguide/ext_modules.html
-    build_ext_option = {
-        "define_macros": [
-            ("MODULE_NAME", '"sqlmath"'),
-            ("SQLMATH_PYTHON_C2", ""),
-        ],
-        "depends": [
-            "sqlmath_dbapi2.py",
-        ],
-        "extra_compile_args": [],
-        "extra_link_args": [],
-        "extra_objects": [],
-        "include_dirs": [],
-        "library_dirs": [],
-        "libraries": [],
-        "name": "_sqlite3",
-        "sources": [
-            "sqlite3_rollup.c",
-        ],
-    }
+    pathlib.Path(".tmp").mkdir(exist_ok=True, parents=True)
+    file = pathlib.Path(".src_dbapi2.c").open("w")
+    file.write("""
+#undef SQLITE3_C2
+#define MODULE_NAME "_sqlite3"
+#define SQLMATH_PYTHON_C2
+#include "sqlite3_rollup.c"
+    """)
+    file.close()
+# https://github.com/pypa/distutils/blob/main/distutils/command/build_clib.py
+    compiler = distutils.ccompiler.new_compiler(
+        compiler=None,
+        dry_run=0,
+        force=0,
+        plat=None,
+        verbose=2,
+    )
+    distutils.sysconfig.customize_compiler(compiler)
+    # Make sure Python's include directories (for Python.h, pyconfig.h,
+    # etc.) are in the include search path.
+    py_include = distutils.sysconfig.get_python_inc()
+    plat_py_include = distutils.sysconfig.get_python_inc(plat_specific=1)
+    include_dirs = []
+    # If in a virtualenv, add its include directory
+    # Issue 16116
+    if sys.exec_prefix != sys.base_exec_prefix:
+        include_dirs.append(pathlib.Path(sys.exec_prefix) / "include")
+    # Put the Python "system" include dir at the end, so that
+    # any local include dirs take precedence.
+    include_dirs.extend(py_include.split(os.path.pathsep))
+    if plat_py_include != py_include:
+        include_dirs.extend(plat_py_include.split(os.path.pathsep))
+    compiler.set_include_dirs(include_dirs)
+
+    compiler.define_macro("SQLITE3_C2", "")
+    compiler.define_macro("ZLIB_C2", "")
+    extra_postargs = []
     if sys.platform == "win32":
-        build_ext_option["libraries"] += [
-            ".tmp/build/Release/sqlite3_c",
-            ".tmp/build/Release/sqlmath_c",
-            ".tmp/build/Release/zlib_c",
-        ]
         # bugfix - LINK : warning LNK4098: defaultlib 'LIBCMT'
         # conflicts with use of other libs; use /NODEFAULTLIB:library
-        build_ext_option["extra_compile_args"] += [
+        extra_postargs += [
             "/MT",
             "/W4",
+            "/wd4131",
         ]
     else:
-        build_ext_option["extra_objects"] += [
-            ".tmp/build/Release/sqlite3_c.a",
-            ".tmp/build/Release/sqlmath_c.a",
-            ".tmp/build/Release/zlib_c.a",
-        ]
-        build_ext_option["define_macros"] += []
-        build_ext_option["extra_compile_args"] += [
+        extra_postargs += [
+            "-DHAVE_UNISTD_H",
             "-Wall",
         ]
+    sources = [
+        ".src_dbapi2.c",
+        "sqlite3_rollup.c",
+        "sqlmath_base.c",
+        "sqlmath_custom.c",
+        "zlib_rollup.c",
+    ]
+    objects = compiler.compile(
+        sources,
+        debug=0,
+        depends=[*sources, "setup.py"],
+        extra_postargs=extra_postargs,
+        extra_preargs=None,
+        output_dir=".tmp",
+    )
+# https://github.com/pypa/distutils/blob/main/distutils/command/build_ext.py
+    build_ext_option = {
+        "define_macros": [],
+        "depends": [],
+        "export_symbols": None,
+        "extra_compile_args": [],
+        "extra_link_args": [],
+        "extra_objects": objects,
+        "include_dirs": [],
+        "language": None,
+        "libraries": [],
+        "library_dirs": [],
+        "name": "_sqlite3",
+        "optional": None,
+        "runtime_library_dirs": None,
+        "sources": [],
+        "swig_opts": None,
+        "undef_macros": None,
+    }
     subprocess.run(["rm", "-f", "*.pyd"]).check_returncode()
     setuptools.setup(
-        description="sqlite for datascience",
         ext_modules=[
             setuptools.Extension(**build_ext_option),
         ],
@@ -103,6 +148,9 @@ if __name__ == "__main__":
         case "build_ext":
             build_ext()
         case "bdist_wheel":
-            subprocess.run(["npm", "run", "test2"]).check_returncode()
+            # !! subprocess.run(["npm", "run", "test2"]).check_returncode()
+            build_ext()
         case "test":
             test_dbapi2_run()
+        case _:
+            setuptools.setup()

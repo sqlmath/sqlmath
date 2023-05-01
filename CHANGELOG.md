@@ -4,7 +4,7 @@
 - none
 
 # v2023.5.1-beta
-- sqlmath - add python c-extension - part3 - add files MANIFEST.in, pyproject.toml, setup.py
+- sqlmath - add python c-extension
 - sqlmath - streamline macros SQLITE3_C2, SQLITE_H2, SQLITE3EXT_H2, SQLMATH_C2 in prepartion for python-c-extension
 - sqlmath - add file zlib_rollup.c so sqlmath can be compiled without external zlib-dependency
 - sqlmath - add sql-function avg_ema()

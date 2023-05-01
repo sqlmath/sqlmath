@@ -297,9 +297,7 @@ import modulePath from "path";
                 }
             },
             "defines": [
-                process.argv[1].split(","),
-                "NAPI_DISABLE_CPP_EXCEPTIONS=1",
-                "_REENTRANT=1"
+                "NAPI_DISABLE_CPP_EXCEPTIONS=1"
             ].flat(),
             "include_dirs": [
                 "."
@@ -465,7 +463,7 @@ import modulePath from "path";
         }
     });
 }());
-' "$(shSqlmathDefineList)" # '
+' "$@" # '
     shCiTestNodejs
 )}
 
@@ -497,19 +495,6 @@ shCiBuildWasm() {(set -e
             continue
         fi
         OPTION2=""
-        OPTION2="$(node --input-type=module --eval '
-process.stdout.write("-D" + process.argv[1].split(
-    ","
-).filter(function (define) {
-    switch (define) {
-    case "SQLITE_THREADSAFE=1":
-    case "SQLITE_USE_ALLOCA":
-        return;
-    default:
-        return true;
-    }
-}).join(" -D"));
-' "$(shSqlmathDefineList)")" # '
         #
         # extra-feature - sql.js
         # https://github.com/sql-js/sql.js/blob/v1.8.0/Makefile
@@ -704,7 +689,6 @@ shLintPython() {(set -e
     # At least two spaces before inline comment (E261)
     # Inline comments should have two spaces before them.
     OPTION="$OPTION,E261"
-    #!! OPTION="$OPTION,S301"
     # Line break occurred before a binary operator (W503)
     # Line breaks should occur after the binary operator to keep all variable
     # names aligned.
@@ -740,39 +724,12 @@ shCiPreCustom() {(set -e
 # this function will run custom-code for pre-ci
     if [ "$GITHUB_ACTION" ]
     then
-        # install python
-        PYTHON_VERSION=3.10
-        case "$(uname)" in
-        Darwin)
-            for FILE in pip python
-            do
-                ln -f "/usr/local/bin/$FILE$PYTHON_VERSION" \
-                    "/usr/local/bin/$FILE"
-            done
-            ;;
-        Linux)
-            for FILE in pip python
-            do
-                sudo ln -f "/usr/bin/$FILE$PYTHON_VERSION" \
-                    "/usr/local/bin/$FILE"
-            done
-            ;;
-        MINGW64_NT*)
-            (
-                cd /c/hostedtoolcache/windows/Python/
-                OLD="$(python --version | grep -o "[0-9.]*")"
-                NEW="$(ls | grep "^$PYTHON_VERSION\>" | head -n 1)"
-                mv "$OLD" "$OLD.backup"
-                powershell \
-                "New-Item -Path $OLD -ItemType SymbolicLink -Value $NEW"
-            )
-            ;;
-        esac
+        :
     fi
-    if [ -f requirements.txt ]
-    then
-        pip install -r requirements.txt
-    fi
+    # !! if [ -f requirements.txt ]
+    # !! then
+        # !! pip install -r requirements.txt
+    # !! fi
 )}
 
 shCiTestNodejs() {(set -e
@@ -1050,76 +1007,6 @@ shCiTestZlib() {(set -e
         exit 1
     fi
     )
-)}
-
-shSqlmathDefineList() {(set -e
-# this function will print list of sqlmath compile-time options
-    node --input-type=module --eval '
-process.stdout.write([
-    //
-    // Recommended Compile-time Options
-    // https://www.sqlite.org/compile.html#recommended_compile_time_options
-    //
-    "SQLITE_DQS=0",
-    // "SQLITE_THREADSAFE=0", // required - sqlmath
-    "SQLITE_DEFAULT_MEMSTATUS=0",
-    "SQLITE_DEFAULT_WAL_SYNCHRONOUS=1",
-    "SQLITE_LIKE_DOESNT_MATCH_BLOBS",
-    "SQLITE_MAX_EXPR_DEPTH=0",
-    // "SQLITE_OMIT_DECLTYPE", // required - python-dbapi2
-    "SQLITE_OMIT_DEPRECATED", // required - python-dbapi2
-    // "SQLITE_OMIT_PROGRESS_CALLBACK", // required - python-dbapi2
-    // "SQLITE_OMIT_SHARED_CACHE", // required - sqlmath, wasm
-    "SQLITE_USE_ALLOCA", // performance-regression - wasm
-    "SQLITE_OMIT_AUTOINIT",
-    //
-    // extra-feature - node-sqlite3
-    // https://github.com/TryGhost/node-sqlite3/blob/v5.1.6/deps/sqlite3.gyp
-    //
-    "_REENTRANT=1",
-    "SQLITE_THREADSAFE=1",
-    "HAVE_USLEEP=1",
-    "SQLITE_ENABLE_FTS3",
-    "SQLITE_ENABLE_FTS4",
-    "SQLITE_ENABLE_FTS5",
-    "SQLITE_ENABLE_RTREE",
-    "SQLITE_ENABLE_DBSTAT_VTAB=1",
-    "SQLITE_ENABLE_MATH_FUNCTIONS",
-    //
-    // extra-feature - python-pysqlite3
-    // https://github.com/coleifer/pysqlite3/blob/0.5.0/setup.py
-    //
-    "ALLOW_COVERING_INDEX_SCAN=1",
-    "ENABLE_FTS3",
-    "ENABLE_FTS3_PARENTHESIS",
-    "ENABLE_FTS4",
-    "ENABLE_FTS5",
-    "ENABLE_JSON1",
-    // "ENABLE_LOAD_EXTENSION",
-    "ENABLE_MATH_FUNCTIONS",
-    "ENABLE_RTREE",
-    "ENABLE_STAT4",
-    "ENABLE_UPDATE_DELETE_LIMIT",
-    "SOUNDEX",
-    "USE_URI",
-    // Always use memory for temp store.
-    "SQLITE_TEMP_STORE=3",
-    // Increase the maximum number of "host parameters"
-    // which SQLite will accept
-    // "SQLITE_MAX_VARIABLE_NUMBER=250000",
-    // Increase maximum allowed memory-map size to 1TB
-    // "SQLITE_MAX_MMAP_SIZE=1099511627776",
-    //
-    // extra-feature - misc
-    //
-    // "HAVE_MALLOC_USABLE_SIZE", // required - python-dbapi2
-    // "SQLITE_ENABLE_ICU", // to_do - regexp-replace
-    "SQLITE_ENABLE_NULL_TRIM",
-    "SQLITE_ENABLE_SORTER_REFERENCES",
-    "SQLITE_HAVE_ZLIB",
-    "UNDEFINED"
-].join(","));
-' "$@" # '
 )}
 
 shSqlmathUpdate() {(set -e
