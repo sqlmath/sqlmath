@@ -12,6 +12,7 @@ import distutils.ccompiler
 import distutils.sysconfig
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import unittest
@@ -64,16 +65,17 @@ def build_ext():
         # conflicts with use of other libs; use /NODEFAULTLIB:library
         extra_postargs += [
             "/MT",
+            "/O2",
             "/W4",
             "/wd4131",
         ]
     else:
         extra_postargs += [
             "-DHAVE_UNISTD_H",
+            "-O3",
             "-Wall",
         ]
     sources = [
-        ".src_dbapi2.c",
         "sqlite3_rollup.c",
         "sqlmath_base.c",
         "sqlmath_custom.c",
@@ -87,22 +89,46 @@ def build_ext():
         extra_preargs=None,
         output_dir=".tmp",
     )
+    compiler.create_static_lib(
+        objects,
+        output_libname="sqlite3_rollup",
+        debug=0,
+        output_dir=".tmp",
+        target_lang=None,
+    )
+    if sys.platform == "win32":
+        extra_objects = []
+        libraries = [".tmp/sqlite3_rollup"]
+    else:
+        shutil.copyfile(
+            compiler.library_filename(
+                libname="sqlite3_rollup",
+                lib_type="static",
+                strip_dir=0,
+                output_dir=".tmp",
+            ),
+            ".tmp/sqlite3_rollup.lib",
+        )
+        extra_objects = [".tmp/sqlite3_rollup.lib"]
+        libraries = []
 # https://github.com/pypa/distutils/blob/main/distutils/command/build_ext.py
     build_ext_option = {
         "define_macros": [],
         "depends": [],
         "export_symbols": None,
-        "extra_compile_args": [],
+        "extra_compile_args": extra_postargs,
         "extra_link_args": [],
-        "extra_objects": objects,
+        "extra_objects": extra_objects,
         "include_dirs": [],
         "language": None,
-        "libraries": [],
+        "libraries": libraries,
         "library_dirs": [],
         "name": "_sqlite3",
         "optional": None,
         "runtime_library_dirs": None,
-        "sources": [],
+        "sources": [
+            ".src_dbapi2.c",
+        ],
         "swig_opts": None,
         "undef_macros": None,
     }

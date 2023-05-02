@@ -247,35 +247,6 @@ import modulePath from "path";
                 ]
             ],
             "configurations": {
-                "Debug": {
-                    "cflags_cc!": [
-                        "-DNDEBUG",
-                        "-O3"
-                    ],
-                    "defines": [
-                        "DEBUG",
-                        "_DEBUG"
-                    ],
-                    "defines!": [
-                        "NDEBUG"
-                    ],
-                    "msvs_settings": {
-                        "VCCLCompilerTool": {
-                            "RuntimeLibrary": 1
-                        },
-                        "VCLinkerTool": {
-                            "GenerateDebugInformation": "true"
-                        }
-                    },
-                    "xcode_settings": {
-                        "GCC_GENERATE_DEBUGGING_SYMBOLS": "YES",
-                        "GCC_OPTIMIZATION_LEVEL": "0",
-                        "OTHER_CPLUSPLUSFLAGS!": [
-                            "-DNDEBUG",
-                            "-O3"
-                        ]
-                    }
-                },
                 "Release": {
                     "defines": [
                         "NDEBUG"
@@ -327,79 +298,38 @@ import modulePath from "path";
         "targets": [
             targetWarningLevel(1, {
                 "defines": [
-                    "ZLIB_C2"
-                ],
-                "msvs_settings": {
-                    "VCCLCompilerTool": {
-                        "DisableSpecificWarnings": [
-                            "4131"
-                        ]
-                    }
-                },
-                "sources": [
-                    "../zlib_rollup.c"
-                ],
-                "target_name": "zlib_c",
-                "type": "static_library"
-            }),
-            targetWarningLevel(1, {
-                "defines": [
-                    "SQLITE3_C2"
-                ],
-                "dependencies": [
-                    "zlib_c"
-                ],
-                "sources": [
-                    "../sqlite3_rollup.c"
-                ],
-                "target_name": "sqlite3_c",
-                "type": "static_library"
-            }),
-            targetWarningLevel(1, {
-                "defines": [
-                    "SQLITE3_C2"
-                ],
-                "sources": [
-                    "../sqlmath_base.c",
-                    "../sqlmath_custom.c"
-                ],
-                "target_name": "sqlmath_c",
-                "type": "static_library"
-            }),
-            targetWarningLevel(1, {
-                "defines": [
                     "SQLMATH_NODEJS_C2"
                 ],
-                "dependencies": [
-                    "sqlite3_c",
-                    "sqlmath_c"
+                "dependencies": [],
+                "libraries": [
+                    "../sqlite3_rollup.lib"
                 ],
                 "sources": [
                     "../sqlmath_base.c"
                 ],
                 "target_name": "<(target_node)"
             }),
-            targetWarningLevel(0, {
-                "defines": [
-                    "SQLITE3_SHELL_C2"
-                ],
-                "dependencies": [
-                    "sqlite3_c",
-                    "sqlmath_c"
-                ],
-                "sources": [
-                    "../sqlite3_shell.c"
-                ],
-                "target_name": "<(target_shell)",
-                "type": "executable"
-            }),
+            //!! targetWarningLevel(0, {
+                //!! "defines": [
+                    //!! "SQLITE3_SHELL_C2"
+                //!! ],
+                //!! "dependencies": [
+                    //!! "sqlite3_c",
+                    //!! "sqlmath_c"
+                //!! ],
+                //!! "sources": [
+                    //!! "../sqlite3_shell.c"
+                //!! ],
+                //!! "target_name": "<(target_shell)",
+                //!! "type": "executable"
+            //!! }),
             {
                 "copies": [
                     {
                         "destination": "..",
                         "files": [
-                            "<(PRODUCT_DIR)/<(target_node).node",
-                            "<(PRODUCT_DIR)/<(target_shell)<(.exe)"
+                            "<(PRODUCT_DIR)/<(target_node).node"
+                            //!! "<(PRODUCT_DIR)/<(target_shell)<(.exe)"
                         ]
                     }
                 ],
@@ -440,14 +370,8 @@ import modulePath from "path";
                 modulePath.dirname(process.execPath),
                 "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
             ).replace("/bin/node_modules/", "/lib/node_modules/"),
-            action,
             // https://github.com/nodejs/node-gyp#command-options
-            "-jobs", "max",
-            (
-                process.env.npm_config_mode_debug
-                ? "--debug"
-                : "--release"
-            )
+            action, "-jobs", "max", "--release"
         ];
         console.error(
             "(cd .tmp/ && node " + action.map(function (elem) {
@@ -703,7 +627,7 @@ shCiLintCustom() {(set -e
     then
         pip install pycodestyle ruff
     fi
-    shLintPython \
+    npm_config_mode_lint_fix=1 shLintPython \
         setup.py
 )}
 
@@ -720,18 +644,6 @@ shCiNpmPublishCustom() {(set -e
     npm publish --access public
 )}
 
-shCiPreCustom() {(set -e
-# this function will run custom-code for pre-ci
-    if [ "$GITHUB_ACTION" ]
-    then
-        :
-    fi
-    # !! if [ -f requirements.txt ]
-    # !! then
-        # !! pip install -r requirements.txt
-    # !! fi
-)}
-
 shCiTestNodejs() {(set -e
 # this function will run test in nodejs
     # init .tmp
@@ -740,6 +652,8 @@ shCiTestNodejs() {(set -e
     export npm_config_mode_test=1
     if [ "$npm_config_fast" != true ]
     then
+        # build python c-extension
+        python setup.py build_ext -i
         # # indent c-file
         # if (uname | grep -q "MING\|MSYS")
         # then
@@ -783,12 +697,7 @@ import modulePath from "path";
             ).replace("/bin/node_modules/", "/lib/node_modules/"),
             action,
             // https://github.com/nodejs/node-gyp#command-options
-            "-jobs", "max",
-            (
-                process.env.npm_config_mode_debug
-                ? "--debug"
-                : "--release"
-            )
+            action, "-jobs", "max", "--release"
         ];
         console.error(
             "(cd .tmp/ && node " + action.map(function (elem) {
@@ -805,8 +714,6 @@ import modulePath from "path";
     });
 }());
 ' "$@" # '
-        # build python c-extension
-        python setup.py build_ext -i
     fi;
     # test nodejs
     rm -f *~ .*test.sqlite
