@@ -23,15 +23,6 @@ def build_ext():
     # Work around clang raising hard error for unused arguments
     if sys.platform == "darwin":
         os.environ["CFLAGS"] = "-Qunused-arguments"
-    pathlib.Path(".tmp").mkdir(exist_ok=True, parents=True)
-    file = pathlib.Path(".src_dbapi2.c").open("w")
-    file.write("""
-#undef SQLITE3_C2
-#define MODULE_NAME "_sqlite3"
-#define SQLMATH_PYTHON_C2
-#include "sqlite3_rollup.c"
-    """)
-    file.close()
 # https://github.com/pypa/distutils/blob/main/distutils/command/build_clib.py
     compiler = distutils.ccompiler.new_compiler(
         compiler=None,
@@ -56,9 +47,8 @@ def build_ext():
     if plat_py_include != py_include:
         include_dirs.extend(plat_py_include.split(os.path.pathsep))
     compiler.set_include_dirs(include_dirs)
-
+    # compile static-library sqlite3_rollup.lib
     compiler.define_macro("SQLITE3_C2", "")
-    compiler.define_macro("ZLIB_C2", "")
     extra_postargs = []
     if sys.platform == "win32":
         # bugfix - LINK : warning LNK4098: defaultlib 'LIBCMT'
@@ -76,10 +66,11 @@ def build_ext():
             "-Wall",
         ]
     sources = [
+        ".src_zlib_rollup.c",
+        "src_extension_functions.c",
         "sqlite3_rollup.c",
         "sqlmath_base.c",
         "sqlmath_custom.c",
-        "zlib_rollup.c",
     ]
     objects = compiler.compile(
         sources,

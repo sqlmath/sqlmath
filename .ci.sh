@@ -155,12 +155,6 @@ shCiBuildNodejs() {(set -e
     # init .tmp
     mkdir -p .tmp
     #
-    # test zlib
-    if [ "$GITHUB_ACTION" ]
-    then
-        shCiTestZlib
-    fi
-    #
     # node-gyp - run
     node --input-type=module --eval '
 import moduleChildProcess from "child_process";
@@ -407,6 +401,7 @@ shCiBuildWasm() {(set -e
     OPTION1="$OPTION1 -Os"
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
+        src_extension_functions.c \
         sqlite3_rollup.c \
         sqlmath_base.c \
         sqlmath_custom.c
@@ -480,6 +475,7 @@ shCiBuildWasm() {(set -e
         -s USE_ZLIB \
         -s WASM=1 \
         -s WASM_BIGINT \
+        .tmp/src_extension_functions.c.wasm.o \
         .tmp/sqlite3_rollup.c.wasm.o \
         .tmp/sqlmath_base.c.wasm.o \
         .tmp/sqlmath_custom.c.wasm.o \
@@ -560,6 +556,25 @@ shCiEmsdkInstall() {(set -e
     emcc \
         -s USE_ZLIB \
         "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
+)}
+
+shIndentC() {(set -e
+# this function will indent/prettify c file
+    if (uname | grep -q "MING\|MSYS")
+    then
+        ./indent.exe \
+            --blank-lines-after-commas \
+            --braces-on-func-def-line \
+            --break-function-decl-args \
+            --break-function-decl-args-end \
+            --dont-line-up-parentheses \
+            --k-and-r-style \
+            --line-length78 \
+            --no-tabs \
+            -bfde \
+            $@
+        dos2unix $@
+    fi
 )}
 
 shLintPython() {(set -e
@@ -652,26 +667,17 @@ shCiTestNodejs() {(set -e
     export npm_config_mode_test=1
     if [ "$npm_config_fast" != true ]
     then
+        printf '#define SQLMATH_PYTHON_C2\n#include "sqlite3_rollup.c"\n' \
+            > .src_dbapi2.c
+        printf '#define ZLIB_C2\n#include "sqlite3_rollup.c"\n' \
+            > .src_zlib_rollup.c
+        # test zlib
+        if [ "$GITHUB_ACTION" ]
+        then
+            shCiTestZlib
+        fi
         # build python c-extension
         python setup.py build_ext -i
-        # # indent c-file
-        # if (uname | grep -q "MING\|MSYS")
-        # then
-        #     ./indent.exe \
-        #         --blank-lines-after-commas \
-        #         --braces-on-func-def-line \
-        #         --break-function-decl-args \
-        #         --break-function-decl-args-end \
-        #         --dont-line-up-parentheses \
-        #         --k-and-r-style \
-        #         --line-length78 \
-        #         --no-tabs \
-        #         -bfde \
-        #         sqlmath_base.c \
-        #         sqlmath_custom.c \
-        #         sqlmath_jenks.c
-        #     dos2unix *.c
-        # fi
         # lint c-file
         python cpplint.py \
             --filter=-whitespace/comments \
@@ -754,11 +760,10 @@ shCiTestZlib() {(set -e
     #
     printf "\nbuild static libz.a\n"
     gcc $CFLAGS \
-        -DZLIB_C2 \
         -c \
-        -o zlib_rollup.o \
-        zlib_rollup.c
-    ar rc libz.a zlib_rollup.o
+        -o .src_zlib_rollup.o \
+        .src_zlib_rollup.c
+    ar rc libz.a .src_zlib_rollup.o
     ranlib libz.a
     #
     printf "\nbuild static test_example.exe\n"
@@ -766,7 +771,7 @@ shCiTestZlib() {(set -e
         -DZLIB_TEST_EXAMPLE_C2 \
         -c \
         -o test_example.o \
-        zlib_rollup.c
+        .src_zlib_rollup.c
     gcc $CFLAGS \
         -o test_example.exe \
         test_example.o \
@@ -777,7 +782,7 @@ shCiTestZlib() {(set -e
         -DZLIB_TEST_MINIGZIP_C2 \
         -c \
         -o test_minigzip.o \
-        zlib_rollup.c
+        .src_zlib_rollup.c
     gcc $CFLAGS \
         -o test_minigzip.exe \
         test_minigzip.o \
@@ -807,17 +812,15 @@ shCiTestZlib() {(set -e
     printf "\nbuild shared libz.a\n"
     gcc $CFLAGS \
         -DPIC \
-        -DZLIB_C2 \
         -c \
         -fPIC \
-        -o zlib_rollup.o \
-        zlib_rollup.c
+        -o .src_zlib_rollup.o \
+        .src_zlib_rollup.c
     gcc $CFLAGS \
-        -DZLIB_C2 \
         -fPIC \
         -o libz.so.$VERSION \
         -shared \
-        zlib_rollup.o
+        .src_zlib_rollup.o
     ln -s libz.so.$VERSION libz.so
     ln -s libz.so.$VERSION libz.so.1
     #
@@ -826,7 +829,7 @@ shCiTestZlib() {(set -e
         -DZLIB_TEST_EXAMPLE_C2 \
         -c \
         -o test_example.o \
-        zlib_rollup.c
+        .src_zlib_rollup.c
     gcc $CFLAGS \
         -o test_example.exe \
         test_example.o \
@@ -837,7 +840,7 @@ shCiTestZlib() {(set -e
         -DZLIB_TEST_MINIGZIP_C2 \
         -c \
         -o test_minigzip.o \
-        zlib_rollup.c
+        .src_zlib_rollup.c
     gcc $CFLAGS \
         -o test_minigzip.exe \
         test_minigzip.o \
@@ -866,12 +869,11 @@ shCiTestZlib() {(set -e
     #
     printf "\nbuild 64 libz.a\n"
     gcc $CFLAGS \
-        -DZLIB_C2 \
         -D_LARGEFILE64_SOURCE=1 \
         -c \
-        -o zlib_rollup.o \
-        zlib_rollup.c
-    ar rc libz.a zlib_rollup.o
+        -o .src_zlib_rollup.o \
+        .src_zlib_rollup.c
+    ar rc libz.a .src_zlib_rollup.o
     ranlib libz.a
     #
     printf "\nbuild 64 test_example.exe\n"
@@ -881,7 +883,7 @@ shCiTestZlib() {(set -e
         -D_LARGEFILE64_SOURCE=1 \
         -c \
         -o test_example.o \
-        zlib_rollup.c
+        .src_zlib_rollup.c
     gcc $CFLAGS \
         -D_LARGEFILE64_SOURCE=1 \
         -o test_example.exe \
@@ -895,7 +897,7 @@ shCiTestZlib() {(set -e
         -D_LARGEFILE64_SOURCE=1 \
         -c \
         -o test_minigzip.o \
-        zlib_rollup.c
+        .src_zlib_rollup.c
     gcc $CFLAGS \
         -D_LARGEFILE64_SOURCE=1 \
         -o test_minigzip.exe \
@@ -922,11 +924,11 @@ shSqlmathUpdate() {(set -e
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         shRawLibFetch asset_sqlmath_external_rollup.js
+        shRawLibFetch src_extension_functions.c
         shRawLibFetch index.html
         shRawLibFetch sqlite3_rollup.c
         shRawLibFetch sqlite3_shell.c
         shRawLibFetch sqlmath_dbapi2.py
-        shRawLibFetch zlib_rollup.c
         git grep '3\.39\.[^4]' \
             ":(exclude)CHANGELOG.md" \
             ":(exclude)sqlite3_rollup.c" \
@@ -943,6 +945,7 @@ shSqlmathUpdate() {(set -e
             .ci.sh \
             asset_sqlmath_external_rollup.js \
             indent.exe \
+            src_extension_functions.c \
             index.html \
             sqlite3_rollup.c \
             sqlite3_shell.c \

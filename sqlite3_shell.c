@@ -1,3 +1,4 @@
+// *INDENT-OFF*
 /*jslint-disable*/
 /*
 shRawLibFetch
@@ -20866,3 +20867,4 @@ void fiddle_exec(const char * zSql){
 file none
 */
 /*jslint-enable*/
+// *INDENT-ON*
