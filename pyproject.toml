@@ -1,10 +1,9 @@
 # https://setuptools.pypa.io/en/latest/userguide/ext_modules.html
 [build-system]
 requires = [
-    # !! "pycodestyle >= 2.10.0",
-    # !! "ruff >= 0.0.262",
+    "pycodestyle >= 2.10.0",
+    "ruff >= 0.0.263",
     "setuptools >= 65.5.0",
-    # !! "setuptools_scm >= 7.1.0",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -36,7 +35,7 @@ classifiers = [
 ]
 
 [project.scripts]
-#!! spam-cli = "spam:main_cli"
+# spam-cli = "spam:main_cli"
 
 [project.urls]
 documentation = "https://github.com/sqlmath/sqlmath"
@@ -45,11 +44,14 @@ repository = "https://github.com/sqlmath/sqlmath"
 changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
-# !! where = ["src"]  # list of folders that contain the packages (["."] by default)
-# !! include = ["my_package*"]  # package names should match these glob patterns (["*"] by default)
+# list of folders that contain the packages (["."] by default)
+# where = ["src"]
+# package names should match these glob patterns (["*"] by default)
+# include = ["my_package*"]
 exclude = [
     ".*",
     "_*",
 ]
-# !! namespaces = false  # to disable scanning PEP 420 namespaces (true by default)
+# to disable scanning PEP 420 namespaces (true by default)
+# namespaces = false
 

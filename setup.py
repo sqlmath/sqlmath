@@ -21,6 +21,11 @@ import unittest
 
 def build_ext():
     """This function will build extension."""
+    subprocess.run([
+        "sh",
+        "jslint_ci.sh",
+        "shCiBuildPythonSrc",
+    ])
     # Work around clang raising hard error for unused arguments
     if sys.platform == "darwin":
         os.environ["CFLAGS"] = "-Qunused-arguments"
@@ -50,6 +55,7 @@ def build_ext():
     compiler.set_include_dirs(include_dirs)
     # build static-library sqlite3_rollup.a
     compiler.define_macro("SQLITE3_C2", "")
+    extra_link_args = []
     extra_postargs = []
     if sys.platform == "win32":
         # bugfix - LINK : warning LNK4098: defaultlib 'LIBCMT'
@@ -61,14 +67,15 @@ def build_ext():
             "/wd4131",
         ]
     else:
+        extra_link_args += ["-lm"]
         extra_postargs += [
             "-DHAVE_UNISTD_H",
             "-O3",
             "-Wall",
         ]
     sources = [
-        ".src_shell.c",
-        ".src_zlib_rollup.c",
+        ".SRC_SHELL.c",
+        ".SRC_ZLIB.c",
         "src_extension_functions.c",
         "sqlite3_rollup.c",
         "sqlmath_base.c",
@@ -101,9 +108,7 @@ def build_ext():
         runtime_library_dirs=None,
         debug=0,
         extra_preargs=None,
-        extra_postargs=[
-            "-lm",
-        ],
+        extra_postargs=extra_link_args,
         target_lang=None,
     )
     # build c-extension
@@ -128,9 +133,7 @@ def build_ext():
         "depends": [],
         "export_symbols": None,
         "extra_compile_args": extra_postargs,
-        "extra_link_args": [
-            "-lm",
-        ],
+        "extra_link_args": extra_link_args,
         "extra_objects": extra_objects,
         "include_dirs": [],
         "language": None,
@@ -140,7 +143,7 @@ def build_ext():
         "optional": None,
         "runtime_library_dirs": None,
         "sources": [
-            ".src_dbapi2.c",
+            ".SRC_PYTHON_DBAPI2.c",
         ],
         "swig_opts": None,
         "undef_macros": None,
@@ -187,7 +190,6 @@ if __name__ == "__main__":
         case "build_ext":
             build_ext()
         case "bdist_wheel":
-            # !! subprocess.run(["npm", "run", "test2"]).check_returncode()
             build_ext()
         case "test":
             test_dbapi2_run()

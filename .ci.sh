@@ -359,6 +359,50 @@ import modulePath from "path";
     shCiTestNodejs
 )}
 
+shCiBuildPython() {(set -e
+# this function will run custom-code for pre-ci
+    # create file Manifest.in
+    git ls-tree --name-only HEAD | sed "s|^|include |" > Manifest.in
+    # create file .src_xxx.c
+    if (shCiBuildPythonSrc)
+    then
+        return
+    fi
+    # test zlib
+    if [ "$GITHUB_ACTION" ]
+    then
+        shCiTestZlib
+    fi
+    python setup.py build_ext -i
+)}
+
+shCiBuildPythonSrc() {(set -e
+# this function will build .SRC_XXX.c
+    EXIT_CODE=0
+    FILE1=sqlite3_rollup.c
+    for BASENAME in \
+        SRC_PYTHON_DBAPI2 \
+        SRC_SHELL \
+        SRC_ZLIB
+    do
+        FILE2=".$BASENAME.c"
+        if [ ! -f "$FILE2" ] \
+            || [ -n "$(find -L "$FILE1" -prune -newer "$FILE2")" ]
+        then
+            EXIT_CODE=1
+            printf "shCiBuildPythonSrc - $FILE1 is newer than $FILE2\n"
+            printf "#define ${BASENAME}_C2\n#include \"sqlite3_rollup.c\"\n" \
+                > "$FILE2"
+        fi
+    done
+    if [ ! -f .tmp/sqlite3_rollup.lib ]
+    then
+        EXIT_CODE=1
+    fi
+    printf "shCiBuildPythonSrc - EXIT_CODE=$EXIT_CODE\n"
+    return "$EXIT_CODE"
+)}
+
 shCiBuildWasm() {(set -e
 # this function will build binaries in wasm
     shCiEmsdkExport
@@ -641,19 +685,8 @@ shCiTestNodejs() {(set -e
     export npm_config_mode_test=1
     if [ "$npm_config_fast" != true ]
     then
-        printf '#define SQLMATH_PYTHON_C2\n#include "sqlite3_rollup.c"\n' \
-            > .src_dbapi2.c
-        printf '#define SQLITE3_SHELL_C2\n#include "sqlite3_rollup.c"\n' \
-            > .src_shell.c
-        printf '#define ZLIB_C2\n#include "sqlite3_rollup.c"\n' \
-            > .src_zlib_rollup.c
-        # test zlib
-        if [ "$GITHUB_ACTION" ]
-        then
-            shCiTestZlib
-        fi
         # build python c-extension
-        python setup.py build_ext -i
+        shCiBuildPython
         # lint c-file
         python cpplint.py \
             --filter=-whitespace/comments \
@@ -738,7 +771,7 @@ shCiTestZlib() {(set -e
     gcc $CFLAGS \
         -c \
         -o .src_zlib_rollup.o \
-        .src_zlib_rollup.c
+        .SRC_ZLIB.c
     ar rc libz.a .src_zlib_rollup.o
     ranlib libz.a
     #
@@ -747,7 +780,7 @@ shCiTestZlib() {(set -e
         -DZLIB_TEST_EXAMPLE_C2 \
         -c \
         -o test_example.o \
-        .src_zlib_rollup.c
+        .SRC_ZLIB.c
     gcc $CFLAGS \
         -o test_example.exe \
         test_example.o \
@@ -758,7 +791,7 @@ shCiTestZlib() {(set -e
         -DZLIB_TEST_MINIGZIP_C2 \
         -c \
         -o test_minigzip.o \
-        .src_zlib_rollup.c
+        .SRC_ZLIB.c
     gcc $CFLAGS \
         -o test_minigzip.exe \
         test_minigzip.o \
@@ -791,7 +824,7 @@ shCiTestZlib() {(set -e
         -c \
         -fPIC \
         -o .src_zlib_rollup.o \
-        .src_zlib_rollup.c
+        .SRC_ZLIB.c
     gcc $CFLAGS \
         -fPIC \
         -o libz.so.$VERSION \
@@ -805,7 +838,7 @@ shCiTestZlib() {(set -e
         -DZLIB_TEST_EXAMPLE_C2 \
         -c \
         -o test_example.o \
-        .src_zlib_rollup.c
+        .SRC_ZLIB.c
     gcc $CFLAGS \
         -o test_example.exe \
         test_example.o \
@@ -816,7 +849,7 @@ shCiTestZlib() {(set -e
         -DZLIB_TEST_MINIGZIP_C2 \
         -c \
         -o test_minigzip.o \
-        .src_zlib_rollup.c
+        .SRC_ZLIB.c
     gcc $CFLAGS \
         -o test_minigzip.exe \
         test_minigzip.o \
@@ -848,7 +881,7 @@ shCiTestZlib() {(set -e
         -D_LARGEFILE64_SOURCE=1 \
         -c \
         -o .src_zlib_rollup.o \
-        .src_zlib_rollup.c
+        .SRC_ZLIB.c
     ar rc libz.a .src_zlib_rollup.o
     ranlib libz.a
     #
@@ -859,7 +892,7 @@ shCiTestZlib() {(set -e
         -D_LARGEFILE64_SOURCE=1 \
         -c \
         -o test_example.o \
-        .src_zlib_rollup.c
+        .SRC_ZLIB.c
     gcc $CFLAGS \
         -D_LARGEFILE64_SOURCE=1 \
         -o test_example.exe \
@@ -873,7 +906,7 @@ shCiTestZlib() {(set -e
         -D_LARGEFILE64_SOURCE=1 \
         -c \
         -o test_minigzip.o \
-        .src_zlib_rollup.c
+        .SRC_ZLIB.c
     gcc $CFLAGS \
         -D_LARGEFILE64_SOURCE=1 \
         -o test_minigzip.exe \
