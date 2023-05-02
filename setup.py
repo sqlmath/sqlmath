@@ -12,6 +12,7 @@ import distutils.ccompiler
 import distutils.sysconfig
 import os
 import pathlib
+import platform
 import shutil
 import subprocess
 import sys
@@ -47,7 +48,7 @@ def build_ext():
     if plat_py_include != py_include:
         include_dirs.extend(plat_py_include.split(os.path.pathsep))
     compiler.set_include_dirs(include_dirs)
-    # compile static-library sqlite3_rollup.lib
+    # build static-library sqlite3_rollup.a
     compiler.define_macro("SQLITE3_C2", "")
     extra_postargs = []
     if sys.platform == "win32":
@@ -66,6 +67,7 @@ def build_ext():
             "-Wall",
         ]
     sources = [
+        ".src_shell.c",
         ".src_zlib_rollup.c",
         "src_extension_functions.c",
         "sqlite3_rollup.c",
@@ -81,12 +83,30 @@ def build_ext():
         output_dir=".tmp",
     )
     compiler.create_static_lib(
-        objects,
+        objects=[obj for obj in objects if not obj.startswith(".src_shell.")],
         output_libname="sqlite3_rollup",
         debug=0,
         output_dir=".tmp",
         target_lang=None,
     )
+    # build executable
+    compiler.link_executable(
+        objects=objects,
+        output_progname=(
+            f"_binary_sqlmath_shell_{platform.system()}_{platform.machine()}"
+        ).lower(),
+        output_dir=None,
+        libraries=None,
+        library_dirs=None,
+        runtime_library_dirs=None,
+        debug=0,
+        extra_preargs=None,
+        extra_postargs=[
+            "-lm",
+        ],
+        target_lang=None,
+    )
+    # build c-extension
     if sys.platform == "win32":
         extra_objects = []
         libraries = [".tmp/sqlite3_rollup"]
@@ -108,7 +128,9 @@ def build_ext():
         "depends": [],
         "export_symbols": None,
         "extra_compile_args": extra_postargs,
-        "extra_link_args": [],
+        "extra_link_args": [
+            "-lm",
+        ],
         "extra_objects": extra_objects,
         "include_dirs": [],
         "language": None,

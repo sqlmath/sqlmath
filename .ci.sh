@@ -303,27 +303,12 @@ import modulePath from "path";
                 ],
                 "target_name": "<(target_node)"
             }),
-            //!! targetWarningLevel(0, {
-                //!! "defines": [
-                    //!! "SQLITE3_SHELL_C2"
-                //!! ],
-                //!! "dependencies": [
-                    //!! "sqlite3_c",
-                    //!! "sqlmath_c"
-                //!! ],
-                //!! "sources": [
-                    //!! "../sqlite3_shell.c"
-                //!! ],
-                //!! "target_name": "<(target_shell)",
-                //!! "type": "executable"
-            //!! }),
             {
                 "copies": [
                     {
                         "destination": "..",
                         "files": [
                             "<(PRODUCT_DIR)/<(target_node).node"
-                            //!! "<(PRODUCT_DIR)/<(target_shell)<(.exe)"
                         ]
                     }
                 ],
@@ -335,20 +320,9 @@ import modulePath from "path";
             }
         ],
         "variables": {
-            ".exe": (
-                process.platform === "win32"
-                ? ".exe"
-                : ""
-            ),
             "target_node": (
                 "_binary_sqlmath"
                 + "_napi8"
-                + "_" + process.platform
-                + "_" + process.arch
-            ),
-            "target_shell": (
-                "_binary_sqlmath"
-                + "_shell"
                 + "_" + process.platform
                 + "_" + process.arch
             )
@@ -669,6 +643,8 @@ shCiTestNodejs() {(set -e
     then
         printf '#define SQLMATH_PYTHON_C2\n#include "sqlite3_rollup.c"\n' \
             > .src_dbapi2.c
+        printf '#define SQLITE3_SHELL_C2\n#include "sqlite3_rollup.c"\n' \
+            > .src_shell.c
         printf '#define ZLIB_C2\n#include "sqlite3_rollup.c"\n' \
             > .src_zlib_rollup.c
         # test zlib
@@ -927,7 +903,6 @@ shSqlmathUpdate() {(set -e
         shRawLibFetch src_extension_functions.c
         shRawLibFetch index.html
         shRawLibFetch sqlite3_rollup.c
-        shRawLibFetch sqlite3_shell.c
         shRawLibFetch sqlmath_dbapi2.py
         git grep '3\.39\.[^4]' \
             ":(exclude)CHANGELOG.md" \
@@ -948,7 +923,6 @@ shSqlmathUpdate() {(set -e
             src_extension_functions.c \
             index.html \
             sqlite3_rollup.c \
-            sqlite3_shell.c \
             sqlmath.mjs \
             sqlmath_base.c \
             sqlmath_browser.mjs \
