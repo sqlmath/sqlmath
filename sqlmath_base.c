@@ -27,19 +27,21 @@
 /*
 file sqlmath_h - start
 */
-// *INDENT-OFF*
-#if defined(__cplusplus)
-extern "C" {
-#endif
-// *INDENT-ON*
 
 
 #ifndef SQLMATH_H2
 #define SQLMATH_H2
+
+
+#define NAPI_VERSION 6
 #define SQLITE3EXT_H2
 #ifdef SQLITE3_C2
-#undef SQLITE3_C2
-#define SQLMATH_C2
+#   undef SQLITE3_C2
+#   define SQLMATH_C2
+#endif
+#ifdef SQLITE3_C2
+#   undef SQLITE3_C2
+#   define SQLMATH_C2
 #endif
 
 
@@ -71,7 +73,6 @@ extern "C" {
 #define JS_MIN_SAFE_INTEGER -0x1fffffffffffff
 #define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
-#define NAPI_VERSION 8
 #define SGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
 #define SIZEOF_MESSAGE_DEFAULT 256
 #define SQLITE_DATATYPE_BLOB            0x04
@@ -359,11 +360,6 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
 );
 
 
-// *INDENT-OFF*
-#if defined(__cplusplus)
-}
-#endif
-// *INDENT-ON*
 /*
 file sqlmath_h - end
 */
@@ -2047,7 +2043,6 @@ file sqlmath_nodejs - start
 #ifdef WIN32
 #include <windows.h>
 #endif
-#include <node_api.h>
 
 
 // file sqlmath_nodejs - assert

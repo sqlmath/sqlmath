@@ -151,183 +151,14 @@ shCiBuildNodejs() {(set -e
 # this function will build binaries in nodejs
     # cleanup
     rm -f _binary_*
-    rm -rf .tmp
-    # init .tmp
-    mkdir -p .tmp
+    rm -rf build/
+    mkdir -p build/
     #
     # node-gyp - run
     node --input-type=module --eval '
 import moduleChildProcess from "child_process";
-import moduleFs from "fs";
 import modulePath from "path";
 (function () {
-    let cflags = {
-        "cflags": [
-            "-fdiagnostics-show-option",
-            "-std=c99"
-        ],
-        "cflags!": [
-            "-fno-exceptions"
-        ],
-        "cflags_cc": [
-        ],
-        "cflags_cc!": [
-            "-fno-exceptions"
-        ]
-    };
-    function targetWarningLevel(level, target) {
-// this function will set <target>"s warnings to <level>
-        let warningList = ["-Wall", "-w"];
-        if (!level) {
-            warningList.reverse();
-        }
-        target.msvs_settings = target.msvs_settings || {
-            "VCCLCompilerTool": {
-                "WarningLevel": (
-                    level
-                    ? 4
-                    : 0
-                )
-            }
-        };
-        target.xcode_settings = target.xcode_settings || {};
-        [
-            target, "cflags", "cflags!",
-            target, "cflags_cc", "cflags_cc!",
-            target.xcode_settings, "OTHER_CFLAGS", "OTHER_CFLAGS!",
-            target.xcode_settings,
-            "OTHER_CPLUSPLUSFLAGS",
-            "OTHER_CPLUSPLUSFLAGS!"
-        ].forEach(function (dict, ii, list) {
-            if (ii % 3 !== 0) {
-                return;
-            }
-            [
-                list[ii + 1], list[ii + 2]
-            ].forEach(function (key, ii) {
-                dict[key] = dict[key] || [];
-                dict[key].push(warningList[ii]);
-            });
-        });
-        return target;
-    }
-    process.chdir(".tmp");
-    moduleFs.writeFileSync("binding.gyp", JSON.stringify({ //jslint-ignore-line
-        "target_defaults": {
-            "cflags": cflags.cflags,
-            "cflags!": cflags["cflags!"],
-            "cflags_cc": cflags.cflags_cc,
-            "cflags_cc!": cflags["cflags_cc!"],
-            "conditions": [
-                [
-                    "OS == \u0027win\u0027",
-                    {
-                        "defines": [
-                            "WIN32"
-                        ]
-                    },
-                    {
-                        "defines": [
-                            "HAVE_UNISTD_H"
-                        ],
-                        "link_settings": {
-                            "libraries": [
-                                "-ldl",
-                                "-lm"
-                                // "-lz"
-                            ]
-                        }
-                    }
-                ]
-            ],
-            "configurations": {
-                "Release": {
-                    "defines": [
-                        "NDEBUG"
-                    ],
-                    "msvs_settings": {
-                        "VCCLCompilerTool": {
-                            "Optimization": 3
-                        }
-                    },
-                    "xcode_settings": {
-                        "DEAD_CODE_STRIPPING": "YES",
-                        "GCC_GENERATE_DEBUGGING_SYMBOLS": "NO",
-                        "GCC_INLINES_ARE_PRIVATE_EXTERN": "YES",
-                        "GCC_OPTIMIZATION_LEVEL": "3",
-                        "OTHER_CPLUSPLUSFLAGS!": [
-                            "-O3"
-                        ]
-                    }
-                }
-            },
-            "defines": [
-                "NAPI_DISABLE_CPP_EXCEPTIONS=1"
-            ].flat(),
-            "include_dirs": [
-                "."
-            ],
-// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings_test.py //jslint-ignore-line
-            "msvs_settings": {
-                "VCCLCompilerTool": {
-                    "ExceptionHandling": 1,
-                    // https://github.com/nodejs/node-gyp/issues/1686
-                    "RuntimeLibrary": 0, // 0 - MultiThreaded (/MT)
-                    // "RuntimeLibrary": 1, // 1 - MultiThreadedDebug (/MTd)
-                    // "RuntimeLibrary": 2, // 2 - MultiThreadedDLL (/MD)
-                    // "RuntimeLibrary": 3, // 3 - MultiThreadedDebugDLL (/MDd)
-                    "WarningLevel": 3
-                }
-            },
-            "xcode_settings": {
-                "CLANG_CXX_LIBRARY": "libc++",
-                "GCC_C_LANGUAGE_STANDARD": "c99",
-                "GCC_ENABLE_CPP_EXCEPTIONS": "YES",
-                "OTHER_CFLAGS": cflags.cflags,
-                "OTHER_CFLAGS!": cflags["cflags!"],
-                "OTHER_CPLUSPLUSFLAGS": cflags.cflags_cc,
-                "OTHER_CPLUSPLUSFLAGS!": cflags["cflags_cc!"]
-            }
-        },
-        "targets": [
-            targetWarningLevel(1, {
-                "defines": [
-                    "SQLMATH_NODEJS_C2"
-                ],
-                "dependencies": [],
-                "libraries": [
-                    "../sqlite3_rollup.lib"
-                ],
-                "sources": [
-                    "../sqlmath_base.c"
-                ],
-                "target_name": "<(target_node)"
-            }),
-            {
-                "copies": [
-                    {
-                        "destination": "..",
-                        "files": [
-                            "<(PRODUCT_DIR)/<(target_node).node"
-                        ]
-                    }
-                ],
-                "dependencies": [
-                    "<(target_node)"
-                ],
-                "target_name": "target_install",
-                "type": "none"
-            }
-        ],
-        "variables": {
-            "target_node": (
-                "_binary_sqlmath"
-                + "_napi8"
-                + "_" + process.platform
-                + "_" + process.arch
-            )
-        }
-    }, undefined, 4));
     [
         "clean",
         "configure"
@@ -342,7 +173,7 @@ import modulePath from "path";
             action, "-jobs", "max", "--release"
         ];
         console.error(
-            "(cd .tmp/ && node " + action.map(function (elem) {
+            "(node " + action.map(function (elem) {
                 return "\u0027" + elem + "\u0027";
             }).join(" ") + ")"
         );
@@ -363,44 +194,43 @@ shCiBuildPython() {(set -e
 # this function will run custom-code for pre-ci
     # create file Manifest.in
     git ls-tree --name-only HEAD | sed "s|^|include |" > Manifest.in
-    # create file .src_xxx.c
-    if (shCiBuildPythonSrc)
-    then
-        return
-    fi
-    # test zlib
-    if [ "$GITHUB_ACTION" ]
-    then
-        shCiTestZlib
-    fi
     python setup.py build_ext -i
 )}
 
-shCiBuildPythonSrc() {(set -e
+shCiBuildSqlite() {(set -e
 # this function will build .SRC_XXX.c
-    EXIT_CODE=0
-    FILE1=sqlite3_rollup.c
-    for BASENAME in \
+    BUILD_SQLITE=0
+    BASENAME=sqlite3_rollup.c
+    for FILE_BASE in \
         SRC_PYTHON_DBAPI2 \
         SRC_SHELL \
         SRC_ZLIB
     do
-        FILE2=".$BASENAME.c"
-        if [ ! -f "$FILE2" ] \
-            || [ -n "$(find -L "$FILE1" -prune -newer "$FILE2")" ]
+        FILE_SRC=".$FILE_BASE.c"
+        FILE_OBJ="build/.$FILE_BASE.obj"
+        if [ ! -f "$FILE_OBJ" ] \
+            || [ -n "$(find -L "$BASENAME" -prune -newer "$FILE_OBJ")" ]
         then
-            EXIT_CODE=1
-            printf "shCiBuildPythonSrc - $FILE1 is newer than $FILE2\n"
-            printf "#define ${BASENAME}_C2\n#include \"sqlite3_rollup.c\"\n" \
-                > "$FILE2"
+            BUILD_SQLITE=1
+            printf "shCiBuildSqlite - $BASENAME is newer than $FILE_OBJ\n"
+            printf "#define ${FILE_BASE}_C2\n#include \"sqlite3_rollup.c\"\n" \
+                > "$FILE_SRC"
         fi
     done
-    if [ ! -f .tmp/sqlite3_rollup.lib ]
+    if [ ! -f build/sqlite3_rollup.lib ]
     then
-        EXIT_CODE=1
+        BUILD_SQLITE=1
     fi
-    printf "shCiBuildPythonSrc - EXIT_CODE=$EXIT_CODE\n"
-    return "$EXIT_CODE"
+    printf "shCiBuildSqlite - BUILD_SQLITE=$BUILD_SQLITE\n"
+    if [ "$BUILD_SQLITE" = 1 ]
+    then
+        # test zlib
+        if [ "$GITHUB_ACTION" ]
+        then
+            shCiTestZlib
+        fi
+        python setup.py build_sqlite
+    fi
 )}
 
 shCiBuildWasm() {(set -e
@@ -411,7 +241,6 @@ shCiBuildWasm() {(set -e
     # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
     # build wasm
     printf "shCiBuildWasm\n" 1>&2
-    OPTION1="$OPTION1 -I.tmp"
     OPTION1="$OPTION1 -Wall"
     OPTION1="$OPTION1 -flto"
     # debug
@@ -424,7 +253,7 @@ shCiBuildWasm() {(set -e
         sqlmath_base.c \
         sqlmath_custom.c
     do
-        FILE2=".tmp/$(basename "$FILE").wasm.o"
+        FILE2="build/$(basename "$FILE").wasm.o"
         # optimization - skip rebuild of sqlite3_rollup.c if possible
         if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite3_rollup.c ]
         then
@@ -483,7 +312,7 @@ shCiBuildWasm() {(set -e
         --memory-init-file 0 \
         --pre-js sqlmath_wrapper_wasm.js \
         -Wall \
-        -o .tmp/sqlmath_wasm.js \
+        -o build/sqlmath_wasm.js \
         -s ALLOW_MEMORY_GROWTH=1 \
         -s ALLOW_TABLE_GROWTH=1 \
         -s NODEJS_CATCH_EXIT=0 \
@@ -493,10 +322,10 @@ shCiBuildWasm() {(set -e
         -s USE_ZLIB \
         -s WASM=1 \
         -s WASM_BIGINT \
-        .tmp/src_extension_functions.c.wasm.o \
-        .tmp/sqlite3_rollup.c.wasm.o \
-        .tmp/sqlmath_base.c.wasm.o \
-        .tmp/sqlmath_custom.c.wasm.o \
+        build/src_extension_functions.c.wasm.o \
+        build/sqlite3_rollup.c.wasm.o \
+        build/sqlmath_base.c.wasm.o \
+        build/sqlmath_custom.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
     printf "/*jslint-disable*/
@@ -506,12 +335,12 @@ shCiBuildWasm() {(set -e
 (function () {
 \"use strict\";
 " >> sqlmath_wasm.js
-    cat .tmp/sqlmath_wasm.js | tr -d "\r" >> sqlmath_wasm.js
+    cat build/sqlmath_wasm.js | tr -d "\r" >> sqlmath_wasm.js
     printf '
 }());
 /*jslint-enable*/
 ' >> sqlmath_wasm.js
-    cp .tmp/sqlmath_wasm.wasm .
+    cp build/sqlmath_wasm.wasm .
     ls -l sqlmath_wasm.*
 )}
 
@@ -698,9 +527,9 @@ shCiTestNodejs() {(set -e
         # build nodejs c-extension
         node --input-type=module --eval '
 import moduleChildProcess from "child_process";
+import moduleFs from "fs";
 import modulePath from "path";
-(function () {
-    process.chdir(".tmp");
+(async function () {
     [
         "build"
     ].forEach(function (action) {
@@ -710,12 +539,11 @@ import modulePath from "path";
                 modulePath.dirname(process.execPath),
                 "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
             ).replace("/bin/node_modules/", "/lib/node_modules/"),
-            action,
             // https://github.com/nodejs/node-gyp#command-options
             action, "-jobs", "max", "--release"
         ];
         console.error(
-            "(cd .tmp/ && node " + action.map(function (elem) {
+            "(node " + action.map(function (elem) {
                 return "\u0027" + elem + "\u0027";
             }).join(" ") + ")"
         );
@@ -727,6 +555,16 @@ import modulePath from "path";
             process.exit(1);
         }
     });
+    await moduleFs.promises.copyFile(
+        "build/binding.node",
+        (
+            "_binary_sqlmath"
+            + "_napi6"
+            + "_" + process.platform
+            + "_" + process.arch
+            + ".node"
+        )
+    );
 }());
 ' "$@" # '
     fi;

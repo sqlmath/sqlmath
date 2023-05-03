@@ -20,22 +20,129 @@ import unittest
 
 
 def build_ext():
-    """This function will build extension."""
+    """This function will build c-extension."""
     subprocess.run([
         "sh",
         "jslint_ci.sh",
-        "shCiBuildPythonSrc",
+        "shCiBuildSqlite",
     ])
+    compiler = new_compiler()
+    objects = compiler_compile(compiler, sources=[
+        "sqlmath_base.c",
+        "sqlmath_custom.c",
+    ])
+    objects = [
+        *objects,
+        "./build/.SRC_ZLIB.obj",
+        "./build/sqlite3_rollup.obj",
+        "./build/src_extension_functions.obj",
+    ]
+    # build executable
+    print(f"\npython setup.py - link_executable - {objects}")
+    if sys.platform == "win32":
+        extra_link_args = []
+    else:
+        extra_link_args = compiler.extra_postargs
+    compiler.link_executable(
+        objects=[*objects, "./build/.SRC_SHELL.obj"],
+        #
+        output_progname=(
+            f"_binary_sqlmath_shell_{platform.system()}_{platform.machine()}"
+        ).lower(),
+        output_dir=None,
+        libraries=None,
+        library_dirs=None,
+        runtime_library_dirs=None,
+        debug=0,
+        extra_preargs=None,
+        extra_postargs=extra_link_args,
+        target_lang=None,
+    )
+    # build c-extension
+# https://github.com/pypa/distutils/blob/main/distutils/command/build_ext.py
+    print(f"\npython setup.py - build_ext - {objects}")
+    subprocess.run(["rm", "-f", "*.pyd"]).check_returncode()
+    setuptools.setup(
+        ext_modules=[setuptools.Extension(
+            define_macros=[],
+            depends=[],
+            export_symbols=None,
+            extra_compile_args=compiler.extra_postargs,
+            extra_link_args=extra_link_args,
+            extra_objects=[*objects, "./build/.SRC_PYTHON_DBAPI2.obj"],
+            include_dirs=[],
+            language=None,
+            libraries=None,
+            library_dirs=[],
+            name="_sqlite3",
+            optional=None,
+            runtime_library_dirs=None,
+            sources=[],
+            swig_opts=None,
+            undef_macros=None,
+        )],
+        package_dir={".": "."},
+    )
+    # create static-library ./build/sqlite3_rollup.lib
+    print("\npython setup.py - create_static_lib - {objects}")
+    compiler.create_static_lib(
+        objects=objects,
+        #
+        output_libname="sqlite3_rollup",
+        debug=0,
+        output_dir="./build",
+        target_lang=None,
+    )
+    library_filename = compiler.library_filename(
+        libname="sqlite3_rollup",
+        lib_type="static",
+        strip_dir=0,
+        output_dir="./build",
+    ).replace("\\", "/")
+    if library_filename != "./build/sqlite3_rollup.lib":
+        shutil.move(library_filename, "./build/sqlite3_rollup.lib")
+
+
+def compiler_compile(compiler, sources):
+    """This function will compile <sources> into static-objects."""
+    print(f"\npython setup.py - compile - {sources}")
+    objects = compiler.compile(
+        sources=sources,
+        #
+        debug=0,
+        depends=None,
+        extra_postargs=compiler.extra_postargs,
+        extra_preargs=None,
+        output_dir="./build",
+    )
+    objects2 = [obj.replace(compiler.obj_extension, ".obj") for obj in objects]
+    for aa, bb in zip(objects, objects2, strict=True):
+        if (aa != bb):
+            shutil.move(aa, bb)
+    return objects2
+
+
+def debugInline(*argv): # noqa=N802
+    """This function will print <arg> to stderr and then return <arg0>."""
+    arg0 = argv[0] if argv else None
+    print("\n\ndebugInline", file=sys.stderr)
+    print(*argv, file=sys.stderr)
+    print("\n")
+    return arg0
+
+
+def new_compiler():
+    """This function create new compiler."""
     # Work around clang raising hard error for unused arguments
-    if sys.platform == "darwin":
-        os.environ["CFLAGS"] = "-Qunused-arguments"
+    # if sys.platform == "darwin":
+    #     os.environ["CFLAGS"] = "-Qunused-arguments"
 # https://github.com/pypa/distutils/blob/main/distutils/command/build_clib.py
     compiler = distutils.ccompiler.new_compiler(
         compiler=None,
         dry_run=0,
         force=0,
         plat=None,
-        verbose=2,
+        verbose=1,
     )
     distutils.sysconfig.customize_compiler(compiler)
     # Make sure Python's include directories (for Python.h, pyconfig.h,
@@ -53,117 +160,26 @@ def build_ext():
     if plat_py_include != py_include:
         include_dirs.extend(plat_py_include.split(os.path.pathsep))
     compiler.set_include_dirs(include_dirs)
-    # build static-library sqlite3_rollup.a
+    # build static-library sqlite3_rollup.lib
     compiler.define_macro("SQLITE3_C2", "")
-    extra_link_args = []
-    extra_postargs = []
+    compiler.define_macro("_REENTRANT", "1")
     if sys.platform == "win32":
-        # bugfix - LINK : warning LNK4098: defaultlib 'LIBCMT'
-        # conflicts with use of other libs; use /NODEFAULTLIB:library
-        extra_postargs += [
+        compiler.extra_postargs = [
+            # bugfix - LINK : warning LNK4098: defaultlib 'LIBCMT'
+            # conflicts with use of other libs; use /NODEFAULTLIB:library
             "/MT",
-            "/O2",
             "/W4",
             "/wd4131",
         ]
+        compiler.libraries = ["./build/sqlite3_rollup"]
     else:
-        extra_link_args += ["-lm"]
-        extra_postargs += [
+        compiler.extra_postargs = [
             "-DHAVE_UNISTD_H",
-            "-O3",
             "-Wall",
+            "-lm",
         ]
-    sources = [
-        ".SRC_SHELL.c",
-        ".SRC_ZLIB.c",
-        "src_extension_functions.c",
-        "sqlite3_rollup.c",
-        "sqlmath_base.c",
-        "sqlmath_custom.c",
-    ]
-    objects = compiler.compile(
-        sources,
-        debug=0,
-        depends=[*sources, "setup.py"],
-        extra_postargs=extra_postargs,
-        extra_preargs=None,
-        output_dir=".tmp",
-    )
-    compiler.create_static_lib(
-        objects=[obj for obj in objects if not obj.startswith(".src_shell.")],
-        output_libname="sqlite3_rollup",
-        debug=0,
-        output_dir=".tmp",
-        target_lang=None,
-    )
-    # build executable
-    compiler.link_executable(
-        objects=objects,
-        output_progname=(
-            f"_binary_sqlmath_shell_{platform.system()}_{platform.machine()}"
-        ).lower(),
-        output_dir=None,
-        libraries=None,
-        library_dirs=None,
-        runtime_library_dirs=None,
-        debug=0,
-        extra_preargs=None,
-        extra_postargs=extra_link_args,
-        target_lang=None,
-    )
-    # build c-extension
-    if sys.platform == "win32":
-        extra_objects = []
-        libraries = [".tmp/sqlite3_rollup"]
-    else:
-        shutil.copyfile(
-            compiler.library_filename(
-                libname="sqlite3_rollup",
-                lib_type="static",
-                strip_dir=0,
-                output_dir=".tmp",
-            ),
-            ".tmp/sqlite3_rollup.lib",
-        )
-        extra_objects = [".tmp/sqlite3_rollup.lib"]
-        libraries = []
-# https://github.com/pypa/distutils/blob/main/distutils/command/build_ext.py
-    build_ext_option = {
-        "define_macros": [],
-        "depends": [],
-        "export_symbols": None,
-        "extra_compile_args": extra_postargs,
-        "extra_link_args": extra_link_args,
-        "extra_objects": extra_objects,
-        "include_dirs": [],
-        "language": None,
-        "libraries": libraries,
-        "library_dirs": [],
-        "name": "_sqlite3",
-        "optional": None,
-        "runtime_library_dirs": None,
-        "sources": [
-            ".SRC_PYTHON_DBAPI2.c",
-        ],
-        "swig_opts": None,
-        "undef_macros": None,
-    }
-    subprocess.run(["rm", "-f", "*.pyd"]).check_returncode()
-    setuptools.setup(
-        ext_modules=[
-            setuptools.Extension(**build_ext_option),
-        ],
-        package_dir={".": "."},
-    )
-
-
-def debugInline(*argv): # noqa=N802
-    """This function will print <arg> to stderr and then return <arg0>."""
-    arg0 = argv[0] if argv else None
-    print("\n\ndebugInline", file=sys.stderr)
-    print(*argv, file=sys.stderr)
-    print("\n")
-    return arg0
+        compiler.libraries = []
+    return compiler
 
 
 def noop(arg=None):
@@ -185,10 +201,18 @@ def test_dbapi2_run():
 
 if __name__ == "__main__":
     # debug sys.argv
-    print(sys.argv)
+    print(f"""\npython {" ".join(sys.argv)}""")
     match sys.argv[1]:
         case "build_ext":
             build_ext()
+        case "build_sqlite":
+            objects = compiler_compile(new_compiler(), sources=[
+                ".SRC_PYTHON_DBAPI2.c",
+                ".SRC_SHELL.c",
+                ".SRC_ZLIB.c",
+                "src_extension_functions.c",
+                "sqlite3_rollup.c",
+            ])
         case "bdist_wheel":
             build_ext()
         case "test":

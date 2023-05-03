@@ -13,6 +13,7 @@ include asset_image_logo_512.html
 include asset_image_logo_512.png
 include asset_image_logo_512.svg
 include asset_sqlmath_external_rollup.js
+include binding.gyp
 include cpplint.py
 include csslint.js
 include indent.exe
