@@ -908,8 +908,8 @@ async function sqlmathInit() {
         cModule = await import("module");
         cModule = cModule.createRequire(import.meta.url);
         cModule = cModule(
-            "./_binary_sqlmath"
-            + "_napi6"
+            "./_sqlite3"
+            + ".napi6"
             + "_" + process.platform
             + "_" + process.arch
             + ".node"

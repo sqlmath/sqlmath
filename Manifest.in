@@ -13,7 +13,6 @@ include asset_image_logo_512.html
 include asset_image_logo_512.png
 include asset_image_logo_512.svg
 include asset_sqlmath_external_rollup.js
-include binding.gyp
 include cpplint.py
 include csslint.js
 include indent.exe
@@ -25,6 +24,7 @@ include libintl3.dll
 include package.json
 include pyproject.toml
 include setup.py
+include sqlite3_extension_functions.c
 include sqlite3_rollup.c
 include sqlmath.mjs
 include sqlmath_base.c
@@ -34,5 +34,4 @@ include sqlmath_custom.mjs
 include sqlmath_dbapi2.py
 include sqlmath_jenks.c
 include sqlmath_wrapper_wasm.js
-include src_extension_functions.c
 include test.mjs

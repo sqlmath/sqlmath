@@ -15,7 +15,7 @@ shCiArtifactUploadCustom() {(set -e
     git fetch origin artifact
     git checkout origin/artifact "branch-$GITHUB_BRANCH0"
     mv "branch-$GITHUB_BRANCH0"/* .
-    git add -f _binary_* sqlmath_wasm.*
+    git add -f _sqlite3.* sqlmath_wasm.*
     # screenshot html
     node --input-type=module --eval '
 import moduleChildProcess from "child_process";
@@ -117,7 +117,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     cp ../../.git/config .git/config
     # update dir branch-$GITHUB_BRANCH0
     mkdir -p "branch-$GITHUB_BRANCH0"
-    cp ../../_binary_* "branch-$GITHUB_BRANCH0"
+    cp ../../_sqlite3.* "branch-$GITHUB_BRANCH0"
     if [ -f ../../sqlmath_wasm.wasm ]
     then
         cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
@@ -128,7 +128,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     fi
     # git commit
     git add .
-    git add -f "branch-$GITHUB_BRANCH0"/_binary_*
+    git add -f "branch-$GITHUB_BRANCH0"/_sqlite3.*
     if (git commit -am "$COMMIT_MESSAGE")
     then
         # sync before push
@@ -150,86 +150,62 @@ shCiBaseCustomArtifactUpload() {(set -e
 shCiBuildNodejs() {(set -e
 # this function will build binaries in nodejs
     # cleanup
-    rm -f _binary_*
+    rm -f .SQLMATH_* .SRC_* _sqlite3.*
     rm -rf build/
     mkdir -p build/
-    #
-    # node-gyp - run
-    node --input-type=module --eval '
-import moduleChildProcess from "child_process";
-import modulePath from "path";
-(function () {
-    [
-        "clean",
-        "configure"
-    ].forEach(function (action) {
-        // node-gyp.js
-        action = [
-            modulePath.resolve(
-                modulePath.dirname(process.execPath),
-                "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
-            ).replace("/bin/node_modules/", "/lib/node_modules/"),
-            // https://github.com/nodejs/node-gyp#command-options
-            action, "-jobs", "max", "--release"
-        ];
-        console.error(
-            "(node " + action.map(function (elem) {
-                return "\u0027" + elem + "\u0027";
-            }).join(" ") + ")"
-        );
-        if (moduleChildProcess.spawnSync( //jslint-ignore-line
-            "node",
-            action,
-            {stdio: ["ignore", 1, 2]}
-        ).status !== 0) {
-            process.exit(1);
-        }
-    });
-}());
-' "$@" # '
     shCiTestNodejs
 )}
 
-shCiBuildPython() {(set -e
-# this function will run custom-code for pre-ci
-    # create file Manifest.in
-    git ls-tree --name-only HEAD | sed "s|^|include |" > Manifest.in
-    python setup.py build_ext -i
-)}
-
-shCiBuildSqlite() {(set -e
-# this function will build .SRC_XXX.c
-    BUILD_SQLITE=0
-    BASENAME=sqlite3_rollup.c
-    for FILE_BASE in \
-        SRC_PYTHON_DBAPI2 \
-        SRC_SHELL \
-        SRC_ZLIB
+shCiBuildStep() {(set -e
+# this function will build sqlite3_rollup.c
+    BUILD_STEP="$1"
+    REBUILD=0
+    if [ ! -f build/sqlite3_rollup.lib ]
+    then
+        REBUILD=1
+    fi
+    case "$BUILD_STEP" in
+    1)
+        FILE_BASE_LIST="SRC_ZLIB SRC_SQLITE SRC_SHELL SRC_PYTHON"
+        FILE_MAIN=sqlite3_rollup.c
+        ;;
+    2)
+        FILE_BASE_LIST="SQLMATH_BASE SQLMATH_NODEJS"
+        FILE_MAIN=sqlmath_base.c
+        ;;
+    3)
+        FILE_BASE_LIST="SQLMATH_CUSTOM"
+        FILE_MAIN=sqlmath_custom.c
+        ;;
+    esac
+    for FILE_BASE in $FILE_BASE_LIST
     do
         FILE_SRC=".$FILE_BASE.c"
+        FILE_SRC_LIST="$FILE_SRC_LIST $FILE_SRC"
         FILE_OBJ="build/.$FILE_BASE.obj"
         if [ ! -f "$FILE_OBJ" ] \
-            || [ -n "$(find -L "$BASENAME" -prune -newer "$FILE_OBJ")" ]
+            || [ -n "$(find -L "$FILE_MAIN" -prune -newer "$FILE_OBJ")" ]
         then
-            BUILD_SQLITE=1
-            printf "shCiBuildSqlite - $BASENAME is newer than $FILE_OBJ\n"
-            printf "#define ${FILE_BASE}_C2\n#include \"sqlite3_rollup.c\"\n" \
+            REBUILD=1
+            printf "shCiBuildStep1 - $FILE_MAIN is newer than $FILE_OBJ\n"
+            printf "#define ${FILE_BASE}_C2\n#include \"$FILE_MAIN\"\n" \
                 > "$FILE_SRC"
         fi
     done
-    if [ ! -f build/sqlite3_rollup.lib ]
+    printf "shCiBuildStep1 - REBUILD=$REBUILD\n"
+    if [ "$REBUILD" = 1 ]
     then
-        BUILD_SQLITE=1
-    fi
-    printf "shCiBuildSqlite - BUILD_SQLITE=$BUILD_SQLITE\n"
-    if [ "$BUILD_SQLITE" = 1 ]
-    then
-        # test zlib
-        if [ "$GITHUB_ACTION" ]
+        if [ "$BUILD_STEP" = 1 ]
         then
-            shCiTestZlib
+            FILE_SRC_LIST="$FILE_SRC_LIST sqlite3_extension_functions.c"
+            # test zlib
+            if [ "$GITHUB_ACTION" ]
+            then
+                shCiTestZlib
+            fi
         fi
-        python setup.py build_sqlite
+        # rebuild
+        python setup.py "build_ext_compile" "$FILE_SRC_LIST"
     fi
 )}
 
@@ -248,7 +224,7 @@ shCiBuildWasm() {(set -e
     OPTION1="$OPTION1 -Os"
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
-        src_extension_functions.c \
+        sqlite3_extension_functions.c \
         sqlite3_rollup.c \
         sqlmath_base.c \
         sqlmath_custom.c
@@ -261,24 +237,9 @@ shCiBuildWasm() {(set -e
             continue
         fi
         OPTION2=""
-        #
-        # extra-feature - sql.js
-        # https://github.com/sql-js/sql.js/blob/v1.8.0/Makefile
-        #
         # OPTION2="$OPTION2 -Oz"
-        # OPTION2="$OPTION2 -DSQLITE_OMIT_LOAD_EXTENSION"
-        OPTION2="$OPTION2 -DSQLITE_DISABLE_LFS"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3"
-        OPTION2="$OPTION2 -DSQLITE_ENABLE_FTS3_PARENTHESIS"
-        OPTION2="$OPTION2 -DSQLITE_THREADSAFE=0"
-        # OPTION2="$OPTION2 -DSQLITE_ENABLE_NORMALIZE"
-        #
-        # extra-feature - misc
-        #
         OPTION2="$OPTION2 -DHAVE_UNISTD_H"
         OPTION2="$OPTION2 -DSQLITE3_C2"
-        OPTION2="$OPTION2 -DSQLITE_OMIT_DECLTYPE"
-        #
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
     done
@@ -298,7 +259,7 @@ shCiBuildWasm() {(set -e
     OPTION2="$OPTION2,_sqlite3_malloc"
     #
     OPTION2="$OPTION2 -s EXPORTED_RUNTIME_METHODS=cwrap"
-    # OPTION2="$OPTION2,AsciiToString"
+    OPTION2="$OPTION2 -s LLD_REPORT_UNDEFINED"
     #
     case "$1" in
     --debug)
@@ -322,7 +283,7 @@ shCiBuildWasm() {(set -e
         -s USE_ZLIB \
         -s WASM=1 \
         -s WASM_BIGINT \
-        build/src_extension_functions.c.wasm.o \
+        build/sqlite3_extension_functions.c.wasm.o \
         build/sqlite3_rollup.c.wasm.o \
         build/sqlmath_base.c.wasm.o \
         build/sqlmath_custom.c.wasm.o \
@@ -498,9 +459,9 @@ shCiNpmPublishCustom() {(set -e
     # fetch artifact
     git fetch origin artifact --depth=1
     git checkout origin/artifact \
-        "branch-beta/_binary_"* \
+        "branch-beta/_sqlite3."* \
         "branch-beta/sqlmath_wasm"*
-    cp -a branch-beta/_binary_* .
+    cp -a branch-beta/_sqlite3.* .
     cp -a branch-beta/sqlmath_wasm.* .
     # npm-publish
     npm publish --access public
@@ -514,8 +475,6 @@ shCiTestNodejs() {(set -e
     export npm_config_mode_test=1
     if [ "$npm_config_fast" != true ]
     then
-        # build python c-extension
-        shCiBuildPython
         # lint c-file
         python cpplint.py \
             --filter=-whitespace/comments \
@@ -524,47 +483,90 @@ shCiTestNodejs() {(set -e
             sqlmath_jenks.c
         # lint js-file
         node jslint.mjs .
-        # build nodejs c-extension
+        # create file Manifest.in
+        if [ -d .git/ ]
+        then
+            git ls-tree --name-only HEAD | sed "s|^|include |" > Manifest.in
+        fi
+        # build python c-extension
+        python setup.py build_ext -i
+        # build nodejs c-addon
         node --input-type=module --eval '
-import moduleChildProcess from "child_process";
 import moduleFs from "fs";
-import modulePath from "path";
 (async function () {
-    [
-        "build"
-    ].forEach(function (action) {
-        // node-gyp.js
-        action = [
-            modulePath.resolve(
-                modulePath.dirname(process.execPath),
-                "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
-            ).replace("/bin/node_modules/", "/lib/node_modules/"),
-            // https://github.com/nodejs/node-gyp#command-options
-            action, "-jobs", "max", "--release"
-        ];
-        console.error(
-            "(node " + action.map(function (elem) {
-                return "\u0027" + elem + "\u0027";
-            }).join(" ") + ")"
-        );
-        if (moduleChildProcess.spawnSync( //jslint-ignore-line
-            "node",
-            action,
-            {stdio: ["ignore", 1, 2]}
-        ).status !== 0) {
-            process.exit(1);
-        }
-    });
-    await moduleFs.promises.copyFile(
-        "build/binding.node",
-        (
-            "_binary_sqlmath"
-            + "_napi6"
-            + "_" + process.platform
-            + "_" + process.arch
-            + ".node"
-        )
-    );
+    await moduleFs.promises.writeFile("binding.gyp", JSON.stringify({
+        "targets": [
+            {
+                "cflags": [
+                    "-Wall",
+                    "-std=c99"
+                ],
+                "conditions": [
+                    [
+                        "OS == \u0027win\u0027",
+                        {
+                            "defines": [
+                                "WIN32"
+                            ]
+                        },
+                        {
+                            "defines": [
+                                "HAVE_UNISTD_H"
+                            ]
+                        }
+                    ]
+                ],
+                "libraries": [
+                    "sqlite3_rollup.lib"
+                ],
+                "msvs_settings": {
+                    "VCCLCompilerTool": {
+                        "WarningLevel": 3
+                    }
+                },
+                "sources": [
+                    ".SQLMATH_NODEJS.c"
+                ],
+                "target_name": "binding",
+                "xcode_settings": {
+                    "OTHER_CFLAGS": [
+                        "-Wall",
+                        "-std=c99"
+                    ]
+                }
+            },
+            {
+                "copies": [
+                    {
+                        "destination": "build/",
+                        "files": [
+                            "<(PRODUCT_DIR)/binding.node"
+                        ]
+                    }
+                ],
+                "dependencies": [
+                    "binding"
+                ],
+                "target_name": "target_copy",
+                "type": "none"
+            }
+        ]
+    }, undefined, 4));
+}());
+' "$@" # '
+        # node "$(sh jslint_ci.sh shNodegypExe)" clean
+        node "$(shNodegypExe)" configure
+        node "$(shNodegypExe)" build --release --silly
+        node --input-type=module --eval '
+import moduleFs from "fs";
+(async function () {
+    await moduleFs.promises.copyFile("build/binding.node", (
+        "_sqlite3"
+        + ".napi6"
+        + "_" + process.platform
+        + "_" + process.arch
+        + ".node"
+    ));
 }());
 ' "$@" # '
     fi;
@@ -765,14 +767,29 @@ shCiTestZlib() {(set -e
     )
 )}
 
+shNodegypExe() {(set -e
+# this function will print to stdout pathname of node-gyp.js, e.g.
+# C:\Program Files\
+# nodejs\node_modules\npm\node_modules\node-gyp\bin\node-gyp.js
+    node --input-type=module --eval '
+import modulePath from "path";
+(function () {
+    process.stdout.write(modulePath.resolve(
+        modulePath.dirname(process.execPath),
+        "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+    ).replace("/bin/node_modules/", "/lib/node_modules/"));
+}());
+' "$@" # '
+)}
+
 shSqlmathUpdate() {(set -e
 # this function will update files with ~/Documents/sqlmath/
     . "$HOME/myci2.sh" : && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         shRawLibFetch asset_sqlmath_external_rollup.js
-        shRawLibFetch src_extension_functions.c
         shRawLibFetch index.html
+        shRawLibFetch sqlite3_extension_functions.c
         shRawLibFetch sqlite3_rollup.c
         shRawLibFetch sqlmath_dbapi2.py
         git grep '3\.39\.[^4]' \
@@ -791,8 +808,8 @@ shSqlmathUpdate() {(set -e
             .ci.sh \
             asset_sqlmath_external_rollup.js \
             indent.exe \
-            src_extension_functions.c \
             index.html \
+            sqlite3_extension_functions.c \
             sqlite3_rollup.c \
             sqlmath.mjs \
             sqlmath_base.c \

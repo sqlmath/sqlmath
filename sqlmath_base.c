@@ -27,10 +27,9 @@
 /*
 file sqlmath_h - start
 */
-
-
-#ifndef SQLMATH_H2
 #define SQLMATH_H2
+#if defined(SQLMATH_H2) && !defined(SQLMATH_H3)
+#define SQLMATH_H3
 
 
 #define NAPI_VERSION 6
@@ -38,10 +37,7 @@ file sqlmath_h - start
 #ifdef SQLITE3_C2
 #   undef SQLITE3_C2
 #   define SQLMATH_C2
-#endif
-#ifdef SQLITE3_C2
-#   undef SQLITE3_C2
-#   define SQLMATH_C2
+#   define SQLMATH_BASE_C2
 #endif
 
 
@@ -360,16 +356,17 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
 );
 
 
+#endif                          // SQLMATH_H3
 /*
 file sqlmath_h - end
 */
-#endif                          // SQLMATH_H2
 
 
 /*
-file sqlmath_ext - start
+file sqlmath_base - start
 */
-#ifdef SQLMATH_C2
+#if defined(SQLMATH_BASE_C2) && !defined(SQLMATH_BASE_C3)
+#define SQLMATH_BASE_C3
 
 
 static const sqlite3_api_routines *sqlite3_api = NULL;
@@ -384,7 +381,7 @@ typedef struct DbExecBindElem {
 static int dbCount = 0;
 
 
-// file sqlmath_ext - SQLMATH_API
+// file sqlmath_base - SQLMATH_API
 SQLMATH_API int __dbFileImportOrExport(
     sqlite3 * pInMemory,
     char *zFilename,
@@ -1136,7 +1133,7 @@ SQLMATH_API void str99ResultText(
 }
 
 
-// file sqlmath_ext - SQLMATH_FUNC
+// file sqlmath_base - SQLMATH_FUNC
 // SQLMATH_FUNC sql_avg_ema_func - start
 SQLMATH_FUNC static void sql_avg_ema_value(
     sqlite3_context * context
@@ -1989,8 +1986,8 @@ SQLMATH_FUNC static void sql_throwerror_func(
 }
 
 
-// file sqlmath_ext - init
-int sqlite3_sqlmath_ext_base_init(
+// file sqlmath_base - init
+int sqlite3_sqlmath_base_init(
     sqlite3 * db,
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
@@ -2028,9 +2025,9 @@ int sqlite3_sqlmath_ext_base_init(
     }
     return 0;
 }
-#endif                          // SQLMATH_C2
+#endif                          // SQLMATH_BASE_C3
 /*
-file sqlmath_ext - end
+file sqlmath_base - end
 */
 
 
@@ -2038,6 +2035,8 @@ file sqlmath_ext - end
 file sqlmath_nodejs - start
 */
 #ifdef SQLMATH_NODEJS_C2
+//!! #if defined(SQLMATH_NODEJS_C2) && !defined(SQLMATH_NODEJS_C3)
+//!! #define SQLMATH_NODEJS_C3
 
 
 #ifdef WIN32
@@ -2358,7 +2357,7 @@ napi_value napi_module_sqlmath_init(
 }
 
 NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_sqlmath_init)
-#endif                          // SQLMATH_NODEJS_C2
+#endif                          // SQLMATH_NODEJS_C3
 /*
 file sqlmath_nodejs - end
 */

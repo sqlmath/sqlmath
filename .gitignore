@@ -32,5 +32,6 @@ dist/
 !.npmignore
 # base - .gitignore - end
 
+binding.gyp
 sqlite-autoconf-*
 sqlmath_wasm.*

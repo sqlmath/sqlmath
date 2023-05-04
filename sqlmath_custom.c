@@ -30,9 +30,9 @@
 
 
 /*
-file sqlmath_ext - start
+file sqlmath_custom - start
 */
-int sqlite3_sqlmath_ext_custom_init(
+int sqlite3_sqlmath_custom_init(
     sqlite3 * db,
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
@@ -46,5 +46,5 @@ int sqlite3_sqlmath_ext_custom_init(
 }
 
 /*
-file sqlmath_ext - end
+file sqlmath_custom - end
 */

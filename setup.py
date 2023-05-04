@@ -21,21 +21,19 @@ import unittest
 
 def build_ext():
     """This function will build c-extension."""
-    subprocess.run([
-        "sh",
-        "jslint_ci.sh",
-        "shCiBuildSqlite",
-    ])
+    for ii in [1, 2, 3]:
+        subprocess.run(
+            ["sh", "jslint_ci.sh", "shCiBuildStep", str(ii)],
+        ).check_returncode()
     compiler = new_compiler()
-    objects = compiler_compile(compiler, sources=[
-        "sqlmath_base.c",
-        "sqlmath_custom.c",
-    ])
     objects = [
-        *objects,
+        "./build/.SRC_SQLITE.obj",
         "./build/.SRC_ZLIB.obj",
-        "./build/sqlite3_rollup.obj",
-        "./build/src_extension_functions.obj",
+        "./build/sqlite3_extension_functions.obj",
+        #
+        "./build/.SQLMATH_BASE.obj",
+        #
+        "./build/.SQLMATH_CUSTOM.obj",
     ]
     # build executable
     print(f"\npython setup.py - link_executable - {objects}")
@@ -47,7 +45,7 @@ def build_ext():
         objects=[*objects, "./build/.SRC_SHELL.obj"],
         #
         output_progname=(
-            f"_binary_sqlmath_shell_{platform.system()}_{platform.machine()}"
+            f"_sqlite3.shell_{platform.system()}_{platform.machine()}"
         ).lower(),
         output_dir=None,
         libraries=None,
@@ -69,7 +67,7 @@ def build_ext():
             export_symbols=None,
             extra_compile_args=compiler.extra_postargs,
             extra_link_args=extra_link_args,
-            extra_objects=[*objects, "./build/.SRC_PYTHON_DBAPI2.obj"],
+            extra_objects=[*objects, "./build/.SRC_PYTHON.obj"],
             include_dirs=[],
             language=None,
             libraries=None,
@@ -84,9 +82,10 @@ def build_ext():
         package_dir={".": "."},
     )
     # create static-library ./build/sqlite3_rollup.lib
-    print("\npython setup.py - create_static_lib - {objects}")
+    print(f"\npython setup.py - create_static_lib - {objects}")
     compiler.create_static_lib(
         objects=objects,
+        # !! objects=[*objects, "./build/.SQLMATH_NODEJS.obj"],
         #
         output_libname="sqlite3_rollup",
         debug=0,
@@ -103,11 +102,11 @@ def build_ext():
         shutil.move(library_filename, "./build/sqlite3_rollup.lib")
 
 
-def compiler_compile(compiler, sources):
+def build_ext_compile():
     """This function will compile <sources> into static-objects."""
-    print(f"\npython setup.py - compile - {sources}")
+    compiler = new_compiler()
     objects = compiler.compile(
-        sources=sources,
+        sources=sys.argv[2].strip().split(" "),
         #
         debug=0,
         depends=None,
@@ -160,7 +159,7 @@ def new_compiler():
     if plat_py_include != py_include:
         include_dirs.extend(plat_py_include.split(os.path.pathsep))
     compiler.set_include_dirs(include_dirs)
-    # build static-library sqlite3_rollup.lib
+    # init extra_postargs
     compiler.define_macro("SQLITE3_C2", "")
     compiler.define_macro("_REENTRANT", "1")
     if sys.platform == "win32":
@@ -171,14 +170,12 @@ def new_compiler():
             "/W4",
             "/wd4131",
         ]
-        compiler.libraries = ["./build/sqlite3_rollup"]
     else:
         compiler.extra_postargs = [
             "-DHAVE_UNISTD_H",
             "-Wall",
             "-lm",
         ]
-        compiler.libraries = []
     return compiler
 
 
@@ -187,7 +184,7 @@ def noop(arg=None):
     return arg
 
 
-def test_dbapi2_run():
+def test_python_run():
     """This function will run dbapi2 tests."""
     import sqlmath_dbapi2
     for test_suite in sqlmath_dbapi2.test_suite_list:
@@ -205,17 +202,11 @@ if __name__ == "__main__":
     match sys.argv[1]:
         case "build_ext":
             build_ext()
-        case "build_sqlite":
-            objects = compiler_compile(new_compiler(), sources=[
-                ".SRC_PYTHON_DBAPI2.c",
-                ".SRC_SHELL.c",
-                ".SRC_ZLIB.c",
-                "src_extension_functions.c",
-                "sqlite3_rollup.c",
-            ])
+        case "build_ext_compile":
+            build_ext_compile()
         case "bdist_wheel":
             build_ext()
         case "test":
-            test_dbapi2_run()
+            test_python_run()
         case _:
             setuptools.setup()
