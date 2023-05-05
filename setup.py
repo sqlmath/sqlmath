@@ -12,7 +12,6 @@ import distutils.ccompiler
 import distutils.sysconfig
 import os
 import pathlib
-import platform
 import shutil
 import subprocess
 import sys
@@ -22,42 +21,25 @@ import unittest
 def build_ext():
     """This function will build c-extension."""
     subprocess.run(["sh", "jslint_ci.sh", "shciBuildext"], check=True)
-    # build executable
+    # build c-extension
+# https://github.com/pypa/distutils/blob/main/distutils/command/build_ext.py
     compiler = new_compiler()
     objects = [
-        "build/SRC_ZLIB.obj",
-        "build/SRC_SQLITE.obj",
-        "build/SRC_EXTFNC.obj",
-        # "build/SRC_SHELL.obj",
-        # "build/SRC_PYTHON.obj",
+        "build/SRC_ZLIB_BASE.obj",
+        "build/SRC_SQLITE3_BASE.obj",
+        "build/SRC_SQLITE3_EXTFNC.obj",
+        # "build/SRC_SQLITE3_SHELL.obj",
+        # "build/SRC_SQLITE3_PYTHON.obj",
         #
         "build/SQLMATH_BASE.obj",
         # "build/SQLMATH_NODEJS.obj",
         #
         "build/SQLMATH_CUSTOM.obj",
     ]
-    print(f"\npython setup.py - link_executable - {objects}")
     if sys.platform == "win32":
         extra_link_args = []
     else:
         extra_link_args = compiler.extra_postargs
-    compiler.link_executable(
-        objects=[*objects, "build/SRC_SHELL.obj"],
-        #
-        output_progname=(
-            f"_sqlite3.shell_{platform.system()}_{platform.machine()}"
-        ).lower(),
-        output_dir=None,
-        libraries=None,
-        library_dirs=None,
-        runtime_library_dirs=None,
-        debug=0,
-        extra_preargs=None,
-        extra_postargs=extra_link_args,
-        target_lang=None,
-    )
-    # build c-extension
-# https://github.com/pypa/distutils/blob/main/distutils/command/build_ext.py
     print(f"\npython setup.py - build_ext - {objects}")
     subprocess.run(["rm", "-f", "*.pyd"], check=True)
     setuptools.setup(
@@ -67,7 +49,7 @@ def build_ext():
             export_symbols=None,
             extra_compile_args=compiler.extra_postargs,
             extra_link_args=extra_link_args,
-            extra_objects=[*objects, "build/SRC_PYTHON.obj"],
+            extra_objects=[*objects, "build/SRC_SQLITE3_PYTHON.obj"],
             include_dirs=[],
             language=None,
             libraries=None,

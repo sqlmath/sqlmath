@@ -1749,6 +1749,7 @@ function replaceListReplace(replaceList, data) {
     return data;
 }
 (async function () {
+    let fetchCount = 0;
     let fetchList;
     let matchObj;
     let repoDict;
@@ -1776,7 +1777,7 @@ function replaceListReplace(replaceList, data) {
     fetchList = JSON.parse(JSON.stringify(matchObj[1].fetchList));
     // init repoDict, fetchList
     repoDict = {};
-    fetchList.forEach(function (elem) {
+    fetchList.forEach(async function (elem) {
         if (!elem.url) {
             return;
         }
@@ -1808,10 +1809,16 @@ function replaceListReplace(replaceList, data) {
             ).stdout, elem, "data");
             return;
         }
+        fetchCount += 1;
+        await new Promise(function (resolve) {
+            setTimeout(resolve, fetchCount * 50);
+        });
         moduleHttps.get(elem.url2 || elem.url.replace(
             "https://github.com/",
             "https://raw.githubusercontent.com/"
         ).replace("/blob/", "/"), function (res) {
+            fetchCount -= 1;
+            console.error(`shRawLibFetch - ${fetchCount} remaining fetches`);
             // http-redirect
             if (res.statusCode === 302) {
                 moduleHttps.get(res.headers.location, function (res) {

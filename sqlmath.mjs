@@ -88,6 +88,7 @@ let debugInline = (function () {
 }());
 let moduleChildProcessSpawn = moduleChildProcess.spawn;
 let {
+    npm_config_mode_debug,
     npm_config_mode_test
 } = process.env;
 let sqlMessageDict = {}; // dict of web-worker-callbacks
@@ -347,19 +348,20 @@ async function ciBuildext({
 
 // This function will build sqlmath from c.
 
-    let env = await ciBuildextEnv({process});
+    let env;
     let fileList = [];
+    let isWin32 = process.platform === "win32";
+    env = await ciBuildextEnv({isWin32, process});
     await moduleFs.promises.mkdir("build/", {recursive: true});
     fileList = fileList.concat([
-        {cDefine: "SRC_EXTFNC", fileSrc: "sqlite3_extension_functions.c"},
-        //
-        {cDefine: "SRC_ZLIB", fileSrc: "sqlite3_rollup.c"},
+        {cDefine: "SRC_ZLIB_BASE", fileSrc: "sqlite3_rollup.c"},
         {cDefine: "SRC_ZLIB_TEST_EXAMPLE", fileSrc: "sqlite3_rollup.c"},
         {cDefine: "SRC_ZLIB_TEST_MINIGZIP", fileSrc: "sqlite3_rollup.c"},
         //
-        {cDefine: "SRC_SQLITE", fileSrc: "sqlite3_rollup.c"},
-        {cDefine: "SRC_SHELL", fileSrc: "sqlite3_rollup.c"},
-        {cDefine: "SRC_PYTHON", fileSrc: "sqlite3_rollup.c"},
+        {cDefine: "SRC_SQLITE3_BASE", fileSrc: "sqlite3_rollup.c"},
+        {cDefine: "SRC_SQLITE3_EXTFNC", fileSrc: "sqlite3_rollup.c"},
+        {cDefine: "SRC_SQLITE3_SHELL", fileSrc: "sqlite3_rollup.c"},
+        {cDefine: "SRC_SQLITE3_PYTHON", fileSrc: "sqlite3_rollup.c"},
         //
         {cDefine: "SQLMATH_BASE", fileSrc: "sqlmath_base.c"},
         {cDefine: "SQLMATH_PYTHON", fileSrc: "sqlmath_base.c"},
@@ -367,10 +369,10 @@ async function ciBuildext({
         {cDefine: "SQLMATH_CUSTOM", fileSrc: "sqlmath_custom.c"}
     ]);
     await Promise.all(fileList.map(async function (option) {
-        await ciBuildextCompile(Object.assign(option, {env, process}));
+        await ciBuildextCompile(Object.assign(option, {env, isWin32, process}));
     }));
     await Promise.all(fileList.map(async function (option) {
-        await ciBuildextExe(Object.assign(option, {env, process}));
+        await ciBuildextExe(Object.assign(option, {env, isWin32, process}));
     }));
     await childProcessSpawn2(
         "sh",
@@ -402,62 +404,67 @@ async function ciBuildextCompile({
     cDefine,
     env,
     fileSrc,
-    process
+    isWin32
 }) {
 
 // This function will compile <fileSrc> into <fileObj>
 
     let argList = [];
     let fileObj = `build/${cDefine}.obj`;
-    let isWin32 = process.platform === "win32";
-    let modeWall = 1;
     switch (cDefine) {
-    case "SRC_EXTFNC":
-    case "SRC_PYTHON":
-    case "SRC_SHELL":
+    case "SRC_SQLITE3_BASE":
+    case "SRC_SQLITE3_EXTFNC":
+    case "SRC_SQLITE3_PYTHON":
+    case "SRC_SQLITE3_SHELL":
+    case "SRC_ZLIB_BASE":
     case "SRC_ZLIB_TEST_EXAMPLE":
     case "SRC_ZLIB_TEST_MINIGZIP":
-        modeWall = 0;
         break;
+    default:
+        if (isWin32) {
+            argList = argList.concat([
+                `/W3`,
+                `/std:c11`
+            ]);
+        } else {
+            argList = argList.concat([
+                `-Wextra`,
+                `-std=c11`
+            ]);
+        }
     }
     switch (cDefine) {
-    case "SRC_PYTHON":
+    case "SRC_SQLITE3_PYTHON":
         argList = argList.concat([
             `-I${env.includeDirPython}`
         ]);
         break;
     }
     argList = argList.concat([
-        `-D${cDefine}_C2`,
+        `-D${cDefine}_C2=`,
         `-DSQLITE3_C2=`,
         `-D_REENTRANT=1`
     ]);
     if (isWin32) {
+// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
         argList = argList.concat([
             `/Fo${fileObj}`,
             `/GL`, // to link.exe /LTCG
-            `/MT`,
+            `/MT`, // multithreaded, statically-linked
             `/O2`,
             `/c`, `/Tc${fileSrc}`,
-            `/nologo`,
-            (
-                modeWall
-                ? `/W3`
-                : `/W1`
-            )
+            `/nologo`
         ]);
     } else {
         argList = argList.concat([
             `-DHAVE_UNISTD_H=`,
-            `-O3`,
+            `-O2`,
             `-c`, `${fileSrc}`,
             `-fPIC`,
             `-o`, `${fileObj}`
         ]);
-        if (modeWall) {
-            argList = argList.concat([`-Wall`]);
-        }
     }
+    consoleError(`ciBuildextCompile - compiling object ${fileObj}`);
     await childProcessSpawn2(
         (
             isWin32
@@ -465,11 +472,12 @@ async function ciBuildextCompile({
             : "gcc"
         ),
         argList,
-        {env, stdio: ["ignore", 1, 2]}
+        {env, modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
     );
 }
 
 async function ciBuildextEnv({
+    isWin32,
     process
 }) {
 
@@ -478,7 +486,6 @@ async function ciBuildextEnv({
     let data;
     let env;
     let includeDirPython;
-    let isWin32 = process.platform === "win32";
     includeDirPython = await childProcessSpawn2(
         "python",
         ["-c", "import sys; print(sys.exec_prefix)"],
@@ -555,6 +562,7 @@ async function ciBuildextEnv({
 async function ciBuildextExe({
     cDefine,
     env,
+    isWin32,
     process
 }) {
 
@@ -563,13 +571,18 @@ async function ciBuildextExe({
     let argList = [];
     let fileExe = `build/${cDefine}.exe`;
     let fileObj = `build/${cDefine}.obj`;
-    let isWin32 = process.platform === "win32";
     switch (cDefine) {
-    case "SRC_SHELL":
+    case "SRC_SQLITE3_SHELL":
+        fileExe = (
+            "_sqlite3.shell"
+            + "_" + process.platform
+            + "_" + process.arch
+            + ".exe"
+        );
         argList = argList.concat([
-            "build/SRC_ZLIB.obj",
-            "build/SRC_SQLITE.obj",
-            "build/SRC_EXTFNC.obj",
+            "build/SRC_ZLIB_BASE.obj",
+            "build/SRC_SQLITE3_BASE.obj",
+            "build/SRC_SQLITE3_EXTFNC.obj",
             fileObj,
             //
             "build/SQLMATH_BASE.obj",
@@ -578,7 +591,7 @@ async function ciBuildextExe({
         break;
     case "SRC_ZLIB_TEST_EXAMPLE":
     case "SRC_ZLIB_TEST_MINIGZIP":
-        argList = argList.concat([fileObj, `build/SRC_ZLIB.obj`]);
+        argList = argList.concat([fileObj, `build/SRC_ZLIB_BASE.obj`]);
         break;
     default:
         return;
@@ -591,10 +604,11 @@ async function ciBuildextExe({
         ]);
     } else {
         argList = argList.concat([
-            `-lm`,
+            `-lm`, // link math
             `-o`, `${fileExe}`
         ]);
     }
+    consoleError(`ciBuildextExe - linking executable ${fileExe}`);
     await childProcessSpawn2(
         (
             isWin32
@@ -602,7 +616,7 @@ async function ciBuildextExe({
             : "gcc"
         ),
         argList,
-        {env, stdio: ["ignore", 1, 2]}
+        {env, modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
     );
 }
 
@@ -1290,8 +1304,7 @@ async function sqlmathInit() {
         cModule = await import("module");
         cModule = cModule.createRequire(import.meta.url);
         cModule = cModule(
-            "./_sqlite3"
-            + ".napi6"
+            "./_sqlite3.napi6"
             + "_" + process.platform
             + "_" + process.arch
             + ".node"

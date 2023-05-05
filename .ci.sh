@@ -177,24 +177,30 @@ shCiBuildWasm() {(set -e
     # debug
     # OPTION1="$OPTION1 -O0"
     OPTION1="$OPTION1 -Os"
+    # OPTION2="$OPTION2 -Oz"
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
-        sqlite3_extension_functions.c \
         sqlite3_rollup.c \
+        sqlite3_extfnc.c \
         sqlmath_base.c \
         sqlmath_custom.c
     do
+        OPTION2=""
         FILE2="build/$(basename "$FILE").wasm.o"
+        case "$FILE" in
+        sqlite3_extfnc.c)
+            FILE=sqlite3_rollup.c
+            OPTION2="$OPTION2 -DSRC_SQLITE3_EXTFNC_C2="
+            ;;
+        esac
         # optimization - skip rebuild of sqlite3_rollup.c if possible
         if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite3_rollup.c ]
         then
             printf "shCiBuildWasm - skip $FILE\n" 1>&2
             continue
         fi
-        OPTION2=""
-        # OPTION2="$OPTION2 -Oz"
-        OPTION2="$OPTION2 -DHAVE_UNISTD_H"
-        OPTION2="$OPTION2 -DSQLITE3_C2"
+        OPTION2="$OPTION2 -DHAVE_UNISTD_H="
+        OPTION2="$OPTION2 -DSQLITE3_C2="
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
     done
@@ -238,8 +244,8 @@ shCiBuildWasm() {(set -e
         -s USE_ZLIB \
         -s WASM=1 \
         -s WASM_BIGINT \
-        build/sqlite3_extension_functions.c.wasm.o \
         build/sqlite3_rollup.c.wasm.o \
+        build/sqlite3_extfnc.c.wasm.o \
         build/sqlmath_base.c.wasm.o \
         build/sqlmath_custom.c.wasm.o \
         #
@@ -477,6 +483,7 @@ import moduleFs from "fs";
                 "libraries": [
                     "sqlite3_rollup.lib"
                 ],
+// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
                 "msvs_settings": {
                     "VCCLCompilerTool": {
                         "WarningLevel": 3
@@ -519,8 +526,7 @@ import moduleFs from "fs";
 import moduleFs from "fs";
 (async function () {
     await moduleFs.promises.copyFile("build/binding.node", (
-        "_sqlite3"
-        + ".napi6"
+        "_sqlite3.napi6"
         + "_" + process.platform
         + "_" + process.arch
         + ".node"

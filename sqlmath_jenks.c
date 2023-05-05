@@ -103,7 +103,7 @@ SQLMATH_API double *jenksCreate(
 // ]
     // declare var
     char *pTmp = NULL;
-    const int nnLog = log2(nn + 1) + 2;
+    const int nnLog = (int) log2(nn + 1) + 2;
     double *histogramCvw = NULL;        // cumulative value * weight
     double *resultBreaks = NULL;
     double *ssmNow = NULL;

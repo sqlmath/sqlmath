@@ -37,7 +37,9 @@ file sqlmath_h - start
 #ifdef SQLITE3_C2
 #   undef SQLITE3_C2
 #   define SQLMATH_C2
-#   define SQLMATH_BASE_C2
+#   ifndef SQLMATH_BASE_C2
+#       define SQLMATH_BASE_C2
+#   endif
 #endif
 
 
@@ -693,7 +695,8 @@ SQLMATH_API void dbExec(
                             sqlite3_str_appendchar(str99, 1, ',');
                         }
                         zTmp = sqlite3_column_name(pStmt, ii);
-                        str99JsonAppendText(str99, zTmp, strlen(zTmp));
+                        str99JsonAppendText(str99, zTmp,
+                            (uint32_t) strlen(zTmp));
                         ii += 1;
                     }
                     // bracket column ]
@@ -1233,7 +1236,7 @@ static char *base64Encode(
     static const char BASE64_ENCODE_TABLE[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     // init bb
-    bb = 4 * ceil((double) *nn / 3);
+    bb = 4 * (int) ceil((double) *nn / 3);
     // init text
     text = sqlite3_malloc(MAX(bb, 4));
     // handle nomem
