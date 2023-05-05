@@ -27,6 +27,8 @@ import {
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
+    childProcessSpawn2,
+    ciBuildext,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
     dbExecAndReturnLastJsonAsync,
@@ -38,6 +40,7 @@ import {
     debugInline,
     jsbatonValueString,
     noop,
+    sqlmathInit,
     sqlmathWebworkerInit,
     version
 } from "./sqlmath.mjs";
@@ -47,9 +50,11 @@ let {
     jstestIt
 } = jslint;
 noop(debugInline);
+await sqlmathInit({});
+await sqlmathInit({}); // coverage-hack
 
 jstestDescribe((
-    "test apidoc handling-behavior"
+    "test_apidoc"
 ), function test_apidoc() {
     jstestIt((
         "test apidoc handling-behavior"
@@ -74,7 +79,7 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test assertXxx handling-behavior"
+    "test_assertXxx"
 ), function test_assertXxx() {
     jstestIt((
         "test assertXxx handling-behavior"
@@ -93,8 +98,8 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test cCallAsync handling-behavior"
-), function test_ccall() {
+    "test_ccallAsync"
+), function test_ccallAsync() {
     jstestIt((
         "test cCallAsync handling-behavior"
     ), async function () {
@@ -171,7 +176,39 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test db-bind handling-behavior"
+    "test_childProcessSpawn2"
+), function test_childProcessSpawn2() {
+    jstestIt((
+        "test childProcessSpawn2 handling-behavior"
+    ), async function () {
+        await Promise.all([
+            childProcessSpawn2(
+                "aa",
+                [],
+                {modeCapture: "utf8", modeDebug: true, stdio: []}
+            )
+        ]);
+    });
+});
+
+jstestDescribe((
+    "test_ciBuildextXxx"
+), function test_ciBuildextXxx() {
+    jstestIt((
+        "test ciBuildext handling-behavior"
+    ), async function () {
+        await Promise.all([
+            ciBuildext({process: {arch: "arm", env: {}, platform: "win32"}}),
+            ciBuildext({process: {arch: "arm64", env: {}, platform: "win32"}}),
+            ciBuildext({process: {arch: "ia32", env: {}, platform: "win32"}}),
+            ciBuildext({process: {env: {}, platform: "win32"}}),
+            ciBuildext({process: {}})
+        ]);
+    });
+});
+
+jstestDescribe((
+    "test_dbBind"
 ), function test_dbBind() {
     jstestIt((
         "test db-bind-value handling-behavior"
@@ -406,7 +443,7 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test dbXxxAsync handling-behavior"
+    "test_dbXxxAsync"
 ), function test_dbXxxAsync() {
     jstestIt((
         "test dbCloseAsync handling-behavior"
@@ -585,7 +622,7 @@ SELECT * FROM testDbExecAsync2;
 });
 
 jstestDescribe((
-    "test misc handling-behavior"
+    "test_misc"
 ), function test_misc() {
     jstestIt((
         "test misc handling-behavior"
@@ -617,7 +654,7 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test sqlite handling-behavior"
+    "test_sqlite"
 ), function test_sqlite() {
     jstestIt((
         "test sqlite-error handling-behavior"
@@ -1501,7 +1538,7 @@ SELECT quantile(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
 });
 
 jstestDescribe((
-    "test sqlmathWebworkerInit handling-behavior"
+    "test_sqlmathWebworkerInit"
 ), function test_sqlmathWebworkerInit() {
     jstestIt((
         "test sqlmathWebworkerInit handling-behavior"

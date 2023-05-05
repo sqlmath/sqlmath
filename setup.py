@@ -21,28 +21,28 @@ import unittest
 
 def build_ext():
     """This function will build c-extension."""
-    for ii in [1, 2, 3]:
-        subprocess.run(
-            ["sh", "jslint_ci.sh", "shCiBuildStep", str(ii)],
-        ).check_returncode()
+    subprocess.run(["sh", "jslint_ci.sh", "shciBuildext"], check=True)
+    # build executable
     compiler = new_compiler()
     objects = [
-        "./build/.SRC_SQLITE.obj",
-        "./build/.SRC_ZLIB.obj",
-        "./build/sqlite3_extension_functions.obj",
+        "build/SRC_ZLIB.obj",
+        "build/SRC_SQLITE.obj",
+        "build/SRC_EXTFNC.obj",
+        # "build/SRC_SHELL.obj",
+        # "build/SRC_PYTHON.obj",
         #
-        "./build/.SQLMATH_BASE.obj",
+        "build/SQLMATH_BASE.obj",
+        # "build/SQLMATH_NODEJS.obj",
         #
-        "./build/.SQLMATH_CUSTOM.obj",
+        "build/SQLMATH_CUSTOM.obj",
     ]
-    # build executable
     print(f"\npython setup.py - link_executable - {objects}")
     if sys.platform == "win32":
         extra_link_args = []
     else:
         extra_link_args = compiler.extra_postargs
     compiler.link_executable(
-        objects=[*objects, "./build/.SRC_SHELL.obj"],
+        objects=[*objects, "build/SRC_SHELL.obj"],
         #
         output_progname=(
             f"_sqlite3.shell_{platform.system()}_{platform.machine()}"
@@ -59,7 +59,7 @@ def build_ext():
     # build c-extension
 # https://github.com/pypa/distutils/blob/main/distutils/command/build_ext.py
     print(f"\npython setup.py - build_ext - {objects}")
-    subprocess.run(["rm", "-f", "*.pyd"]).check_returncode()
+    subprocess.run(["rm", "-f", "*.pyd"], check=True)
     setuptools.setup(
         ext_modules=[setuptools.Extension(
             define_macros=[],
@@ -67,7 +67,7 @@ def build_ext():
             export_symbols=None,
             extra_compile_args=compiler.extra_postargs,
             extra_link_args=extra_link_args,
-            extra_objects=[*objects, "./build/.SRC_PYTHON.obj"],
+            extra_objects=[*objects, "build/SRC_PYTHON.obj"],
             include_dirs=[],
             language=None,
             libraries=None,
@@ -81,25 +81,25 @@ def build_ext():
         )],
         package_dir={".": "."},
     )
-    # create static-library ./build/sqlite3_rollup.lib
+    # create static-library build/sqlite3_rollup.lib
     print(f"\npython setup.py - create_static_lib - {objects}")
     compiler.create_static_lib(
         objects=objects,
-        # !! objects=[*objects, "./build/.SQLMATH_NODEJS.obj"],
+        # !! objects=[*objects, "build/SQLMATH_NODEJS.obj"],
         #
         output_libname="sqlite3_rollup",
         debug=0,
-        output_dir="./build",
+        output_dir="build/",
         target_lang=None,
     )
     library_filename = compiler.library_filename(
         libname="sqlite3_rollup",
         lib_type="static",
         strip_dir=0,
-        output_dir="./build",
+        output_dir="build/",
     ).replace("\\", "/")
-    if library_filename != "./build/sqlite3_rollup.lib":
-        shutil.move(library_filename, "./build/sqlite3_rollup.lib")
+    if library_filename != "build/sqlite3_rollup.lib":
+        shutil.move(library_filename, "build/sqlite3_rollup.lib")
 
 
 def build_ext_compile():
@@ -112,7 +112,7 @@ def build_ext_compile():
         depends=None,
         extra_postargs=compiler.extra_postargs,
         extra_preargs=None,
-        output_dir="./build",
+        output_dir="build/",
     )
     objects2 = [obj.replace(compiler.obj_extension, ".obj") for obj in objects]
     for aa, bb in zip(objects, objects2, strict=True):

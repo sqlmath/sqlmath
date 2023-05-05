@@ -25,6 +25,10 @@
 /*global FinalizationRegistry*/
 "use strict";
 
+import moduleChildProcess from "child_process";
+import moduleFs from "fs";
+import modulePath from "path";
+
 let FILENAME_DBTMP = "/tmp/__dbtmp1";
 let IS_BROWSER;
 let JSBATON_ARGC = 16;
@@ -82,6 +86,10 @@ let debugInline = (function () {
     __consoleError = console.error; //jslint-ignore-line
     return debug;
 }());
+let moduleChildProcessSpawn = moduleChildProcess.spawn;
+let {
+    npm_config_mode_test
+} = process.env;
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
@@ -227,6 +235,377 @@ async function cCallAsync(baton, cFuncName, ...argList) {
     }
 }
 
+async function childProcessSpawn2(command, args, options) {
+
+// This function will run child_process.spawn as a promise.
+
+    // mock moduleChildProcessSpawn
+    if (npm_config_mode_test) {
+        moduleChildProcessSpawn = function () {
+            let child = {
+                end: noop,
+                on: function (onType, resolve) {
+                    switch (onType) {
+                    case "data":
+                        resolve(Buffer.alloc(0));
+                        return;
+                    default:
+                        resolve(0);
+                    }
+                },
+                setEncoding: noop,
+                write: noop
+            };
+            child.stderr = child;
+            child.stdin = child;
+            child.stdout = child;
+            return child;
+        };
+    }
+    return await new Promise(function (resolve, reject) {
+        let bufList = [[], [], []];
+        let child;
+        let {
+            modeCapture,
+            modeDebug,
+            stdio
+        } = options;
+        if (modeDebug) {
+            consoleError(
+                `childProcessSpawn2 - ${command} ${JSON.stringify(args)}`
+            );
+        }
+        child = moduleChildProcessSpawn(
+            command,
+            args,
+            Object.assign({}, options, {
+                stdio: [
+                    "ignore",
+                    (
+                        modeCapture
+                        ? "pipe"
+                        : stdio[1]
+                    ),
+                    (
+                        modeCapture
+                        ? "pipe"
+                        : stdio[2]
+                    )
+                ]
+            })
+        );
+        if (modeCapture) {
+            [
+                child.stdin, child.stdout, child.stderr
+            ].forEach(function (pipe, ii) {
+                if (ii === 0) {
+                    return;
+                }
+                pipe.on("data", function (chunk) {
+                    bufList[ii].push(chunk);
+                    if (stdio[ii] !== "ignore") {
+                        switch (ii) {
+                        case 1:
+                            process.stdout.write(chunk);
+                            break;
+                        case 2:
+                            process.stderr.write(chunk);
+                            break;
+                        }
+                    }
+                });
+            });
+        }
+        child.on("exit", function (exitCode) {
+            let resolve0 = resolve;
+            let stderr;
+            let stdout;
+            // coverage-hack
+            if (exitCode || npm_config_mode_test) {
+                resolve = reject;
+            }
+            // coverage-hack
+            if (npm_config_mode_test) {
+                resolve = resolve0;
+            }
+            [stdout, stderr] = bufList.slice(1).map(function (buf) {
+                return (
+                    typeof modeCapture === "string"
+                    ? Buffer.concat(buf).toString(modeCapture)
+                    : Buffer.concat(buf)
+                );
+            });
+            resolve({exitCode, stderr, stdout});
+        });
+    });
+
+}
+
+async function ciBuildext({
+    process
+}) {
+
+// This function will build sqlmath from c.
+
+    let env = await ciBuildextEnv({process});
+    let fileList = [];
+    await moduleFs.promises.mkdir("build/", {recursive: true});
+    fileList = fileList.concat([
+        {cDefine: "SRC_EXTFNC", fileSrc: "sqlite3_extension_functions.c"},
+        //
+        {cDefine: "SRC_ZLIB", fileSrc: "sqlite3_rollup.c"},
+        {cDefine: "SRC_ZLIB_TEST_EXAMPLE", fileSrc: "sqlite3_rollup.c"},
+        {cDefine: "SRC_ZLIB_TEST_MINIGZIP", fileSrc: "sqlite3_rollup.c"},
+        //
+        {cDefine: "SRC_SQLITE", fileSrc: "sqlite3_rollup.c"},
+        {cDefine: "SRC_SHELL", fileSrc: "sqlite3_rollup.c"},
+        {cDefine: "SRC_PYTHON", fileSrc: "sqlite3_rollup.c"},
+        //
+        {cDefine: "SQLMATH_BASE", fileSrc: "sqlmath_base.c"},
+        {cDefine: "SQLMATH_PYTHON", fileSrc: "sqlmath_base.c"},
+        //
+        {cDefine: "SQLMATH_CUSTOM", fileSrc: "sqlmath_custom.c"}
+    ]);
+    await Promise.all(fileList.map(async function (option) {
+        await ciBuildextCompile(Object.assign(option, {env, process}));
+    }));
+    await Promise.all(fileList.map(async function (option) {
+        await ciBuildextExe(Object.assign(option, {env, process}));
+    }));
+    await childProcessSpawn2(
+        "sh",
+        [
+            "-c",
+            (`
+(set -e
+    printf "\ntest zlib\n"
+    if [ "Hello world!" = "$( \
+        printf "Hello world!\n" \
+            | ./build/SRC_ZLIB_TEST_MINIGZIP.exe \
+            | ./build/SRC_ZLIB_TEST_MINIGZIP.exe -d \
+        )" ] \
+        && ./build/SRC_ZLIB_TEST_EXAMPLE.exe ./build/zlib_test_file
+    then
+        printf "\n    *** zlib test OK ***\n"
+    else
+        printf "\n    *** zlib test FAILED ***\n"
+        exit 1
+    fi
+)
+            `)
+        ],
+        {env, stdio: ["ignore", 1, 2]}
+    );
+}
+
+async function ciBuildextCompile({
+    cDefine,
+    env,
+    fileSrc,
+    process
+}) {
+
+// This function will compile <fileSrc> into <fileObj>
+
+    let argList = [];
+    let fileObj = `build/${cDefine}.obj`;
+    let isWin32 = process.platform === "win32";
+    let modeWall = 1;
+    switch (cDefine) {
+    case "SRC_EXTFNC":
+    case "SRC_PYTHON":
+    case "SRC_SHELL":
+    case "SRC_ZLIB_TEST_EXAMPLE":
+    case "SRC_ZLIB_TEST_MINIGZIP":
+        modeWall = 0;
+        break;
+    }
+    switch (cDefine) {
+    case "SRC_PYTHON":
+        argList = argList.concat([
+            `-I${env.includeDirPython}`
+        ]);
+        break;
+    }
+    argList = argList.concat([
+        `-D${cDefine}_C2`,
+        `-DSQLITE3_C2=`,
+        `-D_REENTRANT=1`
+    ]);
+    if (isWin32) {
+        argList = argList.concat([
+            `/Fo${fileObj}`,
+            `/GL`, // to link.exe /LTCG
+            `/MT`,
+            `/O2`,
+            `/c`, `/Tc${fileSrc}`,
+            `/nologo`,
+            (
+                modeWall
+                ? `/W3`
+                : `/W1`
+            )
+        ]);
+    } else {
+        argList = argList.concat([
+            `-DHAVE_UNISTD_H=`,
+            `-O3`,
+            `-c`, `${fileSrc}`,
+            `-fPIC`,
+            `-o`, `${fileObj}`
+        ]);
+        if (modeWall) {
+            argList = argList.concat([`-Wall`]);
+        }
+    }
+    await childProcessSpawn2(
+        (
+            isWin32
+            ? "cl.exe"
+            : "gcc"
+        ),
+        argList,
+        {env, stdio: ["ignore", 1, 2]}
+    );
+}
+
+async function ciBuildextEnv({
+    process
+}) {
+
+// This function will fetch posix/win32 env for building c-extension.
+
+    let data;
+    let env;
+    let includeDirPython;
+    let isWin32 = process.platform === "win32";
+    includeDirPython = await childProcessSpawn2(
+        "python",
+        ["-c", "import sys; print(sys.exec_prefix)"],
+        {modeCapture: "utf8", stdio: ["ignore", "ignore", 2]}
+    );
+    includeDirPython = includeDirPython.stdout.trim();
+    // coverage-hack
+    if (npm_config_mode_test) {
+        includeDirPython = "/Python/1.2.3/";
+    }
+    includeDirPython = [
+        includeDirPython,
+        "include",
+        (
+            isWin32
+            ? []
+            : [
+                "python"
+                + (/\/Python\/(\d+?\.\d+?)\./).exec(includeDirPython)[1]
+            ]
+        )
+    ].flat().join(modulePath.sep);
+    if (!isWin32) {
+        return Object.assign({}, process.env, {
+            includeDirPython
+        });
+    }
+    data = await childProcessSpawn2(
+        (
+            process.env["ProgramFiles(x86)"]
+            + "\\Microsoft Visual Studio\\Installer\\vswhere.exe"
+        ),
+        [
+            "-latest",
+            "-prerelease",
+            "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+            "-property", "installationPath",
+            "-products", "*"
+        ],
+        {modeCapture: "utf8", stdio: ["ignore", "ignore", 2]}
+    );
+    data = await childProcessSpawn2(
+        "cmd",
+        [
+            "/u",
+            "/c",
+            `${data.stdout.trim()}\\VC\\Auxiliary\\Build\\vcvarsall.bat`,
+            (
+                process.arch === "arm"
+                ? "x86_arm"
+                : process.arch === "arm64"
+                ? "x86_arm64"
+                : process.arch === "ia32"
+                ? "x86"
+                : "x86_amd64"
+            ),
+            "&&",
+            "set"
+        ],
+        {modeCapture: "utf16le", stdio: ["ignore", "ignore", 2]}
+    );
+    data = data.stdout.trim();
+    env = {includeDirPython};
+    // mock data
+    if (npm_config_mode_test) {
+        data = "aa=bb";
+    }
+    data.replace((/([^\r\n]*?)=(.*?)$/gm), function (ignore, key, val) {
+        env[key] = val;
+    });
+    return env;
+}
+
+async function ciBuildextExe({
+    cDefine,
+    env,
+    process
+}) {
+
+// This function will link <fileOb> into <fileExe>
+
+    let argList = [];
+    let fileExe = `build/${cDefine}.exe`;
+    let fileObj = `build/${cDefine}.obj`;
+    let isWin32 = process.platform === "win32";
+    switch (cDefine) {
+    case "SRC_SHELL":
+        argList = argList.concat([
+            "build/SRC_ZLIB.obj",
+            "build/SRC_SQLITE.obj",
+            "build/SRC_EXTFNC.obj",
+            fileObj,
+            //
+            "build/SQLMATH_BASE.obj",
+            "build/SQLMATH_CUSTOM.obj"
+        ]);
+        break;
+    case "SRC_ZLIB_TEST_EXAMPLE":
+    case "SRC_ZLIB_TEST_MINIGZIP":
+        argList = argList.concat([fileObj, `build/SRC_ZLIB.obj`]);
+        break;
+    default:
+        return;
+    }
+    if (isWin32) {
+        argList = argList.concat([
+            `/LTCG`, // from cl.exe /GL
+            `/OUT:${fileExe}`,
+            `/nologo`
+        ]);
+    } else {
+        argList = argList.concat([
+            `-lm`,
+            `-o`, `${fileExe}`
+        ]);
+    }
+    await childProcessSpawn2(
+        (
+            isWin32
+            ? "link.exe"
+            : "gcc"
+        ),
+        argList,
+        {env, stdio: ["ignore", 1, 2]}
+    );
+}
+
 function dbCallAsync(baton, cFuncName, db, ...argList) {
 
 // This function will call <cFuncName> using db <argList>[0].
@@ -355,7 +734,7 @@ async function dbExecAsync({
             );
             modeRetry -= 1;
             await new Promise(function (resolve) {
-                setTimeout(resolve, 5_000 * !process.env.npm_config_mode_test);
+                setTimeout(resolve, 5_000 * !npm_config_mode_test);
             });
         }
     }
@@ -885,6 +1264,9 @@ async function sqlmathInit() {
 
 // This function will init sqlmath.
 
+    if (dbFinalizationRegistry) {
+        return;
+    }
     dbFinalizationRegistry = new FinalizationRegistry(function ({
         afterFinalization,
         ptr
@@ -914,7 +1296,7 @@ async function sqlmathInit() {
             + "_" + process.arch
             + ".node"
         );
-        if (process.env.npm_config_mode_test) {
+        if (npm_config_mode_test) {
             // mock consoleError
             consoleError = noop;
         }
@@ -964,8 +1346,6 @@ function sqlmathWebworkerInit({
     }
 }
 
-await sqlmathInit({});
-
 export {
     SQLITE_MAX_LENGTH2,
     SQLITE_OPEN_AUTOPROXY,
@@ -992,6 +1372,9 @@ export {
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
+    ciBuildext,
+    ciBuildextEnv,
+    childProcessSpawn2,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
     dbExecAndReturnLastJsonAsync,

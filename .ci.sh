@@ -147,66 +147,21 @@ shCiBaseCustomArtifactUpload() {(set -e
     )
 )}
 
+shciBuildext() {(set -e
+# this function will build and compile c-extension
+    unset npm_config_mode_test
+    node --input-type=module -e '
+import {ciBuildext} from "./sqlmath.mjs";
+ciBuildext({process});
+' "$@" # '
+)}
+
 shCiBuildNodejs() {(set -e
 # this function will build binaries in nodejs
     # cleanup
-    rm -f .SQLMATH_* .SRC_* _sqlite3.*
-    rm -rf build/
+    rm -rf _sqlite3.* build/
     mkdir -p build/
     shCiTestNodejs
-)}
-
-shCiBuildStep() {(set -e
-# this function will build sqlite3_rollup.c
-    BUILD_STEP="$1"
-    REBUILD=0
-    if [ ! -f build/sqlite3_rollup.lib ]
-    then
-        REBUILD=1
-    fi
-    case "$BUILD_STEP" in
-    1)
-        FILE_BASE_LIST="SRC_ZLIB SRC_SQLITE SRC_SHELL SRC_PYTHON"
-        FILE_MAIN=sqlite3_rollup.c
-        ;;
-    2)
-        FILE_BASE_LIST="SQLMATH_BASE SQLMATH_NODEJS"
-        FILE_MAIN=sqlmath_base.c
-        ;;
-    3)
-        FILE_BASE_LIST="SQLMATH_CUSTOM"
-        FILE_MAIN=sqlmath_custom.c
-        ;;
-    esac
-    for FILE_BASE in $FILE_BASE_LIST
-    do
-        FILE_SRC=".$FILE_BASE.c"
-        FILE_SRC_LIST="$FILE_SRC_LIST $FILE_SRC"
-        FILE_OBJ="build/.$FILE_BASE.obj"
-        if [ ! -f "$FILE_OBJ" ] \
-            || [ -n "$(find -L "$FILE_MAIN" -prune -newer "$FILE_OBJ")" ]
-        then
-            REBUILD=1
-            printf "shCiBuildStep1 - $FILE_MAIN is newer than $FILE_OBJ\n"
-            printf "#define ${FILE_BASE}_C2\n#include \"$FILE_MAIN\"\n" \
-                > "$FILE_SRC"
-        fi
-    done
-    printf "shCiBuildStep1 - REBUILD=$REBUILD\n"
-    if [ "$REBUILD" = 1 ]
-    then
-        if [ "$BUILD_STEP" = 1 ]
-        then
-            FILE_SRC_LIST="$FILE_SRC_LIST sqlite3_extension_functions.c"
-            # test zlib
-            if [ "$GITHUB_ACTION" ]
-            then
-                shCiTestZlib
-            fi
-        fi
-        # rebuild
-        python setup.py "build_ext_compile" "$FILE_SRC_LIST"
-    fi
 )}
 
 shCiBuildWasm() {(set -e
@@ -516,6 +471,9 @@ import moduleFs from "fs";
                         }
                     ]
                 ],
+                "defines": [
+                    "SQLMATH_NODEJS_C2"
+                ],
                 "libraries": [
                     "sqlite3_rollup.lib"
                 ],
@@ -525,7 +483,7 @@ import moduleFs from "fs";
                     }
                 },
                 "sources": [
-                    ".SQLMATH_NODEJS.c"
+                    "sqlmath_base.c"
                 ],
                 "target_name": "binding",
                 "xcode_settings": {
@@ -556,7 +514,7 @@ import moduleFs from "fs";
 ' "$@" # '
         # node "$(sh jslint_ci.sh shNodegypExe)" clean
         node "$(shNodegypExe)" configure
-        node "$(shNodegypExe)" build --release --silly
+        node "$(shNodegypExe)" build --release
         node --input-type=module --eval '
 import moduleFs from "fs";
 (async function () {
@@ -582,189 +540,6 @@ require("assert")(require("./package.json").name !== "sqlmath");
     shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
     # test python
     python setup.py test
-)}
-
-shCiTestZlib() {(set -e
-# this function will run test in nodejs
-    (set -x
-    export LD_LIBRARY_PATH="."
-    CFLAGS=""
-    CFLAGS="$CFLAGS -DHAVE_UNISTD_H"
-    # CFLAGS="$CFLAGS -D_LARGEFILE64_SOURCE=1"
-    # CFLAGS="$CFLAGS -I."
-    # CFLAGS="$CFLAGS -L."
-    CFLAGS="$CFLAGS -O3"
-    CFLAGS="$CFLAGS -Wall"
-    CFLAGS="$CFLAGS -Werror"
-    VERSION=1.2.13
-    #
-    #
-    printf "\n\ntest zlib static\n"
-    rm -f \
-      *.a \
-      *.o \
-      libz.* \
-      test_*.exe \
-      test_file_*
-    #
-    printf "\nbuild static libz.a\n"
-    gcc $CFLAGS \
-        -c \
-        -o .src_zlib_rollup.o \
-        .SRC_ZLIB.c
-    ar rc libz.a .src_zlib_rollup.o
-    ranlib libz.a
-    #
-    printf "\nbuild static test_example.exe\n"
-    gcc $CFLAGS \
-        -DZLIB_TEST_EXAMPLE_C2 \
-        -c \
-        -o test_example.o \
-        .SRC_ZLIB.c
-    gcc $CFLAGS \
-        -o test_example.exe \
-        test_example.o \
-        libz.a
-    #
-    printf "\nbuild static test_minigzip.exe\n"
-    gcc $CFLAGS \
-        -DZLIB_TEST_MINIGZIP_C2 \
-        -c \
-        -o test_minigzip.o \
-        .SRC_ZLIB.c
-    gcc $CFLAGS \
-        -o test_minigzip.exe \
-        test_minigzip.o \
-        libz.a
-    #
-    printf "\ntest static\n"
-    if [ "Hello world!" = "$( \
-        printf "Hello world!\n" | ./test_minigzip.exe | ./test_minigzip.exe -d \
-        )" ] \
-        && ./test_example.exe test_file_static
-    then
-        printf "\n    *** zlib test static OK ***\n"
-    else
-        printf "\n    *** zlib test static FAILED ***\n"
-        exit 1
-    fi
-    #
-    #
-    printf "\n\ntest zlib shared\n"
-    rm -f \
-      *.a \
-      *.o \
-      libz.* \
-      test_*.exe \
-      test_file_*
-    #
-    printf "\nbuild shared libz.a\n"
-    gcc $CFLAGS \
-        -DPIC \
-        -c \
-        -fPIC \
-        -o .src_zlib_rollup.o \
-        .SRC_ZLIB.c
-    gcc $CFLAGS \
-        -fPIC \
-        -o libz.so.$VERSION \
-        -shared \
-        .src_zlib_rollup.o
-    ln -s libz.so.$VERSION libz.so
-    ln -s libz.so.$VERSION libz.so.1
-    #
-    printf "\nbuild shared test_example.exe\n"
-    gcc $CFLAGS \
-        -DZLIB_TEST_EXAMPLE_C2 \
-        -c \
-        -o test_example.o \
-        .SRC_ZLIB.c
-    gcc $CFLAGS \
-        -o test_example.exe \
-        test_example.o \
-        libz.so.$VERSION
-    #
-    printf "\nbuild shared test_minigzip.exe\n"
-    gcc $CFLAGS \
-        -DZLIB_TEST_MINIGZIP_C2 \
-        -c \
-        -o test_minigzip.o \
-        .SRC_ZLIB.c
-    gcc $CFLAGS \
-        -o test_minigzip.exe \
-        test_minigzip.o \
-        libz.so.$VERSION
-    #
-    printf "\ntest shared\n"
-    if [ "Hello world!" = "$( \
-        printf "Hello world!\n" | ./test_minigzip.exe | ./test_minigzip.exe -d \
-        )" ] \
-        && ./test_example.exe test_file_shared
-    then
-        printf "\n    *** zlib test shared OK ***\n"
-    else
-        printf "\n    *** zlib test shared FAILED ***\n"
-        exit 1
-    fi
-    #
-    #
-    printf "\n\ntest zlib 64\n"
-    rm -f \
-      *.a \
-      *.o \
-      libz.* \
-      test_*.exe \
-      test_file_*
-    #
-    printf "\nbuild 64 libz.a\n"
-    gcc $CFLAGS \
-        -D_LARGEFILE64_SOURCE=1 \
-        -c \
-        -o .src_zlib_rollup.o \
-        .SRC_ZLIB.c
-    ar rc libz.a .src_zlib_rollup.o
-    ranlib libz.a
-    #
-    printf "\nbuild 64 test_example.exe\n"
-    gcc $CFLAGS \
-        -DZLIB_TEST_EXAMPLE_C2 \
-        -D_FILE_OFFSET_BITS=64 \
-        -D_LARGEFILE64_SOURCE=1 \
-        -c \
-        -o test_example.o \
-        .SRC_ZLIB.c
-    gcc $CFLAGS \
-        -D_LARGEFILE64_SOURCE=1 \
-        -o test_example.exe \
-        test_example.o \
-        libz.a
-    #
-    printf "\nbuild 64 test_minigzip.exe\n"
-    gcc $CFLAGS \
-        -DZLIB_TEST_MINIGZIP_C2 \
-        -D_FILE_OFFSET_BITS=64 \
-        -D_LARGEFILE64_SOURCE=1 \
-        -c \
-        -o test_minigzip.o \
-        .SRC_ZLIB.c
-    gcc $CFLAGS \
-        -D_LARGEFILE64_SOURCE=1 \
-        -o test_minigzip.exe \
-        test_minigzip.o \
-        libz.a
-    #
-    printf "\ntest 64\n"
-    if [ "Hello world!" = "$( \
-        printf "Hello world!\n" | ./test_minigzip.exe | ./test_minigzip.exe -d \
-        )" ] \
-        && ./test_example.exe test_file_64
-    then
-        printf "\n    *** zlib test 64 OK ***\n"
-    else
-        printf "\n    *** zlib test 64 FAILED ***\n"
-        exit 1
-    fi
-    )
 )}
 
 shNodegypExe() {(set -e

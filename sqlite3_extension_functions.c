@@ -77,12 +77,12 @@ shRawLibFetch
 -
 -    { "pi",                 0, 0, SQLITE_UTF8,    1, piFunc_2 },
 +    /\\* math.h *\\/
-+// hack-sqlite - deduplicate math-functions
++// hack-sqlite-extfnc - deduplicate math-functions
 +    { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
 
 -    case 3: c = (c<<6) + *(zIn)++;                     \
 -    case 2: c = (c<<6) + *(zIn)++;                     \
-+/\\* hack-sqlite - fix warning *\\/ \
++/\\* hack-sqlite-extfnc - fix warning *\\/ \
 +    case 3: c = (c<<6) + *(zIn)++;                     \
 +    /\\* fall through *\\/ \
 +    case 2: c = (c<<6) + *(zIn)++;                     \
@@ -91,7 +91,7 @@ shRawLibFetch
 -  int i;
 -
 -  for(i=0; i<sizeof(aFuncs)/sizeof(aFuncs[0]); i++){
-+// hack-sqlite - fix warning
++// hack-sqlite-extfnc - fix warning
 +  size_t i;
 +
 +  for(i=0; i<sizeof(aFuncs)/sizeof(aFuncs[0]); i++){
@@ -102,13 +102,13 @@ shRawLibFetch
 -typedef uint8_t         u8;
 -typedef uint16_t        u16;
 -typedef int64_t         i64;
-+// hack-sqlite - remove duplicate typedef
++// hack-sqlite-extfnc - remove duplicate typedef
 +// typedef uint8_t         u8;
 +// typedef uint16_t        u16;
 +// typedef int64_t         i64;
 
 -typedef void(*map_iterator)(void*, int64_t, void*);
-+// hack-sqlite3 - fix warning
++// hack-sqlite-extfnc - fix warning
 +typedef void(*map_iterator)(void*, i64, void*);
 */
 
@@ -272,7 +272,7 @@ SQLITE_EXTENSION_INIT1
 */
 
 typedef int(*cmp_func)(const void *, const void *);
-// hack-sqlite3 - fix warning
+// hack-sqlite-extfnc - fix warning
 typedef void(*map_iterator)(void*, i64, void*);
 
 typedef struct node{
@@ -322,7 +322,7 @@ int double_cmp(const void *a, const void *b);
 
 #endif /* _MAP_H_ */
 
-// hack-sqlite - remove duplicate typedef
+// hack-sqlite-extfnc - remove duplicate typedef
 // typedef uint8_t         u8;
 // typedef uint16_t        u16;
 // typedef int64_t         i64;
@@ -404,7 +404,7 @@ static const int utf_mask[] = {
   xtra = xtra_utf8_bytes[c];                           \
   switch( xtra ){                                      \
     case 4: c = (int)0xFFFD; break;                    \
-/* hack-sqlite - fix warning */ \
+/* hack-sqlite-extfnc - fix warning */ \
     case 3: c = (c<<6) + *(zIn)++;                     \
     /* fall through */ \
     case 2: c = (c<<6) + *(zIn)++;                     \
@@ -1512,7 +1512,7 @@ int RegisterExtensionFunctions(sqlite3 *db){
      void (*xFunc)(sqlite3_context*,int,sqlite3_value **);
   } aFuncs[] = {
     /* math.h */
-// hack-sqlite - deduplicate math-functions
+// hack-sqlite-extfnc - deduplicate math-functions
     { "difference",         2, 0, SQLITE_UTF8,    0, differenceFunc},
 
 
@@ -1551,7 +1551,7 @@ int RegisterExtensionFunctions(sqlite3 *db){
     { "lower_quartile",   1, 0, 0, modeStep,     lower_quartileFinalize  },
     { "upper_quartile",   1, 0, 0, modeStep,     upper_quartileFinalize  },
   };
-// hack-sqlite - fix warning
+// hack-sqlite-extfnc - fix warning
   size_t i;
 
   for(i=0; i<sizeof(aFuncs)/sizeof(aFuncs[0]); i++){
