@@ -1584,7 +1584,9 @@ ${name}<span class="apidocSignatureSpan">${signature}</span>
         ), "\n");
         return result;
     }));
-    // init module_list
+
+// Init module_list.
+
     module_list = await Promise.all(module_list.map(async function ({
         pathname
     }) {

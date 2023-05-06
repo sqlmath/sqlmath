@@ -180,6 +180,7 @@ shCiBuildWasm() {(set -e
     # OPTION2="$OPTION2 -Oz"
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
+        zlib_base.c \
         sqlite3_rollup.c \
         sqlite3_extfnc.c \
         sqlmath_base.c \
@@ -191,6 +192,10 @@ shCiBuildWasm() {(set -e
         sqlite3_extfnc.c)
             FILE=sqlite3_rollup.c
             OPTION2="$OPTION2 -DSRC_SQLITE3_EXTFNC_C2="
+            ;;
+        zlib_base.c)
+            FILE=sqlite3_rollup.c
+            OPTION2="$OPTION2 -DSRC_ZLIB_BASE_C2="
             ;;
         esac
         # optimization - skip rebuild of sqlite3_rollup.c if possible
@@ -241,9 +246,9 @@ shCiBuildWasm() {(set -e
         -s NODEJS_CATCH_REJECTION=0 \
         -s RESERVED_FUNCTION_POINTERS=64 \
         -s SINGLE_FILE=0 \
-        -s USE_ZLIB \
         -s WASM=1 \
         -s WASM_BIGINT \
+        build/zlib_base.c.wasm.o \
         build/sqlite3_rollup.c.wasm.o \
         build/sqlite3_extfnc.c.wasm.o \
         build/sqlmath_base.c.wasm.o \
@@ -321,10 +326,10 @@ shCiEmsdkInstall() {(set -e
     echo "## Done"
     #
     # download ports
-    touch "$EMSDK/.null.c"
-    emcc \
-        -s USE_ZLIB \
-        "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
+    # touch "$EMSDK/.null.c"
+    # emcc \
+    #     -s USE_ZLIB \
+    #     "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
 )}
 
 shIndentC() {(set -e
@@ -349,6 +354,7 @@ shIndentC() {(set -e
 shLintPython() {(set -e
 # this function will lint python file
     FILE_LIST="$@"
+    (
     printf "\n\nlint ruff\n"
     OPTION=""
     # ANN flake8-annotations
@@ -389,6 +395,10 @@ shLintPython() {(set -e
         OPTION="$OPTION --fix"
     fi
     ruff check $OPTION $FILE_LIST
+    ) &
+    PID_LIST="$PID_LIST $!"
+    #
+    (
     printf "lint pycodestyle\n"
     OPTION="--ignore="
     # Unexpected indentation (comment) (E116)
@@ -402,6 +412,10 @@ shLintPython() {(set -e
     # names aligned.
     OPTION="$OPTION,W503"
     pycodestyle $OPTION $FILE_LIST
+    ) &
+    PID_LIST="$PID_LIST $!"
+    #
+    shPidListWait shLintPython "$PID_LIST"
     printf "lint successful\n\n"
 )}
 
@@ -543,7 +557,14 @@ require("assert")(require("./package.json").name !== "sqlmath");
     then
         COVERAGE_EXCLUDE="$COVERAGE_EXCLUDE --exclude=sqlmath.mjs"
     fi
-    shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
+    # ugly-hack - github-action will flakily hang during test
+    if [ "$GITHUB_ACTION" ] && (timeout --version &>/dev/null)
+    then
+        timeout 60 sh jslint_ci.sh \
+            shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
+    else
+        shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
+    fi
     # test python
     python setup.py test
 )}

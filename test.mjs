@@ -40,7 +40,6 @@ import {
     debugInline,
     jsbatonValueString,
     noop,
-    sqlmathInit,
     sqlmathWebworkerInit,
     version
 } from "./sqlmath.mjs";
@@ -50,8 +49,6 @@ let {
     jstestIt
 } = jslint;
 noop(debugInline);
-await sqlmathInit({});
-await sqlmathInit({}); // coverage-hack
 
 jstestDescribe((
     "test_apidoc"

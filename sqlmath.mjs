@@ -25,10 +25,6 @@
 /*global FinalizationRegistry*/
 "use strict";
 
-import moduleChildProcess from "child_process";
-import moduleFs from "fs";
-import modulePath from "path";
-
 let FILENAME_DBTMP = "/tmp/__dbtmp1";
 let IS_BROWSER;
 let JSBATON_ARGC = 16;
@@ -86,11 +82,16 @@ let debugInline = (function () {
     __consoleError = console.error; //jslint-ignore-line
     return debug;
 }());
-let moduleChildProcessSpawn = moduleChildProcess.spawn;
+let moduleChildProcess;
+let moduleChildProcessSpawn;
+let moduleFs;
+let moduleFsInitResolveList;
+let modulePath;
+let moduleUrl;
 let {
     npm_config_mode_debug,
     npm_config_mode_test
-} = process.env;
+} = typeof process === "object" && process?.env;
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
@@ -240,29 +241,6 @@ async function childProcessSpawn2(command, args, options) {
 
 // This function will run child_process.spawn as a promise.
 
-    // mock moduleChildProcessSpawn
-    if (npm_config_mode_test) {
-        moduleChildProcessSpawn = function () {
-            let child = {
-                end: noop,
-                on: function (onType, resolve) {
-                    switch (onType) {
-                    case "data":
-                        resolve(Buffer.alloc(0));
-                        return;
-                    default:
-                        resolve(0);
-                    }
-                },
-                setEncoding: noop,
-                write: noop
-            };
-            child.stderr = child;
-            child.stdin = child;
-            child.stdout = child;
-            return child;
-        };
-    }
     return await new Promise(function (resolve, reject) {
         let bufList = [[], [], []];
         let child;
@@ -351,12 +329,11 @@ async function ciBuildext({
     let env;
     let fileList = [];
     let isWin32 = process.platform === "win32";
-    env = await ciBuildextEnv({isWin32, process});
+    let modeTestZlib = process.env?.GITHUB_ACTION || npm_config_mode_test;
+    env = await ciBuildext1Env({isWin32, process});
     await moduleFs.promises.mkdir("build/", {recursive: true});
     fileList = fileList.concat([
         {cDefine: "SRC_ZLIB_BASE", fileSrc: "sqlite3_rollup.c"},
-        {cDefine: "SRC_ZLIB_TEST_EXAMPLE", fileSrc: "sqlite3_rollup.c"},
-        {cDefine: "SRC_ZLIB_TEST_MINIGZIP", fileSrc: "sqlite3_rollup.c"},
         //
         {cDefine: "SRC_SQLITE3_BASE", fileSrc: "sqlite3_rollup.c"},
         {cDefine: "SRC_SQLITE3_EXTFNC", fileSrc: "sqlite3_rollup.c"},
@@ -368,17 +345,32 @@ async function ciBuildext({
         //
         {cDefine: "SQLMATH_CUSTOM", fileSrc: "sqlmath_custom.c"}
     ]);
-    await Promise.all(fileList.map(async function (option) {
-        await ciBuildextCompile(Object.assign(option, {env, isWin32, process}));
-    }));
-    await Promise.all(fileList.map(async function (option) {
-        await ciBuildextExe(Object.assign(option, {env, isWin32, process}));
-    }));
-    await childProcessSpawn2(
-        "sh",
-        [
-            "-c",
-            (`
+    if (modeTestZlib) {
+        fileList = fileList.concat([
+            {cDefine: "SRC_ZLIB_TEST_EXAMPLE", fileSrc: "sqlite3_rollup.c"},
+            {cDefine: "SRC_ZLIB_TEST_MINIGZIP", fileSrc: "sqlite3_rollup.c"}
+        ]);
+    }
+    fileList = fileList.map(function ({
+        cDefine,
+        fileSrc
+    }) {
+        return {
+            cDefine,
+            env,
+            fileSrc,
+            isWin32,
+            process
+        };
+    });
+    await Promise.all(fileList.map(ciBuildext2Compile));
+    await Promise.all(fileList.map(ciBuildext3Linkexe));
+    if (modeTestZlib) {
+        await childProcessSpawn2(
+            "sh",
+            [
+                "-c",
+                (`
 (set -e
     printf "\ntest zlib\n"
     if [ "Hello world!" = "$( \
@@ -394,89 +386,14 @@ async function ciBuildext({
         exit 1
     fi
 )
-            `)
-        ],
-        {env, stdio: ["ignore", 1, 2]}
-    );
+                `)
+            ],
+            {env, stdio: ["ignore", 1, 2]}
+        );
+    }
 }
 
-async function ciBuildextCompile({
-    cDefine,
-    env,
-    fileSrc,
-    isWin32
-}) {
-
-// This function will compile <fileSrc> into <fileObj>
-
-    let argList = [];
-    let fileObj = `build/${cDefine}.obj`;
-    switch (cDefine) {
-    case "SRC_SQLITE3_BASE":
-    case "SRC_SQLITE3_EXTFNC":
-    case "SRC_SQLITE3_PYTHON":
-    case "SRC_SQLITE3_SHELL":
-    case "SRC_ZLIB_BASE":
-    case "SRC_ZLIB_TEST_EXAMPLE":
-    case "SRC_ZLIB_TEST_MINIGZIP":
-        break;
-    default:
-        if (isWin32) {
-            argList = argList.concat([
-                `/W3`,
-                `/std:c11`
-            ]);
-        } else {
-            argList = argList.concat([
-                `-Wextra`,
-                `-std=c11`
-            ]);
-        }
-    }
-    switch (cDefine) {
-    case "SRC_SQLITE3_PYTHON":
-        argList = argList.concat([
-            `-I${env.includeDirPython}`
-        ]);
-        break;
-    }
-    argList = argList.concat([
-        `-D${cDefine}_C2=`,
-        `-DSQLITE3_C2=`,
-        `-D_REENTRANT=1`
-    ]);
-    if (isWin32) {
-// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
-        argList = argList.concat([
-            `/Fo${fileObj}`,
-            `/GL`, // to link.exe /LTCG
-            `/MT`, // multithreaded, statically-linked
-            `/O2`,
-            `/c`, `/Tc${fileSrc}`,
-            `/nologo`
-        ]);
-    } else {
-        argList = argList.concat([
-            `-DHAVE_UNISTD_H=`,
-            `-O2`,
-            `-c`, `${fileSrc}`,
-            `-fPIC`,
-            `-o`, `${fileObj}`
-        ]);
-    }
-    consoleError(`ciBuildextCompile - compiling object ${fileObj}`);
-    await childProcessSpawn2(
-        (
-            isWin32
-            ? "cl.exe"
-            : "gcc"
-        ),
-        argList,
-        {env, modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
-    );
-}
-
-async function ciBuildextEnv({
+async function ciBuildext1Env({
     isWin32,
     process
 }) {
@@ -559,7 +476,87 @@ async function ciBuildextEnv({
     return env;
 }
 
-async function ciBuildextExe({
+async function ciBuildext2Compile({
+    cDefine,
+    env,
+    fileSrc,
+    isWin32
+}) {
+
+// This function will compile <fileSrc> into <fileObj>
+
+    let argList = [];
+    let fileObj = `build/${cDefine}.obj`;
+    switch (cDefine) {
+    case "SRC_SQLITE3_BASE":
+    case "SRC_SQLITE3_EXTFNC":
+    case "SRC_SQLITE3_PYTHON":
+    case "SRC_SQLITE3_SHELL":
+    case "SRC_ZLIB_BASE":
+    case "SRC_ZLIB_TEST_EXAMPLE":
+    case "SRC_ZLIB_TEST_MINIGZIP":
+        break;
+    default:
+        if (isWin32) {
+            argList = argList.concat([
+                `/W3`,
+                `/std:c11`
+            ]);
+        } else {
+            argList = argList.concat([
+                `-Wextra`,
+                `-std=c11`
+            ]);
+        }
+    }
+    switch (cDefine) {
+    case "SRC_SQLITE3_PYTHON":
+        argList = argList.concat([
+            `-I${env.includeDirPython}`
+        ]);
+        break;
+    }
+    argList = argList.concat([
+        `-D${cDefine}_C2=`,
+        `-DSQLITE3_C2=`,
+        `-D_REENTRANT=1`
+    ]);
+    if (isWin32) {
+// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
+        argList = argList.concat([
+            `/Fo${fileObj}`,
+            // `/GL`, // to link.exe /LTCG
+            `/MT`, // multithreaded, statically-linked
+            `/O2`,
+            `/c`, `/Tc${fileSrc}`,
+            `/nologo`
+        ]);
+    } else {
+        argList = argList.concat([
+            `-DHAVE_UNISTD_H=`,
+            `-O2`,
+            `-c`, `${fileSrc}`,
+            `-fPIC`,
+            `-o`, `${fileObj}`
+        ]);
+    }
+    if (noop(
+        await ciBuildextModified([fileSrc], fileObj)
+    )) {
+        consoleError(`ciBuildext2Compile - compiling object ${fileObj}`);
+        await childProcessSpawn2(
+            (
+                isWin32
+                ? "cl.exe"
+                : "gcc"
+            ),
+            argList,
+            {env, modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
+        );
+    }
+}
+
+async function ciBuildext3Linkexe({
     cDefine,
     env,
     isWin32,
@@ -571,6 +568,7 @@ async function ciBuildextExe({
     let argList = [];
     let fileExe = `build/${cDefine}.exe`;
     let fileObj = `build/${cDefine}.obj`;
+    let fileObjList;
     switch (cDefine) {
     case "SRC_SQLITE3_SHELL":
         fileExe = (
@@ -579,7 +577,7 @@ async function ciBuildextExe({
             + "_" + process.arch
             + ".exe"
         );
-        argList = argList.concat([
+        fileObjList = [
             "build/SRC_ZLIB_BASE.obj",
             "build/SRC_SQLITE3_BASE.obj",
             "build/SRC_SQLITE3_EXTFNC.obj",
@@ -587,18 +585,19 @@ async function ciBuildextExe({
             //
             "build/SQLMATH_BASE.obj",
             "build/SQLMATH_CUSTOM.obj"
-        ]);
+        ];
         break;
     case "SRC_ZLIB_TEST_EXAMPLE":
     case "SRC_ZLIB_TEST_MINIGZIP":
-        argList = argList.concat([fileObj, `build/SRC_ZLIB_BASE.obj`]);
+        fileObjList = [fileObj, `build/SRC_ZLIB_BASE.obj`];
         break;
     default:
         return;
     }
+    argList = argList.concat(fileObjList);
     if (isWin32) {
         argList = argList.concat([
-            `/LTCG`, // from cl.exe /GL
+            // `/LTCG`, // from cl.exe /GL
             `/OUT:${fileExe}`,
             `/nologo`
         ]);
@@ -608,16 +607,38 @@ async function ciBuildextExe({
             `-o`, `${fileExe}`
         ]);
     }
-    consoleError(`ciBuildextExe - linking executable ${fileExe}`);
-    await childProcessSpawn2(
-        (
-            isWin32
-            ? "link.exe"
-            : "gcc"
-        ),
-        argList,
-        {env, modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
-    );
+    if (noop(
+        await ciBuildextModified(fileObjList, fileExe)
+    )) {
+        consoleError(`ciBuildext3Linkexe - linking executable ${fileExe}`);
+        await childProcessSpawn2(
+            (
+                isWin32
+                ? "link.exe"
+                : "gcc"
+            ),
+            argList,
+            {env, modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
+        );
+    }
+}
+
+async function ciBuildextModified(fileSrcList, fileObj) {
+
+// This function will detect if <fileSrcList> was modified after <fileObj>.
+
+    fileSrcList = fileSrcList.concat([fileObj]);
+    fileSrcList = await Promise.all(fileSrcList.map(async function (file) {
+        try {
+            return noop(
+                await moduleFs.promises.stat(file)
+            ).mtimeMs;
+        } catch (ignore) {}
+    }));
+    fileObj = fileSrcList.pop();
+    return !fileSrcList.every(function (fileSrc) {
+        return fileSrc < fileObj && !npm_config_mode_test;
+    });
 }
 
 function dbCallAsync(baton, cFuncName, db, ...argList) {
@@ -1190,6 +1211,44 @@ function jsbatonValueString({
     ));
 }
 
+async function moduleFsInit() {
+
+// This function will import nodejs builtin-modules if they have not yet been
+// imported.
+
+// State 3 - Modules already imported.
+
+    if (moduleFs !== undefined) {
+        return;
+    }
+
+// State 2 - Wait while modules are importing.
+
+    if (moduleFsInitResolveList !== undefined) {
+        return new Promise(function (resolve) {
+            moduleFsInitResolveList.push(resolve);
+        });
+    }
+
+// State 1 - Start importing modules.
+
+    moduleFsInitResolveList = [];
+    [
+        moduleChildProcess,
+        moduleFs,
+        modulePath,
+        moduleUrl
+    ] = await Promise.all([
+        import("child_process"),
+        import("fs"),
+        import("path"),
+        import("url")
+    ]);
+    while (moduleFsInitResolveList.length > 0) {
+        moduleFsInitResolveList.shift()();
+    }
+}
+
 function noop(val) {
 
 // This function will do nothing except return <val>.
@@ -1278,16 +1337,16 @@ async function sqlmathInit() {
 
 // This function will init sqlmath.
 
-    if (dbFinalizationRegistry) {
-        return;
-    }
-    dbFinalizationRegistry = new FinalizationRegistry(function ({
+    let cModulePath;
+    dbFinalizationRegistry = (
+        dbFinalizationRegistry
+    ) || new FinalizationRegistry(function ({
         afterFinalization,
         ptr
     }) {
 
-    // This function will auto-close any open sqlite3-db-pointer,
-    // after its js-wrapper has been garbage-collected.
+// This function will auto-close any open sqlite3-db-pointer,
+// after its js-wrapper has been garbage-collected.
 
         cCallAsync(undefined, "_dbClose", ptr[0]);
         if (afterFinalization) {
@@ -1298,21 +1357,61 @@ async function sqlmathInit() {
 // Feature-detect nodejs.
 
     if (
-        typeof process === "object"
-        && typeof process?.versions?.node === "string"
+        !(
+            typeof process === "object"
+            && typeof process?.versions?.node === "string"
+        )
+        || cModule
     ) {
-        cModule = await import("module");
-        cModule = cModule.createRequire(import.meta.url);
-        cModule = cModule(
-            "./_sqlite3.napi6"
-            + "_" + process.platform
-            + "_" + process.arch
-            + ".node"
-        );
-        if (npm_config_mode_test) {
-            // mock consoleError
-            consoleError = noop;
+        return;
+    }
+
+// Init moduleFs.
+
+    await moduleFsInit();
+    moduleFsInit(); // coverage-hack
+    moduleChildProcessSpawn = moduleChildProcess.spawn;
+
+// Import napi c-addon.
+
+    cModulePath = (
+        `./_sqlite3.napi6_${process.platform}_${process.arch}.node`
+    );
+    await moduleFs.promises.access(cModulePath).then(async function () {
+        let moduleModule = await import("module");
+        if (!cModule) {
+            cModule = moduleModule.createRequire(import.meta.url);
+            cModule = cModule(cModulePath);
         }
+    }).catch(noop);
+    if (npm_config_mode_test) {
+
+// Mock consoleError.
+
+        consoleError = noop;
+
+// Mock moduleChildProcessSpawn.
+
+        moduleChildProcessSpawn = function () {
+            let child = {
+                end: noop,
+                on: function (onType, resolve) {
+                    switch (onType) {
+                    case "data":
+                        resolve(Buffer.alloc(0));
+                        return;
+                    default:
+                        resolve(0);
+                    }
+                },
+                setEncoding: noop,
+                write: noop
+            };
+            child.stderr = child;
+            child.stdin = child;
+            child.stdout = child;
+            return child;
+        };
     }
 }
 
@@ -1359,6 +1458,10 @@ function sqlmathWebworkerInit({
     }
 }
 
+sqlmathInit(); // coverage-hack
+await sqlmathInit();
+sqlmathInit(); // coverage-hack
+
 export {
     SQLITE_MAX_LENGTH2,
     SQLITE_OPEN_AUTOPROXY,
@@ -1386,7 +1489,6 @@ export {
     assertNumericalEqual,
     assertOrThrow,
     ciBuildext,
-    ciBuildextEnv,
     childProcessSpawn2,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
@@ -1401,7 +1503,6 @@ export {
     jsbatonValueString,
     noop,
     objectDeepCopyWithKeysSorted,
-    sqlmathInit,
     sqlmathWebworkerInit,
     version
 };
