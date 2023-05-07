@@ -61,6 +61,7 @@ let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
 let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
 let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
 let cModule;
+let cModulePath;
 let consoleError = console.error;
 let dbDict = new WeakMap(); // private-dict of sqlite-database-connections
 let dbFinalizationRegistry;
@@ -90,6 +91,7 @@ let modulePath;
 let moduleUrl;
 let {
     npm_config_mode_debug,
+    npm_config_mode_setup,
     npm_config_mode_test
 } = typeof process === "object" && process?.env;
 let sqlMessageDict = {}; // dict of web-worker-callbacks
@@ -330,7 +332,8 @@ async function ciBuildext({
     let fileList = [];
     let isWin32 = process.platform === "win32";
     let modeTestZlib = process.env?.GITHUB_ACTION || npm_config_mode_test;
-    env = await ciBuildext1Env({isWin32, process});
+    let pyinfo;
+    [env, pyinfo] = await ciBuildext1Env({isWin32, process});
     await moduleFs.promises.mkdir("build/", {recursive: true});
     fileList = fileList.concat([
         {cDefine: "SRC_ZLIB_BASE", fileSrc: "sqlite3_rollup.c"},
@@ -341,7 +344,6 @@ async function ciBuildext({
         {cDefine: "SRC_SQLITE3_PYTHON", fileSrc: "sqlite3_rollup.c"},
         //
         {cDefine: "SQLMATH_BASE", fileSrc: "sqlmath_base.c"},
-        {cDefine: "SQLMATH_PYTHON", fileSrc: "sqlmath_base.c"},
         //
         {cDefine: "SQLMATH_CUSTOM", fileSrc: "sqlmath_custom.c"}
     ]);
@@ -360,11 +362,17 @@ async function ciBuildext({
             env,
             fileSrc,
             isWin32,
-            process
+            modeDebug: npm_config_mode_debug,
+            process,
+            pyinfo
         };
     });
-    await Promise.all(fileList.map(ciBuildext2Compile));
-    await Promise.all(fileList.map(ciBuildext3Linkexe));
+    await Promise.all(fileList.map(ciBuildext2Obj));
+    await Promise.all([
+        Promise.all(fileList.map(ciBuildext3Exe)),
+        Promise.all(fileList.map(ciBuildext4Nodejs)),
+        Promise.all(fileList.map(ciBuildext5Python))
+    ]);
     if (modeTestZlib) {
         await childProcessSpawn2(
             "sh",
@@ -402,34 +410,94 @@ async function ciBuildext1Env({
 
     let data;
     let env;
-    let includeDirPython;
-    includeDirPython = await childProcessSpawn2(
-        "python",
-        ["-c", "import sys; print(sys.exec_prefix)"],
-        {modeCapture: "utf8", stdio: ["ignore", "ignore", 2]}
-    );
-    includeDirPython = includeDirPython.stdout.trim();
-    // coverage-hack
-    if (npm_config_mode_test) {
-        includeDirPython = "/Python/1.2.3/";
-    }
-    includeDirPython = [
-        includeDirPython,
-        "include",
-        (
-            isWin32
-            ? []
-            : [
-                "python"
-                + (/\/Python\/(\d+?\.\d+?)\./).exec(includeDirPython)[1]
-            ]
+    let pyinfo;
+    pyinfo = JSON.parse(noop(
+        await childProcessSpawn2(
+            "python",
+            ["-c", (`
+import json
+import platform
+import sys
+import sysconfig
+pyinfo = {
+    "base_exec_prefix": sys.base_exec_prefix
+}
+# https://github.com/python/cpython/blob/v3.10.10/Lib/sysconfig.py
+for key in [
+    "ABIFLAGS",
+    "ANDROID_API_LEVEL",
+    "AR",
+    "BINDIR",
+    "CC",
+    "CCSHARED",
+    "CFLAGS",
+    "CUSTOMIZED_OSX_COMPILER",
+    "EXE",
+    "EXT_SUFFIX",
+    "GNULD",
+    "INCLUDEPY",
+    "LDFLAGS",
+    "LDSHARED",
+    "LDVERSION",
+    "LIBDIR",
+    "MACHDEP",
+    "MACOSX_DEPLOYMENT_TARGET",
+    "Py_ENABLED_SHARED",
+    "Py_ENABLE_SHARED",
+    "RUNSHARED",
+    "SO",
+    "VERSION",
+    "prefix",
+    "projectbase",
+    "srcdir",
+]:
+    pyinfo[key] = sysconfig.get_config_var(key);
+for key in [
+    "data",
+    "include",
+    "platinclude",
+    "platlib",
+    "platstdlib",
+    "purelib",
+    "scripts",
+    "stdlib"
+]:
+    pyinfo[key] = sysconfig.get_path(key);
+print(json.dumps(pyinfo))
+            `)],
+            {modeCapture: "utf8", stdio: ["ignore", "ignore", 2]}
         )
-    ].flat().join(modulePath.sep);
-    if (!isWin32) {
-        return Object.assign({}, process.env, {
-            includeDirPython
+    ).stdout || `{"prefix":"/Python/3.1.2/"}`);
+    pyinfo = Object.assign({
+        LDFLAGS: "",
+        LDSHARED: ""
+    }, pyinfo);
+    debugInline(pyinfo);
+    pyinfo.pathInclude = [
+        `${pyinfo.platinclude}`,
+        `${pyinfo.include}`
+    ];
+    pyinfo.pathLibrary = [
+        `${pyinfo.prefix}/libs/`,
+        `${pyinfo.prefix}/`
+    ];
+    // virtualenv
+    [pyinfo.pathInclude, pyinfo.pathLibrary].forEach(function (list) {
+        list.forEach(function (path) {
+            if (pyinfo.base_exec_prefix !== pyinfo.prefix) {
+                list.push(path.replace(pyinfo.prefix, pyinfo.base_exec_prefix));
+            }
         });
+    });
+    if (!isWin32) {
+        return [process.env, pyinfo];
     }
+    // win32 - replace slash with backslash
+    [pyinfo.pathInclude, pyinfo.pathLibrary].forEach(function (list) {
+        list.forEach(function (path, ii) {
+            list[ii] = path.replace((/\//g), "\\");
+        });
+    });
     data = await childProcessSpawn2(
         (
             process.env["ProgramFiles(x86)"]
@@ -465,25 +533,27 @@ async function ciBuildext1Env({
         {modeCapture: "utf16le", stdio: ["ignore", "ignore", 2]}
     );
     data = data.stdout.trim();
-    env = {includeDirPython};
     // mock data
     if (npm_config_mode_test) {
         data = "aa=bb";
     }
+    env = {};
     data.replace((/([^\r\n]*?)=(.*?)$/gm), function (ignore, key, val) {
         env[key] = val;
     });
-    return env;
+    return [env, pyinfo];
 }
 
-async function ciBuildext2Compile({
+async function ciBuildext2Obj({
     cDefine,
     env,
     fileSrc,
-    isWin32
+    isWin32,
+    modeDebug,
+    pyinfo
 }) {
 
-// This function will compile <fileSrc> into <fileObj>
+// This function will compile <fileSrc> to <fileObj>
 
     let argList = [];
     let fileObj = `build/${cDefine}.obj`;
@@ -511,9 +581,9 @@ async function ciBuildext2Compile({
     }
     switch (cDefine) {
     case "SRC_SQLITE3_PYTHON":
-        argList = argList.concat([
-            `-I${env.includeDirPython}`
-        ]);
+        argList = argList.concat(pyinfo.pathInclude.map(function (path) {
+            return `-I${path}`;
+        }));
         break;
     }
     argList = argList.concat([
@@ -543,7 +613,7 @@ async function ciBuildext2Compile({
     if (noop(
         await ciBuildextModified([fileSrc], fileObj)
     )) {
-        consoleError(`ciBuildext2Compile - compiling object ${fileObj}`);
+        consoleError(`ciBuildext2Obj - compiling obj ${fileObj}`);
         await childProcessSpawn2(
             (
                 isWin32
@@ -551,19 +621,20 @@ async function ciBuildext2Compile({
                 : "gcc"
             ),
             argList,
-            {env, modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
+            {env, modeDebug, stdio: ["ignore", 1, 2]}
         );
     }
 }
 
-async function ciBuildext3Linkexe({
+async function ciBuildext3Exe({
     cDefine,
     env,
     isWin32,
+    modeDebug,
     process
 }) {
 
-// This function will link <fileOb> into <fileExe>
+// This function will link <fileObj> into <fileExe>
 
     let argList = [];
     let fileExe = `build/${cDefine}.exe`;
@@ -572,7 +643,7 @@ async function ciBuildext3Linkexe({
     switch (cDefine) {
     case "SRC_SQLITE3_SHELL":
         fileExe = (
-            "_sqlite3.shell"
+            "_sqlmath.shell"
             + "_" + process.platform
             + "_" + process.arch
             + ".exe"
@@ -581,7 +652,7 @@ async function ciBuildext3Linkexe({
             "build/SRC_ZLIB_BASE.obj",
             "build/SRC_SQLITE3_BASE.obj",
             "build/SRC_SQLITE3_EXTFNC.obj",
-            fileObj,
+            "build/SRC_SQLITE3_SHELL.obj",
             //
             "build/SQLMATH_BASE.obj",
             "build/SQLMATH_CUSTOM.obj"
@@ -594,10 +665,14 @@ async function ciBuildext3Linkexe({
     default:
         return;
     }
-    argList = argList.concat(fileObjList);
+    argList = argList.concat(fileObjList); // must be ordered first
     if (isWin32) {
         argList = argList.concat([
             // `/LTCG`, // from cl.exe /GL
+            `/INCREMENTAL:NO`, // optimization - reduce filesize
+            `/MANIFEST:EMBED`,
+            `/MANIFESTUAC:NO`,
+            //
             `/OUT:${fileExe}`,
             `/nologo`
         ]);
@@ -610,7 +685,9 @@ async function ciBuildext3Linkexe({
     if (noop(
         await ciBuildextModified(fileObjList, fileExe)
     )) {
-        consoleError(`ciBuildext3Linkexe - linking executable ${fileExe}`);
+        consoleError(
+            `ciBuildext3Exe - linking exe ${modulePath.resolve(fileExe)}`
+        );
         await childProcessSpawn2(
             (
                 isWin32
@@ -618,8 +695,204 @@ async function ciBuildext3Linkexe({
                 : "gcc"
             ),
             argList,
-            {env, modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
+            {env, modeDebug, stdio: ["ignore", 1, 2]}
         );
+    }
+}
+
+async function ciBuildext4Nodejs({
+    cDefine,
+    env,
+    isWin32,
+    modeDebug
+}) {
+
+// This function will archive <fileObj> into <fileLib>
+
+    let argList = [];
+    let binNodegyp;
+    let fileLib = `build/${cDefine}.lib`;
+    let fileObjList;
+    switch (cDefine) {
+// https://github.com/kaizhu256/sqlmath/actions/runs/4886979281/jobs/8723014944
+    case "SRC_SQLITE3_BASE":
+        fileObjList = [
+            "build/SRC_ZLIB_BASE.obj",
+            "build/SRC_SQLITE3_BASE.obj",
+            "build/SRC_SQLITE3_EXTFNC.obj",
+            // "build/SRC_SQLITE3_SHELL.obj",
+            // "build/SRC_SQLITE3_PYTHON.obj",
+            //
+            "build/SQLMATH_BASE.obj",
+            "build/SQLMATH_CUSTOM.obj"
+        ];
+        break;
+    default:
+        return;
+    }
+    if (isWin32) {
+        argList = argList.concat([
+            // `/LTCG`, // from cl.exe /GL
+            `/OUT:${fileLib}`,
+            `/nologo`
+        ]);
+    } else {
+        argList = argList.concat([
+            `rcs`,
+            `${fileLib}` // must be ordered last
+        ]);
+    }
+    argList = argList.concat(fileObjList); // must be ordered last
+    if (noop(
+        await ciBuildextModified(fileObjList, fileLib)
+    )) {
+        consoleError(`ciBuildext4Nodejs - archiving lib ${fileLib}`);
+        await childProcessSpawn2(
+            (
+                isWin32
+                ? "lib.exe"
+                : "ar"
+            ),
+            argList,
+            {env, modeDebug, stdio: ["ignore", 1, 2]}
+        );
+    }
+    consoleError(
+        `ciBuildext4Nodejs - linking lib ${modulePath.resolve(cModulePath)}`
+    );
+    await moduleFs.promises.writeFile("binding.gyp", JSON.stringify({
+        "targets": [
+            {
+                "cflags": ["-Wall", "-std=c11"],
+                "conditions": [
+                    [
+                        "OS == \u0027win\u0027",
+                        {"defines": ["WIN32"]},
+                        {"defines": ["HAVE_UNISTD_H"]}
+                    ]
+                ],
+                "defines": ["SQLMATH_NODEJS_C2"],
+                "libraries": ["SRC_SQLITE3_BASE.lib"],
+// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
+                "msvs_settings": {
+                    "VCCLCompilerTool": {
+                        "WarningLevel": 3
+                    }
+                },
+                "sources": ["sqlmath_base.c"],
+                "target_name": "binding",
+                "xcode_settings": {"OTHER_CFLAGS": ["-Wall", "-std=c11"]}
+            },
+            {
+                "copies": [
+                    {
+                        "destination": "build/",
+                        "files": ["<(PRODUCT_DIR)/binding.node"]
+                    }
+                ],
+                "dependencies": ["binding"],
+                "target_name": "target_copy",
+                "type": "none"
+            }
+        ]
+    }, undefined, 4));
+    binNodegyp = modulePath.resolve(
+        modulePath.dirname(process.execPath),
+        "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+    ).replace("/bin/node_modules/", "/lib/node_modules/");
+    await childProcessSpawn2(
+        "sh",
+        [
+            "-c",
+            (`
+(set -e
+    # node "${binNodegyp}" clean
+    node "${binNodegyp}" configure
+    node "${binNodegyp}" build --release
+)
+            `)
+        ],
+        {env, modeDebug, stdio: ["ignore", 1, 2]}
+    );
+    await fsCopyFileUnlessTest("build/binding.node", cModulePath);
+}
+
+async function ciBuildext5Python({
+    cDefine,
+    env,
+    isWin32,
+    modeDebug,
+    pyinfo
+}) {
+
+// This function will build python c-extension.
+
+    let argList = [];
+    let fileLib = `_sqlmath${pyinfo.EXT_SUFFIX}`;
+// https://github.com/kaizhu256/sqlmath/actions/runs/4886979281/jobs/8723014944
+    let fileObjList = [
+        "build/SRC_ZLIB_BASE.obj",
+        //
+        "build/SRC_SQLITE3_BASE.obj",
+        "build/SRC_SQLITE3_EXTFNC.obj",
+        // "build/SRC_SQLITE3_SHELL.obj",
+        "build/SRC_SQLITE3_PYTHON.obj",
+        //
+        "build/SQLMATH_BASE.obj",
+        //
+        "build/SQLMATH_CUSTOM.obj"
+    ];
+    switch (cDefine) {
+    case "SRC_SQLITE3_PYTHON":
+        break;
+    default:
+        return;
+    }
+    argList = argList.concat(fileObjList); // must be ordered first
+    if (isWin32) {
+        argList = argList.concat(pyinfo.pathLibrary.map(function (path) {
+            return `/LIBPATH:${path}`;
+        }));
+        argList = argList.concat([
+            // `/LTCG`, // from cl.exe /GL
+            `/INCREMENTAL:NO`, // optimization - reduce filesize
+            `/MANIFEST:EMBED`,
+            `/MANIFESTUAC:NO`,
+            //
+            `/DLL`,
+            `/EXPORT:PyInit__sqlmath`,
+            `/IMPLIB:${fileLib}`,
+            `/nologo`,
+            //
+            // ugly-hack - link.exe will not write dynamic-lib to "."
+            `/OUT:build/${fileLib}`
+        ]);
+    } else {
+        argList = argList.concat(
+            pyinfo.LDFLAGS.trim().split(/\s{1,}/),
+            pyinfo.LDSHARED.trim().split(/\s{1,}/).slice(1),
+            [`-o`, fileLib]
+        );
+    }
+    if (noop(
+        await ciBuildextModified(fileObjList, fileLib)
+    )) {
+        consoleError(
+            `ciBuildext4Python - linking lib ${modulePath.resolve(fileLib)}`
+        );
+        await childProcessSpawn2(
+            (
+                isWin32
+                ? "link.exe"
+                : pyinfo.LDSHARED.trim().split(/\s{1,}/)[0]
+            ),
+            argList,
+            {env, modeDebug, stdio: ["ignore", 1, 2]}
+        );
+        if (isWin32) {
+            // ugly-hack - link.exe will not write dynamic-lib to "."
+            await fsCopyFileUnlessTest(`build/${fileLib}`, `${fileLib}`);
+        }
     }
 }
 
@@ -952,6 +1225,16 @@ async function dbOpenAsync({
         ii: 0
     });
     return db;
+}
+
+async function fsCopyFileUnlessTest(file1, file2, mode) {
+
+// This function will copy <file1> to <file2>, unless <npm_config_mode_test> = 1
+
+    if (npm_config_mode_test && mode !== "force") {
+        return;
+    }
+    await moduleFs.promises.copyFile(file1, file2, mode | 0);
 }
 
 function isExternalBuffer(buf) {
@@ -1337,7 +1620,7 @@ async function sqlmathInit() {
 
 // This function will init sqlmath.
 
-    let cModulePath;
+    let moduleModule;
     dbFinalizationRegistry = (
         dbFinalizationRegistry
     ) || new FinalizationRegistry(function ({
@@ -1372,18 +1655,25 @@ async function sqlmathInit() {
     moduleFsInit(); // coverage-hack
     moduleChildProcessSpawn = moduleChildProcess.spawn;
 
+// Init moduleFs.
+
+    await moduleFsInit();
+    moduleFsInit(); // coverage-hack
+    moduleChildProcessSpawn = moduleChildProcess.spawn;
+    cModulePath = moduleUrl.fileURLToPath(import.meta.url).replace(
+        (/\bsqlmath\.mjs$/),
+        `_sqlmath.napi6_${process.platform}_${process.arch}.node`
+    );
+
 // Import napi c-addon.
 
-    cModulePath = (
-        `./_sqlite3.napi6_${process.platform}_${process.arch}.node`
-    );
-    await moduleFs.promises.access(cModulePath).then(async function () {
-        let moduleModule = await import("module");
+    if (!npm_config_mode_setup) {
+        moduleModule = await import("module");
         if (!cModule) {
-            cModule = moduleModule.createRequire(import.meta.url);
+            cModule = moduleModule.createRequire(cModulePath);
             cModule = cModule(cModulePath);
         }
-    }).catch(noop);
+    }
     if (npm_config_mode_test) {
 
 // Mock consoleError.
@@ -1500,6 +1790,7 @@ export {
     dbNoopAsync,
     dbOpenAsync,
     debugInline,
+    fsCopyFileUnlessTest,
     jsbatonValueString,
     noop,
     objectDeepCopyWithKeysSorted,

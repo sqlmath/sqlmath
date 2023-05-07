@@ -17,7 +17,7 @@ maintainers = []
 name = "sqlmath"
 readme = "README.md"
 requires-python = ">=3.10"
-version = "0.0.1"
+version = "0.0.4"
 classifiers = [
     'Development Status :: 3 - Alpha',
     'Intended Audience :: Developers',
@@ -43,15 +43,8 @@ homepage = "https://github.com/sqlmath/sqlmath"
 repository = "https://github.com/sqlmath/sqlmath"
 changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
 
-[tool.setuptools.packages.find]
-# list of folders that contain the packages (["."] by default)
-# where = ["src"]
-# package names should match these glob patterns (["*"] by default)
-# include = ["my_package*"]
-exclude = [
-    ".*",
-    "_*",
-]
 # to disable scanning PEP 420 namespaces (true by default)
 # namespaces = false
 
+[tool.setuptools]
+py-modules = ["sqlmath"]

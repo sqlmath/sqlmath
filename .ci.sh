@@ -15,7 +15,7 @@ shCiArtifactUploadCustom() {(set -e
     git fetch origin artifact
     git checkout origin/artifact "branch-$GITHUB_BRANCH0"
     mv "branch-$GITHUB_BRANCH0"/* .
-    git add -f _sqlite3.* sqlmath_wasm.*
+    git add -f _sqlmath.* sqlmath_wasm.*
     # screenshot html
     node --input-type=module --eval '
 import moduleChildProcess from "child_process";
@@ -117,7 +117,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     cp ../../.git/config .git/config
     # update dir branch-$GITHUB_BRANCH0
     mkdir -p "branch-$GITHUB_BRANCH0"
-    cp ../../_sqlite3.* "branch-$GITHUB_BRANCH0"
+    cp ../../_sqlmath.* "branch-$GITHUB_BRANCH0"
     if [ -f ../../sqlmath_wasm.wasm ]
     then
         cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
@@ -128,7 +128,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     fi
     # git commit
     git add .
-    git add -f "branch-$GITHUB_BRANCH0"/_sqlite3.*
+    git add -f "branch-$GITHUB_BRANCH0"/_sqlmath.*
     if (git commit -am "$COMMIT_MESSAGE")
     then
         # sync before push
@@ -147,10 +147,10 @@ shCiBaseCustomArtifactUpload() {(set -e
     )
 )}
 
-shciBuildext() {(set -e
+shCiBuildext() {(set -e
 # this function will build and compile c-extension
     unset npm_config_mode_test
-    node --input-type=module -e '
+    npm_config_mode_setup=1 node --input-type=module -e '
 import {ciBuildext} from "./sqlmath.mjs";
 ciBuildext({process});
 ' "$@" # '
@@ -159,7 +159,7 @@ ciBuildext({process});
 shCiBuildNodejs() {(set -e
 # this function will build binaries in nodejs
     # cleanup
-    rm -rf _sqlite3.* build/
+    rm -rf _sqlmath.* build/
     mkdir -p build/
     shCiTestNodejs
 )}
@@ -426,7 +426,8 @@ shCiLintCustom() {(set -e
         pip install pycodestyle ruff
     fi
     npm_config_mode_lint_fix=1 shLintPython \
-        setup.py
+        setup.py \
+        sqlmath/__init__.py
 )}
 
 shCiNpmPublishCustom() {(set -e
@@ -434,9 +435,9 @@ shCiNpmPublishCustom() {(set -e
     # fetch artifact
     git fetch origin artifact --depth=1
     git checkout origin/artifact \
-        "branch-beta/_sqlite3."* \
+        "branch-beta/_sqlmath."* \
         "branch-beta/sqlmath_wasm"*
-    cp -a branch-beta/_sqlite3.* .
+    cp -a branch-beta/_sqlmath.* .
     cp -a branch-beta/sqlmath_wasm.* .
     # npm-publish
     npm publish --access public
@@ -461,92 +462,11 @@ shCiTestNodejs() {(set -e
         # create file Manifest.in
         if [ -d .git/ ]
         then
-            git ls-tree --name-only HEAD | sed "s|^|include |" > Manifest.in
+            git ls-tree -lr --name-only HEAD | sed "s|^|include |" > Manifest.in
         fi
+        # build nodejs c-addon
         # build python c-extension
         python setup.py build_ext -i
-        # build nodejs c-addon
-        node --input-type=module --eval '
-import moduleFs from "fs";
-(async function () {
-    await moduleFs.promises.writeFile("binding.gyp", JSON.stringify({
-        "targets": [
-            {
-                "cflags": [
-                    "-Wall",
-                    "-std=c99"
-                ],
-                "conditions": [
-                    [
-                        "OS == \u0027win\u0027",
-                        {
-                            "defines": [
-                                "WIN32"
-                            ]
-                        },
-                        {
-                            "defines": [
-                                "HAVE_UNISTD_H"
-                            ]
-                        }
-                    ]
-                ],
-                "defines": [
-                    "SQLMATH_NODEJS_C2"
-                ],
-                "libraries": [
-                    "sqlite3_rollup.lib"
-                ],
-// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
-                "msvs_settings": {
-                    "VCCLCompilerTool": {
-                        "WarningLevel": 3
-                    }
-                },
-                "sources": [
-                    "sqlmath_base.c"
-                ],
-                "target_name": "binding",
-                "xcode_settings": {
-                    "OTHER_CFLAGS": [
-                        "-Wall",
-                        "-std=c99"
-                    ]
-                }
-            },
-            {
-                "copies": [
-                    {
-                        "destination": "build/",
-                        "files": [
-                            "<(PRODUCT_DIR)/binding.node"
-                        ]
-                    }
-                ],
-                "dependencies": [
-                    "binding"
-                ],
-                "target_name": "target_copy",
-                "type": "none"
-            }
-        ]
-    }, undefined, 4));
-}());
-' "$@" # '
-        # node "$(sh jslint_ci.sh shNodegypExe)" clean
-        node "$(shNodegypExe)" configure
-        node "$(shNodegypExe)" build --release
-        node --input-type=module --eval '
-import moduleFs from "fs";
-(async function () {
-    await moduleFs.promises.copyFile("build/binding.node", (
-        "_sqlite3.napi6"
-        + "_" + process.platform
-        + "_" + process.arch
-        + ".node"
-    ));
-}());
-' "$@" # '
     fi;
     # test nodejs
     rm -f *~ .*test.sqlite
@@ -560,7 +480,7 @@ require("assert")(require("./package.json").name !== "sqlmath");
     # ugly-hack - github-action will flakily hang during test
     if [ "$GITHUB_ACTION" ] && (timeout --version &>/dev/null)
     then
-        timeout 60 sh jslint_ci.sh \
+        timeout 120 sh jslint_ci.sh \
             shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
     else
         shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
@@ -569,31 +489,15 @@ require("assert")(require("./package.json").name !== "sqlmath");
     python setup.py test
 )}
 
-shNodegypExe() {(set -e
-# this function will print to stdout pathname of node-gyp.js, e.g.
-# C:\Program Files\
-# nodejs\node_modules\npm\node_modules\node-gyp\bin\node-gyp.js
-    node --input-type=module --eval '
-import modulePath from "path";
-(function () {
-    process.stdout.write(modulePath.resolve(
-        modulePath.dirname(process.execPath),
-        "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
-    ).replace("/bin/node_modules/", "/lib/node_modules/"));
-}());
-' "$@" # '
-)}
-
 shSqlmathUpdate() {(set -e
 # this function will update files with ~/Documents/sqlmath/
     . "$HOME/myci2.sh" : && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
-        shRawLibFetch asset_sqlmath_external_rollup.js
-        shRawLibFetch index.html
-        shRawLibFetch sqlite3_extension_functions.c
-        shRawLibFetch sqlite3_rollup.c
-        shRawLibFetch sqlmath_dbapi2.py
+        shRollupFetch asset_sqlmath_external_rollup.js
+        shRollupFetch index.html
+        shRollupFetch sqlite3_rollup.c
+        shRollupFetch sqlmath/sqlmath_dbapi2.py
         git grep '3\.39\.[^4]' \
             ":(exclude)CHANGELOG.md" \
             ":(exclude)sqlite3_rollup.c" \

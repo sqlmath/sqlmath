@@ -1992,8 +1992,11 @@ async function jslint_cli({
                 ).test(process_argv[1])
                 || mode_cli
             )
-            && moduleUrl.fileURLToPath(import_meta_url)
-            === modulePath.resolve(process_argv[1])
+            && (
+                moduleUrl.fileURLToPath(import_meta_url)
+                ===
+                modulePath.resolve(process_argv[1])
+            )
         )
         && !mode_cli
     ) {

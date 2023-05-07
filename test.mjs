@@ -38,6 +38,7 @@ import {
     dbNoopAsync,
     dbOpenAsync,
     debugInline,
+    fsCopyFileUnlessTest,
     jsbatonValueString,
     noop,
     sqlmathWebworkerInit,
@@ -198,6 +199,7 @@ jstestDescribe((
             ciBuildext({process: {arch: "arm", env: {}, platform: "win32"}}),
             ciBuildext({process: {arch: "arm64", env: {}, platform: "win32"}}),
             ciBuildext({process: {arch: "ia32", env: {}, platform: "win32"}}),
+            ciBuildext({process: {env: {}, platform: "darwin"}}),
             ciBuildext({process: {env: {}, platform: "win32"}}),
             ciBuildext({process: {}})
         ]);
@@ -624,8 +626,6 @@ jstestDescribe((
     jstestIt((
         "test misc handling-behavior"
     ), async function () {
-        // debug test unfinished
-        setTimeout(console.error, 60_000, "test unfinished").unref();
         // test assertErrorThrownAsync error handling-behavior
         await assertErrorThrownAsync(function () {
             return assertErrorThrownAsync(noop);
@@ -647,6 +647,12 @@ jstestDescribe((
         await assertErrorThrownAsync(function () {
             assertOrThrow(undefined, new Error());
         });
+        // test fsXxx handling-behavior
+        await fsCopyFileUnlessTest(
+            "package.json",
+            ".tmp/undefined",
+            "force"
+        );
     });
 });
 

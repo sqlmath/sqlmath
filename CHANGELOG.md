@@ -4,6 +4,7 @@
 - none
 
 # v2023.5.1-beta
+- ci - Rename shell-function shRawLibFetch() to shRollupFetch().
 - sqlmath - migrate build-ext from python to nodejs with parallel compile
 - sqlmath - add python c-extension
 - sqlmath - streamline macros SQLITE3_C2, SQLITE_H2, SQLITE3EXT_H2, SQLMATH_C2 in prepartion for python-c-extension
