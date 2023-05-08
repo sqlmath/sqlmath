@@ -159,7 +159,7 @@ ciBuildext({process});
 shCiBuildNodejs() {(set -e
 # this function will build binaries in nodejs
     # cleanup
-    rm -rf _sqlmath.* build/
+    rm -rf _sqlmath.* build/ sqlmath/_sqlmath.*
     mkdir -p build/
     shCiTestNodejs
 )}
@@ -390,7 +390,7 @@ shLintPython() {(set -e
     # * `print` found
     OPTION="$OPTION --ignore=T201"
     OPTION="$OPTION --select=ALL"
-    if [ "$npm_config_lint_fix" ]
+    if [ "$npm_config_mode_lint_fix" ]
     then
         OPTION="$OPTION --fix"
     fi
@@ -466,7 +466,7 @@ shCiTestNodejs() {(set -e
         fi
         # build nodejs c-addon
         # build python c-extension
-        python setup.py build_ext -i
+        python setup.py build_ext
     fi;
     # test nodejs
     rm -f *~ .*test.sqlite

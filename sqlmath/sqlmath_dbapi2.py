@@ -90,7 +90,7 @@ shRollupFetch
 
 -    from pysqlite3._sqlite3 import *
 +# hack-pysqlite3 - fix import
-+    from _sqlmath import *
++    from ._sqlmath import *
 */
 
 
@@ -160,7 +160,7 @@ if __name__ != "__main__":
     import collections.abc
 
 # hack-pysqlite3 - fix import
-    from _sqlmath import *
+    from ._sqlmath import *
 
     paramstyle = "qmark"
 

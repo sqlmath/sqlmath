@@ -24,8 +24,8 @@ def test_python_run():
     """This function will run python tests."""
     import unittest
 
-    import sqlmath
-    for test_suite in sqlmath.test_suite_list:
+    from .sqlmath_dbapi2 import test_suite_list
+    for test_suite in test_suite_list:
         results = unittest.TextTestRunner(
             verbosity=1,
             failfast=False,

@@ -2,14 +2,11 @@
 setup.py.
 
 python -m build
-rm -rf build/ && python setup.py build_ext -i
+rm -rf build/ && python setup.py build_ext
 """
 
-import pathlib
-import shutil
 import subprocess
 import sys
-import sysconfig
 
 import setuptools
 import setuptools.command.build_ext
@@ -22,19 +19,9 @@ def build_ext():
     setuptools.setup(ext_modules=[setuptools.Extension("_sqlmath", [])])
 
 
-def install_lib_install(self):
-    """This function will run custom build."""
-    pathlib.Path(self.install_dir).mkdir(parents=True)
-    filename = f"_sqlmath{sysconfig.get_config_var('EXT_SUFFIX')}"
-    shutil.copyfile(
-        filename,
-        pathlib.PurePath(self.install_dir).joinpath(filename),
-    )
-
-
 # monkey-patch setuptools to accept c-extension compiled in nodejs
 setuptools.command.build_ext.build_ext.run = lambda self: self
-setuptools.command.install_lib.install_lib.install = install_lib_install
+setuptools.command.install_lib.install_lib.install = lambda self: self
 
 if __name__ == "__main__":
     match sys.argv[1]:

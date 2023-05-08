@@ -420,7 +420,8 @@ import platform
 import sys
 import sysconfig
 pyinfo = {
-    "base_exec_prefix": sys.base_exec_prefix
+    "base_exec_prefix": sys.base_exec_prefix,
+    "plat_name": sysconfig.get_platform()
 }
 # https://github.com/python/cpython/blob/v3.10.10/Lib/sysconfig.py
 for key in [
@@ -472,7 +473,8 @@ print(json.dumps(pyinfo))
         LDFLAGS: "",
         LDSHARED: ""
     }, pyinfo);
-    debugInline(pyinfo);
+    // debug pyinfo
+    consoleError(pyinfo);
     pyinfo.pathInclude = [
         `${pyinfo.platinclude}`,
         `${pyinfo.include}`
@@ -594,19 +596,21 @@ async function ciBuildext2Obj({
     if (isWin32) {
 // https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
         argList = argList.concat([
-            `/Fo${fileObj}`,
-            // `/GL`, // to link.exe /LTCG
+            `/GL`, // to link.exe /LTCG
             `/MT`, // multithreaded, statically-linked
             `/O2`,
+            //
+            `/Fo${fileObj}`,
             `/c`, `/Tc${fileSrc}`,
             `/nologo`
         ]);
     } else {
         argList = argList.concat([
             `-DHAVE_UNISTD_H=`,
-            `-O2`,
+            `-O3`,
             `-c`, `${fileSrc}`,
             `-fPIC`,
+            //
             `-o`, `${fileObj}`
         ]);
     }
@@ -668,8 +672,8 @@ async function ciBuildext3Exe({
     argList = argList.concat(fileObjList); // must be ordered first
     if (isWin32) {
         argList = argList.concat([
-            // `/LTCG`, // from cl.exe /GL
             `/INCREMENTAL:NO`, // optimization - reduce filesize
+            `/LTCG`, // from cl.exe /GL
             `/MANIFEST:EMBED`,
             `/MANIFESTUAC:NO`,
             //
@@ -732,7 +736,7 @@ async function ciBuildext4Nodejs({
     }
     if (isWin32) {
         argList = argList.concat([
-            // `/LTCG`, // from cl.exe /GL
+            `/LTCG`, // from cl.exe /GL
             `/OUT:${fileLib}`,
             `/nologo`
         ]);
@@ -809,12 +813,12 @@ async function ciBuildext4Nodejs({
     # node "${binNodegyp}" clean
     node "${binNodegyp}" configure
     node "${binNodegyp}" build --release
+    cp build/binding.node "${cModulePath}"
 )
             `)
         ],
         {env, modeDebug, stdio: ["ignore", 1, 2]}
     );
-    await fsCopyFileUnlessTest("build/binding.node", cModulePath);
 }
 
 async function ciBuildext5Python({
@@ -828,6 +832,7 @@ async function ciBuildext5Python({
 // This function will build python c-extension.
 
     let argList = [];
+    let dirWheel = `build/bdist.${pyinfo.plat_name}/wheel/sqlmath`;
     let fileLib = `_sqlmath${pyinfo.EXT_SUFFIX}`;
 // https://github.com/kaizhu256/sqlmath/actions/runs/4886979281/jobs/8723014944
     let fileObjList = [
@@ -854,8 +859,8 @@ async function ciBuildext5Python({
             return `/LIBPATH:${path}`;
         }));
         argList = argList.concat([
-            // `/LTCG`, // from cl.exe /GL
             `/INCREMENTAL:NO`, // optimization - reduce filesize
+            `/LTCG`, // from cl.exe /GL
             `/MANIFEST:EMBED`,
             `/MANIFESTUAC:NO`,
             //
@@ -864,18 +869,17 @@ async function ciBuildext5Python({
             `/IMPLIB:${fileLib}`,
             `/nologo`,
             //
-            // ugly-hack - link.exe will not write dynamic-lib to "."
             `/OUT:build/${fileLib}`
         ]);
     } else {
         argList = argList.concat(
             pyinfo.LDFLAGS.trim().split(/\s{1,}/),
             pyinfo.LDSHARED.trim().split(/\s{1,}/).slice(1),
-            [`-o`, fileLib]
+            [`-o`, `build/${fileLib}`]
         );
     }
     if (noop(
-        await ciBuildextModified(fileObjList, fileLib)
+        await ciBuildextModified(fileObjList, `sqlmath/${fileLib}`)
     )) {
         consoleError(
             `ciBuildext4Python - linking lib ${modulePath.resolve(fileLib)}`
@@ -889,10 +893,21 @@ async function ciBuildext5Python({
             argList,
             {env, modeDebug, stdio: ["ignore", 1, 2]}
         );
-        if (isWin32) {
-            // ugly-hack - link.exe will not write dynamic-lib to "."
-            await fsCopyFileUnlessTest(`build/${fileLib}`, `${fileLib}`);
-        }
+        await childProcessSpawn2(
+            "sh",
+            [
+                "-c",
+                (`
+(set -e
+    mkdir -p "${dirWheel}/"
+    cp "build/${fileLib}" "sqlmath/${fileLib}"
+    cp "build/${fileLib}" "${dirWheel}/${fileLib}"
+    cp sqlmath/*.py "${dirWheel}/"
+)
+                `)
+            ],
+            {env, modeDebug, stdio: ["ignore", 1, 2]}
+        );
     }
 }
 
@@ -1225,16 +1240,6 @@ async function dbOpenAsync({
         ii: 0
     });
     return db;
-}
-
-async function fsCopyFileUnlessTest(file1, file2, mode) {
-
-// This function will copy <file1> to <file2>, unless <npm_config_mode_test> = 1
-
-    if (npm_config_mode_test && mode !== "force") {
-        return;
-    }
-    await moduleFs.promises.copyFile(file1, file2, mode | 0);
 }
 
 function isExternalBuffer(buf) {
@@ -1790,7 +1795,6 @@ export {
     dbNoopAsync,
     dbOpenAsync,
     debugInline,
-    fsCopyFileUnlessTest,
     jsbatonValueString,
     noop,
     objectDeepCopyWithKeysSorted,

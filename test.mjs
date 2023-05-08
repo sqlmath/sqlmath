@@ -38,7 +38,6 @@ import {
     dbNoopAsync,
     dbOpenAsync,
     debugInline,
-    fsCopyFileUnlessTest,
     jsbatonValueString,
     noop,
     sqlmathWebworkerInit,
@@ -647,12 +646,6 @@ jstestDescribe((
         await assertErrorThrownAsync(function () {
             assertOrThrow(undefined, new Error());
         });
-        // test fsXxx handling-behavior
-        await fsCopyFileUnlessTest(
-            "package.json",
-            ".tmp/undefined",
-            "force"
-        );
     });
 });
 
