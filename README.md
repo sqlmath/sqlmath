@@ -30,6 +30,9 @@
 
 7. [License](#license)
 
+8. [Devops Instruction](#devops-instruction)
+    - [python pypi publish](#python-pypi-publish)
+
 
 <br><br>
 # Web Demo
@@ -106,3 +109,15 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 - [indent.exe](indent.exe) is under [GPLv3 License](https://www.gnu.org/licenses/gpl-3.0.txt).
 - [sqlmath_jenks.c](sqlmath_jenks.c) is derived from [GPLv3 licensed CalcNaturalBreaks](https://www.geodms.nl/CalcNaturalBreaks).
 - Everything else is under MIT License.
+
+
+<br><br>
+# Devops Instruction
+
+
+<br><br>
+### python pypi publish
+- $ `twine upload --repository testpypi dist/sqlmath-0.0.5*`
+    - $ `py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==0.0.5`
+- $ `twine upload dist/sqlmath-0.0.5*`
+    - $ `pip install sqlmath==0.0.5`

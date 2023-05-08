@@ -87,6 +87,8 @@ file sqlmath_h - end
 /*
 file sqlmath_jenks - start
 */
+
+
 SQLMATH_API double *jenksCreate(
     int kk,
     const double *values,
@@ -423,7 +425,7 @@ file sqlmath_jenks - start
 /*
 file sqlmath_test - start
 */
-#ifndef SQLMATH_C2
+#ifndef SQLMATH_BASE_C2
 // *INDENT-OFF*
 #include <algorithm>
 #include <iostream>
@@ -943,7 +945,7 @@ int main(int c, char** argv) {
     }
 } // main
 // *INDENT-ON*
-#endif                          // SQLMATH_C2
+#endif                          // SQLMATH_BASE_C2
 /*
 file sqlmath_test - start
 */

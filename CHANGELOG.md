@@ -4,6 +4,7 @@
 - none
 
 # v2023.5.1-beta
+- betadog - Reconcile differences with betadog.
 - python - Successfully published first pypi package version sqlmath@v0.0.5.
 - ci - Rename shell-function shRawLibFetch() to shRollupFetch().
 - sqlmath - migrate build-ext from python to nodejs with parallel compile

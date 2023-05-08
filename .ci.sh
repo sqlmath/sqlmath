@@ -515,9 +515,11 @@ shSqlmathUpdate() {(set -e
             asset_sqlmath_external_rollup.js \
             indent.exe \
             index.html \
-            sqlite3_extension_functions.c \
+            setup.py \
             sqlite3_rollup.c \
             sqlmath.mjs \
+            sqlmath/__init__.py \
+            sqlmath/sqlmath_dbapi2.py \
             sqlmath_base.c \
             sqlmath_browser.mjs \
             sqlmath_jenks.c \

@@ -764,28 +764,91 @@ async function ciBuildext4Nodejs({
     consoleError(
         `ciBuildext4Nodejs - linking lib ${modulePath.resolve(cModulePath)}`
     );
+    // ugly-hack - create temp files to compile nodejs c-addon separately
+    await childProcessSpawn2(
+        "sh",
+        [
+            "-c",
+            (`
+(set -e
+    for C_DEFINE in \
+        SRC_ZLIB_BASE \
+        \
+        SRC_SQLITE3_BASE \
+        SRC_SQLITE3_EXTFNC \
+        SRC_SQLITE3_SHELL \
+        SRC_SQLITE3_PYTHON
+    do
+        printf "
+#define \"$C_DEFINE\"_C2
+#define SQLITE3_C2
+#include \\"../sqlite3_rollup.c\\"
+        " > build/$C_DEFINE.c
+    done
+    for C_DEFINE in \
+        \
+        SQLMATH_BASE \
+        \
+        SQLMATH_CUSTOM
+    do
+        printf "
+#define \"$C_DEFINE\"_C2
+#define SQLITE3_C2
+#include \\"../sqlmath_custom.c\\"
+        " > build/$C_DEFINE.c
+    done
+)
+            `)
+        ],
+        {env, modeDebug, stdio: ["ignore", 1, 2]}
+    );
     await moduleFs.promises.writeFile("binding.gyp", JSON.stringify({
+        "target_defaults": {
+            "cflags": ["-Wall", "-std=c11"],
+            "conditions": [
+                [
+                    "OS == \u0027win\u0027",
+                    {"defines": ["WIN32"]},
+                    {"defines": ["HAVE_UNISTD_H"]}
+                ]
+            ],
+// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
+            "msvs_settings": {
+                "VCCLCompilerTool": {
+                    "WarningLevel": 3
+                }
+            },
+            "xcode_settings": {"OTHER_CFLAGS": ["-Wall", "-std=c11"]}
+        },
         "targets": [
             {
-                "cflags": ["-Wall", "-std=c11"],
-                "conditions": [
-                    [
-                        "OS == \u0027win\u0027",
-                        {"defines": ["WIN32"]},
-                        {"defines": ["HAVE_UNISTD_H"]}
-                    ]
+                "cflags": ["-Wno-implicit-function-declaration"],
+                "sources": [
+                    "build/SRC_ZLIB_BASE.c",
+                    //
+                    "build/SRC_SQLITE3_BASE.c",
+                    "build/SRC_SQLITE3_EXTFNC.c",
+                    // "build/SRC_SQLITE3_SHELL.c",
+                    // "build/SRC_SQLITE3_PYTHON.c",
+                    //
+                    "build/SQLMATH_BASE.c",
+                    //
+                    "build/SQLMATH_CUSTOM.c"
                 ],
+                "target_name": "sqlite3_c",
+                "type": "static_library",
+                "xcode_settings": {
+                    "OTHER_CFLAGS": ["-Wno-implicit-function-declaration"]
+                }
+            },
+            {
                 "defines": ["SQLMATH_NODEJS_C2"],
-                "libraries": ["SRC_SQLITE3_BASE.lib"],
-// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
-                "msvs_settings": {
-                    "VCCLCompilerTool": {
-                        "WarningLevel": 3
-                    }
-                },
+                "dependencies": [
+                    "sqlite3_c"
+                ],
+                // "libraries": ["SRC_SQLITE3_BASE.lib"],
                 "sources": ["sqlmath_base.c"],
-                "target_name": "binding",
-                "xcode_settings": {"OTHER_CFLAGS": ["-Wall", "-std=c11"]}
+                "target_name": "binding"
             },
             {
                 "copies": [

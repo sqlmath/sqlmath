@@ -33,10 +33,8 @@ file sqlmath_h - start
 
 
 #define NAPI_VERSION 6
-#define SQLITE3EXT_H2
 #ifdef SQLITE3_C2
 #   undef SQLITE3_C2
-#   define SQLMATH_C2
 #   ifndef SQLMATH_BASE_C2
 #       define SQLMATH_BASE_C2
 #   endif
@@ -330,6 +328,12 @@ SQLMATH_API int doubleSortCompare(
     const void *bb
 );
 
+SQLMATH_API double *jenksCreate(
+    int kk,
+    const double *values,
+    int nn
+);
+
 SQLMATH_API const char *jsbatonValueErrmsg(
     Jsbaton * baton
 );
@@ -337,6 +341,11 @@ SQLMATH_API const char *jsbatonValueErrmsg(
 SQLMATH_API const char *jsbatonValueStringArgi(
     Jsbaton * baton,
     int argi
+);
+
+SQLMATH_API double marginoferror95(
+    double nn,
+    double pp
 );
 
 SQLMATH_API int noop(
@@ -371,7 +380,6 @@ file sqlmath_base - start
 #define SQLMATH_BASE_C3
 
 
-static const sqlite3_api_routines *sqlite3_api = NULL;
 #include "sqlmath_jenks.c"
 typedef struct DbExecBindElem {
     const char *buf;
@@ -840,7 +848,7 @@ SQLMATH_API void dbOpen(
     const char *filename = jsbatonValueStringArgi(baton, 0);
     const int flags = (int) baton->argv[2];
     // call c-function
-    errcode = sqlite3ApiGet()->open_v2( //
+    errcode = sqlite3_open_v2(  //
         filename,               // filename
         &db,                    // db
         flags,                  // flags
@@ -1995,11 +2003,9 @@ int sqlite3_sqlmath_base_init(
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
 ) {
+    UNUSED_PARAMETER(pApi);
     UNUSED_PARAMETER(pzErrMsg);
-    // declare var
     int errcode = 0;
-    // init sqlite3_api
-    sqlite3_api = pApi;
     SQLITE3_CREATE_FUNCTION1(btobase64, 1);
     SQLITE3_CREATE_FUNCTION1(btotext, 1);
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
@@ -2111,7 +2117,7 @@ static void jsbatonBufferFinalize(
     UNUSED_PARAMETER(env);
     UNUSED_PARAMETER(finalize_hint);
     // cleanup baton->bufv[ii]
-    sqlite3ApiGet()->free(finalize_data);
+    sqlite3_free(finalize_data);
 }
 
 static Jsbaton *jsbatonCreate(
