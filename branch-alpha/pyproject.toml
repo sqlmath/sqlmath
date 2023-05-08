@@ -1,0 +1,50 @@
+# https://setuptools.pypa.io/en/latest/userguide/ext_modules.html
+[build-system]
+requires = [
+    "pycodestyle >= 2.10.0",
+    "ruff >= 0.0.263",
+    "setuptools >= 65.5.0",
+]
+build-backend = "setuptools.build_meta"
+
+# https://peps.python.org/pep-0621/#example
+[project]
+authors = [{name = "Kai Zhu"}]
+dependencies = []
+description = "sqlite for datascience"
+license = {file = "LICENSE"}
+maintainers = []
+name = "sqlmath"
+readme = "README.md"
+requires-python = ">=3.10"
+version = "0.0.5"
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    'Intended Audience :: Developers',
+    'Intended Audience :: Science/Research',
+    'License :: OSI Approved :: MIT License',
+    'Operating System :: MacOS',
+    'Operating System :: Microsoft :: Windows',
+    'Operating System :: POSIX :: Linux',
+    'Programming Language :: C',
+    'Programming Language :: JavaScript',
+    'Programming Language :: Python',
+    'Topic :: Database',
+    'Topic :: Scientific/Engineering',
+    'Topic :: Software Development',
+]
+
+[project.scripts]
+# spam-cli = "spam:main_cli"
+
+[project.urls]
+documentation = "https://github.com/sqlmath/sqlmath"
+homepage = "https://github.com/sqlmath/sqlmath"
+repository = "https://github.com/sqlmath/sqlmath"
+changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
+
+# to disable scanning PEP 420 namespaces (true by default)
+# namespaces = false
+
+[tool.setuptools]
+py-modules = ["sqlmath"]
