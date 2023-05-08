@@ -27,6 +27,8 @@ import {
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
+    childProcessSpawn2,
+    ciBuildext,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
     dbExecAndReturnLastJsonAsync,
@@ -49,7 +51,7 @@ let {
 noop(debugInline);
 
 jstestDescribe((
-    "test apidoc handling-behavior"
+    "test_apidoc"
 ), function test_apidoc() {
     jstestIt((
         "test apidoc handling-behavior"
@@ -74,7 +76,7 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test assertXxx handling-behavior"
+    "test_assertXxx"
 ), function test_assertXxx() {
     jstestIt((
         "test assertXxx handling-behavior"
@@ -93,8 +95,8 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test cCallAsync handling-behavior"
-), function test_ccall() {
+    "test_ccallAsync"
+), function test_ccallAsync() {
     jstestIt((
         "test cCallAsync handling-behavior"
     ), async function () {
@@ -171,7 +173,40 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test db-bind handling-behavior"
+    "test_childProcessSpawn2"
+), function test_childProcessSpawn2() {
+    jstestIt((
+        "test childProcessSpawn2 handling-behavior"
+    ), async function () {
+        await Promise.all([
+            childProcessSpawn2(
+                "aa",
+                [],
+                {modeCapture: "utf8", modeDebug: true, stdio: []}
+            )
+        ]);
+    });
+});
+
+jstestDescribe((
+    "test_ciBuildextXxx"
+), function test_ciBuildextXxx() {
+    jstestIt((
+        "test ciBuildext handling-behavior"
+    ), async function () {
+        await Promise.all([
+            ciBuildext({process: {arch: "arm", env: {}, platform: "win32"}}),
+            ciBuildext({process: {arch: "arm64", env: {}, platform: "win32"}}),
+            ciBuildext({process: {arch: "ia32", env: {}, platform: "win32"}}),
+            ciBuildext({process: {env: {}, platform: "darwin"}}),
+            ciBuildext({process: {env: {}, platform: "win32"}}),
+            ciBuildext({process: {}})
+        ]);
+    });
+});
+
+jstestDescribe((
+    "test_dbBind"
 ), function test_dbBind() {
     jstestIt((
         "test db-bind-value handling-behavior"
@@ -406,7 +441,7 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test dbXxxAsync handling-behavior"
+    "test_dbXxxAsync"
 ), function test_dbXxxAsync() {
     jstestIt((
         "test dbCloseAsync handling-behavior"
@@ -585,13 +620,11 @@ SELECT * FROM testDbExecAsync2;
 });
 
 jstestDescribe((
-    "test misc handling-behavior"
+    "test_misc"
 ), function test_misc() {
     jstestIt((
         "test misc handling-behavior"
     ), async function () {
-        // test debugInline handling-behavior
-        noop(debugInline);
         // test assertErrorThrownAsync error handling-behavior
         await assertErrorThrownAsync(function () {
             return assertErrorThrownAsync(noop);
@@ -617,7 +650,7 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test sqlite handling-behavior"
+    "test_sqlite"
 ), function test_sqlite() {
     jstestIt((
         "test sqlite-error handling-behavior"
@@ -677,8 +710,119 @@ jstestDescribe((
         }));
     });
     jstestIt((
+        "test sqlite-extension-avg_ema handling-behavior"
+    ), async function test_sqlite_extension_avg_ema() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let result;
+        result = await dbExecAsync({
+            db,
+            sql: (`
+SELECT
+    ROUND(
+        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
+            ORDER BY id ASC
+            ROWS BETWEEN 0 PRECEDING AND 4-1 FOLLOWING
+        ),
+        4
+    ) AS val
+    FROM (
+        SELECT 11 AS id, NULL AS val
+        UNION ALL SELECT 10,   10
+        UNION ALL SELECT  9,    9
+        UNION ALL SELECT  8,    8
+        UNION ALL SELECT  7,    7
+        UNION ALL SELECT  6,    6
+        UNION ALL SELECT  5,    5
+        UNION ALL SELECT  4,    4
+        UNION ALL SELECT  3,    3
+        UNION ALL SELECT  2,    2
+        UNION ALL SELECT  1,    1
+        UNION ALL SELECT  0, NULL
+    );
+            `)
+        });
+        result = result[0].map(function ({val}) {
+            return val;
+        });
+        assertJsonEqual(result, [
+            1.824, 2.824, 3.824, 4.824,
+            5.824, 6.824, 7.824, 8.824,
+            5.424, 5.640, 6.000, 0.000
+        ]);
+        result = await dbExecAsync({
+            db,
+            sql: (`
+SELECT
+    ROUND(
+        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
+            ORDER BY id ASC
+            ROWS BETWEEN 3 - 1 PRECEDING AND 2 - 1 FOLLOWING
+        ),
+        4
+    ) AS val
+    FROM (
+        SELECT 11 AS id, NULL AS val
+        UNION ALL SELECT 10,   10
+        UNION ALL SELECT  9,    9
+        UNION ALL SELECT  8,    8
+        UNION ALL SELECT  7,    7
+        UNION ALL SELECT  6,    6
+        UNION ALL SELECT  5,    5
+        UNION ALL SELECT  4,    4
+        UNION ALL SELECT  3,    3
+        UNION ALL SELECT  2,    2
+        UNION ALL SELECT  1,    1
+        UNION ALL SELECT  0, NULL
+    );
+            `)
+        });
+        result = result[0].map(function ({val}) {
+            return val;
+        });
+        assertJsonEqual(result, [
+            0.400, 1.040, 1.824, 2.824,
+            3.824, 4.824, 5.824, 6.824,
+            7.824, 8.824, 5.424, 5.640
+        ]);
+        result = await dbExecAsync({
+            db,
+            sql: (`
+SELECT
+    ROUND(
+        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
+            ORDER BY id ASC
+            ROWS BETWEEN 4 - 1 PRECEDING AND 0 FOLLOWING
+        ),
+        4
+    ) AS val
+    FROM (
+        SELECT 11 AS id, NULL AS val
+        UNION ALL SELECT 10,   10
+        UNION ALL SELECT  9,    9
+        UNION ALL SELECT  8,    8
+        UNION ALL SELECT  7,    7
+        UNION ALL SELECT  6,    6
+        UNION ALL SELECT  5,    5
+        UNION ALL SELECT  4,    4
+        UNION ALL SELECT  3,    3
+        UNION ALL SELECT  2,    2
+        UNION ALL SELECT  1,    1
+        UNION ALL SELECT  0, NULL
+    );
+            `)
+        });
+        result = result[0].map(function ({val}) {
+            return val;
+        });
+        assertJsonEqual(result, [
+            0.000, 0.400, 1.040, 1.824,
+            2.824, 3.824, 4.824, 5.824,
+            6.824, 7.824, 8.824, 5.424
+        ]);
+    });
+    jstestIt((
         "test sqlite-extension-base64 handling-behavior"
-    ), async function test_sqliteExtensionBase64() {
+    ), async function test_sqlite_extension_base64() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -730,8 +874,36 @@ jstestDescribe((
         }));
     });
     jstestIt((
+        "test sqlite-extension-fill_forward handling-behavior"
+    ), async function test_sqlite_extension_fill_forward() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let result = await dbExecAsync({
+            db,
+            sql: (`
+SELECT
+    fill_forward(val) OVER (ORDER BY id ASC) AS val
+    FROM (
+        SELECT 10 AS id, NULL AS val
+        UNION ALL SELECT 9 AS id, 9 AS val
+        UNION ALL SELECT 8 AS id, 8 AS val
+        UNION ALL SELECT 7 AS id, NULL AS val
+        UNION ALL SELECT 6 AS id, 6 AS val
+        UNION ALL SELECT 5 AS id, 5 AS val
+        UNION ALL SELECT 4 AS id, NULL AS val
+        UNION ALL SELECT 3 AS id, 3 AS val
+        UNION ALL SELECT 2 AS id, NULL AS val
+        UNION ALL SELECT 1 AS id, NULL AS val
+    );
+            `)
+        });
+        result = result[0].map(function ({val}) {
+            return val;
+        });
+        assertJsonEqual(result, [null, null, 3, 3, 5, 6, 6, 8, 9, 9]);
+    });
+    jstestIt((
         "test sqlite-extension-jenks handling-behavior"
-    ), async function test_sqliteExtensionJenks() {
+    ), async function test_sqlite_extension_jenks() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -966,7 +1138,7 @@ SELECT JENKS_CONCAT($kk, value) FROM JSON_EACH($input);
     });
     jstestIt((
         "test sqlite-extension-jsonfromfloat64array handling-behavior"
-    ), async function test_sqliteExtensionJsonFromFloat64array() {
+    ), async function test_sqlite_extension_jsonfromfloat64array() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1029,7 +1201,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
     });
     jstestIt((
         "test sqlite-extension-math handling-behavior"
-    ), async function test_sqliteExtensionMath() {
+    ), async function test_sqlite_extension_math() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1195,7 +1367,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
     });
     jstestIt((
         "test sqlite-extension-matrix2d_concat handling-behavior"
-    ), async function test_sqliteExtensionMatrix2dConcat() {
+    ), async function test_sqlite_extension_matrix2d_concat() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1257,10 +1429,24 @@ SELECT
     });
     jstestIt((
         "test sqlite-extension-quantile handling-behavior"
-    ), async function test_sqliteExtensionQuantile() {
+    ), async function test_sqlite_extension_quantile() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
+        await (async function () {
+            let valActual = noop(
+                await dbExecAsync({
+                    db,
+                    sql: (`
+-- test null-case handling-behavior
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT 1 AS id, quantile(val, 0.5) AS val FROM __tmp1;
+                    `)
+                })
+            )[0];
+            assertJsonEqual(valActual, [{id: 1, val: null}]);
+        }());
         await Promise.all([
             [
                 [[], -99, null],
@@ -1330,9 +1516,9 @@ SELECT
                         },
                         db,
                         sql: (`
-SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1);
+SELECT quantile(value, ${kk}) AS val FROM JSON_EACH($tmp1);
 -- test null-case handling-behavior
-SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
+SELECT quantile(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
                         `)
                     })
                 )[0][0].val;
@@ -1348,7 +1534,7 @@ SELECT QUANTILE(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
 });
 
 jstestDescribe((
-    "test sqlmathWebworkerInit handling-behavior"
+    "test_sqlmathWebworkerInit"
 ), function test_sqlmathWebworkerInit() {
     jstestIt((
         "test sqlmathWebworkerInit handling-behavior"

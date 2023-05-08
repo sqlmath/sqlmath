@@ -4,23 +4,36 @@
 *.[0123456789][0123456789]
 *.lock
 *.log
-*.pyc
 *.tgz
-*.vsix
 *~
 .*
 _*
-node_modules
-package-lock.json
 temp*
-tmp
+tmp/
 undefined
 
+# nodejs
+build/
+node_modules/
+package-lock.json
+
+# python
+*.egg-info/
+*.py[cod]
+dist/
+htmlcov/
+
+# vscode
+*.vsix
+
+# !
 !.gitconfig
 !.github
 !.gitignore
 !.npmignore
+!_*.py
 # base - .gitignore - end
 
+binding.gyp
 sqlite-autoconf-*
 sqlmath_wasm.*

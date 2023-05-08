@@ -48,9 +48,9 @@ class-breaks for an array of random numbers and made that available here.
 /*
 file sqlmath_h - start
 */
-#ifndef SQLMATH_H
+#ifndef SQLMATH_H2
 #define SQLMATH_API
-#define SQLMATH_H
+#define SQLMATH_H2
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -58,7 +58,7 @@ file sqlmath_h - start
 #include <string.h>
 #define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
-#define UNUSED(x) ((void)(x))
+#define UNUSED_PARAMETER(x) ((void)(x))
 #define sqlite3_free free
 static void *sqlite3_malloc(
     int size
@@ -78,7 +78,7 @@ SQLMATH_API int doubleSortCompare(
     const double cc = *(double *) aa - *(double *) bb;
     return cc == 0 ? 0 : cc > 0 ? 1 : -1;
 }
-#endif                          // SQLMATH_H
+#endif                          // SQLMATH_H2
 /*
 file sqlmath_h - end
 */
@@ -103,7 +103,7 @@ SQLMATH_API double *jenksCreate(
 // ]
     // declare var
     char *pTmp = NULL;
-    const int nnLog = log2(nn + 1) + 2;
+    const int nnLog = (int) log2(nn + 1) + 2;
     double *histogramCvw = NULL;        // cumulative value * weight
     double *resultBreaks = NULL;
     double *ssmNow = NULL;
@@ -122,7 +122,7 @@ SQLMATH_API double *jenksCreate(
     // 64 should be large enough to accomodate most arrays
     int stackList[64][4] = { 0 };
     // int stackList[nnLog][4] = { 0 };
-    UNUSED(nnLog);
+    UNUSED_PARAMETER(nnLog);
     // Allocate pTmp.
     kk = MIN(nn, kk);
     nn = MAX(nn, kk);
@@ -423,7 +423,7 @@ file sqlmath_jenks - start
 /*
 file sqlmath_test - start
 */
-#ifndef SQLITE3_EXT_C2
+#ifndef SQLMATH_C2
 // *INDENT-OFF*
 #include <algorithm>
 #include <iostream>
@@ -943,7 +943,7 @@ int main(int c, char** argv) {
     }
 } // main
 // *INDENT-ON*
-#endif                          // SQLITE3_EXT_C2
+#endif                          // SQLMATH_C2
 /*
 file sqlmath_test - start
 */
