@@ -118,6 +118,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     # update dir branch-$GITHUB_BRANCH0
     mkdir -p "branch-$GITHUB_BRANCH0"
     cp ../../_sqlmath.* "branch-$GITHUB_BRANCH0"
+    cp ../../sqlmath/_sqlmath.* "branch-$GITHUB_BRANCH0"
     if [ -f ../../sqlmath_wasm.wasm ]
     then
         cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
