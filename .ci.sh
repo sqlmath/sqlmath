@@ -148,12 +148,12 @@ shCiBaseCustomArtifactUpload() {(set -e
     )
 )}
 
-shCiBuildext() {(set -e
+shCiBuildExt() {(set -e
 # this function will build and compile c-extension
     unset npm_config_mode_test
     npm_config_mode_setup=1 node --input-type=module -e '
-import {ciBuildext} from "./sqlmath.mjs";
-ciBuildext({process});
+import {ciBuildExt} from "./sqlmath.mjs";
+ciBuildExt({process});
 ' "$@" # '
 )}
 

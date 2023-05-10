@@ -15,7 +15,7 @@ import setuptools.command.install_lib
 
 def build_ext():
     """This function will build c-extension."""
-    subprocess.run(["sh", "jslint_ci.sh", "shCiBuildext"], check=True)
+    subprocess.run(["sh", "jslint_ci.sh", "shCiBuildExt"], check=True)
     setuptools.setup(ext_modules=[setuptools.Extension("_sqlmath", [])])
 
 

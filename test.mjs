@@ -28,7 +28,7 @@ import {
     assertNumericalEqual,
     assertOrThrow,
     childProcessSpawn2,
-    ciBuildext,
+    ciBuildExt,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
     dbExecAndReturnLastJsonAsync,
@@ -38,6 +38,10 @@ import {
     dbNoopAsync,
     dbOpenAsync,
     debugInline,
+    fsCopyFileUnlessTest,
+    fsExistsUnlessTest,
+    fsReadFileUnlessTest,
+    fsWriteFileUnlessTest,
     jsbatonValueString,
     noop,
     sqlmathWebworkerInit,
@@ -189,18 +193,19 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test_ciBuildextXxx"
-), function test_ciBuildextXxx() {
+    "test_ciBuildExtXxx"
+), function test_ciBuildExtXxx() {
     jstestIt((
-        "test ciBuildext handling-behavior"
+        "test ciBuildExt handling-behavior"
     ), async function () {
         await Promise.all([
-            ciBuildext({process: {arch: "arm", env: {}, platform: "win32"}}),
-            ciBuildext({process: {arch: "arm64", env: {}, platform: "win32"}}),
-            ciBuildext({process: {arch: "ia32", env: {}, platform: "win32"}}),
-            ciBuildext({process: {env: {}, platform: "darwin"}}),
-            ciBuildext({process: {env: {}, platform: "win32"}}),
-            ciBuildext({process: {}})
+            ciBuildExt({modeSkip: true, process: {}}),
+            ciBuildExt({process: {arch: "arm", env: {}, platform: "win32"}}),
+            ciBuildExt({process: {arch: "arm64", env: {}, platform: "win32"}}),
+            ciBuildExt({process: {arch: "ia32", env: {}, platform: "win32"}}),
+            ciBuildExt({process: {env: {}, platform: "darwin"}}),
+            ciBuildExt({process: {env: {}, platform: "win32"}}),
+            ciBuildExt({process: {}})
         ]);
     });
 });
@@ -616,6 +621,35 @@ SELECT * FROM testDbExecAsync2;
         assertErrorThrownAsync(function () {
             return dbOpenAsync({});
         }, "invalid filename undefined");
+    });
+});
+
+jstestDescribe((
+    "test_fsXxx"
+), function test_fsXxx() {
+    jstestIt((
+        "test fsXxx handling-behavior"
+    ), async function () {
+        await Promise.all([
+            fsCopyFileUnlessTest("", ""),
+            fsExistsUnlessTest(""),
+            fsReadFileUnlessTest("", ""),
+            fsWriteFileUnlessTest("", ""),
+            //
+            fsCopyFileUnlessTest(
+                "package.json",
+                ".tmp/test_fsCopyFileUnlessTest_force",
+                "force"
+            ),
+            fsExistsUnlessTest("", "force"),
+            fsExistsUnlessTest("package.json", "force"),
+            fsReadFileUnlessTest("package.json", "force"),
+            fsWriteFileUnlessTest(
+                ".tmp/test_fsWriteFileUnlessTest_force",
+                "",
+                "force"
+            )
+        ]);
     });
 });
 
