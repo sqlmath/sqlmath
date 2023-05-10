@@ -25,7 +25,7 @@
 
 
 // header
-#undef SQLITE3_C2
+#undef SQLITE_C2
 #include "sqlmath_base.c"
 
 

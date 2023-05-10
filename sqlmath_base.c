@@ -33,8 +33,8 @@ file sqlmath_h - start
 
 
 #define NAPI_VERSION 6
-#ifdef SQLITE3_C2
-#   undef SQLITE3_C2
+#ifdef SQLITE_C2
+#   undef SQLITE_C2
 #   ifndef SQLMATH_BASE_C2
 #       define SQLMATH_BASE_C2
 #   endif

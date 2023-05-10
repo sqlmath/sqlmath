@@ -192,7 +192,7 @@ shCiBuildWasm() {(set -e
         case "$FILE" in
         sqlite3_extfnc.c)
             FILE=sqlite3_rollup.c
-            OPTION2="$OPTION2 -DSRC_SQLITE3_EXTFNC_C2="
+            OPTION2="$OPTION2 -DSRC_SQLITE_EXTFNC_C2="
             ;;
         zlib_base.c)
             FILE=sqlite3_rollup.c
@@ -206,7 +206,7 @@ shCiBuildWasm() {(set -e
             continue
         fi
         OPTION2="$OPTION2 -DHAVE_UNISTD_H="
-        OPTION2="$OPTION2 -DSQLITE3_C2="
+        OPTION2="$OPTION2 -DSQLITE_C2="
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
     done

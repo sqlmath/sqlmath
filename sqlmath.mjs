@@ -344,10 +344,10 @@ async function ciBuildExt({
     cDefineList = [
         "SRC_ZLIB_BASE",
         //
-        "SRC_SQLITE3_BASE",
-        "SRC_SQLITE3_EXTFNC",
-        "SRC_SQLITE3_SHELL",
-        "SRC_SQLITE3_PYTHON",
+        "SRC_SQLITE_BASE",
+        "SRC_SQLITE_EXTFNC",
+        "SRC_SQLITE_SHELL",
+        "SRC_SQLITE_PYTHON",
         //
         "SQLMATH_BASE",
         //
@@ -431,14 +431,14 @@ async function ciBuildExt1NodejsConfigure({
         SRC_ZLIB_TEST_EXAMPLE \
         SRC_ZLIB_TEST_MINIGZIP \
         \
-        SRC_SQLITE3_BASE \
-        SRC_SQLITE3_EXTFNC \
-        SRC_SQLITE3_SHELL \
-        SRC_SQLITE3_PYTHON
+        SRC_SQLITE_BASE \
+        SRC_SQLITE_EXTFNC \
+        SRC_SQLITE_SHELL \
+        SRC_SQLITE_PYTHON
     do
         printf "
 #define \"$C_DEFINE\"_C2
-#define SQLITE3_C2
+#define SQLITE_C2
 #include \\"../sqlite3_rollup.c\\"
         " > build/$C_DEFINE.c
     done
@@ -450,7 +450,7 @@ async function ciBuildExt1NodejsConfigure({
     do
         printf "
 #define \"$C_DEFINE\"_C2
-#define SQLITE3_C2
+#define SQLITE_C2
 #include \\"../$(printf $C_DEFINE | tr \"[:upper:]\" \"[:lower:]\").c\\"
         " > build/$C_DEFINE.c
     done
@@ -487,16 +487,16 @@ async function ciBuildExt1NodejsConfigure({
                 "sources": [
                     "build/SRC_ZLIB_BASE.c",
                     //
-                    "build/SRC_SQLITE3_BASE.c",
-                    "build/SRC_SQLITE3_EXTFNC.c",
-                    // "build/SRC_SQLITE3_SHELL.c",
-                    // "build/SRC_SQLITE3_PYTHON.c",
+                    "build/SRC_SQLITE_BASE.c",
+                    "build/SRC_SQLITE_EXTFNC.c",
+                    // "build/SRC_SQLITE_SHELL.c",
+                    // "build/SRC_SQLITE_PYTHON.c",
                     //
                     "build/SQLMATH_BASE.c"
                     //
                     // "build/SQLMATH_CUSTOM.c"
                 ],
-                "target_name": "SRC_SQLITE3_BASE",
+                "target_name": "SRC_SQLITE_BASE",
                 "type": "static_library",
                 "xcode_settings": {"OTHER_CFLAGS": [
                     "-Wno-all",
@@ -515,9 +515,9 @@ async function ciBuildExt1NodejsConfigure({
                 "defines": ["SQLMATH_NODEJS_C2"],
                 "dependencies": [
                     "SQLMATH_CUSTOM",
-                    "SRC_SQLITE3_BASE"
+                    "SRC_SQLITE_BASE"
                 ],
-                // "libraries": ["SRC_SQLITE3_BASE.lib"],
+                // "libraries": ["SRC_SQLITE_BASE.lib"],
                 "sources": ["sqlmath_base.c"],
                 "target_name": "binding"
             }
@@ -758,10 +758,10 @@ async function ciBuildExt4Pyobj({
     let fileObj = `build/${cDefine}.obj`;
     let fileSrc = `build/${cDefine}.c`;
     switch (cDefine) {
-    case "SRC_SQLITE3_BASE":
-    case "SRC_SQLITE3_EXTFNC":
-    case "SRC_SQLITE3_PYTHON":
-    case "SRC_SQLITE3_SHELL":
+    case "SRC_SQLITE_BASE":
+    case "SRC_SQLITE_EXTFNC":
+    case "SRC_SQLITE_PYTHON":
+    case "SRC_SQLITE_SHELL":
     case "SRC_ZLIB_BASE":
     case "SRC_ZLIB_TEST_EXAMPLE":
     case "SRC_ZLIB_TEST_MINIGZIP":
@@ -805,7 +805,7 @@ async function ciBuildExt4Pyobj({
     }));
     argList = argList.concat([
         `-D${cDefine}_C2=`,
-        `-DSQLITE3_C2=`,
+        `-DSQLITE_C2=`,
         `-D_REENTRANT=1`
     ]);
     if (isWin32) {
@@ -853,7 +853,7 @@ async function ciBuildExt5Pyexe({
     let fileObj = `build/${cDefine}.obj`;
     let fileObjList;
     switch (cDefine) {
-    case "SRC_SQLITE3_SHELL":
+    case "SRC_SQLITE_SHELL":
         fileExe = (
             "_sqlmath.shell"
             + "_" + process.platform
@@ -862,9 +862,9 @@ async function ciBuildExt5Pyexe({
         );
         fileObjList = [
             "build/SRC_ZLIB_BASE.obj",
-            "build/SRC_SQLITE3_BASE.obj",
-            "build/SRC_SQLITE3_EXTFNC.obj",
-            "build/SRC_SQLITE3_SHELL.obj",
+            "build/SRC_SQLITE_BASE.obj",
+            "build/SRC_SQLITE_EXTFNC.obj",
+            "build/SRC_SQLITE_SHELL.obj",
             //
             "build/SQLMATH_BASE.obj",
             "build/SQLMATH_CUSTOM.obj"
@@ -928,10 +928,10 @@ async function ciBuildExt6Pypyd({
     let fileObjList = [
         "build/SRC_ZLIB_BASE.obj",
         //
-        "build/SRC_SQLITE3_BASE.obj",
-        "build/SRC_SQLITE3_EXTFNC.obj",
-        // "build/SRC_SQLITE3_SHELL.obj",
-        "build/SRC_SQLITE3_PYTHON.obj",
+        "build/SRC_SQLITE_BASE.obj",
+        "build/SRC_SQLITE_EXTFNC.obj",
+        // "build/SRC_SQLITE_SHELL.obj",
+        "build/SRC_SQLITE_PYTHON.obj",
         //
         "build/SQLMATH_BASE.obj",
         //
