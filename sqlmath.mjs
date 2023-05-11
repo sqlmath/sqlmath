@@ -437,9 +437,9 @@ async function ciBuildExt1NodejsConfigure({
         SRC_SQLITE_PYTHON
     do
         printf "
+#define SRC_SQLITE_BASE_C2
 #define \"$C_DEFINE\"_C2
-#define SQLITE_C2
-#include \\"../sqlite3_rollup.c\\"
+#include \\"../sqlite_rollup.c\\"
         " > build/$C_DEFINE.c
     done
     #
@@ -450,7 +450,7 @@ async function ciBuildExt1NodejsConfigure({
     do
         printf "
 #define \"$C_DEFINE\"_C2
-#define SQLITE_C2
+#define SRC_SQLITE_BASE_C2
 #include \\"../$(printf $C_DEFINE | tr \"[:upper:]\" \"[:lower:]\").c\\"
         " > build/$C_DEFINE.c
     done
@@ -805,7 +805,7 @@ async function ciBuildExt4Pyobj({
     }));
     argList = argList.concat([
         `-D${cDefine}_C2=`,
-        `-DSQLITE_C2=`,
+        `-DSRC_SQLITE_BASE_C2=`,
         `-D_REENTRANT=1`
     ]);
     if (isWin32) {

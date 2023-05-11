@@ -33,8 +33,8 @@ file sqlmath_h - start
 
 
 #define NAPI_VERSION 6
-#ifdef SQLITE_C2
-#   undef SQLITE_C2
+#ifdef SRC_SQLITE_BASE_C2
+#   undef SRC_SQLITE_BASE_C2
 #   ifndef SQLMATH_BASE_C2
 #       define SQLMATH_BASE_C2
 #   endif
@@ -48,7 +48,7 @@ file sqlmath_h - start
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "sqlite3_rollup.c"
+#include "sqlite_rollup.c"
 
 
 /*

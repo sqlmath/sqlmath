@@ -25,7 +25,7 @@ include libintl3.dll
 include package.json
 include pyproject.toml
 include setup.py
-include sqlite3_rollup.c
+include sqlite_rollup.c
 include sqlmath.mjs
 include sqlmath/__init__.py
 include sqlmath/sqlmath_dbapi2.py

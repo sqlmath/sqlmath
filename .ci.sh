@@ -182,31 +182,31 @@ shCiBuildWasm() {(set -e
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
         zlib_base.c \
-        sqlite3_rollup.c \
-        sqlite3_extfnc.c \
+        sqlite_rollup.c \
+        sqlite_extfnc.c \
         sqlmath_base.c \
         sqlmath_custom.c
     do
         OPTION2=""
         FILE2="build/$(basename "$FILE").wasm.o"
         case "$FILE" in
-        sqlite3_extfnc.c)
-            FILE=sqlite3_rollup.c
+        sqlite_extfnc.c)
+            FILE=sqlite_rollup.c
             OPTION2="$OPTION2 -DSRC_SQLITE_EXTFNC_C2="
             ;;
         zlib_base.c)
-            FILE=sqlite3_rollup.c
+            FILE=sqlite_rollup.c
             OPTION2="$OPTION2 -DSRC_ZLIB_BASE_C2="
             ;;
         esac
-        # optimization - skip rebuild of sqlite3_rollup.c if possible
-        if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite3_rollup.c ]
+        # optimization - skip rebuild of sqlite_rollup.c if possible
+        if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite_rollup.c ]
         then
             printf "shCiBuildWasm - skip $FILE\n" 1>&2
             continue
         fi
         OPTION2="$OPTION2 -DHAVE_UNISTD_H="
-        OPTION2="$OPTION2 -DSQLITE_C2="
+        OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
     done
@@ -250,8 +250,8 @@ shCiBuildWasm() {(set -e
         -s WASM=1 \
         -s WASM_BIGINT \
         build/zlib_base.c.wasm.o \
-        build/sqlite3_rollup.c.wasm.o \
-        build/sqlite3_extfnc.c.wasm.o \
+        build/sqlite_rollup.c.wasm.o \
+        build/sqlite_extfnc.c.wasm.o \
         build/sqlmath_base.c.wasm.o \
         build/sqlmath_custom.c.wasm.o \
         #
@@ -463,7 +463,7 @@ shCiTestNodejs() {(set -e
         # create file Manifest.in
         if [ -d .git/ ]
         then
-            git ls-tree -lr --name-only HEAD | sed "s|^|include |" > Manifest.in
+            git ls-tree -r --name-only HEAD | sed "s|^|include |" > Manifest.in
         fi
         # build nodejs c-addon
         # build python c-extension
@@ -497,11 +497,11 @@ shSqlmathUpdate() {(set -e
     then
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
-        shRollupFetch sqlite3_rollup.c
+        shRollupFetch sqlite_rollup.c
         shRollupFetch sqlmath/sqlmath_dbapi2.py
         git grep '3\.39\.[^4]' \
             ":(exclude)CHANGELOG.md" \
-            ":(exclude)sqlite3_rollup.c" \
+            ":(exclude)sqlite_rollup.c" \
             || true
         git grep 'autoconf-[0-9]' | grep -v CHANGELOG \
             | grep -v '3390400' || true
@@ -517,7 +517,7 @@ shSqlmathUpdate() {(set -e
             indent.exe \
             index.html \
             setup.py \
-            sqlite3_rollup.c \
+            sqlite_rollup.c \
             sqlmath.mjs \
             sqlmath/__init__.py \
             sqlmath/sqlmath_dbapi2.py \
