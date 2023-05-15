@@ -4,6 +4,7 @@
 - none
 
 # v2023.5.1-beta
+- jslint - Add grammar for regexp-named-capture-group and regexp-named-backreference.
 - betadog - Reconcile differences with betadog.
 - python - Successfully published first pypi package version sqlmath@v0.0.5.
 - ci - Rename shell-function shRawLibFetch() to shRollupFetch().
