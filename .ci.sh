@@ -51,8 +51,10 @@ shCiBaseCustom() {(set -e
     then
         cp -a .github_cache/* . || true # js-hack - */
     fi
+    # cleanup
+    rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath.* && mkdir -p build/
     # run nodejs-ci
-    shCiBuildNodejs
+    shCiTestNodejs
     if (shCiMatrixIsmainName)
     then
         shImageLogoCreate &
@@ -146,23 +148,6 @@ shCiBaseCustomArtifactUpload() {(set -e
     # debug
     shGitLsTree
     )
-)}
-
-shCiBuildExt() {(set -e
-# this function will build and compile c-extension
-    unset npm_config_mode_test
-    npm_config_mode_setup=1 node --input-type=module -e '
-import {ciBuildExt} from "./sqlmath.mjs";
-ciBuildExt({process});
-' "$@" # '
-)}
-
-shCiBuildNodejs() {(set -e
-# this function will build binaries in nodejs
-    # cleanup
-    rm -rf _sqlmath.* build/ sqlmath/_sqlmath.*
-    mkdir -p build/
-    shCiTestNodejs
 )}
 
 shCiBuildWasm() {(set -e
@@ -460,16 +445,49 @@ shCiTestNodejs() {(set -e
             sqlmath_jenks.c
         # lint js-file
         node jslint.mjs .
-        # create file Manifest.in
+        # create file MANIFEST.in
+        # git ls-tree -r --name-only HEAD | sed "s|^|include |" > MANIFEST.in
         if [ -d .git/ ]
         then
-            git ls-tree -r --name-only HEAD | sed "s|^|include |" > Manifest.in
+            git ls-tree -r --name-only HEAD | sed "s|^|include |" > MANIFEST.in
         fi
+        # init build/xxx.c
+        python setup.py build_ext_init
         # build nodejs c-addon
+        PID_LIST=""
+        (
+        unset npm_config_mode_test
+        npm_config_mode_setup=1 node --input-type=module -e '
+import {ciBuildExt} from "./sqlmath.mjs";
+ciBuildExt({process});
+' "$@" # '
+        ) &
+        PID_LIST="$PID_LIST $!"
         # build python c-extension
-        python setup.py build_ext
+        python setup.py build_ext &
+        PID_LIST="$PID_LIST $!"
+        shPidListWait build_ext "$PID_LIST"
     fi;
+    # test zlib
+    PID_LIST=""
+    (
+    printf "\ntest zlib\n"
+    if [ "Hello world!" = "$( \
+        printf "Hello world!\n" \
+            | ./build/SRC_ZLIB_TEST_MINIGZIP.exe \
+            | ./build/SRC_ZLIB_TEST_MINIGZIP.exe -d \
+        )" ] \
+        && ./build/SRC_ZLIB_TEST_EXAMPLE.exe ./build/zlib_test_file
+    then
+        printf "\n    *** zlib test OK ***\n"
+    else
+        printf "\n    *** zlib test FAILED ***\n"
+        exit 1
+    fi
+    ) &
+    PID_LIST="$PID_LIST $!"
     # test nodejs
+    (
     rm -f *~ .*test.sqlite
     COVERAGE_EXCLUDE="--exclude=jslint.mjs"
     if (node --eval '
@@ -486,8 +504,12 @@ require("assert")(require("./package.json").name !== "sqlmath");
     else
         shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
     fi
+    ) &
+    PID_LIST="$PID_LIST $!"
     # test python
-    python setup.py test
+    python setup.py test &
+    PID_LIST="$PID_LIST $!"
+    shPidListWait test "$PID_LIST"
 )}
 
 shSqlmathUpdate() {(set -e

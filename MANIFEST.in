@@ -6,7 +6,7 @@ include .gitignore
 include .npmignore
 include CHANGELOG.md
 include LICENSE
-include Manifest.in
+include MANIFEST.in
 include README.md
 include asset_image_folder_open_solid.svg
 include asset_image_github_brands.svg
