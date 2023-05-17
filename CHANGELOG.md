@@ -4,6 +4,7 @@
 - none
 
 # v2023.5.1-beta
+- sqlite - Remove hacky sqlite-extension-function.
 - python - Migrate python-driver from pysqlite3 to cpython.
 - jslint - Add grammar for regexp-named-capture-group and regexp-named-backreference.
 - betadog - Reconcile differences with betadog.

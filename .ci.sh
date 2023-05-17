@@ -15,7 +15,7 @@ shCiArtifactUploadCustom() {(set -e
     git fetch origin artifact
     git checkout origin/artifact "branch-$GITHUB_BRANCH0"
     mv "branch-$GITHUB_BRANCH0"/* .
-    git add -f _sqlmath.* sqlmath_wasm.*
+    git add -f _sqlmath* sqlmath_wasm.*
     # screenshot html
     node --input-type=module --eval '
 import moduleChildProcess from "child_process";
@@ -52,7 +52,7 @@ shCiBaseCustom() {(set -e
         cp -a .github_cache/* . || true # js-hack - */
     fi
     # cleanup
-    rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath.* && mkdir -p build/
+    rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
     # run nodejs-ci
     shCiTestNodejs
     if (shCiMatrixIsmainName)
@@ -119,8 +119,8 @@ shCiBaseCustomArtifactUpload() {(set -e
     cp ../../.git/config .git/config
     # update dir branch-$GITHUB_BRANCH0
     mkdir -p "branch-$GITHUB_BRANCH0"
-    cp ../../_sqlmath.* "branch-$GITHUB_BRANCH0"
-    cp ../../sqlmath/_sqlmath.* "branch-$GITHUB_BRANCH0"
+    cp ../../_sqlmath* "branch-$GITHUB_BRANCH0"
+    cp ../../sqlmath/_sqlmath* "branch-$GITHUB_BRANCH0"
     if [ -f ../../sqlmath_wasm.wasm ]
     then
         cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
@@ -131,7 +131,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     fi
     # git commit
     git add .
-    git add -f "branch-$GITHUB_BRANCH0"/_sqlmath.*
+    git add -f "branch-$GITHUB_BRANCH0"/_sqlmath*
     if (git commit -am "$COMMIT_MESSAGE")
     then
         # sync before push
@@ -168,17 +168,12 @@ shCiBuildWasm() {(set -e
     for FILE in \
         zlib_base.c \
         sqlite_rollup.c \
-        sqlite_extfnc.c \
         sqlmath_base.c \
         sqlmath_custom.c
     do
         OPTION2=""
         FILE2="build/$(basename "$FILE").wasm.o"
         case "$FILE" in
-        sqlite_extfnc.c)
-            FILE=sqlite_rollup.c
-            OPTION2="$OPTION2 -DSRC_SQLITE_EXTFNC_C2="
-            ;;
         zlib_base.c)
             FILE=sqlite_rollup.c
             OPTION2="$OPTION2 -DSRC_ZLIB_BASE_C2="
@@ -236,7 +231,6 @@ shCiBuildWasm() {(set -e
         -s WASM_BIGINT \
         build/zlib_base.c.wasm.o \
         build/sqlite_rollup.c.wasm.o \
-        build/sqlite_extfnc.c.wasm.o \
         build/sqlmath_base.c.wasm.o \
         build/sqlmath_custom.c.wasm.o \
         #
@@ -421,9 +415,9 @@ shCiNpmPublishCustom() {(set -e
     # fetch artifact
     git fetch origin artifact --depth=1
     git checkout origin/artifact \
-        "branch-beta/_sqlmath."* \
-        "branch-beta/sqlmath_wasm"*
-    cp -a branch-beta/_sqlmath.* .
+        branch-beta/_sqlmath* \
+        branch-beta/sqlmath_wasm*
+    cp -a branch-beta/_sqlmath* .
     cp -a branch-beta/sqlmath_wasm.* .
     # npm-publish
     npm publish --access public
@@ -472,6 +466,11 @@ ciBuildExt({process});
     PID_LIST=""
     (
     printf "\ntest zlib\n"
+    if [ ! -f build/SRC_ZLIB_TEST_EXAMPLE.exe ]
+    then
+        printf "\n    *** zlib test SKIP ***\n"
+        exit
+    fi
     if [ "Hello world!" = "$( \
         printf "Hello world!\n" \
             | ./build/SRC_ZLIB_TEST_MINIGZIP.exe \

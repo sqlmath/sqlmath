@@ -34,15 +34,17 @@ async def build_ext_async(): # noqa=C901
         match cdefine:
             case "SRC_SQLITE_SHELL":
                 file_exe = (
-                    file_lib
-                    .replace("_sqlmath", "_sqlmath_shell")
-                    .replace(".pyd", suffix_exe)
+                    ".".join(
+                        file_lib
+                        .replace("_sqlmath", "_sqlmath_shell")
+                        .split(".")[:-1],
+                    )
+                    + (".exe" if is_win32 else "")
                 )
                 file_obj_list = [
                     "build/SRC_ZLIB_BASE.obj",
                     #
                     "build/SRC_SQLITE_BASE.obj",
-                    "build/SRC_SQLITE_EXTFNC.obj",
                     "build/SRC_SQLITE_SHELL.obj",
                     #
                     "build/SQLMATH_BASE.obj",
@@ -50,7 +52,7 @@ async def build_ext_async(): # noqa=C901
                 ]
         if cdefine != "SRC_SQLITE_PYTHON" and pathlib.Path(file_exe).exists():
             return
-        if sys.platform == "win32":
+        if is_win32:
             arg_list = [
                 exe_link,
                 #
@@ -95,23 +97,20 @@ async def build_ext_async(): # noqa=C901
             "-DSRC_SQLITE_BASE_C2=",
             "-D_REENTRANT=1",
         ]
-        if not npm_config_mode_debug:
-            if sys.platform == "win32":
-                arg_list += [
-                    "/W1",
-                ]
-            else:
-                arg_list += [
-                    "-Wno-all",
-                    "-Wno-implicit-fallthrough",
-                    "-Wno-unused-parameter",
-                ]
-        elif sys.platform == "win32":
+        if not npm_config_mode_debug and is_win32:
+            arg_list += ["/W1"]
+        elif not npm_config_mode_debug:
+            arg_list += [
+                "-Wno-all",
+                "-Wno-implicit-fallthrough",
+                "-Wno-unused-parameter",
+            ]
+        elif is_win32:
             arg_list += ["/W3"]
         else:
             arg_list += ["-Wextra"]
 # https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
-        if sys.platform == "win32":
+        if is_win32:
             arg_list = [
                 exe_cl,
                 *arg_list,
@@ -154,6 +153,7 @@ async def build_ext_async(): # noqa=C901
     cc_ldshared = sysconfig.get_config_var("LDSHARED") or ""
     dir_wheel = f"build/bdist.{sysconfig.get_platform()}/wheel/sqlmath"
     file_lib = f"_sqlmath{sysconfig.get_config_var('EXT_SUFFIX')}"
+    is_win32 = sys.platform == "win32"
     path_include = [
         sysconfig.get_path("platinclude"),
         sysconfig.get_path("include"),
@@ -171,11 +171,10 @@ async def build_ext_async(): # noqa=C901
         "win32": "x86",
     }.get(sysconfig.get_platform())
     npm_config_mode_debug = os.environ.get("npm_config_mode_debug") # noqa=SIM112
-    suffix_exe = sysconfig.get_config_var("EXE")
     #
     # build_ext - init env
     env = os.environ
-    if sys.platform == "win32":
+    if is_win32:
         env = subprocess.check_output([
             (
                 (
@@ -240,7 +239,6 @@ async def build_ext_async(): # noqa=C901
             "SRC_ZLIB_TEST_MINIGZIP",
             #
             "SRC_SQLITE_BASE",
-            "SRC_SQLITE_EXTFNC",
             "SRC_SQLITE_PYTHON",
             "SRC_SQLITE_SHELL",
             #
@@ -267,18 +265,16 @@ async def build_ext_async(): # noqa=C901
         "build/SRC_ZLIB_BASE.obj",
         #
         "build/SRC_SQLITE_BASE.obj",
-        "build/SRC_SQLITE_EXTFNC.obj",
-        # "build/SRC_SQLITE_SHELL.obj",
         "build/SRC_SQLITE_PYTHON.obj",
         #
         "build/SQLMATH_BASE.obj",
         "build/SQLMATH_CUSTOM.obj",
     ]
-    if sys.platform == "win32":
+    if is_win32:
         arg_list = [
             exe_link,
-            *arg_list,
             *[f"/LIBPATH:{path}" for path in path_library],
+            *arg_list,
             #
             "/INCREMENTAL:NO", # optimization - reduce filesize
             "/LTCG", # from cl.exe /GL
@@ -293,10 +289,10 @@ async def build_ext_async(): # noqa=C901
         ]
     else:
         arg_list = [
-            cc_ldshared.strip().split(" ")[0],
+            *cc_ldshared.strip().split(" "),
             *arg_list,
+            #
             *cc_ldflags.strip().split(" "),
-            *cc_ldshared.strip().split(" ")[1:],
             #
             "-o", f"build/{file_lib}",
         ]
@@ -326,9 +322,8 @@ def build_ext_init():
         SRC_ZLIB_TEST_MINIGZIP \\
         \\
         SRC_SQLITE_BASE \\
-        SRC_SQLITE_EXTFNC \\
-        SRC_SQLITE_SHELL \\
-        SRC_SQLITE_PYTHON
+        SRC_SQLITE_PYTHON \\
+        SRC_SQLITE_SHELL
     do
         printf "
 #define SRC_SQLITE_BASE_C2

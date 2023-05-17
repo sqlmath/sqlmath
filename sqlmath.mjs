@@ -378,14 +378,8 @@ async function ciBuildExt1NodejsConfigure({
                 ],
                 "sources": [
                     "build/SRC_ZLIB_BASE.c",
-                    //
                     "build/SRC_SQLITE_BASE.c",
-                    "build/SRC_SQLITE_EXTFNC.c",
-                    // "build/SRC_SQLITE_SHELL.c",
-                    // "build/SRC_SQLITE_PYTHON.c",
-                    //
                     "build/SQLMATH_BASE.c"
-                    // "build/SQLMATH_CUSTOM.c"
                 ],
                 "target_name": "SRC_SQLITE_BASE",
                 "type": "static_library",
