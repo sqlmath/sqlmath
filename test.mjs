@@ -1536,8 +1536,8 @@ SELECT
             ]) {
                 return [
                     data.concat([
-                        undefined, undefined, undefined, undefined,
-                        8, 7, 6, 5, 4, 3, 2, 1,
+                        undefined, -Infinity, Infinity, NaN,
+                        "8", 7, 6, "5", "4", 3, 2, "1",
                         undefined
                     ]),
                     kk,
@@ -1551,8 +1551,10 @@ SELECT
             let data2;
             let valExpectedMdn;
             let valExpectedStd = 0;
-            data2 = data.filter(function (elem) {
-                return elem !== undefined;
+            data2 = data.map(function (elem) {
+                return Number(elem);
+            }).filter(function (elem) {
+                return Number.isFinite(elem);
             }).sort();
             valExpectedMdn = (
                 data2.length % 2 === 0

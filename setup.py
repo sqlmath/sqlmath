@@ -175,7 +175,7 @@ async def build_ext_async(): # noqa=C901
     # build_ext - init env
     env = os.environ
     if is_win32:
-        env = subprocess.check_output([
+        env = subprocess.check_output([ # noqa=ASYNC101
             (
                 (
                     os.environ.get("PROGRAMFILES(X86)")
@@ -190,7 +190,7 @@ async def build_ext_async(): # noqa=C901
             "-property", "installationPath",
             "-products", "*",
         ], encoding="mbcs", errors="strict").strip()
-        env = subprocess.check_output(
+        env = subprocess.check_output( # noqa=ASYNC101
             [
                 "cmd.exe",
                 "/u",
@@ -296,17 +296,21 @@ async def build_ext_async(): # noqa=C901
             #
             "-o", f"build/{file_lib}",
         ]
-    subprocess.run(arg_list, check=True, env=env)
+    subprocess.run(arg_list, check=True, env=env) # noqa=ASYNC101
     #
     # build_ext - copy c-extension to bdist
-    subprocess.run(["sh", "-c", f"""
+    subprocess.run([ # noqa=ASYNC101
+        "sh",
+        "-c",
+        f"""
 (set -e
     mkdir -p "{dir_wheel}/"
     cp "build/{file_lib}" "sqlmath/{file_lib}"
     cp "build/{file_lib}" "{dir_wheel}/{file_lib}"
     cp sqlmath/*.py "{dir_wheel}/"
 )
-    """], check=True)
+        """,
+    ], check=True)
 
 
 def build_ext_init():

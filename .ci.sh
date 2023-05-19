@@ -158,7 +158,8 @@ shCiBuildWasm() {(set -e
     # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
     # build wasm
     printf "shCiBuildWasm\n" 1>&2
-    OPTION1="$OPTION1 -Wall"
+    OPTION1="$OPTION1 -Wextra"
+    OPTION1="$OPTION1 -Wno-unused-parameter"
     OPTION1="$OPTION1 -flto"
     # debug
     # OPTION1="$OPTION1 -O0"
@@ -219,7 +220,6 @@ shCiBuildWasm() {(set -e
     emcc $OPTION1 $OPTION2 \
         --memory-init-file 0 \
         --pre-js sqlmath_wrapper_wasm.js \
-        -Wall \
         -o build/sqlmath_wasm.js \
         -s ALLOW_MEMORY_GROWTH=1 \
         -s ALLOW_TABLE_GROWTH=1 \
@@ -337,6 +337,8 @@ shLintPython() {(set -e
     (
     printf "\n\nlint ruff\n"
     OPTION=""
+    # autofix
+    OPTION="$OPTION --fix"
     # ANN flake8-annotations
     OPTION="$OPTION --ignore=ANN"
     # obsolete - one-blank-line-before-class (D203)
@@ -370,10 +372,6 @@ shLintPython() {(set -e
     # * `print` found
     OPTION="$OPTION --ignore=T201"
     OPTION="$OPTION --select=ALL"
-    if [ "$npm_config_mode_lint_fix" ]
-    then
-        OPTION="$OPTION --fix"
-    fi
     ruff check $OPTION $FILE_LIST
     ) &
     PID_LIST="$PID_LIST $!"
@@ -405,7 +403,7 @@ shCiLintCustom() {(set -e
     then
         pip install pycodestyle ruff
     fi
-    npm_config_mode_lint_fix=1 shLintPython \
+    shLintPython \
         setup.py \
         sqlmath/__init__.py
 )}

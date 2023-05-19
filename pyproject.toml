@@ -2,7 +2,7 @@
 [build-system]
 requires = [
     "pycodestyle >= 2.10.0",
-    "ruff >= 0.0.265",
+    "ruff >= 0.0.269",
     "setuptools >= 65.5.0",
 ]
 build-backend = "setuptools.build_meta"
