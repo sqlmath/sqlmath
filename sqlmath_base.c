@@ -92,8 +92,8 @@ file sqlmath_h - start
 #define UNUSED_PARAMETER(x) ((void)(x))
 
 
-// this function will exec <sql> and if <errcode> is not ok,
-// throw <baton>->errmsg with given sqlite-<errcode>
+// This function will exec <sql> and if <errcode> is not ok,
+// throw <baton>->errmsg with given sqlite-<errcode>.
 #define JSBATON_ASSERT_OK() \
     if (errcode != SQLITE_OK) { \
         if (baton != NULL && baton->errmsg[0] == '\x00') { \
@@ -108,13 +108,13 @@ file sqlmath_h - start
         goto catch_error; \
     }
 
-// this function will if <cond> is falsy, terminate process with <msg>
+// This function will if <cond> is falsy, terminate process with <msg>.
 #define NAPI_ASSERT_FATAL(cond, msg) \
     if (!(cond)) { \
         napi_fatal_error(__func__, NAPI_AUTO_LENGTH , msg, NAPI_AUTO_LENGTH); \
     }
 
-// this function will assert <errcode> == napi_ok in <env>
+// This function will assert <errcode> == napi_ok in <env>.
 #define NAPI_ASSERT_OK() \
     if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) { \
         return NULL; \
@@ -831,7 +831,7 @@ SQLMATH_API void dbExec(
 SQLMATH_API void dbFileImportOrExport(
     Jsbaton * baton
 ) {
-// This function will load/save <zFilename> to/from <db>
+// This function will load/save <zFilename> to/from <db>.
     // declare var
     int errcode = 0;
     sqlite3 *db = (sqlite3 *) baton->argv[0];
@@ -848,7 +848,7 @@ SQLMATH_API void dbFileImportOrExport(
 SQLMATH_API void dbNoop(
     Jsbaton * baton
 ) {
-// this function will do nothing
+// This function will do nothing.
     UNUSED_PARAMETER(baton);
 }
 
@@ -885,7 +885,7 @@ SQLMATH_API void dbOpen(
 SQLMATH_API void vector99_buf_free(
     Vector99 * vec99
 ) {
-// this function will free <vec99>->buf and reset everything to zero
+// This function will free <vec99>->buf and reset everything to zero.
     if (vec99 == NULL) {
         return;
     }
@@ -896,7 +896,7 @@ SQLMATH_API void vector99_buf_free(
 SQLMATH_API int vector99_buf_malloc(
     Vector99 * vec99
 ) {
-// this function will malloc <vec99>->buf, or return SQLITE_NOMEM
+// This function will malloc <vec99>->buf, or return SQLITE_NOMEM.
     static const int alloc0 = 256;
     if (vec99 == NULL) {
         return SQLITE_NOMEM;
@@ -915,14 +915,14 @@ SQLMATH_API int vector99_buf_malloc(
 SQLMATH_API int vector99_nomem(
     const Vector99 * vec99
 ) {
-// this function will check if <vec99>->buf is null
+// This function will check if <vec99>->buf is null.
     return vec99 == NULL || vec99->buf == NULL;
 }
 
 SQLMATH_API double vector99_pop_front(
     Vector99 * vec99
 ) {
-// this function will pop_front <vec99>, or return NAN if empty
+// This function will pop_front <vec99>, or return NAN if empty.
     if (vector99_nomem(vec99) || vec99->size <= 0) {
         return NAN;
     }
@@ -936,8 +936,8 @@ SQLMATH_API int vector99_push_back(
     Vector99 * vec99,
     double val
 ) {
-// this function will push_back <val> to <vec99>,
-// and dynamically grow <vec99> if necessary
+// This function will push_back <val> to <vec99>,
+// and dynamically grow <vec99> if necessary.
     // error - nomem
     if (vector99_nomem(vec99)) {
         return SQLITE_NOMEM;
@@ -969,7 +969,7 @@ SQLMATH_API void vector99_result_blob(
     Vector99 * vec99,
     sqlite3_context * context
 ) {
-// this function will return <vec99> as result-blob in given <context>
+// This function will return <vec99> as result-blob in given <context>.
     sqlite3_result_blob(context, (const char *) vec99->buf,
         vec99->size * sizeof(double),
         // destructor
@@ -981,7 +981,7 @@ SQLMATH_API void vector99_result_blob(
 SQLMATH_API int doubleSign(
     const double aa
 ) {
-// this function will return sign of <aa>
+// This function will return sign of <aa>.
     return aa < 0 ? -1 : aa > 0 ? 1 : 0;
 }
 
@@ -989,7 +989,7 @@ SQLMATH_API int doubleSortCompare(
     const void *aa,
     const void *bb
 ) {
-// this function will compare <aa> with <bb>
+// This function will compare <aa> with <bb>.
     const double cc = *(double *) aa - *(double *) bb;
     return cc < 0 ? -1 : cc > 0 ? 1 : 0;
 }
@@ -997,7 +997,7 @@ SQLMATH_API int doubleSortCompare(
 SQLMATH_API const char *jsbatonValueErrmsg(
     Jsbaton * baton
 ) {
-// this function will return <baton>->errmsg
+// This function will return <baton>->errmsg.
     return (const char *) baton->errmsg;
 }
 
@@ -1005,7 +1005,7 @@ SQLMATH_API const char *jsbatonValueStringArgi(
     Jsbaton * baton,
     int argi
 ) {
-// this function will return string-value from <baton> at given <argi>
+// This function will return string-value from <baton> at given <argi>.
     if (baton->argv[argi] == 0) {
         return NULL;
     }
@@ -1014,14 +1014,14 @@ SQLMATH_API const char *jsbatonValueStringArgi(
 
 SQLMATH_API int noop(
 ) {
-// this function will do nothing except return 0
+// This function will do nothing except return 0.
     return 0;
 }
 
 SQLMATH_API double sqlite3_value_double_or_nan(
     sqlite3_value * arg
 ) {
-// this function will return double if finite else nan
+// This function will return double if finite else nan.
     switch (sqlite3_value_numeric_type(arg)) {
     case SQLITE_INTEGER:
     case SQLITE_FLOAT:
@@ -1044,7 +1044,7 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
     const char *file,
     int line
 ) {
-// this function will write <errmsg> to <buf> with additional trace-info
+// This function will write <errmsg> to <buf> with additional trace-info.
     if (snprintf(buf, SIZEOF_MESSAGE_DEFAULT, "%s%s\n    at %s (%s:%d)",
             prefix, errmsg, func, file, line) < 0) {
         abort();
@@ -1056,7 +1056,7 @@ SQLMATH_API void str99ArrayAppendDouble(
     sqlite3_str * str99,
     const double val
 ) {
-// this function will append double <val> to <str99>
+// This function will append double <val> to <str99>.
     sqlite3_str_append(str99, (const char *) &val, 8);
 }
 
@@ -1065,7 +1065,7 @@ SQLMATH_API void str99ArrayAppendJsonarray(
     const char *json,
     int nn
 ) {
-// this function will append binary-Float64Array from json-encoded-flat-array
+// This function will append binary-Float64Array from json-encoded-flat-array.
     // declare var
     int ii = 0;
     int jj = 0;
@@ -1126,7 +1126,7 @@ SQLMATH_API void str99JsonAppendFloat64array(
     const double *arr,
     int nn
 ) {
-// this function will append json-encoded-flat-array from binary-Float64Array
+// This function will append json-encoded-flat-array from binary-Float64Array.
     sqlite3_str_appendchar(str99, 1, '[');
     while (1) {
         nn -= 1;
@@ -1151,7 +1151,7 @@ SQLMATH_API void str99JsonAppendJenks(
     const double *arr,
     int nn
 ) {
-// this function will append json-encoded-flat-array from jenks-result
+// This function will append json-encoded-flat-array from jenks-result.
     // jenks - null-case
     if (kk <= 0 || nn <= 0) {
         sqlite3_str_appendchar(str99, 1, '[');
@@ -1173,7 +1173,7 @@ SQLMATH_API void str99ResultBlob(
     sqlite3_str * str99,
     sqlite3_context * context
 ) {
-// this function will return <str99> as result-blob in given <context>
+// This function will return <str99> as result-blob in given <context>.
     sqlite3_result_blob(context, (const char *) sqlite3_str_value(str99),
         sqlite3_str_length(str99),
         // destructor
@@ -1184,7 +1184,7 @@ SQLMATH_API void str99ResultText(
     sqlite3_str * str99,
     sqlite3_context * context
 ) {
-// this function will return <str99> as result-text in given <context>
+// This function will return <str99> as result-text in given <context>.
     sqlite3_result_text(context, (const char *) sqlite3_str_value(str99),
         sqlite3_str_length(str99),
         // destructor
@@ -1197,7 +1197,7 @@ SQLMATH_API void str99ResultText(
 SQLMATH_FUNC static void sql_avg_ema_value(
     sqlite3_context * context
 ) {
-// this function will aggregate exponential-moving-average
+// This function will aggregate exponential-moving-average.
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
     sqlite3_result_double(context, vec99->buf[0]);
@@ -1206,7 +1206,7 @@ SQLMATH_FUNC static void sql_avg_ema_value(
 SQLMATH_FUNC static void sql_avg_ema_final(
     sqlite3_context * context
 ) {
-// this function will aggregate exponential-moving-average
+// This function will aggregate exponential-moving-average.
     // vec99 - value
     sql_avg_ema_value(context);
     // vec99 - init
@@ -1220,7 +1220,7 @@ SQLMATH_FUNC static void sql_avg_ema_inverse(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will aggregate exponential-moving-average
+// This function will aggregate exponential-moving-average.
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
     // vec99 - init
@@ -1233,7 +1233,7 @@ SQLMATH_FUNC static void sql_avg_ema_step(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will aggregate exponential-moving-average
+// This function will aggregate exponential-moving-average.
     UNUSED_PARAMETER(argc);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
@@ -1261,7 +1261,7 @@ static char *base64Encode(
     const unsigned char *blob,
     int *nn
 ) {
-// this function will base64-encode <blob> to <text>
+// This function will base64-encode <blob> to <text>.
     if (blob == NULL || *nn < 0) {
         *nn = 0;
     }
@@ -1324,7 +1324,7 @@ SQLMATH_FUNC static void sql_btobase64_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will convert blob to base64-encoded-text
+// This function will convert blob to base64-encoded-text.
     UNUSED_PARAMETER(argc);
     // declare var
     char *text = NULL;
@@ -1350,7 +1350,7 @@ SQLMATH_FUNC static void sql_btotext_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will convert blob to text
+// This function will convert blob to text.
     UNUSED_PARAMETER(argc);
     sqlite3_result_text(context, (const char *) sqlite3_value_text(argv[0]),
         -1, SQLITE_TRANSIENT);
@@ -1362,7 +1362,7 @@ SQLMATH_FUNC static void sql_castrealorzero_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will cast <argv>[0] to double or zero
+// This function will cast <argv>[0] to double or zero.
     UNUSED_PARAMETER(argc);
     const double num = sqlite3_value_double(argv[0]);
     sqlite3_result_double(context, isfinite(num) ? num : 0);
@@ -1373,7 +1373,7 @@ SQLMATH_FUNC static void sql_casttextorempty_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will cast <argv>[0] to text or empty-string
+// This function will cast <argv>[0] to text or empty-string.
     UNUSED_PARAMETER(argc);
     switch (sqlite3_value_type(argv[0])) {
         // case SQLITE_BLOB:
@@ -1415,7 +1415,7 @@ SQLMATH_FUNC static void sql_copyblob_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will copy blob/text/value <argv>[0]
+// This function will copy blob/text/value <argv>[0].
     UNUSED_PARAMETER(argc);
     sqlite3_result_value(context, argv[0]);
 }
@@ -1425,7 +1425,7 @@ SQLMATH_FUNC static void sql_cot_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will return cot(argv[0])
+// This function will return cot(argv[0]).
     UNUSED_PARAMETER(argc);
     sqlite3_result_double(context,
         1.0 / tan(sqlite3_value_double_or_nan(argv[0])));
@@ -1436,7 +1436,7 @@ SQLMATH_FUNC static void sql_coth_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will return coth(argv[0])
+// This function will return coth(argv[0]).
     UNUSED_PARAMETER(argc);
     sqlite3_result_double(context,
         1.0 / tanh(sqlite3_value_double_or_nan(argv[0])));
@@ -1497,8 +1497,8 @@ static void str99arrCleanup(
 SQLMATH_FUNC static void sql_jenks_concat_final(
     sqlite3_context * context
 ) {
-// this function will calculate <kk> jenks-natrual-breaks in each column <ii>,
-// and return a json array
+// This function will calculate <kk> jenks-natrual-breaks in each column <ii>,
+// and return a json array.
     // str99arr - init
     sqlite3_str **str99arr =
         (sqlite3_str **) sqlite3_aggregate_context(context, 0);
@@ -1543,8 +1543,8 @@ SQLMATH_FUNC static void sql_jenks_concat_step(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will calculate <kk> jenks-natrual-breaks in each column <ii>,
-// and return a json array
+// This function will calculate <kk> jenks-natrual-breaks in each column <ii>,
+// and return a json array.
     // init kk
     if (argc < 2) {
         return;
@@ -1631,7 +1631,7 @@ SQLMATH_FUNC static void sql_jsonfromfloat64array_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will create json-encoded-flat-array from binary-Float64Array
+// This function will create json-encoded-flat-array from binary-Float64Array.
     UNUSED_PARAMETER(argc);
     // declare var
     int errcode = 0;
@@ -1654,7 +1654,7 @@ SQLMATH_FUNC static void sql_jsontofloat64array_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will create binary-Float64Array from json-encoded-flat-array
+// This function will create binary-Float64Array from json-encoded-flat-array.
     UNUSED_PARAMETER(argc);
     // declare var
     int errcode = 0;
@@ -1676,7 +1676,7 @@ SQLMATH_API double marginoferror95(
     double nn,
     double pp
 ) {
-// this function will calculate margin-of-error sqrt(pp*(1-pp)/nn)
+// This function will calculate margin-of-error sqrt(pp*(1-pp)/nn).
     return 1.9599639845400542 * sqrt(pp * (1 - pp) / nn);
 }
 
@@ -1685,7 +1685,7 @@ SQLMATH_FUNC static void sql_marginoferror95_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will calculate margin-of-error sqrt(pp*(1-pp)/nn)
+// This function will calculate margin-of-error sqrt(pp*(1-pp)/nn).
     UNUSED_PARAMETER(argc);
     sqlite3_result_double(context,
         marginoferror95(sqlite3_value_double_or_nan(argv[0]),
@@ -1698,7 +1698,7 @@ SQLMATH_FUNC static void sql_marginoferror95_func(
 SQLMATH_FUNC static void sql_matrix2d_concat_final(
     sqlite3_context * context
 ) {
-// this function will concat rows of nCol doubles to a 2d-matrix
+// This function will concat rows of nCol doubles to a 2d-matrix.
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
     // vec99 - null-case
@@ -1715,7 +1715,7 @@ SQLMATH_FUNC static void sql_matrix2d_concat_step(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will concat rows of nCol doubles to a 2d-matrix
+// This function will concat rows of nCol doubles to a 2d-matrix.
     // declare var
     int errcode = 0;
     // vec99 - init
@@ -1744,7 +1744,7 @@ static double quickselect(
     const int nn,
     const int kk
 ) {
-// this function will find <kk>-th element in <arr> using quickselect-algorithm
+// This function will find <kk>-th element in <arr> using quickselect-algorithm.
 // https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
     if (nn <= 0) {
         return 0;
@@ -1814,8 +1814,8 @@ SQLMATH_API double quantile(
     const int nn,
     const double pp
 ) {
-// this function will find <pp>-th-quantile element in <arr>
-// using quickselect-algorithm
+// This function will find <pp>-th-quantile element in <arr>
+// using quickselect-algorithm.
 // https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
     if (!(nn >= 1)) {
         return NAN;
@@ -1833,7 +1833,7 @@ SQLMATH_API double quantile(
 SQLMATH_FUNC static void sql_quantile_final(
     sqlite3_context * context
 ) {
-// this function will aggregate kth-quantile element
+// This function will aggregate kth-quantile element.
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
     // vec99 - null-case
@@ -1853,7 +1853,7 @@ static void sql_quantile_step0(
     sqlite3_value ** argv,
     const double pp
 ) {
-// this function will aggregate kth-quantile element
+// This function will aggregate kth-quantile element.
     UNUSED_PARAMETER(argc);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
@@ -1876,7 +1876,7 @@ SQLMATH_FUNC static void sql_quantile_step(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will aggregate kth-quantile element
+// This function will aggregate kth-quantile element.
     sql_quantile_step0(context, argc, argv, sqlite3_value_double(argv[1]));
 }
 
@@ -1891,7 +1891,7 @@ SQLMATH_FUNC static void sql_median_step(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will aggregate kth-quantile element
+// This function will aggregate kth-quantile element.
     sql_quantile_step0(context, argc, argv, 0.5);
 }
 
@@ -1903,7 +1903,7 @@ SQLMATH_FUNC static void sql_roundorzero_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will round <argv>[0] to decimal <argv>[1]
+// This function will round <argv>[0] to decimal <argv>[1].
     UNUSED_PARAMETER(argc);
     if (sqlite3_value_numeric_type(argv[0]) == SQLITE_NULL) {
         sqlite3_result_double(context, 0);
@@ -1940,7 +1940,7 @@ SQLMATH_FUNC static void sql_random1_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will generate high-quality random-float between 0 <= xx < 1
+// This function will generate high-quality random-float between 0 <= xx < 1.
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
     static const double inv = 1.0 / 0x100000000;
@@ -1978,12 +1978,12 @@ typedef struct SlrElem {
     double caa;                 // coeff-alpha
     double cbb;                 // coeff-beta
     double crr;                 // coeff-correlation
-    double eaa;                 // stddev of coeff-alpha
-    double ebb;                 // stddev of coeff-beta
-    double eee;                 // stddev of yy - predicted
-    double exx;                 // stddev of xx
-    double exy;                 // stddev of xy
-    double eyy;                 // stddev of yy
+    double eaa;                 // stdev of coeff-alpha
+    double ebb;                 // stdev of coeff-beta
+    double err;                 // stdev of yy - predicted - residual
+    double exx;                 // stdev of xx
+    double exy;                 // stdev of xy
+    double eyy;                 // stdev of yy
     double mxx;                 // avg xx
     double myy;                 // avg yy
     double nnn;                 // number-of-samples
@@ -1995,8 +1995,8 @@ SQLMATH_API double stdev(
     const int nn,
     const double pp
 ) {
-// this function will find <pp>-th-stdev element in <arr>
-// using quickselect-algorithm
+// This function will find <pp>-th-stdev element in <arr>
+// using quickselect-algorithm.
 // https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
     if (nn <= 0) {
         return 0;
@@ -2014,7 +2014,7 @@ SQLMATH_API double stdev(
 SQLMATH_FUNC static void sql_stdev_final(
     sqlite3_context * context
 ) {
-// this function will aggregate kth-stdev element
+// This function will aggregate kth-stdev element.
     // pp - init
     SlrElem *pp = (SlrElem *) sqlite3_aggregate_context(context, sizeof(*pp));
     SQLITE3_RESULT_ERROR_MALLOC(pp);
@@ -2034,7 +2034,7 @@ static void sql_stdev_step(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will aggregate kth-stdev element
+// This function will aggregate kth-stdev element.
     UNUSED_PARAMETER(argc);
     // pp - init
     SlrElem *pp = (SlrElem *) sqlite3_aggregate_context(context, sizeof(*pp));
@@ -2080,7 +2080,7 @@ SQLMATH_FUNC static void sql_throwerror_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// this function will return sqlite3_result_error_code(argv[0])
+// This function will return sqlite3_result_error_code(argv[0]).
     UNUSED_PARAMETER(argc);
     // declare var
     int errcode = sqlite3_value_int(argv[0]);
@@ -2158,7 +2158,7 @@ static int napiAssertOk(
     int line,
     int errcode
 ) {
-// this function will throw error if <errcode> != napi_ok
+// This function will throw error if <errcode> != napi_ok.
 // derived from https://github.com/nodejs/node-addon-api/blob/3.2.1/napi-inl.h
 // typedef struct {
 //   const char* error_message;
@@ -2210,7 +2210,7 @@ static void jsbatonBufferFinalize(
     void *finalize_data,
     void *finalize_hint
 ) {
-// this function will finalize <finalize_data>
+// This function will finalize <finalize_data>.
     UNUSED_PARAMETER(env);
     UNUSED_PARAMETER(finalize_hint);
     // cleanup baton->bufv[ii]
@@ -2221,7 +2221,7 @@ static Jsbaton *jsbatonCreate(
     napi_env env,
     napi_callback_info info
 ) {
-// this function will create a baton for passing data between nodejs <-> c
+// This function will create a baton for passing data between nodejs <-> c.
     // declare var
     Jsbaton *baton = NULL;
     bool is_dataview;
@@ -2263,7 +2263,7 @@ static napi_value jsbatonExport(
     napi_env env,
     Jsbaton * baton
 ) {
-// this function will export c-data to js-data in <jsbaton>
+// This function will export c-data to js-data in <jsbaton>.
     // declare var
     int errcode = 0;
     napi_value val;
