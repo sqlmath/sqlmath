@@ -4,6 +4,7 @@
 - none
 
 # v2023.5.1-beta
+- jslint - Add grammar for "export async function ...".
 - sqlite - Remove hacky sqlite-extension-function.
 - python - Migrate python-driver from pysqlite3 to cpython.
 - jslint - Add grammar for regexp-named-capture-group and regexp-named-backreference.
