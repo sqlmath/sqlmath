@@ -61,6 +61,7 @@ let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
 let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
 let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
 let cModule;
+let cModulePath;
 let consoleError = console.error;
 let dbDict = new WeakMap(); // private-dict of sqlite-database-connections
 let dbFinalizationRegistry;
@@ -82,10 +83,21 @@ let debugInline = (function () {
     __consoleError = console.error; //jslint-ignore-line
     return debug;
 }());
+let moduleChildProcess;
+let moduleChildProcessSpawn;
+let moduleFs;
+let moduleFsInitResolveList;
+let modulePath;
+let moduleUrl;
+let {
+    npm_config_mode_debug,
+    npm_config_mode_setup,
+    npm_config_mode_test
+} = typeof process === "object" && process?.env;
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2023.4.22";
+let version = "v2023.5.25";
 
 function assertJsonEqual(aa, bb, message) {
 
@@ -227,6 +239,224 @@ async function cCallAsync(baton, cFuncName, ...argList) {
     }
 }
 
+async function childProcessSpawn2(command, args, option) {
+
+// This function will run child_process.spawn as a promise.
+
+    return await new Promise(function (resolve, reject) {
+        let bufList = [[], [], []];
+        let child;
+        let {
+            modeCapture,
+            modeDebug,
+            stdio
+        } = option;
+        if (modeDebug) {
+            consoleError(
+                `childProcessSpawn2 - ${command} ${JSON.stringify(args)}`
+            );
+        }
+        child = moduleChildProcessSpawn(
+            command,
+            args,
+            Object.assign({}, option, {
+                stdio: [
+                    "ignore",
+                    (
+                        modeCapture
+                        ? "pipe"
+                        : stdio[1]
+                    ),
+                    (
+                        modeCapture
+                        ? "pipe"
+                        : stdio[2]
+                    )
+                ]
+            })
+        );
+        if (modeCapture) {
+            [
+                child.stdin, child.stdout, child.stderr
+            ].forEach(function (pipe, ii) {
+                if (ii === 0) {
+                    return;
+                }
+                pipe.on("data", function (chunk) {
+                    bufList[ii].push(chunk);
+                    if (stdio[ii] !== "ignore") {
+                        switch (ii) {
+                        case 1:
+                            process.stdout.write(chunk);
+                            break;
+                        case 2:
+                            process.stderr.write(chunk);
+                            break;
+                        }
+                    }
+                });
+            });
+        }
+        child.on("exit", function (exitCode) {
+            let resolve0 = resolve;
+            let stderr;
+            let stdout;
+            // coverage-hack
+            if (exitCode || npm_config_mode_test) {
+                resolve = reject;
+            }
+            // coverage-hack
+            if (npm_config_mode_test) {
+                resolve = resolve0;
+            }
+            [stdout, stderr] = bufList.slice(1).map(function (buf) {
+                return (
+                    typeof modeCapture === "string"
+                    ? Buffer.concat(buf).toString(modeCapture)
+                    : Buffer.concat(buf)
+                );
+            });
+            resolve({exitCode, stderr, stdout});
+        });
+    });
+
+}
+
+async function ciBuildExt({
+    modeSkip,
+    process
+}) {
+
+// This function will build sqlmath from c.
+
+    let option;
+    option = {
+        binNodegyp: modulePath.resolve(
+            modulePath.dirname(process.execPath || ""),
+            "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+        ).replace("/bin/node_modules/", "/lib/node_modules/"),
+        isWin32: process.platform === "win32",
+        modeDebug: npm_config_mode_debug,
+        modeSkip,
+        process
+    };
+    await ciBuildExt2NodejsBuild(option);
+}
+
+async function ciBuildExt1NodejsConfigure({
+    binNodegyp,
+    modeDebug
+}) {
+
+// This function will setup posix/win32 env for building c-extension.
+
+    consoleError(`ciBuildExt1Nodejs - configure binding.gyp`);
+    await fsWriteFileUnlessTest("binding.gyp", JSON.stringify({
+        "target_defaults": {
+            "cflags": ["-Wextra", "-std=c11"],
+            "conditions": [
+                [
+                    "OS == \u0027win\u0027",
+                    {"defines": ["WIN32"]},
+                    {"defines": ["HAVE_UNISTD_H"]}
+                ]
+            ],
+// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
+            "msvs_settings": {
+                "VCCLCompilerTool": {
+                    "WarningLevel": 3
+                }
+            },
+            "xcode_settings": {"OTHER_CFLAGS": ["-Wextra", "-std=c11"]}
+        },
+        "targets": [
+            {
+                "cflags": [
+                    "-Wno-all",
+                    "-Wno-implicit-fallthrough",
+                    "-Wno-unused-parameter"
+                ],
+                "sources": [
+                    "build/SRC_ZLIB_BASE.c",
+                    "build/SRC_SQLITE_BASE.c",
+                    "build/SQLMATH_BASE.c"
+                ],
+                "target_name": "SRC_SQLITE_BASE",
+                "type": "static_library",
+                "xcode_settings": {"OTHER_CFLAGS": [
+                    "-Wno-all",
+                    "-Wno-implicit-fallthrough",
+                    "-Wno-unused-parameter"
+                ]}
+            },
+            {
+                "sources": [
+                    "build/SQLMATH_CUSTOM.c"
+                ],
+                "target_name": "SQLMATH_CUSTOM",
+                "type": "static_library"
+            },
+            {
+                "defines": ["SQLMATH_NODEJS_C2"],
+                "dependencies": [
+                    "SQLMATH_CUSTOM",
+                    "SRC_SQLITE_BASE"
+                ],
+                "sources": ["sqlmath_base.c"],
+                "target_name": "binding"
+            }
+        ]
+    }, undefined, 4) + "\n");
+    await childProcessSpawn2(
+        "sh",
+        [
+            "-c",
+            (`
+(set -e
+    # node "${binNodegyp}" clean
+    node "${binNodegyp}" configure
+)
+            `)
+        ],
+        {modeDebug, stdio: ["ignore", 1, 2]}
+    );
+}
+
+async function ciBuildExt2NodejsBuild({
+    binNodegyp,
+    modeDebug
+}) {
+
+// This function will archive <fileObj> into <fileLib>
+
+    if (!noop(
+        await fsExistsUnlessTest(cModulePath)
+    )) {
+        await ciBuildExt1NodejsConfigure({
+            binNodegyp,
+            modeDebug
+        });
+    }
+    consoleError(
+        `ciBuildExt2Nodejs - linking lib ${modulePath.resolve(cModulePath)}`
+    );
+    await childProcessSpawn2(
+        "sh",
+        [
+            "-c",
+            (`
+(set -e
+    # rebuild binding
+    rm -rf build/Release/obj/SQLMATH_CUSTOM/
+    node "${binNodegyp}" build --release
+    mv build/Release/binding.node "${cModulePath}"
+)
+            `)
+        ],
+        {modeDebug, stdio: ["ignore", 1, 2]}
+    );
+}
+
 function dbCallAsync(baton, cFuncName, db, ...argList) {
 
 // This function will call <cFuncName> using db <argList>[0].
@@ -355,7 +585,7 @@ async function dbExecAsync({
             );
             modeRetry -= 1;
             await new Promise(function (resolve) {
-                setTimeout(resolve, 5_000 * !process.env.npm_config_mode_test);
+                setTimeout(resolve, 5_000 * !npm_config_mode_test);
             });
         }
     }
@@ -538,6 +768,54 @@ async function dbOpenAsync({
         ii: 0
     });
     return db;
+}
+
+async function fsCopyFileUnlessTest(file1, file2, mode) {
+
+// This function will copy <file1> to <file2> unless <npm_config_mode_test> = 1.
+
+    if (npm_config_mode_test && mode !== "force") {
+        return;
+    }
+    await moduleFs.promises.copyFile(file1, file2, mode | 0);
+}
+
+async function fsExistsUnlessTest(file, mode) {
+
+// This function will test if <file> exists unless <npm_config_mode_test> = 1.
+
+    if (npm_config_mode_test && mode !== "force") {
+        return false;
+    }
+    try {
+        await moduleFs.promises.access(file);
+        return true;
+    } catch (ignore) {
+        return false;
+    }
+}
+
+async function fsReadFileUnlessTest(file, mode, defaultData) {
+
+// This function will read <data> from <file> unless <npm_config_mode_test> = 1.
+
+    if (npm_config_mode_test && mode !== "force") {
+        return defaultData;
+    }
+    return await moduleFs.promises.readFile(
+        file,
+        mode && mode.replace("force", "utf8")
+    );
+}
+
+async function fsWriteFileUnlessTest(file, data, mode) {
+
+// This function will write <data> to <file> unless <npm_config_mode_test> = 1.
+
+    if (npm_config_mode_test && mode !== "force") {
+        return;
+    }
+    await moduleFs.promises.writeFile(file, data);
 }
 
 function isExternalBuffer(buf) {
@@ -797,6 +1075,44 @@ function jsbatonValueString({
     ));
 }
 
+async function moduleFsInit() {
+
+// This function will import nodejs builtin-modules if they have not yet been
+// imported.
+
+// State 3 - Modules already imported.
+
+    if (moduleFs !== undefined) {
+        return;
+    }
+
+// State 2 - Wait while modules are importing.
+
+    if (moduleFsInitResolveList !== undefined) {
+        return new Promise(function (resolve) {
+            moduleFsInitResolveList.push(resolve);
+        });
+    }
+
+// State 1 - Start importing modules.
+
+    moduleFsInitResolveList = [];
+    [
+        moduleChildProcess,
+        moduleFs,
+        modulePath,
+        moduleUrl
+    ] = await Promise.all([
+        import("child_process"),
+        import("fs"),
+        import("path"),
+        import("url")
+    ]);
+    while (moduleFsInitResolveList.length > 0) {
+        moduleFsInitResolveList.shift()();
+    }
+}
+
 function noop(val) {
 
 // This function will do nothing except return <val>.
@@ -885,13 +1201,16 @@ async function sqlmathInit() {
 
 // This function will init sqlmath.
 
-    dbFinalizationRegistry = new FinalizationRegistry(function ({
+    let moduleModule;
+    dbFinalizationRegistry = (
+        dbFinalizationRegistry
+    ) || new FinalizationRegistry(function ({
         afterFinalization,
         ptr
     }) {
 
-    // This function will auto-close any open sqlite3-db-pointer,
-    // after its js-wrapper has been garbage-collected.
+// This function will auto-close any open sqlite3-db-pointer,
+// after its js-wrapper has been garbage-collected.
 
         cCallAsync(undefined, "_dbClose", ptr[0]);
         if (afterFinalization) {
@@ -902,22 +1221,68 @@ async function sqlmathInit() {
 // Feature-detect nodejs.
 
     if (
-        typeof process === "object"
-        && typeof process?.versions?.node === "string"
+        !(
+            typeof process === "object"
+            && typeof process?.versions?.node === "string"
+        )
+        || cModule
     ) {
-        cModule = await import("module");
-        cModule = cModule.createRequire(import.meta.url);
-        cModule = cModule(
-            "./_binary_sqlmath"
-            + "_napi8"
-            + "_" + process.platform
-            + "_" + process.arch
-            + ".node"
-        );
-        if (process.env.npm_config_mode_test) {
-            // mock consoleError
-            consoleError = noop;
+        return;
+    }
+
+// Init moduleFs.
+
+    await moduleFsInit();
+    moduleFsInit(); // coverage-hack
+    moduleChildProcessSpawn = moduleChildProcess.spawn;
+
+// Init moduleFs.
+
+    await moduleFsInit();
+    moduleFsInit(); // coverage-hack
+    moduleChildProcessSpawn = moduleChildProcess.spawn;
+    cModulePath = moduleUrl.fileURLToPath(import.meta.url).replace(
+        (/\bsqlmath\.mjs$/),
+        `_sqlmath.napi6_${process.platform}_${process.arch}.node`
+    );
+
+// Import napi c-addon.
+
+    if (!npm_config_mode_setup) {
+        moduleModule = await import("module");
+        if (!cModule) {
+            cModule = moduleModule.createRequire(cModulePath);
+            cModule = cModule(cModulePath);
         }
+    }
+    if (npm_config_mode_test) {
+
+// Mock consoleError.
+
+        consoleError = noop;
+
+// Mock moduleChildProcessSpawn.
+
+        moduleChildProcessSpawn = function () {
+            let child = {
+                end: noop,
+                on: function (onType, resolve) {
+                    switch (onType) {
+                    case "data":
+                        resolve(Buffer.alloc(0));
+                        return;
+                    default:
+                        resolve(0);
+                    }
+                },
+                setEncoding: noop,
+                write: noop
+            };
+            child.stderr = child;
+            child.stdin = child;
+            child.stdout = child;
+            return child;
+        };
     }
 }
 
@@ -964,7 +1329,9 @@ function sqlmathWebworkerInit({
     }
 }
 
-await sqlmathInit({});
+sqlmathInit(); // coverage-hack
+await sqlmathInit();
+sqlmathInit(); // coverage-hack
 
 export {
     SQLITE_MAX_LENGTH2,
@@ -992,6 +1359,8 @@ export {
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
+    childProcessSpawn2,
+    ciBuildExt,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
     dbExecAndReturnLastJsonAsync,
@@ -1002,10 +1371,13 @@ export {
     dbNoopAsync,
     dbOpenAsync,
     debugInline,
+    fsCopyFileUnlessTest,
+    fsExistsUnlessTest,
+    fsReadFileUnlessTest,
+    fsWriteFileUnlessTest,
     jsbatonValueString,
     noop,
     objectDeepCopyWithKeysSorted,
-    sqlmathInit,
     sqlmathWebworkerInit,
     version
 };

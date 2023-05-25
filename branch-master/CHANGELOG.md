@@ -3,6 +3,21 @@
 # Todo
 - none
 
+# v2023.5.25
+- jslint - Add grammar for "export async function ...".
+- sqlite - Remove hacky sqlite-extension-function.
+- python - Migrate python-driver from pysqlite3 to cpython.
+- jslint - Add grammar for regexp-named-capture-group and regexp-named-backreference.
+- betadog - Reconcile differences with betadog.
+- python - Successfully published first pypi package version sqlmath@v0.0.5.
+- ci - Rename shell-function shRawLibFetch() to shRollupFetch().
+- sqlmath - migrate build-ext from python to nodejs with parallel compile
+- sqlmath - add python c-extension
+- sqlmath - streamline macros SQLITE3_C2, SQLITE_H2, SQLITE3EXT_H2, SQLMATH_C2 in prepartion for python-c-extension
+- sqlmath - add file zlib_rollup.c so sqlmath can be compiled without external zlib-dependency
+- sqlmath - add sql-function avg_ema()
+- sqlmath - add sql-function fill_forward()
+
 # v2023.4.22
 - sqlmath - rename sql-function percentile() to quantile()
 - ci - add shell-function shCiPreCustom2() to setup python in custom-ci

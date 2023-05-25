@@ -165,7 +165,7 @@ let jslint_charset_ascii = (
     + "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
     + "`abcdefghijklmnopqrstuvwxyz{|}~\u007f"
 );
-let jslint_edition = "v2022.4.1-beta";
+let jslint_edition = "v2023.6.1-beta";
 let jslint_export;                      // The jslint object to be exported.
 let jslint_fudge = 1;                   // Fudge starting line and starting
                                         // ... column to 1.
@@ -1584,7 +1584,9 @@ ${name}<span class="apidocSignatureSpan">${signature}</span>
         ), "\n");
         return result;
     }));
-    // init module_list
+
+// Init module_list.
+
     module_list = await Promise.all(module_list.map(async function ({
         pathname
     }) {
@@ -1990,8 +1992,11 @@ async function jslint_cli({
                 ).test(process_argv[1])
                 || mode_cli
             )
-            && moduleUrl.fileURLToPath(import_meta_url)
-            === modulePath.resolve(process_argv[1])
+            && (
+                moduleUrl.fileURLToPath(import_meta_url)
+                ===
+                modulePath.resolve(process_argv[1])
+            )
         )
         && !mode_cli
     ) {
@@ -2810,20 +2815,30 @@ function jslint_phase2_lex(state) {
 // Match a group that starts with left paren.
 
                     char_after("(");
-                    if (char === "?") {
-                        char_after("?");
-                        if (char === "=" || char === "!") {
-                            char_after();
-                        } else {
-                            char_after(":");
-                        }
-                    } else if (char === ":") {
+                    switch (char) {
+                    case ":":
 
 // test_cause:
 // ["aa=/(:)/", "lex_regexp_group", "expected_a_before_b", ":", 6]
 // ["aa=/?/", "lex_regexp_group", "expected_a_before_b", "?", 5]
 
                         warn_at("expected_a_before_b", line, column, "?", ":");
+                        break;
+                    case "?":
+                        char_after("?");
+                        switch (char) {
+                        case "!":
+
+// PR-437 - Add grammar for regexp-named-capture-group.
+
+                        case "<":
+                        case "=":
+                            char_after();
+                            break;
+                        default:
+                            char_after(":");
+                        }
+                        break;
                     }
 
 // RegExp
@@ -2857,7 +2872,10 @@ function jslint_phase2_lex(state) {
 // ["aa=/\\/", "lex_regexp_group", "escape", "", 0]
 
                     test_cause("escape");
-                    char_after_escape("BbDdSsWw^${}[]():=!.|*+?");
+
+// PR-437 - Add grammar for regexp-named-backreference.
+
+                    char_after_escape("BbDdSsWw^${}[]():=!.|*+?k");
                     break;
                 case "^":
                     if (snippet !== "^") {
@@ -3309,7 +3327,7 @@ function jslint_phase2_lex(state) {
         case "this":            // Allow 'this'.
         case "trace":           // Include jslint stack-trace in warnings.
         case "unordered":       // Allow unordered cases, params, properties,
-                                // ... and variables.
+                                // ... variables, and exports.
         case "variable":        // Allow unordered const and let declarations
                                 // ... that are not at top of function-scope.
         case "white":           // Allow messy whitespace.
@@ -6170,7 +6188,8 @@ function jslint_phase3_parse(state) {
     }
 
     function stmt_export() {
-        const the_export = token_now;
+        let export_list = [];
+        let the_export = token_now;
         let the_id;
         let the_name;
         let the_thing;
@@ -6214,9 +6233,13 @@ function jslint_phase3_parse(state) {
             export_dict.default = the_thing;
             the_export.expression.push(the_thing);
         } else {
-            if (token_nxt.id === "function") {
+
+// PR-439 - Add grammar for "export async function ...".
+
+            if (token_nxt.id === "function" || token_nxt.id === "async") {
 
 // test_cause:
+// ["export async function aa(){}", "stmt_export", "freeze_exports", "async", 8]
 // ["export function aa(){}", "stmt_export", "freeze_exports", "function", 8]
 
                 warn("freeze_exports");
@@ -6266,6 +6289,7 @@ function jslint_phase3_parse(state) {
                         stop("expected_identifier_a");
                     }
                     the_id = token_nxt.id;
+                    export_list.push(token_nxt);
                     the_name = token_global.context[the_id];
                     if (the_name === undefined) {
 
@@ -6292,6 +6316,13 @@ function jslint_phase3_parse(state) {
                         break;
                     }
                 }
+
+// PR-439 - Check exported properties are ordered.
+
+// test_cause:
+// ["export {bb, aa}", "check_ordered", "expected_a_b_before_c_d", "aa", 13]
+
+                check_ordered("export", export_list);
                 advance("}");
                 semicolon();
             } else {
@@ -6441,6 +6472,20 @@ function jslint_phase3_parse(state) {
 //         }
 
         state.mode_module = true;
+
+// PR-436 - Add grammar for side-effect import-statement.
+
+        if (token_nxt.id === "(string)") {
+
+// test_cause:
+// ["import \"./aa.mjs\";", "stmt_import", "import_side_effect", "", 0]
+
+            test_cause("import_side_effect");
+            warn("expected_a_b", token_nxt, "{", artifact());
+            advance();
+            semicolon();
+            return the_import;
+        }
         if (token_nxt.identifier) {
             name = token_nxt;
             advance();
@@ -11231,7 +11276,7 @@ function sentinel() {}
             if ((
                 /^coverage-\d+?-\d+?-\d+?\.json$/
             ).test(file)) {
-                console.error("rm file " + coverageDir + file);
+                consoleError("rm file " + coverageDir + file);
                 await moduleFs.promises.unlink(coverageDir + file);
             }
         }));
@@ -11258,10 +11303,14 @@ function sentinel() {}
                 }
             ).on("exit", resolve);
         });
+        consoleError(
+            `v8CoverageReportCreate - program exited with exitCode=${exitCode}`
+        );
     }
 
 // 2. Merge JSON v8-coverage-files in <coverageDir>.
 
+    consoleError("v8CoverageReportCreate - merging coverage files...");
     v8CoverageObj = await moduleFs.promises.readdir(coverageDir);
     v8CoverageObj = v8CoverageObj.filter(function (file) {
         return (
@@ -11333,6 +11382,7 @@ function sentinel() {}
 
 // 3. Create html-coverage-reports in <coverageDir>.
 
+    consoleError("v8CoverageReportCreate - creating html-coverage-report...");
     fileDict = Object.create(null);
     await Promise.all(v8CoverageObj.result.map(async function ({
         functions,
