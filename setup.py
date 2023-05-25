@@ -6,8 +6,10 @@ python -m build
 """
 
 import asyncio
+import json
 import os
 import pathlib
+import re
 import subprocess
 import sys
 import sysconfig
@@ -76,14 +78,11 @@ async def build_ext_async(): # noqa=C901
                 "-o", file_exe,
             ]
         print(f"build_ext - link {file_exe}")
-        child = await asyncio.create_subprocess_exec(
+        await create_subprocess_exec_and_check(
             *arg_list,
             env=env,
             stdout=subprocess.DEVNULL if npm_config_mode_debug else None,
         )
-        await child.communicate()
-        if child.returncode != 0:
-            raise subprocess.SubprocessError("returncode=" + child.returncode)
 
     async def build_ext_obj(cdefine):
         file_obj = f"build/{cdefine}.obj"
@@ -136,14 +135,54 @@ async def build_ext_async(): # noqa=C901
                 "-o", file_obj,
             ]
         print(f"build_ext - compile {file_obj}")
-        child = await asyncio.create_subprocess_exec(
+        await create_subprocess_exec_and_check(
             *arg_list,
             env=env,
             stdout=subprocess.DEVNULL if npm_config_mode_debug else None,
         )
+
+    async def create_subprocess_exec_and_check(*args, **kwds):
+        child = await asyncio.create_subprocess_exec(*args, **kwds)
         await child.communicate()
         if child.returncode != 0:
             raise subprocess.SubprocessError("returncode=" + child.returncode)
+    #
+    # build_ext - update version
+    with pathlib.Path("package.json").open() as file1:
+        version = json.load(file1)["version"].split("-")[0]
+    for filename in [
+        "README.md",
+        "sqlmath/__init__.py",
+    ]:
+        with pathlib.Path(filename).open("r+", newline="\n") as file1:
+            data0 = file1.read()
+            data1 = data0
+            # update version - README.md
+            data1 = re.sub(
+                "(sqlmath(?:-|==))\\d\\d\\d\\d\\.\\d\\d?\\.\\d\\d?",
+                f"\\g<1>{version}",
+                data1,
+            )
+            # update version - sqlmath/__init__.py
+            data1 = re.sub(
+                "__version__ = .*",
+                f'__version__ = "{version}"',
+                data1,
+            )
+            data1 = re.sub(
+                "__version_info__ = .*",
+                (
+                    '__version_info__ = ("'
+                    + '", "'.join(version.split("."))
+                    + '")'
+                ),
+                data1,
+            )
+            if (data1 != data0):
+                print(f"build_ext - update file {file1.name}")
+                file1.seek(0)
+                file1.write(data1)
+                file1.truncate()
     #
     # build_ext - init sysconfig
     cc_ccshared = sysconfig.get_config_var("CCSHARED") or ""
@@ -175,7 +214,7 @@ async def build_ext_async(): # noqa=C901
     # build_ext - init env
     env = os.environ
     if is_win32:
-        env = subprocess.check_output([ # noqa=ASYNC101
+        env = await asyncio.create_subprocess_exec(
             (
                 (
                     os.environ.get("PROGRAMFILES(X86)")
@@ -189,20 +228,24 @@ async def build_ext_async(): # noqa=C901
             "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
             "-property", "installationPath",
             "-products", "*",
-        ], encoding="mbcs", errors="strict").strip()
-        env = subprocess.check_output( # noqa=ASYNC101
-            [
-                "cmd.exe",
-                "/u",
-                "/c",
-                f"{env}\\VC\\Auxiliary\\Build\\vcvarsall.bat",
-                platform_vcvarsall,
-                "&&",
-                "set",
-            ],
-            encoding="utf-16le",
-            errors="replace",
+            stdout=asyncio.subprocess.PIPE,
         )
+        env = (
+            await env.stdout.readline()
+        ).decode("mbcs").strip()
+        env = await asyncio.create_subprocess_exec(
+            "cmd.exe",
+            "/u",
+            "/c",
+            f"{env}\\VC\\Auxiliary\\Build\\vcvarsall.bat",
+            platform_vcvarsall,
+            "&&",
+            "set",
+            stdout=asyncio.subprocess.PIPE,
+        )
+        env = (
+            await env.stdout.read()
+        ).decode("utf-16le")
         env = {
             key.lower(): val
             for key, _, val in
@@ -296,10 +339,10 @@ async def build_ext_async(): # noqa=C901
             #
             "-o", f"build/{file_lib}",
         ]
-    subprocess.run(arg_list, check=True, env=env) # noqa=ASYNC101
+    await create_subprocess_exec_and_check(*arg_list, env=env)
     #
     # build_ext - copy c-extension to bdist
-    subprocess.run([ # noqa=ASYNC101
+    await create_subprocess_exec_and_check(
         "sh",
         "-c",
         f"""
@@ -310,7 +353,7 @@ async def build_ext_async(): # noqa=C901
     cp sqlmath/*.py "{dir_wheel}/"
 )
         """,
-    ], check=True)
+    )
 
 
 def build_ext_init():

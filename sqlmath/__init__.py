@@ -1,5 +1,7 @@
 """sqlmath.py."""
 
+__version__ = "2023.5.25"
+__version_info__ = ("2023", "5", "25")
 
 import sys
 
