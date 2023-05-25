@@ -4,6 +4,7 @@
 - none
 
 # v2023.5.25
+- ci - auto-update python version
 - jslint - Add grammar for "export async function ...".
 - sqlite - Remove hacky sqlite-extension-function.
 - python - Migrate python-driver from pysqlite3 to cpython.
