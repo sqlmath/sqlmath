@@ -1974,21 +1974,11 @@ SQLMATH_FUNC static void sql_sign_func(
 }
 
 // SQLMATH_FUNC sql_stdev_func - start
-typedef struct SlrElem {
-    double caa;                 // coeff-alpha
-    double cbb;                 // coeff-beta
-    double crr;                 // coeff-correlation
-    double eaa;                 // stdev of coeff-alpha
-    double ebb;                 // stdev of coeff-beta
-    double err;                 // stdev of yy - predicted - residual
+typedef struct StdevElem {
     double exx;                 // stdev of xx
-    double exy;                 // stdev of xy
-    double eyy;                 // stdev of yy
     double mxx;                 // avg xx
-    double myy;                 // avg yy
     double nnn;                 // number-of-samples
-    double sxx;                 // sum-of-squares of xx
-} SlrElem;
+} StdevElem;
 
 SQLMATH_API double stdev(
     double *arr,
@@ -2016,7 +2006,8 @@ SQLMATH_FUNC static void sql_stdev_final(
 ) {
 // This function will aggregate kth-stdev element.
     // pp - init
-    SlrElem *pp = (SlrElem *) sqlite3_aggregate_context(context, sizeof(*pp));
+    StdevElem *pp =
+        (StdevElem *) sqlite3_aggregate_context(context, sizeof(*pp));
     SQLITE3_RESULT_ERROR_MALLOC(pp);
     // pp - null-case
     if (pp->nnn <= 0) {
@@ -2037,7 +2028,8 @@ static void sql_stdev_step(
 // This function will aggregate kth-stdev element.
     UNUSED_PARAMETER(argc);
     // pp - init
-    SlrElem *pp = (SlrElem *) sqlite3_aggregate_context(context, sizeof(*pp));
+    StdevElem *pp =
+        (StdevElem *) sqlite3_aggregate_context(context, sizeof(*pp));
     SQLITE3_RESULT_ERROR_MALLOC(pp);
     // pp - welford - increment pp->exx
     if (sqlite3_value_numeric_type(argv[0]) != SQLITE_NULL) {
