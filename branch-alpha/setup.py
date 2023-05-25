@@ -150,20 +150,39 @@ async def build_ext_async(): # noqa=C901
     # build_ext - update version
     with pathlib.Path("package.json").open() as file1:
         version = json.load(file1)["version"].split("-")[0]
-    with pathlib.Path("sqlmath/__init__.py").open("r+", newline="\n") as file1:
-        data0 = file1.read()
-        data1 = data0
-        data1 = re.sub("__version__ = .*", f'__version__ = "{version}"', data1)
-        data1 = re.sub(
-            "__version_info__ = .*",
-            f"""__version_info__ = ("{'", "'.join(version.split("."))}")""",
-            data1,
-        )
-        if (data1 != data0):
-            print(f"build_ext - update file {file1.name}")
-            file1.seek(0)
-            file1.write(data1)
-            file1.truncate()
+    for filename in [
+        "README.md",
+        "sqlmath/__init__.py",
+    ]:
+        with pathlib.Path(filename).open("r+", newline="\n") as file1:
+            data0 = file1.read()
+            data1 = data0
+            # update version - README.md
+            data1 = re.sub(
+                "(sqlmath(?:-|==))\\d\\d\\d\\d\\.\\d\\d?\\.\\d\\d?",
+                f"\\g<1>{version}",
+                data1,
+            )
+            # update version - sqlmath/__init__.py
+            data1 = re.sub(
+                "__version__ = .*",
+                f'__version__ = "{version}"',
+                data1,
+            )
+            data1 = re.sub(
+                "__version_info__ = .*",
+                (
+                    '__version_info__ = ("'
+                    + '", "'.join(version.split("."))
+                    + '")'
+                ),
+                data1,
+            )
+            if (data1 != data0):
+                print(f"build_ext - update file {file1.name}")
+                file1.seek(0)
+                file1.write(data1)
+                file1.truncate()
     #
     # build_ext - init sysconfig
     cc_ccshared = sysconfig.get_config_var("CCSHARED") or ""
