@@ -3,7 +3,13 @@
 # Todo
 - none
 
-# v2023.5.1-beta
+# v2023.5.25
+- ci - auto-update python version
+- jslint - Add grammar for "export async function ...".
+- sqlite - Remove hacky sqlite-extension-function.
+- python - Migrate python-driver from pysqlite3 to cpython.
+- jslint - Add grammar for regexp-named-capture-group and regexp-named-backreference.
+- betadog - Reconcile differences with betadog.
 - python - Successfully published first pypi package version sqlmath@v0.0.5.
 - ci - Rename shell-function shRawLibFetch() to shRollupFetch().
 - sqlmath - migrate build-ext from python to nodejs with parallel compile

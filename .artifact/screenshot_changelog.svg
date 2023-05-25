@@ -41,283 +41,283 @@
     textLength="768"
     x="10"
     y="142"
-># v2023.5.1-beta                                                                                 </tspan>
+># v2023.5.25                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="164"
->- python - Successfully published first pypi package version sqlmath@v0.0.5.                     </tspan>
+>- ci - auto-update python version                                                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="186"
->- ci - Rename shell-function shRawLibFetch() to shRollupFetch().                                 </tspan>
+>- jslint - Add grammar for "export async function ...".                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="208"
->- sqlmath - migrate build-ext from python to nodejs with parallel compile                        </tspan>
+>- sqlite - Remove hacky sqlite-extension-function.                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="230"
->- sqlmath - add python c-extension                                                               </tspan>
+>- python - Migrate python-driver from pysqlite3 to cpython.                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="252"
->- sqlmath - streamline macros SQLITE3_C2, SQLITE_H2, SQLITE3EXT_H2, SQLMATH_C2 in prepartion for\</tspan>
+>- jslint - Add grammar for regexp-named-capture-group and regexp-named-backreference.            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
->   python-c-extension                                                                            </tspan>
+>- betadog - Reconcile differences with betadog.                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->- sqlmath - add file zlib_rollup.c so sqlmath can be compiled without external zlib-dependency   </tspan>
+>- python - Successfully published first pypi package version sqlmath@v0.0.5.                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="318"
->- sqlmath - add sql-function avg_ema()                                                           </tspan>
+>- ci - Rename shell-function shRawLibFetch() to shRollupFetch().                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="340"
->- sqlmath - add sql-function fill_forward()                                                      </tspan>
+>- sqlmath - migrate build-ext from python to nodejs with parallel compile                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
->                                                                                                 </tspan>
+>- sqlmath - add python c-extension                                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
-># v2023.4.22                                                                                     </tspan>
+>- sqlmath - streamline macros SQLITE3_C2, SQLITE_H2, SQLITE3EXT_H2, SQLMATH_C2 in prepartion for\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->- sqlmath - rename sql-function percentile() to quantile()                                       </tspan>
+>   python-c-extension                                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->- ci - add shell-function shCiPreCustom2() to setup python in custom-ci                          </tspan>
+>- sqlmath - add file zlib_rollup.c so sqlmath can be compiled without external zlib-dependency   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->- ci - remove mandatory python ci                                                                </tspan>
+>- sqlmath - add sql-function avg_ema()                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
->- sqlmath - update sql-function percentile() with off-by-one bugfix                              </tspan>
+>- sqlmath - add sql-function fill_forward()                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
->- sqlmath - remove file sqlmath_fann.c                                                           </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->- sqlmath - add file sqlmath_fann.c                                                              </tspan>
+># v2023.4.22                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="538"
->                                                                                                 </tspan>
+>- sqlmath - rename sql-function percentile() to quantile()                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
-># v2023.3.21                                                                                     </tspan>
+>- ci - add shell-function shCiPreCustom2() to setup python in custom-ci                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="582"
->- sqlmath - move c-function str99JsonAppendText() from file sqlmath_base.c to sqlite3.c          </tspan>
+>- ci - remove mandatory python ci                                                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="604"
->- sqlmath - merge file sqlite3_ext.c into sqlite3.c                                              </tspan>
+>- sqlmath - update sql-function percentile() with off-by-one bugfix                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="626"
->- sqlmath - streamline str99 c-code                                                              </tspan>
+>- sqlmath - remove file sqlmath_fann.c                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->- sqlmath - add sql-functions jenks_concat(kk, col1, col2, ...), jenks_json(kk, jsonArray)       </tspan>
+>- sqlmath - add file sqlmath_fann.c                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->- chart - bugfix - fix special-character in col-name being sql-injected                          </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->                                                                                                 </tspan>
+># v2023.3.21                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
-># v2023.2.26                                                                                     </tspan>
+>- sqlmath - move c-function str99JsonAppendText() from file sqlmath_base.c to sqlite3.c          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="736"
->- chart - bugfix - use spy for reference previous-ydate instead of 1a_mybot                      </tspan>
+>- sqlmath - merge file sqlite3_ext.c into sqlite3.c                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="758"
->- sqlmath - add functions dbExecAndReturnLastJsonAsync(), dbExecAndReturnLastTextAsync()         </tspan>
+>- sqlmath - streamline str99 c-code                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="780"
->- sqlmath - add sql-functions jfromfloat64array(), jtofloat64array()                             </tspan>
+>- sqlmath - add sql-functions jenks_concat(kk, col1, col2, ...), jenks_json(kk, jsonArray)       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="802"
->- sqlite - update to sqlite v3.39.4                                                              </tspan>
+>- chart - bugfix - fix special-character in col-name being sql-injected                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="824"
->- ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSqu\</tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="846"
->  ash()                                                                                          </tspan>
+># v2023.2.26                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="868"
->- ci - in windows-ci-env, alias node=node.exe instead of using winpty for pipes                  </tspan>
+>- chart - bugfix - use spy for reference previous-ydate instead of 1a_mybot                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="890"
->                                                                                                 </tspan>
+>- sqlmath - add functions dbExecAndReturnLastJsonAsync(), dbExecAndReturnLastTextAsync()         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="912"
-># v2023.1.29                                                                                     </tspan>
+>- sqlmath - add sql-functions jfromfloat64array(), jtofloat64array()                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="934"
->- ci - add auto-logo-creation in private repo                                                    </tspan>
+>- sqlite - update to sqlite v3.39.4                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="956"
->- ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html                       </tspan>
+>- ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSqu\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="978"
->- jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote                 </tspan>
+>  ash()                                                                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1000"
->- chart - remove unused external libraries chart.js, moment.js                                   </tspan>
+>- ci - in windows-ci-env, alias node=node.exe instead of using winpty for pipes                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1022"
->- demo - bugfix - fix 1-week-chart ignoring friday before monday-holiday                         </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1044"
 >                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="1044"
+># v2023.1.29                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="1066"
-># v2022.12.31                                                                                    </tspan>
+>- ci - add auto-logo-creation in private repo                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1088"
->- chart - bugfix - fix intraday-weekly-chart truncating first datapoint                          </tspan>
+>- ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1110"
->- demo - use intraday data for weekly chart                                                      </tspan>
+>- jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1132"
->- demo - allow stock ivv to be used as reference if spy is unavailable                           </tspan>
+>- chart - remove unused external libraries chart.js, moment.js                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1154"
->- demo - rename main-account from 01_mybot to 1a_mybot                                           </tspan>
+>- demo - bugfix - fix 1-week-chart ignoring friday before monday-holiday                         </tspan>
 
 </text>
 </svg>

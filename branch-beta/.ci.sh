@@ -15,7 +15,7 @@ shCiArtifactUploadCustom() {(set -e
     git fetch origin artifact
     git checkout origin/artifact "branch-$GITHUB_BRANCH0"
     mv "branch-$GITHUB_BRANCH0"/* .
-    git add -f _sqlmath.* sqlmath_wasm.*
+    git add -f _sqlmath* sqlmath_wasm.*
     # screenshot html
     node --input-type=module --eval '
 import moduleChildProcess from "child_process";
@@ -51,8 +51,10 @@ shCiBaseCustom() {(set -e
     then
         cp -a .github_cache/* . || true # js-hack - */
     fi
+    # cleanup
+    rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
     # run nodejs-ci
-    shCiBuildNodejs
+    shCiTestNodejs
     if (shCiMatrixIsmainName)
     then
         shImageLogoCreate &
@@ -117,7 +119,8 @@ shCiBaseCustomArtifactUpload() {(set -e
     cp ../../.git/config .git/config
     # update dir branch-$GITHUB_BRANCH0
     mkdir -p "branch-$GITHUB_BRANCH0"
-    cp ../../_sqlmath.* "branch-$GITHUB_BRANCH0"
+    cp ../../_sqlmath* "branch-$GITHUB_BRANCH0"
+    cp ../../sqlmath/_sqlmath* "branch-$GITHUB_BRANCH0"
     if [ -f ../../sqlmath_wasm.wasm ]
     then
         cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
@@ -128,7 +131,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     fi
     # git commit
     git add .
-    git add -f "branch-$GITHUB_BRANCH0"/_sqlmath.*
+    git add -f "branch-$GITHUB_BRANCH0"/_sqlmath*
     if (git commit -am "$COMMIT_MESSAGE")
     then
         # sync before push
@@ -147,23 +150,6 @@ shCiBaseCustomArtifactUpload() {(set -e
     )
 )}
 
-shCiBuildext() {(set -e
-# this function will build and compile c-extension
-    unset npm_config_mode_test
-    npm_config_mode_setup=1 node --input-type=module -e '
-import {ciBuildext} from "./sqlmath.mjs";
-ciBuildext({process});
-' "$@" # '
-)}
-
-shCiBuildNodejs() {(set -e
-# this function will build binaries in nodejs
-    # cleanup
-    rm -rf _sqlmath.* build/ sqlmath/_sqlmath.*
-    mkdir -p build/
-    shCiTestNodejs
-)}
-
 shCiBuildWasm() {(set -e
 # this function will build binaries in wasm
     shCiEmsdkExport
@@ -172,7 +158,8 @@ shCiBuildWasm() {(set -e
     # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
     # build wasm
     printf "shCiBuildWasm\n" 1>&2
-    OPTION1="$OPTION1 -Wall"
+    OPTION1="$OPTION1 -Wextra"
+    OPTION1="$OPTION1 -Wno-unused-parameter"
     OPTION1="$OPTION1 -flto"
     # debug
     # OPTION1="$OPTION1 -O0"
@@ -181,31 +168,26 @@ shCiBuildWasm() {(set -e
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
         zlib_base.c \
-        sqlite3_rollup.c \
-        sqlite3_extfnc.c \
+        sqlite_rollup.c \
         sqlmath_base.c \
         sqlmath_custom.c
     do
         OPTION2=""
         FILE2="build/$(basename "$FILE").wasm.o"
         case "$FILE" in
-        sqlite3_extfnc.c)
-            FILE=sqlite3_rollup.c
-            OPTION2="$OPTION2 -DSRC_SQLITE3_EXTFNC_C2="
-            ;;
         zlib_base.c)
-            FILE=sqlite3_rollup.c
+            FILE=sqlite_rollup.c
             OPTION2="$OPTION2 -DSRC_ZLIB_BASE_C2="
             ;;
         esac
-        # optimization - skip rebuild of sqlite3_rollup.c if possible
-        if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite3_rollup.c ]
+        # optimization - skip rebuild of sqlite_rollup.c if possible
+        if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite_rollup.c ]
         then
             printf "shCiBuildWasm - skip $FILE\n" 1>&2
             continue
         fi
         OPTION2="$OPTION2 -DHAVE_UNISTD_H="
-        OPTION2="$OPTION2 -DSQLITE3_C2="
+        OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
     done
@@ -238,7 +220,6 @@ shCiBuildWasm() {(set -e
     emcc $OPTION1 $OPTION2 \
         --memory-init-file 0 \
         --pre-js sqlmath_wrapper_wasm.js \
-        -Wall \
         -o build/sqlmath_wasm.js \
         -s ALLOW_MEMORY_GROWTH=1 \
         -s ALLOW_TABLE_GROWTH=1 \
@@ -249,8 +230,7 @@ shCiBuildWasm() {(set -e
         -s WASM=1 \
         -s WASM_BIGINT \
         build/zlib_base.c.wasm.o \
-        build/sqlite3_rollup.c.wasm.o \
-        build/sqlite3_extfnc.c.wasm.o \
+        build/sqlite_rollup.c.wasm.o \
         build/sqlmath_base.c.wasm.o \
         build/sqlmath_custom.c.wasm.o \
         #
@@ -351,81 +331,13 @@ shIndentC() {(set -e
     fi
 )}
 
-shLintPython() {(set -e
-# this function will lint python file
-    FILE_LIST="$@"
-    (
-    printf "\n\nlint ruff\n"
-    OPTION=""
-    # ANN flake8-annotations
-    OPTION="$OPTION --ignore=ANN"
-    # obsolete - one-blank-line-before-class (D203)
-    # * 1 blank line required before class docstring
-    OPTION="$OPTION --ignore=D203"
-    # multi-line-summary-first-line (D212)
-    # * Multi-line docstring summary should start at the first line
-    OPTION="$OPTION --ignore=D212"
-    # non-imperative-mood (D401)
-    # * First line of docstring should be in imperative mood: "{first_line}"
-    OPTION="$OPTION --ignore=D401"
-    # docstring-starts-with-this (D404)
-    # * First word of the docstring should not be "This"
-    OPTION="$OPTION --ignore=D404"
-    # commented-out-code (ERA001)
-    # Commented-out code is dead code, and is often included inadvertently.
-    OPTION="$OPTION --ignore=ERA001"
-    # too-many-statements (PLR0915)
-    # * Too many statements ({statements} > {max_statements})
-    OPTION="$OPTION --ignore=PLR0915"
-    # subprocess-without-shell-equals-true (S603)
-    # * `subprocess` call: check for execution of untrusted input
-    OPTION="$OPTION --ignore=S603"
-    # start-process-with-partial-path (S607)
-    # * Starting a process with a partial executable path
-    OPTION="$OPTION --ignore=S607"
-    # hardcoded-sql-expression (S608)
-    # SQL injection is a common attack vector for web applications.
-    OPTION="$OPTION --ignore=S608"
-    # print (T201)
-    # * `print` found
-    OPTION="$OPTION --ignore=T201"
-    OPTION="$OPTION --select=ALL"
-    if [ "$npm_config_mode_lint_fix" ]
-    then
-        OPTION="$OPTION --fix"
-    fi
-    ruff check $OPTION $FILE_LIST
-    ) &
-    PID_LIST="$PID_LIST $!"
-    #
-    (
-    printf "lint pycodestyle\n"
-    OPTION="--ignore="
-    # Unexpected indentation (comment) (E116)
-    # Comments should be indented relative to the code in the block they are in.
-    OPTION="$OPTION,E116"
-    # At least two spaces before inline comment (E261)
-    # Inline comments should have two spaces before them.
-    OPTION="$OPTION,E261"
-    # Line break occurred before a binary operator (W503)
-    # Line breaks should occur after the binary operator to keep all variable
-    # names aligned.
-    OPTION="$OPTION,W503"
-    pycodestyle $OPTION $FILE_LIST
-    ) &
-    PID_LIST="$PID_LIST $!"
-    #
-    shPidListWait shLintPython "$PID_LIST"
-    printf "lint successful\n\n"
-)}
-
 shCiLintCustom() {(set -e
 # this function will run custom-code to lint files
     if [ "$GITHUB_ACTION" ]
     then
         pip install pycodestyle ruff
     fi
-    npm_config_mode_lint_fix=1 shLintPython \
+    shLintPython \
         setup.py \
         sqlmath/__init__.py
 )}
@@ -435,9 +347,9 @@ shCiNpmPublishCustom() {(set -e
     # fetch artifact
     git fetch origin artifact --depth=1
     git checkout origin/artifact \
-        "branch-beta/_sqlmath."* \
-        "branch-beta/sqlmath_wasm"*
-    cp -a branch-beta/_sqlmath.* .
+        branch-beta/_sqlmath* \
+        branch-beta/sqlmath_wasm*
+    cp -a branch-beta/_sqlmath* .
     cp -a branch-beta/sqlmath_wasm.* .
     # npm-publish
     npm publish --access public
@@ -459,16 +371,54 @@ shCiTestNodejs() {(set -e
             sqlmath_jenks.c
         # lint js-file
         node jslint.mjs .
-        # create file Manifest.in
+        # create file MANIFEST.in
+        # git ls-tree -r --name-only HEAD | sed "s|^|include |" > MANIFEST.in
         if [ -d .git/ ]
         then
-            git ls-tree -lr --name-only HEAD | sed "s|^|include |" > Manifest.in
+            git ls-tree -r --name-only HEAD | sed "s|^|include |" > MANIFEST.in
         fi
+        # init build/xxx.c
+        python setup.py build_ext_init
         # build nodejs c-addon
+        PID_LIST=""
+        (
+        unset npm_config_mode_test
+        npm_config_mode_setup=1 node --input-type=module -e '
+import {ciBuildExt} from "./sqlmath.mjs";
+ciBuildExt({process});
+' "$@" # '
+        ) &
+        PID_LIST="$PID_LIST $!"
         # build python c-extension
-        python setup.py build_ext
+        python setup.py build_ext &
+        PID_LIST="$PID_LIST $!"
+        shPidListWait build_ext "$PID_LIST"
     fi;
+    # test zlib
+    PID_LIST=""
+    (
+    printf "\ntest zlib\n"
+    if [ ! -f build/SRC_ZLIB_TEST_EXAMPLE.exe ]
+    then
+        printf "\n    *** zlib test SKIP ***\n"
+        exit
+    fi
+    if [ "Hello world!" = "$( \
+        printf "Hello world!\n" \
+            | ./build/SRC_ZLIB_TEST_MINIGZIP.exe \
+            | ./build/SRC_ZLIB_TEST_MINIGZIP.exe -d \
+        )" ] \
+        && ./build/SRC_ZLIB_TEST_EXAMPLE.exe ./build/zlib_test_file
+    then
+        printf "\n    *** zlib test OK ***\n"
+    else
+        printf "\n    *** zlib test FAILED ***\n"
+        exit 1
+    fi
+    ) &
+    PID_LIST="$PID_LIST $!"
     # test nodejs
+    (
     rm -f *~ .*test.sqlite
     COVERAGE_EXCLUDE="--exclude=jslint.mjs"
     if (node --eval '
@@ -485,8 +435,12 @@ require("assert")(require("./package.json").name !== "sqlmath");
     else
         shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
     fi
+    ) &
+    PID_LIST="$PID_LIST $!"
     # test python
-    python setup.py test
+    python setup.py test &
+    PID_LIST="$PID_LIST $!"
+    shPidListWait test "$PID_LIST"
 )}
 
 shSqlmathUpdate() {(set -e
@@ -496,11 +450,11 @@ shSqlmathUpdate() {(set -e
     then
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
-        shRollupFetch sqlite3_rollup.c
+        shRollupFetch sqlite_rollup.c
         shRollupFetch sqlmath/sqlmath_dbapi2.py
         git grep '3\.39\.[^4]' \
             ":(exclude)CHANGELOG.md" \
-            ":(exclude)sqlite3_rollup.c" \
+            ":(exclude)sqlite_rollup.c" \
             || true
         git grep 'autoconf-[0-9]' | grep -v CHANGELOG \
             | grep -v '3390400' || true
@@ -515,9 +469,11 @@ shSqlmathUpdate() {(set -e
             asset_sqlmath_external_rollup.js \
             indent.exe \
             index.html \
-            sqlite3_extension_functions.c \
-            sqlite3_rollup.c \
+            setup.py \
+            sqlite_rollup.c \
             sqlmath.mjs \
+            sqlmath/__init__.py \
+            sqlmath/sqlmath_dbapi2.py \
             sqlmath_base.c \
             sqlmath_browser.mjs \
             sqlmath_jenks.c \

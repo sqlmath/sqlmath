@@ -28,7 +28,7 @@ import {
     assertNumericalEqual,
     assertOrThrow,
     childProcessSpawn2,
-    ciBuildext,
+    ciBuildExt,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
     dbExecAndReturnLastJsonAsync,
@@ -38,6 +38,10 @@ import {
     dbNoopAsync,
     dbOpenAsync,
     debugInline,
+    fsCopyFileUnlessTest,
+    fsExistsUnlessTest,
+    fsReadFileUnlessTest,
+    fsWriteFileUnlessTest,
     jsbatonValueString,
     noop,
     sqlmathWebworkerInit,
@@ -189,18 +193,19 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test_ciBuildextXxx"
-), function test_ciBuildextXxx() {
+    "test_ciBuildExtXxx"
+), function test_ciBuildExtXxx() {
     jstestIt((
-        "test ciBuildext handling-behavior"
+        "test ciBuildExt handling-behavior"
     ), async function () {
         await Promise.all([
-            ciBuildext({process: {arch: "arm", env: {}, platform: "win32"}}),
-            ciBuildext({process: {arch: "arm64", env: {}, platform: "win32"}}),
-            ciBuildext({process: {arch: "ia32", env: {}, platform: "win32"}}),
-            ciBuildext({process: {env: {}, platform: "darwin"}}),
-            ciBuildext({process: {env: {}, platform: "win32"}}),
-            ciBuildext({process: {}})
+            ciBuildExt({modeSkip: true, process: {}}),
+            ciBuildExt({process: {arch: "arm", env: {}, platform: "win32"}}),
+            ciBuildExt({process: {arch: "arm64", env: {}, platform: "win32"}}),
+            ciBuildExt({process: {arch: "ia32", env: {}, platform: "win32"}}),
+            ciBuildExt({process: {env: {}, platform: "darwin"}}),
+            ciBuildExt({process: {env: {}, platform: "win32"}}),
+            ciBuildExt({process: {}})
         ]);
     });
 });
@@ -616,6 +621,35 @@ SELECT * FROM testDbExecAsync2;
         assertErrorThrownAsync(function () {
             return dbOpenAsync({});
         }, "invalid filename undefined");
+    });
+});
+
+jstestDescribe((
+    "test_fsXxx"
+), function test_fsXxx() {
+    jstestIt((
+        "test fsXxx handling-behavior"
+    ), async function () {
+        await Promise.all([
+            fsCopyFileUnlessTest("", ""),
+            fsExistsUnlessTest(""),
+            fsReadFileUnlessTest("", ""),
+            fsWriteFileUnlessTest("", ""),
+            //
+            fsCopyFileUnlessTest(
+                "package.json",
+                ".tmp/test_fsCopyFileUnlessTest_force",
+                "force"
+            ),
+            fsExistsUnlessTest("", "force"),
+            fsExistsUnlessTest("package.json", "force"),
+            fsReadFileUnlessTest("package.json", "force"),
+            fsWriteFileUnlessTest(
+                ".tmp/test_fsWriteFileUnlessTest_force",
+                "",
+                "force"
+            )
+        ]);
     });
 });
 
@@ -1441,22 +1475,30 @@ SELECT
 -- test null-case handling-behavior
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT 1 AS id, quantile(val, 0.5) AS val FROM __tmp1;
+SELECT
+        1 AS id,
+        median(val) AS mdn,
+        quantile(val, 0.5) AS qnt,
+        stdev(val) AS std
+    FROM __tmp1;
                     `)
                 })
             )[0];
-            assertJsonEqual(valActual, [{id: 1, val: null}]);
+            assertJsonEqual(
+                valActual,
+                [{id: 1, mdn: null, qnt: null, std: null}]
+            );
         }());
         await Promise.all([
             [
-                [[], -99, null],
-                [[], 0, null],
-                [[], 0.5, null],
-                [[], 1, null],
-                [[], 99, null],
-                [[null, null, 1, 1, 2, 3, 4], 0.5, 2],
-                [[null, null, 1, 2, 3, 4], 0.5, 2.5],
-                [[null], 0.5, null]
+                [[], -99, undefined],
+                [[], 0, undefined],
+                [[], 0.5, undefined],
+                [[], 1, undefined],
+                [[], 99, undefined],
+                [[undefined, undefined, 1, 1, 2, 3, 4], 0.5, 2],
+                [[undefined, undefined, 1, 2, 3, 4], 0.5, 2.5],
+                [[undefined], 0.5, undefined]
             ],
             [
                 [[], -99, 1],
@@ -1494,8 +1536,8 @@ SELECT 1 AS id, quantile(val, 0.5) AS val FROM __tmp1;
             ]) {
                 return [
                     data.concat([
-                        undefined, undefined, undefined, undefined,
-                        8, 7, 6, 5, 4, 3, 2, 1,
+                        undefined, -Infinity, Infinity, NaN,
+                        "8", 7, 6, "5", "4", 3, 2, "1",
                         undefined
                     ]),
                     kk,
@@ -1505,29 +1547,74 @@ SELECT 1 AS id, quantile(val, 0.5) AS val FROM __tmp1;
         ].flat().map(async function ([
             data, kk, valExpected
         ]) {
+            let avg = 0;
+            let data2;
+            let valExpectedMdn;
+            let valExpectedStd = 0;
+            data2 = data.map(function (elem) {
+                return Number(elem);
+            }).filter(function (elem) {
+                return Number.isFinite(elem);
+            }).sort();
+            valExpectedMdn = (
+                data2.length % 2 === 0
+                ? 0.5 * (
+                    data2[0.5 * data2.length - 1] + data2[0.5 * data2.length]
+                )
+                : data2[0.5 * (data2.length - 1)]
+            );
+            data2.forEach(function (elem) {
+                avg += elem;
+            });
+            avg *= 1 / data2.length;
+            data2.forEach(function (elem) {
+                valExpectedStd += (elem - avg) ** 2;
+            });
+            valExpectedStd = Math.round(1_000_000 * (
+                data2.length <= 0
+                ? undefined
+                // : data2.length === 1
+                // ? 0
+                : Math.sqrt(valExpectedStd / (data2.length - 1))
+            ));
             await Promise.all([
                 data,
                 Array.from(data).reverse()
             ].map(async function (data) {
-                let valActual = noop(
+                let valActual;
+                valActual = noop(
                     await dbExecAsync({
                         bindList: {
                             tmp1: JSON.stringify(data)
                         },
                         db,
                         sql: (`
-SELECT quantile(value, ${kk}) AS val FROM JSON_EACH($tmp1);
+SELECT
+        median(value) AS mdn,
+        quantile(value, ${kk}) AS qnt,
+        ROUND(1000000 * stdev(value)) AS std
+    FROM JSON_EACH($tmp1);
 -- test null-case handling-behavior
-SELECT quantile(value, ${kk}) AS val FROM JSON_EACH($tmp1) WHERE 0;
+SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
                         `)
                     })
-                )[0][0].val;
-                assertJsonEqual(valActual, valExpected, {
-                    data,
-                    kk,
+                )[0][0];
+                assertJsonEqual(
                     valActual,
-                    valExpected
-                });
+                    {
+                        mdn: valExpectedMdn,
+                        qnt: valExpected ?? null,
+                        std: valExpectedStd
+                    },
+                    {
+                        data,
+                        kk,
+                        valActual,
+                        valExpected,
+                        valExpectedMdn,
+                        valExpectedStd
+                    }
+                );
             }));
         }));
     });
