@@ -3,6 +3,10 @@
 # Todo
 - none
 
+# v2023.6.1-beta
+- sqlmath - Add sql-function castrealornull().
+- none
+
 # v2023.5.25
 - ci - auto-update python version
 - jslint - Add grammar for "export async function ...".

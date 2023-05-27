@@ -1242,16 +1242,19 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
         // test sqlmath-defined-func handling-behavior
         Object.entries({
             "''": {
+                "castrealornull": null,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": ""
             },
             "'-0.5'": {
+                "castrealornull": -0.5,
                 "castrealorzero": -0.5,
                 "casttextorempty": "-0.5",
                 "copyblob": "-0.5"
             },
             "'-1'": {
+                "castrealornull": -1,
                 "castrealorzero": -1,
                 "casttextorempty": "-1",
                 "copyblob": "-1",
@@ -1260,6 +1263,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": -1
             },
             "'0'": {
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "0",
                 "copyblob": "0",
@@ -1268,11 +1272,13 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": 0
             },
             "'0.5'": {
+                "castrealornull": 0.5,
                 "castrealorzero": 0.5,
                 "casttextorempty": "0.5",
                 "copyblob": "0.5"
             },
             "'1'": {
+                "castrealornull": 1,
                 "castrealorzero": 1,
                 "casttextorempty": "1",
                 "copyblob": "1",
@@ -1281,16 +1287,19 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": 1
             },
             "'aa'": {
+                "castrealornull": null,
                 "castrealorzero": 0,
                 "casttextorempty": "aa",
                 "copyblob": "aa"
             },
             "'hello'": {
+                "castrealornull": null,
                 "castrealorzero": 0,
                 "casttextorempty": "hello",
                 "copyblob": "hello"
             },
             "-0.5": {
+                "castrealornull": -0.5,
                 "castrealorzero": -0.5,
                 "casttextorempty": "-0.5",
                 "copyblob": -0.5
@@ -1299,6 +1308,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": -1
             },
             "-1": {
+                "castrealornull": -1,
                 "castrealorzero": -1,
                 "casttextorempty": "-1",
                 "copyblob": -1,
@@ -1310,6 +1320,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": -1
             },
             "0": {
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "0",
                 "copyblob": 0,
@@ -1318,6 +1329,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": 0
             },
             "0.5": {
+                "castrealornull": 0.5,
                 "castrealorzero": 0.5,
                 "casttextorempty": "0.5",
                 "copyblob": 0.5
@@ -1341,6 +1353,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": -1
             },
             "1": {
+                "castrealornull": 1,
                 "castrealorzero": 1,
                 "casttextorempty": "1",
                 "copyblob": 1,
@@ -1349,9 +1362,11 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": 1
             },
             "1e999": {
+                "castrealornull": null,
                 "sign": 1
             },
             "null": {
+                "castrealornull": null,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": null,
@@ -1369,11 +1384,13 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "roundorzero": 0
             },
             "zeroblob(0)": {
+                "castrealornull": null,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": null
             },
             "zeroblob(1)": {
+                "castrealornull": null,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": null
@@ -1431,7 +1448,6 @@ SELECT
         UNION ALL SELECT zeroblob(1)
         UNION ALL SELECT NULL
     );
-
                 `),
                 [
                     7, 2,

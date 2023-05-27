@@ -1356,6 +1356,15 @@ SQLMATH_FUNC static void sql_btotext_func(
         -1, SQLITE_TRANSIENT);
 }
 
+SQLMATH_FUNC static void sql_castrealornull_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will cast <argv>[0] to double or zero.
+    UNUSED_PARAMETER(argc);
+    sqlite3_result_double(context, sqlite3_value_double_or_nan(argv[0]));
+}
 
 SQLMATH_FUNC static void sql_castrealorzero_func(
     sqlite3_context * context,
@@ -1980,31 +1989,10 @@ typedef struct StdevElem {
     double nnn;                 // number-of-samples
 } StdevElem;
 
-SQLMATH_API double stdev(
-    double *arr,
-    const int nn,
-    const double pp
-) {
-// This function will find <pp>-th-stdev element in <arr>
-// using quickselect-algorithm.
-// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-    if (nn <= 0) {
-        return 0;
-    }
-    const int kk = MAX(0, MIN(nn - 1, (const int) (pp * nn)));
-    // handle even-case
-    if ((0 < kk && kk + 1 <= nn) && (double) kk == (pp * nn)) {
-        return 0.5 * (quickselect(arr, nn, kk) + quickselect(arr, nn,
-                kk - 1));
-    }
-    // handle odd-case
-    return quickselect(arr, nn, kk);
-}
-
 SQLMATH_FUNC static void sql_stdev_final(
     sqlite3_context * context
 ) {
-// This function will aggregate kth-stdev element.
+// This function will aggregate elements and calculate stdev.
     // pp - init
     StdevElem *pp =
         (StdevElem *) sqlite3_aggregate_context(context, sizeof(*pp));
@@ -2025,7 +2013,7 @@ static void sql_stdev_step(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will aggregate kth-stdev element.
+// This function will aggregate elements and calculate stdev.
     UNUSED_PARAMETER(argc);
     // pp - init
     StdevElem *pp =
@@ -2095,6 +2083,7 @@ int sqlite3_sqlmath_base_init(
     int errcode = 0;
     SQLITE3_CREATE_FUNCTION1(btobase64, 1);
     SQLITE3_CREATE_FUNCTION1(btotext, 1);
+    SQLITE3_CREATE_FUNCTION1(castrealornull, 1);
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
     SQLITE3_CREATE_FUNCTION1(copyblob, 1);

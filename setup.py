@@ -86,8 +86,14 @@ async def build_ext_async(): # noqa=C901
 
     async def build_ext_obj(cdefine):
         file_obj = f"build/{cdefine}.obj"
-        if cdefine != "SRC_SQLITE_PYTHON" and pathlib.Path(file_obj).exists():
-            return
+        match cdefine:
+            case "SQLMATH_BASE":
+                pass
+            case "SRC_SQLITE_PYTHON":
+                pass
+            case _:
+                if pathlib.Path(file_obj).exists():
+                    return
         file_src = f"build/{cdefine}.c"
         arg_list = [
             *[f"-I{path}" for path in path_include],
@@ -149,7 +155,8 @@ async def build_ext_async(): # noqa=C901
     #
     # build_ext - update version
     with pathlib.Path("package.json").open() as file1:
-        version = json.load(file1)["version"].split("-")[0]
+        package_json = json.load(file1)
+        version = package_json["version"].split("-")[0]
     for filename in [
         "README.md",
         "sqlmath/__init__.py",
@@ -178,7 +185,7 @@ async def build_ext_async(): # noqa=C901
                 ),
                 data1,
             )
-            if (data1 != data0):
+            if package_json["name"] == "sqlmath" and data1 != data0:
                 print(f"build_ext - update file {file1.name}")
                 file1.seek(0)
                 file1.write(data1)

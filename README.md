@@ -117,7 +117,12 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 
 <br><br>
 ### python pypi publish
-- $ `twine upload --repository testpypi dist/sqlmath-2023.5.25*`
-    - $ `py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==0.0.5`
-- $ `twine upload dist/sqlmath-2023.5.25*`
-    - $ `pip install sqlmath==2023.5.25`
+```shell
+python -m build
+#
+twine upload --repository testpypi dist/sqlmath-2023.6.1*
+py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2023.6.1
+#
+twine upload dist/sqlmath-2023.6.1*
+pip install sqlmath==2023.6.1
+```
