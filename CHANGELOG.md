@@ -4,6 +4,7 @@
 - none
 
 # v2023.6.1-beta
+- sqlmath - Add sql-function vector_concat().
 - sqlmath - Add sql-function castrealornull().
 - none
 

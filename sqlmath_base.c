@@ -188,6 +188,24 @@ file sqlmath_h - start
         goto catch_error; \
     }
 
+#define VECTOR98_AGGREGATE_CONTEXT() \
+    Vector98 **vec98_agg = \
+        (Vector98 **) sqlite3_aggregate_context(context, sizeof(*vec98_agg)); \
+    if (vec98_agg == NULL) { \
+        sqlite3_result_error_nomem(context); \
+        return; \
+    } \
+    Vector98 *vec98 = *vec98_agg; \
+    if (vec98 == NULL) { \
+        vec98 = vector98_malloc(); \
+        if (vec98 == NULL) { \
+            sqlite3_result_error_nomem(context); \
+            return; \
+        } \
+        *vec98_agg = vec98; \
+    } \
+    double *vec98_buf = vector98_buf(vec98);
+
 #define VECTOR99_AGGREGATE_CONTEXT() \
     Vector99 *vec99 = \
         (Vector99 *) sqlite3_aggregate_context(context, sizeof(*vec99)); \
@@ -260,6 +278,28 @@ SQLMATH_API void str99ResultBlob(
 SQLMATH_API void str99ResultText(
     sqlite3_str * str99,
     sqlite3_context * context
+);
+
+
+// file sqlmath_h - Vector98
+typedef struct Vector98 {
+    double alloc;
+    double len;
+    double arg0;
+    double arg1;
+} Vector98;
+SQLMATH_API Vector98 *vector98_malloc(
+);
+SQLMATH_API int vector98_push_back(
+    Vector98 ** vec98_agg,
+    double val
+);
+SQLMATH_API void vector98_result_blob(
+    Vector98 * vec98,
+    sqlite3_context * context
+);
+SQLMATH_API double *vector98_buf(
+    Vector98 * vec98
 );
 
 
@@ -882,6 +922,71 @@ SQLMATH_API void dbOpen(
     (void) 0;
 }
 
+// SQLMATH_API Vector98 - start
+SQLMATH_API double *vector98_buf(
+    Vector98 * vec98
+) {
+    return ((double *) vec98) + sizeof(Vector98) / sizeof(double);
+}
+
+SQLMATH_API Vector98 *vector98_malloc(
+) {
+    static const int alloc0 = 256;
+    Vector98 *vec98 = sqlite3_malloc(alloc0);
+    if (vec98 == NULL) {
+        return NULL;
+    }
+    memset(vec98, 0, alloc0);
+    vec98->alloc = alloc0;
+    return vec98;
+}
+
+SQLMATH_API int vector98_push_back(
+    Vector98 ** vec98_agg,
+    double val
+) {
+    if (vec98_agg == NULL || *vec98_agg == NULL) {
+        return SQLITE_NOMEM;
+    }
+    Vector98 *vec98 = *vec98_agg;
+    const int len = (const int) vec98->len;
+    if (sizeof(Vector98) + len * sizeof(double) >= vec98->alloc) {
+        vec98->alloc *= 2;
+        // error - toobig
+        if (vec98->alloc > SQLITE_MAX_LENGTH2) {
+            goto catch_error;
+        }
+        vec98 = sqlite3_realloc(vec98, vec98->alloc);
+        // error - nomem
+        if (vec98 == NULL) {
+            goto catch_error;
+        }
+        *vec98_agg = vec98;
+    }
+    vector98_buf(vec98)[len] = val;
+    vec98->len += 1;
+    return SQLITE_OK;
+  catch_error:
+    sqlite3_free(*vec98_agg);
+    *vec98_agg = NULL;
+    return SQLITE_NOMEM;
+}
+
+SQLMATH_API void vector98_result_blob(
+    Vector98 * vec98,
+    sqlite3_context * context
+) {
+// This function will return <vec98> as result-blob in given <context>.
+    vec98->alloc = sizeof(Vector98) + vec98->len * sizeof(double);
+    sqlite3_result_blob(context, (const char *) vec98, vec98->alloc,
+        // destructor
+        sqlite3_free);
+}
+
+// SQLMATH_API Vector98 - end
+
+
+// SQLMATH_API Vector99 - start
 SQLMATH_API void vector99_buf_free(
     Vector99 * vec99
 ) {
@@ -1821,17 +1926,17 @@ static double quickselect(
 SQLMATH_API double quantile(
     double *arr,
     const int nn,
-    const double pp
+    const double qq
 ) {
-// This function will find <pp>-th-quantile element in <arr>
+// This function will find <qq>-th-quantile element in <arr>
 // using quickselect-algorithm.
 // https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
     if (!(nn >= 1)) {
         return NAN;
     }
-    const int kk = MAX(0, MIN(nn - 1, (const int) (pp * nn)));
+    const int kk = MAX(0, MIN(nn - 1, (const int) (qq * nn)));
     // handle even-case
-    if ((0 < kk && kk + 1 <= nn) && (double) kk == (pp * nn)) {
+    if ((0 < kk && kk + 1 <= nn) && (double) kk == (qq * nn)) {
         return 0.5 * (quickselect(arr, nn, kk) + quickselect(arr, nn,
                 kk - 1));
     }
@@ -1843,41 +1948,43 @@ SQLMATH_FUNC static void sql_quantile_final(
     sqlite3_context * context
 ) {
 // This function will aggregate kth-quantile element.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT();
-    // vec99 - null-case
-    if (vec99->size <= 0) {
+    // vec98 - init
+    VECTOR98_AGGREGATE_CONTEXT();
+    // vec98 - null-case
+    if (vec98->len == 0) {
         sqlite3_result_null(context);
         goto catch_error;
     }
-    sqlite3_result_double(context, quantile(vec99->buf, vec99->size,
-            vec99->arg0));
+    sqlite3_result_double(context, quantile(vec98_buf, vec98->len,
+            vec98->arg0));
   catch_error:
-    vector99_buf_free(vec99);
+    sqlite3_free(*vec98_agg);
+    *vec98_agg = NULL;
 }
 
 static void sql_quantile_step0(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv,
-    const double pp
+    const double qq
 ) {
 // This function will aggregate kth-quantile element.
     UNUSED_PARAMETER(argc);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT();
-    if (isnan(vec99->arg0)) {
-        vec99->arg0 = pp;       // kth-quantile
+    // vec98 - init
+    VECTOR98_AGGREGATE_CONTEXT();
+    if (vec98->len == 0) {
+        vec98->arg0 = qq;       // kth-quantile
     }
-    // vec99 - append isfinite
+    // vec98 - append isfinite
     const double xx = sqlite3_value_double_or_nan(argv[0]);
     if (!isnan(xx)) {
-        const int errcode = vector99_push_back(vec99, xx);
+        const int errcode = vector98_push_back(vec98_agg, xx);
         SQLITE3_RESULT_ERROR_CODE(errcode);
     }
     return;
   catch_error:
-    vector99_buf_free(vec99);
+    sqlite3_free(*vec98_agg);
+    *vec98_agg = NULL;
 }
 
 SQLMATH_FUNC static void sql_quantile_step(
@@ -1905,7 +2012,6 @@ SQLMATH_FUNC static void sql_median_step(
 }
 
 // SQLMATH_FUNC sql_quantile_func - end
-
 
 SQLMATH_FUNC static void sql_roundorzero_func(
     sqlite3_context * context,
@@ -2033,6 +2139,65 @@ static void sql_stdev_step(
 
 // SQLMATH_FUNC sql_stdev_func - end
 
+// SQLMATH_FUNC sql_vec_concat_func - start
+SQLMATH_FUNC static void sql_vec_concat_final(
+    sqlite3_context * context
+) {
+// This function will concat rows of nCol doubles to a 2d-matrix.
+    // vec98 - init
+    VECTOR98_AGGREGATE_CONTEXT();
+    // vec98 - null-case
+    if (vec98->len == 0) {
+        sqlite3_result_null(context);
+        goto catch_error;
+    }
+    // debug
+    // fprintf(stderr, "\n");
+    // for (int ii = 0; ii < (int) vec98->len; ii += 1) {
+    //     fprintf(stderr, "vec_concat ii=%d xx=%f\n", ii, vec98_buf[ii]);
+    // }
+    // vec98 - fill-forward
+    const int nn = (int) vec98->len;
+    for (int ii = 1; ii < nn; ii += 1) {
+        if (isnan(vec98_buf[ii])) {
+            vec98_buf[ii] = vec98_buf[ii - 1];
+        }
+    }
+    // vec98 - fill-backward
+    for (int ii = nn - 2; ii >= 0; ii -= 1) {
+        if (isnan(vec98_buf[ii])) {
+            vec98_buf[ii] = vec98_buf[ii + 1];
+        }
+    }
+    // vec98 - result
+    vector98_result_blob(vec98, context);
+    return;
+  catch_error:
+    sqlite3_free(*vec98_agg);
+    *vec98_agg = NULL;
+}
+
+SQLMATH_FUNC static void sql_vec_concat_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will concat argv[0] to carray of double
+    UNUSED_PARAMETER(argc);
+    // vec98 - init
+    VECTOR98_AGGREGATE_CONTEXT();
+    // vec98 - append double
+    const int errcode =
+        vector98_push_back(vec98_agg, sqlite3_value_double_or_nan(argv[0]));
+    SQLITE3_RESULT_ERROR_CODE(errcode);
+    return;
+  catch_error:
+    sqlite3_free(*vec98_agg);
+    *vec98_agg = NULL;
+}
+
+// SQLMATH_FUNC sql_vec_concat_func - end
+
 SQLMATH_FUNC static void sql_squared_func(
     sqlite3_context * context,
     int argc,
@@ -2103,6 +2268,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
     SQLITE3_CREATE_FUNCTION2(stdev, 1);
+    SQLITE3_CREATE_FUNCTION2(vec_concat, 1);
     SQLITE3_CREATE_FUNCTION3(avg_ema, 2);
     errcode =
         sqlite3_create_function(db, "random1", 0,

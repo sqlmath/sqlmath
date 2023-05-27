@@ -1634,6 +1634,66 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
             }));
         }));
     });
+    jstestIt((
+        "test sqlite-extension-vec_concat handling-behavior"
+    ), async function test_sqlite_extension_vec_concat() {
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        await Promise.all([
+            [
+                (`
+SELECT vec_concat(NULL);
+                `),
+                [null]
+            ],
+            [
+                (`
+SELECT vec_concat(NULL) FROM (SELECT 1 UNION ALL SELECT 2);
+                `),
+                [null, null]
+            ],
+            [
+                (`
+SELECT
+        vec_concat(aa)
+    FROM (
+        SELECT NULL AS aa
+        UNION ALL SELECT '12.34'
+        UNION ALL SELECT 'abcd'
+        UNION ALL SELECT 43.21
+        UNION ALL SELECT zeroblob(0)
+        UNION ALL SELECT zeroblob(1)
+        UNION ALL SELECT NULL
+    );
+                `),
+                [
+                    12.34,
+                    12.34,
+                    12.34,
+                    43.21,
+                    43.21,
+                    43.21,
+                    43.21
+                ]
+            ]
+        ].map(async function ([
+            sql, valExpected
+        ], ii) {
+            let valActual = Array.from(new Float64Array(
+                await dbExecAndReturnLastBlobAsync({
+                    db,
+                    sql
+                })
+            )).slice(4);
+            assertJsonEqual(valActual, valExpected, {
+                ii,
+                sql,
+                valActual,
+                valExpected
+            });
+        }));
+    });
 });
 
 jstestDescribe((
