@@ -1813,15 +1813,19 @@ SQLMATH_FUNC static void sql_matrix2d_concat_final(
     sqlite3_context * context
 ) {
 // This function will concat rows of nCol doubles to a 2d-matrix.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT();
-    // vec99 - null-case
-    if (vec99->size <= 2) {
+    // vec98 - init
+    VECTOR98_AGGREGATE_CONTEXT();
+    // vec98 - null-case
+    if (vec98->len <= 2) {
         sqlite3_result_null(context);
         return;
     }
-    // vec99 - result
-    vector99_result_blob(vec99, context);
+    // vec98 - result
+    int alloc0 = vec98->len * sizeof(double);
+    memmove(vec98, vec98_buf, alloc0);
+    sqlite3_result_blob(context, (const char *) vec98, alloc0,
+        // destructor
+        sqlite3_free);
 }
 
 SQLMATH_FUNC static void sql_matrix2d_concat_step(
@@ -1832,22 +1836,24 @@ SQLMATH_FUNC static void sql_matrix2d_concat_step(
 // This function will concat rows of nCol doubles to a 2d-matrix.
     // declare var
     int errcode = 0;
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT();
-    if (vec99->size <= 0) {
-        errcode = vector99_push_back(vec99, 0);
-        errcode = vector99_push_back(vec99, (double) argc);
+    // vec98 - init
+    VECTOR98_AGGREGATE_CONTEXT();
+    if (vec98->len <= 0) {
+        errcode = vector98_push_back(vec98_agg, 0);
+        errcode = vector98_push_back(vec98_agg, (double) argc);
         SQLITE3_RESULT_ERROR_CODE(errcode);
     }
-    // vec99 - append double
+    // vec98 - append double
     for (int ii = 0; ii < argc; ii += 1) {
-        errcode = vector99_push_back(vec99, sqlite3_value_double(argv[ii]));
+        errcode =
+            vector98_push_back(vec98_agg, sqlite3_value_double(argv[ii]));
     }
     SQLITE3_RESULT_ERROR_CODE(errcode);
-    vec99->buf[0] += 1;
+    vector98_buf(*vec98_agg)[0] += 1;
     return;
   catch_error:
-    vector99_buf_free(vec99);
+    sqlite3_free(*vec98_agg);
+    *vec98_agg = NULL;
 }
 
 // SQLMATH_FUNC sql_matrix2d_concat_func - end

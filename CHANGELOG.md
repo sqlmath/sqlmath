@@ -4,6 +4,7 @@
 - none
 
 # v2023.6.1-beta
+- sqlmath - Revamp struct Vector99. - part1
 - sqlmath - Add sql-function vector_concat().
 - sqlmath - Add sql-function castrealornull().
 - none
