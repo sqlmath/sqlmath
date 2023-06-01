@@ -1694,6 +1694,127 @@ SELECT
             });
         }));
     });
+    jstestIt((
+        "test sqlite-extension-vec_win_slr handling-behavior"
+    ), async function test_sqlite_extension_vec_win_slr() {
+        let dataxy;
+        let db;
+        db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        dataxy = [
+            [2, 0],
+            [2, 1],
+            [3, 3],
+            [4, 4],
+            ["5", 5],
+            [undefined, 6],
+            [5, "abcd"],
+            [6, 7],
+            //
+            [10, 8],
+            [2, 5]
+        ];
+        await Promise.all([
+            {
+                nnn: 8,
+                valExpected: {
+                    caa: -2.5,
+                    cbb: 1.625,
+                    crr: 0.97991187,
+                    eyy: 2.50713268,
+                    mxx: 4,
+                    myy: 4,
+                    nnn: 8,
+                    sxx: 16,
+                    sxy: 26,
+                    syy: 44,
+                    wnn: 8
+                },
+                wnn: 8
+            },
+            {
+                nnn: 9,
+                valExpected: {
+                    caa: 0.75,
+                    cbb: 0.85,
+                    crr: 0.89597867,
+                    eyy: 2.26778684,
+                    mxx: 5,
+                    myy: 5,
+                    nnn: 9,
+                    sxx: 40,
+                    sxy: 34,
+                    syy: 36,
+                    wnn: 8
+                },
+                wnn: 8
+            },
+            {
+                nnn: 10,
+                valExpected: {
+                    caa: 2.75,
+                    cbb: 0.55,
+                    crr: 0.81989159,
+                    eyy: 1.60356745,
+                    mxx: 5,
+                    myy: 5.5,
+                    nnn: 10,
+                    sxx: 40,
+                    sxy: 22,
+                    syy: 18,
+                    wnn: 8
+                },
+                wnn: 8
+            }
+        ].map(async function ({
+            nnn,
+            valExpected,
+            wnn
+        }) {
+            let valActual;
+            valActual = await dbExecAndReturnLastJsonAsync({
+                bindList: {
+                    dataxy: JSON.stringify(dataxy.slice(0, nnn))
+                },
+                db,
+                sql: (`
+SELECT
+        jsonfromfloat64array(
+            vec_win_slr(
+                vec_concat(value->>'0'),
+                vec_concat(value->>'1'),
+                ${wnn}
+            )
+        )
+    FROM JSON_EACH($dataxy);
+                `)
+            });
+            valActual = valActual.map(function (xx) {
+                return (
+                    xx === null
+                    ? null
+                    : Number(xx.toFixed(8))
+                );
+            });
+            assertJsonEqual(
+                {
+                    caa: valActual[valActual.length - 6],
+                    cbb: valActual[valActual.length - 5],
+                    crr: valActual[valActual.length - 4],
+                    eyy: valActual[valActual.length - 3],
+                    mxx: valActual[valActual.length - 2],
+                    myy: valActual[valActual.length - 1],
+                    nnn: valActual[4],
+                    sxx: valActual[8],
+                    sxy: valActual[9],
+                    syy: valActual[10],
+                    wnn: valActual[5]
+                },
+                valExpected
+            );
+        }));
+    });
 });
 
 jstestDescribe((

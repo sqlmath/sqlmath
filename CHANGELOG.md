@@ -4,10 +4,10 @@
 - none
 
 # v2023.6.1-beta
+- sqlmath - Add sql-function vec_win_slr().
 - sqlmath - Revamp struct Vector99.
-- sqlmath - Add sql-function vector_concat().
+- sqlmath - Add sql-function vec_concat().
 - sqlmath - Add sql-function castrealornull().
-- none
 
 # v2023.5.25
 - ci - auto-update python version
