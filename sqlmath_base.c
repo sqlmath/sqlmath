@@ -214,6 +214,41 @@ typedef uint64_t u64;
 typedef uint8_t u8;
 
 
+// file sqlmath_h - db
+typedef struct Jsbaton {
+    int32_t nallc;              // offset - 0-4
+    int32_t nused;              // offset - 4-8
+    int64_t argv[JSBATON_ARGC]; // offset - 8-136
+    int64_t bufv[JSBATON_ARGC]; // offset - 136-264
+    int64_t cfuncname;          // offset - 264-272
+    char errmsg[SIZEOF_MESSAGE_DEFAULT];        // offset 272-528
+    void *napi_argv;
+    void *napi_work;
+    void *napi_deferred;
+} Jsbaton;
+SQLMATH_API int __dbFileImportOrExport(
+    sqlite3 * pInMemory,
+    char *zFilename,
+    const int isSave
+);
+SQLMATH_API void dbClose(
+    Jsbaton * baton
+);
+SQLMATH_API void dbExec(
+    Jsbaton * baton
+);
+SQLMATH_API void dbFileImportOrExport(
+    Jsbaton * baton
+);
+SQLMATH_API void dbNoop(
+    Jsbaton * baton
+);
+SQLMATH_API void dbOpen(
+    Jsbaton * baton
+);
+
+
+
 // file sqlmath_h - str99
 /*
 ** An objected used to accumulate the text of a string where we
@@ -254,11 +289,6 @@ SQLMATH_API void str99JsonAppendJenks(
     const double *arr,
     int nn
 );
-SQLMATH_API void str99JsonAppendText(
-    sqlite3_str * str99,
-    const char *zIn,
-    u32 nn
-);
 SQLMATH_API void str99ResultBlob(
     sqlite3_str * str99,
     sqlite3_context * context
@@ -269,13 +299,16 @@ SQLMATH_API void str99ResultText(
 );
 
 
-// file sqlmath_h - Vector99
+// file sqlmath_h - vector99
 typedef struct Vector99 {
-    double alloc;
-    double nn;
+    double alloc;               // allocated size in bytes
+    double nelem;               // number of array elements
     double arg0;
     double arg1;
 } Vector99;
+SQLMATH_API double *vector99_buf(
+    const Vector99 * vec99
+);
 SQLMATH_API Vector99 *vector99_malloc(
 );
 SQLMATH_API double vector99_pop_front(
@@ -289,50 +322,13 @@ SQLMATH_API void vector99_result_blob(
     Vector99 * vec99,
     sqlite3_context * context
 );
-SQLMATH_API double *vector99_buf(
-    const Vector99 * vec99
-);
-
-
-// file sqlmath_h - Jsbaton
-typedef struct Jsbaton {
-    int32_t nallc;              // offset - 0-4
-    int32_t nused;              // offset - 4-8
-    int64_t argv[JSBATON_ARGC]; // offset - 8-136
-    int64_t bufv[JSBATON_ARGC]; // offset - 136-264
-    int64_t cfuncname;          // offset - 264-272
-    char errmsg[SIZEOF_MESSAGE_DEFAULT];        // offset 272-528
-    void *napi_argv;
-    void *napi_work;
-    void *napi_deferred;
-} Jsbaton;
 
 
 // file sqlmath_h - SQLMATH_API
-SQLMATH_API int __dbFileImportOrExport(
-    sqlite3 * pInMemory,
-    char *zFilename,
-    const int isSave
-);
-
-SQLMATH_API void dbClose(
-    Jsbaton * baton
-);
-
-SQLMATH_API void dbExec(
-    Jsbaton * baton
-);
-
-SQLMATH_API void dbFileImportOrExport(
-    Jsbaton * baton
-);
-
-SQLMATH_API void dbNoop(
-    Jsbaton * baton
-);
-
-SQLMATH_API void dbOpen(
-    Jsbaton * baton
+SQLMATH_API double *jenksCreate(
+    int kk,
+    const double *values,
+    int nn
 );
 
 SQLMATH_API int doubleSign(
@@ -342,12 +338,6 @@ SQLMATH_API int doubleSign(
 SQLMATH_API int doubleSortCompare(
     const void *aa,
     const void *bb
-);
-
-SQLMATH_API double *jenksCreate(
-    int kk,
-    const double *values,
-    int nn
 );
 
 SQLMATH_API const char *jsbatonValueErrmsg(
@@ -401,17 +391,13 @@ file sqlmath_base - start
 
 
 #include "sqlmath_jenks.c"
-typedef struct DbExecBindElem {
-    const char *buf;
-    char *key;
-    int buflen;
-    char datatype;
-} DbExecBindElem;
 // track how many sqlite-db open
 static int dbCount = 0;
 
 
 // file sqlmath_base - SQLMATH_API
+
+// SQLMATH_API db - start
 SQLMATH_API int __dbFileImportOrExport(
     sqlite3 * pInMemory,
     char *zFilename,
@@ -497,7 +483,14 @@ SQLMATH_API void dbClose(
     (void) 0;
 }
 
-// SQLMATH_API dbexec - start
+// SQLMATH_API dbExec - start
+typedef struct DbExecBindElem {
+    const char *buf;
+    char *key;
+    int buflen;
+    char datatype;
+} DbExecBindElem;
+
 SQLMATH_API void dbExec(
     Jsbaton * baton
 ) {
@@ -827,7 +820,7 @@ SQLMATH_API void dbExec(
 #endif                          // EMSCRIPTEN
 }
 
-// SQLMATH_API dbexec - end
+// SQLMATH_API dbExec - end
 
 SQLMATH_API void dbFileImportOrExport(
     Jsbaton * baton
@@ -883,157 +876,9 @@ SQLMATH_API void dbOpen(
     (void) 0;
 }
 
-// SQLMATH_API Vector99 - start
-SQLMATH_API double *vector99_buf(
-    const Vector99 * vec99
-) {
-    return ((double *) vec99) + sizeof(Vector99) / sizeof(double);
-}
+// SQLMATH_API db - end
 
-SQLMATH_API Vector99 *vector99_malloc(
-) {
-    static const int alloc0 = 256;
-    Vector99 *vec99 = sqlite3_malloc(alloc0);
-    if (vec99 == NULL) {
-        return NULL;
-    }
-    // zero vec99
-    memset(vec99, 0, alloc0);
-    vec99->alloc = alloc0;
-    return vec99;
-}
-
-SQLMATH_API double vector99_pop_front(
-    Vector99 ** vec99_agg
-) {
-// This function will pop_front <vec99>, or return NAN if empty.
-    if (vec99_agg == NULL || *vec99_agg == NULL || (*vec99_agg)->nn <= 0) {
-        return NAN;
-    }
-    double *vec99_buf = vector99_buf(*vec99_agg);
-    const double xx = vec99_buf[0];
-    (*vec99_agg)->nn -= 1;
-    memmove(vec99_buf, vec99_buf + 1, (*vec99_agg)->nn * sizeof(double));
-    return xx;
-}
-
-SQLMATH_API int vector99_push_back(
-    Vector99 ** vec99_agg,
-    double xx
-) {
-    if (vec99_agg == NULL || *vec99_agg == NULL) {
-        return SQLITE_NOMEM;
-    }
-    const int nn = (const int) (*vec99_agg)->nn;
-    if (sizeof(Vector99) + nn * sizeof(double) >= (*vec99_agg)->alloc) {
-        (*vec99_agg)->alloc *= 2;
-        // error - toobig
-        if ((*vec99_agg)->alloc > SQLITE_MAX_LENGTH2) {
-            goto catch_error;
-        }
-        Vector99 *vec99 = sqlite3_realloc(*vec99_agg, (*vec99_agg)->alloc);
-        // error - nomem
-        if (vec99 == NULL) {
-            goto catch_error;
-        }
-        *vec99_agg = vec99;
-    }
-    vector99_buf(*vec99_agg)[nn] = xx;
-    (*vec99_agg)->nn += 1;
-    return SQLITE_OK;
-  catch_error:
-    sqlite3_free(*vec99_agg);
-    *vec99_agg = NULL;
-    return SQLITE_NOMEM;
-}
-
-SQLMATH_API void vector99_result_blob(
-    Vector99 * vec99,
-    sqlite3_context * context
-) {
-// This function will return <vec99> as result-blob in given <context>.
-    vec99->alloc = sizeof(Vector99) + vec99->nn * sizeof(double);
-    sqlite3_result_blob(context, (const char *) vec99, vec99->alloc,
-        // destructor
-        sqlite3_free);
-}
-
-// SQLMATH_API Vector99 - end
-
-SQLMATH_API int doubleSign(
-    const double aa
-) {
-// This function will return sign of <aa>.
-    return aa < 0 ? -1 : aa > 0 ? 1 : 0;
-}
-
-SQLMATH_API int doubleSortCompare(
-    const void *aa,
-    const void *bb
-) {
-// This function will compare <aa> with <bb>.
-    const double cc = *(double *) aa - *(double *) bb;
-    return cc < 0 ? -1 : cc > 0 ? 1 : 0;
-}
-
-SQLMATH_API const char *jsbatonValueErrmsg(
-    Jsbaton * baton
-) {
-// This function will return <baton>->errmsg.
-    return (const char *) baton->errmsg;
-}
-
-SQLMATH_API const char *jsbatonValueStringArgi(
-    Jsbaton * baton,
-    int argi
-) {
-// This function will return string-value from <baton> at given <argi>.
-    if (baton->argv[argi] == 0) {
-        return NULL;
-    }
-    return ((const char *) baton) + ((size_t) baton->argv[argi] + 1 + 4);
-}
-
-SQLMATH_API int noop(
-) {
-// This function will do nothing except return 0.
-    return 0;
-}
-
-SQLMATH_API double sqlite3_value_double_or_nan(
-    sqlite3_value * arg
-) {
-// This function will return double if finite else nan.
-    switch (sqlite3_value_numeric_type(arg)) {
-    case SQLITE_INTEGER:
-    case SQLITE_FLOAT:
-        {
-            const double xx = sqlite3_value_double(arg);
-            if (isfinite(xx)) {
-                return xx;
-            }
-        }
-        break;
-    }
-    return NAN;
-}
-
-SQLMATH_API const char *sqlmathSnprintfTrace(
-    char *buf,
-    const char *prefix,
-    const char *errmsg,
-    const char *func,
-    const char *file,
-    int line
-) {
-// This function will write <errmsg> to <buf> with additional trace-info.
-    if (snprintf(buf, SIZEOF_MESSAGE_DEFAULT, "%s%s\n    at %s (%s:%d)",
-            prefix, errmsg, func, file, line) < 0) {
-        abort();
-    }
-    return (const char *) buf;
-}
-
+// SQLMATH_API str99 - start
 SQLMATH_API void str99ArrayAppendDouble(
     sqlite3_str * str99,
     const double xx
@@ -1173,6 +1018,161 @@ SQLMATH_API void str99ResultText(
         sqlite3_free);
 }
 
+// SQLMATH_API str99 - end
+
+// SQLMATH_API vector99 - start
+SQLMATH_API double *vector99_buf(
+    const Vector99 * vec99
+) {
+    return ((double *) vec99) + sizeof(Vector99) / sizeof(double);
+}
+
+SQLMATH_API Vector99 *vector99_malloc(
+) {
+    static const int alloc0 = 256;
+    Vector99 *vec99 = sqlite3_malloc(alloc0);
+    if (vec99 == NULL) {
+        return NULL;
+    }
+    // zero vec99
+    memset(vec99, 0, alloc0);
+    vec99->alloc = alloc0;
+    return vec99;
+}
+
+SQLMATH_API double vector99_pop_front(
+    Vector99 ** vec99_agg
+) {
+// This function will pop_front <vec99>, or return NAN if empty.
+    if (vec99_agg == NULL || *vec99_agg == NULL || (*vec99_agg)->nelem <= 0) {
+        return NAN;
+    }
+    double *vec99_buf = vector99_buf(*vec99_agg);
+    const double xx = vec99_buf[0];
+    (*vec99_agg)->nelem -= 1;
+    memmove(vec99_buf, vec99_buf + 1, (*vec99_agg)->nelem * sizeof(double));
+    return xx;
+}
+
+SQLMATH_API int vector99_push_back(
+    Vector99 ** vec99_agg,
+    double xx
+) {
+    if (vec99_agg == NULL || *vec99_agg == NULL) {
+        return SQLITE_NOMEM;
+    }
+    const int nn = (const int) (*vec99_agg)->nelem;
+    int alloc = (*vec99_agg)->alloc;
+    if (sizeof(Vector99) + nn * sizeof(double) >= alloc) {
+        // error - toobig
+        if (alloc >= SQLITE_MAX_LENGTH2) {
+            goto catch_error;
+        }
+        alloc = MIN(SQLITE_MAX_LENGTH2, alloc * 2);
+        Vector99 *vec99 = sqlite3_realloc(*vec99_agg, alloc);
+        // error - nomem
+        if (vec99 == NULL) {
+            goto catch_error;
+        }
+        vec99->alloc = alloc;
+        *vec99_agg = vec99;
+    }
+    vector99_buf(*vec99_agg)[nn] = xx;
+    (*vec99_agg)->nelem += 1;
+    return SQLITE_OK;
+  catch_error:
+    sqlite3_free(*vec99_agg);
+    *vec99_agg = NULL;
+    return SQLITE_NOMEM;
+}
+
+SQLMATH_API void vector99_result_blob(
+    Vector99 * vec99,
+    sqlite3_context * context
+) {
+// This function will return <vec99> as result-blob in given <context>.
+    vec99->alloc = sizeof(Vector99) + vec99->nelem * sizeof(double);
+    sqlite3_result_blob(context, (const char *) vec99, vec99->alloc,
+        // destructor
+        sqlite3_free);
+}
+
+// SQLMATH_API vector99 - end
+
+SQLMATH_API int doubleSign(
+    const double aa
+) {
+// This function will return sign of <aa>.
+    return aa < 0 ? -1 : aa > 0 ? 1 : 0;
+}
+
+SQLMATH_API int doubleSortCompare(
+    const void *aa,
+    const void *bb
+) {
+// This function will compare <aa> with <bb>.
+    const double cc = *(double *) aa - *(double *) bb;
+    return cc < 0 ? -1 : cc > 0 ? 1 : 0;
+}
+
+SQLMATH_API const char *jsbatonValueErrmsg(
+    Jsbaton * baton
+) {
+// This function will return <baton>->errmsg.
+    return (const char *) baton->errmsg;
+}
+
+SQLMATH_API const char *jsbatonValueStringArgi(
+    Jsbaton * baton,
+    int argi
+) {
+// This function will return string-value from <baton> at given <argi>.
+    if (baton->argv[argi] == 0) {
+        return NULL;
+    }
+    return ((const char *) baton) + ((size_t) baton->argv[argi] + 1 + 4);
+}
+
+SQLMATH_API int noop(
+) {
+// This function will do nothing except return 0.
+    return 0;
+}
+
+SQLMATH_API double sqlite3_value_double_or_nan(
+    sqlite3_value * arg
+) {
+// This function will return double if finite else nan.
+    switch (sqlite3_value_numeric_type(arg)) {
+    case SQLITE_INTEGER:
+    case SQLITE_FLOAT:
+        {
+            const double xx = sqlite3_value_double(arg);
+            if (isfinite(xx)) {
+                return xx;
+            }
+        }
+        break;
+    }
+    return NAN;
+}
+
+SQLMATH_API const char *sqlmathSnprintfTrace(
+    char *buf,
+    const char *prefix,
+    const char *errmsg,
+    const char *func,
+    const char *file,
+    int line
+) {
+// This function will write <errmsg> to <buf> with additional trace-info.
+    if (snprintf(buf, SIZEOF_MESSAGE_DEFAULT, "%s%s\n    at %s (%s:%d)",
+            prefix, errmsg, func, file, line) < 0) {
+        abort();
+    }
+    return (const char *) buf;
+}
+
 
 // file sqlmath_base - SQLMATH_FUNC
 // SQLMATH_FUNC sql_avg_ema_func - start
@@ -1220,13 +1220,13 @@ SQLMATH_FUNC static void sql_avg_ema_step(
     UNUSED_PARAMETER(argc);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
-    if ((*vec99_agg)->nn == 0) {
+    if ((*vec99_agg)->nelem == 0) {
         (*vec99_agg)->arg0 = sqlite3_value_double(argv[1]);     // alpha
     }
     // vec99 - calculate ema
     const double alpha = (*vec99_agg)->arg0;
     const double xx = sqlite3_value_double(argv[0]);
-    for (int ii = 0; ii < (*vec99_agg)->nn; ii += 1) {
+    for (int ii = 0; ii < (*vec99_agg)->nelem; ii += 1) {
         vec99_buf[ii] = alpha * xx + (1 - alpha) * vec99_buf[ii];
     }
     // vec99 - push_back xx
@@ -1695,12 +1695,12 @@ SQLMATH_FUNC static void sql_matrix2d_concat_final(
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
     // vec99 - null-case
-    if (vec99->nn <= 2) {
+    if (vec99->nelem <= 2) {
         sqlite3_result_null(context);
         return;
     }
     // vec99 - result
-    int alloc0 = vec99->nn * sizeof(double);
+    int alloc0 = vec99->nelem * sizeof(double);
     memmove(vec99, vec99_buf, alloc0);
     sqlite3_result_blob(context, (const char *) vec99, alloc0,
         // destructor
@@ -1717,7 +1717,7 @@ SQLMATH_FUNC static void sql_matrix2d_concat_step(
     int errcode = 0;
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
-    if ((*vec99_agg)->nn <= 0) {
+    if ((*vec99_agg)->nelem <= 0) {
         errcode = vector99_push_back(vec99_agg, 0);
         errcode = vector99_push_back(vec99_agg, (double) argc);
         SQLITE3_RESULT_ERROR_CODE(errcode);
@@ -1836,11 +1836,11 @@ SQLMATH_FUNC static void sql_quantile_final(
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
     // vec99 - null-case
-    if (vec99->nn == 0) {
+    if (vec99->nelem == 0) {
         sqlite3_result_null(context);
         goto catch_error;
     }
-    sqlite3_result_double(context, quantile(vec99_buf, vec99->nn,
+    sqlite3_result_double(context, quantile(vec99_buf, vec99->nelem,
             vec99->arg0));
   catch_error:
     sqlite3_free(*vec99_agg);
@@ -1857,7 +1857,7 @@ static void sql_quantile_step0(
     UNUSED_PARAMETER(argc);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
-    if ((*vec99_agg)->nn == 0) {
+    if ((*vec99_agg)->nelem == 0) {
         (*vec99_agg)->arg0 = qq;        // kth-quantile
     }
     // vec99 - append isfinite
@@ -2032,17 +2032,17 @@ SQLMATH_FUNC static void sql_vec_concat_final(
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT();
     // vec99 - null-case
-    if (vec99->nn == 0) {
+    if (vec99->nelem == 0) {
         sqlite3_result_null(context);
         goto catch_error;
     }
     // debug
     // fprintf(stderr, "\n");
-    // for (int ii = 0; ii < (int) vec99->nn; ii += 1) {
+    // for (int ii = 0; ii < (int) vec99->nelem; ii += 1) {
     //     fprintf(stderr, "vec_concat ii=%d xx=%f\n", ii, vec99_buf[ii]);
     // }
     // vec99 - fill-forward
-    const int nn = (int) vec99->nn;
+    const int nn = (int) vec99->nelem;
     for (int ii = 1; ii < nn; ii += 1) {
         if (isnan(vec99_buf[ii])) {
             vec99_buf[ii] = vec99_buf[ii - 1];
@@ -2116,7 +2116,7 @@ SQLMATH_FUNC static void sql_vec_win_slr_func(
     // declare var0
     const Vector99 *vecx = (Vector99 *) sqlite3_value_blob(argv[0]);
     const Vector99 *vecy = (Vector99 *) sqlite3_value_blob(argv[1]);
-    const int nnn = (int) (vecx ? vecx->nn : 0);
+    const int nnn = (int) (vecx ? vecx->nelem : 0);
     const int wnn = MIN(nnn, sqlite3_value_int(argv[2]));
     // declare var
     const int alloc = sizeof(SlrHead) + nnn * sizeof(SlrElem);
@@ -2134,13 +2134,14 @@ SQLMATH_FUNC static void sql_vec_win_slr_func(
         sqlite3_result_error(context, "vec_win_slr - NULL vecy", -1);
         return;
     }
-    if (vecx->nn != vecy->nn) {
-        sqlite3_result_error(context, "vec_win_slr - vecx->nn != vecy->nn",
-            -1);
+    if (vecx->nelem != vecy->nelem) {
+        sqlite3_result_error(context,
+            "vec_win_slr - vecx->nelem != vecy->nelem", -1);
         return;
     }
     if (nnn < 0) {
-        sqlite3_result_error(context, "vec_win_slr - invalid vecx->nn", -1);
+        sqlite3_result_error(context, "vec_win_slr - invalid vecx->nelem",
+            -1);
         return;
     }
     if (wnn < 0) {
@@ -2160,7 +2161,7 @@ SQLMATH_FUNC static void sql_vec_win_slr_func(
     }
     memset(slr, 0, alloc);
     ((Vector99 *) slr)->alloc = alloc;
-    ((Vector99 *) slr)->nn = (alloc - sizeof(Vector99)) / sizeof(double);
+    ((Vector99 *) slr)->nelem = (alloc - sizeof(Vector99)) / sizeof(double);
     slr->wnn = wnn;
     SlrElem *pp = (SlrElem *) (((char *) slr) + sizeof(SlrHead));
     const double *bufx = vector99_buf(vecx);
