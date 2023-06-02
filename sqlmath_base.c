@@ -322,6 +322,9 @@ SQLMATH_API void vector99_result_blob(
     Vector99 * vec99,
     sqlite3_context * context
 );
+SQLMATH_API int vector99_valid(
+    const Vector99 * vec99
+);
 
 
 // file sqlmath_h - SQLMATH_API
@@ -1095,6 +1098,20 @@ SQLMATH_API void vector99_result_blob(
     sqlite3_result_blob(context, (const char *) vec99, vec99->alloc,
         // destructor
         sqlite3_free);
+}
+
+SQLMATH_API int vector99_valid(
+    const Vector99 * vec99
+) {
+// This function will validate <vec99>.
+    if (vec99 == NULL) {
+        return 0;
+    }
+    const int alloc = vec99->alloc;
+    const int nelem = vec99->nelem;
+    return (alloc >= sizeof(*vec99) + nelem * sizeof(double)
+        && alloc <= SQLITE_MAX_LENGTH2
+        && nelem >= 0 && nelem <= SQLITE_MAX_LENGTH2);
 }
 
 // SQLMATH_API vector99 - end
@@ -1983,7 +2000,7 @@ typedef struct StdevElem {
 SQLMATH_FUNC static void sql_stdev_final(
     sqlite3_context * context
 ) {
-// This function will aggregate elements and calculate stdev.
+// This function will aggregate elements and calculate sample stdev.
     // pp - init
     StdevElem *pp =
         (StdevElem *) sqlite3_aggregate_context(context, sizeof(*pp));
@@ -2088,36 +2105,121 @@ typedef struct SlrElem {
     double caa;                 // coeff-alpha
     double cbb;                 // coeff-beta
     double crr;                 // coeff-correlation
-    double eyy;                 // stddev yy
-    double mxx;                 // avg xx
-    double myy;                 // avg yy
+    double eyy;                 // stdev.s yy
+    double mxx;                 // average xx
+    double myy;                 // average yy
 } SlrElem;
 
 typedef struct SlrHead {
     Vector99 vec;               // vector99 head
     //
-    double nnn;                 // total size
-    double wnn;                 // window size
+    double nnn;                 // number of datapoints total
+    double wnn;                 // number of datapoints window
     //
-    double mxx;                 // avg xx
-    double myy;                 // avg yy
-    double sxx;                 // variance xx
-    double sxy;                 // covariance xy
-    double syy;                 // variance yy
+    double iii;                 // counter
+    double mxx;                 // average xx
+    double myy;                 // average yy
+    double sxx;                 // variance.p xx
+    double sxy;                 // covariance.p xy
+    double syy;                 // variance.p yy
 } SlrHead;
+
+static void vec_win_slr_inc(
+    SlrHead * slr,
+    const Vector99 * vecx,
+    const Vector99 * vecy
+) {
+// This function will calculate running simple-linear-regression.
+    const int nnn = (int) slr->nnn;
+    const int wnn = (int) slr->wnn;
+    int iii = slr->iii;
+    //
+    const double *bufx = vector99_buf(vecx);
+    const double *bufy = vector99_buf(vecy);
+    const double invp0 = 1.0 / wnn;
+    const double invs0 = 1.0 / (wnn - 1);
+    const int nnn2 = iii ? nnn : nnn - 1;
+    double mxx = slr->mxx;
+    double myy = slr->myy;
+    double sxx = slr->sxx;
+    double sxy = slr->sxy;
+    double syy = slr->syy;
+    for (; iii < nnn2; iii += 1) {
+        // debug
+        // fprintf(stderr, "vec_win_slr_inc - nnn=%d wnn=%d iii=%d\n",     //
+        //     nnn, wnn, iii);
+        SlrElem *pp = ((SlrElem *) (((char *) slr) + sizeof(SlrHead))) + iii;
+        const double xx = bufx[iii];
+        const double yy = bufy[iii];
+        double invp = invp0;
+        double invs = invs0;
+        if (iii < wnn) {
+            // calculate running slr - welford
+            invp = 1.0 / (iii + 1);
+            invs = 1.0 / iii;
+            double dd;
+            // welford - increment syy
+            dd = yy - myy;
+            myy += dd * invp;
+            syy += dd * (yy - myy);
+            // welford - increment sxx
+            dd = xx - mxx;
+            mxx += dd * invp;
+            sxx += dd * (xx - mxx);
+            // welford - increment sxy
+            sxy += dd * (yy - myy);
+        } else {
+            // calculate running slr - window
+            const double xx0 = bufx[iii - wnn];
+            const double yy0 = bufy[iii - wnn];
+            const double dx = xx - xx0;
+            const double dy = yy - yy0;
+            sxx += (xx * xx - xx0 * xx0) - invp * dx * dx - 2 * dx * mxx;
+            sxy +=
+                (xx * yy - xx0 * yy0) - invp * dx * dy - mxx * dy - dx * myy;
+            syy += (yy * yy - yy0 * yy0) - invp * dy * dy - 2 * dy * myy;
+            mxx += dx * invp;
+            myy += dy * invp;
+        }
+        pp->eyy = sqrt(syy * invs);
+        pp->mxx = mxx;
+        pp->myy = myy;
+        pp->cbb = sxy / sxx;
+        pp->caa = pp->myy - pp->cbb * pp->mxx;
+        pp->crr = sxy / sqrt(sxx * syy);
+        pp += 1;
+    }
+    if (iii < nnn) {
+        slr->iii = iii;
+        slr->mxx = mxx;
+        slr->myy = myy;
+        slr->nnn = nnn;
+        slr->sxx = sxx;
+        slr->sxy = sxy;
+        slr->syy = syy;
+    }
+}
 
 SQLMATH_FUNC static void sql_vec_win_slr_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will calculate running simple-linear-regression
+// This function will calculate running simple-linear-regression.
     UNUSED_PARAMETER(argc);
     // declare var0
     const Vector99 *vecx = (Vector99 *) sqlite3_value_blob(argv[0]);
+    if (!vector99_valid(vecx)) {
+        sqlite3_result_error(context, "vec_win_slr - invalid vecx", -1);
+        return;
+    }
     const Vector99 *vecy = (Vector99 *) sqlite3_value_blob(argv[1]);
-    const int nnn = (int) (vecx ? vecx->nelem : 0);
-    const int wnn = MIN(nnn, sqlite3_value_int(argv[2]));
+    if (!vector99_valid(vecy)) {
+        sqlite3_result_error(context, "vec_win_slr - invalid vecy", -1);
+        return;
+    }
+    const int nnn = (int) vecx->nelem;
+    const int wnn = sqlite3_value_int(argv[2]);
     // declare var
     const int alloc = sizeof(SlrHead) + nnn * sizeof(SlrElem);
     double mxx = 0;
@@ -2126,27 +2228,18 @@ SQLMATH_FUNC static void sql_vec_win_slr_func(
     double sxy = 0;
     double syy = 0;
     int ii = 0;
-    if (vecx == NULL) {
-        sqlite3_result_error(context, "vec_win_slr - NULL vecx", -1);
-        return;
-    }
-    if (vecy == NULL) {
-        sqlite3_result_error(context, "vec_win_slr - NULL vecy", -1);
-        return;
-    }
+    // validate argv
     if (vecx->nelem != vecy->nelem) {
         sqlite3_result_error(context,
             "vec_win_slr - vecx->nelem != vecy->nelem", -1);
         return;
     }
-    if (nnn < 0) {
-        sqlite3_result_error(context, "vec_win_slr - invalid vecx->nelem",
-            -1);
+    if (!(nnn > 0)) {
+        sqlite3_result_error(context, "vec_win_slr - invalid slr->nnn", -1);
         return;
     }
-    if (wnn < 0) {
-        sqlite3_result_error(context, "vec_win_slr - invalid window size",
-            -1);
+    if (!(wnn > 0)) {
+        sqlite3_result_error(context, "vec_win_slr - invalid slr->wnn", -1);
         return;
     }
     if (alloc < 0 || alloc > SQLITE_MAX_LENGTH2 || nnn > SQLITE_MAX_LENGTH2
@@ -2162,71 +2255,82 @@ SQLMATH_FUNC static void sql_vec_win_slr_func(
     memset(slr, 0, alloc);
     ((Vector99 *) slr)->alloc = alloc;
     ((Vector99 *) slr)->nelem = (alloc - sizeof(Vector99)) / sizeof(double);
-    slr->wnn = wnn;
-    SlrElem *pp = (SlrElem *) (((char *) slr) + sizeof(SlrHead));
-    const double *bufx = vector99_buf(vecx);
-    const double *bufy = vector99_buf(vecy);
-    // calculate running slr - welford
-    for (; ii < wnn; ii += 1) {
-        const double xx = bufx[ii];
-        const double yy = bufy[ii];
-        const double invp = 1.0 / (ii + 1);
-        double dd;
-        // welford - increment syy
-        dd = yy - myy;
-        myy += dd * invp;
-        syy += dd * (yy - myy);
-        // welford - increment sxx
-        dd = xx - mxx;
-        mxx += dd * invp;
-        sxx += dd * (xx - mxx);
-        // welford - increment sxy
-        sxy += dd * (yy - myy);
-        //
-        pp->mxx = mxx;
-        pp->myy = myy;
-        pp->eyy = sqrt(syy / ii);
-        pp->cbb = sxy / sxx;
-        pp->caa = pp->myy - pp->cbb * pp->mxx;
-        pp->crr = sxy / sqrt(sxx * syy);
-        pp += 1;
-    }
-    // calculate running slr - window
-    const double invp = 1.0 / wnn;
-    const double invs = 1.0 / (wnn - 1);
-    fprintf(stderr, "\n\n\n\n\n\nii=%d wnn=%d nnn=%d invp=%f\n", ii, wnn, nnn,
-        invp);
-    for (; ii < nnn; ii += 1) {
-        const double xx = bufx[ii];
-        const double yy = bufy[ii];
-        const double xx0 = bufx[ii - wnn];
-        const double yy0 = bufy[ii - wnn];
-        const double dx = xx - xx0;
-        const double dy = yy - yy0;
-        sxx += (xx * xx - xx0 * xx0) - invp * dx * dx - 2 * dx * mxx;
-        sxy += (xx * yy - xx0 * yy0) - invp * dx * dy - mxx * dy - dx * myy;
-        syy += (yy * yy - yy0 * yy0) - invp * dy * dy - 2 * dy * myy;
-        mxx += dx * invp;
-        myy += dy * invp;
-        //
-        pp->mxx = mxx;
-        pp->myy = myy;
-        pp->eyy = sqrt(syy * invs);
-        pp->cbb = sxy / sxx;
-        pp->caa = pp->myy - pp->cbb * pp->mxx;
-        pp->crr = sxy / sqrt(sxx * syy);
-        pp += 1;
-    }
-    slr->mxx = mxx;
-    slr->myy = myy;
     slr->nnn = nnn;
-    slr->sxx = sxx;
-    slr->sxy = sxy;
-    slr->syy = syy;
+    slr->wnn = wnn;
+    // calculate running slr - window
+    vec_win_slr_inc(slr, vecx, vecy);
+    vec_win_slr_inc(slr, vecx, vecy);
     sqlite3_result_blob(context, slr, alloc, sqlite3_free);
     return;
   catch_error:
     sqlite3_free(slr);
+}
+
+SQLMATH_FUNC static void sql_vec_win_slr_updatelast_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running simple-linear-regression.
+    UNUSED_PARAMETER(argc);
+    // declare var0
+    Vector99 *vecx = (Vector99 *) sqlite3_value_blob(argv[0]);
+    if (!vector99_valid(vecx)) {
+        sqlite3_result_error(context, "vec_win_slr - invalid vecx", -1);
+        return;
+    }
+    Vector99 *vecy = (Vector99 *) sqlite3_value_blob(argv[1]);
+    if (!vector99_valid(vecy)) {
+        sqlite3_result_error(context, "vec_win_slr - invalid vecy", -1);
+        return;
+    }
+    const Vector99 *vecslr = (Vector99 *) sqlite3_value_blob(argv[2]);
+    if (!vector99_valid(vecslr)) {
+        sqlite3_result_error(context, "vec_win_slr - invalid vecslr", -1);
+        return;
+    }
+    SlrHead *slr = (SlrHead *) vecslr;
+    const int nnn = slr->nnn;
+    const int wnn = slr->wnn;
+    // declare var
+    const double xx = sqlite3_value_double(argv[3]);
+    const double yy = sqlite3_value_double(argv[4]);
+    const int alloc = sizeof(SlrHead) + nnn * sizeof(SlrElem);
+    const int iii = slr->iii;
+    // validate argv
+    if (vecx->nelem != vecy->nelem) {
+        sqlite3_result_error(context,
+            "vec_win_slr - vecx->nelem != vecy->nelem", -1);
+        return;
+    }
+    if (!(nnn > 0)) {
+        sqlite3_result_error(context, "vec_win_slr - invalid slr->nnn", -1);
+        return;
+    }
+    if (!(wnn > 0)) {
+        sqlite3_result_error(context, "vec_win_slr - invalid slr->wnn", -1);
+        return;
+    }
+    // validate argv - updatelast
+    if (vecx->nelem != slr->nnn) {
+        sqlite3_result_error(context, "vec_win_slr - slr->nnn != vecx->nelem",
+            -1);
+        return;
+    }
+    if (vecslr->alloc != alloc) {
+        sqlite3_result_error(context, "vec_win_slr - invalid vecslr->alloc",
+            -1);
+        return;
+    }
+    if (iii + 1 != nnn) {
+        sqlite3_result_error(context, "vec_win_slr - invalid slr->iii", -1);
+        return;
+    }
+    // calculate running slr - window
+    vector99_buf(vecx)[iii] = xx;
+    vector99_buf(vecy)[iii] = yy;
+    vec_win_slr_inc(slr, vecx, vecy);
+    sqlite3_result_blob(context, slr, alloc, SQLITE_STATIC);
 }
 
 // SQLMATH_FUNC sql_vec_win_slr - end
@@ -2297,6 +2401,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION1(vec_win_slr, 3);
+    SQLITE3_CREATE_FUNCTION1(vec_win_slr_updatelast, 5);
     SQLITE3_CREATE_FUNCTION2(jenks_concat, -1);
     SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
