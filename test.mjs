@@ -1698,6 +1698,10 @@ SELECT
         "test sqlite-extension-vec_win_slr handling-behavior"
     ), async function test_sqlite_extension_vec_win_slr() {
         let dataxy;
+        let db;
+        db = await dbOpenAsync({
+            filename: ":memory:"
+        });
         dataxy = [
             [2, 0],
             [2, 1],
@@ -1714,6 +1718,62 @@ SELECT
         await Promise.all([
             {
                 valExpected: {
+                    caa: -2.54385965,
+                    cbb: 1.63157895,
+                    crr: 0.97080629,
+                    eyy: 2.31660671,
+                    iii: 5,
+                    mxx: 3.5,
+                    myy: 3.16666667,
+                    nnn: 6,
+                    sxx: 6.8,
+                    sxy: 10.4,
+                    syy: 17.2,
+                    wnn: 8,
+                    xx0: 0,
+                    yy0: 0
+                },
+                valUpdated: {
+                    caa: 1.625,
+                    cbb: 0.625,
+                    crr: 0.27441065,
+                    eyy: 2.88097206,
+                    mxx: 3,
+                    myy: 3.5,
+                    xx: 2,
+                    yy: 8
+                }
+            },
+            {
+                valExpected: {
+                    caa: -2.65,
+                    cbb: 1.675,
+                    crr: 0.97522270,
+                    eyy: 2.37045304,
+                    iii: 6,
+                    mxx: 3.71428571,
+                    myy: 3.57142857,
+                    nnn: 7,
+                    sxx: 9.5,
+                    sxy: 15.5,
+                    syy: 26.83333333,
+                    wnn: 8,
+                    xx0: 0,
+                    yy0: 0
+                },
+                valUpdated: {
+                    caa: 1.1875,
+                    cbb: 0.8125,
+                    crr: 0.40126515,
+                    eyy: 2.79455252,
+                    mxx: 3.28571429,
+                    myy: 3.85714286,
+                    xx: 2,
+                    yy: 8
+                }
+            },
+            {
+                valExpected: {
                     caa: -2.5,
                     cbb: 1.625,
                     crr: 0.97991187,
@@ -1725,7 +1785,9 @@ SELECT
                     sxx: 11.42857143,
                     sxy: 19.14285714,
                     syy: 33.71428571,
-                    wnn: 8
+                    wnn: 8,
+                    xx0: 0,
+                    yy0: 0
                 },
                 valUpdated: {
                     caa: -0.25,
@@ -1751,7 +1813,9 @@ SELECT
                     sxx: 16,
                     sxy: 26,
                     syy: 44,
-                    wnn: 8
+                    wnn: 8,
+                    xx0: 2,
+                    yy0: 0
                 },
                 valUpdated: {
                     caa: 0,
@@ -1777,7 +1841,9 @@ SELECT
                     sxx: 40,
                     sxy: 34,
                     syy: 36,
-                    wnn: 8
+                    wnn: 8,
+                    xx0: 2,
+                    yy0: 1
                 },
                 valUpdated: {
                     caa: 1.8,
@@ -1793,12 +1859,8 @@ SELECT
         ].map(async function ({
             valExpected,
             valUpdated
-        }) {
-            let db;
+        }, ii) {
             let valActual;
-            db = await dbOpenAsync({
-                filename: ":memory:"
-            });
             // test vec_win_slr()
             await dbExecAsync({
                 bindList: {
@@ -1806,8 +1868,8 @@ SELECT
                 },
                 db,
                 sql: (`
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
+DROP TABLE IF EXISTS __tmp${ii};
+CREATE TEMP TABLE __tmp${ii} AS
     SELECT
         vec_win_slr(vecx, vecy, wnn) AS slr,
         vecx,
@@ -1825,7 +1887,7 @@ CREATE TEMP TABLE __tmp1 AS
             valActual = await dbExecAndReturnLastJsonAsync({
                 db,
                 sql: (`
-SELECT jsonfromfloat64array(slr) FROM __tmp1;
+SELECT jsonfromfloat64array(slr) FROM __tmp${ii};
                 `)
             });
             valActual = valActual.map(function (xx) {
@@ -1848,7 +1910,9 @@ SELECT jsonfromfloat64array(slr) FROM __tmp1;
                     sxx: valActual[9],
                     sxy: valActual[10],
                     syy: valActual[11],
-                    wnn: valActual[5]
+                    wnn: valActual[5],
+                    xx0: valActual[12],
+                    yy0: valActual[13]
                 },
                 valExpected
             );
@@ -1858,15 +1922,9 @@ SELECT jsonfromfloat64array(slr) FROM __tmp1;
                 sql: (`
 SELECT
         jsonfromfloat64array(
-            vec_win_slr_updatelast(
-                vecx,
-                vecy,
-                slr,
-                ${valUpdated.xx},
-                ${valUpdated.yy}
-            )
+            vec_win_slr_updatelast(slr, ${valUpdated.xx}, ${valUpdated.yy})
         )
-    FROM __tmp1;
+    FROM __tmp${ii};
                 `)
             });
             valActual = valActual.map(function (xx) {
@@ -1892,7 +1950,9 @@ SELECT
                     sxx: valActual[9],
                     sxy: valActual[10],
                     syy: valActual[11],
-                    wnn: valActual[5]
+                    wnn: valActual[5],
+                    xx0: valActual[12],
+                    yy0: valActual[13]
                 },
                 valExpected
             );
