@@ -141,14 +141,14 @@ file sqlmath_h - start
 #define SQLITE3_CREATE_FUNCTION2(func, argc) \
     errcode = sqlite3_create_function(db, #func, argc, \
         SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
-        NULL, sql_##func##_step, sql_##func##_final); \
+        NULL, sql2_##func##_step, sql2_##func##_final); \
     if (errcode != SQLITE_OK) { return errcode; }
 
 #define SQLITE3_CREATE_FUNCTION3(func, argc) \
     errcode = sqlite3_create_window_function(db, #func, argc, \
         SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
-        sql_##func##_step, sql_##func##_final, \
-        sql_##func##_value, sql_##func##_inverse, NULL); \
+        sql3_##func##_step, sql3_##func##_final, \
+        sql3_##func##_value, sql3_##func##_inverse, NULL); \
     if (errcode != SQLITE_OK) { return errcode; }
 
 #define SQLITE3_RESULT_ERROR_CODE(errcode) \
@@ -306,7 +306,8 @@ typedef struct Vector99 {
     double alloc;               // allocated size in bytes
     double nbody;               // number of body elements
     double nhead;               // number of head elements
-    double arg0;
+    double wii;                 // counter of window elements
+    double wnn;                 // number of window elements
 } Vector99;
 SQLMATH_API double *vector99_body(
     const Vector99 * vec99
@@ -318,7 +319,7 @@ SQLMATH_API Vector99 *vector99_malloc(
     const int nhead
 );
 SQLMATH_API double vector99_pop_front(
-    Vector99 ** vec99_agg
+    Vector99 * vec99
 );
 SQLMATH_API int vector99_push_back(
     Vector99 ** vec99_agg,
@@ -1062,16 +1063,16 @@ SQLMATH_API Vector99 *vector99_malloc(
 }
 
 SQLMATH_API double vector99_pop_front(
-    Vector99 ** vec99_agg
+    Vector99 * vec99
 ) {
 // This function will pop_front <vec99>, or return NAN if empty.
-    if (vec99_agg == NULL || *vec99_agg == NULL || (*vec99_agg)->nbody <= 0) {
+    if (vec99 == NULL || vec99->nbody <= 0) {
         return NAN;
     }
-    double *vec99_body = vector99_body(*vec99_agg);
+    double *vec99_body = vector99_body(vec99);
     const double xx = vec99_body[0];
-    (*vec99_agg)->nbody -= 1;
-    memmove(vec99_body, vec99_body + 1, (*vec99_agg)->nbody * sizeof(double));
+    vec99->nbody -= 1;
+    memmove(vec99_body, vec99_body + 1, vec99->nbody * sizeof(double));
     return xx;
 }
 
@@ -1082,17 +1083,23 @@ SQLMATH_API int vector99_push_back(
     if (vec99_agg == NULL || *vec99_agg == NULL) {
         return SQLITE_NOMEM;
     }
+    Vector99 *vec99 = *vec99_agg;
+    // rotate wii
+    if (vec99->wnn > 0) {
+        vector99_body(vec99)[(int) vec99->wii % (int) vec99->wnn] = xx;
+        vec99->wii += 1;
+        return SQLITE_OK;
+    }
     const int nn =
-        (sizeof(Vector99) / sizeof(double) + (*vec99_agg)->nbody +
-        (*vec99_agg)->nhead);
-    uint32_t alloc = (*vec99_agg)->alloc;
+        (sizeof(Vector99) / sizeof(double) + vec99->nbody + vec99->nhead);
+    uint32_t alloc = vec99->alloc;
     if (nn * sizeof(double) >= alloc) {
         // error - toobig
         if (alloc >= SQLITE_MAX_LENGTH2) {
             goto catch_error;
         }
         alloc = MIN(SQLITE_MAX_LENGTH2, alloc * 2);
-        Vector99 *vec99 = sqlite3_realloc(*vec99_agg, alloc);
+        vec99 = sqlite3_realloc(vec99, alloc);
         // error - nomem
         if (vec99 == NULL) {
             goto catch_error;
@@ -1100,8 +1107,9 @@ SQLMATH_API int vector99_push_back(
         vec99->alloc = alloc;
         *vec99_agg = vec99;
     }
-    ((double *) *vec99_agg)[nn] = xx;
-    (*vec99_agg)->nbody += 1;
+    ((double *) vec99)[nn] = xx;
+    vec99->nbody += 1;
+    vec99->wii += 1;
     return SQLITE_OK;
   catch_error:
     sqlite3_free(*vec99_agg);
@@ -1213,22 +1221,22 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
 
 
 // file sqlmath_base - SQLMATH_FUNC
-// SQLMATH_FUNC sql_avg_ema_func - start
-SQLMATH_FUNC static void sql_avg_ema_value(
+// SQLMATH_FUNC sql3_agg_ema_func - start
+SQLMATH_FUNC static void sql3_agg_ema_value(
     sqlite3_context * context
 ) {
 // This function will aggregate exponential-moving-average.
     // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(1);
+    VECTOR99_AGGREGATE_CONTEXT(0);
     sqlite3_result_double(context, vec99_body[0]);
 }
 
-SQLMATH_FUNC static void sql_avg_ema_final(
+SQLMATH_FUNC static void sql3_agg_ema_final(
     sqlite3_context * context
 ) {
 // This function will aggregate exponential-moving-average.
     // vec99 - value
-    sql_avg_ema_value(context);
+    sql3_agg_ema_value(context);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     // vec99 - cleanup
@@ -1236,7 +1244,7 @@ SQLMATH_FUNC static void sql_avg_ema_final(
     *vec99_agg = NULL;
 }
 
-SQLMATH_FUNC static void sql_avg_ema_inverse(
+SQLMATH_FUNC static void sql3_agg_ema_inverse(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1245,11 +1253,11 @@ SQLMATH_FUNC static void sql_avg_ema_inverse(
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
     // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(1);
-    vector99_pop_front(vec99_agg);
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    vector99_pop_front(vec99);
 }
 
-SQLMATH_FUNC static void sql_avg_ema_step(
+SQLMATH_FUNC static void sql3_agg_ema_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1258,13 +1266,13 @@ SQLMATH_FUNC static void sql_avg_ema_step(
     UNUSED_PARAMETER(argc);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(1);
-    if ((*vec99_agg)->nbody == 0) {
+    if (vec99->nbody == 0) {
         vec99_head[0] = sqlite3_value_double(argv[1]);  // alpha
     }
     // vec99 - calculate ema
     const double alpha = vec99_head[0];
     const double xx = sqlite3_value_double(argv[0]);
-    const int nn = (*vec99_agg)->nbody;
+    const int nn = vec99->nbody;
     for (int ii = 0; ii < nn; ii += 1) {
         vec99_body[ii] = alpha * xx + (1 - alpha) * vec99_body[ii];
     }
@@ -1277,7 +1285,162 @@ SQLMATH_FUNC static void sql_avg_ema_step(
     *vec99_agg = NULL;
 }
 
-// SQLMATH_FUNC sql_avg_ema_func - end
+// SQLMATH_FUNC sql3_agg_ema_func - end
+
+// SQLMATH_FUNC sql3_agg_slr_func - start
+typedef struct Slr2 {
+    double mxx;                 // average xx
+    double myy;                 // average yy
+    double sxx;                 // variance.p xx
+    double sxy;                 // covariance.p xy
+    double syy;                 // variance.p yy
+} Slr2;
+
+SQLMATH_FUNC static void sql3_agg_slr_value(
+    sqlite3_context * context
+) {
+// This function will aggregate exponential-moving-average.
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    // declare var
+    const Slr2 *slr = (Slr2 *) vec99_head;
+    const int nnn = vec99->wnn == 0 ? vec99->wii / 2 : vec99->wnn / 2;
+    double arr[8] = { 0 };
+    int errcode = 0;
+    // calculate slr
+    const double mxx = slr->mxx;
+    const double myy = slr->myy;
+    const double exx = sqrt(slr->sxx * 1.0 / (nnn - 1));
+    const double eyy = sqrt(slr->syy * 1.0 / (nnn - 1));
+    const double crr = slr->sxy / sqrt(slr->sxx * slr->syy);
+    const double cbb = slr->sxy / slr->sxx;
+    const double caa = myy - cbb * mxx;
+    arr[0] = nnn;
+    arr[1] = mxx;
+    arr[2] = myy;
+    arr[3] = exx;
+    arr[4] = eyy;
+    arr[5] = crr;
+    arr[6] = cbb;
+    arr[7] = caa;
+    // str99 - init
+    STR99_ALLOCA(str99);
+    // str99 - jsonfrom
+    str99JsonAppendFloat64array(str99, arr, sizeof(arr) / sizeof(double));
+    STR99_RESULT_ERROR(str99);
+    // str99 - result
+    str99ResultText(str99, context);
+  catch_error:
+    (void) 0;
+}
+
+SQLMATH_FUNC static void sql3_agg_slr_final(
+    sqlite3_context * context
+) {
+// This function will aggregate exponential-moving-average.
+    // vec99 - value
+    sql3_agg_slr_value(context);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    // vec99 - cleanup
+    sqlite3_free(*vec99_agg);
+    *vec99_agg = NULL;
+}
+
+SQLMATH_FUNC static void sql3_agg_slr_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will aggregate exponential-moving-average.
+    UNUSED_PARAMETER(argc);
+    UNUSED_PARAMETER(argv);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    if (vec99->wnn == 0) {
+        vec99->wnn = vec99->nbody;
+    }
+}
+
+SQLMATH_FUNC static void sql3_agg_slr_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will aggregate exponential-moving-average.
+    UNUSED_PARAMETER(argc);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(sizeof(Slr2) / sizeof(double));
+    // vec99 - calculate slr
+    Slr2 *slr = (Slr2 *) vec99_head;
+    const int wnn = vec99->wnn / 2;
+    const int iii = vec99->wii / 2;
+    //
+    const double invp0 = 1.0 / wnn;
+    const double invs0 = 1.0 / (wnn - 1);
+    const double xx = sqlite3_value_double(argv[0]);
+    const double yy = sqlite3_value_double(argv[1]);
+    double invp = invp0;
+    double invs = invs0;
+    double mxx = slr->mxx;
+    double myy = slr->myy;
+    double sxx = slr->sxx;
+    double sxy = slr->sxy;
+    double syy = slr->syy;
+    if (wnn == 0) {
+        // calculate running slr - welford
+        invp = 1.0 / (iii + 1);
+        invs = 1.0 / iii;
+        double dd;
+        // welford - increment syy
+        dd = yy - myy;
+        myy += dd * invp;
+        syy += dd * (yy - myy);
+        // welford - increment sxx
+        dd = xx - mxx;
+        mxx += dd * invp;
+        sxx += dd * (xx - mxx);
+        // welford - increment sxy
+        sxy += dd * (yy - myy);
+    } else {
+        // calculate running slr - window
+        const double *xxyy0 = vector99_body(vec99) + ((iii - wnn) % wnn) * 2;
+        const double xx0 = xxyy0[0];
+        const double yy0 = xxyy0[1];
+        const double dx = xx - xx0;
+        const double dy = yy - yy0;
+        // debug
+        // fprintf(stderr,         //
+        //     "agg_slr - wnn=%d iii=%d xx,yy=%f,%f xx0,yy0=%f,%f\n", //
+        //     wnn, iii, xx, yy, xx0, yy0);
+        sxx += (xx * xx - xx0 * xx0) - invp * dx * dx - 2 * dx * mxx;
+        sxy += (xx * yy - xx0 * yy0) - invp * dx * dy - mxx * dy - dx * myy;
+        syy += (yy * yy - yy0 * yy0) - invp * dy * dy - 2 * dy * myy;
+        mxx += dx * invp;
+        myy += dy * invp;
+    }
+    slr->mxx = mxx;
+    slr->myy = myy;
+    slr->sxx = sxx;
+    slr->sxy = sxy;
+    slr->syy = syy;
+    // debug
+    // fprintf(stderr,             //
+    //     "agg_slr - wnn=%d iii=%d xx,yy=%f,%f mxx=%f myy=%f\n\n",        //
+    //     wnn, iii, xx, yy, mxx, myy);
+    // vec99 - push_back xx
+    int errcode = 0;
+    errcode = vector99_push_back(vec99_agg, xx);
+    SQLITE3_RESULT_ERROR_CODE(errcode);
+    errcode = vector99_push_back(vec99_agg, yy);
+    SQLITE3_RESULT_ERROR_CODE(errcode);
+    return;
+  catch_error:
+    sqlite3_free(*vec99_agg);
+    *vec99_agg = NULL;
+}
+
+// SQLMATH_FUNC sql3_agg_slr_func - end
 
 // SQLMATH_FUNC sql_btobase64_func - start
 static char *base64Encode(
@@ -1509,7 +1672,7 @@ SQLMATH_FUNC static void sql_jenks_blob_func(
         (1 + ((int) result[0]) * 2) * 8, sqlite3_free);
 }
 
-// SQLMATH_FUNC sql_jenks_concat_func - start
+// SQLMATH_FUNC sql2_jenks_concat_func - start
 static void str99arrCleanup(
     const int argc,
     sqlite3_str ** str99arr
@@ -1526,7 +1689,7 @@ static void str99arrCleanup(
     }
 }
 
-SQLMATH_FUNC static void sql_jenks_concat_final(
+SQLMATH_FUNC static void sql2_jenks_concat_final(
     sqlite3_context * context
 ) {
 // This function will calculate <kk> jenks-natrual-breaks in each column <ii>,
@@ -1570,7 +1733,7 @@ SQLMATH_FUNC static void sql_jenks_concat_final(
     str99arrCleanup(argc, str99arr);
 }
 
-SQLMATH_FUNC static void sql_jenks_concat_step(
+SQLMATH_FUNC static void sql2_jenks_concat_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1617,7 +1780,7 @@ SQLMATH_FUNC static void sql_jenks_concat_step(
     }
 }
 
-// SQLMATH_FUNC sql_jenks_concat_func - end
+// SQLMATH_FUNC sql2_jenks_concat_func - end
 
 SQLMATH_FUNC static void sql_jenks_json_func(
     sqlite3_context * context,
@@ -1726,8 +1889,8 @@ SQLMATH_FUNC static void sql_marginoferror95_func(
 
 // SQLMATH_FUNC sql_marginoferror95_func - end
 
-// SQLMATH_FUNC sql_matrix2d_concat_func - start
-SQLMATH_FUNC static void sql_matrix2d_concat_final(
+// SQLMATH_FUNC sql2_matrix2d_concat_func - start
+SQLMATH_FUNC static void sql2_matrix2d_concat_final(
     sqlite3_context * context
 ) {
 // This function will concat rows of nCol doubles to a 2d-matrix.
@@ -1746,7 +1909,7 @@ SQLMATH_FUNC static void sql_matrix2d_concat_final(
         sqlite3_free);
 }
 
-SQLMATH_FUNC static void sql_matrix2d_concat_step(
+SQLMATH_FUNC static void sql2_matrix2d_concat_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1774,9 +1937,9 @@ SQLMATH_FUNC static void sql_matrix2d_concat_step(
     *vec99_agg = NULL;
 }
 
-// SQLMATH_FUNC sql_matrix2d_concat_func - end
+// SQLMATH_FUNC sql2_matrix2d_concat_func - end
 
-// SQLMATH_FUNC sql_quantile_func - start
+// SQLMATH_FUNC sql2_quantile_func - start
 static double quickselect(
     double *arr,
     const int nn,
@@ -1868,12 +2031,12 @@ SQLMATH_API double quantile(
     return quickselect(arr, nn, kk);
 }
 
-SQLMATH_FUNC static void sql_quantile_final(
+SQLMATH_FUNC static void sql2_quantile_final(
     sqlite3_context * context
 ) {
 // This function will aggregate kth-quantile element.
     // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(1);
+    VECTOR99_AGGREGATE_CONTEXT(0);
     // vec99 - null-case
     if (vec99->nbody == 0) {
         sqlite3_result_null(context);
@@ -1886,7 +2049,7 @@ SQLMATH_FUNC static void sql_quantile_final(
     *vec99_agg = NULL;
 }
 
-static void sql_quantile_step0(
+static void sql2_quantile_step0(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv,
@@ -1896,7 +2059,7 @@ static void sql_quantile_step0(
     UNUSED_PARAMETER(argc);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(1);
-    if ((*vec99_agg)->nbody == 0) {
+    if (vec99->nbody == 0) {
         vec99_head[0] = qq;     // kth-quantile
     }
     // vec99 - append isfinite
@@ -1911,31 +2074,31 @@ static void sql_quantile_step0(
     *vec99_agg = NULL;
 }
 
-SQLMATH_FUNC static void sql_quantile_step(
+SQLMATH_FUNC static void sql2_quantile_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
 // This function will aggregate kth-quantile element.
-    sql_quantile_step0(context, argc, argv, sqlite3_value_double(argv[1]));
+    sql2_quantile_step0(context, argc, argv, sqlite3_value_double(argv[1]));
 }
 
-SQLMATH_FUNC static void sql_median_final(
+SQLMATH_FUNC static void sql2_median_final(
     sqlite3_context * context
 ) {
-    sql_quantile_final(context);
+    sql2_quantile_final(context);
 }
 
-SQLMATH_FUNC static void sql_median_step(
+SQLMATH_FUNC static void sql2_median_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
 // This function will aggregate kth-quantile element.
-    sql_quantile_step0(context, argc, argv, 0.5);
+    sql2_quantile_step0(context, argc, argv, 0.5);
 }
 
-// SQLMATH_FUNC sql_quantile_func - end
+// SQLMATH_FUNC sql2_quantile_func - end
 
 SQLMATH_FUNC static void sql_roundorzero_func(
     sqlite3_context * context,
@@ -2012,14 +2175,14 @@ SQLMATH_FUNC static void sql_sign_func(
     }
 }
 
-// SQLMATH_FUNC sql_stdev_func - start
+// SQLMATH_FUNC sql2_stdev_func - start
 typedef struct StdevElem {
     double exx;                 // stdev.s xx
     double mxx;                 // average xx
     double nnn;                 // number of datapoints total
 } StdevElem;
 
-SQLMATH_FUNC static void sql_stdev_final(
+SQLMATH_FUNC static void sql2_stdev_final(
     sqlite3_context * context
 ) {
 // This function will aggregate elements and calculate sample stdev.
@@ -2038,7 +2201,7 @@ SQLMATH_FUNC static void sql_stdev_final(
     (void) 0;
 }
 
-static void sql_stdev_step(
+static void sql2_stdev_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2061,10 +2224,10 @@ static void sql_stdev_step(
     (void) 0;
 }
 
-// SQLMATH_FUNC sql_stdev_func - end
+// SQLMATH_FUNC sql2_stdev_func - end
 
-// SQLMATH_FUNC sql_vec_concat_func - start
-SQLMATH_FUNC static void sql_vec_concat_final(
+// SQLMATH_FUNC sql2_vec_concat_func - start
+SQLMATH_FUNC static void sql2_vec_concat_final(
     sqlite3_context * context
 ) {
 // This function will concat rows of nCol doubles to a 2d-matrix.
@@ -2101,7 +2264,7 @@ SQLMATH_FUNC static void sql_vec_concat_final(
     *vec99_agg = NULL;
 }
 
-SQLMATH_FUNC static void sql_vec_concat_step(
+SQLMATH_FUNC static void sql2_vec_concat_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2120,7 +2283,7 @@ SQLMATH_FUNC static void sql_vec_concat_step(
     *vec99_agg = NULL;
 }
 
-// SQLMATH_FUNC sql_vec_concat_func - end
+// SQLMATH_FUNC sql2_vec_concat_func - end
 
 // SQLMATH_FUNC sql_vec_win_slr - start
 typedef struct SlrElem {
@@ -2410,7 +2573,8 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
     SQLITE3_CREATE_FUNCTION2(stdev, 1);
     SQLITE3_CREATE_FUNCTION2(vec_concat, 1);
-    SQLITE3_CREATE_FUNCTION3(avg_ema, 2);
+    SQLITE3_CREATE_FUNCTION3(agg_ema, 2);
+    SQLITE3_CREATE_FUNCTION3(agg_slr, 2);
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);

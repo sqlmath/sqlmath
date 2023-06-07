@@ -47,6 +47,7 @@ import {
     sqlmathWebworkerInit,
     version
 } from "./sqlmath.mjs";
+let VECTOR99_NOFFSET = 5;
 let {
     assertErrorThrownAsync,
     jstestDescribe,
@@ -744,115 +745,305 @@ jstestDescribe((
         }));
     });
     jstestIt((
-        "test sqlite-extension-avg_ema handling-behavior"
-    ), async function test_sqlite_extension_avg_ema() {
+        "test sqlite-extension-agg_ema handling-behavior"
+    ), async function test_sqlite_extension_agg_ema() {
         let db = await dbOpenAsync({filename: ":memory:"});
-        let result;
-        result = await dbExecAsync({
-            db,
-            sql: (`
+        let valIn;
+        valIn = [
+            [11, undefined],
+            [10, "10"],
+            [9, 9],
+            [8, 8],
+            [7, 7],
+            [6, 6],
+            [5, 5],
+            [4, 4],
+            [3, 3],
+            [2, 2],
+            [1, "1"],
+            [0, "abcd"]
+        ];
+        await (async function () {
+            let alpha = 2 * 1.0 / (4 + 1);
+            let valActual;
+            valActual = await dbExecAsync({
+                db,
+                sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT agg_ema(1, 1) FROM __tmp1;
+                `)
+            });
+            valActual = valActual[0].map(function ({val}) {
+                return val;
+            });
+            assertJsonEqual(valActual, [null]);
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
 SELECT
     ROUND(
-        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
-            ORDER BY id ASC
-            ROWS BETWEEN 0 PRECEDING AND 4-1 FOLLOWING
+        agg_ema(value->>1, ${alpha}) OVER (
+            ORDER BY value->>0 ASC
         ),
         4
     ) AS val
-    FROM (
-        SELECT 11 AS id, NULL AS val
-        UNION ALL SELECT 10,   10
-        UNION ALL SELECT  9,    9
-        UNION ALL SELECT  8,    8
-        UNION ALL SELECT  7,    7
-        UNION ALL SELECT  6,    6
-        UNION ALL SELECT  5,    5
-        UNION ALL SELECT  4,    4
-        UNION ALL SELECT  3,    3
-        UNION ALL SELECT  2,    2
-        UNION ALL SELECT  1,    1
-        UNION ALL SELECT  0, NULL
-    );
-            `)
-        });
-        result = result[0].map(function ({val}) {
-            return val;
-        });
-        assertJsonEqual(result, [
-            1.824, 2.824, 3.824, 4.824,
-            5.824, 6.824, 7.824, 8.824,
-            5.424, 5.640, 6.000, 0.000
-        ]);
-        result = await dbExecAsync({
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual[0].map(function ({val}) {
+                return val;
+            });
+            assertJsonEqual(
+                valActual,
+                [
+                    0.0000, 0.4000, 1.0400, 1.8240,
+                    2.6944, 3.6166, 4.5700, 5.5420,
+                    6.5252, 7.5151, 8.5091, 5.1054
+                ]
+            );
+        }());
+        await Promise.all([
+            {
+                aa: 0,
+                alpha: 2 * 1.0 / (4 + 1),
+                bb: 4 - 1,
+                valExpected: [
+                    1.824, 2.824, 3.824, 4.824,
+                    5.824, 6.824, 7.824, 8.824,
+                    5.424, 5.640, 6.000, 0.000
+                ]
+            },
+            {
+                aa: 3 - 1,
+                alpha: 2 * 1.0 / (4 + 1),
+                bb: 2 - 1,
+                valExpected: [
+                    0.400, 1.040, 1.824, 2.824,
+                    3.824, 4.824, 5.824, 6.824,
+                    7.824, 8.824, 5.424, 5.640
+                ]
+            },
+            {
+                aa: 4 - 1,
+                alpha: 2 * 1.0 / (4 + 1),
+                bb: 0,
+                valExpected: [
+                    0.000, 0.400, 1.040, 1.824,
+                    2.824, 3.824, 4.824, 5.824,
+                    6.824, 7.824, 8.824, 5.424
+                ]
+            }
+        ].map(async function ({
+            aa,
+            alpha,
+            bb,
+            valExpected
+        }) {
+            let valActual;
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        ROUND(
+            agg_ema(value->>1, ${alpha}) OVER (
+                ORDER BY value->>0 ASC
+                ROWS BETWEEN ${aa} PRECEDING AND ${bb} FOLLOWING
+            ),
+            4
+        ) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual[0].map(function ({val}) {
+                return val;
+            });
+            assertJsonEqual(valActual, valExpected);
+        }));
+    });
+    jstestIt((
+        "test sqlite-extension-agg_slr handling-behavior"
+    ), async function test_sqlite_extension_agg_slr() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let valActual;
+        let valIn;
+        valIn = [
+            [2, 0],
+            [2, 1],
+            [3, 3],
+            [4, 4],
+            [5, 5],
+            [5, 6],
+            [5, 6],
+            [6, 7],
+            //
+            [10, 8],
+            [2, 5]
+        ];
+        // test aggregate-normal handling-behavior
+        valActual = await dbExecAndReturnLastJsonAsync({
+            bindList: {
+                valIn: JSON.stringify(valIn)
+            },
             db,
             sql: (`
-SELECT
-    ROUND(
-        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
-            ORDER BY id ASC
-            ROWS BETWEEN 3 - 1 PRECEDING AND 2 - 1 FOLLOWING
-        ),
-        4
-    ) AS val
-    FROM (
-        SELECT 11 AS id, NULL AS val
-        UNION ALL SELECT 10,   10
-        UNION ALL SELECT  9,    9
-        UNION ALL SELECT  8,    8
-        UNION ALL SELECT  7,    7
-        UNION ALL SELECT  6,    6
-        UNION ALL SELECT  5,    5
-        UNION ALL SELECT  4,    4
-        UNION ALL SELECT  3,    3
-        UNION ALL SELECT  2,    2
-        UNION ALL SELECT  1,    1
-        UNION ALL SELECT  0, NULL
-    );
+SELECT agg_slr(value->>0, value->>1) AS slr FROM JSON_EACH($valIn);
             `)
         });
-        result = result[0].map(function ({val}) {
-            return val;
+        valActual = valActual.map(function (xx) {
+            return Number(xx.toFixed(8));
         });
-        assertJsonEqual(result, [
-            0.400, 1.040, 1.824, 2.824,
-            3.824, 4.824, 5.824, 6.824,
-            7.824, 8.824, 5.424, 5.640
-        ]);
-        result = await dbExecAsync({
-            db,
-            sql: (`
+        assertJsonEqual(
+            valActual,
+            [
+                10, // nnn
+                4.4, // mxx
+                4.5, // myy
+                2.45854519, // exx
+                2.54950976, // eyy
+                0.81541829, // crr
+                0.84558824, // cbb
+                0.77941176 // caa
+            ]
+        );
+        // test aggregate-window handling-behavior
+        valActual = noop(
+            await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
 SELECT
-    ROUND(
-        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
-            ORDER BY id ASC
-            ROWS BETWEEN 4 - 1 PRECEDING AND 0 FOLLOWING
-        ),
-        4
-    ) AS val
+        ROUND(slr->>0, 8) AS nnn,
+        ROUND(slr->>1, 8) AS mxx,
+        ROUND(slr->>2, 8) AS myy,
+        ROUND(slr->>3, 8) AS exx,
+        ROUND(slr->>4, 8) AS eyy,
+        ROUND(slr->>5, 8) AS crr,
+        ROUND(slr->>6, 8) AS cbb,
+        ROUND(slr->>7, 8) AS caa
     FROM (
-        SELECT 11 AS id, NULL AS val
-        UNION ALL SELECT 10,   10
-        UNION ALL SELECT  9,    9
-        UNION ALL SELECT  8,    8
-        UNION ALL SELECT  7,    7
-        UNION ALL SELECT  6,    6
-        UNION ALL SELECT  5,    5
-        UNION ALL SELECT  4,    4
-        UNION ALL SELECT  3,    3
-        UNION ALL SELECT  2,    2
-        UNION ALL SELECT  1,    1
-        UNION ALL SELECT  0, NULL
+        SELECT
+            agg_slr(value->>0, value->>1) OVER (
+                ORDER BY NULL ASC
+                ROWS BETWEEN 8 - 1 PRECEDING AND 0 FOLLOWING
+            ) AS slr
+        FROM JSON_EAcH($valIn)
     );
-            `)
+                `)
+            })
+        )[0];
+        [
+            {
+                "caa": null,
+                "cbb": null,
+                "crr": null,
+                "exx": null,
+                "eyy": null,
+                "mxx": 2,
+                "myy": 0,
+                "nnn": 1
+            },
+            {
+                "caa": null,
+                "cbb": null,
+                "crr": null,
+                "exx": 0,
+                "eyy": 0.70710678,
+                "mxx": 2,
+                "myy": 0.5,
+                "nnn": 2
+            },
+            {
+                "caa": -4.5,
+                "cbb": 2.5,
+                "crr": 0.94491118,
+                "exx": 0.57735027,
+                "eyy": 1.52752523,
+                "mxx": 2.33333333,
+                "myy": 1.33333333,
+                "nnn": 3
+            },
+            {
+                "caa": -3,
+                "cbb": 1.81818182,
+                "crr": 0.95346259,
+                "exx": 0.95742711,
+                "eyy": 1.82574186,
+                "mxx": 2.75,
+                "myy": 2,
+                "nnn": 4
+            },
+            {
+                "caa": -2.29411765,
+                "cbb": 1.52941176,
+                "crr": 0.96164474,
+                "exx": 1.30384048,
+                "eyy": 2.07364414,
+                "mxx": 3.2,
+                "myy": 2.6,
+                "nnn": 5
+            },
+            {
+                "caa": -2.54385965,
+                "cbb": 1.63157895,
+                "crr": 0.97080629,
+                "exx": 1.37840488,
+                "eyy": 2.31660671,
+                "mxx": 3.5,
+                "myy": 3.16666667,
+                "nnn": 6
+            },
+            {
+                "caa": -2.65,
+                "cbb": 1.675,
+                "crr": 0.9752227,
+                "exx": 1.38013112,
+                "eyy": 2.37045304,
+                "mxx": 3.71428571,
+                "myy": 3.57142857,
+                "nnn": 7
+            },
+            {
+                "caa": -2.5,
+                "cbb": 1.625,
+                "crr": 0.97991187,
+                "exx": 1.51185789,
+                "eyy": 2.50713268,
+                "mxx": 4,
+                "myy": 4,
+                "nnn": 8
+            },
+            {
+                "caa": 0.75,
+                "cbb": 0.85,
+                "crr": 0.89597867,
+                "exx": 2.39045722,
+                "eyy": 2.26778684,
+                "mxx": 5,
+                "myy": 5,
+                "nnn": 8
+            },
+            {
+                "caa": 2.75,
+                "cbb": 0.55,
+                "crr": 0.81989159,
+                "exx": 2.39045722,
+                "eyy": 1.60356745,
+                "mxx": 5,
+                "myy": 5.5,
+                "nnn": 8
+            }
+        ].forEach(function (valExpected, ii) {
+            assertJsonEqual(valActual[ii], valExpected);
         });
-        result = result[0].map(function ({val}) {
-            return val;
-        });
-        assertJsonEqual(result, [
-            0.000, 0.400, 1.040, 1.824,
-            2.824, 3.824, 4.824, 5.824,
-            6.824, 7.824, 8.824, 5.424
-        ]);
     });
     jstestIt((
         "test sqlite-extension-base64 handling-behavior"
@@ -1685,7 +1876,7 @@ SELECT
                     db,
                     sql
                 })
-            )).slice(4);
+            )).slice(VECTOR99_NOFFSET);
             assertJsonEqual(valActual, valExpected, {
                 ii,
                 sql,
@@ -1697,12 +1888,9 @@ SELECT
     jstestIt((
         "test sqlite-extension-vec_win_slr handling-behavior"
     ), async function test_sqlite_extension_vec_win_slr() {
-        let dataxy;
-        let db;
-        db = await dbOpenAsync({
-            filename: ":memory:"
-        });
-        dataxy = [
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let valIn;
+        valIn = [
             [2, 0],
             [2, 1],
             [3, 3],
@@ -1864,7 +2052,7 @@ SELECT
             // test vec_win_slr()
             await dbExecAsync({
                 bindList: {
-                    dataxy: JSON.stringify(dataxy.slice(0, valExpected.nnn))
+                    valIn: JSON.stringify(valIn.slice(0, valExpected.nnn))
                 },
                 db,
                 sql: (`
@@ -1877,10 +2065,10 @@ CREATE TEMP TABLE __tmp${ii} AS
         wnn
     FROM (
         SELECT
-            vec_concat(value->>'0') AS vecx,
-            vec_concat(value->>'1') AS vecy,
+            vec_concat(value->>0) AS vecx,
+            vec_concat(value->>1) AS vecy,
             ${valExpected.wnn} AS wnn
-        FROM JSON_EACH($dataxy)
+        FROM JSON_EACH($valIn)
     );
                 `)
             });
@@ -1903,16 +2091,16 @@ SELECT jsonfromfloat64array(slr) FROM __tmp${ii};
                     cbb: valActual[valActual.length - 5],
                     crr: valActual[valActual.length - 4],
                     eyy: valActual[valActual.length - 3],
-                    iii: valActual[6],
+                    iii: valActual[VECTOR99_NOFFSET + 2],
                     mxx: valActual[valActual.length - 2],
                     myy: valActual[valActual.length - 1],
-                    nnn: valActual[4],
-                    sxx: valActual[9],
-                    sxy: valActual[10],
-                    syy: valActual[11],
-                    wnn: valActual[5],
-                    xx0: valActual[12],
-                    yy0: valActual[13]
+                    nnn: valActual[VECTOR99_NOFFSET + 0],
+                    sxx: valActual[VECTOR99_NOFFSET + 5],
+                    sxy: valActual[VECTOR99_NOFFSET + 6],
+                    syy: valActual[VECTOR99_NOFFSET + 7],
+                    wnn: valActual[VECTOR99_NOFFSET + 1],
+                    xx0: valActual[VECTOR99_NOFFSET + 8],
+                    yy0: valActual[VECTOR99_NOFFSET + 9]
                 },
                 valExpected
             );
@@ -1943,16 +2131,16 @@ SELECT
                     cbb: valActual[valActual.length - 5],
                     crr: valActual[valActual.length - 4],
                     eyy: valActual[valActual.length - 3],
-                    iii: valActual[6],
+                    iii: valActual[VECTOR99_NOFFSET + 2],
                     mxx: valActual[valActual.length - 2],
                     myy: valActual[valActual.length - 1],
-                    nnn: valActual[4],
-                    sxx: valActual[9],
-                    sxy: valActual[10],
-                    syy: valActual[11],
-                    wnn: valActual[5],
-                    xx0: valActual[12],
-                    yy0: valActual[13]
+                    nnn: valActual[VECTOR99_NOFFSET + 0],
+                    sxx: valActual[VECTOR99_NOFFSET + 5],
+                    sxy: valActual[VECTOR99_NOFFSET + 6],
+                    syy: valActual[VECTOR99_NOFFSET + 7],
+                    wnn: valActual[VECTOR99_NOFFSET + 1],
+                    xx0: valActual[VECTOR99_NOFFSET + 8],
+                    yy0: valActual[VECTOR99_NOFFSET + 9]
                 },
                 valExpected
             );
