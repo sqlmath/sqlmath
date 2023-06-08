@@ -135,7 +135,7 @@ file sqlmath_h - start
 #define SQLITE3_CREATE_FUNCTION1(func, argc) \
     errcode = sqlite3_create_function(db, #func, argc, \
         SQLITE_DETERMINISTIC | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
-        sql_##func##_func, NULL, NULL); \
+        sql1_##func##_func, NULL, NULL); \
     if (errcode != SQLITE_OK) { return errcode; }
 
 #define SQLITE3_CREATE_FUNCTION2(func, argc) \
@@ -160,6 +160,13 @@ file sqlmath_h - start
 #define SQLITE3_RESULT_ERROR_MALLOC(pp) \
     if (pp == NULL) { \
         sqlite3_result_error_nomem(context); \
+        goto catch_error; \
+    }
+
+#define SQLITE3_VALUE_DOUBLE_OR_ERROR(xx, arg, errmsg) \
+    const double xx = sqlite3_value_double_or_nan(arg); \
+    if (isnan(xx)) { \
+        sqlite3_result_error(context, errmsg, -1); \
         goto catch_error; \
     }
 
@@ -1221,7 +1228,7 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
 
 
 // file sqlmath_base - SQLMATH_FUNC
-// SQLMATH_FUNC sql_btobase64_func - start
+// SQLMATH_FUNC sql1_btobase64_func - start
 static char *base64Encode(
     const unsigned char *blob,
     int *nn
@@ -1284,7 +1291,7 @@ static char *base64Encode(
     return text - bb;
 }
 
-SQLMATH_FUNC static void sql_btobase64_func(
+SQLMATH_FUNC static void sql1_btobase64_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1308,9 +1315,9 @@ SQLMATH_FUNC static void sql_btobase64_func(
         sqlite3_free);
 }
 
-// SQLMATH_FUNC sql_btobase64_func - end
+// SQLMATH_FUNC sql1_btobase64_func - end
 
-SQLMATH_FUNC static void sql_btotext_func(
+SQLMATH_FUNC static void sql1_btotext_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1321,7 +1328,7 @@ SQLMATH_FUNC static void sql_btotext_func(
         -1, SQLITE_TRANSIENT);
 }
 
-SQLMATH_FUNC static void sql_castrealornull_func(
+SQLMATH_FUNC static void sql1_castrealornull_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1331,7 +1338,7 @@ SQLMATH_FUNC static void sql_castrealornull_func(
     sqlite3_result_double(context, sqlite3_value_double_or_nan(argv[0]));
 }
 
-SQLMATH_FUNC static void sql_castrealorzero_func(
+SQLMATH_FUNC static void sql1_castrealorzero_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1342,7 +1349,7 @@ SQLMATH_FUNC static void sql_castrealorzero_func(
     sqlite3_result_double(context, isfinite(xx) ? xx : 0);
 }
 
-SQLMATH_FUNC static void sql_casttextorempty_func(
+SQLMATH_FUNC static void sql1_casttextorempty_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1384,7 +1391,7 @@ SQLMATH_FUNC static void sql_casttextorempty_func(
         SQLITE_TRANSIENT);
 }
 
-SQLMATH_FUNC static void sql_copyblob_func(
+SQLMATH_FUNC static void sql1_copyblob_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1394,7 +1401,7 @@ SQLMATH_FUNC static void sql_copyblob_func(
     sqlite3_result_value(context, argv[0]);
 }
 
-SQLMATH_FUNC static void sql_cot_func(
+SQLMATH_FUNC static void sql1_cot_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1405,7 +1412,7 @@ SQLMATH_FUNC static void sql_cot_func(
         1.0 / tan(sqlite3_value_double_or_nan(argv[0])));
 }
 
-SQLMATH_FUNC static void sql_coth_func(
+SQLMATH_FUNC static void sql1_coth_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1416,7 +1423,7 @@ SQLMATH_FUNC static void sql_coth_func(
         1.0 / tanh(sqlite3_value_double_or_nan(argv[0])));
 }
 
-SQLMATH_FUNC static void sql_jenks_blob_func(
+SQLMATH_FUNC static void sql1_jenks_blob_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1451,7 +1458,7 @@ SQLMATH_FUNC static void sql_jenks_blob_func(
         (1 + ((int) result[0]) * 2) * 8, sqlite3_free);
 }
 
-SQLMATH_FUNC static void sql_jenks_json_func(
+SQLMATH_FUNC static void sql1_jenks_json_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1490,7 +1497,7 @@ SQLMATH_FUNC static void sql_jenks_json_func(
     (void) 0;
 }
 
-SQLMATH_FUNC static void sql_jsonfromfloat64array_func(
+SQLMATH_FUNC static void sql1_jsonfromfloat64array_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1513,7 +1520,7 @@ SQLMATH_FUNC static void sql_jsonfromfloat64array_func(
     (void) 0;
 }
 
-SQLMATH_FUNC static void sql_jsontofloat64array_func(
+SQLMATH_FUNC static void sql1_jsontofloat64array_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1535,7 +1542,7 @@ SQLMATH_FUNC static void sql_jsontofloat64array_func(
     (void) 0;
 }
 
-// SQLMATH_FUNC sql_marginoferror95_func - start
+// SQLMATH_FUNC sql1_marginoferror95_func - start
 SQLMATH_API double marginoferror95(
     double nn,
     double pp
@@ -1544,7 +1551,7 @@ SQLMATH_API double marginoferror95(
     return 1.9599639845400542 * sqrt(pp * (1 - pp) / nn);
 }
 
-SQLMATH_FUNC static void sql_marginoferror95_func(
+SQLMATH_FUNC static void sql1_marginoferror95_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1556,9 +1563,9 @@ SQLMATH_FUNC static void sql_marginoferror95_func(
             sqlite3_value_double_or_nan(argv[1])));
 }
 
-// SQLMATH_FUNC sql_marginoferror95_func - end
+// SQLMATH_FUNC sql1_marginoferror95_func - end
 
-SQLMATH_FUNC static void sql_random1_func(
+SQLMATH_FUNC static void sql1_random1_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1572,7 +1579,7 @@ SQLMATH_FUNC static void sql_random1_func(
     sqlite3_result_double(context, ((double) *xx) * inv);
 }
 
-SQLMATH_FUNC static void sql_roundorzero_func(
+SQLMATH_FUNC static void sql1_roundorzero_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1609,7 +1616,7 @@ SQLMATH_FUNC static void sql_roundorzero_func(
     sqlite3_result_double(context, rr);
 }
 
-SQLMATH_FUNC static void sql_sign_func(
+SQLMATH_FUNC static void sql1_sign_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1633,7 +1640,7 @@ SQLMATH_FUNC static void sql_sign_func(
     }
 }
 
-SQLMATH_FUNC static void sql_squared_func(
+SQLMATH_FUNC static void sql1_squared_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1655,7 +1662,7 @@ SQLMATH_FUNC static void sql_squared_func(
     }
 }
 
-SQLMATH_FUNC static void sql_throwerror_func(
+SQLMATH_FUNC static void sql1_throwerror_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1670,221 +1677,6 @@ SQLMATH_FUNC static void sql_throwerror_func(
     }
     sqlite3_result_error_code(context, SQLITE_INTERNAL);
 }
-
-// SQLMATH_FUNC sql_vec_win_slr - start
-typedef struct SlrElem {
-    double caa;                 // coeff-alpha
-    double cbb;                 // coeff-beta
-    double crr;                 // coeff-correlation
-    double eyy;                 // stdev.s yy
-    double mxx;                 // average xx
-    double myy;                 // average yy
-} SlrElem;
-
-typedef struct SlrHead {
-    Vector99 vec;               // vector99 head
-    double nnn;                 // number of datapoints total
-    double wnn;                 // number of datapoints window
-    //
-    double iii;                 // counter
-    double mxx;                 // average xx
-    double myy;                 // average yy
-    double sxx;                 // variance.p xx
-    double sxy;                 // covariance.p xy
-    double syy;                 // variance.p yy
-    double xx0;
-    double yy0;
-} SlrHead;
-
-static void vec_win_slr_inc(
-    SlrHead * slr,
-    const double *bufx,
-    const double *bufy,
-    const double *updatexx,
-    const double *updateyy
-) {
-// This function will calculate running simple-linear-regression.
-    const int nnn = (int) slr->nnn;
-    const int updatemode = updatexx != NULL;
-    const int wnn = (int) slr->wnn;
-    //
-    const double invp0 = 1.0 / wnn;
-    const double invs0 = 1.0 / (wnn - 1);
-    const int nnn2 = updatemode ? nnn : nnn - 1;
-    double mxx = slr->mxx;
-    double myy = slr->myy;
-    double sxx = slr->sxx;
-    double sxy = slr->sxy;
-    double syy = slr->syy;
-    int iii = slr->iii;
-    for (; iii < nnn2; iii += 1) {
-        // debug
-        // fprintf(stderr, "vec_win_slr_inc - nnn=%d wnn=%d iii=%d\n",     //
-        //     nnn, wnn, iii);
-        SlrElem *pp = ((SlrElem *) (((char *) slr) + sizeof(SlrHead))) + iii;
-        const double xx = updatemode ? *updatexx : bufx[iii];
-        const double yy = updatemode ? *updateyy : bufy[iii];
-        double invp = invp0;
-        double invs = invs0;
-        if (iii < wnn) {
-            // calculate running slr - welford
-            invp = 1.0 / (iii + 1);
-            invs = 1.0 / iii;
-            double dd;
-            // welford - increment syy
-            dd = yy - myy;
-            myy += dd * invp;
-            syy += dd * (yy - myy);
-            // welford - increment sxx
-            dd = xx - mxx;
-            mxx += dd * invp;
-            sxx += dd * (xx - mxx);
-            // welford - increment sxy
-            sxy += dd * (yy - myy);
-        } else {
-            // calculate running slr - window
-            const double xx0 = updatemode ? slr->xx0 : bufx[iii - wnn];
-            const double yy0 = updatemode ? slr->yy0 : bufy[iii - wnn];
-            const double dx = xx - xx0;
-            const double dy = yy - yy0;
-            sxx += (xx * xx - xx0 * xx0) - invp * dx * dx - 2 * dx * mxx;
-            sxy +=
-                (xx * yy - xx0 * yy0) - invp * dx * dy - mxx * dy - dx * myy;
-            syy += (yy * yy - yy0 * yy0) - invp * dy * dy - 2 * dy * myy;
-            mxx += dx * invp;
-            myy += dy * invp;
-        }
-        pp->eyy = sqrt(syy * invs);
-        pp->mxx = mxx;
-        pp->myy = myy;
-        pp->cbb = sxy / sxx;
-        pp->caa = pp->myy - pp->cbb * pp->mxx;
-        pp->crr = sxy / sqrt(sxx * syy);
-        pp += 1;
-    }
-    if (!updatemode) {
-        slr->iii = iii;
-        slr->mxx = mxx;
-        slr->myy = myy;
-        slr->nnn = nnn;
-        slr->sxx = sxx;
-        slr->sxy = sxy;
-        slr->syy = syy;
-        if (iii >= wnn) {
-            slr->xx0 = bufx[iii - wnn];
-            slr->yy0 = bufy[iii - wnn];
-        }
-    }
-}
-
-SQLMATH_FUNC static void sql_vec_win_slr_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running simple-linear-regression.
-    UNUSED_PARAMETER(argc);
-    // declare var0
-    const Vector99 *vecx = (Vector99 *) sqlite3_value_blob(argv[0]);
-    if (!vector99_valid(vecx)) {
-        sqlite3_result_error(context, "vec_win_slr - invalid vecx", -1);
-        return;
-    }
-    const Vector99 *vecy = (Vector99 *) sqlite3_value_blob(argv[1]);
-    if (!vector99_valid(vecy)) {
-        sqlite3_result_error(context, "vec_win_slr - invalid vecy", -1);
-        return;
-    }
-    const int nnn = (int) vecx->nbody;
-    const int wnn = sqlite3_value_int(argv[2]);
-    // declare var
-    const int alloc = sizeof(SlrHead) + nnn * sizeof(SlrElem);
-    // validate argv
-    if (vecx->nbody != vecy->nbody) {
-        sqlite3_result_error(context,
-            "vec_win_slr - vecx->nbody != vecy->nbody", -1);
-        return;
-    }
-    if (!(nnn > 0)) {
-        sqlite3_result_error(context, "vec_win_slr - invalid slr->nnn", -1);
-        return;
-    }
-    if (!(wnn > 0)) {
-        sqlite3_result_error(context, "vec_win_slr - invalid slr->wnn", -1);
-        return;
-    }
-    if (alloc < 0 || alloc > SQLITE_MAX_LENGTH2 || nnn > SQLITE_MAX_LENGTH2
-        || wnn > SQLITE_MAX_LENGTH2) {
-        sqlite3_result_error_nomem(context);
-    }
-    // init SlrHead
-    SlrHead *slr = sqlite3_malloc(alloc);
-    if (slr == NULL) {
-        sqlite3_result_error_nomem(context);
-        goto catch_error;
-    }
-    memset(slr, 0, alloc);
-    ((Vector99 *) slr)->alloc = alloc;
-    ((Vector99 *) slr)->nbody = (alloc - sizeof(Vector99)) / sizeof(double);
-    slr->nnn = nnn;
-    slr->wnn = wnn;
-    // calculate running slr - window
-    const double *bufx = vector99_body(vecx);
-    const double *bufy = vector99_body(vecy);
-    vec_win_slr_inc(slr, bufx, bufy, NULL, NULL);
-    vec_win_slr_inc(slr, NULL, NULL, bufx + nnn - 1, bufy + nnn - 1);
-    sqlite3_result_blob(context, slr, alloc, sqlite3_free);
-    return;
-  catch_error:
-    sqlite3_free(slr);
-}
-
-SQLMATH_FUNC static void sql_vec_win_slr_updatelast_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running simple-linear-regression.
-    UNUSED_PARAMETER(argc);
-    // declare var0
-    const Vector99 *vecslr = (Vector99 *) sqlite3_value_blob(argv[0]);
-    if (!vector99_valid(vecslr)) {
-        sqlite3_result_error(context, "vec_win_slr - invalid vecslr", -1);
-        return;
-    }
-    SlrHead *slr = (SlrHead *) vecslr;
-    const int nnn = slr->nnn;
-    const int wnn = slr->wnn;
-    // declare var
-    const double xx = sqlite3_value_double(argv[1]);
-    const double yy = sqlite3_value_double(argv[2]);
-    const int alloc = sizeof(SlrHead) + nnn * sizeof(SlrElem);
-    const int iii = slr->iii;
-    // validate argv
-    if (!(nnn > 0)) {
-        sqlite3_result_error(context, "vec_win_slr - invalid slr->nnn", -1);
-        return;
-    }
-    if (!(wnn > 0)) {
-        sqlite3_result_error(context, "vec_win_slr - invalid slr->wnn", -1);
-        return;
-    }
-    // validate argv - updatelast
-    if (vecslr->alloc != alloc) {
-        sqlite3_result_error(context, "vec_win_slr - invalid vecslr->alloc",
-            -1);
-        return;
-    }
-    if (iii + 1 != nnn) {
-        sqlite3_result_error(context, "vec_win_slr - invalid slr->iii", -1);
-        return;
-    }
-    // calculate running slr - window
-    vec_win_slr_inc(slr, NULL, NULL, &xx, &yy);
-    sqlite3_result_blob(context, slr, alloc, SQLITE_STATIC);
-}
-
-// SQLMATH_FUNC sql_vec_win_slr - end
 
 // SQLMATH_FUNC sql2_jenks_concat_func - start
 static void str99arrCleanup(
@@ -2317,8 +2109,8 @@ SQLMATH_FUNC static void sql2_vec_concat_step(
 
 // SQLMATH_FUNC sql2_vec_concat_func - end
 
-// SQLMATH_FUNC sql3_agg_ema_func - start
-SQLMATH_FUNC static void sql3_agg_ema_value(
+// SQLMATH_FUNC sql3_win_ema_func - start
+SQLMATH_FUNC static void sql3_win_ema_value(
     sqlite3_context * context
 ) {
 // This function will aggregate exponential-moving-average.
@@ -2327,12 +2119,12 @@ SQLMATH_FUNC static void sql3_agg_ema_value(
     sqlite3_result_double(context, vec99_body[0]);
 }
 
-SQLMATH_FUNC static void sql3_agg_ema_final(
+SQLMATH_FUNC static void sql3_win_ema_final(
     sqlite3_context * context
 ) {
 // This function will aggregate exponential-moving-average.
     // vec99 - value
-    sql3_agg_ema_value(context);
+    sql3_win_ema_value(context);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     // vec99 - cleanup
@@ -2340,7 +2132,7 @@ SQLMATH_FUNC static void sql3_agg_ema_final(
     *vec99_agg = NULL;
 }
 
-SQLMATH_FUNC static void sql3_agg_ema_inverse(
+SQLMATH_FUNC static void sql3_win_ema_inverse(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2353,7 +2145,7 @@ SQLMATH_FUNC static void sql3_agg_ema_inverse(
     vector99_pop_front(vec99);
 }
 
-SQLMATH_FUNC static void sql3_agg_ema_step(
+SQLMATH_FUNC static void sql3_win_ema_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2363,12 +2155,14 @@ SQLMATH_FUNC static void sql3_agg_ema_step(
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(1);
     if (vec99->nbody == 0) {
-        vec99_head[0] = sqlite3_value_double(argv[1]);  // alpha
+        vec99_head[0] = sqlite3_value_double_or_nan(argv[1]);   // alpha
     }
-    // vec99 - calculate ema
+    SQLITE3_VALUE_DOUBLE_OR_ERROR(xx, argv[0],
+        "win_ema() - argument xx must be finite number");
+    // declare var
     const double alpha = vec99_head[0];
-    const double xx = sqlite3_value_double(argv[0]);
     const int nn = vec99->nbody;
+    // vec99 - calculate ema
     for (int ii = 0; ii < nn; ii += 1) {
         vec99_body[ii] = alpha * xx + (1 - alpha) * vec99_body[ii];
     }
@@ -2381,25 +2175,25 @@ SQLMATH_FUNC static void sql3_agg_ema_step(
     *vec99_agg = NULL;
 }
 
-// SQLMATH_FUNC sql3_agg_ema_func - end
+// SQLMATH_FUNC sql3_win_ema_func - end
 
-// SQLMATH_FUNC sql3_agg_slr_func - start
-typedef struct Slr2 {
+// SQLMATH_FUNC sql3_win_slr_func - start
+typedef struct WinSlr {
     double mxx;                 // average xx
     double myy;                 // average yy
     double sxx;                 // variance.p xx
     double sxy;                 // covariance.p xy
     double syy;                 // variance.p yy
-} Slr2;
+} WinSlr;
 
-SQLMATH_FUNC static void sql3_agg_slr_value(
+SQLMATH_FUNC static void sql3_win_slr_value(
     sqlite3_context * context
 ) {
 // This function will aggregate exponential-moving-average.
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     // declare var
-    const Slr2 *slr = (Slr2 *) vec99_head;
+    const WinSlr *slr = (WinSlr *) vec99_head;
     const int nnn = vec99->wnn == 0 ? vec99->wii / 2 : vec99->wnn / 2;
     double arr[8] = { 0 };
     int errcode = 0;
@@ -2430,12 +2224,12 @@ SQLMATH_FUNC static void sql3_agg_slr_value(
     (void) 0;
 }
 
-SQLMATH_FUNC static void sql3_agg_slr_final(
+SQLMATH_FUNC static void sql3_win_slr_final(
     sqlite3_context * context
 ) {
 // This function will aggregate exponential-moving-average.
     // vec99 - value
-    sql3_agg_slr_value(context);
+    sql3_win_slr_value(context);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     // vec99 - cleanup
@@ -2443,7 +2237,7 @@ SQLMATH_FUNC static void sql3_agg_slr_final(
     *vec99_agg = NULL;
 }
 
-SQLMATH_FUNC static void sql3_agg_slr_inverse(
+SQLMATH_FUNC static void sql3_win_slr_inverse(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2458,7 +2252,7 @@ SQLMATH_FUNC static void sql3_agg_slr_inverse(
     }
 }
 
-SQLMATH_FUNC static void sql3_agg_slr_step(
+SQLMATH_FUNC static void sql3_win_slr_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2466,16 +2260,18 @@ SQLMATH_FUNC static void sql3_agg_slr_step(
 // This function will aggregate exponential-moving-average.
     UNUSED_PARAMETER(argc);
     // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(sizeof(Slr2) / sizeof(double));
-    // vec99 - calculate slr
-    Slr2 *slr = (Slr2 *) vec99_head;
-    const int wnn = vec99->wnn / 2;
+    VECTOR99_AGGREGATE_CONTEXT(sizeof(WinSlr) / sizeof(double));
+    SQLITE3_VALUE_DOUBLE_OR_ERROR(xx, argv[0],
+        "win_slr() - argument xx must be finite number");
+    SQLITE3_VALUE_DOUBLE_OR_ERROR(yy, argv[1],
+        "win_slr() - argument yy must be finite number");
+    // declare var0
+    WinSlr *slr = (WinSlr *) vec99_head;
     const int iii = vec99->wii / 2;
-    //
+    const int wnn = vec99->wnn / 2;
+    // declare var
     const double invp0 = 1.0 / wnn;
     const double invs0 = 1.0 / (wnn - 1);
-    const double xx = sqlite3_value_double(argv[0]);
-    const double yy = sqlite3_value_double(argv[1]);
     double invp = invp0;
     double invs = invs0;
     double mxx = slr->mxx;
@@ -2483,6 +2279,7 @@ SQLMATH_FUNC static void sql3_agg_slr_step(
     double sxx = slr->sxx;
     double sxy = slr->sxy;
     double syy = slr->syy;
+    // vec99 - calculate slr
     if (wnn == 0) {
         // calculate running slr - welford
         invp = 1.0 / (iii + 1);
@@ -2507,7 +2304,7 @@ SQLMATH_FUNC static void sql3_agg_slr_step(
         const double dy = yy - yy0;
         // debug
         // fprintf(stderr,         //
-        //     "agg_slr - wnn=%d iii=%d xx,yy=%f,%f xx0,yy0=%f,%f\n", //
+        //     "win_slr - wnn=%d iii=%d xx,yy=%f,%f xx0,yy0=%f,%f\n", //
         //     wnn, iii, xx, yy, xx0, yy0);
         sxx += (xx * xx - xx0 * xx0) - invp * dx * dx - 2 * dx * mxx;
         sxy += (xx * yy - xx0 * yy0) - invp * dx * dy - mxx * dy - dx * myy;
@@ -2522,7 +2319,7 @@ SQLMATH_FUNC static void sql3_agg_slr_step(
     slr->syy = syy;
     // debug
     // fprintf(stderr,             //
-    //     "agg_slr - wnn=%d iii=%d xx,yy=%f,%f mxx=%f myy=%f\n\n",        //
+    //     "win_slr - wnn=%d iii=%d xx,yy=%f,%f mxx=%f myy=%f\n\n",        //
     //     wnn, iii, xx, yy, mxx, myy);
     // vec99 - push_back xx
     int errcode = 0;
@@ -2536,7 +2333,7 @@ SQLMATH_FUNC static void sql3_agg_slr_step(
     *vec99_agg = NULL;
 }
 
-// SQLMATH_FUNC sql3_agg_slr_func - end
+// SQLMATH_FUNC sql3_win_slr_func - end
 
 
 // file sqlmath_base - init
@@ -2565,19 +2362,17 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
-    SQLITE3_CREATE_FUNCTION1(vec_win_slr, 3);
-    SQLITE3_CREATE_FUNCTION1(vec_win_slr_updatelast, 3);
     SQLITE3_CREATE_FUNCTION2(jenks_concat, -1);
     SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
     SQLITE3_CREATE_FUNCTION2(stdev, 1);
     SQLITE3_CREATE_FUNCTION2(vec_concat, 1);
-    SQLITE3_CREATE_FUNCTION3(agg_ema, 2);
-    SQLITE3_CREATE_FUNCTION3(agg_slr, 2);
+    SQLITE3_CREATE_FUNCTION3(win_ema, 2);
+    SQLITE3_CREATE_FUNCTION3(win_slr, 2);
     errcode =
         sqlite3_create_function(db, "random1", 0,
-        SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql_random1_func, NULL, NULL);
+        SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql1_random1_func, NULL, NULL);
     if (errcode != SQLITE_OK) {
         return errcode;
     }
@@ -2592,9 +2387,8 @@ file sqlmath_base - end
 /*
 file sqlmath_nodejs - start
 */
-#ifdef SQLMATH_NODEJS_C2
-//!! #if defined(SQLMATH_NODEJS_C2) && !defined(SQLMATH_NODEJS_C3)
-//!! #define SQLMATH_NODEJS_C3
+#if defined(SQLMATH_NODEJS_C2) && !defined(SQLMATH_NODEJS_C3)
+#define SQLMATH_NODEJS_C3
 
 
 #ifdef WIN32

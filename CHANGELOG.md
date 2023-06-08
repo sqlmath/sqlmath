@@ -4,7 +4,7 @@
 - none
 
 # v2023.6.1-beta
-- sqlmath - Add sql-function agg_slr().
+- sqlmath - Add sql-function win_slr().
 - sqlmath - Add sql-function vec_win_slr_updatelast().
 - sqlmath - Add sql-function vec_win_slr().
 - sqlmath - Revamp struct Vector99.
