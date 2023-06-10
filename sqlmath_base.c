@@ -163,12 +163,11 @@ file sqlmath_h - start
         goto catch_error; \
     }
 
-#define SQLITE3_VALUE_DOUBLE_OR_ERROR(xx, arg, errmsg) \
-    const double xx = sqlite3_value_double_or_nan(arg); \
-    if (isnan(xx)) { \
-        sqlite3_result_error(context, errmsg, -1); \
-        goto catch_error; \
-    }
+#define SQLITE3_RESULT_JSONFLOAT64ARRAY(str99, arr, nn) \
+    STR99_ALLOCA(str99); \
+    str99JsonAppendFloat64array(str99, arr, nn); \
+    STR99_RESULT_ERROR(str99); \
+    str99ResultText(str99, context);
 
 #define STR99_ALLOCA(str99) \
     sqlite3_str __##str99 = { 0 }; \
@@ -313,6 +312,7 @@ typedef struct Vector99 {
     double alloc;               // allocated size in bytes
     double nbody;               // number of body elements
     double nhead;               // number of head elements
+    double ncol;                // number of columns
     double wii;                 // counter of window elements
     double wnn;                 // number of window elements
 } Vector99;
@@ -381,7 +381,12 @@ SQLMATH_API double quantile(
 );
 
 SQLMATH_API double sqlite3_value_double_or_nan(
-    sqlite3_value * argv
+    sqlite3_value * arg
+);
+
+SQLMATH_API double sqlite3_value_double_or_prev(
+    sqlite3_value * arg,
+    double *previous
 );
 
 SQLMATH_API const char *sqlmathSnprintfTrace(
@@ -1189,19 +1194,20 @@ SQLMATH_API int noop(
 SQLMATH_API double sqlite3_value_double_or_nan(
     sqlite3_value * arg
 ) {
-// This function will return double if finite else nan.
-    switch (sqlite3_value_numeric_type(arg)) {
-    case SQLITE_INTEGER:
-    case SQLITE_FLOAT:
-        {
-            const double xx = sqlite3_value_double(arg);
-            if (isfinite(xx)) {
-                return xx;
-            }
-        }
-        break;
+// This function will return NAN if NULL else double.
+    return sqlite3_value_type(arg) ==
+        SQLITE_NULL ? NAN : sqlite3_value_double(arg);
+}
+
+SQLMATH_API double sqlite3_value_double_or_prev(
+    sqlite3_value * arg,
+    double *previous
+) {
+// This function will save <arg> as <previous> if not NULL.
+    if (sqlite3_value_type(arg) != SQLITE_NULL) {
+        *previous = sqlite3_value_double(arg);
     }
-    return NAN;
+    return *previous;
 }
 
 SQLMATH_API const char *sqlmathSnprintfTrace(
@@ -1500,16 +1506,9 @@ SQLMATH_FUNC static void sql1_jsonfromfloat64array_func(
     UNUSED_PARAMETER(argc);
     // declare var
     int errcode = 0;
-    // str99 - init
-    STR99_ALLOCA(str99);
-    // str99 - jsonfrom
-    str99JsonAppendFloat64array(        //
-        str99,                  //
-        (double *) sqlite3_value_blob(argv[0]), //
+    SQLITE3_RESULT_JSONFLOAT64ARRAY(str99,
+        (double *) sqlite3_value_blob(argv[0]),
         sqlite3_value_bytes(argv[0]) / 8);
-    STR99_RESULT_ERROR(str99);
-    // str99 - result
-    str99ResultText(str99, context);
   catch_error:
     (void) 0;
 }
@@ -2143,14 +2142,13 @@ SQLMATH_FUNC static void sql3_win_ema_step(
 // This function will aggregate exponential-moving-average.
     UNUSED_PARAMETER(argc);
     // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(1);
+    VECTOR99_AGGREGATE_CONTEXT(2);
     if (vec99->nbody == 0) {
-        vec99_head[0] = sqlite3_value_double_or_nan(argv[1]);   // alpha
+        vec99_head[1] = sqlite3_value_double_or_nan(argv[1]);   // alpha
     }
-    SQLITE3_VALUE_DOUBLE_OR_ERROR(xx, argv[0],
-        "win_ema() - argument xx must be finite number");
     // declare var
-    const double alpha = vec99_head[0];
+    const double alpha = vec99_head[1];
+    const double xx = sqlite3_value_double_or_prev(argv[0], &vec99_head[0]);
     const int nn = vec99->nbody;
     // vec99 - calculate ema
     for (int ii = 0; ii < nn; ii += 1) {
@@ -2166,6 +2164,100 @@ SQLMATH_FUNC static void sql3_win_ema_step(
 
 // SQLMATH_FUNC sql3_win_ema_func - end
 
+// SQLMATH_FUNC sql3_win_ema2_func - start
+SQLMATH_FUNC static void sql3_win_ema2_value(
+    sqlite3_context * context
+) {
+// This function will aggregate exponential-moving-average.
+    sqlite3_result_null(context);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    if (!vec99->ncol) {
+        sqlite3_result_null(context);
+    }
+    int errcode = 0;
+    SQLITE3_RESULT_JSONFLOAT64ARRAY(str99, vec99_body + (int) vec99->wii,
+        (int) vec99->ncol);
+  catch_error:
+    (void) 0;
+}
+
+SQLMATH_FUNC static void sql3_win_ema2_final(
+    sqlite3_context * context
+) {
+// This function will aggregate exponential-moving-average.
+    // vec99 - value
+    sql3_win_ema2_value(context);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    // vec99 - cleanup
+    vector99_agg_free(vec99_agg);
+}
+
+SQLMATH_FUNC static void sql3_win_ema2_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will aggregate exponential-moving-average.
+    UNUSED_PARAMETER(argc);
+    UNUSED_PARAMETER(argv);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    if (!vec99->wnn) {
+        vec99->wnn = vec99->nbody;
+    }
+}
+
+SQLMATH_FUNC static void sql3_win_ema2_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will aggregate exponential-moving-average.
+    if (argc < 2) {
+        sqlite3_result_error(context,
+            "wrong number of arguments to function win_ema2()", -1);
+        return;
+    }
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(argc);
+    const int ncol = argc - 1;
+    if (vec99->nbody == 0) {
+        // alpha
+        vec99_head[argc - 1] = sqlite3_value_double_or_nan(argv[argc - 1]);
+        // ncol
+        vec99->ncol = ncol;
+    }
+    // declare var
+    const double alpha = vec99_head[argc - 1];
+    const int nrow = vec99->nbody / ncol;
+    int errcode = 0;
+    // vec99 - calculate ema
+    for (int ii = 0; ii < ncol; ii += 1) {
+        sqlite3_value_double_or_prev(argv[ii], &vec99_head[ii]);
+        double *row = vec99_body + ii;
+        // debug
+        // fprintf(stderr,         //
+        //     "win_ema2 - nbody=%.0f xx0=%f xx=%f alpha=%f\n",    //
+        //     vec99->nbody, *row, vec99_head[0], alpha);
+        for (int jj = 0; jj < nrow; jj += 1) {
+            *row = alpha * vec99_head[ii] + (1 - alpha) * *row;
+            row += ncol;
+        }
+    }
+    // vec99 - push_back xx
+    for (int ii = 0; ii < ncol; ii += 1) {
+        errcode = vector99_push_back(vec99_agg, vec99_head[ii]);
+    }
+    SQLITE3_RESULT_ERROR_CODE(errcode);
+    return;
+  catch_error:
+    vector99_agg_free(vec99_agg);
+}
+
+// SQLMATH_FUNC sql3_win_ema2_func - end
+
 // SQLMATH_FUNC sql3_win_slr_func - start
 typedef struct WinSlr {
     double invp;                // 1.0 / nnn
@@ -2176,6 +2268,8 @@ typedef struct WinSlr {
     double sxx;                 // variance.p xx
     double sxy;                 // covariance.p xy
     double syy;                 // variance.p yy
+    double xx0;                 // previous xx
+    double yy0;                 // previous yy
 } WinSlr;
 
 SQLMATH_FUNC static void sql3_win_slr_value(
@@ -2204,13 +2298,8 @@ SQLMATH_FUNC static void sql3_win_slr_value(
     arr[5] = crr;
     arr[6] = cbb;
     arr[7] = caa;
-    // str99 - init
-    STR99_ALLOCA(str99);
-    // str99 - jsonfrom
-    str99JsonAppendFloat64array(str99, arr, sizeof(arr) / sizeof(double));
-    STR99_RESULT_ERROR(str99);
     // str99 - result
-    str99ResultText(str99, context);
+    SQLITE3_RESULT_JSONFLOAT64ARRAY(str99, arr, sizeof(arr) / sizeof(double));
   catch_error:
     (void) 0;
 }
@@ -2251,13 +2340,10 @@ SQLMATH_FUNC static void sql3_win_slr_step(
     UNUSED_PARAMETER(argc);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(sizeof(WinSlr) / sizeof(double));
-    SQLITE3_VALUE_DOUBLE_OR_ERROR(xx, argv[0],
-        "win_slr() - argument xx must be finite number");
-    SQLITE3_VALUE_DOUBLE_OR_ERROR(yy, argv[1],
-        "win_slr() - argument yy must be finite number");
-    // declare var0
-    WinSlr *slr = (WinSlr *) vec99_head;
     // declare var
+    WinSlr *slr = (WinSlr *) vec99_head;
+    const double xx = sqlite3_value_double_or_prev(argv[0], &slr->xx0);
+    const double yy = sqlite3_value_double_or_prev(argv[1], &slr->yy0);
     double mxx = slr->mxx;
     double myy = slr->myy;
     double sxx = slr->sxx;
@@ -2354,6 +2440,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION2(stdev, 1);
     SQLITE3_CREATE_FUNCTION2(vec_concat, 1);
     SQLITE3_CREATE_FUNCTION3(win_ema, 2);
+    SQLITE3_CREATE_FUNCTION3(win_ema2, -1);
     SQLITE3_CREATE_FUNCTION3(win_slr, 2);
     errcode =
         sqlite3_create_function(db, "random1", 0,

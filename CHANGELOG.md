@@ -4,6 +4,8 @@
 - none
 
 # v2023.6.1-beta
+- sqlmath - Add sql-function win_ema2().
+- betadog - Add feature xema_xxx into ml model.
 - sqlmath - Add sql-function win_slr().
 - sqlmath - Add sql-function vec_win_slr_updatelast().
 - sqlmath - Add sql-function vec_win_slr().

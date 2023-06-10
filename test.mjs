@@ -47,7 +47,7 @@ import {
     sqlmathWebworkerInit,
     version
 } from "./sqlmath.mjs";
-let VECTOR99_NOFFSET = 5;
+let VECTOR99_NOFFSET = 6;
 let {
     assertErrorThrownAsync,
     jstestDescribe,
@@ -736,8 +736,8 @@ jstestDescribe((
         ].map(async function ([
             errno, errmsg
         ]) {
-            await assertErrorThrownAsync(async function () {
-                return await dbExecAsync({
+            await assertErrorThrownAsync(function () {
+                return dbExecAsync({
                     db,
                     sql: `SELECT throwerror(${errno})`
                 });
@@ -1132,7 +1132,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
         // test sqlmath-defined-func handling-behavior
         Object.entries({
             "''": {
-                "castrealornull": null,
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": ""
@@ -1177,13 +1177,13 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": 1
             },
             "'aa'": {
-                "castrealornull": null,
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "aa",
                 "copyblob": "aa"
             },
             "'hello'": {
-                "castrealornull": null,
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "hello",
                 "copyblob": "hello"
@@ -1253,6 +1253,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
             },
             "1e999": {
                 "castrealornull": null,
+                "castrealorzero": 0,
                 "sign": 1
             },
             "null": {
@@ -1274,13 +1275,13 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "roundorzero": 0
             },
             "zeroblob(0)": {
-                "castrealornull": null,
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": null
             },
             "zeroblob(1)": {
-                "castrealornull": null,
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": null
@@ -1550,10 +1551,10 @@ SELECT
     FROM (
         SELECT NULL AS aa
         UNION ALL SELECT '12.34'
-        UNION ALL SELECT 'abcd'
+        UNION ALL SELECT NULL
         UNION ALL SELECT 43.21
-        UNION ALL SELECT zeroblob(0)
-        UNION ALL SELECT zeroblob(1)
+        UNION ALL SELECT NULL
+        UNION ALL SELECT NULL
         UNION ALL SELECT NULL
     );
                 `),
@@ -1590,18 +1591,18 @@ SELECT
         let db = await dbOpenAsync({filename: ":memory:"});
         let valIn;
         valIn = [
-            [11, 0],
+            [11, NaN],
             [10, "10"],
             [9, 9],
-            [8, 8],
+            [8, "8"],
             [7, 7],
             [6, 6],
-            [5, 5],
-            [4, 4],
+            [5, Infinity],
+            [4, "4"],
             [3, 3],
             [2, 2],
             [1, "1"],
-            [0, 0]
+            [0, undefined]
         ];
         await (async function () {
             let alpha = 2 * 1.0 / (4 + 1);
@@ -1619,15 +1620,6 @@ SELECT win_ema(1, 1) FROM __tmp1;
                 return val;
             });
             assertJsonEqual(valActual, [null]);
-            // test error handling-behavior
-            assertErrorThrownAsync(function () {
-                return dbExecAsync({
-                    db,
-                    sql: (`
-SELECT win_ema(null, 1) FROM (SELECT 1);
-                    `)
-                });
-            }, "must be finite number");
             // test aggregate-normal handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
@@ -1636,12 +1628,12 @@ SELECT win_ema(null, 1) FROM (SELECT 1);
                 db,
                 sql: (`
 SELECT
-    ROUND(
-        win_ema(value->>1, ${alpha}) OVER (
-            ORDER BY value->>0 ASC
-        ),
-        4
-    ) AS val
+        ROUND(
+            win_ema(value->>1, ${alpha}) OVER (
+                ORDER BY value->>0 ASC
+            ),
+            4
+        ) AS val
     FROM JSON_EAcH($valIn);
                 `)
             });
@@ -1652,8 +1644,85 @@ SELECT
                 valActual,
                 [
                     0.0000, 0.4000, 1.0400, 1.8240,
-                    2.6944, 3.6166, 4.5700, 5.5420,
-                    6.5252, 7.5151, 8.5091, 5.1054
+                    2.6944, 3.2166, 4.3300, 5.3980,
+                    6.4388, 7.4633, 8.4780, 9.0868
+                ]
+            );
+        }());
+    });
+    jstestIt((
+        "test sqlite-extension-win_ema2 handling-behavior"
+    ), async function test_sqlite_extension_win_ema2() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let valIn;
+        valIn = [
+            [11, NaN],
+            [10, "10"],
+            [9, 9],
+            [8, "8"],
+            [7, 7],
+            [6, 6],
+            [5, Infinity],
+            [4, "4"],
+            [3, 3],
+            [2, 2],
+            [1, "1"],
+            [0, undefined]
+        ];
+        await (async function () {
+            let alpha = 2 * 1.0 / (4 + 1);
+            let valActual;
+            // test null-case handling-behavior
+            await assertErrorThrownAsync(function () {
+                return dbExecAsync({
+                    db,
+                    sql: (`
+SELECT win_ema2(1) FROM (SELECT 1);
+                    `)
+                });
+            }, "wrong number of arguments");
+            // test null-case handling-behavior
+            valActual = await dbExecAsync({
+                db,
+                sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_ema2(1, 2, 3) FROM __tmp1;
+                `)
+            });
+            valActual = valActual[0].map(function ({val}) {
+                return val;
+            });
+            assertJsonEqual(valActual, [null]);
+            // test aggregate-normal handling-behavior
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        ROUND(ema2->>0, 4) AS val1,
+        ROUND(ema2->>1, 4) AS val2
+    FROM (
+        SELECT
+            win_ema2(value->>1, value->>1, ${alpha}) OVER (
+                ORDER BY value->>0 ASC
+            ) AS ema2
+        FROM JSON_EAcH($valIn)
+    );
+                `)
+            });
+            valActual = valActual[0].map(function ({val1, val2}) {
+                assertJsonEqual(val1, val2);
+                return val1;
+            });
+            assertJsonEqual(
+                valActual,
+                [
+                    0.0000, 0.4000, 1.0400, 1.8240,
+                    2.6944, 3.2166, 4.3300, 5.3980,
+                    6.4388, 7.4633, 8.4780, 9.0868
                 ]
             );
         }());
@@ -1664,9 +1733,9 @@ SELECT
                 alpha: 2 * 1.0 / (4 + 1),
                 bb: 4 - 1,
                 valExpected: [
-                    1.824, 2.824, 3.824, 4.824,
-                    5.824, 6.824, 7.824, 8.824,
-                    5.424, 5.424, 5.424, 5.424
+                    1.824, 2.824, 3.424, 4.584,
+                    5.680, 6.608, 7.824, 8.824,
+                    9.424, 9.424, 9.424, 9.424
                 ]
             },
             {
@@ -1675,8 +1744,8 @@ SELECT
                 bb: 2 - 1,
                 valExpected: [
                     0.400, 1.040, 1.824, 2.824,
-                    3.824, 4.824, 5.824, 6.824,
-                    7.824, 8.824, 5.424, 5.424
+                    3.424, 4.584, 5.680, 6.608,
+                    7.824, 8.824, 9.424, 9.424
                 ]
             },
             {
@@ -1685,8 +1754,8 @@ SELECT
                 bb: 0,
                 valExpected: [
                     0.000, 0.400, 1.040, 1.824,
-                    2.824, 3.824, 4.824, 5.824,
-                    6.824, 7.824, 8.824, 5.424
+                    2.824, 3.424, 4.584, 5.680,
+                    6.608, 7.824, 8.824, 9.424
                 ]
             }
         ].map(async function ({
@@ -1703,18 +1772,21 @@ SELECT
                 db,
                 sql: (`
 SELECT
-        ROUND(
-            win_ema(value->>1, ${alpha}) OVER (
+        ROUND(ema2->>0, 4) AS val1,
+        ROUND(ema2->>1, 4) AS val2
+    FROM (
+        SELECT
+            win_ema2(value->>1, value->>1, ${alpha}) OVER (
                 ORDER BY value->>0 ASC
                 ROWS BETWEEN ${aa} PRECEDING AND ${bb} FOLLOWING
-            ),
-            4
-        ) AS val
-    FROM JSON_EAcH($valIn);
+            ) AS ema2
+        FROM JSON_EAcH($valIn)
+    );
                 `)
             });
-            valActual = valActual[0].map(function ({val}) {
-                return val;
+            valActual = valActual[0].map(function ({val1, val2}) {
+                assertJsonEqual(val1, val2);
+                return val1;
             });
             assertJsonEqual(valActual, valExpected);
         }));
@@ -1738,32 +1810,15 @@ SELECT win_slr(1, 1) FROM __tmp1;
             return val;
         });
         assertJsonEqual(valActual, [null]);
-        // test error handling-behavior
-        assertErrorThrownAsync(function () {
-            return dbExecAsync({
-                db,
-                sql: (`
-SELECT win_slr(null, 1) FROM (SELECT 1);
-                `)
-            });
-        }, "must be finite number");
-        assertErrorThrownAsync(function () {
-            return dbExecAsync({
-                db,
-                sql: (`
-SELECT win_slr(1, null) FROM (SELECT 1);
-                `)
-            });
-        }, "must be finite number");
         // test aggregate-normal handling-behavior
         valIn = [
-            [2, 0],
-            [2, 1],
+            [2, "abcd"],
+            [NaN, 1],
             [3, 3],
             [4, 4],
             [5, 5],
             [5, 6],
-            [5, 6],
+            [5, undefined],
             [6, 7],
             //
             [10, 8],
