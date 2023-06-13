@@ -1586,8 +1586,8 @@ SELECT
         }));
     });
     jstestIt((
-        "test sqlite-extension-win_ema handling-behavior"
-    ), async function test_sqlite_extension_win_ema() {
+        "test sqlite-extension-win_emax handling-behavior"
+    ), async function test_sqlite_extension_win_emax() {
         let db = await dbOpenAsync({filename: ":memory:"});
         let valIn;
         valIn = [
@@ -1607,20 +1607,42 @@ SELECT
         await (async function () {
             let alpha = 2 * 1.0 / (4 + 1);
             let valActual;
-            // test null-case handling-behavior
+            // test win_ema2-error handling-behavior
+            await assertErrorThrownAsync(function () {
+                return dbExecAsync({
+                    db,
+                    sql: (`
+SELECT win_ema2(1) FROM (SELECT 1);
+                    `)
+                });
+            }, "wrong number of arguments");
+            // test win_ema1-null-case handling-behavior
             valActual = await dbExecAsync({
                 db,
                 sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_ema(1, 1) FROM __tmp1;
+SELECT win_ema1(1, 1) FROM __tmp1;
                 `)
             });
             valActual = valActual[0].map(function ({val}) {
                 return val;
             });
             assertJsonEqual(valActual, [null]);
-            // test aggregate-normal handling-behavior
+            // test win_ema2-null-case handling-behavior
+            valActual = await dbExecAsync({
+                db,
+                sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_ema2(1, 2, 3) FROM __tmp1;
+                `)
+            });
+            valActual = valActual[0].map(function ({val}) {
+                return val;
+            });
+            assertJsonEqual(valActual, [null]);
+            // test win_ema1-aggregate-normal handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
                     valIn: JSON.stringify(valIn)
@@ -1629,7 +1651,7 @@ SELECT win_ema(1, 1) FROM __tmp1;
                 sql: (`
 SELECT
         ROUND(
-            win_ema(value->>1, ${alpha}) OVER (
+            win_ema1(value->>1, ${alpha}) OVER (
                 ORDER BY value->>0 ASC
             ),
             4
@@ -1648,53 +1670,7 @@ SELECT
                     6.4388, 7.4633, 8.4780, 9.0868
                 ]
             );
-        }());
-    });
-    jstestIt((
-        "test sqlite-extension-win_ema2 handling-behavior"
-    ), async function test_sqlite_extension_win_ema2() {
-        let db = await dbOpenAsync({filename: ":memory:"});
-        let valIn;
-        valIn = [
-            [11, NaN],
-            [10, "10"],
-            [9, 9],
-            [8, "8"],
-            [7, 7],
-            [6, 6],
-            [5, Infinity],
-            [4, "4"],
-            [3, 3],
-            [2, 2],
-            [1, "1"],
-            [0, undefined]
-        ];
-        await (async function () {
-            let alpha = 2 * 1.0 / (4 + 1);
-            let valActual;
-            // test null-case handling-behavior
-            await assertErrorThrownAsync(function () {
-                return dbExecAsync({
-                    db,
-                    sql: (`
-SELECT win_ema2(1) FROM (SELECT 1);
-                    `)
-                });
-            }, "wrong number of arguments");
-            // test null-case handling-behavior
-            valActual = await dbExecAsync({
-                db,
-                sql: (`
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_ema2(1, 2, 3) FROM __tmp1;
-                `)
-            });
-            valActual = valActual[0].map(function ({val}) {
-                return val;
-            });
-            assertJsonEqual(valActual, [null]);
-            // test aggregate-normal handling-behavior
+            // test win_ema2-aggregate-normal handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
                     valIn: JSON.stringify(valIn)
@@ -1765,6 +1741,29 @@ SELECT
             valExpected
         }) {
             let valActual;
+            // test win_ema1-aggregate-window handling-behavior
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        ROUND(
+            win_ema1(value->>1, ${alpha}) OVER (
+                ORDER BY value->>0 ASC
+                ROWS BETWEEN ${aa} PRECEDING AND ${bb} FOLLOWING
+            ),
+            4
+        ) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual[0].map(function ({val}) {
+                return val;
+            });
+            assertJsonEqual(valActual, valExpected);
+            // test win_ema2-aggregate-window handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
                     valIn: JSON.stringify(valIn)
@@ -1792,92 +1791,13 @@ SELECT
         }));
     });
     jstestIt((
-        "test sqlite-extension-win_slr handling-behavior"
-    ), async function test_sqlite_extension_win_slr() {
+        "test sqlite-extension-win_slr2 handling-behavior"
+    ), async function test_sqlite_extension_win_slr2() {
         let db = await dbOpenAsync({filename: ":memory:"});
         let valActual;
+        let valExpected;
         let valIn;
-        // test null-case handling-behavior
-        valActual = await dbExecAsync({
-            db,
-            sql: (`
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_slr(1, 1) FROM __tmp1;
-            `)
-        });
-        valActual = valActual[0].map(function ({val}) {
-            return val;
-        });
-        assertJsonEqual(valActual, [null]);
-        // test aggregate-normal handling-behavior
-        valIn = [
-            [2, "abcd"],
-            [NaN, 1],
-            [3, 3],
-            [4, 4],
-            [5, 5],
-            [5, 6],
-            [5, undefined],
-            [6, 7],
-            //
-            [10, 8],
-            [2, 5]
-        ];
-        valActual = await dbExecAndReturnLastJsonAsync({
-            bindList: {
-                valIn: JSON.stringify(valIn)
-            },
-            db,
-            sql: (`
-SELECT win_slr(value->>0, value->>1) AS slr FROM JSON_EACH($valIn);
-            `)
-        });
-        valActual = valActual.map(function (xx) {
-            return Number(xx.toFixed(8));
-        });
-        assertJsonEqual(
-            valActual,
-            [
-                10, // nnn
-                4.4, // mxx
-                4.5, // myy
-                2.45854519, // exx
-                2.54950976, // eyy
-                0.81541829, // crr
-                0.84558824, // cbb
-                0.77941176 // caa
-            ]
-        );
-        // test aggregate-window handling-behavior
-        valActual = noop(
-            await dbExecAsync({
-                bindList: {
-                    valIn: JSON.stringify(valIn)
-                },
-                db,
-                sql: (`
-SELECT
-        ROUND(slr->>0, 8) AS nnn,
-        ROUND(slr->>1, 8) AS mxx,
-        ROUND(slr->>2, 8) AS myy,
-        ROUND(slr->>3, 8) AS exx,
-        ROUND(slr->>4, 8) AS eyy,
-        ROUND(slr->>5, 8) AS crr,
-        ROUND(slr->>6, 8) AS cbb,
-        ROUND(slr->>7, 8) AS caa
-    FROM (
-        SELECT
-            win_slr(value->>0, value->>1) OVER (
-                ORDER BY NULL ASC
-                ROWS BETWEEN 8 - 1 PRECEDING AND 0 FOLLOWING
-            ) AS slr
-        FROM JSON_EAcH($valIn)
-    );
-                `)
-            })
-        )[0];
-        [
+        valExpected = [
             {
                 "caa": null,
                 "cbb": null,
@@ -1978,8 +1898,148 @@ SELECT
                 "myy": 5.5,
                 "nnn": 8
             }
-        ].forEach(function (valExpected, ii) {
-            assertJsonEqual(valActual[ii], valExpected);
+        ];
+        valIn = [
+            [2, "abcd"],
+            [NaN, 1],
+            [3, 3],
+            [4, 4],
+            [5, 5],
+            [5, 6],
+            [5, undefined],
+            [6, 7],
+            //
+            [10, 8],
+            [2, 5]
+        ];
+        // test win_slr2-null-case handling-behavior
+        valActual = await dbExecAsync({
+            db,
+            sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_slr2(1, 1) FROM __tmp1;
+            `)
+        });
+        valActual = valActual[0].map(function ({val}) {
+            return val;
+        });
+        assertJsonEqual(valActual, [null]);
+        // test win_slr2-aggregate-normal handling-behavior
+        valActual = await dbExecAndReturnLastJsonAsync({
+            bindList: {
+                valIn: JSON.stringify(valIn)
+            },
+            db,
+            sql: (`
+SELECT win_slr2(value->>0, value->>1) AS slr FROM JSON_EACH($valIn);
+            `)
+        });
+        valActual = valActual.map(function (xx) {
+            return Number(xx.toFixed(8));
+        });
+        assertJsonEqual(
+            valActual,
+            [
+                10, // nnn
+                4.4, // mxx
+                4.5, // myy
+                2.45854519, // exx
+                2.54950976, // eyy
+                0.81541829, // crr
+                0.84558824, // cbb
+                0.77941176 // caa
+            ]
+        );
+        valActual = noop(
+            await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        ROUND(slr->>0, 8) AS nnn,
+        ROUND(slr->>1, 8) AS mxx,
+        ROUND(slr->>2, 8) AS myy,
+        ROUND(slr->>3, 8) AS exx,
+        ROUND(slr->>4, 8) AS eyy,
+        ROUND(slr->>5, 8) AS crr,
+        ROUND(slr->>6, 8) AS cbb,
+        ROUND(slr->>7, 8) AS caa
+    FROM (
+        SELECT
+            win_slr2(value->>0, value->>1) OVER (
+                ORDER BY NULL ASC
+                ROWS BETWEEN 8 - 1 PRECEDING AND 0 FOLLOWING
+            ) AS slr
+        FROM JSON_EAcH($valIn)
+    );
+                `)
+            })
+        )[0];
+        valExpected.forEach(function (valExpectedElem, ii) {
+            assertJsonEqual(valActual[ii], valExpectedElem);
+        });
+        // test win_slr2-aggregate-window handling-behavior
+        valActual = noop(
+            await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        ROUND(slr->>0, 8) AS nnn1,
+        ROUND(slr->>1, 8) AS mxx1,
+        ROUND(slr->>2, 8) AS myy1,
+        ROUND(slr->>3, 8) AS exx1,
+        ROUND(slr->>4, 8) AS eyy1,
+        ROUND(slr->>5, 8) AS crr1,
+        ROUND(slr->>6, 8) AS cbb1,
+        ROUND(slr->>7, 8) AS caa1,
+        --
+        ROUND(slr->>8, 8) AS nnn2,
+        ROUND(slr->>9, 8) AS mxx2,
+        ROUND(slr->>10, 8) AS myy2,
+        ROUND(slr->>11, 8) AS exx2,
+        ROUND(slr->>12, 8) AS eyy2,
+        ROUND(slr->>13, 8) AS crr2,
+        ROUND(slr->>14, 8) AS cbb2,
+        ROUND(slr->>15, 8) AS caa2
+    FROM (
+        SELECT
+            win_slr2(value->>0, value->>1, value->>0, value->>1) OVER (
+                ORDER BY NULL ASC
+                ROWS BETWEEN 8 - 1 PRECEDING AND 0 FOLLOWING
+            ) AS slr
+        FROM JSON_EAcH($valIn)
+    );
+                `)
+            })
+        )[0];
+        valExpected.forEach(function (elem, ii) {
+            assertJsonEqual(
+                valActual[ii],
+                {
+                    caa1: elem.caa,
+                    caa2: elem.caa,
+                    cbb1: elem.cbb,
+                    cbb2: elem.cbb,
+                    crr1: elem.crr,
+                    crr2: elem.crr,
+                    exx1: elem.exx,
+                    exx2: elem.exx,
+                    eyy1: elem.eyy,
+                    eyy2: elem.eyy,
+                    mxx1: elem.mxx,
+                    mxx2: elem.mxx,
+                    myy1: elem.myy,
+                    myy2: elem.myy,
+                    nnn1: elem.nnn,
+                    nnn2: elem.nnn
+                }
+            );
         });
     });
 });

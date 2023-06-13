@@ -4,6 +4,7 @@
 - none
 
 # v2023.6.1-beta
+- sqlmath - Update sql-function win_slr2() to be vectorized.
 - sqlmath - Add sql-function win_ema2().
 - betadog - Add feature xema_xxx into ml model.
 - sqlmath - Add sql-function win_slr().
