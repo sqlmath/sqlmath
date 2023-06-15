@@ -1590,6 +1590,70 @@ SELECT
     ), async function test_sqlite_extension_win_emax() {
         let db = await dbOpenAsync({filename: ":memory:"});
         let valIn;
+        async function test_win_emax_aggregate({
+            aa,
+            bb,
+            valExpected,
+            valExpected2
+        }) {
+            let alpha = 2 * 1.0 / (4 + 1);
+            let sqlBetween = "";
+            let valActual;
+            if (aa !== undefined) {
+                sqlBetween = `ROWS BETWEEN ${aa} PRECEDING AND ${bb} FOLLOWING`;
+            }
+            // test win_ema1-aggregate handling-behavior
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        win_ema1(value->>1, ${alpha}) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        ) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual[0].map(function ({val}) {
+                return Number(val.toFixed(4));
+            });
+            assertJsonEqual(valActual, valExpected);
+            // test win_ema2-aggregate handling-behavior
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        id,
+        win_ema2(
+            value->>1,
+            IIF(id = 1, -1, value->>1),
+            ${alpha}
+        ) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        ) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual[0].map(function ({val}, ii, list) {
+                val = JSON.parse(val).map(function (elem) {
+                    return Number(elem.toFixed(4));
+                });
+                if (ii + (bb || 0) + 1 >= list.length) {
+                    assertJsonEqual(val[1], valExpected2, valActual);
+                } else {
+                    assertJsonEqual(val[1], val[0], valActual);
+                }
+                return val[0];
+            });
+            assertJsonEqual(valActual, valExpected);
+        }
         valIn = [
             [11, NaN],
             [10, "10"],
@@ -1604,144 +1668,113 @@ SELECT
             [1, "1"],
             [0, undefined]
         ];
-        await (async function () {
-            let alpha = 2 * 1.0 / (4 + 1);
-            let valActual;
-            // test win_ema2-error handling-behavior
-            await assertErrorThrownAsync(function () {
-                return dbExecAsync({
+        await Promise.all([
+            (async function () {
+                let valActual;
+                // test win_ema2-error handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_ema2(1) FROM (SELECT 1);
+                        `)
+                    });
+                }, "wrong number of arguments");
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_ema2(1, NULL) FROM (SELECT 1);
+                        `)
+                    });
+                }, "invalid argument 'alpha'");
+                // test win_ema1-null-case handling-behavior
+                valActual = await dbExecAsync({
                     db,
                     sql: (`
-SELECT win_ema2(1) FROM (SELECT 1);
-                    `)
-                });
-            }, "wrong number of arguments");
-            // test win_ema1-null-case handling-behavior
-            valActual = await dbExecAsync({
-                db,
-                sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
 SELECT win_ema1(1, 1) FROM __tmp1;
-                `)
-            });
-            valActual = valActual[0].map(function ({val}) {
-                return val;
-            });
-            assertJsonEqual(valActual, [null]);
-            // test win_ema2-null-case handling-behavior
-            valActual = await dbExecAsync({
-                db,
-                sql: (`
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+                // test win_ema2-null-case handling-behavior
+                valActual = await dbExecAsync({
+                    db,
+                    sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
 SELECT win_ema2(1, 2, 3) FROM __tmp1;
-                `)
-            });
-            valActual = valActual[0].map(function ({val}) {
-                return val;
-            });
-            assertJsonEqual(valActual, [null]);
-            // test win_ema1-aggregate-normal handling-behavior
-            valActual = await dbExecAsync({
-                bindList: {
-                    valIn: JSON.stringify(valIn)
-                },
-                db,
-                sql: (`
-SELECT
-        ROUND(
-            win_ema1(value->>1, ${alpha}) OVER (
-                ORDER BY value->>0 ASC
-            ),
-            4
-        ) AS val
-    FROM JSON_EAcH($valIn);
-                `)
-            });
-            valActual = valActual[0].map(function ({val}) {
-                return val;
-            });
-            assertJsonEqual(
-                valActual,
-                [
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+            }()),
+            // test win_emax-aggregate-normal handling-behavior
+            test_win_emax_aggregate({
+                valExpected: [
                     0.0000, 0.4000, 1.0400, 1.8240,
                     2.6944, 3.2166, 4.3300, 5.3980,
                     6.4388, 7.4633, 8.4780, 9.0868
-                ]
-            );
-            // test win_ema2-aggregate-normal handling-behavior
-            valActual = await dbExecAsync({
-                bindList: {
-                    valIn: JSON.stringify(valIn)
-                },
-                db,
-                sql: (`
-SELECT
-        ROUND(ema2->>0, 4) AS val1,
-        ROUND(ema2->>1, 4) AS val2
-    FROM (
-        SELECT
-            win_ema2(value->>1, value->>1, ${alpha}) OVER (
-                ORDER BY value->>0 ASC
-            ) AS ema2
-        FROM JSON_EAcH($valIn)
-    );
-                `)
-            });
-            valActual = valActual[0].map(function ({val1, val2}) {
-                assertJsonEqual(val1, val2);
-                return val1;
-            });
-            assertJsonEqual(
-                valActual,
-                [
-                    0.0000, 0.4000, 1.0400, 1.8240,
-                    2.6944, 3.2166, 4.3300, 5.3980,
-                    6.4388, 7.4633, 8.4780, 9.0868
-                ]
-            );
-        }());
-        // test aggregate-window handling-behavior
-        await Promise.all([
-            {
+                ],
+                valExpected2: 4.6868
+            }),
+            // test win_emax-aggregate-window handling-behavior
+            test_win_emax_aggregate({
                 aa: 1 - 1,
-                alpha: 2 * 1.0 / (4 + 1),
                 bb: 4 - 1,
                 valExpected: [
                     1.824, 2.824, 3.424, 4.584,
                     5.680, 6.608, 7.824, 8.824,
                     9.424, 9.424, 9.424, 9.424
-                ]
-            },
-            {
+                ],
+                valExpected2: 5.024
+            }),
+            test_win_emax_aggregate({
                 aa: 3 - 1,
-                alpha: 2 * 1.0 / (4 + 1),
                 bb: 2 - 1,
                 valExpected: [
                     0.400, 1.040, 1.824, 2.824,
                     3.424, 4.584, 5.680, 6.608,
                     7.824, 8.824, 9.424, 9.424
-                ]
-            },
-            {
+                ],
+                valExpected2: 5.024
+            }),
+            test_win_emax_aggregate({
                 aa: 4 - 1,
-                alpha: 2 * 1.0 / (4 + 1),
                 bb: 0,
                 valExpected: [
                     0.000, 0.400, 1.040, 1.824,
                     2.824, 3.424, 4.584, 5.680,
                     6.608, 7.824, 8.824, 9.424
-                ]
-            }
-        ].map(async function ({
+                ],
+                valExpected2: 5.024
+            })
+        ]);
+    });
+    jstestIt((
+        "test sqlite-extension-win_quantilex handling-behavior"
+    ), async function test_sqlite_extension_win_quantilex() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let valIn;
+        async function test_win_quantilex_aggregate({
             aa,
-            alpha,
             bb,
-            valExpected
+            quantile,
+            valExpected,
+            valExpected2
         }) {
+            let sqlBetween = "";
             let valActual;
-            // test win_ema1-aggregate-window handling-behavior
+            if (aa !== undefined) {
+                sqlBetween = `ROWS BETWEEN ${aa} PRECEDING AND ${bb} FOLLOWING`;
+            }
+            // test win_quantile1-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
                     valIn: JSON.stringify(valIn)
@@ -1749,21 +1782,18 @@ SELECT
                 db,
                 sql: (`
 SELECT
-        ROUND(
-            win_ema1(value->>1, ${alpha}) OVER (
-                ORDER BY value->>0 ASC
-                ROWS BETWEEN ${aa} PRECEDING AND ${bb} FOLLOWING
-            ),
-            4
+        win_quantile1(value->>1, ${quantile}) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
         ) AS val
     FROM JSON_EAcH($valIn);
                 `)
             });
             valActual = valActual[0].map(function ({val}) {
-                return val;
+                return Number(val.toFixed(4));
             });
             assertJsonEqual(valActual, valExpected);
-            // test win_ema2-aggregate-window handling-behavior
+            // test win_quantile2-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
                     valIn: JSON.stringify(valIn)
@@ -1771,24 +1801,235 @@ SELECT
                 db,
                 sql: (`
 SELECT
-        ROUND(ema2->>0, 4) AS val1,
-        ROUND(ema2->>1, 4) AS val2
-    FROM (
-        SELECT
-            win_ema2(value->>1, value->>1, ${alpha}) OVER (
-                ORDER BY value->>0 ASC
-                ROWS BETWEEN ${aa} PRECEDING AND ${bb} FOLLOWING
-            ) AS ema2
-        FROM JSON_EAcH($valIn)
-    );
+        id,
+        win_quantile2(
+            value->>1,
+            IIF(id = 34, -1, value->>1),
+            ${quantile}
+        ) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        ) AS val
+    FROM JSON_EAcH($valIn);
                 `)
             });
-            valActual = valActual[0].map(function ({val1, val2}) {
-                assertJsonEqual(val1, val2);
-                return val1;
+            valActual = valActual[0].map(function ({val}, ii) {
+                val = JSON.parse(val).map(function (elem) {
+                    return Number(elem.toFixed(4));
+                });
+                if (ii === 11) {
+                    assertJsonEqual(val[1], valExpected2, valActual);
+                } else {
+                    assertJsonEqual(val[1], val[0], valActual);
+                }
+                return val[0];
             });
             assertJsonEqual(valActual, valExpected);
-        }));
+        }
+        valIn = [
+            [1, undefined],
+            [2, "1"],
+            [3, "2"],
+            [4, 3],
+            [5, 4],
+            [6, "abcd"],
+            [7, 6],
+            [8, NaN],
+            [9, 8],
+            [10, 9],
+            [11, 10],
+            [12, 11]
+        ];
+        await Promise.all([
+            (async function () {
+                let valActual;
+                // test win_quantile2-error handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_quantile2(1) FROM (SELECT 1);
+                        `)
+                    });
+                }, "wrong number of arguments");
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_quantile2(1, NULL) FROM (SELECT 1);
+                        `)
+                    });
+                }, "invalid argument 'quantile'");
+                // test win_quantile1-null-case handling-behavior
+                valActual = await dbExecAsync({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_quantile1(1, 1) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+                // test win_quantile2-null-case handling-behavior
+                valActual = await dbExecAsync({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_quantile2(1, 2, 3) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+            }()),
+            // test win_quantilex-aggregate-normal handling-behavior
+            test_win_quantilex_aggregate({
+                "quantile": 0,
+                "valExpected": [
+                    0.0000, 0.0000, 0.0000, 0.0000,
+                    0.0000, 0.0000, 0.0000, 0.0000,
+                    0.0000, 0.0000, 0.0000, 0.0000
+                ],
+                "valExpected2": -1
+            }),
+            test_win_quantilex_aggregate({
+                "quantile": 0.25,
+                "valExpected": [
+                    0.0000, 0.2500, 0.5000, 0.7500,
+                    1.0000, 0.2500, 0.5000, 0.7500,
+                    1.0000, 1.2500, 1.5000, 1.7500
+                ],
+                "valExpected2": 0.7500
+            }),
+            test_win_quantilex_aggregate({
+                "quantile": 0.33333333,
+                "valExpected": [
+                    0.0000, 0.3333, 0.6667, 1.0000,
+                    1.3333, 0.6667, 1.0000, 1.3333,
+                    1.6667, 2.0000, 2.3333, 2.6667
+                ],
+                "valExpected2": 1.6667
+            }),
+            test_win_quantilex_aggregate({
+                "quantile": 0.5,
+                "valExpected": [
+                    0.0000, 0.5000, 1.0000, 1.5000,
+                    2.0000, 1.5000, 2.0000, 2.5000,
+                    3.0000, 3.5000, 4.0000, 5.0000
+                ],
+                "valExpected2": 3.5000
+            }),
+            test_win_quantilex_aggregate({
+                "quantile": 0.66666667,
+                "valExpected": [
+                    0.0000, 0.6667, 1.3333, 2.0000,
+                    2.6667, 2.3333, 3.0000, 3.6667,
+                    4.6667, 6.0000, 6.0000, 6.6667
+                ],
+                "valExpected2": 6.0000
+            }),
+            test_win_quantilex_aggregate({
+                "quantile": 0.75,
+                "valExpected": [
+                    0.0000, 0.7500, 1.5000, 2.2500,
+                    3.0000, 2.7500, 3.5000, 4.5000,
+                    6.0000, 6.0000, 7.0000, 8.2500
+                ],
+                "valExpected2": 6.5000
+            }),
+            test_win_quantilex_aggregate({
+                "quantile": 1,
+                "valExpected": [
+                    0.0000, 1.0000, 2.0000, 3.0000,
+                    4.0000, 4.0000, 6.0000, 6.0000,
+                    8.0000, 9.0000, 10.0000, 11.0000
+                ],
+                "valExpected2": 10.0000
+            }),
+            // test win_quantilex-aggregate-window handling-behavior
+            test_win_quantilex_aggregate({
+                "aa": 8 - 1,
+                "bb": 0,
+                "quantile": 0,
+                "valExpected": [
+                    0.0000, 0.0000, 0.0000, 0.0000,
+                    0.0000, 0.0000, 0.0000, 0.0000,
+                    0.0000, 0.0000, 0.0000, 0.0000
+                ],
+                "valExpected2": -1
+            }),
+            test_win_quantilex_aggregate({
+                "aa": 8 - 1,
+                "bb": 0,
+                "quantile": 0.25,
+                "valExpected": [
+                    0.0000, 0.2500, 0.5000, 0.7500,
+                    1.0000, 0.2500, 0.5000, 0.7500,
+                    1.7500, 2.7500, 3.7500, 5.5000
+                ],
+                "valExpected2": 3
+            }),
+            test_win_quantilex_aggregate({
+                "aa": 8 - 1,
+                "bb": 0,
+                "quantile": 0.33333333,
+                "valExpected": [
+                    0.0000, 0.3333, 0.6667, 1.0000,
+                    1.3333, 0.6667, 1.0000, 1.3333,
+                    2.3333, 3.3333, 4.6667, 6.0000
+                ],
+                "valExpected2": 4.6667
+            }),
+            test_win_quantilex_aggregate({
+                "aa": 8 - 1,
+                "bb": 0,
+                "quantile": 0.5000,
+                "valExpected": [
+                    0.0000, 0.5000, 1.0000, 1.5000,
+                    2.0000, 1.5000, 2.0000, 2.5000,
+                    3.5000, 5.0000, 6.0000, 7.0000
+                ],
+                "valExpected2": 6.0000
+            }),
+            test_win_quantilex_aggregate({
+                "aa": 8 - 1,
+                "bb": 0,
+                "quantile": 0.66666667,
+                "valExpected": [
+                    0.0000, 0.6667, 1.3333, 2.0000,
+                    2.6667, 2.3333, 3.0000, 3.6667,
+                    5.3333, 6.0000, 7.3333, 8.6667
+                ],
+                "valExpected2": 7.3333
+            }),
+            test_win_quantilex_aggregate({
+                "aa": 8 - 1,
+                "bb": 0,
+                "quantile": 0.75,
+                "valExpected": [
+                    0.0000, 0.7500, 1.5000, 2.2500,
+                    3.0000, 2.7500, 3.5000, 4.5000,
+                    6.0000, 6.5000, 8.2500, 9.2500
+                ],
+                "valExpected2": 8.2500
+            }),
+            test_win_quantilex_aggregate({
+                "aa": 8 - 1,
+                "bb": 0,
+                "quantile": 1.0000,
+                "valExpected": [
+                    0.0000, 1.0000, 2.0000, 3.0000,
+                    4.0000, 4.0000, 6.0000, 6.0000,
+                    8.0000, 9.0000, 10.0000, 11.0000
+                ],
+                "valExpected2": 10.0000
+            })
+        ]);
     });
     jstestIt((
         "test sqlite-extension-win_slr2 handling-behavior"

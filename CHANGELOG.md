@@ -1,9 +1,11 @@
 # Changelog
 
 # Todo
+- sqlmath - fix broken interpolation in sql-function quantile().
 - none
 
 # v2023.6.1-beta
+- sqlmath - Add sql-function win_quantile1(), win_quantile2().
 - sqlmath - Update sql-function win_slr2() to be vectorized.
 - sqlmath - Add sql-function win_ema2().
 - betadog - Add feature xema_xxx into ml model.
