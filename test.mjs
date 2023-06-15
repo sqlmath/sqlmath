@@ -1410,13 +1410,13 @@ SELECT
             [
                 [[], -99, 1],
                 [[], 0, 1],
-                [[], 0.125, 1.5],
-                [[], 0.250, 2.5],
-                [[], 0.375, 3.5],
+                [[], 0.125, 1.875],
+                [[], 0.250, 2.75],
+                [[], 0.375, 3.625],
                 [[], 0.500, 4.5],
-                [[], 0.625, 5.5],
-                [[], 0.750, 6.5],
-                [[], 0.875, 7.5],
+                [[], 0.625, 5.375],
+                [[], 0.750, 6.25],
+                [[], 0.875, 7.125],
                 [[], 1, 8],
                 [[], 99, 8],
                 [[0.1], 0, 0.1],
@@ -1477,13 +1477,15 @@ SELECT
             data2.forEach(function (elem) {
                 valExpectedStd += (elem - avg) ** 2;
             });
-            valExpectedStd = Math.round(1_000_000 * (
+            valExpectedStd = (
                 data2.length <= 0
-                ? undefined
+                ? null
                 // : data2.length === 1
                 // ? 0
-                : Math.sqrt(valExpectedStd / (data2.length - 1))
-            ));
+                : Number(Math.sqrt(
+                    valExpectedStd / (data2.length - 1)
+                ).toFixed(8))
+            );
             await Promise.all([
                 data,
                 Array.from(data).reverse()
@@ -1499,7 +1501,7 @@ SELECT
 SELECT
         median(value) AS mdn,
         quantile(value, ${kk}) AS qnt,
-        ROUND(1000000 * stdev(value)) AS std
+        ROUND(stdev(value), 8) AS std
     FROM JSON_EACH($tmp1);
 -- test null-case handling-behavior
 SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;

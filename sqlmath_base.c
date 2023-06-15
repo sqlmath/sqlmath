@@ -88,7 +88,7 @@ file sqlmath_h - start
 #define SQLITE_RESPONSETYPE_LASTBLOB 1
 #define SQLMATH_API
 #define SQLMATH_FUNC
-#define SWAP(aa, bb) tmp = (aa); (aa) = (bb); (bb) = tmp
+#define SWAP(aa, bb, tmp) tmp = (aa); (aa) = (bb); (bb) = tmp
 #define UNUSED_PARAMETER(x) ((void)(x))
 
 
@@ -1849,7 +1849,7 @@ static double quickselect(
 // This function will find <kk>-th element in <arr> using quickselect-algorithm.
 // https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
     if (nn <= 0) {
-        return 0;
+        return NAN;
     }
     double aa = *arr;
     double tmp = 0;
@@ -1863,20 +1863,20 @@ static double quickselect(
     while (1) {
         if (ir <= ll + 1) {
             if (ir == ll + 1 && arr[ir] < arr[ll]) {
-                SWAP(arr[ll], arr[ir]);
+                SWAP(arr[ll], arr[ir], tmp);
             }
             return arr[kk];
         } else {
             mid = (ll + ir) >> 1;
-            SWAP(arr[mid], arr[ll + 1]);
+            SWAP(arr[mid], arr[ll + 1], tmp);
             if (arr[ll] > arr[ir]) {
-                SWAP(arr[ll], arr[ir]);
+                SWAP(arr[ll], arr[ir], tmp);
             }
             if (arr[ll + 1] > arr[ir]) {
-                SWAP(arr[ll + 1], arr[ir]);
+                SWAP(arr[ll + 1], arr[ir], tmp);
             }
             if (arr[ll] > arr[ll + 1]) {
-                SWAP(arr[ll], arr[ll + 1]);
+                SWAP(arr[ll], arr[ll + 1], tmp);
             }
             ii = ll + 1;
             jj = ir;
@@ -1897,7 +1897,7 @@ static double quickselect(
                 if (jj < ii) {
                     break;
                 }
-                SWAP(arr[ii], arr[jj]);
+                SWAP(arr[ii], arr[jj], tmp);
             }
             arr[ll + 1] = arr[jj];
             arr[jj] = aa;
@@ -1922,14 +1922,13 @@ SQLMATH_API double quantile(
     if (!(nn >= 1)) {
         return NAN;
     }
-    const int kk = MAX(0, MIN(nn - 1, qq * nn));
-    // handle even-case
-    if ((0 < kk && kk + 1 <= nn) && (double) kk == (qq * nn)) {
-        return 0.5 * (quickselect(arr, nn, kk) + quickselect(arr, nn,
-                kk - 1));
-    }
-    // handle odd-case
-    return quickselect(arr, nn, kk);
+    double kmod = MAX(0, MIN(1, qq)) * (nn - 1);
+    const int kk = kmod;
+    kmod = fmod(kmod, 1);
+    return kmod == 0            //
+        ? quickselect(arr, nn, kk)      //
+        : (1 - kmod) * quickselect(arr, nn, kk) + kmod * quickselect(arr, nn,
+        kk + 1);
 }
 
 SQLMATH_FUNC static void sql2_quantile_final(
@@ -2336,8 +2335,8 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
     for (int ii = 0; ii < ncol; ii += 1) {
         sqlite3_value_double_or_prev(argv[ii], &vec99_head[ii]);
         VECTOR99_AGGREGATE_PUSH(vec99_head[ii]);
-        VECTOR99_AGGREGATE_PUSH(vec99->wnn ? vec99_body[(int) vec99->
-                wii] : INFINITY);
+        VECTOR99_AGGREGATE_PUSH(        //
+            vec99->wnn ? vec99_body[(int) vec99->wii] : INFINITY);
     }
     // vec99 - calculate quantile
     const int nstep = ncol * 2;
@@ -2345,7 +2344,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
     double *arr = vec99_body + 1;
     //
     arg_quantile = vec99_head[ncol + 0] * (nn - 1);
-    const int kk1 = ((int) arg_quantile) * nstep;
+    const int kk1 = floor(arg_quantile) * nstep;
     const int kk2 = kk1 + nstep;
     arg_quantile = fmod(arg_quantile, 1);
     for (int ii = 0; ii < ncol; ii += 1) {
