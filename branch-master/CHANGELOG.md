@@ -3,7 +3,21 @@
 # Todo
 - none
 
+# v2023.6.26
+- sqlmath - fix broken interpolation in sql-function quantile().
+- sqlmath - Add sql-function win_quantile1(), win_quantile2().
+- sqlmath - Update sql-function win_slr2() to be vectorized.
+- sqlmath - Add sql-function win_ema2().
+- betadog - Add feature xema_xxx into ml model.
+- sqlmath - Add sql-function win_slr().
+- sqlmath - Add sql-function vec_win_slr_updatelast().
+- sqlmath - Add sql-function vec_win_slr().
+- sqlmath - Revamp struct Vector99.
+- sqlmath - Add sql-function vec_concat().
+- sqlmath - Add sql-function castrealornull().
+
 # v2023.5.25
+- ci - auto-update python version
 - jslint - Add grammar for "export async function ...".
 - sqlite - Remove hacky sqlite-extension-function.
 - python - Migrate python-driver from pysqlite3 to cpython.

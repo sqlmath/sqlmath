@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2023.5.25)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2023.6.26)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -474,21 +474,21 @@ string version
     }
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-        ROUND(1000000 * stdev(value)) AS std
-    FROM JSON_EACH($tmp1);
--- test null-case handling-behavior
-SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
-        `)
-    })
-)[0][0];
+    sql: (`
+SELECT win_slr2(value-&gt;&gt;0, value-&gt;&gt;1) AS slr FROM JSON_EACH($valIn);
+    `)
+});
+valActual = valActual.map(function (xx) {
+    return Number(xx.toFixed(8));
+});
 <span class="apidocCodeKeywordSpan">assertJsonEqual</span>(
     valActual,
-    {
-        mdn: valExpectedMdn,
-        qnt: valExpected ?? null,
-        std: valExpectedStd
-    },
-    {
+    [
+        10, // nnn
+        4.4, // mxx
+        4.5, // myy
+        2.45854519, // exx
+        2.54950976, // eyy
 ...</pre></li>
 
 <li>
@@ -790,7 +790,7 @@ assertErrorThrownAsync(function () {
     });
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-            0, 0
+            43.21
         ]
     ]
 ].map(async function ([
@@ -801,7 +801,7 @@ assertErrorThrownAsync(function () {
             db,
             sql
         })
-    ));
+    )).slice(VECTOR99_NOFFSET);
     assertJsonEqual(valActual, valExpected, {
         ii,
         sql,
@@ -824,21 +824,21 @@ assertErrorThrownAsync(function () {
     );
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-// performance-hack
-if (iiInput === 0 &amp;&amp; iiSql &gt; 0) {
-    return;
-}
-await Promise.all([
-    input, input.slice().reverse()
-].map(async function (input) {
-    let result = await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastJsonAsync</span>({
-        bindList: {
-            input: JSON.stringify(input),
-            kk
-        },
-        db,
-        sql
-    });
+                valActual = valActual[0].map(function ({val}) {
+return val;
+                });
+                assertJsonEqual(valActual, [null]);
+            }()),
+            // test win_slr2-aggregate-normal handling-behavior
+            (async function () {
+                valActual = await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastJsonAsync</span>({
+bindList: {
+    valIn: JSON.stringify(valIn)
+},
+db,
+sql: (`
+SELECT win_slr2(value-&gt;&gt;0, value-&gt;&gt;1) AS slr FROM JSON_EACH($valIn);
+`)
 ...</pre></li>
 
 <li>
@@ -969,21 +969,21 @@ async function dbExecAndReturnLastTextAsync(option) {
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-    ));
-    await Promise.all([
-        data,
-        Array.from(data).reverse()
-    ].map(async function (data) {
-        let valActual;
-        valActual = noop(
-            await <span class="apidocCodeKeywordSpan">dbExecAsync</span>({
-                bindList: {
-                    tmp1: JSON.stringify(data)
-                },
-                db,
-                sql: (`
-SELECT
-median(value) AS mdn,
+            [10, 8],
+            [2, 5]
+        ];
+        await Promise.all([
+            (async function () {
+// test win_slr2-error handling-behavior
+await assertErrorThrownAsync(function () {
+    return <span class="apidocCodeKeywordSpan">dbExecAsync</span>({
+        db,
+        sql: (`
+SELECT win_slr2(1) FROM (SELECT 1);
+        `)
+    });
+}, "wrong number of arguments");
+// test win_slr2-null-case handling-behavior
 ...</pre></li>
 
 <li>
@@ -1436,21 +1436,21 @@ if (typeof valInput === "bigint") {
 </span>    return val;
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-                : Math.sqrt(valExpectedStd / (data2.length - 1))
-            ));
-            await Promise.all([
-                data,
-                Array.from(data).reverse()
-            ].map(async function (data) {
-                let valActual;
-                valActual = <span class="apidocCodeKeywordSpan">noop</span>(
-                    await dbExecAsync({
-                        bindList: {
-                            tmp1: JSON.stringify(data)
-                        },
-                        db,
-                        sql: (`
-SELECT
+        } else {
+            assertJsonEqual(obj2, obj1, valActual);
+        }
+        return obj1;
+    });
+    assertJsonEqual(valActual, valExpected);
+}
+<span class="apidocCodeKeywordSpan">noop</span>(test_win_slr2_aggregate);
+valExpected = [
+    {
+        "caa": null,
+        "cbb": null,
+        "crr": null,
+        "exx": null,
+        "eyy": null,
 ...</pre></li>
 
 <li>

@@ -2,7 +2,7 @@
 [build-system]
 requires = [
     "pycodestyle >= 2.10.0",
-    "ruff >= 0.0.269",
+    "ruff >= 0.0.270",
     "setuptools >= 65.5.0",
 ]
 build-backend = "setuptools.build_meta"
@@ -12,14 +12,14 @@ build-backend = "setuptools.build_meta"
 authors = [{name = "Kai Zhu"}]
 dependencies = []
 description = "sqlite for datascience"
+dynamic = ["version"]
 license = {file = "LICENSE"}
 maintainers = []
 name = "sqlmath"
 readme = "README.md"
 requires-python = ">=3.10"
-version = "0.0.5"
 classifiers = [
-    'Development Status :: 3 - Alpha',
+    'Development Status :: 4 - Beta',
     'Intended Audience :: Developers',
     'Intended Audience :: Science/Research',
     'License :: OSI Approved :: MIT License',
@@ -48,3 +48,6 @@ changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
 
 [tool.setuptools]
 py-modules = ["sqlmath"]
+
+[tool.setuptools.dynamic]
+version = {attr = "sqlmath.__version__"}

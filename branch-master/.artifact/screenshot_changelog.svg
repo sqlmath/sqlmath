@@ -41,277 +41,277 @@
     textLength="768"
     x="10"
     y="142"
-># v2023.5.25                                                                                     </tspan>
+># v2023.6.26                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="164"
->- jslint - Add grammar for "export async function ...".                                          </tspan>
+>- sqlmath - fix broken interpolation in sql-function quantile().                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="186"
->- sqlite - Remove hacky sqlite-extension-function.                                               </tspan>
+>- sqlmath - Add sql-function win_quantile1(), win_quantile2().                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="208"
->- python - Migrate python-driver from pysqlite3 to cpython.                                      </tspan>
+>- sqlmath - Update sql-function win_slr2() to be vectorized.                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="230"
->- jslint - Add grammar for regexp-named-capture-group and regexp-named-backreference.            </tspan>
+>- sqlmath - Add sql-function win_ema2().                                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="252"
->- betadog - Reconcile differences with betadog.                                                  </tspan>
+>- betadog - Add feature xema_xxx into ml model.                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
->- python - Successfully published first pypi package version sqlmath@v0.0.5.                     </tspan>
+>- sqlmath - Add sql-function win_slr().                                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->- ci - Rename shell-function shRawLibFetch() to shRollupFetch().                                 </tspan>
+>- sqlmath - Add sql-function vec_win_slr_updatelast().                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="318"
->- sqlmath - migrate build-ext from python to nodejs with parallel compile                        </tspan>
+>- sqlmath - Add sql-function vec_win_slr().                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="340"
->- sqlmath - add python c-extension                                                               </tspan>
+>- sqlmath - Revamp struct Vector99.                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
->- sqlmath - streamline macros SQLITE3_C2, SQLITE_H2, SQLITE3EXT_H2, SQLMATH_C2 in prepartion for\</tspan>
+>- sqlmath - Add sql-function vec_concat().                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
->   python-c-extension                                                                            </tspan>
+>- sqlmath - Add sql-function castrealornull().                                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->- sqlmath - add file zlib_rollup.c so sqlmath can be compiled without external zlib-dependency   </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->- sqlmath - add sql-function avg_ema()                                                           </tspan>
+># v2023.5.25                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->- sqlmath - add sql-function fill_forward()                                                      </tspan>
+>- ci - auto-update python version                                                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
->                                                                                                 </tspan>
+>- jslint - Add grammar for "export async function ...".                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
-># v2023.4.22                                                                                     </tspan>
+>- sqlite - Remove hacky sqlite-extension-function.                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->- sqlmath - rename sql-function percentile() to quantile()                                       </tspan>
+>- python - Migrate python-driver from pysqlite3 to cpython.                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="538"
->- ci - add shell-function shCiPreCustom2() to setup python in custom-ci                          </tspan>
+>- jslint - Add grammar for regexp-named-capture-group and regexp-named-backreference.            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
->- ci - remove mandatory python ci                                                                </tspan>
+>- betadog - Reconcile differences with betadog.                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="582"
->- sqlmath - update sql-function percentile() with off-by-one bugfix                              </tspan>
+>- python - Successfully published first pypi package version sqlmath@v0.0.5.                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="604"
->- sqlmath - remove file sqlmath_fann.c                                                           </tspan>
+>- ci - Rename shell-function shRawLibFetch() to shRollupFetch().                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="626"
->- sqlmath - add file sqlmath_fann.c                                                              </tspan>
+>- sqlmath - migrate build-ext from python to nodejs with parallel compile                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->                                                                                                 </tspan>
+>- sqlmath - add python c-extension                                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
-># v2023.3.21                                                                                     </tspan>
+>- sqlmath - streamline macros SQLITE3_C2, SQLITE_H2, SQLITE3EXT_H2, SQLMATH_C2 in prepartion for\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->- sqlmath - move c-function str99JsonAppendText() from file sqlmath_base.c to sqlite3.c          </tspan>
+>   python-c-extension                                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->- sqlmath - merge file sqlite3_ext.c into sqlite3.c                                              </tspan>
+>- sqlmath - add file zlib_rollup.c so sqlmath can be compiled without external zlib-dependency   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="736"
->- sqlmath - streamline str99 c-code                                                              </tspan>
+>- sqlmath - add sql-function avg_ema()                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="758"
->- sqlmath - add sql-functions jenks_concat(kk, col1, col2, ...), jenks_json(kk, jsonArray)       </tspan>
+>- sqlmath - add sql-function fill_forward()                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="780"
->- chart - bugfix - fix special-character in col-name being sql-injected                          </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="802"
->                                                                                                 </tspan>
+># v2023.4.22                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="824"
-># v2023.2.26                                                                                     </tspan>
+>- sqlmath - rename sql-function percentile() to quantile()                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="846"
->- chart - bugfix - use spy for reference previous-ydate instead of 1a_mybot                      </tspan>
+>- ci - add shell-function shCiPreCustom2() to setup python in custom-ci                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="868"
->- sqlmath - add functions dbExecAndReturnLastJsonAsync(), dbExecAndReturnLastTextAsync()         </tspan>
+>- ci - remove mandatory python ci                                                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="890"
->- sqlmath - add sql-functions jfromfloat64array(), jtofloat64array()                             </tspan>
+>- sqlmath - update sql-function percentile() with off-by-one bugfix                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="912"
->- sqlite - update to sqlite v3.39.4                                                              </tspan>
+>- sqlmath - remove file sqlmath_fann.c                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="934"
->- ci - replace shell-function shGithubPushBackupAndSquash() with simplified shGitCommitPushOrSqu\</tspan>
+>- sqlmath - add file sqlmath_fann.c                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="956"
->  ash()                                                                                          </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="978"
->- ci - in windows-ci-env, alias node=node.exe instead of using winpty for pipes                  </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1000"
 >                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="978"
+># v2023.3.21                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1000"
+>- sqlmath - move c-function str99JsonAppendText() from file sqlmath_base.c to sqlite3.c          </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="1022"
-># v2023.1.29                                                                                     </tspan>
+>- sqlmath - merge file sqlite3_ext.c into sqlite3.c                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1044"
->- ci - add auto-logo-creation in private repo                                                    </tspan>
+>- sqlmath - streamline str99 c-code                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1066"
->- ci - auto-create asset_image_logo_512.png from asset_image_logo_512.html                       </tspan>
+>- sqlmath - add sql-functions jenks_concat(kk, col1, col2, ...), jenks_json(kk, jsonArray)       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1088"
->- jslint-ci - revamp auto-updating and add shell-function shGithubCheckoutRemote                 </tspan>
+>- chart - bugfix - fix special-character in col-name being sql-injected                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1110"
->- chart - remove unused external libraries chart.js, moment.js                                   </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1132"
->- demo - bugfix - fix 1-week-chart ignoring friday before monday-holiday                         </tspan>
+># v2023.2.26                                                                                     </tspan>
 
 </text>
 </svg>
