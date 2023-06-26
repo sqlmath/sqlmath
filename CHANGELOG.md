@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2023.6.1-beta
+# v2023.6.26
 - sqlmath - fix broken interpolation in sql-function quantile().
 - sqlmath - Add sql-function win_quantile1(), win_quantile2().
 - sqlmath - Update sql-function win_slr2() to be vectorized.
