@@ -47,6 +47,7 @@ import {
     sqlmathWebworkerInit,
     version
 } from "./sqlmath.mjs";
+let VECTOR99_NOFFSET = 6;
 let {
     assertErrorThrownAsync,
     jstestDescribe,
@@ -735,124 +736,13 @@ jstestDescribe((
         ].map(async function ([
             errno, errmsg
         ]) {
-            await assertErrorThrownAsync(async function () {
-                return await dbExecAsync({
+            await assertErrorThrownAsync(function () {
+                return dbExecAsync({
                     db,
                     sql: `SELECT throwerror(${errno})`
                 });
             }, errmsg);
         }));
-    });
-    jstestIt((
-        "test sqlite-extension-avg_ema handling-behavior"
-    ), async function test_sqlite_extension_avg_ema() {
-        let db = await dbOpenAsync({filename: ":memory:"});
-        let result;
-        result = await dbExecAsync({
-            db,
-            sql: (`
-SELECT
-    ROUND(
-        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
-            ORDER BY id ASC
-            ROWS BETWEEN 0 PRECEDING AND 4-1 FOLLOWING
-        ),
-        4
-    ) AS val
-    FROM (
-        SELECT 11 AS id, NULL AS val
-        UNION ALL SELECT 10,   10
-        UNION ALL SELECT  9,    9
-        UNION ALL SELECT  8,    8
-        UNION ALL SELECT  7,    7
-        UNION ALL SELECT  6,    6
-        UNION ALL SELECT  5,    5
-        UNION ALL SELECT  4,    4
-        UNION ALL SELECT  3,    3
-        UNION ALL SELECT  2,    2
-        UNION ALL SELECT  1,    1
-        UNION ALL SELECT  0, NULL
-    );
-            `)
-        });
-        result = result[0].map(function ({val}) {
-            return val;
-        });
-        assertJsonEqual(result, [
-            1.824, 2.824, 3.824, 4.824,
-            5.824, 6.824, 7.824, 8.824,
-            5.424, 5.640, 6.000, 0.000
-        ]);
-        result = await dbExecAsync({
-            db,
-            sql: (`
-SELECT
-    ROUND(
-        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
-            ORDER BY id ASC
-            ROWS BETWEEN 3 - 1 PRECEDING AND 2 - 1 FOLLOWING
-        ),
-        4
-    ) AS val
-    FROM (
-        SELECT 11 AS id, NULL AS val
-        UNION ALL SELECT 10,   10
-        UNION ALL SELECT  9,    9
-        UNION ALL SELECT  8,    8
-        UNION ALL SELECT  7,    7
-        UNION ALL SELECT  6,    6
-        UNION ALL SELECT  5,    5
-        UNION ALL SELECT  4,    4
-        UNION ALL SELECT  3,    3
-        UNION ALL SELECT  2,    2
-        UNION ALL SELECT  1,    1
-        UNION ALL SELECT  0, NULL
-    );
-            `)
-        });
-        result = result[0].map(function ({val}) {
-            return val;
-        });
-        assertJsonEqual(result, [
-            0.400, 1.040, 1.824, 2.824,
-            3.824, 4.824, 5.824, 6.824,
-            7.824, 8.824, 5.424, 5.640
-        ]);
-        result = await dbExecAsync({
-            db,
-            sql: (`
-SELECT
-    ROUND(
-        avg_ema(val, 2 * 1.0 / (4 + 1)) OVER ( -- alpha=0.4000
-            ORDER BY id ASC
-            ROWS BETWEEN 4 - 1 PRECEDING AND 0 FOLLOWING
-        ),
-        4
-    ) AS val
-    FROM (
-        SELECT 11 AS id, NULL AS val
-        UNION ALL SELECT 10,   10
-        UNION ALL SELECT  9,    9
-        UNION ALL SELECT  8,    8
-        UNION ALL SELECT  7,    7
-        UNION ALL SELECT  6,    6
-        UNION ALL SELECT  5,    5
-        UNION ALL SELECT  4,    4
-        UNION ALL SELECT  3,    3
-        UNION ALL SELECT  2,    2
-        UNION ALL SELECT  1,    1
-        UNION ALL SELECT  0, NULL
-    );
-            `)
-        });
-        result = result[0].map(function ({val}) {
-            return val;
-        });
-        assertJsonEqual(result, [
-            0.000, 0.400, 1.040, 1.824,
-            2.824, 3.824, 4.824, 5.824,
-            6.824, 7.824, 8.824, 5.424
-        ]);
     });
     jstestIt((
         "test sqlite-extension-base64 handling-behavior"
@@ -1242,16 +1132,19 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
         // test sqlmath-defined-func handling-behavior
         Object.entries({
             "''": {
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": ""
             },
             "'-0.5'": {
+                "castrealornull": -0.5,
                 "castrealorzero": -0.5,
                 "casttextorempty": "-0.5",
                 "copyblob": "-0.5"
             },
             "'-1'": {
+                "castrealornull": -1,
                 "castrealorzero": -1,
                 "casttextorempty": "-1",
                 "copyblob": "-1",
@@ -1260,6 +1153,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": -1
             },
             "'0'": {
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "0",
                 "copyblob": "0",
@@ -1268,11 +1162,13 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": 0
             },
             "'0.5'": {
+                "castrealornull": 0.5,
                 "castrealorzero": 0.5,
                 "casttextorempty": "0.5",
                 "copyblob": "0.5"
             },
             "'1'": {
+                "castrealornull": 1,
                 "castrealorzero": 1,
                 "casttextorempty": "1",
                 "copyblob": "1",
@@ -1281,16 +1177,19 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": 1
             },
             "'aa'": {
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "aa",
                 "copyblob": "aa"
             },
             "'hello'": {
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "hello",
                 "copyblob": "hello"
             },
             "-0.5": {
+                "castrealornull": -0.5,
                 "castrealorzero": -0.5,
                 "casttextorempty": "-0.5",
                 "copyblob": -0.5
@@ -1299,6 +1198,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": -1
             },
             "-1": {
+                "castrealornull": -1,
                 "castrealorzero": -1,
                 "casttextorempty": "-1",
                 "copyblob": -1,
@@ -1310,6 +1210,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": -1
             },
             "0": {
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "0",
                 "copyblob": 0,
@@ -1318,6 +1219,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": 0
             },
             "0.5": {
+                "castrealornull": 0.5,
                 "castrealorzero": 0.5,
                 "casttextorempty": "0.5",
                 "copyblob": 0.5
@@ -1341,6 +1243,7 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": -1
             },
             "1": {
+                "castrealornull": 1,
                 "castrealorzero": 1,
                 "casttextorempty": "1",
                 "copyblob": 1,
@@ -1349,9 +1252,12 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "sign": 1
             },
             "1e999": {
+                "castrealornull": null,
+                "castrealorzero": 0,
                 "sign": 1
             },
             "null": {
+                "castrealornull": null,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": null,
@@ -1369,11 +1275,13 @@ SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
                 "roundorzero": 0
             },
             "zeroblob(0)": {
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": null
             },
             "zeroblob(1)": {
+                "castrealornull": 0,
                 "castrealorzero": 0,
                 "casttextorempty": "",
                 "copyblob": null
@@ -1431,7 +1339,6 @@ SELECT
         UNION ALL SELECT zeroblob(1)
         UNION ALL SELECT NULL
     );
-
                 `),
                 [
                     7, 2,
@@ -1503,13 +1410,13 @@ SELECT
             [
                 [[], -99, 1],
                 [[], 0, 1],
-                [[], 0.125, 1.5],
-                [[], 0.250, 2.5],
-                [[], 0.375, 3.5],
+                [[], 0.125, 1.875],
+                [[], 0.250, 2.75],
+                [[], 0.375, 3.625],
                 [[], 0.500, 4.5],
-                [[], 0.625, 5.5],
-                [[], 0.750, 6.5],
-                [[], 0.875, 7.5],
+                [[], 0.625, 5.375],
+                [[], 0.750, 6.25],
+                [[], 0.875, 7.125],
                 [[], 1, 8],
                 [[], 99, 8],
                 [[0.1], 0, 0.1],
@@ -1570,13 +1477,15 @@ SELECT
             data2.forEach(function (elem) {
                 valExpectedStd += (elem - avg) ** 2;
             });
-            valExpectedStd = Math.round(1_000_000 * (
+            valExpectedStd = (
                 data2.length <= 0
-                ? undefined
+                ? null
                 // : data2.length === 1
                 // ? 0
-                : Math.sqrt(valExpectedStd / (data2.length - 1))
-            ));
+                : Number(Math.sqrt(
+                    valExpectedStd / (data2.length - 1)
+                ).toFixed(8))
+            );
             await Promise.all([
                 data,
                 Array.from(data).reverse()
@@ -1592,7 +1501,7 @@ SELECT
 SELECT
         median(value) AS mdn,
         quantile(value, ${kk}) AS qnt,
-        ROUND(1000000 * stdev(value)) AS std
+        ROUND(stdev(value), 8) AS std
     FROM JSON_EACH($tmp1);
 -- test null-case handling-behavior
 SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
@@ -1617,6 +1526,815 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
                 );
             }));
         }));
+    });
+    jstestIt((
+        "test sqlite-extension-vec_concat handling-behavior"
+    ), async function test_sqlite_extension_vec_concat() {
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        await Promise.all([
+            [
+                (`
+SELECT vec_concat(NULL);
+                `),
+                [null]
+            ],
+            [
+                (`
+SELECT vec_concat(NULL) FROM (SELECT 1 UNION ALL SELECT 2);
+                `),
+                [null, null]
+            ],
+            [
+                (`
+SELECT
+        vec_concat(aa)
+    FROM (
+        SELECT NULL AS aa
+        UNION ALL SELECT '12.34'
+        UNION ALL SELECT NULL
+        UNION ALL SELECT 43.21
+        UNION ALL SELECT NULL
+        UNION ALL SELECT NULL
+        UNION ALL SELECT NULL
+    );
+                `),
+                [
+                    12.34,
+                    12.34,
+                    12.34,
+                    43.21,
+                    43.21,
+                    43.21,
+                    43.21
+                ]
+            ]
+        ].map(async function ([
+            sql, valExpected
+        ], ii) {
+            let valActual = Array.from(new Float64Array(
+                await dbExecAndReturnLastBlobAsync({
+                    db,
+                    sql
+                })
+            )).slice(VECTOR99_NOFFSET);
+            assertJsonEqual(valActual, valExpected, {
+                ii,
+                sql,
+                valActual,
+                valExpected
+            });
+        }));
+    });
+    jstestIt((
+        "test sqlite-extension-win_emax handling-behavior"
+    ), async function test_sqlite_extension_win_emax() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let valIn;
+        async function test_win_emax_aggregate({
+            aa,
+            bb,
+            valExpected,
+            valExpected2
+        }) {
+            let alpha = 2 * 1.0 / (4 + 1);
+            let sqlBetween = "";
+            let valActual;
+            if (aa !== undefined) {
+                sqlBetween = (
+                    `ROWS BETWEEN ${aa - 1} PRECEDING AND ${bb} FOLLOWING`
+                );
+            }
+            // test win_ema1-aggregate handling-behavior
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        win_ema1(value->>1, ${alpha}) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        ) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual[0].map(function ({val}) {
+                return Number(val.toFixed(4));
+            });
+            assertJsonEqual(valActual, valExpected);
+            // test win_ema2-aggregate handling-behavior
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        id,
+        win_ema2(
+            value->>1,
+            IIF(id = 1, -1, value->>1),
+            ${alpha}
+        ) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        ) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual[0].map(function ({val}, ii, list) {
+                val = JSON.parse(val).map(function (elem) {
+                    return Number(elem.toFixed(4));
+                });
+                if (ii + (bb || 0) + 1 >= list.length) {
+                    assertJsonEqual(val[1], valExpected2, valActual);
+                } else {
+                    assertJsonEqual(val[1], val[0], valActual);
+                }
+                return val[0];
+            });
+            assertJsonEqual(valActual, valExpected);
+        }
+        valIn = [
+            [11, NaN],
+            [10, "10"],
+            [9, 9],
+            [8, "8"],
+            [7, 7],
+            [6, 6],
+            [5, Infinity],
+            [4, "4"],
+            [3, 3],
+            [2, 2],
+            [1, "1"],
+            [0, undefined]
+        ];
+        await Promise.all([
+            (async function () {
+                let valActual;
+                // test win_ema2-error handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_ema2(1) FROM (SELECT 1);
+                        `)
+                    });
+                }, "wrong number of arguments");
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_ema2(1, NULL) FROM (SELECT 1);
+                        `)
+                    });
+                }, "invalid argument 'alpha'");
+                // test win_ema1-null-case handling-behavior
+                valActual = await dbExecAsync({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_ema1(1, 1) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+                // test win_ema2-null-case handling-behavior
+                valActual = await dbExecAsync({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_ema2(1, 2, 3) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+            }()),
+            // test win_emax-aggregate-normal handling-behavior
+            test_win_emax_aggregate({
+                valExpected: [
+                    0.0000, 0.4000, 1.0400, 1.8240,
+                    2.6944, 3.2166, 4.3300, 5.3980,
+                    6.4388, 7.4633, 8.4780, 9.0868
+                ],
+                valExpected2: 4.6868
+            }),
+            // test win_emax-aggregate-window handling-behavior
+            test_win_emax_aggregate({
+                aa: 1,
+                bb: 3,
+                valExpected: [
+                    1.824, 2.824, 3.424, 4.584,
+                    5.680, 6.608, 7.824, 8.824,
+                    9.424, 9.424, 9.424, 9.424
+                ],
+                valExpected2: 5.024
+            }),
+            test_win_emax_aggregate({
+                aa: 3,
+                bb: 1,
+                valExpected: [
+                    0.400, 1.040, 1.824, 2.824,
+                    3.424, 4.584, 5.680, 6.608,
+                    7.824, 8.824, 9.424, 9.424
+                ],
+                valExpected2: 5.024
+            }),
+            test_win_emax_aggregate({
+                aa: 4,
+                bb: 0,
+                valExpected: [
+                    0.000, 0.400, 1.040, 1.824,
+                    2.824, 3.424, 4.584, 5.680,
+                    6.608, 7.824, 8.824, 9.424
+                ],
+                valExpected2: 5.024
+            })
+        ]);
+    });
+    jstestIt((
+        "test sqlite-extension-win_quantilex handling-behavior"
+    ), async function test_sqlite_extension_win_quantilex() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let valIn;
+        async function test_win_quantilex_aggregate({
+            aa,
+            bb,
+            quantile,
+            valExpected,
+            valExpected2
+        }) {
+            let sqlBetween = "";
+            let valActual;
+            if (aa !== undefined) {
+                sqlBetween = (
+                    `ROWS BETWEEN ${aa - 1} PRECEDING AND ${bb} FOLLOWING`
+                );
+            }
+            // test win_quantile1-aggregate handling-behavior
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        win_quantile1(value->>1, ${quantile}) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        ) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual[0].map(function ({val}) {
+                return Number(val.toFixed(4));
+            });
+            assertJsonEqual(valActual, valExpected);
+            // test win_quantile2-aggregate handling-behavior
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        id,
+        win_quantile2(
+            value->>1,
+            IIF(id = 34, -1, value->>1),
+            ${quantile}
+        ) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        ) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual[0].map(function ({val}, ii) {
+                val = JSON.parse(val).map(function (elem) {
+                    return Number(elem.toFixed(4));
+                });
+                if (ii === 11) {
+                    assertJsonEqual(val[1], valExpected2, valActual);
+                } else {
+                    assertJsonEqual(val[1], val[0], valActual);
+                }
+                return val[0];
+            });
+            assertJsonEqual(valActual, valExpected);
+        }
+        valIn = [
+            [1, undefined],
+            [2, "1"],
+            [3, "2"],
+            [4, 3],
+            [5, 4],
+            [6, "abcd"],
+            [7, 6],
+            [8, NaN],
+            [9, 8],
+            [10, 9],
+            [11, 10],
+            [12, 11]
+        ];
+        await Promise.all([
+            (async function () {
+                let valActual;
+                // test win_quantile2-error handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_quantile2(1) FROM (SELECT 1);
+                        `)
+                    });
+                }, "wrong number of arguments");
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_quantile2(1, NULL) FROM (SELECT 1);
+                        `)
+                    });
+                }, "invalid argument 'quantile'");
+                // test win_quantile1-null-case handling-behavior
+                valActual = await dbExecAsync({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_quantile1(1, 1) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+                // test win_quantile2-null-case handling-behavior
+                valActual = await dbExecAsync({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_quantile2(1, 2, 3) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+            }()),
+            // test win_quantilex-aggregate-normal handling-behavior
+            test_win_quantilex_aggregate({
+                quantile: 0,
+                valExpected: [
+                    0.0000, 0.0000, 0.0000, 0.0000,
+                    0.0000, 0.0000, 0.0000, 0.0000,
+                    0.0000, 0.0000, 0.0000, 0.0000
+                ],
+                valExpected2: -1
+            }),
+            test_win_quantilex_aggregate({
+                quantile: 0.25,
+                valExpected: [
+                    0.0000, 0.2500, 0.5000, 0.7500,
+                    1.0000, 0.2500, 0.5000, 0.7500,
+                    1.0000, 1.2500, 1.5000, 1.7500
+                ],
+                valExpected2: 0.7500
+            }),
+            test_win_quantilex_aggregate({
+                quantile: 0.33333333,
+                valExpected: [
+                    0.0000, 0.3333, 0.6667, 1.0000,
+                    1.3333, 0.6667, 1.0000, 1.3333,
+                    1.6667, 2.0000, 2.3333, 2.6667
+                ],
+                valExpected2: 1.6667
+            }),
+            test_win_quantilex_aggregate({
+                quantile: 0.5,
+                valExpected: [
+                    0.0000, 0.5000, 1.0000, 1.5000,
+                    2.0000, 1.5000, 2.0000, 2.5000,
+                    3.0000, 3.5000, 4.0000, 5.0000
+                ],
+                valExpected2: 3.5000
+            }),
+            test_win_quantilex_aggregate({
+                quantile: 0.66666667,
+                valExpected: [
+                    0.0000, 0.6667, 1.3333, 2.0000,
+                    2.6667, 2.3333, 3.0000, 3.6667,
+                    4.6667, 6.0000, 6.0000, 6.6667
+                ],
+                valExpected2: 6.0000
+            }),
+            test_win_quantilex_aggregate({
+                quantile: 0.75,
+                valExpected: [
+                    0.0000, 0.7500, 1.5000, 2.2500,
+                    3.0000, 2.7500, 3.5000, 4.5000,
+                    6.0000, 6.0000, 7.0000, 8.2500
+                ],
+                valExpected2: 6.5000
+            }),
+            test_win_quantilex_aggregate({
+                quantile: 1,
+                valExpected: [
+                    0.0000, 1.0000, 2.0000, 3.0000,
+                    4.0000, 4.0000, 6.0000, 6.0000,
+                    8.0000, 9.0000, 10.0000, 11.0000
+                ],
+                valExpected2: 10.0000
+            }),
+            // test win_quantilex-aggregate-window handling-behavior
+            test_win_quantilex_aggregate({
+                aa: 8,
+                bb: 0,
+                quantile: 0,
+                valExpected: [
+                    0.0000, 0.0000, 0.0000, 0.0000,
+                    0.0000, 0.0000, 0.0000, 0.0000,
+                    0.0000, 0.0000, 0.0000, 0.0000
+                ],
+                valExpected2: -1
+            }),
+            test_win_quantilex_aggregate({
+                aa: 8,
+                bb: 0,
+                quantile: 0.25,
+                valExpected: [
+                    0.0000, 0.2500, 0.5000, 0.7500,
+                    1.0000, 0.2500, 0.5000, 0.7500,
+                    1.7500, 2.7500, 3.7500, 5.5000
+                ],
+                valExpected2: 3
+            }),
+            test_win_quantilex_aggregate({
+                aa: 8,
+                bb: 0,
+                quantile: 0.33333333,
+                valExpected: [
+                    0.0000, 0.3333, 0.6667, 1.0000,
+                    1.3333, 0.6667, 1.0000, 1.3333,
+                    2.3333, 3.3333, 4.6667, 6.0000
+                ],
+                valExpected2: 4.6667
+            }),
+            test_win_quantilex_aggregate({
+                aa: 8,
+                bb: 0,
+                quantile: 0.5000,
+                valExpected: [
+                    0.0000, 0.5000, 1.0000, 1.5000,
+                    2.0000, 1.5000, 2.0000, 2.5000,
+                    3.5000, 5.0000, 6.0000, 7.0000
+                ],
+                valExpected2: 6.0000
+            }),
+            test_win_quantilex_aggregate({
+                aa: 8,
+                bb: 0,
+                quantile: 0.66666667,
+                valExpected: [
+                    0.0000, 0.6667, 1.3333, 2.0000,
+                    2.6667, 2.3333, 3.0000, 3.6667,
+                    5.3333, 6.0000, 7.3333, 8.6667
+                ],
+                valExpected2: 7.3333
+            }),
+            test_win_quantilex_aggregate({
+                aa: 8,
+                bb: 0,
+                quantile: 0.75,
+                valExpected: [
+                    0.0000, 0.7500, 1.5000, 2.2500,
+                    3.0000, 2.7500, 3.5000, 4.5000,
+                    6.0000, 6.5000, 8.2500, 9.2500
+                ],
+                valExpected2: 8.2500
+            }),
+            test_win_quantilex_aggregate({
+                aa: 8,
+                bb: 0,
+                quantile: 1.0000,
+                valExpected: [
+                    0.0000, 1.0000, 2.0000, 3.0000,
+                    4.0000, 4.0000, 6.0000, 6.0000,
+                    8.0000, 9.0000, 10.0000, 11.0000
+                ],
+                valExpected2: 10.0000
+            })
+        ]);
+    });
+    jstestIt((
+        "test sqlite-extension-win_slr2 handling-behavior"
+    ), async function test_sqlite_extension_win_slr2() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let valActual;
+        let valExpected;
+        let valIn;
+        async function test_win_slr2_aggregate({
+            aa,
+            bb,
+            valExpected,
+            valExpected2
+        }) {
+            let sqlBetween = "";
+            let valActual; //jslint-ignore-line
+            if (aa !== undefined) {
+                sqlBetween = (
+                    `ROWS BETWEEN ${aa - 1} PRECEDING AND ${bb} FOLLOWING`
+                );
+            }
+            // test win_slr2-aggregate handling-behavior
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        id,
+        --
+        ROUND(slr->>(0 + 0), 8) AS nnn1,
+        ROUND(slr->>(0 + 1), 8) AS mxx1,
+        ROUND(slr->>(0 + 2), 8) AS myy1,
+        ROUND(slr->>(0 + 3), 8) AS exx1,
+        ROUND(slr->>(0 + 4), 8) AS eyy1,
+        ROUND(slr->>(0 + 5), 8) AS crr1,
+        ROUND(slr->>(0 + 6), 8) AS cbb1,
+        ROUND(slr->>(0 + 7), 8) AS caa1,
+        --
+        ROUND(slr->>(8 + 0), 8) AS nnn2,
+        ROUND(slr->>(8 + 1), 8) AS mxx2,
+        ROUND(slr->>(8 + 2), 8) AS myy2,
+        ROUND(slr->>(8 + 3), 8) AS exx2,
+        ROUND(slr->>(8 + 4), 8) AS eyy2,
+        ROUND(slr->>(8 + 5), 8) AS crr2,
+        ROUND(slr->>(8 + 6), 8) AS cbb2,
+        ROUND(slr->>(8 + 7), 8) AS caa2
+    FROM (
+        SELECT
+            id,
+            win_slr2(
+                value->>0,
+                value->>1,
+                value->>0,
+                IIF(id = 28, -1, value->>1)
+            ) OVER (
+                ORDER BY NULL ASC
+                ${sqlBetween}
+            ) AS slr
+        FROM JSON_EAcH($valIn)
+    );
+                `)
+            });
+            valActual = valActual[0].map(function ({
+                caa1,
+                caa2,
+                cbb1,
+                cbb2,
+                crr1,
+                crr2,
+                exx1,
+                exx2,
+                eyy1,
+                eyy2,
+                mxx1,
+                mxx2,
+                myy1,
+                myy2,
+                nnn1,
+                nnn2
+            }, ii, list) {
+                let obj1;
+                let obj2;
+                obj1 = {
+                    caa: caa1,
+                    cbb: cbb1,
+                    crr: crr1,
+                    exx: exx1,
+                    eyy: eyy1,
+                    mxx: mxx1,
+                    myy: myy1,
+                    nnn: nnn1
+                };
+                obj2 = {
+                    caa: caa2,
+                    cbb: cbb2,
+                    crr: crr2,
+                    exx: exx2,
+                    eyy: eyy2,
+                    mxx: mxx2,
+                    myy: myy2,
+                    nnn: nnn2
+                };
+                if (ii + (bb || 0) + 1 >= list.length) {
+                    assertJsonEqual(obj2, valExpected2, valActual);
+                } else {
+                    assertJsonEqual(obj2, obj1, valActual);
+                }
+                return obj1;
+            });
+            assertJsonEqual(valActual, valExpected);
+        }
+        noop(test_win_slr2_aggregate);
+        valExpected = [
+            {
+                "caa": null,
+                "cbb": null,
+                "crr": null,
+                "exx": null,
+                "eyy": null,
+                "mxx": 2,
+                "myy": 0,
+                "nnn": 1
+            },
+            {
+                "caa": null,
+                "cbb": null,
+                "crr": null,
+                "exx": 0,
+                "eyy": 0.70710678,
+                "mxx": 2,
+                "myy": 0.5,
+                "nnn": 2
+            },
+            {
+                "caa": -4.5,
+                "cbb": 2.5,
+                "crr": 0.94491118,
+                "exx": 0.57735027,
+                "eyy": 1.52752523,
+                "mxx": 2.33333333,
+                "myy": 1.33333333,
+                "nnn": 3
+            },
+            {
+                "caa": -3,
+                "cbb": 1.81818182,
+                "crr": 0.95346259,
+                "exx": 0.95742711,
+                "eyy": 1.82574186,
+                "mxx": 2.75,
+                "myy": 2,
+                "nnn": 4
+            },
+            {
+                "caa": -2.29411765,
+                "cbb": 1.52941176,
+                "crr": 0.96164474,
+                "exx": 1.30384048,
+                "eyy": 2.07364414,
+                "mxx": 3.2,
+                "myy": 2.6,
+                "nnn": 5
+            },
+            {
+                "caa": -2.54385965,
+                "cbb": 1.63157895,
+                "crr": 0.97080629,
+                "exx": 1.37840488,
+                "eyy": 2.31660671,
+                "mxx": 3.5,
+                "myy": 3.16666667,
+                "nnn": 6
+            },
+            {
+                "caa": -2.65,
+                "cbb": 1.675,
+                "crr": 0.9752227,
+                "exx": 1.38013112,
+                "eyy": 2.37045304,
+                "mxx": 3.71428571,
+                "myy": 3.57142857,
+                "nnn": 7
+            },
+            {
+                "caa": -2.5,
+                "cbb": 1.625,
+                "crr": 0.97991187,
+                "exx": 1.51185789,
+                "eyy": 2.50713268,
+                "mxx": 4,
+                "myy": 4,
+                "nnn": 8
+            },
+            {
+                "caa": 0.75,
+                "cbb": 0.85,
+                "crr": 0.89597867,
+                "exx": 2.39045722,
+                "eyy": 2.26778684,
+                "mxx": 5,
+                "myy": 5,
+                "nnn": 8
+            },
+            {
+                "caa": 2.75,
+                "cbb": 0.55,
+                "crr": 0.81989159,
+                "exx": 2.39045722,
+                "eyy": 1.60356745,
+                "mxx": 5,
+                "myy": 5.5,
+                "nnn": 8
+            }
+        ];
+        valIn = [
+            [2, "abcd"],
+            [NaN, 1],
+            [3, 3],
+            [4, 4],
+            [5, 5],
+            [5, 6],
+            [5, undefined],
+            [6, 7],
+            //
+            [10, 8],
+            [2, 5]
+        ];
+        await Promise.all([
+            (async function () {
+                // test win_slr2-error handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_slr2(1) FROM (SELECT 1);
+                        `)
+                    });
+                }, "wrong number of arguments");
+                // test win_slr2-null-case handling-behavior
+                valActual = await dbExecAsync({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_slr2(1, 1) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+            }()),
+            // test win_slr2-aggregate-normal handling-behavior
+            (async function () {
+                valActual = await dbExecAndReturnLastJsonAsync({
+                    bindList: {
+                        valIn: JSON.stringify(valIn)
+                    },
+                    db,
+                    sql: (`
+SELECT win_slr2(value->>0, value->>1) AS slr FROM JSON_EACH($valIn);
+                    `)
+                });
+                valActual = valActual.map(function (xx) {
+                    return Number(xx.toFixed(8));
+                });
+                assertJsonEqual(
+                    valActual,
+                    [
+                        10, // nnn
+                        4.4, // mxx
+                        4.5, // myy
+                        2.45854519, // exx
+                        2.54950976, // eyy
+                        0.81541829, // crr
+                        0.84558824, // cbb
+                        0.77941176 // caa
+                    ]
+                );
+            }()),
+            // test win_slr2-aggregate-window handling-behavior
+            test_win_slr2_aggregate({
+                aa: 8,
+                bb: 0,
+                valExpected,
+                valExpected2: {
+                    caa: -0.25,
+                    cbb: 1,
+                    crr: 0.84895272,
+                    exx: 2.39045722,
+                    eyy: 2.81577191,
+                    mxx: 5,
+                    myy: 4.75,
+                    nnn: 8
+                }
+            })
+        ]);
     });
 });
 
