@@ -427,7 +427,7 @@ INSERT INTO tradebot_intraday_day
         FROM tradebot_historical
         JOIN tradebot_state
         WHERE
-            sym = 'spy'
+            sym = '.spx'
             AND ydate < datemkt0
     ) USING (ydate);
 
@@ -539,23 +539,23 @@ INSERT INTO tradebot_technical_week
     --
     SELECT '2f_sqq_pnl', ydate, sqq_pnl FROM tradebot_intraday_lmt;
 
--- table - tradebot_technical_week - insert - spy
+-- table - tradebot_technical_week - insert - .spx
 INSERT INTO tradebot_technical_week
     SELECT
-        '1a_spy' AS tname,
+        '1a_spx' AS tname,
         ydate AS tt,
         price
     FROM tradebot_intraday_day
     WHERE
-        sym = 'spy';
+        sym = '.spx';
 INSERT OR IGNORE INTO tradebot_technical_week
     SELECT
-        '1a_spy' AS tname,
+        '1a_spx' AS tname,
         ydate AS tt,
         price
     FROM tradebot_intraday_week
     WHERE
-        sym = 'spy';
+        sym = '.spx';
 
 -- table - tradebot_technical_day - insert
 DROP TABLE IF EXISTS tradebot_technical_day;
@@ -647,7 +647,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         JSON_OBJECT(
             'isDummy', is_dummy,
-            'isHidden', sym NOT in ('11_mybot', 'spy', 'dia', 'qqq')
+            'isHidden', sym NOT in ('11_mybot', '.spx', 'dia', 'qqq')
         ) AS options,
         rownum AS series_index,
         sym AS series_label
@@ -658,7 +658,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
                 ORDER BY
                     sym = '11_mybot' DESC,
                     sym = '----' DESC,
-                    sym = 'spy' DESC,
+                    sym = '.spx' DESC,
                     sym = 'dia' DESC,
                     sym = 'qqq' DESC,
                     sym = '---- ' DESC,
@@ -1203,8 +1203,8 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
 UPDATE ${tableData}
     SET
         tval = (CASE
-            WHEN (tname = '1a_spy') THEN
-                (lmt_eee * 1.0 / spy_eee) * (tval - spy_avg) + lmt_avg
+            WHEN (tname = '1a_spx') THEN
+                (lmt_eee * 1.0 / spx_eee) * (tval - spx_avg) + lmt_avg
             WHEN (tname = '1f_stk_pnl') THEN
                 (lmt_eee * 1.0 / pnl_eee) * (tval - pnl_avg) + lmt_avg
         END)
@@ -1214,8 +1214,8 @@ UPDATE ${tableData}
         lmt_eee,
         pnl_avg,
         pnl_eee,
-        spy_avg,
-        spy_eee
+        spx_avg,
+        spx_eee
     FROM (SELECT 0)
     JOIN (SELECT
         MEDIAN(tval) AS lmt_avg,
@@ -1230,15 +1230,15 @@ UPDATE ${tableData}
         WHERE tname = '1f_stk_pnl'
     )
     JOIN (SELECT
-        MEDIAN(tval) AS spy_avg,
-        STDEV(tval) AS spy_eee
+        MEDIAN(tval) AS spx_avg,
+        STDEV(tval) AS spx_eee
         FROM ${tableData}
-        WHERE tname = '1a_spy'
+        WHERE tname = '1a_spx'
     )
     --
     ) AS __join1
     WHERE
-        tname IN ('1a_spy', '1f_stk_pnl');
+        tname IN ('1a_spx', '1f_stk_pnl');
 UPDATE ${tableData}
     SET
         tt = UNIXEPOCH(tt),
@@ -1264,7 +1264,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
         JSON_OBJECT(
-            'isHidden', tname NOT IN ('1a_spy', '1b_stk_lmt', '1c_stk_pct'),
+            'isHidden', tname NOT IN ('1a_spx', '1b_stk_lmt', '1c_stk_pct'),
             'seriesColor', (CASE
             WHEN (tname LIKE '%_lmb' OR tname LIKE '%_lms') THEN
                 '#999'
@@ -1333,7 +1333,7 @@ DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
 UPDATE ${tableChart}
     SET
         series_label = (CASE
-            WHEN (series_label = '1a_spy') THEN '1a spy change'
+            WHEN (series_label = '1a_spx') THEN '1a .spx change'
             WHEN (series_label = '1b_stk_lmt') THEN '1b stk holding ideal'
             WHEN (series_label = '1c_stk_pct') THEN '1c stk holding actual'
             WHEN (series_label = '1d_stk_lmb') THEN '1d stk holding bracket min'

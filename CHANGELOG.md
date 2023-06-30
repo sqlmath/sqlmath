@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.7.1-beta
+- betadog - Migrate market-indicator from spy to spx.
+
 # v2023.6.26
 - sqlmath - fix broken interpolation in sql-function quantile().
 - sqlmath - Add sql-function win_quantile1(), win_quantile2().
