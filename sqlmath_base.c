@@ -2433,20 +2433,29 @@ typedef struct WinSlrResult {
     double crr;                 // pearson xy
     double cbb;                 // linest slope
     double caa;                 // linest intercept
+    double cyy;                 // linest y-estimate
+    double cee;                 // linest y-error
 } WinSlrResult;
 static const int WinSlrResultN = sizeof(WinSlrResult) / sizeof(double);
 
 typedef struct WinSlrStep {
-    double invp;                // 1.0 / nnn
-    double invs;                // 1.0 / (nnn - 1)
+    double inv0;                // 1.0 / nnn
+    double inv1;                // 1.0 / (nnn - 1)
+    double inv2;                // 1.0 / (nnn - 2)
     double mxx;                 // average xx
     double myy;                 // average yy
     double nnn;                 // number of elements
-    double sxx;                 // variance.p xx
-    double sxy;                 // covariance.p xy
-    double syy;                 // variance.p yy
+    double vxx;                 // variance.p xx
+    double vxy;                 // covariance.p xy
+    double vyy;                 // variance.p yy
     double xx0;                 // previous xx
     double yy0;                 // previous yy
+    //
+    double caa;                 // linest intercept
+    double cbb;                 // linest slope
+    double cyy;                 // linest y-estimate
+    double mrr;                 // average residual
+    double vrr;                 // variance.p residual
 } WinSlrStep;
 static const int WinSlrStepN = sizeof(WinSlrStep) / sizeof(double);
 
@@ -2463,21 +2472,17 @@ SQLMATH_FUNC static void sql3_win_slr2_value(
     int errcode = 0;
     // calculate slr
     for (int ii = 0; ii < ncol; ii += 1) {
-        const double mxx = slr->mxx;
-        const double myy = slr->myy;
-        const double exx = sqrt(slr->sxx * slr->invs);
-        const double eyy = sqrt(slr->syy * slr->invs);
-        const double crr = slr->sxy / sqrt(slr->sxx * slr->syy);
-        const double cbb = slr->sxy / slr->sxx;
-        const double caa = myy - cbb * mxx;
         result[0] = slr->nnn;
-        result[1] = mxx;
-        result[2] = myy;
-        result[3] = exx;
-        result[4] = eyy;
-        result[5] = crr;
-        result[6] = cbb;
-        result[7] = caa;
+        result[1] = slr->mxx;   // mxx
+        result[2] = slr->myy;   // myy
+        result[3] = sqrt(slr->vxx * slr->inv1); // exx
+        result[4] = sqrt(slr->vyy * slr->inv1); // eyy
+        result[5] = slr->vxy / sqrt(slr->vxx * slr->vyy);       // crr
+        result[6] = slr->cbb;   // cbb
+        result[7] = slr->caa;   // caa
+        result[8] = slr->cyy;   // cyy
+        result[9] = result[8] - slr->yy0;       // cee
+        //!! result[9] = sqrt(slr->vrr * slr->inv2); // cee
         result += WinSlrResultN;
         slr += 1;
     }
@@ -2547,25 +2552,27 @@ SQLMATH_FUNC static void sql3_win_slr2_step(
         //     slr);
         const double xx = sqlite3_value_double_or_prev(argv[0], &slr->xx0);
         const double yy = sqlite3_value_double_or_prev(argv[1], &slr->yy0);
+        double mrr = slr->mrr;
         double mxx = slr->mxx;
         double myy = slr->myy;
-        double sxx = slr->sxx;
-        double sxy = slr->sxy;
-        double syy = slr->syy;
+        double vrr = slr->vrr;
+        double vxx = slr->vxx;
+        double vxy = slr->vxy;
+        double vyy = slr->vyy;
         // vec99 - calculate slr
         if (vec99->wnn) {
             // calculate running slr - window
-            const double invp = slr->invp;
+            const double inv0 = slr->inv0;
             const double xx0 = xxyy0[0];
             const double yy0 = xxyy0[1];
             const double dx = xx - xx0;
             const double dy = yy - yy0;
-            sxx += (xx * xx - xx0 * xx0) - invp * dx * dx - 2 * dx * mxx;
-            sxy +=
-                (xx * yy - xx0 * yy0) - invp * dx * dy - mxx * dy - dx * myy;
-            syy += (yy * yy - yy0 * yy0) - invp * dy * dy - 2 * dy * myy;
-            mxx += dx * invp;
-            myy += dy * invp;
+            vxx += (xx * xx - xx0 * xx0) - inv0 * dx * dx - 2 * dx * mxx;
+            vxy +=
+                (xx * yy - xx0 * yy0) - inv0 * dx * dy - mxx * dy - dx * myy;
+            vyy += (yy * yy - yy0 * yy0) - inv0 * dy * dy - 2 * dy * myy;
+            mxx += dx * inv0;
+            myy += dy * inv0;
             // debug
             // fprintf(stderr,     //
             //     "win_slr2 - wnn=%.0f wii=%.0f xx,yy=%f,%f xx0,yy0=%f,%f\n",
@@ -2573,19 +2580,20 @@ SQLMATH_FUNC static void sql3_win_slr2_step(
         } else {
             // calculate running slr - welford
             double dd;
-            slr->invp = 1.0 / (slr->nnn + 1);
-            slr->invs = 1.0 / (slr->nnn + 0);
+            slr->inv0 = 1.0 / (slr->nnn + 1);
+            slr->inv1 = 1.0 / (slr->nnn + 0);
+            slr->inv2 = 1.0 / (slr->nnn - 1);
             slr->nnn += 1;
-            // welford - increment syy
+            // welford - increment vyy
             dd = yy - myy;
-            myy += dd * slr->invp;
-            syy += dd * (yy - myy);
-            // welford - increment sxx
+            myy += dd * slr->inv0;
+            vyy += dd * (yy - myy);
+            // welford - increment vxx
             dd = xx - mxx;
-            mxx += dd * slr->invp;
-            sxx += dd * (xx - mxx);
-            // welford - increment sxy
-            sxy += dd * (yy - myy);
+            mxx += dd * slr->inv0;
+            vxx += dd * (xx - mxx);
+            // welford - increment vxy
+            vxy += dd * (yy - myy);
             // debug
             // fprintf(stderr,     //
             //     "win_slr2 - nbody=%.0f xx,yy=%f,%f\n",  //
@@ -2593,9 +2601,40 @@ SQLMATH_FUNC static void sql3_win_slr2_step(
         }
         slr->mxx = mxx;
         slr->myy = myy;
-        slr->sxx = sxx;
-        slr->sxy = sxy;
-        slr->syy = syy;
+        slr->vxx = vxx;
+        slr->vxy = vxy;
+        slr->vyy = vyy;
+        slr->cbb = vxy / vxx;
+        slr->caa = myy - slr->cbb * mxx;
+        slr->cyy = slr->caa + slr->cbb * xx;
+        // vec99 - calculate error
+        // residual
+        const double rr = slr->cyy - yy;
+        if (vec99->wnn) {
+            // calculate running slr - window
+            const double inv0 = slr->inv0;
+            const double rr0 = xxyy0[2] - xxyy0[1];
+            const double dr = rr - rr0;
+            vrr += (rr * rr - rr0 * rr0) - inv0 * dr * dr - 2 * dr * mrr;
+            mrr += dr * inv0;
+            // debug
+            // fprintf(stderr,     //
+            //     "win_slr2 - wnn=%.0f wii=%.0f xx,rr=%f,%f xx0,rr0=%f,%f\n",
+            //     vec99->wnn, vec99->wii, xx, rr, xx0, rr0);
+        } else {
+            // calculate running slr - welford
+            double dd;
+            // welford - increment vrr
+            dd = rr - mrr;
+            mrr += dd * slr->inv0;
+            vrr += dd * (rr - mrr);
+            // debug
+            // fprintf(stderr,     //
+            //     "win_slr2 - nbody=%.0f xx,rr=%f,%f\n",  //
+            //     vec99->nbody, xx, rr);
+        }
+        slr->mrr = mrr;
+        slr->vrr = vrr;
         // debug
         // fprintf(stderr, "ii=%d argv0=%f, xx0=%f mxx=%f pp=%p\n",        //
         //     ii, sqlite3_value_double_or_nan(argv[0]), slr->xx0, slr->mxx,
@@ -2603,13 +2642,14 @@ SQLMATH_FUNC static void sql3_win_slr2_step(
         // increment counter
         argv += 2;
         slr += 1;
-        xxyy0 += 2;
+        xxyy0 += 3;
     }
     slr -= ncol;
     // vec99 - push xx
     for (int ii = 0; ii < ncol; ii += 1) {
         errcode = vector99_push(vec99_agg, slr->xx0);
         errcode = vector99_push(vec99_agg, slr->yy0);
+        errcode = vector99_push(vec99_agg, slr->cyy);
         slr += 1;
     }
     SQLITE3_RESULT_ERROR_CODE(errcode);

@@ -261,7 +261,7 @@ async def build_ext_async(): # noqa=C901
         }
         await_list = []
         for exe in ["cl.exe", "link.exe"]:
-            await_list.append(
+            await_list.append( # noqa=PERF401
                 (
                     await asyncio.create_subprocess_exec(
                         *["where", exe],
@@ -278,7 +278,7 @@ async def build_ext_async(): # noqa=C901
     for arr in [path_include, path_library]:
         for path in arr:
             if path_prefix_base != path_prefix:
-                arr.append(path.replace(path_prefix, path_prefix_base))
+                arr.append(path.replace(path_prefix, path_prefix_base)) # noqa=PERF401
     #
     # build_ext - compile .obj file
     await asyncio.gather(*[
