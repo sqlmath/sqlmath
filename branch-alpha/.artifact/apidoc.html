@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2023.6.26)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2023.7.21)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -431,7 +431,14 @@ number SQLITE_OPEN_WAL
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version">46.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_WIN_SLR_ELEM_SIZE">46.
+number SQLITE_WIN_SLR_ELEM_SIZE
+</a>
+
+</li>
+<li>
+
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version">47.
 string version
 </a>
 
@@ -474,21 +481,21 @@ string version
     }
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-    sql: (`
-SELECT win_slr2(value-&gt;&gt;0, value-&gt;&gt;1) AS slr FROM JSON_EACH($valIn);
-    `)
+        UNION ALL SELECT 99, 14
+        UNION ALL SELECT 51, 5
+    )
+)
+            `)
+        })
+    )[0][0];
+    <span class="apidocCodeKeywordSpan">assertJsonEqual</span>(valActual, valExpected);
 });
-valActual = valActual.map(function (xx) {
-    return Number(xx.toFixed(8));
 });
-<span class="apidocCodeKeywordSpan">assertJsonEqual</span>(
-    valActual,
-    [
-        10, // nnn
-        4.4, // mxx
-        4.5, // myy
-        2.45854519, // exx
-        2.54950976, // eyy
+
+jstestDescribe((
+"test_sqlmathWebworkerInit"
+), function test_sqlmathWebworkerInit() {
+jstestIt((
 ...</pre></li>
 
 <li>
@@ -969,21 +976,21 @@ async function dbExecAndReturnLastTextAsync(option) {
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-            [10, 8],
-            [2, 5]
-        ];
-        await Promise.all([
-            (async function () {
-// test win_slr2-error handling-behavior
-await assertErrorThrownAsync(function () {
-    return <span class="apidocCodeKeywordSpan">dbExecAsync</span>({
+    "exx": 29.003448070876,
+    "eyy": 4.89897948556636,
+    "mxx": 74,
+    "myy": 10,
+    "nnn": 6
+};
+valExpected = noop(
+    await <span class="apidocCodeKeywordSpan">dbExecAsync</span>({
         db,
         sql: (`
-SELECT win_slr2(1) FROM (SELECT 1);
-        `)
-    });
-}, "wrong number of arguments");
-// test win_slr2-null-case handling-behavior
+SELECT
+__slr-&gt;&gt;0 AS nnn,
+__slr-&gt;&gt;1 AS mxx,
+__slr-&gt;&gt;2 AS myy,
+__slr-&gt;&gt;3 AS exx,
 ...</pre></li>
 
 <li>
@@ -1436,21 +1443,21 @@ if (typeof valInput === "bigint") {
 </span>    return val;
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-        } else {
-            assertJsonEqual(obj2, obj1, valActual);
-        }
-        return obj1;
-    });
-    assertJsonEqual(valActual, valExpected);
-}
-<span class="apidocCodeKeywordSpan">noop</span>(test_win_slr2_aggregate);
-valExpected = [
-    {
-        "caa": null,
-        "cbb": null,
-        "crr": null,
-        "exx": null,
-        "eyy": null,
+    "cyy": 6.63694721825963,
+    "exx": 29.003448070876,
+    "eyy": 4.89897948556636,
+    "mxx": 74,
+    "myy": 10,
+    "nnn": 6
+};
+valExpected = <span class="apidocCodeKeywordSpan">noop</span>(
+    await dbExecAsync({
+        db,
+        sql: (`
+SELECT
+__slr-&gt;&gt;0 AS nnn,
+__slr-&gt;&gt;1 AS mxx,
+__slr-&gt;&gt;2 AS myy,
 ...</pre></li>
 
 <li>
@@ -1747,7 +1754,15 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.version">46.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_WIN_SLR_ELEM_SIZE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_WIN_SLR_ELEM_SIZE">46.
+    number SQLITE_WIN_SLR_ELEM_SIZE
+    </a>
+    </h2>
+</li>
+
+<li>
+    <h2>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.version">47.
     string version
     </a>
     </h2>
