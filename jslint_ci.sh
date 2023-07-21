@@ -665,7 +665,6 @@ shDirHttplinkValidate() {(set -e
 import moduleAssert from "assert";
 import moduleFs from "fs";
 import moduleHttps from "https";
-import moduleUrl from "url";
 (async function () {
     let {
         GITHUB_BRANCH0,
@@ -674,7 +673,9 @@ import moduleUrl from "url";
         UPSTREAM_GITHUB_IO,
         UPSTREAM_REPOSITORY
     } = process.env;
-    let dict = {};
+    let dict = {
+        "https://unlicense.org/": true
+    };
     Array.from(
         await moduleFs.promises.readdir(".")
     ).forEach(async function (file) {
@@ -718,9 +719,7 @@ import moduleUrl from "url";
                 return "";
             }
             dict[url] = true;
-            req = moduleHttps.request(moduleUrl.parse(
-                url
-            ), function (res) {
+            req = moduleHttps.request(url, function (res) {
                 console.error(
                     "shDirHttplinkValidate " + res.statusCode + " " + url
                 );

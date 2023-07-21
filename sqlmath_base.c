@@ -2474,19 +2474,19 @@ SQLMATH_FUNC static void sql3_win_slr2_value(
         const double vxy = slr->vxy;
         const double vyy = slr->vyy;
         //
+        const double crr = vxy / sqrt(vxx * vyy);
         const double cbb = vxy / vxx;
         const double caa = myy - cbb * mxx;
-        const double rsquared = vxy * vxy / (vxx * vyy);
         result[0] = slr->nnn;
         result[1] = mxx;        // mxx
         result[2] = myy;        // myy
         result[3] = sqrt(vxx * inv1);   // exx
         result[4] = sqrt(vyy * inv1);   // eyy
-        result[5] = sqrt(rsquared);     // crr
+        result[5] = crr;        // crr
         result[6] = cbb;        // cbb
         result[7] = caa;        // caa
         result[8] = caa + cbb * slr->xx0;       // cyy
-        result[9] = sqrt(vyy * (1 - rsquared) * inv2);  // cee
+        result[9] = sqrt(vyy * (1 - crr * crr) * inv2); // cee
         result += WinSlrResultN;
         slr += 1;
     }

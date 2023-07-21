@@ -24,6 +24,7 @@
 /*jslint beta, node*/
 import jslint from "./jslint.mjs";
 import {
+    SQLITE_WIN_SLR_ELEM_SIZE,
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
@@ -2067,35 +2068,41 @@ SELECT win_quantile2(1, 2, 3) FROM __tmp1;
 SELECT
         id,
         --
-        ROUND(slr->>(0 + 0), 8) AS nnn1,
-        ROUND(slr->>(0 + 1), 8) AS mxx1,
-        ROUND(slr->>(0 + 2), 8) AS myy1,
-        ROUND(slr->>(0 + 3), 8) AS exx1,
-        ROUND(slr->>(0 + 4), 8) AS eyy1,
-        ROUND(slr->>(0 + 5), 8) AS crr1,
-        ROUND(slr->>(0 + 6), 8) AS cbb1,
-        ROUND(slr->>(0 + 7), 8) AS caa1,
-        ROUND(slr->>(0 + 8), 8) AS cyy1,
-        ROUND(slr->>(0 + 9), 8) AS cee1,
+        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn1,
+        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx1,
+        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy1,
+        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx1,
+        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy1,
+        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr1,
+        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb1,
+        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa1,
+        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy1,
+        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee1,
         --
-        ROUND(slr->>(10 + 0), 8) AS nnn2,
-        ROUND(slr->>(10 + 1), 8) AS mxx2,
-        ROUND(slr->>(10 + 2), 8) AS myy2,
-        ROUND(slr->>(10 + 3), 8) AS exx2,
-        ROUND(slr->>(10 + 4), 8) AS eyy2,
-        ROUND(slr->>(10 + 5), 8) AS crr2,
-        ROUND(slr->>(10 + 6), 8) AS cbb2,
-        ROUND(slr->>(10 + 7), 8) AS caa2,
-        ROUND(slr->>(10 + 8), 8) AS cyy2,
-        ROUND(slr->>(10 + 9), 8) AS cee2
+        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn2,
+        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx2,
+        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy2,
+        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx2,
+        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy2,
+        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr2,
+        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb2,
+        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa2,
+        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy2,
+        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee2
     FROM (
         SELECT
             id,
             win_slr2(
-                value->>0,
-                value->>1,
-                value->>0,
-                IIF(id = 28, -1, value->>1)
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, IIF(id = 28, -1, value->>1)
             ) OVER (
                 ORDER BY NULL ASC
                 ${sqlBetween}

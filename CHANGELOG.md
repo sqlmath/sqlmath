@@ -3,8 +3,8 @@
 # Todo
 - none
 
-# v2023.7.1-beta
-- sqlmath - Update sql-function win_slr2() to additionally return predicted y-intercept and rmse.
+# v2023.7.21
+- sqlmath - Update sql-function win_slr2() to additionally return predicted y-value and rmse.
 - betadog - Migrate market-indicator from spy to spx.
 
 # v2023.6.26
