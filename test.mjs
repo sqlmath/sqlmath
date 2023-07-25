@@ -2049,8 +2049,10 @@ SELECT win_quantile2(1, 2, 3) FROM __tmp1;
             aa,
             bb,
             valExpected,
-            valExpected2
+            valExpected2,
+            valExpected3
         }) {
+            let idLast = 25;
             let sqlBetween = "";
             let valActual; //jslint-ignore-line
             if (aa !== undefined) {
@@ -2061,34 +2063,54 @@ SELECT win_quantile2(1, 2, 3) FROM __tmp1;
             // test win_slr2-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
-                    valIn: JSON.stringify(valIn)
+                    valIn1: JSON.stringify(valIn.slice(0, -1)),
+                    valIn2: JSON.stringify(valIn.slice(-1))
                 },
                 db,
                 sql: (`
-SELECT
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 AS
+    SELECT
         id,
         --
-        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn1,
-        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx1,
-        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy1,
-        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx1,
-        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy1,
-        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr1,
-        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb1,
-        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa1,
-        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy1,
-        ROUND(slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx01,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy01,
         --
-        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn2,
-        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx2,
-        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy2,
-        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx2,
-        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy2,
-        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr2,
-        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb2,
-        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa2,
-        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy2,
-        ROUND(slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee2
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx02,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy02,
+        --
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx03,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy03
     FROM (
         SELECT
             id,
@@ -2102,39 +2124,156 @@ SELECT
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
-                value->>0, IIF(id = 28, -1, value->>1)
+                value->>0, IIF(id = ${idLast}, -1, value->>1)
             ) OVER (
                 ORDER BY NULL ASC
                 ${sqlBetween}
-            ) AS slr
-        FROM JSON_EAcH($valIn)
+            ) AS __slr
+        FROM JSON_EAcH($valIn1)
     );
+INSERT INTO __tmp1
+    SELECT
+        ${idLast + 3},
+        --
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn1,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx1,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy1,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx1,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy1,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr1,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb1,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa1,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy1,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee1,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx01,
+        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy01,
+        --
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn2,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx2,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy2,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx2,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy2,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr2,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb2,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa2,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy2,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee2,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx02,
+        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy02,
+        --
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn3,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx3,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy3,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx3,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy3,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr3,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb3,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa3,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy3,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee3,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx03,
+        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy03
+    FROM (
+        SELECT
+            win_slr2_step(
+                nnn1,
+                mxx1,
+                myy1,
+                exx1,
+                eyy1,
+                crr1,
+                cbb1,
+                caa1,
+                cyy1,
+                cee1,
+                xx01,
+                yy01,
+                ${aa + bb},
+                $valIn2->>0->>0,
+                $valIn2->>0->>1
+            ) AS __slr1,
+            win_slr2_step(
+                nnn2,
+                mxx2,
+                myy2,
+                exx2,
+                eyy2,
+                crr2,
+                cbb2,
+                caa2,
+                cyy2,
+                cee2,
+                xx02,
+                yy02,
+                ${aa + bb},
+                $valIn2->>0->>0,
+                $valIn2->>0->>1
+            ) AS __slr2,
+            win_slr2_step(
+                nnn3,
+                mxx3,
+                myy3,
+                exx3,
+                eyy3,
+                crr3,
+                cbb3,
+                caa3,
+                cyy3,
+                cee3,
+                xx03,
+                yy03,
+                ${aa + bb},
+                $valIn2->>0->>0,
+                $valIn2->>0->>1
+            ) AS __slr3
+        FROM JSON_EAcH($valIn2)
+        JOIN __tmp1 ON __tmp1.id = ${idLast}
+    );
+SELECT * FROM __tmp1;
                 `)
             });
             valActual = valActual[0].map(function ({
                 caa1,
                 caa2,
+                caa3,
                 cbb1,
                 cbb2,
+                cbb3,
                 cee1,
                 cee2,
+                cee3,
                 crr1,
                 crr2,
+                crr3,
                 cyy1,
                 cyy2,
+                cyy3,
                 exx1,
                 exx2,
+                exx3,
                 eyy1,
                 eyy2,
+                eyy3,
+                id,
                 mxx1,
                 mxx2,
+                mxx3,
                 myy1,
                 myy2,
+                myy3,
                 nnn1,
-                nnn2
+                nnn2,
+                nnn3,
+                xx01,
+                xx02,
+                xx03,
+                yy01,
+                yy02,
+                yy03
             }, ii, list) {
                 let obj1;
                 let obj2;
+                let obj3;
                 obj1 = {
                     caa: caa1,
                     cbb: cbb1,
@@ -2143,9 +2282,12 @@ SELECT
                     cyy: cyy1,
                     exx: exx1,
                     eyy: eyy1,
+                    id,
                     mxx: mxx1,
                     myy: myy1,
-                    nnn: nnn1
+                    nnn: nnn1,
+                    xx0: xx01,
+                    yy0: yy01
                 };
                 obj2 = {
                     caa: caa2,
@@ -2155,20 +2297,45 @@ SELECT
                     cyy: cyy2,
                     exx: exx2,
                     eyy: eyy2,
+                    id,
                     mxx: mxx2,
                     myy: myy2,
-                    nnn: nnn2
+                    nnn: nnn2,
+                    xx0: xx02,
+                    yy0: yy02
                 };
-                if (ii + (bb || 0) + 1 >= list.length) {
-                    assertJsonEqual(obj2, valExpected2, valActual);
-                } else {
+                obj3 = {
+                    caa: caa3,
+                    cbb: cbb3,
+                    cee: cee3,
+                    crr: crr3,
+                    cyy: cyy3,
+                    exx: exx3,
+                    eyy: eyy3,
+                    id,
+                    mxx: mxx3,
+                    myy: myy3,
+                    nnn: nnn3,
+                    xx0: xx03,
+                    yy0: yy03
+                };
+                switch (list.length - ii) {
+                case 1:
                     assertJsonEqual(obj2, obj1, valActual);
+                    assertJsonEqual(obj3, valExpected3, valActual);
+                    break;
+                case 2:
+                    assertJsonEqual(obj2, obj1, valActual);
+                    assertJsonEqual(obj3, valExpected2, valActual);
+                    break;
+                default:
+                    assertJsonEqual(obj2, obj1, valActual);
+                    assertJsonEqual(obj3, obj1, valActual);
                 }
                 return obj1;
             });
             assertJsonEqual(valActual, valExpected);
         }
-        noop(test_win_slr2_aggregate);
         valExpected = [
             {
                 "caa": null,
@@ -2178,9 +2345,12 @@ SELECT
                 "cyy": null,
                 "exx": null,
                 "eyy": null,
+                "id": 1,
                 "mxx": 2,
                 "myy": 0,
-                "nnn": 1
+                "nnn": 1,
+                "xx0": 2,
+                "yy0": 0
             },
             {
                 "caa": null,
@@ -2190,9 +2360,12 @@ SELECT
                 "cyy": null,
                 "exx": 0,
                 "eyy": 0.70710678,
+                "id": 4,
                 "mxx": 2,
                 "myy": 0.5,
-                "nnn": 2
+                "nnn": 2,
+                "xx0": 0,
+                "yy0": 0
             },
             {
                 "caa": -4.5,
@@ -2202,9 +2375,12 @@ SELECT
                 "cyy": 3,
                 "exx": 0.57735027,
                 "eyy": 1.52752523,
+                "id": 7,
                 "mxx": 2.33333333,
                 "myy": 1.33333333,
-                "nnn": 3
+                "nnn": 3,
+                "xx0": 2,
+                "yy0": 0
             },
             {
                 "caa": -3,
@@ -2214,9 +2390,12 @@ SELECT
                 "cyy": 4.27272727,
                 "exx": 0.95742711,
                 "eyy": 1.82574186,
+                "id": 10,
                 "mxx": 2.75,
                 "myy": 2,
-                "nnn": 4
+                "nnn": 4,
+                "xx0": 2,
+                "yy0": 0
             },
             {
                 "caa": -2.29411765,
@@ -2226,9 +2405,12 @@ SELECT
                 "cyy": 5.35294118,
                 "exx": 1.30384048,
                 "eyy": 2.07364414,
+                "id": 13,
                 "mxx": 3.2,
                 "myy": 2.6,
-                "nnn": 5
+                "nnn": 5,
+                "xx0": 2,
+                "yy0": 0
             },
             {
                 "caa": -2.54385965,
@@ -2238,9 +2420,12 @@ SELECT
                 "cyy": 5.61403509,
                 "exx": 1.37840488,
                 "eyy": 2.31660671,
+                "id": 16,
                 "mxx": 3.5,
                 "myy": 3.16666667,
-                "nnn": 6
+                "nnn": 6,
+                "xx0": 2,
+                "yy0": 0
             },
             {
                 "caa": -2.65,
@@ -2250,9 +2435,12 @@ SELECT
                 "cyy": 5.725,
                 "exx": 1.38013112,
                 "eyy": 2.37045304,
+                "id": 19,
                 "mxx": 3.71428571,
                 "myy": 3.57142857,
-                "nnn": 7
+                "nnn": 7,
+                "xx0": 2,
+                "yy0": 0
             },
             {
                 "caa": -2.5,
@@ -2262,9 +2450,12 @@ SELECT
                 "cyy": 7.25,
                 "exx": 1.51185789,
                 "eyy": 2.50713268,
+                "id": 22,
                 "mxx": 4,
                 "myy": 4,
-                "nnn": 8
+                "nnn": 8,
+                "xx0": 2,
+                "yy0": 0
             },
             {
                 "caa": 0.75,
@@ -2274,9 +2465,12 @@ SELECT
                 "cyy": 9.25,
                 "exx": 2.39045722,
                 "eyy": 2.26778684,
+                "id": 25,
                 "mxx": 5,
                 "myy": 5,
-                "nnn": 8
+                "nnn": 8,
+                "xx0": 2,
+                "yy0": 1
             },
             {
                 "caa": 2.75,
@@ -2286,9 +2480,12 @@ SELECT
                 "cyy": 3.85,
                 "exx": 2.39045722,
                 "eyy": 1.60356745,
+                "id": 28,
                 "mxx": 5,
                 "myy": 5.5,
-                "nnn": 8
+                "nnn": 8,
+                "xx0": 0,
+                "yy0": 0
             }
         ];
         valIn = [
@@ -2333,11 +2530,34 @@ SELECT win_slr2(1, 1) FROM __tmp1;
             (async function () {
                 valActual = await dbExecAndReturnLastJsonAsync({
                     bindList: {
-                        valIn: JSON.stringify(valIn)
+                        valIn1: JSON.stringify(valIn.slice(0, -1)),
+                        valIn2: JSON.stringify(valIn.slice(-1))
                     },
                     db,
                     sql: (`
-SELECT win_slr2(value->>0, value->>1) AS slr FROM JSON_EACH($valIn);
+SELECT
+        win_slr2_step(
+            __slr->>0,
+            __slr->>1,
+            __slr->>2,
+            __slr->>3,
+            __slr->>4,
+            __slr->>5,
+            __slr->>6,
+            __slr->>7,
+            __slr->>8,
+            __slr->>9,
+            __slr->>10,
+            __slr->>11,
+            ${valIn.length},
+            $valIn2->>0->>0,
+            $valIn2->>0->>1
+        )
+    FROM (
+        SELECT
+            win_slr2(value->>0, value->>1) AS __slr
+        FROM JSON_EACH($valIn1)
+    );
                     `)
                 });
                 valActual = valActual.map(function (xx) {
@@ -2355,7 +2575,9 @@ SELECT win_slr2(value->>0, value->>1) AS slr FROM JSON_EACH($valIn);
                         0.84558824, // cbb
                         0.77941176, // caa
                         2.47058824, // cyy
-                        1.56536502 // cee
+                        1.56536502, // cee
+                        0, // xx0
+                        0 // yy0
                     ]
                 );
             }()),
@@ -2365,16 +2587,34 @@ SELECT win_slr2(value->>0, value->>1) AS slr FROM JSON_EACH($valIn);
                 bb: 0,
                 valExpected,
                 valExpected2: {
-                    caa: -0.25,
-                    cbb: 1,
-                    cee: 1.60727513,
-                    crr: 0.84895272,
-                    cyy: 1.75,
-                    exx: 2.39045722,
-                    eyy: 2.81577191,
-                    mxx: 5,
-                    myy: 4.75,
-                    nnn: 8
+                    "caa": 5.25,
+                    "cbb": -0.275,
+                    "cee": 2.88241797,
+                    "crr": -0.23918696,
+                    "cyy": 2.5,
+                    "exx": 2.39045722,
+                    "eyy": 2.74837614,
+                    "id": 25,
+                    "mxx": 5,
+                    "myy": 3.875,
+                    "nnn": 8,
+                    "xx0": 2,
+                    "yy0": 1
+                },
+                valExpected3: {
+                    "caa": 7.25,
+                    "cbb": -0.575,
+                    "cee": 2.26016223,
+                    "crr": -0.5490214,
+                    "cyy": 6.1,
+                    "exx": 2.39045722,
+                    "eyy": 2.50356888,
+                    "id": 28,
+                    "mxx": 5,
+                    "myy": 4.375,
+                    "nnn": 8,
+                    "xx0": 0,
+                    "yy0": 0
                 }
             })
         ]);

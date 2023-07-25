@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2023.8.1-beta
+- sqlmath - Add sql-function win_slr2_step() to incrementally step from last slr-state.
+
 # v2023.7.21
 - sqlmath - Update sql-function win_slr2() to additionally return predicted y-value and rmse.
 - betadog - Migrate market-indicator from spy to spx.
