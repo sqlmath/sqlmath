@@ -2072,6 +2072,52 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 AS
     SELECT
         id,
+        __slr
+    FROM (
+        SELECT
+            id,
+            win_slr2(
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, IIF(id = ${idLast}, -1, value->>1)
+            ) OVER (
+                ORDER BY NULL ASC
+                ${sqlBetween}
+            ) AS __slr
+        FROM JSON_EAcH($valIn1)
+    );
+INSERT INTO __tmp1
+    SELECT
+        ${idLast + 3},
+        __slr
+    FROM (
+        SELECT
+            win_slr2_step(
+                __slr,
+                ${aa + bb},
+                $valIn2->>0->>0, $valIn2->>0->>1,
+                $valIn2->>0->>0, $valIn2->>0->>1,
+                $valIn2->>0->>0, $valIn2->>0->>1,
+                $valIn2->>0->>0, $valIn2->>0->>1,
+                $valIn2->>0->>0, $valIn2->>0->>1,
+                $valIn2->>0->>0, $valIn2->>0->>1,
+                $valIn2->>0->>0, $valIn2->>0->>1,
+                $valIn2->>0->>0, $valIn2->>0->>1,
+                $valIn2->>0->>0, $valIn2->>0->>1,
+                $valIn2->>0->>0, $valIn2->>0->>1
+            ) AS __slr
+        FROM JSON_EAcH($valIn2)
+        JOIN __tmp1 ON __tmp1.id = ${idLast}
+    );
+SELECT
+        id,
         --
         ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn1,
         ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx1,
@@ -2111,125 +2157,7 @@ CREATE TEMP TABLE __tmp1 AS
         ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee3,
         ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx03,
         ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy03
-    FROM (
-        SELECT
-            id,
-            win_slr2(
-                value->>0, value->>1,
-                value->>0, value->>1,
-                value->>0, value->>1,
-                value->>0, value->>1,
-                value->>0, value->>1,
-                value->>0, value->>1,
-                value->>0, value->>1,
-                value->>0, value->>1,
-                value->>0, value->>1,
-                value->>0, IIF(id = ${idLast}, -1, value->>1)
-            ) OVER (
-                ORDER BY NULL ASC
-                ${sqlBetween}
-            ) AS __slr
-        FROM JSON_EAcH($valIn1)
-    );
-INSERT INTO __tmp1
-    SELECT
-        ${idLast + 3},
-        --
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn1,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx1,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy1,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx1,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy1,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr1,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb1,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa1,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy1,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee1,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx01,
-        ROUND(__slr1->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy01,
-        --
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn2,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx2,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy2,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx2,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy2,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr2,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb2,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa2,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy2,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee2,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx02,
-        ROUND(__slr2->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy02,
-        --
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn3,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx3,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy3,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx3,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy3,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr3,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb3,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa3,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy3,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee3,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx03,
-        ROUND(__slr3->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy03
-    FROM (
-        SELECT
-            win_slr2_step(
-                nnn1,
-                mxx1,
-                myy1,
-                exx1,
-                eyy1,
-                crr1,
-                cbb1,
-                caa1,
-                cyy1,
-                cee1,
-                xx01,
-                yy01,
-                ${aa + bb},
-                $valIn2->>0->>0,
-                $valIn2->>0->>1
-            ) AS __slr1,
-            win_slr2_step(
-                nnn2,
-                mxx2,
-                myy2,
-                exx2,
-                eyy2,
-                crr2,
-                cbb2,
-                caa2,
-                cyy2,
-                cee2,
-                xx02,
-                yy02,
-                ${aa + bb},
-                $valIn2->>0->>0,
-                $valIn2->>0->>1
-            ) AS __slr2,
-            win_slr2_step(
-                nnn3,
-                mxx3,
-                myy3,
-                exx3,
-                eyy3,
-                crr3,
-                cbb3,
-                caa3,
-                cyy3,
-                cee3,
-                xx03,
-                yy03,
-                ${aa + bb},
-                $valIn2->>0->>0,
-                $valIn2->>0->>1
-            ) AS __slr3
-        FROM JSON_EAcH($valIn2)
-        JOIN __tmp1 ON __tmp1.id = ${idLast}
-    );
-SELECT * FROM __tmp1;
+FROM __tmp1;
                 `)
             });
             valActual = valActual[0].map(function ({
@@ -2364,7 +2292,7 @@ SELECT * FROM __tmp1;
                 "mxx": 2,
                 "myy": 0.5,
                 "nnn": 2,
-                "xx0": 0,
+                "xx0": 2,
                 "yy0": 0
             },
             {
@@ -2537,18 +2465,7 @@ SELECT win_slr2(1, 1) FROM __tmp1;
                     sql: (`
 SELECT
         win_slr2_step(
-            __slr->>0,
-            __slr->>1,
-            __slr->>2,
-            __slr->>3,
-            __slr->>4,
-            __slr->>5,
-            __slr->>6,
-            __slr->>7,
-            __slr->>8,
-            __slr->>9,
-            __slr->>10,
-            __slr->>11,
+            __slr,
             ${valIn.length},
             $valIn2->>0->>0,
             $valIn2->>0->>1
@@ -2604,7 +2521,7 @@ SELECT
                 valExpected3: {
                     "caa": 7.25,
                     "cbb": -0.575,
-                    "cee": 2.26016223,
+                    "cee": 2.26016224,
                     "crr": -0.5490214,
                     "cyy": 6.1,
                     "exx": 2.39045722,

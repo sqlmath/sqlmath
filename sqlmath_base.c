@@ -331,6 +331,10 @@ SQLMATH_API void vector99_agg_free(
 SQLMATH_API double *vector99_body(
     const Vector99 * vec99
 );
+SQLMATH_API Vector99 *vector99_from_json(
+    const char *json,
+    int nn
+);
 SQLMATH_API double *vector99_head(
     const Vector99 * vec99
 );
@@ -1066,6 +1070,71 @@ SQLMATH_API double *vector99_body(
 ) {
     return (double *) ((char *) vec99 + sizeof(Vector99)) +
         (int) vec99->nhead;
+}
+
+SQLMATH_API Vector99 *vector99_from_json(
+    const char *json,
+    int nn
+) {
+    // declare var
+    int ii = 0;
+    int jj = 0;
+    // validate json
+    for (; ii < nn; ii += 1) {
+        if (json[ii] == '[') {
+            break;
+        }
+    }
+    for (; nn > ii; nn -= 1) {
+        if (json[nn - 1] == ']') {
+            break;
+        }
+    }
+    if (nn <= ii) {
+        return NULL;
+    }
+    jj = ii;
+    // init vec99_agg
+    Vector99 *vec99_agg[1] = { 0 };
+    *vec99_agg = vector99_malloc(0);
+    if (*vec99_agg == NULL) {
+        return NULL;
+    }
+    // str99 - append double
+    for (; ii < nn; ii += 1) {
+        // skip whitespace
+        switch (json[jj]) {
+        case '[':
+        case '\x09':
+        case '\x0a':
+        case '\x0d':
+        case '\x20':
+            jj = ii;
+            break;
+        default:
+            switch (json[ii]) {
+            case ',':
+            case ']':
+                vector99_push(vec99_agg, atof(json + jj));
+                jj = ii + 1;
+                break;
+            }
+            break;
+        }
+        switch (json[jj]) {
+        case ',':
+            goto catch_error_json;
+        case ']':
+            if ((*vec99_agg)->nbody > 0) {
+                goto catch_error_json;
+            }
+            break;
+        }
+    }
+    return *vec99_agg;
+  catch_error_json:
+    vector99_agg_free(vec99_agg);
+    return NULL;
 }
 
 SQLMATH_API double *vector99_head(
@@ -2435,8 +2504,8 @@ typedef struct WinSlrResult {
     double caa;                 // linest intercept
     double cyy;                 // linest y-estimate
     double cee;                 // linest y-error
-    double xx0;                 // previous xx
-    double yy0;                 // previous yy
+    double xx0;                 // previous window-xx
+    double yy0;                 // previous window-yy
 } WinSlrResult;
 static const int WinSlrResultN = sizeof(WinSlrResult) / sizeof(double);
 
@@ -2456,37 +2525,32 @@ typedef struct WinSlrStep {
 static const int WinSlrStepN = sizeof(WinSlrStep) / sizeof(double);
 
 static void win_slr_step(
-    const Vector99 * vec99,
     WinSlrStep * slr,
-    double *result,
+    WinSlrResult * result,
     const double xx,
-    const double yy
+    const double yy,
+    const int mode_window
 ) {
 // This function will step simple-linear-regression.
-    const double xx0 = result[10];
-    const double yy0 = result[11];
+    // declare var
     double mxx = slr->mxx;
     double myy = slr->myy;
     double vxx = slr->vxx;
     double vxy = slr->vxy;
     double vyy = slr->vyy;
-    // vec99 - calculate slr
-    if (vec99->wnn) {
+    // calculate slr
+    if (mode_window) {
         // calculate running slr - window
+        const double xx0 = result->xx0;
+        const double yy0 = result->yy0;
         const double dx = xx - xx0;
         const double dy = yy - yy0;
         const double inv0 = slr->inv0;
-        const double xx0 = result[10];
-        const double yy0 = result[11];
         vxx += (xx * xx - xx0 * xx0) - inv0 * dx * dx - 2 * dx * mxx;
         vxy += (xx * yy - xx0 * yy0) - inv0 * dx * dy - mxx * dy - dx * myy;
         vyy += (yy * yy - yy0 * yy0) - inv0 * dy * dy - 2 * dy * myy;
         mxx += dx * inv0;
         myy += dy * inv0;
-        // debug
-        // fprintf(stderr,         //
-        //     "win_slr2 - wnn=%.0f wii=%.0f xx,yy=%f,%f xx0,yy0=%f,%f\n",
-        //     vec99->wnn, vec99->wii, xx, yy, xx0, yy0);
     } else {
         // calculate running slr - welford
         slr->nnn += 1;
@@ -2504,31 +2568,28 @@ static void win_slr_step(
         vxx += dd * (xx - mxx);
         // welford - increment vxy
         vxy += dd * (yy - myy);
-        // debug
-        // fprintf(stderr,         //
-        //     "win_slr2 - nbody=%.0f xx,yy=%f,%f\n",      //
-        //     vec99->nbody, xx, yy);
     }
     slr->mxx = mxx;
     slr->myy = myy;
     slr->vxx = vxx;
     slr->vxy = vxy;
     slr->vyy = vyy;
+    // calculate cxx
     const double crr = vxy / sqrt(vxx * vyy);
     const double cbb = vxy / vxx;
     const double caa = myy - cbb * mxx;
-    result[0] = slr->nnn;
-    result[1] = mxx;            // mxx
-    result[2] = myy;            // myy
-    result[3] = sqrt(vxx * slr->inv1);  // exx
-    result[4] = sqrt(vyy * slr->inv1);  // eyy
-    result[5] = crr;            // crr
-    result[6] = cbb;            // cbb
-    result[7] = caa;            // caa
-    result[8] = caa + cbb * slr->xx;    // cyy
-    result[9] = sqrt(vyy * (1 - crr * crr) * slr->inv2);        // cee
-    result[10] = 0;
-    result[11] = 0;
+    result->nnn = slr->nnn;
+    result->mxx = mxx;
+    result->myy = myy;
+    result->exx = sqrt(vxx * slr->inv1);
+    result->eyy = sqrt(vyy * slr->inv1);
+    result->crr = crr;
+    result->cbb = cbb;
+    result->caa = caa;
+    result->cyy = caa + cbb * xx;
+    result->cee = sqrt(vyy * (1 - crr * crr) * slr->inv2);
+    result->xx0 = 0;
+    result->yy0 = 0;
 }
 
 SQLMATH_FUNC static void sql3_win_slr2_value(
@@ -2594,18 +2655,16 @@ SQLMATH_FUNC static void sql3_win_slr2_step(
     }
     // declare var
     WinSlrStep *slr = (WinSlrStep *) vec99_head;
-    double *result = vec99_head + ncol * WinSlrStepN;
+    WinSlrResult *result = (WinSlrResult *) (vec99_head + ncol * WinSlrStepN);
     int errcode = 0;
-    // debug
-    // fprintf(stderr, "\n");
     // vec99 - calculate slr
     for (int ii = 0; ii < ncol; ii += 1) {
         const double xx = sqlite3_value_double_or_prev(argv[0], &slr->xx);
         const double yy = sqlite3_value_double_or_prev(argv[1], &slr->yy);
-        win_slr_step(vec99, slr, result, xx, yy);
+        win_slr_step(slr, result, xx, yy, (int) vec99->wnn);
         // increment counter
         argv += 2;
-        result += WinSlrResultN;
+        result += 1;
         slr += 1;
     }
     slr -= ncol;
@@ -2615,13 +2674,16 @@ SQLMATH_FUNC static void sql3_win_slr2_step(
         errcode = vector99_push(vec99_agg, slr->yy);
         slr += 1;
     }
+    vec99 = *vec99_agg;
+    vec99_body = vector99_body(vec99);
+    vec99_head = vector99_head(vec99);
     // vec99 - save trailing-window xx, yy
     const double *xxyy0 = vec99_body + (int) vec99->wii;
-    result -= ncol * WinSlrResultN;
+    result = (WinSlrResult *) (vec99_head + ncol * WinSlrStepN);
     for (int ii = 0; ii < ncol; ii += 1) {
-        result[10] = xxyy0[0];
-        result[11] = xxyy0[1];
-        result += WinSlrResultN;
+        result->xx0 = xxyy0[0];
+        result->yy0 = xxyy0[1];
+        result += 1;
         xxyy0 += 2;
     }
     SQLITE3_RESULT_ERROR_CODE(errcode);
@@ -2636,48 +2698,53 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
     sqlite3_value ** argv
 ) {
 // This function will step simple-linear-regression.
-    UNUSED_PARAMETER(argc);
     // declare var
-    int errcode = 0;
-    const double nnn = sqlite3_value_double_or_nan(argv[0]);
-    const double mxx = sqlite3_value_double_or_nan(argv[1]);
-    const double myy = sqlite3_value_double_or_nan(argv[2]);
-    const double exx = sqlite3_value_double_or_nan(argv[3]);
-    const double eyy = sqlite3_value_double_or_nan(argv[4]);
-    const double cbb = sqlite3_value_double_or_nan(argv[6]);
-    const double xx0 = sqlite3_value_double_or_nan(argv[10]);
-    const double yy0 = sqlite3_value_double_or_nan(argv[11]);
-    const double wnn = sqlite3_value_double_or_nan(argv[12]);
-    const double xx = sqlite3_value_double_or_nan(argv[13]);
-    const double yy = sqlite3_value_double_or_nan(argv[14]);
-    const double vxx = exx * exx * (nnn - 1);
-    const double vxy = vxx * cbb;
-    const double vyy = eyy * eyy * (nnn - 1);
-    Vector99 __vec99 = { 0 };
-    Vector99 *vec99 = &__vec99;
+    Vector99 *result99 = NULL;
     WinSlrStep __slr = { 0 };
     WinSlrStep *slr = &__slr;
-    double result[sizeof(WinSlrResult) / sizeof(double)] = { 0 };
+    const int ncol = (argc - 2) / 2;
+    int errcode = 0;
+    // validate argv
+    if (argc < 4 || argc != 2 + ncol * 2) {
+        goto catch_error;
+    }
+    result99 =
+        vector99_from_json(sqlite3_value_text(argv[0]),
+        sqlite3_value_bytes(argv[0]));
+    if (result99->nbody < WinSlrResultN
+        || result99->nbody != ncol * WinSlrResultN) {
+        goto catch_error;
+    }
     // vec99 - calculate slr
-    vec99->wnn = nnn < wnn ? 0 : wnn;
-    slr->inv0 = 1.0 / (nnn - 0);
-    slr->inv1 = 1.0 / (nnn - 1);
-    slr->inv2 = 1.0 / (nnn - 2);
-    slr->mxx = mxx;
-    slr->myy = myy;
-    slr->nnn = nnn;
-    slr->vxx = vxx;
-    slr->vxy = vxy;
-    slr->vyy = vyy;
-    slr->xx = xx;
-    slr->yy = yy;
-    result[10] = xx0;
-    result[11] = yy0;
-    win_slr_step(vec99, slr, result, xx, yy);
+    WinSlrResult *result = (WinSlrResult *) vector99_body(result99);
+    const double nnn = result->nnn;
+    const double wnn = sqlite3_value_double_or_nan(argv[1]);
+    for (int ii = 0; ii < ncol; ii += 1) {
+        slr->inv0 = 1.0 / (nnn - 0);
+        slr->inv1 = 1.0 / (nnn - 1);
+        slr->inv2 = 1.0 / (nnn - 2);
+        slr->mxx = result->mxx;
+        slr->myy = result->myy;
+        slr->nnn = nnn;
+        slr->vxx = result->exx * result->exx * (nnn - 1);
+        slr->vxy = slr->vxx * result->cbb;
+        slr->vyy = result->eyy * result->eyy * (nnn - 1);
+        win_slr_step(slr, result,
+            sqlite3_value_double_or_nan(argv[2 + ii * 2 + 0]),
+            sqlite3_value_double_or_nan(argv[2 + ii * 2 + 1]),
+            result->nnn >= wnn);
+        result += 1;
+    }
     // str99 - result
-    SQLITE3_RESULT_JSONFLOAT64ARRAY(str99, result, WinSlrResultN);
+    SQLITE3_RESULT_JSONFLOAT64ARRAY(str99, vector99_body(result99),
+        result99->nbody);
+    sqlite3_free(result99);
+    return;
   catch_error:
-    (void) 0;
+    sqlite3_free(&result99);
+    sqlite3_result_error(context,
+        "invalid argument 'alpha' to function win_emax()", -1);
+    return;
 }
 
 // SQLMATH_FUNC sql3_win_slr2_func - end
@@ -2708,7 +2775,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
-    SQLITE3_CREATE_FUNCTION1(win_slr2_step, 15);
+    SQLITE3_CREATE_FUNCTION1(win_slr2_step, -1);
     SQLITE3_CREATE_FUNCTION2(jenks_concat, -1);
     SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
