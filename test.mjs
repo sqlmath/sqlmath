@@ -1016,7 +1016,7 @@ SELECT
         ], iiInput) {
             await Promise.all([
                 (`
-SELECT JSONFROMFLOAT64ARRAY(JENKS_BLOB($kk, JSONTOFLOAT64ARRAY($input)));
+SELECT JSONFROMDOUBLEARRAY(JENKS_BLOB($kk, JSONTODOUBLEARRAY($input)));
                 `),
                 (`
 SELECT JENKS_JSON($kk, $input);
@@ -1062,8 +1062,8 @@ SELECT JENKS_CONCAT($kk, value) FROM JSON_EACH($input);
         }));
     });
     jstestIt((
-        "test sqlite-extension-jsonfromfloat64array handling-behavior"
-    ), async function test_sqlite_extension_jsonfromfloat64array() {
+        "test sqlite-extension-jsonfromdoublearray handling-behavior"
+    ), async function test_sqlite_extension_jsonfromdoublearray() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -1103,7 +1103,7 @@ SELECT JENKS_CONCAT($kk, value) FROM JSON_EACH($input);
                         },
                         db,
                         sql: (`
-SELECT JSONFROMFLOAT64ARRAY(JSONTOFLOAT64ARRAY($valInput)) AS result;
+SELECT JSONFROMDOUBLEARRAY(JSONTODOUBLEARRAY($valInput)) AS result;
                         `)
                     })
                 )[0][0].result;

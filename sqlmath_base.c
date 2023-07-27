@@ -158,18 +158,6 @@ file sqlmath_h - start
         sql3_##func##_value, sql3_##func##_inverse, NULL); \
     if (errcode != SQLITE_OK) { return errcode; }
 
-#define SQLITE3_RESULT_ERROR_CODE(errcode) \
-    if (errcode) { \
-        sqlite3_result_error_code(context, errcode); \
-        goto catch_error; \
-    }
-
-#define SQLITE3_RESULT_JSONFLOAT64ARRAY(str99, arr, nn) \
-    STR99_ALLOCA(str99); \
-    str99JsonAppendFloat64array(str99, arr, nn); \
-    STR99_RESULT_ERROR(str99); \
-    str99ResultText(str99, context);
-
 #define STR99_ALLOCA(str99) \
     sqlite3_str __##str99 = { 0 }; \
     sqlite3_str *str99 = &__##str99; \
@@ -212,12 +200,17 @@ file sqlmath_h - start
     } \
     double *vec99_body = vector99_body(vec99); \
     double *vec99_head = vector99_head(vec99); \
+    int errcode = 0; \
+    UNUSED_PARAMETER(errcode); \
     UNUSED_PARAMETER(vec99_body); \
     UNUSED_PARAMETER(vec99_head);
 
 #define VECTOR99_AGGREGATE_PUSH(xx) \
     errcode = vector99_push(vec99_agg, xx); \
-    SQLITE3_RESULT_ERROR_CODE(errcode); \
+    if (errcode) { \
+        sqlite3_result_error_code(context, errcode); \
+        goto catch_error; \
+    } \
     vec99 = *vec99_agg; \
     vec99_body = vector99_body(vec99); \
     vec99_head = vector99_head(vec99);
@@ -292,11 +285,6 @@ SQLMATH_API void str99ArrayAppendDouble(
 SQLMATH_API void str99ArrayAppendJsonarray(
     sqlite3_str * str99,
     const char *json,
-    int nn
-);
-SQLMATH_API void str99JsonAppendFloat64array(
-    sqlite3_str * str99,
-    const double *arr,
     int nn
 );
 SQLMATH_API void str99JsonAppendJenks(
@@ -377,6 +365,12 @@ SQLMATH_API const char *jsbatonValueErrmsg(
 SQLMATH_API const char *jsbatonValueStringArgi(
     Jsbaton * baton,
     int argi
+);
+
+SQLMATH_API void jsonResultDoublearray(
+    sqlite3_context * context,
+    double *arr,
+    int nn
 );
 
 SQLMATH_API double marginoferror95(
@@ -927,7 +921,7 @@ SQLMATH_API void str99ArrayAppendJsonarray(
     const char *json,
     int nn
 ) {
-// This function will append binary-Float64Array from json-encoded-flat-array.
+// This function will append float-values from json-encoded-flat-array.
     // declare var
     int ii = 0;
     int jj = 0;
@@ -983,30 +977,6 @@ SQLMATH_API void str99ArrayAppendJsonarray(
     str99->accError = SQLITE_ERROR_JSON_ARRAY_INVALID;
 }
 
-SQLMATH_API void str99JsonAppendFloat64array(
-    sqlite3_str * str99,
-    const double *arr,
-    int nn
-) {
-// This function will append json-encoded-flat-array from binary-Float64Array.
-    sqlite3_str_appendchar(str99, 1, '[');
-    while (1) {
-        nn -= 1;
-        if (nn <= 0) {
-            break;
-        }
-        // append with comma
-        sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g," : "null,",
-            *arr);
-        arr += 1;
-    }
-    if (nn == 0) {
-        // append with no comma
-        sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g" : "null", *arr);
-    }
-    sqlite3_str_appendchar(str99, 1, ']');
-}
-
 SQLMATH_API void str99JsonAppendJenks(
     sqlite3_str * str99,
     int kk,
@@ -1027,7 +997,24 @@ SQLMATH_API void str99JsonAppendJenks(
         return;
     }
     // str99 - to-json
-    str99JsonAppendFloat64array(str99, result, 1 + ((int) result[0]) * 2);
+    arr = result;
+    nn = 1 + ((int) result[0]) * 2;
+    sqlite3_str_appendchar(str99, 1, '[');
+    while (1) {
+        nn -= 1;
+        if (nn <= 0) {
+            break;
+        }
+        // append with comma
+        sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g," : "null,",
+            *arr);
+        arr += 1;
+    }
+    if (nn == 0) {
+        // append with no comma
+        sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g" : "null", *arr);
+    }
+    sqlite3_str_appendchar(str99, 1, ']');
     sqlite3_free(result);
 }
 
@@ -1264,6 +1251,43 @@ SQLMATH_API const char *jsbatonValueStringArgi(
         return NULL;
     }
     return ((const char *) baton) + ((size_t) baton->argv[argi] + 1 + 4);
+}
+
+SQLMATH_API void jsonResultDoublearray(
+    sqlite3_context * context,
+    double *arr,
+    int nn
+) {
+// This function will return <arr> as json-result-text in given <context>.
+    STR99_ALLOCA(str99);
+    sqlite3_str_appendchar(str99, 1, '[');
+    while (1) {
+        nn -= 1;
+        if (nn <= 0) {
+            break;
+        }
+        // append with comma
+        sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g," : "null,",
+            *arr);
+        arr += 1;
+    }
+    if (nn == 0) {
+        // append with no comma
+        sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g" : "null", *arr);
+    }
+    sqlite3_str_appendchar(str99, 1, ']');
+    const int errcode = sqlite3_str_errcode(str99);
+    if (errcode) {
+        sqlite3_str_reset(str99);
+        sqlite3_result_error_code(context, errcode);
+        return;
+    }
+    if (sqlite3_str_length(str99) <= 0) {
+        sqlite3_str_reset(str99);
+        sqlite3_result_null(context);
+        return;
+    }
+    str99ResultText(str99, context);
 }
 
 SQLMATH_API int noop(
@@ -1578,28 +1602,23 @@ SQLMATH_FUNC static void sql1_jenks_json_func(
     (void) 0;
 }
 
-SQLMATH_FUNC static void sql1_jsonfromfloat64array_func(
+SQLMATH_FUNC static void sql1_jsonfromdoublearray_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will create json-encoded-flat-array from binary-Float64Array.
+// This function will return json-encoded-flat-array from binary-double-array.
     UNUSED_PARAMETER(argc);
-    // declare var
-    int errcode = 0;
-    SQLITE3_RESULT_JSONFLOAT64ARRAY(str99,
-        (double *) sqlite3_value_blob(argv[0]),
-        sqlite3_value_bytes(argv[0]) / 8);
-  catch_error:
-    (void) 0;
+    jsonResultDoublearray(context, (double *) sqlite3_value_blob(argv[0]),
+        sqlite3_value_bytes(argv[0]) / sizeof(double));
 }
 
-SQLMATH_FUNC static void sql1_jsontofloat64array_func(
+SQLMATH_FUNC static void sql1_jsontodoublearray_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will create binary-Float64Array from json-encoded-flat-array.
+// This function will return binary-double-array from json-encoded-flat-array.
     UNUSED_PARAMETER(argc);
     // declare var
     int errcode = 0;
@@ -1888,19 +1907,16 @@ SQLMATH_FUNC static void sql2_matrix2d_concat_step(
     sqlite3_value ** argv
 ) {
 // This function will concat rows of nCol doubles to a 2d-matrix.
-    // declare var
-    int errcode = 0;
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     if ((*vec99_agg)->nbody <= 0) {
-        errcode = vector99_push(vec99_agg, 0);
-        errcode = vector99_push(vec99_agg, (double) argc);
+        VECTOR99_AGGREGATE_PUSH(0);
+        VECTOR99_AGGREGATE_PUSH((double) argc);
     }
     // vec99 - append double
     for (int ii = 0; ii < argc; ii += 1) {
-        errcode = vector99_push(vec99_agg, sqlite3_value_double(argv[ii]));
+        VECTOR99_AGGREGATE_PUSH(sqlite3_value_double(argv[ii]));
     }
-    SQLITE3_RESULT_ERROR_CODE(errcode);
     vector99_body(*vec99_agg)[0] += 1;
     return;
   catch_error:
@@ -2033,8 +2049,7 @@ static void sql2_quantile_step0(
     // vec99 - append isfinite
     const double xx = sqlite3_value_double_or_nan(argv[0]);
     if (!isnan(xx)) {
-        const int errcode = vector99_push(vec99_agg, xx);
-        SQLITE3_RESULT_ERROR_CODE(errcode);
+        VECTOR99_AGGREGATE_PUSH(xx);
     }
     return;
   catch_error:
@@ -2161,9 +2176,7 @@ SQLMATH_FUNC static void sql2_vec_concat_step(
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     // vec99 - append double
-    const int errcode =
-        vector99_push(vec99_agg, sqlite3_value_double_or_nan(argv[0]));
-    SQLITE3_RESULT_ERROR_CODE(errcode);
+    VECTOR99_AGGREGATE_PUSH(sqlite3_value_double_or_nan(argv[0]));
     return;
   catch_error:
     vector99_agg_free(vec99_agg);
@@ -2238,7 +2251,6 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
     // declare var
     arg_alpha = vec99_head[ncol + 0];
     const int nrow = vec99->nbody / ncol;
-    int errcode = 0;
     // vec99 - calculate ema
     for (int ii = 0; ii < ncol; ii += 1) {
         sqlite3_value_double_or_prev(argv[ii], &vec99_head[ii]);
@@ -2254,9 +2266,8 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
     }
     // vec99 - push xx
     for (int ii = 0; ii < ncol; ii += 1) {
-        errcode = vector99_push(vec99_agg, vec99_head[ii]);
+        VECTOR99_AGGREGATE_PUSH(vec99_head[ii]);
     }
-    SQLITE3_RESULT_ERROR_CODE(errcode);
     return;
   catch_error:
     vector99_agg_free(vec99_agg);
@@ -2274,11 +2285,8 @@ SQLMATH_FUNC static void sql3_win_ema2_value(
     if (!vec99->ncol) {
         sqlite3_result_null(context);
     }
-    int errcode = 0;
-    SQLITE3_RESULT_JSONFLOAT64ARRAY(str99, vec99_body + (int) vec99->wii,
+    jsonResultDoublearray(context, vec99_body + (int) vec99->wii,
         (int) vec99->ncol);
-  catch_error:
-    (void) 0;
 }
 
 SQLMATH_FUNC static void sql3_win_ema2_final(
@@ -2396,10 +2404,6 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
         }
         vec99_head[ncol + 0] = arg_quantile;
     }
-    // declare var
-    int errcode = 0;
-    // debug
-    // fprintf(stderr, "\n");
     // vec99 - push xx
     for (int ii = 0; ii < ncol; ii += 1) {
         sqlite3_value_double_or_prev(argv[ii], &vec99_head[ii]);
@@ -2453,11 +2457,8 @@ SQLMATH_FUNC static void sql3_win_quantile2_value(
     if (!vec99->ncol) {
         sqlite3_result_null(context);
     }
-    int errcode = 0;
-    SQLITE3_RESULT_JSONFLOAT64ARRAY(str99, vec99_head + (int) vec99->ncol + 1,
+    jsonResultDoublearray(context, vec99_head + (int) vec99->ncol + 1,
         (int) vec99->ncol);
-  catch_error:
-    (void) 0;
 }
 
 SQLMATH_FUNC static void sql3_win_quantile2_final(
@@ -2529,7 +2530,7 @@ static void win_slr_step(
     WinSlrResult * result,
     const double xx,
     const double yy,
-    const int mode_window
+    const int modeWindow
 ) {
 // This function will step simple-linear-regression.
     // declare var
@@ -2539,7 +2540,7 @@ static void win_slr_step(
     double vxy = slr->vxy;
     double vyy = slr->vyy;
     // calculate slr
-    if (mode_window) {
+    if (modeWindow) {
         // calculate running slr - window
         const double xx0 = result->xx0;
         const double yy0 = result->yy0;
@@ -2598,14 +2599,9 @@ SQLMATH_FUNC static void sql3_win_slr2_value(
 // This function will calculate running simple-linear-regression.
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
-    // declare var
     const int ncol = vec99->ncol;
-    int errcode = 0;
-    // str99 - result
-    SQLITE3_RESULT_JSONFLOAT64ARRAY(str99, vec99_head + ncol * WinSlrStepN,
+    jsonResultDoublearray(context, vec99_head + ncol * WinSlrStepN,
         ncol * WinSlrResultN);
-  catch_error:
-    (void) 0;
 }
 
 SQLMATH_FUNC static void sql3_win_slr2_final(
@@ -2656,7 +2652,6 @@ SQLMATH_FUNC static void sql3_win_slr2_step(
     // declare var
     WinSlrStep *slr = (WinSlrStep *) vec99_head;
     WinSlrResult *result = (WinSlrResult *) (vec99_head + ncol * WinSlrStepN);
-    int errcode = 0;
     // vec99 - calculate slr
     for (int ii = 0; ii < ncol; ii += 1) {
         const double xx = sqlite3_value_double_or_prev(argv[0], &slr->xx);
@@ -2667,16 +2662,11 @@ SQLMATH_FUNC static void sql3_win_slr2_step(
         result += 1;
         slr += 1;
     }
-    slr -= ncol;
     // vec99 - push xx
     for (int ii = 0; ii < ncol; ii += 1) {
-        errcode = vector99_push(vec99_agg, slr->xx);
-        errcode = vector99_push(vec99_agg, slr->yy);
-        slr += 1;
+        VECTOR99_AGGREGATE_PUSH(((WinSlrStep *) vec99_head + ii)->xx);
+        VECTOR99_AGGREGATE_PUSH(((WinSlrStep *) vec99_head + ii)->yy);
     }
-    vec99 = *vec99_agg;
-    vec99_body = vector99_body(vec99);
-    vec99_head = vector99_head(vec99);
     // vec99 - save trailing-window xx, yy
     const double *xxyy0 = vec99_body + (int) vec99->wii;
     result = (WinSlrResult *) (vec99_head + ncol * WinSlrStepN);
@@ -2686,7 +2676,6 @@ SQLMATH_FUNC static void sql3_win_slr2_step(
         result += 1;
         xxyy0 += 2;
     }
-    SQLITE3_RESULT_ERROR_CODE(errcode);
     return;
   catch_error:
     vector99_agg_free(vec99_agg);
@@ -2703,13 +2692,12 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
     WinSlrStep __slr = { 0 };
     WinSlrStep *slr = &__slr;
     const int ncol = (argc - 2) / 2;
-    int errcode = 0;
     // validate argv
     if (argc < 4 || argc != 2 + ncol * 2) {
         goto catch_error;
     }
     result99 =
-        vector99_from_json(sqlite3_value_text(argv[0]),
+        vector99_from_json((const char *) sqlite3_value_text(argv[0]),
         sqlite3_value_bytes(argv[0]));
     if (result99->nbody < WinSlrResultN
         || result99->nbody != ncol * WinSlrResultN) {
@@ -2736,8 +2724,7 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
         result += 1;
     }
     // str99 - result
-    SQLITE3_RESULT_JSONFLOAT64ARRAY(str99, vector99_body(result99),
-        result99->nbody);
+    jsonResultDoublearray(context, vector99_body(result99), result99->nbody);
     sqlite3_free(result99);
     return;
   catch_error:
@@ -2768,8 +2755,8 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(coth, 1);
     SQLITE3_CREATE_FUNCTION1(jenks_blob, 2);
     SQLITE3_CREATE_FUNCTION1(jenks_json, 2);
-    SQLITE3_CREATE_FUNCTION1(jsonfromfloat64array, 1);
-    SQLITE3_CREATE_FUNCTION1(jsontofloat64array, 1);
+    SQLITE3_CREATE_FUNCTION1(jsonfromdoublearray, 1);
+    SQLITE3_CREATE_FUNCTION1(jsontodoublearray, 1);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);
