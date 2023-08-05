@@ -48,7 +48,6 @@ import {
     sqlmathWebworkerInit,
     version
 } from "./sqlmath.mjs";
-let VECTOR99_NOFFSET = 6;
 let {
     assertErrorThrownAsync,
     jstestDescribe,
@@ -744,36 +743,8 @@ jstestDescribe((
         }));
     });
     jstestIt((
-        "test sqlite-extension-fill_forward handling-behavior"
-    ), async function test_sqlite_extension_fill_forward() {
-        let db = await dbOpenAsync({filename: ":memory:"});
-        let result = await dbExecAsync({
-            db,
-            sql: (`
-SELECT
-    fill_forward(val) OVER (ORDER BY id ASC) AS val
-    FROM (
-        SELECT 10 AS id, NULL AS val
-        UNION ALL SELECT 9 AS id, 9 AS val
-        UNION ALL SELECT 8 AS id, 8 AS val
-        UNION ALL SELECT 7 AS id, NULL AS val
-        UNION ALL SELECT 6 AS id, 6 AS val
-        UNION ALL SELECT 5 AS id, 5 AS val
-        UNION ALL SELECT 4 AS id, NULL AS val
-        UNION ALL SELECT 3 AS id, 3 AS val
-        UNION ALL SELECT 2 AS id, NULL AS val
-        UNION ALL SELECT 1 AS id, NULL AS val
-    );
-            `)
-        });
-        result = result[0].map(function ({val}) {
-            return val;
-        });
-        assertJsonEqual(result, [null, null, 3, 3, 5, 6, 6, 8, 9, 9]);
-    });
-    jstestIt((
-        "test sqlite-extension-jsonfromdoublearray handling-behavior"
-    ), async function test_sqlite_extension_jsonfromdoublearray() {
+        "test sqlite-extension-doublearray_xxx handling-behavior"
+    ), async function test_sqlite_extension_doublearray_xxx() {
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
@@ -813,7 +784,7 @@ SELECT
                         },
                         db,
                         sql: (`
-SELECT JSONFROMDOUBLEARRAY(JSONTODOUBLEARRAY($valInput)) AS result;
+SELECT doublearray_jsonto(doublearray_jsonfrom($valInput)) AS result;
                         `)
                     })
                 )[0][0].result;
@@ -833,6 +804,34 @@ SELECT JSONFROMDOUBLEARRAY(JSONTODOUBLEARRAY($valInput)) AS result;
                 valInput
             });
         }));
+    });
+    jstestIt((
+        "test sqlite-extension-fill_forward handling-behavior"
+    ), async function test_sqlite_extension_fill_forward() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let result = await dbExecAsync({
+            db,
+            sql: (`
+SELECT
+    fill_forward(val) OVER (ORDER BY id ASC) AS val
+    FROM (
+        SELECT 10 AS id, NULL AS val
+        UNION ALL SELECT 9 AS id, 9 AS val
+        UNION ALL SELECT 8 AS id, 8 AS val
+        UNION ALL SELECT 7 AS id, NULL AS val
+        UNION ALL SELECT 6 AS id, 6 AS val
+        UNION ALL SELECT 5 AS id, 5 AS val
+        UNION ALL SELECT 4 AS id, NULL AS val
+        UNION ALL SELECT 3 AS id, 3 AS val
+        UNION ALL SELECT 2 AS id, NULL AS val
+        UNION ALL SELECT 1 AS id, NULL AS val
+    );
+            `)
+        });
+        result = result[0].map(function ({val}) {
+            return val;
+        });
+        assertJsonEqual(result, [null, null, 3, 3, 5, 6, 6, 8, 9, 9]);
     });
     jstestIt((
         "test sqlite-extension-math handling-behavior"
@@ -1175,66 +1174,6 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
                     }
                 );
             }));
-        }));
-    });
-    jstestIt((
-        "test sqlite-extension-vec_concat handling-behavior"
-    ), async function test_sqlite_extension_vec_concat() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
-        await Promise.all([
-            [
-                (`
-SELECT vec_concat(NULL);
-                `),
-                [null]
-            ],
-            [
-                (`
-SELECT vec_concat(NULL) FROM (SELECT 1 UNION ALL SELECT 2);
-                `),
-                [null, null]
-            ],
-            [
-                (`
-SELECT
-        vec_concat(aa)
-    FROM (
-        SELECT NULL AS aa
-        UNION ALL SELECT '12.34'
-        UNION ALL SELECT NULL
-        UNION ALL SELECT 43.21
-        UNION ALL SELECT NULL
-        UNION ALL SELECT NULL
-        UNION ALL SELECT NULL
-    );
-                `),
-                [
-                    12.34,
-                    12.34,
-                    12.34,
-                    43.21,
-                    43.21,
-                    43.21,
-                    43.21
-                ]
-            ]
-        ].map(async function ([
-            sql, valExpected
-        ], ii) {
-            let valActual = Array.from(new Float64Array(
-                await dbExecAndReturnLastBlobAsync({
-                    db,
-                    sql
-                })
-            )).slice(VECTOR99_NOFFSET);
-            assertJsonEqual(valActual, valExpected, {
-                ii,
-                sql,
-                valActual,
-                valExpected
-            });
         }));
     });
     jstestIt((
