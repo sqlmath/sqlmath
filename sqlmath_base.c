@@ -341,6 +341,12 @@ SQLMATH_API int doubleSign(
     const double aa
 );
 
+SQLMATH_API void doublearrayResult(
+    sqlite3_context * context,
+    const double *arr,
+    const int nn
+);
+
 SQLMATH_API int doubleSortCompare(
     const void *aa,
     const void *bb
@@ -1181,6 +1187,16 @@ SQLMATH_API int doubleSortCompare(
     return cc < 0 ? -1 : cc > 0 ? 1 : 0;
 }
 
+SQLMATH_API void doublearrayResult(
+    sqlite3_context * context,
+    const double *arr,
+    const int nn
+) {
+// This function will return double *<arr> as binary-double-array
+// in given <context>.
+    sqlite3_result_blob(context, arr, nn * sizeof(double), SQLITE_TRANSIENT);
+}
+
 SQLMATH_API const char *jsbatonValueErrmsg(
     Jsbaton * baton
 ) {
@@ -1373,6 +1389,46 @@ SQLMATH_FUNC static void sql1_coth_func(
     UNUSED_PARAMETER(argc);
     sqlite3_result_double(context,
         1.0 / tanh(sqlite3_value_double_or_nan(argv[0])));
+}
+
+SQLMATH_FUNC static void sql1_doublearray_array_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return binary-double-array from <argv>.
+    if (argc <= 0) {
+        sqlite3_result_null(context);
+        return;
+    }
+    double *arr = sqlite3_malloc(argc * sizeof(double));
+    if (arr == NULL) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
+    for (int ii = 0; ii < argc; ii += 1) {
+        arr[ii] = sqlite3_value_double_or_nan(argv[ii]);
+    }
+    sqlite3_result_blob(context, (const char *) arr, argc * sizeof(double),
+        // destructor
+        sqlite3_free);
+}
+
+SQLMATH_FUNC static void sql1_doublearray_extract_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return binary-double-array from <argv>.
+    UNUSED_PARAMETER(argc);
+    const int ii = sqlite3_value_int(argv[1]);
+    const int nn = sqlite3_value_bytes(argv[0]) / sizeof(double);
+    if (nn <= 0 || nn <= ii) {
+        sqlite3_result_null(context);
+        return;
+    }
+    sqlite3_result_double(context,
+        ((double *) sqlite3_value_blob(argv[0]))[ii]);
 }
 
 SQLMATH_FUNC static void sql1_doublearray_jsonfrom_func(
@@ -2164,7 +2220,7 @@ SQLMATH_FUNC static void sql3_win_slr2_value(
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     const int ncol = vec99->ncol;
-    jsonResultDoublearray(context, vec99_head + ncol * WinSlrStepN,
+    doublearrayResult(context, vec99_head + ncol * WinSlrStepN,
         ncol * WinSlrResultN);
 }
 
@@ -2251,24 +2307,21 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
     sqlite3_value ** argv
 ) {
 // This function will step simple-linear-regression.
-    // declare var
-    Vector99 *result99 = NULL;
-    WinSlrStep __slr = { 0 };
-    WinSlrStep *slr = &__slr;
     const int ncol = (argc - 2) / 2;
     // validate argv
     if (argc < 4 || argc != 2 + ncol * 2) {
         goto catch_error;
     }
-    result99 =
-        vector99_from_json((const char *) sqlite3_value_text(argv[0]),
-        sqlite3_value_bytes(argv[0]));
-    if (result99->nbody < WinSlrResultN
-        || result99->nbody != ncol * WinSlrResultN) {
+    const int nbody = sqlite3_value_bytes(argv[0]) / sizeof(double);
+    if (nbody < WinSlrResultN || nbody != ncol * WinSlrResultN) {
         goto catch_error;
     }
+    // declare var
+    WinSlrResult *result99 = (WinSlrResult *) sqlite3_value_blob(argv[0]);
+    WinSlrStep __slr = { 0 };
+    WinSlrStep *slr = &__slr;
     // vec99 - calculate slr
-    WinSlrResult *result = (WinSlrResult *) vector99_body(result99);
+    WinSlrResult *result = result99;
     const double nnn = result->nnn;
     const double wnn = sqlite3_value_double_or_nan(argv[1]);
     for (int ii = 0; ii < ncol; ii += 1) {
@@ -2288,14 +2341,12 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
         result += 1;
     }
     // str99 - result
-    jsonResultDoublearray(context, vector99_body(result99), result99->nbody);
-    sqlite3_free(result99);
+    doublearrayResult(context, (const double *) result99,
+        ncol * WinSlrResultN);
     return;
   catch_error:
-    sqlite3_free(&result99);
     sqlite3_result_error(context,
-        "invalid argument 'alpha' to function win_emax()", -1);
-    return;
+        "invalid arguments to function win_slr2_step()", -1);
 }
 
 // SQLMATH_FUNC sql3_win_slr2_func - end
@@ -2315,6 +2366,8 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(copyblob, 1);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
+    SQLITE3_CREATE_FUNCTION1(doublearray_array, -1);
+    SQLITE3_CREATE_FUNCTION1(doublearray_extract, 2);
     SQLITE3_CREATE_FUNCTION1(doublearray_jsonfrom, 1);
     SQLITE3_CREATE_FUNCTION1(doublearray_jsonto, 1);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);

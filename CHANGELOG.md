@@ -1,14 +1,17 @@
 # Changelog
 
 # Todo
+- sqlmath - Add sql-function win_cosfit().
 - none
 
 # v2023.8.1-beta
+- sqlmath - Update sql-function win_slr2() to input/output doublearray instead of json for better performance.
 - sqlmath - Rename sql-functions jsonfromdoublearray() to doublearray_jsonto(), jsontodoublearray() to doublearray_jsonfrom().
-- sqlmath - Remove unused sql-function vec_concat().
+- sqlmath - Remove unused sql-functions:
+    btobase64(), btotext()
+    jenks_blob(), jenks_concat(), jenks_json()
+    vec_concat()
 - betadog - Migrate sql-functions matrix2d_concat() from sqlmath to betadog.
-- sqlmath - Remove unused sql-functions jenks_blob(), jenks_json(), jenks_concat().
-- sqlmath - Remove unused sql-functions btobase64(), btotext().
 - sqlmath - Add sql-function win_slr2_step() to incrementally step from last slr-state.
 
 # v2023.7.21

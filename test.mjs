@@ -1664,7 +1664,7 @@ CREATE TEMP TABLE __tmp1 AS
     FROM (
         SELECT
             id,
-            win_slr2(
+            doublearray_jsonto(win_slr2(
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
@@ -1678,7 +1678,7 @@ CREATE TEMP TABLE __tmp1 AS
             ) OVER (
                 ORDER BY NULL ASC
                 ${sqlBetween}
-            ) AS __slr
+            )) AS __slr
         FROM JSON_EAcH($valIn1)
     );
 INSERT INTO __tmp1
@@ -1687,8 +1687,8 @@ INSERT INTO __tmp1
         __slr
     FROM (
         SELECT
-            win_slr2_step(
-                __slr,
+            doublearray_jsonto(win_slr2_step(
+                doublearray_jsonfrom(__slr),
                 ${aa + bb},
                 $valIn2->>0->>0, $valIn2->>0->>1,
                 $valIn2->>0->>0, $valIn2->>0->>1,
@@ -1700,7 +1700,7 @@ INSERT INTO __tmp1
                 $valIn2->>0->>0, $valIn2->>0->>1,
                 $valIn2->>0->>0, $valIn2->>0->>1,
                 $valIn2->>0->>0, $valIn2->>0->>1
-            ) AS __slr
+            )) AS __slr
         FROM JSON_EAcH($valIn2)
         JOIN __tmp1 ON __tmp1.id = ${idLast}
     );
@@ -2024,7 +2024,7 @@ FROM __tmp1;
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_slr2(1) FROM (SELECT 1);
+SELECT doublearray_jsonto(win_slr2(1)) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
@@ -2034,7 +2034,7 @@ SELECT win_slr2(1) FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_slr2(1, 1) FROM __tmp1;
+SELECT doublearray_jsonto(win_slr2(1, 1)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
@@ -2052,12 +2052,12 @@ SELECT win_slr2(1, 1) FROM __tmp1;
                     db,
                     sql: (`
 SELECT
-        win_slr2_step(
+        doublearray_jsonto(win_slr2_step(
             __slr,
             ${valIn.length},
             $valIn2->>0->>0,
             $valIn2->>0->>1
-        )
+        ))
     FROM (
         SELECT
             win_slr2(value->>0, value->>1) AS __slr
@@ -2140,16 +2140,16 @@ SELECT
                 db,
                 sql: (`
 SELECT
-        __slr->>0 AS nnn,
-        __slr->>1 AS mxx,
-        __slr->>2 AS myy,
-        __slr->>3 AS exx,
-        __slr->>4 AS eyy,
-        __slr->>5 AS crr,
-        __slr->>6 AS cbb,
-        __slr->>7 AS caa,
-        __slr->>8 AS cyy,
-        __slr->>9 AS cee
+        doublearray_extract(__slr, 0) AS nnn,
+        doublearray_extract(__slr, 1) AS mxx,
+        doublearray_extract(__slr, 2) AS myy,
+        doublearray_extract(__slr, 3) AS exx,
+        doublearray_extract(__slr, 4) AS eyy,
+        doublearray_extract(__slr, 5) AS crr,
+        doublearray_extract(__slr, 6) AS cbb,
+        doublearray_extract(__slr, 7) AS caa,
+        doublearray_extract(__slr, 8) AS cyy,
+        doublearray_extract(__slr, 9) AS cee
     FROM (
         SELECT
             win_slr2(xx, yy) AS __slr
