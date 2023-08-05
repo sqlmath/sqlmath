@@ -4,6 +4,7 @@
 - none
 
 # v2023.8.1-beta
+- sqlmath - Remove unused sql-functions btobase64(), btotext().
 - sqlmath - Add sql-function win_slr2_step() to incrementally step from last slr-state.
 
 # v2023.7.21

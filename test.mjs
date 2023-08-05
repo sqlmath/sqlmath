@@ -507,12 +507,11 @@ VALUES
     (501, 502.0123, 5030123456789),
     (601, '602', '603_\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e'),
     (?1, ?2, ?3),
-    (btotext(?1), btotext(?2), btotext(?3)),
-    (btobase64(?1), btobase64(?2), btobase64(?3)),
+    (CAST(?1 AS TEXT), CAST(?2 AS TEXT), CAST(?3 AS TEXT)),
     (
-        btobase64(uncompress(compress(?1))),
-        btobase64(uncompress(compress(?2))),
-        btobase64(uncompress(compress(?3)))
+        CAST(uncompress(compress(?1)) AS TEXT),
+        CAST(uncompress(compress(?2)) AS TEXT),
+        CAST(uncompress(compress(?3)) AS TEXT)
     );
 SELECT * FROM testDbExecAsync1;
 SELECT * FROM testDbExecAsync2;
@@ -533,8 +532,7 @@ SELECT * FROM testDbExecAsync2;
                         [601, "602", "603_\"\u0001\b\t\n\u000b\f\r\u000e"],
                         [null, null, null],
                         ["foob", "fooba", "foobar"],
-                        ["Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy"],
-                        ["Zm9vYg==", "Zm9vYmE=", "Zm9vYmFy"]
+                        ["foob", "fooba", "foobar"]
                     ]
                 ]));
             } catch (err) {
@@ -743,59 +741,6 @@ jstestDescribe((
                     sql: `SELECT throwerror(${errno})`
                 });
             }, errmsg);
-        }));
-    });
-    jstestIt((
-        "test sqlite-extension-base64 handling-behavior"
-    ), async function test_sqlite_extension_base64() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
-        await Promise.all([
-            {
-                sql: "SELECT btobase64(NULL) AS c01",
-                valExpected: [
-                    [
-                        {
-                            "c01": ""
-                        }
-                    ]
-                ]
-            },
-            {
-                sql: "SELECT btobase64(?) AS c01",
-                valExpected: [
-                    [
-                        {
-                            "c01": ""
-                        }
-                    ]
-                ]
-            },
-            {
-                bindList: [
-                    new Uint8Array(8)
-                ],
-                sql: "SELECT btobase64(uncompress(compress(?))) AS c01",
-                valExpected: [
-                    [
-                        {
-                            "c01": "AAAAAAAAAAA="
-                        }
-                    ]
-                ]
-            }
-        ].map(async function ({
-            bindList,
-            sql,
-            valExpected
-        }) {
-            let valActual = await dbExecAsync({
-                bindList,
-                db,
-                sql
-            });
-            assertJsonEqual(valActual, valExpected);
         }));
     });
     jstestIt((

@@ -5,10 +5,10 @@ __version_info__ = ("2023", "8", "1")
 
 import sys
 
-from .sqlmath_dbapi2 import *  # noqa=F403
+from .sqlmath_dbapi2 import *  # noqa: F403
 
 
-def debugInline(*argv): # noqa=N802
+def debugInline(*argv): # noqa: N802
     """This function will print <arg> to stderr and then return <arg0>."""
     arg0 = argv[0] if argv else None
     print("\n\ndebugInline", file=sys.stderr)

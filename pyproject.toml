@@ -1,8 +1,8 @@
 # https://setuptools.pypa.io/en/latest/userguide/ext_modules.html
 [build-system]
 requires = [
-    "pycodestyle >= 2.10.0",
-    "ruff >= 0.0.270",
+    "pycodestyle == 2.11.0",
+    "ruff >= 0.0.281",
     "setuptools >= 65.5.0",
 ]
 build-backend = "setuptools.build_meta"

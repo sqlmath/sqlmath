@@ -26,7 +26,7 @@ def build_ext():
     setuptools.setup(ext_modules=[setuptools.Extension("_sqlmath", [])])
 
 
-async def build_ext_async(): # noqa=C901
+async def build_ext_async(): # noqa: C901
     """This function will build c-extension."""
 
     async def build_ext_exe(cdefine):
@@ -216,7 +216,7 @@ async def build_ext_async(): # noqa=C901
         "win-arm64": "x86_arm64",
         "win32": "x86",
     }.get(sysconfig.get_platform())
-    npm_config_mode_debug = os.environ.get("npm_config_mode_debug") # noqa=SIM112
+    npm_config_mode_debug = os.environ.get("npm_config_mode_debug") # noqa: SIM112
     #
     # build_ext - init env
     env = os.environ
@@ -261,7 +261,7 @@ async def build_ext_async(): # noqa=C901
         }
         await_list = []
         for exe in ["cl.exe", "link.exe"]:
-            await_list.append( # noqa=PERF401
+            await_list.append( # noqa: PERF401
                 (
                     await asyncio.create_subprocess_exec(
                         *["where", exe],
@@ -278,7 +278,7 @@ async def build_ext_async(): # noqa=C901
     for arr in [path_include, path_library]:
         for path in arr:
             if path_prefix_base != path_prefix:
-                arr.append(path.replace(path_prefix, path_prefix_base)) # noqa=PERF401
+                arr.append(path.replace(path_prefix, path_prefix_base)) # noqa: PERF401
     #
     # build_ext - compile .obj file
     await asyncio.gather(*[

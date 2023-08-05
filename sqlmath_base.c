@@ -1258,7 +1258,8 @@ SQLMATH_API void jsonResultDoublearray(
     double *arr,
     int nn
 ) {
-// This function will return <arr> as json-result-text in given <context>.
+// This function will return double *<arr> as json-result-text
+// in given <context>.
     STR99_ALLOCA(str99);
     sqlite3_str_appendchar(str99, 1, '[');
     while (1) {
@@ -1333,106 +1334,6 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
 
 
 // file sqlmath_base - SQLMATH_FUNC
-// SQLMATH_FUNC sql1_btobase64_func - start
-static char *base64Encode(
-    const unsigned char *blob,
-    int *nn
-) {
-// This function will base64-encode <blob> to <text>.
-    if (blob == NULL || *nn < 0) {
-        *nn = 0;
-    }
-    // declare var
-    char *text = NULL;
-    int aa = *nn - 3;
-    int bb = 0;
-    int ii = 0;
-    int triplet = 0;
-    static const char BASE64_ENCODE_TABLE[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    // init bb
-    bb = 4 * (int) ceil((double) *nn / 3);
-    // init text
-    text = sqlite3_malloc(MAX(bb, 4));
-    // handle nomem
-    if (text == NULL) {
-        return NULL;
-    }
-    // handle null-case
-    if (bb < 4) {
-        text[0] = '\x00';
-    }
-    // base64-encode loop
-    while (ii < aa) {
-        triplet = blob[0];
-        triplet = triplet << 8 | blob[1];
-        triplet = triplet << 8 | blob[2];
-        blob += 3;
-        text[0] = BASE64_ENCODE_TABLE[(triplet >> 18) & 0x3f];
-        text[1] = BASE64_ENCODE_TABLE[(triplet >> 12) & 0x3f];
-        text[2] = BASE64_ENCODE_TABLE[(triplet >> 6) & 0x3f];
-        text[3] = BASE64_ENCODE_TABLE[triplet & 0x3f];
-        text += 4;
-        ii += 3;
-    }
-    // base64-encode '='
-    if (bb >= 4 && blob != NULL) {
-        aa += 3;
-        triplet = blob[0];
-        triplet = ii + 1 < aa ? triplet << 8 | blob[1] : triplet << 8;
-        triplet = ii + 2 < aa ? triplet << 8 | blob[2] : triplet << 8;
-        blob += 3;
-        text[0] = BASE64_ENCODE_TABLE[(triplet >> 18) & 0x3f];
-        text[1] = BASE64_ENCODE_TABLE[(triplet >> 12) & 0x3f];
-        text[2] =
-            (ii + 1 < aa) ? BASE64_ENCODE_TABLE[(triplet >> 6) & 0x3f] : '=';
-        text[3] = (ii + 2 < aa) ? BASE64_ENCODE_TABLE[triplet & 0x3f] : '=';
-        text += 4;
-        ii += 3;
-    }
-    // save bb
-    *nn = bb;
-    // return text
-    return text - bb;
-}
-
-SQLMATH_FUNC static void sql1_btobase64_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will convert blob to base64-encoded-text.
-    UNUSED_PARAMETER(argc);
-    // declare var
-    char *text = NULL;
-    int nn = sqlite3_value_bytes(argv[0]);
-    // base64-encode blob to text
-    text =
-        base64Encode((const unsigned char *) sqlite3_value_blob(argv[0]),
-        &nn);
-    // handle nomem
-    if (text == NULL) {
-        sqlite3_result_error_nomem(context);
-        return;
-    }
-    sqlite3_result_text(context, (const char *) text, nn,
-        // cleanup base64Encode()
-        sqlite3_free);
-}
-
-// SQLMATH_FUNC sql1_btobase64_func - end
-
-SQLMATH_FUNC static void sql1_btotext_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will convert blob to text.
-    UNUSED_PARAMETER(argc);
-    sqlite3_result_text(context, (const char *) sqlite3_value_text(argv[0]),
-        -1, SQLITE_TRANSIENT);
-}
-
 SQLMATH_FUNC static void sql1_castrealornull_func(
     sqlite3_context * context,
     int argc,
@@ -2745,8 +2646,6 @@ int sqlite3_sqlmath_base_init(
     UNUSED_PARAMETER(pApi);
     UNUSED_PARAMETER(pzErrMsg);
     int errcode = 0;
-    SQLITE3_CREATE_FUNCTION1(btobase64, 1);
-    SQLITE3_CREATE_FUNCTION1(btotext, 1);
     SQLITE3_CREATE_FUNCTION1(castrealornull, 1);
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
