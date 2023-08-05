@@ -367,8 +367,7 @@ shCiTestNodejs() {(set -e
         python cpplint.py \
             --filter=-whitespace/comments \
             sqlmath_base.c \
-            sqlmath_custom.c \
-            sqlmath_jenks.c
+            sqlmath_custom.c
         # lint js-file
         node jslint.mjs .
         # create file MANIFEST.in
@@ -476,7 +475,6 @@ shSqlmathUpdate() {(set -e
             sqlmath/sqlmath_dbapi2.py \
             sqlmath_base.c \
             sqlmath_browser.mjs \
-            sqlmath_jenks.c \
             sqlmath_wrapper_wasm.js
         do
             ln -f "$HOME/Documents/sqlmath/$FILE" "$FILE"

@@ -287,12 +287,6 @@ SQLMATH_API void str99ArrayAppendJsonarray(
     const char *json,
     int nn
 );
-SQLMATH_API void str99JsonAppendJenks(
-    sqlite3_str * str99,
-    int kk,
-    const double *arr,
-    int nn
-);
 SQLMATH_API void str99ResultBlob(
     sqlite3_str * str99,
     sqlite3_context * context
@@ -343,12 +337,6 @@ SQLMATH_API int vector99_valid(
 
 
 // file sqlmath_h - SQLMATH_API
-SQLMATH_API double *jenksCreate(
-    int kk,
-    const double *values,
-    int nn
-);
-
 SQLMATH_API int doubleSign(
     const double aa
 );
@@ -419,7 +407,6 @@ file sqlmath_base - start
 #define SQLMATH_BASE_C3
 
 
-#include "sqlmath_jenks.c"
 // track how many sqlite-db open
 static int dbCount = 0;
 
@@ -977,47 +964,6 @@ SQLMATH_API void str99ArrayAppendJsonarray(
     str99->accError = SQLITE_ERROR_JSON_ARRAY_INVALID;
 }
 
-SQLMATH_API void str99JsonAppendJenks(
-    sqlite3_str * str99,
-    int kk,
-    const double *arr,
-    int nn
-) {
-// This function will append json-encoded-flat-array from jenks-result.
-    // jenks - null-case
-    if (kk <= 0 || nn <= 0) {
-        sqlite3_str_appendchar(str99, 1, '[');
-        sqlite3_str_appendchar(str99, 1, ']');
-        return;
-    }
-    // jenks - classify
-    double *result = jenksCreate(kk, arr, nn);
-    if (result == NULL) {
-        str99->accError = SQLITE_NOMEM;
-        return;
-    }
-    // str99 - to-json
-    arr = result;
-    nn = 1 + ((int) result[0]) * 2;
-    sqlite3_str_appendchar(str99, 1, '[');
-    while (1) {
-        nn -= 1;
-        if (nn <= 0) {
-            break;
-        }
-        // append with comma
-        sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g," : "null,",
-            *arr);
-        arr += 1;
-    }
-    if (nn == 0) {
-        // append with no comma
-        sqlite3_str_appendf(str99, isfinite(*arr) ? "%!.15g" : "null", *arr);
-    }
-    sqlite3_str_appendchar(str99, 1, ']');
-    sqlite3_free(result);
-}
-
 SQLMATH_API void str99ResultBlob(
     sqlite3_str * str99,
     sqlite3_context * context
@@ -1429,80 +1375,6 @@ SQLMATH_FUNC static void sql1_coth_func(
         1.0 / tanh(sqlite3_value_double_or_nan(argv[0])));
 }
 
-SQLMATH_FUNC static void sql1_jenks_blob_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate <kk> jenks-natrual-breaks in given <values>,
-// and return a mallocd (double *) array with length (1 + kk * 2) of form:
-// [
-// (double) kk,
-// (double) break_1, (double) count_1,
-// (double) break_2, (double) count_2,
-// ...,
-// (double) break_k, (double) count_k
-// ]
-    UNUSED_PARAMETER(argc);
-    // declare var
-    const double *arr = (double *) sqlite3_value_blob(argv[1]);
-    const int kk = sqlite3_value_int(argv[0]);
-    const int nn = sqlite3_value_bytes(argv[1]) / sizeof(double);
-    // jenks - null-case
-    if (kk <= 0 || nn <= 0) {
-        sqlite3_result_null(context);
-        return;
-    }
-    // jenks - classify
-    double *result = jenksCreate(kk, arr, nn);
-    if (result == NULL) {
-        sqlite3_result_error_nomem(context);
-        return;
-    }
-    // jenks - result
-    sqlite3_result_blob(context, (void *) result,
-        (1 + ((int) result[0]) * 2) * 8, sqlite3_free);
-}
-
-SQLMATH_FUNC static void sql1_jenks_json_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate <kk> jenks-natrual-breaks in given <values>,
-// and return a json array with length (1 + kk * 2) of form:
-// [
-// (double) kk,
-// (double) break_1, (double) count_1,
-// (double) break_2, (double) count_2,
-// ...,
-// (double) break_k, (double) count_k
-// ]
-    UNUSED_PARAMETER(argc);
-    // declare var
-    int errcode = 0;
-    // str99 - to-array
-    STR99_ALLOCA(arr);
-    str99ArrayAppendJsonarray(  //
-        arr,                    // array
-        (char *) sqlite3_value_blob(argv[1]),   // json
-        sqlite3_value_bytes(argv[1]));  // nn
-    STR99_RESULT_ERROR(arr);
-    // jenks - classify
-    STR99_ALLOCA(str99);
-    str99JsonAppendJenks(       //
-        str99,                  // json
-        sqlite3_value_int(argv[0]),     // kk
-        (double *) arr->zText,  // array
-        sqlite3_str_length(arr) / 8);   // nn
-    sqlite3_str_reset(arr);
-    STR99_RESULT_ERROR(str99);
-    // str99 - result
-    str99ResultText(str99, context);
-  catch_error:
-    (void) 0;
-}
-
 SQLMATH_FUNC static void sql1_jsonfromdoublearray_func(
     sqlite3_context * context,
     int argc,
@@ -1671,116 +1543,6 @@ SQLMATH_FUNC static void sql1_throwerror_func(
     }
     sqlite3_result_error_code(context, SQLITE_INTERNAL);
 }
-
-// SQLMATH_FUNC sql2_jenks_concat_func - start
-static void str99arrCleanup(
-    const int argc,
-    sqlite3_str ** str99arr
-) {
-    for (int ii = 0; ii < argc; ii += 1) {
-        sqlite3_str *str99 = str99arr[ii];
-        if (str99 != NULL) {
-            if (ii > 0) {
-                sqlite3_str_reset(str99);
-            }
-            sqlite3_free(str99);
-            str99arr[ii] = NULL;
-        }
-    }
-}
-
-SQLMATH_FUNC static void sql2_jenks_concat_final(
-    sqlite3_context * context
-) {
-// This function will calculate <kk> jenks-natrual-breaks in each column <ii>,
-// and return a json array.
-    // str99arr - init
-    sqlite3_str **str99arr =
-        (sqlite3_str **) sqlite3_aggregate_context(context, 0);
-    if (str99arr == NULL) {
-        sqlite3_result_null(context);
-        return;
-    }
-    // declare var
-    const int argc = ((int *) (str99arr[0]))[0];
-    const int kk = ((int *) (str99arr[0]))[1];
-    int errcode = 0;
-    // str99arr - cleanup
-    str99arrCleanup(1, str99arr);
-    // str99json - init
-    STR99_ALLOCA(str99json);
-    sqlite3_str_appendchar(str99json, 1, '[');
-    for (int ii = 1; ii < argc; ii += 1) {
-        sqlite3_str *str99 = str99arr[ii];
-        STR99_RESULT_ERROR(str99);
-        // jenks - classify
-        if (ii > 1) {
-            sqlite3_str_appendchar(str99json, 1, ',');
-        }
-        str99JsonAppendJenks(   //
-            str99json,          // json
-            kk,                 // kk
-            (double *) str99->zText,    // array
-            sqlite3_str_length(str99) / 8);     // nn
-        STR99_RESULT_ERROR(str99json);
-    }
-    sqlite3_str_appendchar(str99json, 1, ']');
-    STR99_RESULT_ERROR(str99json);
-    // str99json - result
-    str99ResultText(str99json, context);
-  catch_error:
-    // str99arr - cleanup
-    str99arrCleanup(argc, str99arr);
-}
-
-SQLMATH_FUNC static void sql2_jenks_concat_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate <kk> jenks-natrual-breaks in each column <ii>,
-// and return a json array.
-    // init kk
-    if (argc < 2) {
-        return;
-    }
-    const int kk = sqlite3_value_int(argv[0]);
-    if (kk <= 0) {
-        return;
-    }
-    // str99arr - init
-    sqlite3_str **str99arr =
-        (sqlite3_str **) sqlite3_aggregate_context(context,
-        argc * sizeof(sqlite3_str *));
-    if (str99arr == NULL) {
-        return;
-    }
-    if (str99arr[0] == NULL) {
-        for (int ii = 0; ii < argc; ii += 1) {
-            str99arr[ii] = sqlite3_malloc(sizeof(sqlite3_str));
-            sqlite3_str *str99 = str99arr[ii];
-            if (str99 == NULL) {
-                // str99arr - cleanup
-                str99arrCleanup(argc, str99arr);
-                sqlite3_result_error_nomem(context);
-                return;
-            }
-            memset(str99, 0, sizeof(sqlite3_str));
-            str99->mxAlloc = SQLITE_MAX_LENGTH2;
-        }
-        ((int *) (str99arr[0]))[0] = argc;
-        ((int *) (str99arr[0]))[1] = kk;
-    }
-    // str99 - append double
-    for (int ii = 1; ii < argc; ii += 1) {
-        sqlite3_str *str99 = str99arr[ii];
-        if (sqlite3_value_numeric_type(argv[ii]) != SQLITE_NULL) {
-            str99ArrayAppendDouble(str99, sqlite3_value_double(argv[ii]));
-        }
-    }
-}
-
-// SQLMATH_FUNC sql2_jenks_concat_func - end
 
 // SQLMATH_FUNC sql2_matrix2d_concat_func - start
 SQLMATH_FUNC static void sql2_matrix2d_concat_final(
@@ -2652,8 +2414,6 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(copyblob, 1);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
-    SQLITE3_CREATE_FUNCTION1(jenks_blob, 2);
-    SQLITE3_CREATE_FUNCTION1(jenks_json, 2);
     SQLITE3_CREATE_FUNCTION1(jsonfromdoublearray, 1);
     SQLITE3_CREATE_FUNCTION1(jsontodoublearray, 1);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
@@ -2662,7 +2422,6 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION1(win_slr2_step, -1);
-    SQLITE3_CREATE_FUNCTION2(jenks_concat, -1);
     SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
