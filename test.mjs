@@ -1019,67 +1019,6 @@ SELECT JSONFROMDOUBLEARRAY(JSONTODOUBLEARRAY($valInput)) AS result;
         });
     });
     jstestIt((
-        "test sqlite-extension-matrix2d_concat handling-behavior"
-    ), async function test_sqlite_extension_matrix2d_concat() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
-        await Promise.all([
-            [
-                (`
-SELECT matrix2d_concat();
-                `),
-                []
-            ],
-            [
-                (`
-SELECT matrix2d_concat() FROM (SELECT 1 UNION ALL SELECT 2);
-                `),
-                []
-            ],
-            [
-                (`
-SELECT
-        matrix2d_concat(aa, aa)
-    FROM (
-        SELECT NULL AS aa
-        UNION ALL SELECT '12.34'
-        UNION ALL SELECT 'abcd'
-        UNION ALL SELECT 12.34
-        UNION ALL SELECT zeroblob(0)
-        UNION ALL SELECT zeroblob(1)
-        UNION ALL SELECT NULL
-    );
-                `),
-                [
-                    7, 2,
-                    0, 0,
-                    12.34, 12.34,
-                    0, 0,
-                    12.34, 12.34,
-                    0, 0,
-                    0, 0,
-                    0, 0
-                ]
-            ]
-        ].map(async function ([
-            sql, valExpected
-        ], ii) {
-            let valActual = Array.from(new Float64Array(
-                await dbExecAndReturnLastBlobAsync({
-                    db,
-                    sql
-                })
-            ));
-            assertJsonEqual(valActual, valExpected, {
-                ii,
-                sql,
-                valActual,
-                valExpected
-            });
-        }));
-    });
-    jstestIt((
         "test sqlite-extension-quantile handling-behavior"
     ), async function test_sqlite_extension_quantile() {
         let db = await dbOpenAsync({

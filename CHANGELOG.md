@@ -1,10 +1,10 @@
 # Changelog
 
 # Todo
-- betadog - Migrate sql-functions matrix2d_concat() from sqlmath to betadog.
 - none
 
 # v2023.8.1-beta
+- betadog - Migrate sql-functions matrix2d_concat() from sqlmath to betadog.
 - sqlmath - Remove unused sql-functions jenks_blob(), jenks_json(), jenks_concat().
 - sqlmath - Remove unused sql-functions btobase64(), btotext().
 - sqlmath - Add sql-function win_slr2_step() to incrementally step from last slr-state.

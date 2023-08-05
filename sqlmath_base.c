@@ -1544,50 +1544,6 @@ SQLMATH_FUNC static void sql1_throwerror_func(
     sqlite3_result_error_code(context, SQLITE_INTERNAL);
 }
 
-// SQLMATH_FUNC sql2_matrix2d_concat_func - start
-SQLMATH_FUNC static void sql2_matrix2d_concat_final(
-    sqlite3_context * context
-) {
-// This function will concat rows of nCol doubles to a 2d-matrix.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - null-case
-    if (vec99->nbody <= 2) {
-        sqlite3_result_null(context);
-        return;
-    }
-    // vec99 - result
-    int alloc = vec99->nbody * sizeof(double);
-    memmove(vec99, vec99_body, alloc);
-    sqlite3_result_blob(context, (const char *) vec99, alloc,
-        // destructor
-        sqlite3_free);
-}
-
-SQLMATH_FUNC static void sql2_matrix2d_concat_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will concat rows of nCol doubles to a 2d-matrix.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    if ((*vec99_agg)->nbody <= 0) {
-        VECTOR99_AGGREGATE_PUSH(0);
-        VECTOR99_AGGREGATE_PUSH((double) argc);
-    }
-    // vec99 - append double
-    for (int ii = 0; ii < argc; ii += 1) {
-        VECTOR99_AGGREGATE_PUSH(sqlite3_value_double(argv[ii]));
-    }
-    vector99_body(*vec99_agg)[0] += 1;
-    return;
-  catch_error:
-    vector99_agg_free(vec99_agg);
-}
-
-// SQLMATH_FUNC sql2_matrix2d_concat_func - end
-
 // SQLMATH_FUNC sql2_quantile_func - start
 static double quickselect(
     double *arr,
@@ -2422,7 +2378,6 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION1(win_slr2_step, -1);
-    SQLITE3_CREATE_FUNCTION2(matrix2d_concat, -1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
     SQLITE3_CREATE_FUNCTION2(stdev, 1);
