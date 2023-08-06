@@ -1627,13 +1627,13 @@ SELECT win_quantile2(1, 2, 3) FROM __tmp1;
         ]);
     });
     jstestIt((
-        "test sqlite-extension-win_slr2 handling-behavior"
-    ), async function test_sqlite_extension_win_slr2() {
+        "test sqlite-extension-win_slrcos2 handling-behavior"
+    ), async function test_sqlite_extension_win_slrcos2() {
         let db = await dbOpenAsync({filename: ":memory:"});
         let valActual;
         let valExpected;
         let valIn;
-        async function test_win_slr2_aggregate({
+        async function test_win_slrcos2_aggregate({
             aa,
             bb,
             valExpected,
@@ -1648,7 +1648,7 @@ SELECT win_quantile2(1, 2, 3) FROM __tmp1;
                     `ROWS BETWEEN ${aa - 1} PRECEDING AND ${bb} FOLLOWING`
                 );
             }
-            // test win_slr2-aggregate handling-behavior
+            // test win_slrcos2-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
                     valIn1: JSON.stringify(valIn.slice(0, -1)),
@@ -1664,7 +1664,7 @@ CREATE TEMP TABLE __tmp1 AS
     FROM (
         SELECT
             id,
-            doublearray_jsonto(win_slr2(
+            doublearray_jsonto(win_slrcos2(
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
@@ -1712,11 +1712,11 @@ SELECT
         ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy1,
         ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx1,
         ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS lrr1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS lbb1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS laa1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS lyy1,
+        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS lee1,
         ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx01,
         ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy01,
         --
@@ -1725,11 +1725,11 @@ SELECT
         ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy2,
         ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx2,
         ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS lrr2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS lbb2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS laa2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS lyy2,
+        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS lee2,
         ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx02,
         ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy02,
         --
@@ -1738,32 +1738,17 @@ SELECT
         ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy3,
         ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx3,
         ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS crr3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS cbb3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS caa3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS cyy3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS cee3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS lrr3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS lbb3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS laa3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS lyy3,
+        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS lee3,
         ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx03,
         ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy03
 FROM __tmp1;
                 `)
             });
             valActual = valActual[0].map(function ({
-                caa1,
-                caa2,
-                caa3,
-                cbb1,
-                cbb2,
-                cbb3,
-                cee1,
-                cee2,
-                cee3,
-                crr1,
-                crr2,
-                crr3,
-                cyy1,
-                cyy2,
-                cyy3,
                 exx1,
                 exx2,
                 exx3,
@@ -1771,6 +1756,21 @@ FROM __tmp1;
                 eyy2,
                 eyy3,
                 id,
+                laa1,
+                laa2,
+                laa3,
+                lbb1,
+                lbb2,
+                lbb3,
+                lee1,
+                lee2,
+                lee3,
+                lrr1,
+                lrr2,
+                lrr3,
+                lyy1,
+                lyy2,
+                lyy3,
                 mxx1,
                 mxx2,
                 mxx3,
@@ -1791,14 +1791,14 @@ FROM __tmp1;
                 let obj2;
                 let obj3;
                 obj1 = {
-                    caa: caa1,
-                    cbb: cbb1,
-                    cee: cee1,
-                    crr: crr1,
-                    cyy: cyy1,
                     exx: exx1,
                     eyy: eyy1,
                     id,
+                    laa: laa1,
+                    lbb: lbb1,
+                    lee: lee1,
+                    lrr: lrr1,
+                    lyy: lyy1,
                     mxx: mxx1,
                     myy: myy1,
                     nnn: nnn1,
@@ -1806,14 +1806,14 @@ FROM __tmp1;
                     yy0: yy01
                 };
                 obj2 = {
-                    caa: caa2,
-                    cbb: cbb2,
-                    cee: cee2,
-                    crr: crr2,
-                    cyy: cyy2,
                     exx: exx2,
                     eyy: eyy2,
                     id,
+                    laa: laa2,
+                    lbb: lbb2,
+                    lee: lee2,
+                    lrr: lrr2,
+                    lyy: lyy2,
                     mxx: mxx2,
                     myy: myy2,
                     nnn: nnn2,
@@ -1821,14 +1821,14 @@ FROM __tmp1;
                     yy0: yy02
                 };
                 obj3 = {
-                    caa: caa3,
-                    cbb: cbb3,
-                    cee: cee3,
-                    crr: crr3,
-                    cyy: cyy3,
                     exx: exx3,
                     eyy: eyy3,
                     id,
+                    laa: laa3,
+                    lbb: lbb3,
+                    lee: lee3,
+                    lrr: lrr3,
+                    lyy: lyy3,
                     mxx: mxx3,
                     myy: myy3,
                     nnn: nnn3,
@@ -1854,14 +1854,14 @@ FROM __tmp1;
         }
         valExpected = [
             {
-                "caa": null,
-                "cbb": null,
-                "cee": null,
-                "crr": null,
-                "cyy": null,
                 "exx": null,
                 "eyy": null,
                 "id": 1,
+                "laa": null,
+                "lbb": null,
+                "lee": null,
+                "lrr": null,
+                "lyy": null,
                 "mxx": 2,
                 "myy": 0,
                 "nnn": 1,
@@ -1869,14 +1869,14 @@ FROM __tmp1;
                 "yy0": 0
             },
             {
-                "caa": null,
-                "cbb": null,
-                "cee": null,
-                "crr": null,
-                "cyy": null,
                 "exx": 0,
                 "eyy": 0.70710678,
                 "id": 4,
+                "laa": null,
+                "lbb": null,
+                "lee": null,
+                "lrr": null,
+                "lyy": null,
                 "mxx": 2,
                 "myy": 0.5,
                 "nnn": 2,
@@ -1884,14 +1884,14 @@ FROM __tmp1;
                 "yy0": 0
             },
             {
-                "caa": -4.5,
-                "cbb": 2.5,
-                "cee": 0.70710678,
-                "crr": 0.94491118,
-                "cyy": 3,
                 "exx": 0.57735027,
                 "eyy": 1.52752523,
                 "id": 7,
+                "laa": -4.5,
+                "lbb": 2.5,
+                "lee": 0.70710678,
+                "lrr": 0.94491118,
+                "lyy": 3,
                 "mxx": 2.33333333,
                 "myy": 1.33333333,
                 "nnn": 3,
@@ -1899,14 +1899,14 @@ FROM __tmp1;
                 "yy0": 0
             },
             {
-                "caa": -3,
-                "cbb": 1.81818182,
-                "cee": 0.67419986,
-                "crr": 0.95346259,
-                "cyy": 4.27272727,
                 "exx": 0.95742711,
                 "eyy": 1.82574186,
                 "id": 10,
+                "laa": -3,
+                "lbb": 1.81818182,
+                "lee": 0.67419986,
+                "lrr": 0.95346259,
+                "lyy": 4.27272727,
                 "mxx": 2.75,
                 "myy": 2,
                 "nnn": 4,
@@ -1914,14 +1914,14 @@ FROM __tmp1;
                 "yy0": 0
             },
             {
-                "caa": -2.29411765,
-                "cbb": 1.52941176,
-                "cee": 0.65678958,
-                "crr": 0.96164474,
-                "cyy": 5.35294118,
                 "exx": 1.30384048,
                 "eyy": 2.07364414,
                 "id": 13,
+                "laa": -2.29411765,
+                "lbb": 1.52941176,
+                "lee": 0.65678958,
+                "lrr": 0.96164474,
+                "lyy": 5.35294118,
                 "mxx": 3.2,
                 "myy": 2.6,
                 "nnn": 5,
@@ -1929,14 +1929,14 @@ FROM __tmp1;
                 "yy0": 0
             },
             {
-                "caa": -2.54385965,
-                "cbb": 1.63157895,
-                "cee": 0.62126074,
-                "crr": 0.97080629,
-                "cyy": 5.61403509,
                 "exx": 1.37840488,
                 "eyy": 2.31660671,
                 "id": 16,
+                "laa": -2.54385965,
+                "lbb": 1.63157895,
+                "lee": 0.62126074,
+                "lrr": 0.97080629,
+                "lyy": 5.61403509,
                 "mxx": 3.5,
                 "myy": 3.16666667,
                 "nnn": 6,
@@ -1944,14 +1944,14 @@ FROM __tmp1;
                 "yy0": 0
             },
             {
-                "caa": -2.65,
-                "cbb": 1.675,
-                "cee": 0.57445626,
-                "crr": 0.9752227,
-                "cyy": 5.725,
                 "exx": 1.38013112,
                 "eyy": 2.37045304,
                 "id": 19,
+                "laa": -2.65,
+                "lbb": 1.675,
+                "lee": 0.57445626,
+                "lrr": 0.9752227,
+                "lyy": 5.725,
                 "mxx": 3.71428571,
                 "myy": 3.57142857,
                 "nnn": 7,
@@ -1959,14 +1959,14 @@ FROM __tmp1;
                 "yy0": 0
             },
             {
-                "caa": -2.5,
-                "cbb": 1.625,
-                "cee": 0.54006172,
-                "crr": 0.97991187,
-                "cyy": 7.25,
                 "exx": 1.51185789,
                 "eyy": 2.50713268,
                 "id": 22,
+                "laa": -2.5,
+                "lbb": 1.625,
+                "lee": 0.54006172,
+                "lrr": 0.97991187,
+                "lyy": 7.25,
                 "mxx": 4,
                 "myy": 4,
                 "nnn": 8,
@@ -1974,14 +1974,14 @@ FROM __tmp1;
                 "yy0": 0
             },
             {
-                "caa": 0.75,
-                "cbb": 0.85,
-                "cee": 1.08781126,
-                "crr": 0.89597867,
-                "cyy": 9.25,
                 "exx": 2.39045722,
                 "eyy": 2.26778684,
                 "id": 25,
+                "laa": 0.75,
+                "lbb": 0.85,
+                "lee": 1.08781126,
+                "lrr": 0.89597867,
+                "lyy": 9.25,
                 "mxx": 5,
                 "myy": 5,
                 "nnn": 8,
@@ -1989,14 +1989,14 @@ FROM __tmp1;
                 "yy0": 1
             },
             {
-                "caa": 2.75,
-                "cbb": 0.55,
-                "cee": 0.99163165,
-                "crr": 0.81989159,
-                "cyy": 3.85,
                 "exx": 2.39045722,
                 "eyy": 1.60356745,
                 "id": 28,
+                "laa": 2.75,
+                "lbb": 0.55,
+                "lee": 0.99163165,
+                "lrr": 0.81989159,
+                "lyy": 3.85,
                 "mxx": 5,
                 "myy": 5.5,
                 "nnn": 8,
@@ -2019,22 +2019,22 @@ FROM __tmp1;
         ];
         await Promise.all([
             (async function () {
-                // test win_slr2-error handling-behavior
+                // test win_slrcos2-error handling-behavior
                 await assertErrorThrownAsync(function () {
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT doublearray_jsonto(win_slr2(1)) FROM (SELECT 1);
+SELECT doublearray_jsonto(win_slrcos2(1)) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
-                // test win_slr2-null-case handling-behavior
+                // test win_slrcos2-null-case handling-behavior
                 valActual = await dbExecAsync({
                     db,
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT doublearray_jsonto(win_slr2(1, 1)) FROM __tmp1;
+SELECT doublearray_jsonto(win_slrcos2(1, 1)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
@@ -2042,7 +2042,7 @@ SELECT doublearray_jsonto(win_slr2(1, 1)) FROM __tmp1;
                 });
                 assertJsonEqual(valActual, [null]);
             }()),
-            // test win_slr2-aggregate-normal handling-behavior
+            // test win_slrcos2-aggregate-normal handling-behavior
             (async function () {
                 valActual = await dbExecAndReturnLastJsonAsync({
                     bindList: {
@@ -2060,14 +2060,14 @@ SELECT
         ))
     FROM (
         SELECT
-            win_slr2(value->>0, value->>1) AS __slr
+            win_slrcos2(value->>0, value->>1) AS __slr
         FROM JSON_EACH($valIn1)
     );
                     `)
                 });
                 valActual = valActual.map(function (xx) {
                     return Number(xx.toFixed(8));
-                });
+                }).slice(0, 12);
                 assertJsonEqual(
                     valActual,
                     [
@@ -2076,30 +2076,30 @@ SELECT
                         4.5, // myy
                         2.45854519, // exx
                         2.54950976, // eyy
-                        0.81541829, // crr
-                        0.84558824, // cbb
-                        0.77941176, // caa
-                        2.47058824, // cyy
-                        1.56536502, // cee
+                        0.81541829, // lrr
+                        0.84558824, // lbb
+                        0.77941176, // laa
+                        2.47058824, // lyy
+                        1.56536502, // lee
                         0, // xx0
                         0 // yy0
                     ]
                 );
             }()),
-            // test win_slr2-aggregate-window handling-behavior
-            test_win_slr2_aggregate({
+            // test win_slrcos2-aggregate-window handling-behavior
+            test_win_slrcos2_aggregate({
                 aa: 8,
                 bb: 0,
                 valExpected,
                 valExpected2: {
-                    "caa": 5.25,
-                    "cbb": -0.275,
-                    "cee": 2.88241797,
-                    "crr": -0.23918696,
-                    "cyy": 2.5,
                     "exx": 2.39045722,
                     "eyy": 2.74837614,
                     "id": 25,
+                    "laa": 5.25,
+                    "lbb": -0.275,
+                    "lee": 2.88241797,
+                    "lrr": -0.23918696,
+                    "lyy": 2.5,
                     "mxx": 5,
                     "myy": 3.875,
                     "nnn": 8,
@@ -2107,14 +2107,14 @@ SELECT
                     "yy0": 1
                 },
                 valExpected3: {
-                    "caa": 7.25,
-                    "cbb": -0.575,
-                    "cee": 2.26016224,
-                    "crr": -0.5490214,
-                    "cyy": 6.1,
                     "exx": 2.39045722,
                     "eyy": 2.50356888,
                     "id": 28,
+                    "laa": 7.25,
+                    "lbb": -0.575,
+                    "lee": 2.26016224,
+                    "lrr": -0.5490214,
+                    "lyy": 6.1,
                     "mxx": 5,
                     "myy": 4.375,
                     "nnn": 8,
@@ -2124,13 +2124,13 @@ SELECT
             })
         ]);
         valActual = {
-            "caa": -0.820256776034237,
-            "cbb": 0.146219686162625,
-            "cee": 2.74202903932406,
-            "crr": 0.865664999629448,
-            "cyy": 6.63694721825963,
             "exx": 29.003448070876,
             "eyy": 4.89897948556636,
+            "laa": -0.820256776034237,
+            "lbb": 0.146219686162625,
+            "lee": 2.74202903932406,
+            "lrr": 0.865664999629448,
+            "lyy": 6.63694721825963,
             "mxx": 74,
             "myy": 10,
             "nnn": 6
@@ -2145,14 +2145,14 @@ SELECT
         doublearray_extract(__slr, 2) AS myy,
         doublearray_extract(__slr, 3) AS exx,
         doublearray_extract(__slr, 4) AS eyy,
-        doublearray_extract(__slr, 5) AS crr,
-        doublearray_extract(__slr, 6) AS cbb,
-        doublearray_extract(__slr, 7) AS caa,
-        doublearray_extract(__slr, 8) AS cyy,
-        doublearray_extract(__slr, 9) AS cee
+        doublearray_extract(__slr, 5) AS lrr,
+        doublearray_extract(__slr, 6) AS lbb,
+        doublearray_extract(__slr, 7) AS laa,
+        doublearray_extract(__slr, 8) AS lyy,
+        doublearray_extract(__slr, 9) AS lee
     FROM (
         SELECT
-            win_slr2(xx, yy) AS __slr
+            win_slrcos2(xx, yy) AS __slr
         FROM (
             SELECT 34 AS xx, 5 AS yy
             UNION ALL SELECT 108, 17
