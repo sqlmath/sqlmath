@@ -67,6 +67,7 @@ file sqlmath_h - start
 #define JSBATON_ARGC 16
 #define JS_MAX_SAFE_INTEGER 0x1fffffffffffff
 #define JS_MIN_SAFE_INTEGER -0x1fffffffffffff
+#define MATH_PI 3.141592653589793238463
 #define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
 #define SGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
@@ -1419,7 +1420,8 @@ SQLMATH_FUNC static void sql1_doublearray_extract_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will return binary-double-array from <argv>.
+// This function will extract double-value from <argv>[0]
+// at position <argv>[ii].
     UNUSED_PARAMETER(argc);
     const int ii = sqlite3_value_int(argv[1]);
     const int nn = sqlite3_value_bytes(argv[0]) / sizeof(double);
@@ -2148,12 +2150,12 @@ static const int WinSlrStepN = sizeof(WinSlrStep) / sizeof(double);
 static void win_slr_step(
     WinSlrStep * slr,
     WinSlrResult * result,
-    const double xx,
-    const double yy,
     const int modeWindow
 ) {
 // This function will step simple-linear-regression.
     // declare var
+    const double xx = slr->xx;
+    const double yy = slr->yy;
     double mxx = slr->mxx;
     double myy = slr->myy;
     double vxx = slr->vxx;
@@ -2251,10 +2253,11 @@ SQLMATH_FUNC static void sql3_win_slr2_inverse(
     }
 }
 
-SQLMATH_FUNC static void sql3_win_slr2_step(
+static void sql3_win_slr2_step0(
     sqlite3_context * context,
     int argc,
-    sqlite3_value ** argv
+    sqlite3_value ** argv,
+    int modeCosfit
 ) {
 // This function will calculate running simple-linear-regression.
     if (argc < 2 || argc % 2) {
@@ -2269,36 +2272,46 @@ SQLMATH_FUNC static void sql3_win_slr2_step(
         // ncol
         vec99->ncol = ncol;
     }
-    // declare var
-    WinSlrStep *slr = (WinSlrStep *) vec99_head;
-    WinSlrResult *result = (WinSlrResult *) (vec99_head + ncol * WinSlrStepN);
-    // vec99 - calculate slr
-    for (int ii = 0; ii < ncol; ii += 1) {
-        const double xx = sqlite3_value_double_or_prev(argv[0], &slr->xx);
-        const double yy = sqlite3_value_double_or_prev(argv[1], &slr->yy);
-        win_slr_step(slr, result, xx, yy, (int) vec99->wnn);
-        // increment counter
-        argv += 2;
-        result += 1;
-        slr += 1;
-    }
     // vec99 - push xx
+    WinSlrStep *slr = NULL;
     for (int ii = 0; ii < ncol; ii += 1) {
-        VECTOR99_AGGREGATE_PUSH(((WinSlrStep *) vec99_head + ii)->xx);
-        VECTOR99_AGGREGATE_PUSH(((WinSlrStep *) vec99_head + ii)->yy);
+        slr = (WinSlrStep *) vec99_head + ii;
+        sqlite3_value_double_or_prev(argv[0], &slr->xx);
+        sqlite3_value_double_or_prev(argv[1], &slr->yy);
+        VECTOR99_AGGREGATE_PUSH(slr->xx);
+        VECTOR99_AGGREGATE_PUSH(slr->yy);
+        argv += 2;
     }
-    // vec99 - save trailing-window xx, yy
+    // vec99 - calculate slr
+    WinSlrResult *result = (WinSlrResult *) (vec99_head + ncol * WinSlrStepN);
     const double *xxyy0 = vec99_body + (int) vec99->wii;
-    result = (WinSlrResult *) (vec99_head + ncol * WinSlrStepN);
+    slr = (WinSlrStep *) vec99_head;
     for (int ii = 0; ii < ncol; ii += 1) {
+        win_slr_step(slr, result, (int) vec99->wnn);
+        // vec99 - calculate cosfit
+        if (modeCosfit) {
+            //!! win_cosfit_step(slr, result, vec99, ii);
+        }
+        // vec99 - save trailing-window xx, yy
         result->xx0 = xxyy0[0];
         result->yy0 = xxyy0[1];
+        // increment counter
         result += 1;
+        slr += 1;
         xxyy0 += 2;
     }
     return;
   catch_error:
     vector99_agg_free(vec99_agg);
+}
+
+SQLMATH_FUNC static void sql3_win_slr2_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running simple-linear-regression.
+    sql3_win_slr2_step0(context, argc, argv, 1);
 }
 
 SQLMATH_FUNC static void sql1_win_slr2_step_func(
@@ -2324,6 +2337,7 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
     WinSlrResult *result = result99;
     const double nnn = result->nnn;
     const double wnn = sqlite3_value_double_or_nan(argv[1]);
+    argv += 2;
     for (int ii = 0; ii < ncol; ii += 1) {
         slr->inv0 = 1.0 / (nnn - 0);
         slr->inv1 = 1.0 / (nnn - 1);
@@ -2334,10 +2348,10 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
         slr->vxx = result->exx * result->exx * (nnn - 1);
         slr->vxy = slr->vxx * result->cbb;
         slr->vyy = result->eyy * result->eyy * (nnn - 1);
-        win_slr_step(slr, result,
-            sqlite3_value_double_or_nan(argv[2 + ii * 2 + 0]),
-            sqlite3_value_double_or_nan(argv[2 + ii * 2 + 1]),
-            result->nnn >= wnn);
+        sqlite3_value_double_or_prev(argv[0], &slr->xx);
+        sqlite3_value_double_or_prev(argv[1], &slr->yy);
+        win_slr_step(slr, result, result->nnn >= wnn);
+        argv += 2;
         result += 1;
     }
     // str99 - result
