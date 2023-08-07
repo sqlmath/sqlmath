@@ -2229,8 +2229,11 @@ static void win_slrcos_internal(
     }
     cpp += invd * (hww * gpp - hpw * gww);
     cww += invd * (-hpw * gpp + hpp * gww);
-    //!! cpp = fmod(cpp, 2 * MATH_PI);
-    //!! cww = MAX(cww, MATH_PI / (2 * result->exx));
+    cpp = fmod(cpp, 2 * MATH_PI);
+    if (cpp < 0) {
+        cpp += 2 * MATH_PI;
+    }
+    cww = MAX(cww, MATH_PI / (2 * result->exx));
     //!! cww = MIN(cww, MATH_PI / (3 * result->exx) * nnn);
     result->cpp = cpp;
     result->cww = cww;
