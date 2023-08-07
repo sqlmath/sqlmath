@@ -2131,8 +2131,10 @@ typedef struct WinSlrResult {
     double yy0;                 // previous window-yy
     //
     double caa;                 // cosine-fit amplitude
-    double cpp;                 // cosine-fit angular-phase
     double cww;                 // cosine-fit angular-frequency
+    double cpp;                 // cosine-fit angular-phase
+    double ctt;                 // cosine-fit period
+    double ctp;                 // cosine-fit period-phase
     double cyy;                 // cosine y-estimate
     double cee;                 // cosine y-error
 } WinSlrResult;
@@ -2160,9 +2162,6 @@ static void win_slrcos_internal(
     const int icol
 ) {
 // This function will calculate running cosine-fit.
-    if (result->nnn <= 2) {
-        return;
-    }
     // calculate cosfit caa
     double laa = result->laa;   // linest intercept
     double lbb = result->lbb;   // linest slope
@@ -2234,23 +2233,29 @@ static void win_slrcos_internal(
         cpp += 2 * MATH_PI;
     }
     cww = MAX(cww, MATH_PI / (2 * result->exx));
-    //!! cww = MIN(cww, MATH_PI / (3 * result->exx) * nnn);
+    cww = MIN(cww, MATH_PI / (4 * result->exx) * sqrt(nnn));
     result->cpp = cpp;
     result->cww = cww;
+    // calculate cosfit ctt, ctp
+    result->ctt = 2 * MATH_PI / cww;
     // calculate cosfit cee, cyy
     myy = 0;
     vyy = 0;
-    double cyy = 0;
+    const int xx = slr->xx;
     for (int ii = 0; ii < nbody; ii += ncol * 3) {
-        cyy = caa * cos(cpp + fmod(cww * ttyy[ii + 0], 2 * MATH_PI));
-        const double yy = pow(cyy - ttyy[ii + 2], 2);
+        const double tt = ttyy[ii + 0];
+        const double cyy =
+            laa + lbb * tt + caa * cos(cpp + fmod(cww * tt, 2 * MATH_PI));
+        if (tt == xx) {
+            result->cyy = cyy;
+        }
+        const double yy = ttyy[ii + 1] - cyy;
         // welford - increment vyy
         const double dd = yy - myy;
         myy += dd / nnn;
         vyy += dd * (yy - myy);
     }
-    result->cee = sqrt(vyy / (nnn - 1));
-    result->cyy = cyy;
+    result->cee = sqrt(vyy / (nnn - 5));
 }
 
 static void win_slr_internal(

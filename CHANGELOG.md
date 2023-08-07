@@ -4,6 +4,7 @@
 - none
 
 # v2023.8.1-beta
+- sqlmath - Add test-file test_data_cosfit.csv.
 - sqlmath - Add sql-function win_slrcos2().
 - sqlmath - Update sql-function win_slr2() to input/output doublearray instead of json for better performance.
 - sqlmath - Rename sql-functions jsonfromdoublearray() to doublearray_jsonto(), jsontodoublearray() to doublearray_jsonfrom().
