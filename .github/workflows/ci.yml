@@ -22,7 +22,7 @@ jobs:
           - x64
           # - x86
         node_version:
-          - 16
+          # - 16
           - 18
           - 20
         python_version:

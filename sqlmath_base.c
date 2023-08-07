@@ -1418,17 +1418,19 @@ SQLMATH_FUNC static void sql1_doublearray_extract_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will extract double-value from <argv>[0]
-// at position <argv>[ii].
+// This function will extract double-value <xx> from <argv>[0]
+// at position <argv>[ii]. If <xx> is not finite, then return NULL.
     UNUSED_PARAMETER(argc);
     const int ii = sqlite3_value_int(argv[1]);
     const int nn = sqlite3_value_bytes(argv[0]) / sizeof(double);
-    if (nn <= 0 || nn <= ii) {
-        sqlite3_result_null(context);
-        return;
+    if (0 <= ii && ii < nn) {
+        const double xx = ((double *) sqlite3_value_blob(argv[0]))[ii];
+        if (isfinite(xx)) {
+            sqlite3_result_double(context, xx);
+            return;
+        }
     }
-    sqlite3_result_double(context,
-        ((double *) sqlite3_value_blob(argv[0]))[ii]);
+    sqlite3_result_null(context);
 }
 
 SQLMATH_FUNC static void sql1_doublearray_jsonfrom_func(
@@ -1905,7 +1907,7 @@ SQLMATH_FUNC static void sql3_win_ema2_value(
     if (!vec99->ncol) {
         sqlite3_result_null(context);
     }
-    jsonResultDoublearray(context, vec99_body + (int) vec99->wii,
+    doublearrayResult(context, vec99_body + (int) vec99->wii,
         (int) vec99->ncol);
 }
 
@@ -2077,7 +2079,7 @@ SQLMATH_FUNC static void sql3_win_quantile2_value(
     if (!vec99->ncol) {
         sqlite3_result_null(context);
     }
-    jsonResultDoublearray(context, vec99_head + (int) vec99->ncol + 1,
+    doublearrayResult(context, vec99_head + (int) vec99->ncol + 1,
         (int) vec99->ncol);
 }
 
@@ -2182,7 +2184,7 @@ static void win_slrcos_internal(
     }
     const double caa = sqrt(vyy / nnn);
     const double inva = 1 / caa;
-    if (!isfinite(inva)) {
+    if (!isfinite(inva) || !isfinite(1 / result->exx)) {
         return;
     }
     result->caa = caa;
@@ -2258,6 +2260,7 @@ static void win_slrcos_internal(
         myy += dd / nnn;
         vyy += dd * (yy - myy);
     }
+    // degrees-of-freedom = 5
     result->cee = sqrt(vyy / (nnn - 5));
 }
 
@@ -2352,11 +2355,10 @@ SQLMATH_FUNC static void sql3_win_slr2_final(
         sqlite3_result_null(context);
         return;
     }
-    sqlite3_result_blob(        //
+    doublearrayResult(          //
         context,                //
         vec99_head + ncol * WinSlrStepN,        //
-        (ncol * WinSlrResultN + vec99->nbody) * sizeof(double), //
-        SQLITE_TRANSIENT);
+        (ncol * WinSlrResultN + vec99->nbody));
     // vec99 - cleanup
     vector99_agg_free(vec99_agg);
 }

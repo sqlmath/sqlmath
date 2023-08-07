@@ -1223,26 +1223,35 @@ SELECT
                 sql: (`
 SELECT
         id,
-        win_ema2(
+        doublearray_jsonto(win_ema2(
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
             value->>1,
             IIF(id = 1, -1, value->>1),
             ${alpha}
         ) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
-        ) AS val
+        )) AS val
     FROM JSON_EAcH($valIn);
                 `)
             });
             valActual = valActual[0].map(function ({val}, ii, list) {
-                val = JSON.parse(val).map(function (elem) {
-                    return Number(elem.toFixed(4));
+                val = JSON.parse(val).map(function (elem, jj) {
+                    elem = Number(elem.toFixed(4));
+                    if (ii + (bb || 0) + 1 >= list.length && jj === 9) {
+                        assertJsonEqual(elem, valExpected2, valActual);
+                    } else {
+                        assertJsonEqual(elem, valExpected[ii], valActual);
+                    }
+                    return elem;
                 });
-                if (ii + (bb || 0) + 1 >= list.length) {
-                    assertJsonEqual(val[1], valExpected2, valActual);
-                } else {
-                    assertJsonEqual(val[1], val[0], valActual);
-                }
                 return val[0];
             });
             assertJsonEqual(valActual, valExpected);
@@ -1300,7 +1309,7 @@ SELECT win_ema1(1, 1) FROM __tmp1;
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_ema2(1, 2, 3) FROM __tmp1;
+SELECT doublearray_jsonto(win_ema2(1, 2, 3)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
@@ -1397,26 +1406,35 @@ SELECT
                 sql: (`
 SELECT
         id,
-        win_quantile2(
+        doublearray_jsonto(win_quantile2(
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
             value->>1,
             IIF(id = 34, -1, value->>1),
             ${quantile}
         ) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
-        ) AS val
+        )) AS val
     FROM JSON_EAcH($valIn);
                 `)
             });
             valActual = valActual[0].map(function ({val}, ii) {
-                val = JSON.parse(val).map(function (elem) {
-                    return Number(elem.toFixed(4));
+                val = JSON.parse(val).map(function (elem, jj) {
+                    elem = Number(elem.toFixed(4));
+                    if (ii === 11 && jj === 9) {
+                        assertJsonEqual(elem, valExpected2, valActual);
+                    } else {
+                        assertJsonEqual(elem, valExpected[ii], valActual);
+                    }
+                    return elem;
                 });
-                if (ii === 11) {
-                    assertJsonEqual(val[1], valExpected2, valActual);
-                } else {
-                    assertJsonEqual(val[1], val[0], valActual);
-                }
                 return val[0];
             });
             assertJsonEqual(valActual, valExpected);
@@ -1474,7 +1492,7 @@ SELECT win_quantile1(1, 1) FROM __tmp1;
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_quantile2(1, 2, 3) FROM __tmp1;
+SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
@@ -2453,25 +2471,25 @@ date close
                         db,
                         sql: (`
 SELECT
-        -- ROUND(doublearray_extract(__slr, 0), 2) AS nnn,
-        -- ROUND(doublearray_extract(__slr, 3), 2) AS exx,
+        -- ROUND(doublearray_extract(__slr, 0), 4) AS nnn,
+        -- ROUND(doublearray_extract(__slr, 3), 4) AS exx,
         --
-        -- ROUND(doublearray_extract(__slr, 5), 2) AS laa,
-        -- ROUND(doublearray_extract(__slr, 6), 2) AS lbb,
-        ROUND(0.01 * doublearray_extract(__slr, 8), 2) AS lyy,
-        ROUND(doublearray_extract(__slr, 9) * 100.0 / yy, 2) AS lee,
+        -- ROUND(doublearray_extract(__slr, 5), 4) AS laa,
+        -- ROUND(doublearray_extract(__slr, 6), 4) AS lbb,
+        ROUND(0.01 * doublearray_extract(__slr, 8), 4) AS lyy,
+        ROUND(doublearray_extract(__slr, 9) * 100.0 / yy, 4) AS lee,
         --
-        ROUND(doublearray_extract(__slr, 12), 2) AS caa,
-        ROUND(doublearray_extract(__slr, 13), 2) AS cww,
-        ROUND(doublearray_extract(__slr, 14), 2) AS cpp,
-        ROUND(doublearray_extract(__slr, 15), 2) AS ctt,
-        ROUND(doublearray_extract(__slr, 16), 2) AS ctp,
+        ROUND(doublearray_extract(__slr, 12), 4) AS caa,
+        ROUND(doublearray_extract(__slr, 13), 4) AS cww,
+        ROUND(doublearray_extract(__slr, 14), 4) AS cpp,
+        ROUND(doublearray_extract(__slr, 15), 4) AS ctt,
+        ROUND(doublearray_extract(__slr, 16), 4) AS ctp,
         --
-        ROUND(0.01 * doublearray_extract(__slr, 17), 2) AS cyy,
-        ROUND(doublearray_extract(__slr, 18) * 100.0 / yy, 2) AS cee,
+        ROUND(0.01 * doublearray_extract(__slr, 17), 4) AS cyy,
+        ROUND(doublearray_extract(__slr, 18) * 100.0 / yy, 4) AS cee,
         --
         date,
-        ROUND(0.01 * yy, 2) AS yy
+        ROUND(0.01 * yy, 4) AS yy
     FROM (
         SELECT
             win_slrcos2(value->>'ii', value->>'priceClose') OVER (
@@ -2506,7 +2524,7 @@ SELECT
                 valActual = valActual.replace((
                     / -?\d[\d.]*/g
                 ), function (num) {
-                    return ` ${Number(num).toFixed(2)}`;
+                    return ` ${Number(num).toFixed(4)}`;
                 });
                 valActual = valActual.replace((/  /g), " null ");
                 valActual = valActual.replace((/ \n/g), "\n");
