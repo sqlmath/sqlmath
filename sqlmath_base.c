@@ -1127,7 +1127,6 @@ SQLMATH_API double *vector99_head(
 SQLMATH_API Vector99 *vector99_malloc(
     const int nhead
 ) {
-    // const int alloc = sizeof(Vector99) + nhead * sizeof(double) + 0;
     const int alloc = sizeof(Vector99) + nhead * sizeof(double) + 256;
     if (alloc > SQLITE_MAX_LENGTH2) {
         return NULL;
@@ -2121,17 +2120,21 @@ typedef struct WinSlrResult {
     double myy;                 // average yy
     double exx;                 // stdev.s xx
     double eyy;                 // stdev.s yy
-    double lrr;                 // pearson xy
+    //
+    double laa;                 // linest y-intercept
     double lbb;                 // linest slope
-    double laa;                 // linest intercept
+    double lrr;                 // pearson xy
     double lyy;                 // linest y-estimate
     double lee;                 // linest y-error
+    //
     double xx0;                 // previous window-xx
     double yy0;                 // previous window-yy
     //
     double caa;                 // cosine-fit amplitude
     double cpp;                 // cosine-fit angular-phase
     double cww;                 // cosine-fit angular-frequency
+    double cyy;                 // cosine y-estimate
+    double cee;                 // cosine y-error
 } WinSlrResult;
 static const int WinSlrResultN = sizeof(WinSlrResult) / sizeof(double);
 
@@ -2157,12 +2160,12 @@ static void win_slrcos_internal(
     const int icol
 ) {
 // This function will calculate running cosine-fit.
+    if (result->nnn <= 2) {
+        return;
+    }
     // calculate cosfit caa
     double laa = result->laa;   // linest intercept
     double lbb = result->lbb;   // linest slope
-    if (isnan(laa) || isnan(lbb)) {
-        return;
-    }
     const int nbody = vec99->nbody;
     const int ncol = vec99->ncol;
     double *ttyy = vector99_body(vec99) + icol * 3;
@@ -2173,43 +2176,78 @@ static void win_slrcos_internal(
         const double yy = ttyy[ii + 1] - (laa + lbb * ttyy[ii + 0]);
         ttyy[ii + 2] = yy;
         nnn += 1;
+        // welford - increment vyy
         const double dd = yy - myy;
         myy += dd / nnn;
         vyy += dd * (yy - myy);
     }
-    result->caa = sqrt(vyy / nnn);
+    const double caa = sqrt(vyy / nnn);
+    const double inva = 1 / caa;
+    if (!isfinite(inva)) {
+        return;
+    }
+    result->caa = caa;
     // calculate cosfit cpp, cww
-    const double cpp = result->cpp;     // cosine-fit angular-phase
-    double cww = result->cww;   // cosine-fit angular-frequency
-    cww = MAX(cww, 2 * MATH_PI / nnn);
-    cww = MIN(cww, MATH_PI * nnn);
-    const double inva = 1 / result->caa;
-    const double invw = 2 * MATH_PI / cww;
+    double cww =                // angular-frequency
+        result->cww == 0 ? 2 * MATH_PI / result->exx : result->cww;
+    double cpp = result->cpp;   // angular-phase
     double gpp = 0;             // gradient-phase
     double gww = 0;             // gradient-frequency
     double hpp = 0;             // hessian ddr/dpdp
     double hpw = 0;             // hessian ddr/dpdw
     double hww = 0;             // hessian ddr/dwdw
+    //!! double invw = 2 * MATH_PI / cww;
     for (int ii = 0; ii < nbody; ii += ncol * 3) {
-        const double tt = fmod(ttyy[0], invw);
-        const double cost = cos(cpp + cww * tt);
-        const double sint = sin(cpp + cww * tt);
-        const double rr = pow(cost - inva * ttyy[2], 2);
+        // cpp cww - nonlinear jacobian
+        // hpp=ss  hpw=sst  | dpp = gpp=s(c-y/a)
+        // hpw=sst hww=sstt | dwp = gww=s(c-y/a)t
+        //
+        // det =  hpp*hww - hpw*hpw
+        // dpp =  hww -hpw | 1/det * gpp
+        // dwp = -hpw  hpp | 1/det * gww
+        const double tt = ttyy[ii + 0];
+        const double cost = cos(cpp + fmod(cww * tt, 2 * MATH_PI));
+        const double sint = sin(cpp + fmod(cww * tt, 2 * MATH_PI));
+        const double rr = cost - ttyy[ii + 2] * inva;
         const double gg0 = sint * rr;
-        const double hh0 = sint * sint - cost * rr;
+        const double hh0 = sint * sint;
+        //!! const double tt = fmod(ttyy[ii + 0], invw);
+        //!! const double cost = cos(cpp + cww * tt);
+        //!! const double sint = sin(cpp + cww * tt);
+        //!! const double rr = cost - ttyy[ii + 2] * inva;
+        //!! const double gg0 = sint * rr;
+        //!! const double hh0 = sint * sint - cost * rr;
         gpp += gg0;
         gww += gg0 * tt;
         hpp += hh0;
         hpw += hh0 * tt;
         hww += hh0 * tt * tt;
-        ttyy += ncol * 3;
     }
-    const double invh = 1 / (hpp * hww - hpw * hpw);
-    result->cww = cww + invh * (hpp * gww - hpw * gpp);
-    result->cww = MAX(result->cww, 2 * MATH_PI / nnn);
-    result->cww = MIN(result->cww, MATH_PI * nnn);
-    result->cpp = cpp + invh * (hww * gpp - hpw * gww);
-    result->cpp = fmod(result->cpp, 2 * MATH_PI);
+    const double invd = 1 / (hpp * hww - hpw * hpw);
+    if (!isfinite(invd)) {
+        return;
+    }
+    cpp += invd * (hww * gpp - hpw * gww);
+    cww += invd * (-hpw * gpp + hpp * gww);
+    //!! cpp = fmod(cpp, 2 * MATH_PI);
+    //!! cww = MAX(cww, MATH_PI / (2 * result->exx));
+    //!! cww = MIN(cww, MATH_PI / (3 * result->exx) * nnn);
+    result->cpp = cpp;
+    result->cww = cww;
+    // calculate cosfit cee, cyy
+    myy = 0;
+    vyy = 0;
+    double cyy = 0;
+    for (int ii = 0; ii < nbody; ii += ncol * 3) {
+        cyy = caa * cos(cpp + fmod(cww * ttyy[ii + 0], 2 * MATH_PI));
+        const double yy = pow(cyy - ttyy[ii + 2], 2);
+        // welford - increment vyy
+        const double dd = yy - myy;
+        myy += dd / nnn;
+        vyy += dd * (yy - myy);
+    }
+    result->cee = sqrt(vyy / (nnn - 1));
+    result->cyy = cyy;
 }
 
 static void win_slr_internal(
@@ -2272,8 +2310,8 @@ static void win_slr_internal(
     result->exx = sqrt(vxx * slr->inv1);
     result->eyy = sqrt(vyy * slr->inv1);
     result->lrr = lrr;
-    result->lbb = lbb;
     result->laa = laa;
+    result->lbb = lbb;
     result->lyy = laa + lbb * xx;
     result->lee = sqrt(vyy * (1 - lrr * lrr) * slr->inv2);
     result->xx0 = 0;

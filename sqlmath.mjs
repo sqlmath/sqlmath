@@ -60,7 +60,7 @@ let SQLITE_OPEN_TEMP_JOURNAL = 0x00001000;  /* VFS only */
 let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
 let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
 let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
-let SQLITE_WIN_SLR_ELEM_SIZE = 12 + 3;
+let SQLITE_WIN_SLR_ELEM_SIZE = 5 + 5 + 2 + 5;
 let cModule;
 let cModulePath;
 let consoleError = console.error;
