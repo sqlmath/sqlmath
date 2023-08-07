@@ -2186,7 +2186,19 @@ static void win_slrcos_internal(
         return;
     }
     result->caa = caa;
-    // calculate cosfit cpp, cww
+    // calculate cosfit cpp, cww - using gauss-newton-method
+    //
+    // yy = aa*cos(pp + ww*tt)
+    //
+    // hpp=sin*sin    hpw=sin*sin*tt    | dp = gpp=sin*(cos-yy/aa)
+    // hpw=sin*sin*tt hww=sin*sin*tt*tt | dw = gww=sin*(cos-yy/aa)*tt
+    //
+    // det = hpp*hww - hpw*hpw
+    // dp = +hww -hpw | gpp/det
+    // dw = -hpw  hpp | gww/det
+    //
+    // cpp = cpp + dp
+    // cww = cww + dw
     double cww =                // angular-frequency
         result->cww == 0 ? 2 * MATH_PI / result->exx : result->cww;
     double cpp = result->cpp;   // angular-phase
@@ -2195,27 +2207,12 @@ static void win_slrcos_internal(
     double hpp = 0;             // hessian ddr/dpdp
     double hpw = 0;             // hessian ddr/dpdw
     double hww = 0;             // hessian ddr/dwdw
-    //!! double invw = 2 * MATH_PI / cww;
     for (int ii = 0; ii < nbody; ii += ncol * 3) {
-        // cpp cww - nonlinear jacobian
-        // hpp=ss  hpw=sst  | dpp = gpp=s(c-y/a)
-        // hpw=sst hww=sstt | dwp = gww=s(c-y/a)t
-        //
-        // det =  hpp*hww - hpw*hpw
-        // dpp =  hww -hpw | 1/det * gpp
-        // dwp = -hpw  hpp | 1/det * gww
         const double tt = ttyy[ii + 0];
         const double cost = cos(cpp + fmod(cww * tt, 2 * MATH_PI));
         const double sint = sin(cpp + fmod(cww * tt, 2 * MATH_PI));
-        const double rr = cost - ttyy[ii + 2] * inva;
-        const double gg0 = sint * rr;
+        const double gg0 = sint * (cost - ttyy[ii + 2] * inva);
         const double hh0 = sint * sint;
-        //!! const double tt = fmod(ttyy[ii + 0], invw);
-        //!! const double cost = cos(cpp + cww * tt);
-        //!! const double sint = sin(cpp + cww * tt);
-        //!! const double rr = cost - ttyy[ii + 2] * inva;
-        //!! const double gg0 = sint * rr;
-        //!! const double hh0 = sint * sint - cost * rr;
         gpp += gg0;
         gww += gg0 * tt;
         hpp += hh0;
@@ -2226,8 +2223,8 @@ static void win_slrcos_internal(
     if (!isfinite(invd)) {
         return;
     }
-    cpp += invd * (hww * gpp - hpw * gww);
-    cww += invd * (-hpw * gpp + hpp * gww);
+    cpp += (+hww * gpp - hpw * gww) * invd;
+    cww += (-hpw * gpp + hpp * gww) * invd;
     cpp = fmod(cpp, 2 * MATH_PI);
     if (cpp < 0) {
         cpp += 2 * MATH_PI;
@@ -2237,11 +2234,17 @@ static void win_slrcos_internal(
     result->cpp = cpp;
     result->cww = cww;
     // calculate cosfit ctt, ctp
+    const int xx = slr->xx;
     result->ctt = 2 * MATH_PI / cww;
+    result->ctp = fmod(         //
+        (cpp + fmod(cww * xx, 2 * MATH_PI)) / (cww * result->ctt),      //
+        1);
+    if (result->ctp < 0) {
+        result->ctp += 1;
+    }
     // calculate cosfit cee, cyy
     myy = 0;
     vyy = 0;
-    const int xx = slr->xx;
     for (int ii = 0; ii < nbody; ii += ncol * 3) {
         const double tt = ttyy[ii + 0];
         const double cyy =

@@ -2174,6 +2174,7 @@ SELECT
             // test win_slrcos2-spx handling-behavior
             (async function () {
                 let testDataSpx;
+                let ttCosfit = 252;
                 let valActual;
                 let valExpected;
                 testDataSpx = (`
@@ -2475,7 +2476,7 @@ SELECT
         SELECT
             win_slrcos2(value->>'ii', value->>'priceClose') OVER (
                 ORDER BY NULL ASC
-                ROWS BETWEEN 252 PRECEDING AND 0 FOLLOWING
+                ROWS BETWEEN ${ttCosfit - 1} PRECEDING AND 0 FOLLOWING
             ) AS __slr,
             value->>'date' AS date,
             value->>'priceClose' AS yy
@@ -2485,14 +2486,15 @@ SELECT
                     })
                 )[0];
                 valActual = (
-                    "date caa cww cpp ctt yy lyy cyy lee cee\n"
-                    + valActual.slice(252).map(function (elem) {
+                    "date caa cww cpp ctt ctp yy lyy cyy lee cee\n"
+                    + valActual.slice(ttCosfit).map(function (elem) {
                         return [
                             elem.date,
                             elem.caa,
                             elem.cww,
                             elem.cpp,
                             elem.ctt,
+                            elem.ctp,
                             elem.yy,
                             elem.lyy,
                             elem.cyy,
