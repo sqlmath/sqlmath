@@ -1210,12 +1210,12 @@ CREATE TEMP TABLE __tmp1 AS
     SELECT
         id,
         __slr,
-        doublearray_extract(__slr, 0 * ${SIZE_SLR} + 10) AS xx1,
-        doublearray_extract(__slr, 0 * ${SIZE_SLR} + 11) AS yy1,
-        doublearray_extract(__slr, 8 * ${SIZE_SLR} + 10) AS xx2,
-        doublearray_extract(__slr, 8 * ${SIZE_SLR} + 11) AS yy2,
-        doublearray_extract(__slr, 9 * ${SIZE_SLR} + 10) AS xx3,
-        doublearray_extract(__slr, 9 * ${SIZE_SLR} + 11) AS yy3
+        doublearray_extract(__slr, 0 * ${SIZE_SLR} + 03) AS xx1,
+        doublearray_extract(__slr, 0 * ${SIZE_SLR} + 05) AS yy1,
+        doublearray_extract(__slr, 8 * ${SIZE_SLR} + 03) AS xx2,
+        doublearray_extract(__slr, 8 * ${SIZE_SLR} + 05) AS yy2,
+        doublearray_extract(__slr, 9 * ${SIZE_SLR} + 03) AS xx3,
+        doublearray_extract(__slr, 9 * ${SIZE_SLR} + 05) AS yy3
     FROM (
         SELECT
             id,
@@ -1271,48 +1271,48 @@ UPDATE __tmp1
 SELECT
         id,
         --
-        ROUND(__slr->>(0 * ${SIZE_SLR} + 0), 8) AS nnn1,
-        ROUND(__slr->>(0 * ${SIZE_SLR} + 1), 8) AS mxx1,
-        ROUND(__slr->>(0 * ${SIZE_SLR} + 2), 8) AS myy1,
-        ROUND(__slr->>(0 * ${SIZE_SLR} + 3), 8) AS exx1,
-        ROUND(__slr->>(0 * ${SIZE_SLR} + 4), 8) AS eyy1,
-        ROUND(__slr->>(0 * ${SIZE_SLR} + 5), 8) AS laa1,
-        ROUND(__slr->>(0 * ${SIZE_SLR} + 6), 8) AS lbb1,
-        ROUND(__slr->>(0 * ${SIZE_SLR} + 7), 8) AS lrr1,
-        ROUND(__slr->>(0 * ${SIZE_SLR} + 8), 8) AS lyy1,
-        ROUND(__slr->>(0 * ${SIZE_SLR} + 9), 8) AS lee1,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 00), 8) AS nnn1,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 01), 8) AS mxx1,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 02), 8) AS myy1,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 03), 8) AS xx11,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 04), 8) AS xe11,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 05), 8) AS yy11,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 06), 8) AS ye11,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 07), 8) AS yy21,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 08), 8) AS ye21,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 09), 8) AS laa1,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 10), 8) AS lbb1,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 11), 8) AS lrr1,
         --
-        ROUND(__slr->>(8 * ${SIZE_SLR} + 0), 8) AS nnn2,
-        ROUND(__slr->>(8 * ${SIZE_SLR} + 1), 8) AS mxx2,
-        ROUND(__slr->>(8 * ${SIZE_SLR} + 2), 8) AS myy2,
-        ROUND(__slr->>(8 * ${SIZE_SLR} + 3), 8) AS exx2,
-        ROUND(__slr->>(8 * ${SIZE_SLR} + 4), 8) AS eyy2,
-        ROUND(__slr->>(8 * ${SIZE_SLR} + 5), 8) AS laa2,
-        ROUND(__slr->>(8 * ${SIZE_SLR} + 6), 8) AS lbb2,
-        ROUND(__slr->>(8 * ${SIZE_SLR} + 7), 8) AS lrr2,
-        ROUND(__slr->>(8 * ${SIZE_SLR} + 8), 8) AS lyy2,
-        ROUND(__slr->>(8 * ${SIZE_SLR} + 9), 8) AS lee2,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 00), 8) AS nnn2,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 01), 8) AS mxx2,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 02), 8) AS myy2,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 03), 8) AS xx12,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 04), 8) AS xe12,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 05), 8) AS yy12,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 06), 8) AS ye12,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 07), 8) AS yy22,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 08), 8) AS ye22,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 09), 8) AS laa2,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 10), 8) AS lbb2,
+        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 11), 8) AS lrr2,
         --
-        ROUND(__slr->>(9 * ${SIZE_SLR} + 0), 8) AS nnn3,
-        ROUND(__slr->>(9 * ${SIZE_SLR} + 1), 8) AS mxx3,
-        ROUND(__slr->>(9 * ${SIZE_SLR} + 2), 8) AS myy3,
-        ROUND(__slr->>(9 * ${SIZE_SLR} + 3), 8) AS exx3,
-        ROUND(__slr->>(9 * ${SIZE_SLR} + 4), 8) AS eyy3,
-        ROUND(__slr->>(9 * ${SIZE_SLR} + 5), 8) AS laa3,
-        ROUND(__slr->>(9 * ${SIZE_SLR} + 6), 8) AS lbb3,
-        ROUND(__slr->>(9 * ${SIZE_SLR} + 7), 8) AS lrr3,
-        ROUND(__slr->>(9 * ${SIZE_SLR} + 8), 8) AS lyy3,
-        ROUND(__slr->>(9 * ${SIZE_SLR} + 9), 8) AS lee3
-    FROM (SELECT id, doublearray_jsonto(__slr) AS __slr FROM __tmp1);
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 00), 8) AS nnn3,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 01), 8) AS mxx3,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 02), 8) AS myy3,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 03), 8) AS xx13,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 04), 8) AS xe13,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 05), 8) AS yy13,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 06), 8) AS ye13,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 07), 8) AS yy23,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 08), 8) AS ye23,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 09), 8) AS laa3,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 10), 8) AS lbb3,
+        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 11), 8) AS lrr3
+    FROM __tmp1;
                 `)
             });
             valActual = valActual[0].map(function ({
-                exx1,
-                exx2,
-                exx3,
-                eyy1,
-                eyy2,
-                eyy3,
                 id,
                 laa1,
                 laa2,
@@ -1320,15 +1320,9 @@ SELECT
                 lbb1,
                 lbb2,
                 lbb3,
-                lee1,
-                lee2,
-                lee3,
                 lrr1,
                 lrr2,
                 lrr3,
-                lyy1,
-                lyy2,
-                lyy3,
                 mxx1,
                 mxx2,
                 mxx3,
@@ -1337,49 +1331,61 @@ SELECT
                 myy3,
                 nnn1,
                 nnn2,
-                nnn3
+                nnn3,
+                xe11,
+                xe12,
+                xe13,
+                ye11,
+                ye12,
+                ye13,
+                ye21,
+                ye22,
+                ye23,
+                yy21,
+                yy22,
+                yy23
             }, ii, list) {
                 let obj1;
                 let obj2;
                 let obj3;
                 obj1 = {
-                    exx: exx1,
-                    eyy: eyy1,
                     id,
                     laa: laa1,
                     lbb: lbb1,
-                    lee: lee1,
                     lrr: lrr1,
-                    lyy: lyy1,
                     mxx: mxx1,
                     myy: myy1,
-                    nnn: nnn1
+                    nnn: nnn1,
+                    xe1: xe11,
+                    ye1: ye11,
+                    ye2: ye21,
+                    yy2: yy21
                 };
                 obj2 = {
-                    exx: exx2,
-                    eyy: eyy2,
                     id,
                     laa: laa2,
                     lbb: lbb2,
-                    lee: lee2,
                     lrr: lrr2,
-                    lyy: lyy2,
                     mxx: mxx2,
                     myy: myy2,
-                    nnn: nnn2
+                    nnn: nnn2,
+                    xe1: xe12,
+                    ye1: ye12,
+                    ye2: ye22,
+                    yy2: yy22
                 };
                 obj3 = {
-                    exx: exx3,
-                    eyy: eyy3,
                     id,
                     laa: laa3,
                     lbb: lbb3,
-                    lee: lee3,
                     lrr: lrr3,
-                    lyy: lyy3,
                     mxx: mxx3,
                     myy: myy3,
-                    nnn: nnn3
+                    nnn: nnn3,
+                    xe1: xe13,
+                    ye1: ye13,
+                    ye2: ye23,
+                    yy2: yy23
                 };
                 switch (list.length - ii) {
                 case 1:
@@ -1400,134 +1406,134 @@ SELECT
         }
         valExpected0 = [
             {
-                "exx": null,
-                "eyy": null,
                 "id": 1,
                 "laa": null,
                 "lbb": null,
-                "lee": null,
                 "lrr": null,
-                "lyy": null,
                 "mxx": 2,
                 "myy": 0,
-                "nnn": 1
+                "nnn": 1,
+                "xe1": null,
+                "ye1": null,
+                "ye2": null,
+                "yy2": null
             },
             {
-                "exx": 2e-8,
-                "eyy": 0.70710678,
                 "id": 4,
                 "laa": null,
                 "lbb": null,
-                "lee": null,
                 "lrr": null,
-                "lyy": null,
                 "mxx": 2,
                 "myy": 0.5,
-                "nnn": 2
+                "nnn": 2,
+                "xe1": 2e-8,
+                "ye1": 0.70710678,
+                "ye2": null,
+                "yy2": null
             },
             {
-                "exx": 0.57735027,
-                "eyy": 1.52752523,
                 "id": 7,
                 "laa": -4.5,
                 "lbb": 2.5,
-                "lee": 0.70710678,
                 "lrr": 0.94491118,
-                "lyy": 3,
                 "mxx": 2.33333333,
                 "myy": 1.33333333,
-                "nnn": 3
+                "nnn": 3,
+                "xe1": 0.57735027,
+                "ye1": 1.52752523,
+                "ye2": 0.70710678,
+                "yy2": 3
             },
             {
-                "exx": 0.95742711,
-                "eyy": 1.82574186,
                 "id": 10,
                 "laa": -3,
                 "lbb": 1.81818182,
-                "lee": 0.67419986,
                 "lrr": 0.95346259,
-                "lyy": 4.27272727,
                 "mxx": 2.75,
                 "myy": 2,
-                "nnn": 4
+                "nnn": 4,
+                "xe1": 0.95742711,
+                "ye1": 1.82574186,
+                "ye2": 0.67419986,
+                "yy2": 4.27272727
             },
             {
-                "exx": 1.30384048,
-                "eyy": 2.07364414,
                 "id": 13,
                 "laa": -2.29411765,
                 "lbb": 1.52941176,
-                "lee": 0.65678958,
                 "lrr": 0.96164474,
-                "lyy": 5.35294118,
                 "mxx": 3.2,
                 "myy": 2.6,
-                "nnn": 5
+                "nnn": 5,
+                "xe1": 1.30384048,
+                "ye1": 2.07364414,
+                "ye2": 0.65678958,
+                "yy2": 5.35294118
             },
             {
-                "exx": 1.37840488,
-                "eyy": 2.31660671,
                 "id": 16,
                 "laa": -2.54385965,
                 "lbb": 1.63157895,
-                "lee": 0.62126074,
                 "lrr": 0.97080629,
-                "lyy": 5.61403509,
                 "mxx": 3.5,
                 "myy": 3.16666667,
-                "nnn": 6
+                "nnn": 6,
+                "xe1": 1.37840488,
+                "ye1": 2.31660671,
+                "ye2": 0.62126074,
+                "yy2": 5.61403509
             },
             {
-                "exx": 1.38013112,
-                "eyy": 2.37045304,
                 "id": 19,
                 "laa": -2.65,
                 "lbb": 1.675,
-                "lee": 0.57445626,
                 "lrr": 0.9752227,
-                "lyy": 5.725,
                 "mxx": 3.71428571,
                 "myy": 3.57142857,
-                "nnn": 7
+                "nnn": 7,
+                "xe1": 1.38013112,
+                "ye1": 2.37045304,
+                "ye2": 0.57445626,
+                "yy2": 5.725
             },
             {
-                "exx": 1.51185789,
-                "eyy": 2.50713268,
                 "id": 22,
                 "laa": -2.5,
                 "lbb": 1.625,
-                "lee": 0.54006172,
                 "lrr": 0.97991187,
-                "lyy": 7.25,
                 "mxx": 4,
                 "myy": 4,
-                "nnn": 8
+                "nnn": 8,
+                "xe1": 1.51185789,
+                "ye1": 2.50713268,
+                "ye2": 0.54006172,
+                "yy2": 7.25
             },
             {
-                "exx": 2.39045722,
-                "eyy": 2.26778684,
                 "id": 25,
                 "laa": 0.75,
                 "lbb": 0.85,
-                "lee": 1.08781126,
                 "lrr": 0.89597867,
-                "lyy": 9.25,
                 "mxx": 5,
                 "myy": 5,
-                "nnn": 8
+                "nnn": 8,
+                "xe1": 2.39045722,
+                "ye1": 2.26778684,
+                "ye2": 1.08781126,
+                "yy2": 9.25
             },
             {
-                "exx": 2.39045722,
-                "eyy": 1.60356745,
                 "id": 28,
                 "laa": 2.75,
                 "lbb": 0.55,
-                "lee": 0.99163165,
                 "lrr": 0.81989159,
-                "lyy": 3.85,
                 "mxx": 5,
                 "myy": 5.5,
-                "nnn": 8
+                "nnn": 8,
+                "xe1": 2.39045722,
+                "ye1": 1.60356745,
+                "ye2": 0.99163165,
+                "yy2": 3.85
             }
         ];
         valIn = [
@@ -1551,7 +1557,7 @@ SELECT
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT doublearray_jsonto(win_cosfit2(1)) FROM (SELECT 1);
+SELECT win_cosfit2(1) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
@@ -1585,20 +1591,22 @@ SELECT
                 });
                 valActual = valActual.map(function (xx) {
                     return Number(xx.toFixed(8));
-                }).slice(0, 10);
+                }).slice(0, 12);
                 assertJsonEqual(
                     valActual,
                     [
                         10, // nnn
                         4.4, // mxx
                         4.5, // myy
-                        2.45854519, // exx
-                        2.54950976, // eyy
+                        2, // xx1
+                        2.45854519, // xe1
+                        5, // yy1
+                        2.54950976, // ye1
+                        2.47058824, // yy2
+                        1.56536502, // ye2
                         0.77941176, // laa
                         0.84558824, // lbb
-                        0.81541829, // lrr
-                        2.47058824, // lyy
-                        1.56536502 // lee
+                        0.81541829 // lrr
                     ]
                 );
             }()),
@@ -1607,32 +1615,36 @@ SELECT
                 let valActual;
                 let valExpected;
                 valActual = {
-                    "exx": 29.003448070876,
-                    "eyy": 4.89897948556636,
-                    "laa": -0.820256776034237,
-                    "lbb": 0.146219686162625,
-                    "lee": 2.74202903932406,
-                    "lrr": 0.865664999629448,
-                    "lyy": 6.63694721825963,
+                    "laa": -0.82025678,
+                    "lbb": 0.14621969,
+                    "lrr": 0.865665,
                     "mxx": 74,
                     "myy": 10,
-                    "nnn": 6
+                    "nnn": 6,
+                    "xe1": 29.00344807,
+                    "xx1": 51,
+                    "ye1": 4.89897949,
+                    "ye2": 2.74202904,
+                    "yy1": 5,
+                    "yy2": 6.63694722
                 };
                 valExpected = noop(
                     await dbExecAsync({
                         db,
                         sql: (`
 SELECT
-        doublearray_extract(__slr, 0) AS nnn,
-        doublearray_extract(__slr, 1) AS mxx,
-        doublearray_extract(__slr, 2) AS myy,
-        doublearray_extract(__slr, 3) AS exx,
-        doublearray_extract(__slr, 4) AS eyy,
-        doublearray_extract(__slr, 5) AS laa,
-        doublearray_extract(__slr, 6) AS lbb,
-        doublearray_extract(__slr, 7) AS lrr,
-        doublearray_extract(__slr, 8) AS lyy,
-        doublearray_extract(__slr, 9) AS lee
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 00), 8) AS nnn,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 01), 8) AS mxx,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 02), 8) AS myy,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 03), 8) AS xx1,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 04), 8) AS xe1,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 05), 8) AS yy1,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 06), 8) AS ye1,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 07), 8) AS yy2,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 08), 8) AS ye2,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 09), 8) AS laa,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 10), 8) AS lbb,
+        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 11), 8) AS lrr
     FROM (
         SELECT
             win_cosfit2(xx, yy) AS __slr
@@ -1656,30 +1668,30 @@ SELECT
                 bb: 0,
                 valExpected: valExpected0,
                 valExpected2: {
-                    "exx": 2.39045722,
-                    "eyy": 2.74837614,
                     "id": 25,
                     "laa": 5.25,
                     "lbb": -0.275,
-                    "lee": 2.88241797,
                     "lrr": -0.23918696,
-                    "lyy": 2.5,
                     "mxx": 5,
                     "myy": 3.875,
-                    "nnn": 8
+                    "nnn": 8,
+                    "xe1": 2.39045722,
+                    "ye1": 2.74837614,
+                    "ye2": 2.88241797,
+                    "yy2": 2.5
                 },
                 valExpected3: {
-                    "exx": 2.39045722,
-                    "eyy": 2.50356888,
                     "id": 28,
                     "laa": 7.25,
                     "lbb": -0.575,
-                    "lee": 2.26016224,
                     "lrr": -0.5490214,
-                    "lyy": 6.1,
                     "mxx": 5,
                     "myy": 4.375,
-                    "nnn": 8
+                    "nnn": 8,
+                    "xe1": 2.39045722,
+                    "ye1": 2.50356888,
+                    "ye2": 2.26016224,
+                    "yy2": 6.1
                 }
             }),
             // test win_cosfit2-spx handling-behavior
@@ -1964,22 +1976,16 @@ date close
                         db,
                         sql: (`
 SELECT
-        -- ROUND(doublearray_extract(__slr, 0), 4) AS nnn,
-        -- ROUND(doublearray_extract(__slr, 3), 4) AS exx,
+        ROUND(0.01 * doublearray_extract(__slr, 07), 4) AS yy2,
+        ROUND(doublearray_extract(__slr, 08) * 100.0 / yy, 4) AS ye2,
+        ROUND(0.01 * doublearray_extract(__slr, 12), 4) AS yy3,
+        ROUND(doublearray_extract(__slr, 13) * 100.0 / yy, 4) AS ye3,
         --
-        -- ROUND(doublearray_extract(__slr, 5), 4) AS laa,
-        -- ROUND(doublearray_extract(__slr, 6), 4) AS lbb,
-        ROUND(0.01 * doublearray_extract(__slr, 8), 4) AS lyy,
-        ROUND(doublearray_extract(__slr, 9) * 100.0 / yy, 4) AS lee,
-        --
-        ROUND(doublearray_extract(__slr, 12), 4) AS caa,
-        ROUND(doublearray_extract(__slr, 13), 4) AS cww,
-        ROUND(doublearray_extract(__slr, 14), 4) AS cpp,
-        ROUND(doublearray_extract(__slr, 15), 4) AS ctt,
-        ROUND(doublearray_extract(__slr, 16), 4) AS ctp,
-        --
-        ROUND(0.01 * doublearray_extract(__slr, 17), 4) AS cyy,
-        ROUND(doublearray_extract(__slr, 18) * 100.0 / yy, 4) AS cee,
+        ROUND(doublearray_extract(__slr, 14), 4) AS caa,
+        ROUND(doublearray_extract(__slr, 15), 4) AS cww,
+        ROUND(doublearray_extract(__slr, 16), 4) AS cpp,
+        ROUND(doublearray_extract(__slr, 17), 4) AS ctt,
+        ROUND(doublearray_extract(__slr, 18), 4) AS ctp,
         --
         date,
         ROUND(0.01 * yy, 4) AS yy
@@ -1997,7 +2003,7 @@ SELECT
                     })
                 )[0];
                 valActual = (
-                    "date caa cww cpp ctt ctp yy lyy cyy lee cee\n"
+                    "date caa cww cpp ctt ctp yy yy2 yy3 ye2 ye3\n"
                     + valActual.slice(ttCosfit).map(function (elem) {
                         return [
                             elem.date,
@@ -2007,10 +2013,10 @@ SELECT
                             elem.ctt,
                             elem.ctp,
                             elem.yy,
-                            elem.lyy,
-                            elem.cyy,
-                            elem.lee,
-                            elem.cee
+                            elem.yy2,
+                            elem.yy3,
+                            elem.ye2,
+                            elem.ye3
                         ].join(" ");
                     }).join("\n")
                 );

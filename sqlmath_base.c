@@ -2139,29 +2139,29 @@ static const int WinCosfitInternalN =
     sizeof(WinCosfitInternal) / sizeof(double);
 
 typedef struct WinCosfitResult {
-    double nnn;                 // number of elements
+    double nnn;                 // 00 number of elements
+    double mxx;                 // 01 x-average
+    double myy;                 // 02 y-average
     //
-    double mxx;                 // average xx
-    double myy;                 // average yy
-    double xe1;                 // stdev.s xx
-    double ye1;                 // stdev.s yy
+    double xx1;                 // 03 x-actual
+    double xe1;                 // 04 x-stdev.s1
+    double yy1;                 // 05 y-actual
+    double ye1;                 // 06 y-stdev.s1
+    double yy2;                 // 07 y-estimate linest
+    double ye2;                 // 08 y-stdev.s2 linest
     //
-    double laa;                 // linest y-intercept
-    double lbb;                 // linest slope
-    double crr;                 // pearson-correlation xy
-    double yy2;                 // linest y-estimate
-    double ye2;                 // linest y-error
+    double laa;                 // 09 linest y-intercept
+    double lbb;                 // 10 linest slope
+    double lrr;                 // 11 linest pearson-correlation xy
     //
-    double xx1;
-    double yy1;
+    double yy3;                 // 12 y-estimate cosine
+    double ye3;                 // 13 y-stdev.s5 cosine
     //
-    double caa;                 // cosine amplitude
-    double cww;                 // cosine angular-frequency
-    double cpp;                 // cosine angular-phase
-    double ctt;                 // cosine period
-    double ctp;                 // cosine period-phase
-    double yy3;                 // cosine y-estimate
-    double ye3;                 // cosine y-error
+    double caa;                 // 14 cosine amplitude
+    double cww;                 // 15 cosine angular-frequency
+    double cpp;                 // 16 cosine phase
+    double ctt;                 // 17 cosine period
+    double ctp;                 // 18 cosine period-phase
 } WinCosfitResult;
 static const int WinCosfitResultN = sizeof(WinCosfitResult) / sizeof(double);
 
@@ -2322,8 +2322,8 @@ static void winCosfitSlr(
     wci->vxx = vxx;
     wci->vxy = vxy;
     wci->vyy = vyy;
-    // calculate slr - lxx
-    const double crr = vxy / sqrt(vxx * vyy);
+    // calculate slr - lrr, lbb, laa
+    const double lrr = vxy / sqrt(vxx * vyy);
     const double lbb = vxy / vxx;
     const double laa = myy - lbb * mxx;
     result->nnn = wci->nnn;
@@ -2331,11 +2331,11 @@ static void winCosfitSlr(
     result->myy = myy;
     result->xe1 = sqrt(vxx * wci->inv1);
     result->ye1 = sqrt(vyy * wci->inv1);
-    result->crr = crr;
+    result->lrr = lrr;
     result->laa = laa;
     result->lbb = lbb;
     result->yy2 = laa + lbb * xx;
-    result->ye2 = sqrt(vyy * (1 - crr * crr) * wci->inv2);
+    result->ye2 = sqrt(vyy * (1 - lrr * lrr) * wci->inv2);
     result->xx1 = xx;
     result->yy1 = yy;
 }
