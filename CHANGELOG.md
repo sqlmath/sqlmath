@@ -5,6 +5,7 @@
 - none
 
 # v2023.8.1-beta
+- sqlmath - Update sql-functions win_cosfit2(), win_emax(), win_quantilex() to move variable-length arguments to last position.
 - sqlmath - Update sql-function win_cosfit2() with additional argument modeNoCsf.
 - sqlmath - Merge sql-functions win_slr2(), win_slrcos2() into sql-function win_cosfit2().
 - sqlmath - Streamline sql-function win_slr2_step() to only update last datapoint.

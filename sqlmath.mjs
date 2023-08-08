@@ -1155,7 +1155,7 @@ function sqlCosfitExtract(wcf, ii, key) {
         "yy3", "ye3",
         "caa", "cww", "cpp", "ctt", "ctp"
     ]).indexOf(key);
-    assertOrThrow(jj >= 0);
+    assertOrThrow(jj >= 0, `sqlCosfitExtract - invalid key "${key}"`);
     return `doublearray_extract(${wcf}, ${ii * 19 + jj})`;
 }
 

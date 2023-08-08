@@ -2092,7 +2092,7 @@ static void sql3_win_cosfit2_step(
 // This function will calculate running simple-linear-regression
 // and cosine-regression as:
 //     yy = laa + lbb*xx + caa*cos(cww*xx + cpp)
-    if (argc < 2 + 1 || argc % 2 != 1) {
+    if (argc < 1 + 2 || argc % 2 != 1) {
         sqlite3_result_error(context,
             "wrong number of arguments to function win_cosfit2()", -1);
         return;
@@ -2105,9 +2105,11 @@ static void sql3_win_cosfit2_step(
         // ncol
         vec99->ncol = ncol;
     }
-    // vec99 - init xx, yy, xx0, yy0
-    const int wii0 = vec99->wii;
+    // vec99 - init argv - xx, yy, xx0, yy0
     WinCosfitInternal *wci = NULL;
+    const int modeNocsf = sqlite3_value_int(argv[0]);
+    const int wii0 = vec99->wii;
+    argv += 1;
     for (int ii = 0; ii < ncol; ii += 1) {
         wci = (WinCosfitInternal *) vec99_head + ii;
         sqlite3_value_double_or_prev(argv[0], &wci->xx1);
@@ -2120,7 +2122,6 @@ static void sql3_win_cosfit2_step(
         argv += 2;
     }
     // vec99 - calculate lnr, csf
-    const int modeNocsf = sqlite3_value_int(argv[0]);
     WinCosfitResult *result =
         (WinCosfitResult *) (vec99_head + ncol * WinCosfitInternalN);
     wci = (WinCosfitInternal *) vec99_head;
@@ -2257,7 +2258,7 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
         // ncol
         vec99->ncol = ncol;
         // arg_alpha
-        arg_alpha = sqlite3_value_double_or_nan(argv[argc - 1]);
+        arg_alpha = sqlite3_value_double_or_nan(argv[0]);
         if (isnan(arg_alpha)) {
             sqlite3_result_error(context,
                 "invalid argument 'alpha' to function win_emax()", -1);
@@ -2265,12 +2266,12 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
         }
         vec99_head[ncol + 0] = arg_alpha;
     }
-    // declare var
+    // vec99 - calculate ema
     arg_alpha = vec99_head[ncol + 0];
     const int nrow = vec99->nbody / ncol;
-    // vec99 - calculate ema
+    argv += 1;
     for (int ii = 0; ii < ncol; ii += 1) {
-        sqlite3_value_double_or_prev(argv[ii], &vec99_head[ii]);
+        sqlite3_value_double_or_prev(argv[0], &vec99_head[ii]);
         double *row = vec99_body + ii;
         // debug
         // fprintf(stderr,         //
@@ -2280,6 +2281,7 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
             *row = arg_alpha * vec99_head[ii] + (1 - arg_alpha) * *row;
             row += ncol;
         }
+        argv += 1;
     }
     // vec99 - push xx
     for (int ii = 0; ii < ncol; ii += 1) {
@@ -2412,7 +2414,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
         // ncol
         vec99->ncol = ncol;
         // arg_quantile
-        arg_quantile = sqlite3_value_double_or_nan(argv[ncol + 0]);
+        arg_quantile = sqlite3_value_double_or_nan(argv[0]);
         if (!(0 <= arg_quantile && arg_quantile <= 1)) {
             sqlite3_result_error(context,
                 "invalid argument 'quantile' to function win_quantilex()",
@@ -2422,11 +2424,13 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
         vec99_head[ncol + 0] = arg_quantile;
     }
     // vec99 - push xx
+    argv += 1;
     for (int ii = 0; ii < ncol; ii += 1) {
-        sqlite3_value_double_or_prev(argv[ii], &vec99_head[ii]);
+        sqlite3_value_double_or_prev(argv[0], &vec99_head[ii]);
         VECTOR99_AGGREGATE_PUSH(vec99_head[ii]);
         VECTOR99_AGGREGATE_PUSH(        //
             vec99->wnn ? vec99_body[(int) vec99->wii] : INFINITY);
+        argv += 1;
     }
     // vec99 - calculate quantile
     const int nstep = ncol * 2;
@@ -2447,14 +2451,6 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
         vec99_head[ncol + 1 + ii] = arg_quantile == 0   //
             ? arr[kk1]          //
             : (1 - arg_quantile) * arr[kk1] + arg_quantile * arr[kk2];
-        // debug
-        // fprintf(stderr, "ii=%d arg=%f, xx0=%f\n",       //
-        //     ii, sqlite3_value_double_or_nan(argv[ii]), vec99_head[ii]);
-        // fprintf(stderr,         //
-        //     "win_quantile1 - nn=%d wii=%.0f kk1=%d kk2=%d"      //
-        //     " xx=%f qq=%f xx1=%f xx2=%f\n",     //
-        //     nn, vec99->wii, kk1, kk2,   //
-        //     xx, arg_quantile, arr[kk1], arr[kk2]);
         arr += 2;
     }
     return;

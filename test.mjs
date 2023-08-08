@@ -1219,6 +1219,7 @@ CREATE TEMP TABLE __tmp1 AS
         SELECT
             id,
             win_cosfit2(
+                0,
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
@@ -1228,8 +1229,7 @@ CREATE TEMP TABLE __tmp1 AS
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
-                value->>0, IIF(id = ${idLast}, -1, value->>1),
-                0
+                value->>0, IIF(id = ${idLast}, -1, value->>1)
             ) OVER (
                 ORDER BY NULL ASC
                 ${sqlBetween}
@@ -1557,7 +1557,7 @@ SELECT
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_cosfit2(1, 1) FROM (SELECT 1);
+SELECT win_cosfit2(1, 2) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
@@ -1567,7 +1567,7 @@ SELECT win_cosfit2(1, 1) FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT doublearray_jsonto(win_cosfit2(1, 1, 0)) FROM __tmp1;
+SELECT doublearray_jsonto(win_cosfit2(1, 2, 3)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
@@ -1585,7 +1585,7 @@ SELECT doublearray_jsonto(win_cosfit2(1, 1, 0)) FROM __tmp1;
                     db,
                     sql: (`
 SELECT
-        doublearray_jsonto(win_cosfit2(value->>0, value->>1, 0))
+        doublearray_jsonto(win_cosfit2(0, value->>0, value->>1))
     FROM JSON_EACH($valIn);
                     `)
                 });
@@ -1647,7 +1647,7 @@ SELECT
         ROUND(${sqlCosfitExtract("__wcf", 0, "lrr")}, 8) AS lrr
     FROM (
         SELECT
-            win_cosfit2(xx, yy, 0) AS __wcf
+            win_cosfit2(0, xx, yy) AS __wcf
         FROM (
             SELECT 34 AS xx, 5 AS yy
             UNION ALL SELECT 108, 17
@@ -1991,7 +1991,7 @@ SELECT
         ROUND(0.01 * yy, 4) AS yy
     FROM (
         SELECT
-            win_cosfit2(value->>'ii', value->>'priceClose', 0) OVER (
+            win_cosfit2(0, value->>'ii', value->>'priceClose') OVER (
                 ORDER BY NULL ASC
                 ROWS BETWEEN ${ttCosfit - 1} PRECEDING AND 0 FOLLOWING
             ) AS __wcf,
@@ -2069,7 +2069,7 @@ SELECT
                 db,
                 sql: (`
 SELECT
-        win_ema1(value->>1, ${alpha}) OVER (
+        win_ema1(${alpha}, value->>1) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
         ) AS val
@@ -2090,6 +2090,7 @@ SELECT
 SELECT
         id,
         doublearray_jsonto(win_ema2(
+            ${alpha},
             value->>1,
             value->>1,
             value->>1,
@@ -2099,8 +2100,7 @@ SELECT
             value->>1,
             value->>1,
             value->>1,
-            IIF(id = 1, -1, value->>1),
-            ${alpha}
+            IIF(id = 1, -1, value->>1)
         ) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
@@ -2152,7 +2152,7 @@ SELECT win_ema2(1) FROM (SELECT 1);
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_ema2(1, NULL) FROM (SELECT 1);
+SELECT win_ema2(NULL, 1) FROM (SELECT 1);
                         `)
                     });
                 }, "invalid argument 'alpha'");
@@ -2162,7 +2162,7 @@ SELECT win_ema2(1, NULL) FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_ema1(1, 1) FROM __tmp1;
+SELECT win_ema1(1, 2) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
@@ -2252,7 +2252,7 @@ SELECT doublearray_jsonto(win_ema2(1, 2, 3)) FROM __tmp1;
                 db,
                 sql: (`
 SELECT
-        win_quantile1(value->>1, ${quantile}) OVER (
+        win_quantile1(${quantile}, value->>1) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
         ) AS val
@@ -2273,6 +2273,7 @@ SELECT
 SELECT
         id,
         doublearray_jsonto(win_quantile2(
+            ${quantile},
             value->>1,
             value->>1,
             value->>1,
@@ -2282,8 +2283,7 @@ SELECT
             value->>1,
             value->>1,
             value->>1,
-            IIF(id = 34, -1, value->>1),
-            ${quantile}
+            IIF(id = 34, -1, value->>1)
         ) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
@@ -2335,7 +2335,7 @@ SELECT win_quantile2(1) FROM (SELECT 1);
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_quantile2(1, NULL) FROM (SELECT 1);
+SELECT win_quantile2(NULL, 1) FROM (SELECT 1);
                         `)
                     });
                 }, "invalid argument 'quantile'");
@@ -2345,7 +2345,7 @@ SELECT win_quantile2(1, NULL) FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_quantile1(1, 1) FROM __tmp1;
+SELECT win_quantile1(1, 2) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
