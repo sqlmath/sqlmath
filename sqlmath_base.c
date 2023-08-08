@@ -2118,7 +2118,7 @@ SQLMATH_FUNC static void sql3_win_quantile2_step(
 
 // SQLMATH_FUNC sql3_win_quantile2_func - end
 
-// SQLMATH_FUNC sql3_win_slr2_func - start
+// SQLMATH_FUNC sql3_win_cosfit2_func - start
 typedef struct WinSlrResult {
     double nnn;                 // number of elements
     double mxx;                 // average xx
@@ -2132,8 +2132,8 @@ typedef struct WinSlrResult {
     double lyy;                 // linest y-estimate
     double lee;                 // linest y-error
     //
-    double xx;                  // previous window-xx
-    double yy;                  // previous window-yy
+    double xx;
+    double yy;
     //
     double caa;                 // cosine-fit amplitude
     double cww;                 // cosine-fit angular-frequency
@@ -2163,7 +2163,7 @@ typedef struct WinSlrStep {
 } WinSlrStep;
 static const int WinSlrStepN = sizeof(WinSlrStep) / sizeof(double);
 
-static void win_slrcos_internal(
+static void winSlrcosUpdate(
     WinSlrStep * slr,
     WinSlrResult * result,
     Vector99 * vec99,
@@ -2270,7 +2270,7 @@ static void win_slrcos_internal(
     result->cee = sqrt(vyy / (nnn - 5));
 }
 
-static void win_slr_internal(
+static void winSlrUpdate(
     WinSlrStep * slr,
     WinSlrResult * result,
     const int modeWelford
@@ -2336,7 +2336,7 @@ static void win_slr_internal(
     result->yy = yy;
 }
 
-SQLMATH_FUNC static void sql3_win_slr2_value(
+SQLMATH_FUNC static void sql3_win_cosfit2_value(
     sqlite3_context * context
 ) {
 // This function will calculate running simple-linear-regression.
@@ -2347,7 +2347,7 @@ SQLMATH_FUNC static void sql3_win_slr2_value(
         ncol * WinSlrResultN, SQLITE_TRANSIENT);
 }
 
-SQLMATH_FUNC static void sql3_win_slr2_final(
+SQLMATH_FUNC static void sql3_win_cosfit2_final(
     sqlite3_context * context
 ) {
 // This function will calculate running simple-linear-regression.
@@ -2368,7 +2368,7 @@ SQLMATH_FUNC static void sql3_win_slr2_final(
     vector99_agg_free(vec99_agg);
 }
 
-SQLMATH_FUNC static void sql3_win_slr2_inverse(
+SQLMATH_FUNC static void sql3_win_cosfit2_inverse(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2383,16 +2383,15 @@ SQLMATH_FUNC static void sql3_win_slr2_inverse(
     }
 }
 
-static void sql3_win_slr2_step0(
+static void sql3_win_cosfit2_step(
     sqlite3_context * context,
     int argc,
-    sqlite3_value ** argv,
-    int modeCosfit
+    sqlite3_value ** argv
 ) {
 // This function will calculate running simple-linear-regression.
     if (argc < 2 || argc % 2) {
         sqlite3_result_error(context,
-            "wrong number of arguments to function win_slr2()", -1);
+            "wrong number of arguments to function win_cosfit2()", -1);
         return;
     }
     // vec99 - init
@@ -2416,17 +2415,16 @@ static void sql3_win_slr2_step0(
         VECTOR99_AGGREGATE_PUSH(0);
         argv += 2;
     }
-    // vec99 - calculate slr
+    // vec99 - calculate slr, cosfit
     WinSlrResult *result = (WinSlrResult *) (vec99_head + ncol * WinSlrStepN);
     slr = (WinSlrStep *) vec99_head;
     for (int ii = 0; ii < ncol; ii += 1) {
         result->xx = slr->xx0;
         result->yy = slr->yy0;
-        win_slr_internal(slr, result, vec99->wnn == 0);
+        // vec99 - calculate slr
+        winSlrUpdate(slr, result, vec99->wnn == 0);
         // vec99 - calculate cosfit
-        if (modeCosfit) {
-            win_slrcos_internal(slr, result, vec99, ii);
-        }
+        winSlrcosUpdate(slr, result, vec99, ii);
         // increment counter
         result += 1;
         slr += 1;
@@ -2436,16 +2434,7 @@ static void sql3_win_slr2_step0(
     vector99_agg_free(vec99_agg);
 }
 
-SQLMATH_FUNC static void sql3_win_slr2_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running simple-linear-regression.
-    sql3_win_slr2_step0(context, argc, argv, 0);
-}
-
-SQLMATH_FUNC static void sql1_win_slr2_step_func(
+SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2487,7 +2476,7 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
         slr->vyy = result->eyy * result->eyy * (nnn - 1);
         sqlite3_value_double_or_prev(argv[0], &slr->xx);
         sqlite3_value_double_or_prev(argv[1], &slr->yy);
-        win_slr_internal(slr, result, 0);
+        winSlrUpdate(slr, result, 0);
         argv += 2;
         result += 1;
     }
@@ -2497,42 +2486,10 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
     return;
   catch_error:
     sqlite3_result_error(context,
-        "invalid arguments to function win_slr2_step()", -1);
+        "invalid arguments to function win_cosfit2_step()", -1);
 }
 
-SQLMATH_FUNC static void sql3_win_slrcos2_value(
-    sqlite3_context * context
-) {
-// This function will calculate running cosine-fit.
-    sql3_win_slr2_value(context);
-}
-
-SQLMATH_FUNC static void sql3_win_slrcos2_final(
-    sqlite3_context * context
-) {
-// This function will calculate running cosine-fit.
-    sql3_win_slr2_final(context);
-}
-
-SQLMATH_FUNC static void sql3_win_slrcos2_inverse(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running cosine-fit.
-    sql3_win_slr2_inverse(context, argc, argv);
-}
-
-SQLMATH_FUNC static void sql3_win_slrcos2_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running cosine-fit.
-    sql3_win_slr2_step0(context, argc, argv, 1);
-}
-
-// SQLMATH_FUNC sql3_win_slr2_func - end
+// SQLMATH_FUNC sql3_win_cosfit2_func - end
 
 // file sqlmath_base - init
 int sqlite3_sqlmath_base_init(
@@ -2558,16 +2515,15 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
-    SQLITE3_CREATE_FUNCTION1(win_slr2_step, -1);
+    SQLITE3_CREATE_FUNCTION1(win_cosfit2_step, -1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
     SQLITE3_CREATE_FUNCTION2(stdev, 1);
+    SQLITE3_CREATE_FUNCTION3(win_cosfit2, -1);
     SQLITE3_CREATE_FUNCTION3(win_ema1, 2);
     SQLITE3_CREATE_FUNCTION3(win_ema2, -1);
     SQLITE3_CREATE_FUNCTION3(win_quantile1, 2);
     SQLITE3_CREATE_FUNCTION3(win_quantile2, -1);
-    SQLITE3_CREATE_FUNCTION3(win_slr2, -1);
-    SQLITE3_CREATE_FUNCTION3(win_slrcos2, -1);
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql1_random1_func, NULL, NULL);
