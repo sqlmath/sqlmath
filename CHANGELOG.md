@@ -4,6 +4,7 @@
 - none
 
 # v2023.8.1-beta
+- sqlmath - Streamline sql-function win_slr2_step() to only update last datapoint.
 - sqlmath - Update sql-function win_quantile2(), win_slr2() to input/output doublearray instead of json for better performance.
 - sqlmath - Add test-file test_data_cosfit.csv.
 - sqlmath - Add sql-function win_slrcos2().

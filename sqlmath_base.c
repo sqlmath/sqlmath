@@ -345,7 +345,8 @@ SQLMATH_API int doubleSign(
 SQLMATH_API void doublearrayResult(
     sqlite3_context * context,
     const double *arr,
-    const int nn
+    const int nn,
+    void (*xDel) (void *)       // NOLINT
 );
 
 SQLMATH_API int doubleSortCompare(
@@ -364,7 +365,7 @@ SQLMATH_API const char *jsbatonValueStringArgi(
 
 SQLMATH_API void jsonResultDoublearray(
     sqlite3_context * context,
-    double *arr,
+    const double *arr,
     int nn
 );
 
@@ -1189,11 +1190,12 @@ SQLMATH_API int doubleSortCompare(
 SQLMATH_API void doublearrayResult(
     sqlite3_context * context,
     const double *arr,
-    const int nn
+    const int nn,
+    void (*xDel) (void *)       // NOLINT
 ) {
 // This function will return double *<arr> as binary-double-array
 // in given <context>.
-    sqlite3_result_blob(context, arr, nn * sizeof(double), SQLITE_TRANSIENT);
+    sqlite3_result_blob(context, arr, nn * sizeof(double), xDel);
 }
 
 SQLMATH_API const char *jsbatonValueErrmsg(
@@ -1216,7 +1218,7 @@ SQLMATH_API const char *jsbatonValueStringArgi(
 
 SQLMATH_API void jsonResultDoublearray(
     sqlite3_context * context,
-    double *arr,
+    const double *arr,
     int nn
 ) {
 // This function will return double *<arr> as json-result-text
@@ -1424,7 +1426,7 @@ SQLMATH_FUNC static void sql1_doublearray_extract_func(
     const int ii = sqlite3_value_int(argv[1]);
     const int nn = sqlite3_value_bytes(argv[0]) / sizeof(double);
     if (0 <= ii && ii < nn) {
-        const double xx = ((double *) sqlite3_value_blob(argv[0]))[ii];
+        const double xx = ((const double *) sqlite3_value_blob(argv[0]))[ii];
         if (isfinite(xx)) {
             sqlite3_result_double(context, xx);
             return;
@@ -1446,7 +1448,7 @@ SQLMATH_FUNC static void sql1_doublearray_jsonfrom_func(
     STR99_ALLOCA(str99);
     str99ArrayAppendJsonarray(  //
         str99,                  // array
-        (char *) sqlite3_value_blob(argv[0]),   // json
+        (const char *) sqlite3_value_blob(argv[0]),     // json
         sqlite3_value_bytes(argv[0]));  // nn
     STR99_RESULT_ERROR(str99);
     // str99 - result
@@ -1462,7 +1464,8 @@ SQLMATH_FUNC static void sql1_doublearray_jsonto_func(
 ) {
 // This function will return json-encoded-flat-array from binary-double-array.
     UNUSED_PARAMETER(argc);
-    jsonResultDoublearray(context, (double *) sqlite3_value_blob(argv[0]),
+    jsonResultDoublearray(context,
+        (const double *) sqlite3_value_blob(argv[0]),
         sqlite3_value_bytes(argv[0]) / sizeof(double));
 }
 
@@ -1908,7 +1911,7 @@ SQLMATH_FUNC static void sql3_win_ema2_value(
         sqlite3_result_null(context);
     }
     doublearrayResult(context, vec99_body + (int) vec99->wii,
-        (int) vec99->ncol);
+        (int) vec99->ncol, SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_ema2_final(
@@ -2080,7 +2083,7 @@ SQLMATH_FUNC static void sql3_win_quantile2_value(
         sqlite3_result_null(context);
     }
     doublearrayResult(context, vec99_head + (int) vec99->ncol + 1,
-        (int) vec99->ncol);
+        (int) vec99->ncol, SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_quantile2_final(
@@ -2129,8 +2132,8 @@ typedef struct WinSlrResult {
     double lyy;                 // linest y-estimate
     double lee;                 // linest y-error
     //
-    double xx0;                 // previous window-xx
-    double yy0;                 // previous window-yy
+    double xx;                  // previous window-xx
+    double yy;                  // previous window-yy
     //
     double caa;                 // cosine-fit amplitude
     double cww;                 // cosine-fit angular-frequency
@@ -2154,6 +2157,9 @@ typedef struct WinSlrStep {
     double vyy;                 // variance.p yy
     double xx;                  // current xx
     double yy;                  // current yy
+    //
+    double xx0;                 // trailing-window-xx
+    double yy0;                 // trailine-window-yy
 } WinSlrStep;
 static const int WinSlrStepN = sizeof(WinSlrStep) / sizeof(double);
 
@@ -2267,22 +2273,37 @@ static void win_slrcos_internal(
 static void win_slr_internal(
     WinSlrStep * slr,
     WinSlrResult * result,
-    const int modeWindow
+    const int modeWelford
 ) {
 // This function will step simple-linear-regression.
-    // declare var
     const double xx = slr->xx;
+    const double xx0 = result->xx;
     const double yy = slr->yy;
+    const double yy0 = result->yy;
     double mxx = slr->mxx;
     double myy = slr->myy;
     double vxx = slr->vxx;
     double vxy = slr->vxy;
     double vyy = slr->vyy;
-    // calculate slr
-    if (modeWindow) {
+    if (modeWelford) {
+        // calculate running slr - welford
+        slr->nnn += 1;
+        slr->inv0 = 1.0 / (slr->nnn - 0);
+        slr->inv1 = 1.0 / (slr->nnn - 1);
+        slr->inv2 = 1.0 / (slr->nnn - 2);
+        double dd;
+        // welford - increment vxx
+        dd = xx - mxx;
+        mxx += dd * slr->inv0;
+        vxx += dd * (xx - mxx);
+        // welford - increment vyy
+        dd = yy - myy;
+        myy += dd * slr->inv0;
+        vyy += dd * (yy - myy);
+        // welford - increment vxy
+        vxy += dd * (xx - mxx);
+    } else {
         // calculate running slr - window
-        const double xx0 = result->xx0;
-        const double yy0 = result->yy0;
         const double dx = xx - xx0;
         const double dy = yy - yy0;
         const double inv0 = slr->inv0;
@@ -2291,23 +2312,6 @@ static void win_slr_internal(
         vyy += (yy * yy - yy0 * yy0) - inv0 * dy * dy - 2 * dy * myy;
         mxx += dx * inv0;
         myy += dy * inv0;
-    } else {
-        // calculate running slr - welford
-        slr->nnn += 1;
-        slr->inv0 = 1.0 / (slr->nnn - 0);
-        slr->inv1 = 1.0 / (slr->nnn - 1);
-        slr->inv2 = 1.0 / (slr->nnn - 2);
-        double dd;
-        // welford - increment vyy
-        dd = yy - myy;
-        myy += dd * slr->inv0;
-        vyy += dd * (yy - myy);
-        // welford - increment vxx
-        dd = xx - mxx;
-        mxx += dd * slr->inv0;
-        vxx += dd * (xx - mxx);
-        // welford - increment vxy
-        vxy += dd * (yy - myy);
     }
     slr->mxx = mxx;
     slr->myy = myy;
@@ -2328,8 +2332,8 @@ static void win_slr_internal(
     result->lbb = lbb;
     result->lyy = laa + lbb * xx;
     result->lee = sqrt(vyy * (1 - lrr * lrr) * slr->inv2);
-    result->xx0 = 0;
-    result->yy0 = 0;
+    result->xx = xx;
+    result->yy = yy;
 }
 
 SQLMATH_FUNC static void sql3_win_slr2_value(
@@ -2340,7 +2344,7 @@ SQLMATH_FUNC static void sql3_win_slr2_value(
     VECTOR99_AGGREGATE_CONTEXT(0);
     const int ncol = vec99->ncol;
     doublearrayResult(context, vec99_head + ncol * WinSlrStepN,
-        ncol * WinSlrResultN);
+        ncol * WinSlrResultN, SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_slr2_final(
@@ -2358,7 +2362,8 @@ SQLMATH_FUNC static void sql3_win_slr2_final(
     doublearrayResult(          //
         context,                //
         vec99_head + ncol * WinSlrStepN,        //
-        (ncol * WinSlrResultN + vec99->nbody));
+        (ncol * WinSlrResultN + vec99->nbody),  //
+        SQLITE_TRANSIENT);
     // vec99 - cleanup
     vector99_agg_free(vec99_agg);
 }
@@ -2397,12 +2402,15 @@ static void sql3_win_slr2_step0(
         // ncol
         vec99->ncol = ncol;
     }
-    // vec99 - push xx
+    // vec99 - init xx, yy, xx0, yy0
+    const int wii0 = vec99->wii;
     WinSlrStep *slr = NULL;
     for (int ii = 0; ii < ncol; ii += 1) {
         slr = (WinSlrStep *) vec99_head + ii;
         sqlite3_value_double_or_prev(argv[0], &slr->xx);
         sqlite3_value_double_or_prev(argv[1], &slr->yy);
+        slr->xx0 = vec99_body[wii0 + ii * 3 + 0];
+        slr->yy0 = vec99_body[wii0 + ii * 3 + 1];
         VECTOR99_AGGREGATE_PUSH(slr->xx);
         VECTOR99_AGGREGATE_PUSH(slr->yy);
         VECTOR99_AGGREGATE_PUSH(0);
@@ -2410,21 +2418,18 @@ static void sql3_win_slr2_step0(
     }
     // vec99 - calculate slr
     WinSlrResult *result = (WinSlrResult *) (vec99_head + ncol * WinSlrStepN);
-    const double *xxyy0 = vec99_body + (int) vec99->wii;
     slr = (WinSlrStep *) vec99_head;
     for (int ii = 0; ii < ncol; ii += 1) {
-        win_slr_internal(slr, result, (int) vec99->wnn);
+        result->xx = slr->xx0;
+        result->yy = slr->yy0;
+        win_slr_internal(slr, result, vec99->wnn == 0);
         // vec99 - calculate cosfit
         if (modeCosfit) {
             win_slrcos_internal(slr, result, vec99, ii);
         }
-        // vec99 - save trailing-window xx, yy
-        result->xx0 = xxyy0[0];
-        result->yy0 = xxyy0[1];
         // increment counter
         result += 1;
         slr += 1;
-        xxyy0 += 3;
     }
     return;
   catch_error:
@@ -2455,14 +2460,20 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
     if (ncol <= 0 || nbody < ncol * WinSlrResultN) {
         goto catch_error;
     }
+    // init result0
+    WinSlrResult *result0 = sqlite3_malloc(sqlite3_value_bytes(argv[0]));
+    if (result0 == NULL) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
+    memcpy(result0, sqlite3_value_blob(argv[0]),
+        sqlite3_value_bytes(argv[0]));
     // declare var
-    WinSlrResult *result99 = (WinSlrResult *) sqlite3_value_blob(argv[0]);
     WinSlrStep __slr = { 0 };
     WinSlrStep *slr = &__slr;
     // vec99 - calculate slr
-    WinSlrResult *result = result99;
+    WinSlrResult *result = result0;
     const double nnn = result->nnn;
-    const double wnn = sqlite3_value_double_or_nan(argv[1]);
     argv += 2;
     for (int ii = 0; ii < ncol; ii += 1) {
         slr->inv0 = 1.0 / (nnn - 0);
@@ -2476,13 +2487,13 @@ SQLMATH_FUNC static void sql1_win_slr2_step_func(
         slr->vyy = result->eyy * result->eyy * (nnn - 1);
         sqlite3_value_double_or_prev(argv[0], &slr->xx);
         sqlite3_value_double_or_prev(argv[1], &slr->yy);
-        win_slr_internal(slr, result, result->nnn >= wnn);
+        win_slr_internal(slr, result, 0);
         argv += 2;
         result += 1;
     }
     // str99 - result
-    doublearrayResult(context, (const double *) result99,
-        ncol * WinSlrResultN);
+    doublearrayResult(context, (const double *) result0,
+        ncol * WinSlrResultN, sqlite3_free);
     return;
   catch_error:
     sqlite3_result_error(context,

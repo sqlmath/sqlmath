@@ -48,6 +48,7 @@ import {
     sqlmathWebworkerInit,
     version
 } from "./sqlmath.mjs";
+let SIZE_SLR = SQLITE_WIN_SLR_ELEM_SIZE;
 let {
     assertErrorThrownAsync,
     jstestDescribe,
@@ -1668,8 +1669,7 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
             // test win_slrcos2-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
-                    valIn1: JSON.stringify(valIn.slice(0, -1)),
-                    valIn2: JSON.stringify(valIn.slice(-1))
+                    valIn
                 },
                 db,
                 sql: (`
@@ -1677,11 +1677,17 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 AS
     SELECT
         id,
-        __slr
+        __slr,
+        doublearray_extract(__slr, 0 * ${SIZE_SLR} + 10) AS xx1,
+        doublearray_extract(__slr, 0 * ${SIZE_SLR} + 11) AS yy1,
+        doublearray_extract(__slr, 8 * ${SIZE_SLR} + 10) AS xx2,
+        doublearray_extract(__slr, 8 * ${SIZE_SLR} + 11) AS yy2,
+        doublearray_extract(__slr, 9 * ${SIZE_SLR} + 10) AS xx3,
+        doublearray_extract(__slr, 9 * ${SIZE_SLR} + 11) AS yy3
     FROM (
         SELECT
             id,
-            doublearray_jsonto(win_slrcos2(
+            win_slrcos2(
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
@@ -1695,74 +1701,77 @@ CREATE TEMP TABLE __tmp1 AS
             ) OVER (
                 ORDER BY NULL ASC
                 ${sqlBetween}
-            )) AS __slr
-        FROM JSON_EAcH($valIn1)
+            ) AS __slr
+        FROM JSON_EAcH($valIn)
     );
-INSERT INTO __tmp1
-    SELECT
-        ${idLast + 3},
-        __slr
-    FROM (
-        SELECT
-            doublearray_jsonto(win_slr2_step(
-                doublearray_jsonfrom(__slr),
-                ${aa + bb},
-                $valIn2->>0->>0, $valIn2->>0->>1,
-                $valIn2->>0->>0, $valIn2->>0->>1,
-                $valIn2->>0->>0, $valIn2->>0->>1,
-                $valIn2->>0->>0, $valIn2->>0->>1,
-                $valIn2->>0->>0, $valIn2->>0->>1,
-                $valIn2->>0->>0, $valIn2->>0->>1,
-                $valIn2->>0->>0, $valIn2->>0->>1,
-                $valIn2->>0->>0, $valIn2->>0->>1,
-                $valIn2->>0->>0, $valIn2->>0->>1,
-                $valIn2->>0->>0, $valIn2->>0->>1
-            )) AS __slr
-        FROM JSON_EAcH($valIn2)
-        JOIN __tmp1 ON __tmp1.id = ${idLast}
-    );
+UPDATE __tmp1
+    SET
+        __slr = win_slr2_step(
+            __slr,
+            0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0,
+            0, 0
+        );
+UPDATE __tmp1
+    SET
+        __slr = win_slr2_step(
+            __slr,
+            0,
+            xx1, yy1,
+            xx1, yy1,
+            xx1, yy1,
+            xx1, yy1,
+            xx1, yy1,
+            xx1, yy1,
+            xx1, yy1,
+            xx1, yy1,
+            xx2, yy2,
+            xx3, yy3
+        );
 SELECT
         id,
         --
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS laa1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS lbb1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS lrr1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS lyy1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS lee1,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx01,
-        ROUND(__slr->>(0 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy01,
+        ROUND(__slr->>(0 * ${SIZE_SLR} + 0), 8) AS nnn1,
+        ROUND(__slr->>(0 * ${SIZE_SLR} + 1), 8) AS mxx1,
+        ROUND(__slr->>(0 * ${SIZE_SLR} + 2), 8) AS myy1,
+        ROUND(__slr->>(0 * ${SIZE_SLR} + 3), 8) AS exx1,
+        ROUND(__slr->>(0 * ${SIZE_SLR} + 4), 8) AS eyy1,
+        ROUND(__slr->>(0 * ${SIZE_SLR} + 5), 8) AS laa1,
+        ROUND(__slr->>(0 * ${SIZE_SLR} + 6), 8) AS lbb1,
+        ROUND(__slr->>(0 * ${SIZE_SLR} + 7), 8) AS lrr1,
+        ROUND(__slr->>(0 * ${SIZE_SLR} + 8), 8) AS lyy1,
+        ROUND(__slr->>(0 * ${SIZE_SLR} + 9), 8) AS lee1,
         --
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS laa2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS lbb2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS lrr2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS lyy2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS lee2,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx02,
-        ROUND(__slr->>(8 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy02,
+        ROUND(__slr->>(8 * ${SIZE_SLR} + 0), 8) AS nnn2,
+        ROUND(__slr->>(8 * ${SIZE_SLR} + 1), 8) AS mxx2,
+        ROUND(__slr->>(8 * ${SIZE_SLR} + 2), 8) AS myy2,
+        ROUND(__slr->>(8 * ${SIZE_SLR} + 3), 8) AS exx2,
+        ROUND(__slr->>(8 * ${SIZE_SLR} + 4), 8) AS eyy2,
+        ROUND(__slr->>(8 * ${SIZE_SLR} + 5), 8) AS laa2,
+        ROUND(__slr->>(8 * ${SIZE_SLR} + 6), 8) AS lbb2,
+        ROUND(__slr->>(8 * ${SIZE_SLR} + 7), 8) AS lrr2,
+        ROUND(__slr->>(8 * ${SIZE_SLR} + 8), 8) AS lyy2,
+        ROUND(__slr->>(8 * ${SIZE_SLR} + 9), 8) AS lee2,
         --
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 0), 8) AS nnn3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 1), 8) AS mxx3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 2), 8) AS myy3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 3), 8) AS exx3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 4), 8) AS eyy3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 5), 8) AS laa3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 6), 8) AS lbb3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 7), 8) AS lrr3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 8), 8) AS lyy3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 9), 8) AS lee3,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 10), 8) AS xx03,
-        ROUND(__slr->>(9 * ${SQLITE_WIN_SLR_ELEM_SIZE} + 11), 8) AS yy03
-FROM __tmp1;
+        ROUND(__slr->>(9 * ${SIZE_SLR} + 0), 8) AS nnn3,
+        ROUND(__slr->>(9 * ${SIZE_SLR} + 1), 8) AS mxx3,
+        ROUND(__slr->>(9 * ${SIZE_SLR} + 2), 8) AS myy3,
+        ROUND(__slr->>(9 * ${SIZE_SLR} + 3), 8) AS exx3,
+        ROUND(__slr->>(9 * ${SIZE_SLR} + 4), 8) AS eyy3,
+        ROUND(__slr->>(9 * ${SIZE_SLR} + 5), 8) AS laa3,
+        ROUND(__slr->>(9 * ${SIZE_SLR} + 6), 8) AS lbb3,
+        ROUND(__slr->>(9 * ${SIZE_SLR} + 7), 8) AS lrr3,
+        ROUND(__slr->>(9 * ${SIZE_SLR} + 8), 8) AS lyy3,
+        ROUND(__slr->>(9 * ${SIZE_SLR} + 9), 8) AS lee3
+    FROM (SELECT id, doublearray_jsonto(__slr) AS __slr FROM __tmp1);
                 `)
             });
             valActual = valActual[0].map(function ({
@@ -1796,13 +1805,7 @@ FROM __tmp1;
                 myy3,
                 nnn1,
                 nnn2,
-                nnn3,
-                xx01,
-                xx02,
-                xx03,
-                yy01,
-                yy02,
-                yy03
+                nnn3
             }, ii, list) {
                 let obj1;
                 let obj2;
@@ -1818,9 +1821,7 @@ FROM __tmp1;
                     lyy: lyy1,
                     mxx: mxx1,
                     myy: myy1,
-                    nnn: nnn1,
-                    xx0: xx01,
-                    yy0: yy01
+                    nnn: nnn1
                 };
                 obj2 = {
                     exx: exx2,
@@ -1833,9 +1834,7 @@ FROM __tmp1;
                     lyy: lyy2,
                     mxx: mxx2,
                     myy: myy2,
-                    nnn: nnn2,
-                    xx0: xx02,
-                    yy0: yy02
+                    nnn: nnn2
                 };
                 obj3 = {
                     exx: exx3,
@@ -1848,9 +1847,7 @@ FROM __tmp1;
                     lyy: lyy3,
                     mxx: mxx3,
                     myy: myy3,
-                    nnn: nnn3,
-                    xx0: xx03,
-                    yy0: yy03
+                    nnn: nnn3
                 };
                 switch (list.length - ii) {
                 case 1:
@@ -1881,12 +1878,10 @@ FROM __tmp1;
                 "lyy": null,
                 "mxx": 2,
                 "myy": 0,
-                "nnn": 1,
-                "xx0": 2,
-                "yy0": 0
+                "nnn": 1
             },
             {
-                "exx": 0,
+                "exx": 2e-8,
                 "eyy": 0.70710678,
                 "id": 4,
                 "laa": null,
@@ -1896,9 +1891,7 @@ FROM __tmp1;
                 "lyy": null,
                 "mxx": 2,
                 "myy": 0.5,
-                "nnn": 2,
-                "xx0": 2,
-                "yy0": 0
+                "nnn": 2
             },
             {
                 "exx": 0.57735027,
@@ -1911,9 +1904,7 @@ FROM __tmp1;
                 "lyy": 3,
                 "mxx": 2.33333333,
                 "myy": 1.33333333,
-                "nnn": 3,
-                "xx0": 2,
-                "yy0": 0
+                "nnn": 3
             },
             {
                 "exx": 0.95742711,
@@ -1926,9 +1917,7 @@ FROM __tmp1;
                 "lyy": 4.27272727,
                 "mxx": 2.75,
                 "myy": 2,
-                "nnn": 4,
-                "xx0": 2,
-                "yy0": 0
+                "nnn": 4
             },
             {
                 "exx": 1.30384048,
@@ -1941,9 +1930,7 @@ FROM __tmp1;
                 "lyy": 5.35294118,
                 "mxx": 3.2,
                 "myy": 2.6,
-                "nnn": 5,
-                "xx0": 2,
-                "yy0": 0
+                "nnn": 5
             },
             {
                 "exx": 1.37840488,
@@ -1956,9 +1943,7 @@ FROM __tmp1;
                 "lyy": 5.61403509,
                 "mxx": 3.5,
                 "myy": 3.16666667,
-                "nnn": 6,
-                "xx0": 2,
-                "yy0": 0
+                "nnn": 6
             },
             {
                 "exx": 1.38013112,
@@ -1971,9 +1956,7 @@ FROM __tmp1;
                 "lyy": 5.725,
                 "mxx": 3.71428571,
                 "myy": 3.57142857,
-                "nnn": 7,
-                "xx0": 2,
-                "yy0": 0
+                "nnn": 7
             },
             {
                 "exx": 1.51185789,
@@ -1986,9 +1969,7 @@ FROM __tmp1;
                 "lyy": 7.25,
                 "mxx": 4,
                 "myy": 4,
-                "nnn": 8,
-                "xx0": 2,
-                "yy0": 0
+                "nnn": 8
             },
             {
                 "exx": 2.39045722,
@@ -2001,9 +1982,7 @@ FROM __tmp1;
                 "lyy": 9.25,
                 "mxx": 5,
                 "myy": 5,
-                "nnn": 8,
-                "xx0": 2,
-                "yy0": 1
+                "nnn": 8
             },
             {
                 "exx": 2.39045722,
@@ -2016,9 +1995,7 @@ FROM __tmp1;
                 "lyy": 3.85,
                 "mxx": 5,
                 "myy": 5.5,
-                "nnn": 8,
-                "xx0": 0,
-                "yy0": 0
+                "nnn": 8
             }
         ];
         valIn = [
@@ -2065,28 +2042,18 @@ SELECT doublearray_jsonto(win_slrcos2(1, 1)) FROM __tmp1;
                 let valActual;
                 valActual = await dbExecAndReturnLastJsonAsync({
                     bindList: {
-                        valIn1: JSON.stringify(valIn.slice(0, -1)),
-                        valIn2: JSON.stringify(valIn.slice(-1))
+                        valIn
                     },
                     db,
                     sql: (`
 SELECT
-        doublearray_jsonto(win_slr2_step(
-            __slr,
-            ${valIn.length},
-            $valIn2->>0->>0,
-            $valIn2->>0->>1
-        ))
-    FROM (
-        SELECT
-            win_slrcos2(value->>0, value->>1) AS __slr
-        FROM JSON_EACH($valIn1)
-    );
+        doublearray_jsonto(win_slrcos2(value->>0, value->>1))
+    FROM JSON_EACH($valIn);
                     `)
                 });
                 valActual = valActual.map(function (xx) {
                     return Number(xx.toFixed(8));
-                }).slice(0, 12);
+                }).slice(0, 10);
                 assertJsonEqual(
                     valActual,
                     [
@@ -2099,9 +2066,7 @@ SELECT
                         0.84558824, // lbb
                         0.81541829, // lrr
                         2.47058824, // lyy
-                        1.56536502, // lee
-                        0, // xx0
-                        0 // yy0
+                        1.56536502 // lee
                     ]
                 );
             }()),
@@ -2169,9 +2134,7 @@ SELECT
                     "lyy": 2.5,
                     "mxx": 5,
                     "myy": 3.875,
-                    "nnn": 8,
-                    "xx0": 2,
-                    "yy0": 1
+                    "nnn": 8
                 },
                 valExpected3: {
                     "exx": 2.39045722,
@@ -2184,9 +2147,7 @@ SELECT
                     "lyy": 6.1,
                     "mxx": 5,
                     "myy": 4.375,
-                    "nnn": 8,
-                    "xx0": 0,
-                    "yy0": 0
+                    "nnn": 8
                 }
             }),
             // test win_slrcos2-spx handling-behavior
