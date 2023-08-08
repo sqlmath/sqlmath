@@ -1810,26 +1810,7 @@ static void sql2_stdev_step(
 // SQLMATH_FUNC sql2_stdev_func - end
 
 // SQLMATH_FUNC sql3_win_cosfit2_func - start
-typedef struct WinCosfitInternal {
-    double inv0;                // 1.0 / (nnn - 0)
-    double inv1;                // 1.0 / (nnn - 1)
-    double inv2;                // 1.0 / (nnn - 2)
-    double mxx;                 // x-average
-    double myy;                 // y-average
-    double nnn;                 // number of elements
-    double vxx;                 // yy-variance.p
-    double vxy;                 // xy-covariance.p
-    double vyy;                 // yy-variance.p
-    double xx1;                 // x-actual
-    double yy1;                 // y-actual
-    //
-    double xx0;                 // trailing-window-xx
-    double yy0;                 // trailine-window-yy
-} WinCosfitInternal;
-static const int WinCosfitInternalN =
-    sizeof(WinCosfitInternal) / sizeof(double);
-
-typedef struct WinCosfitResult {
+typedef struct WinCosfit {
     double nnn;                 // 00 number of elements
     double xx1;                 // 01 x-actual
     double yy1;                 // 02 y-actual
@@ -1837,7 +1818,7 @@ typedef struct WinCosfitResult {
     double mee;                 // 03 y-stdev.s1
     double myy;                 // 04 y-average
     double mxx;                 // 05 x-average
-    double mex;                 // 06 x-stdev.s1
+    double mxe;                 // 06 x-stdev.s1
     //
     double lee;                 // 07 y-stdev.s2 linest
     double lyy;                 // 08 y-estimate linest
@@ -1852,20 +1833,34 @@ typedef struct WinCosfitResult {
     double cpp;                 // 16 cosine phase
     double ctt;                 // 17 cosine period
     double ctp;                 // 18 cosine period-phase
-} WinCosfitResult;
-static const int WinCosfitResultN = sizeof(WinCosfitResult) / sizeof(double);
+    //
+    //
+    double xx0;                 // trailing-window-xx
+    double yy0;                 // trailine-window-yy
+    //
+    double vxx;                 // yy-variance.p
+    double vxy;                 // xy-covariance.p
+    double vyy;                 // yy-variance.p
+    //
+    double inv0;                // 1.0 / (nnn - 0)
+    double inv1;                // 1.0 / (nnn - 1)
+    double inv2;                // 1.0 / (nnn - 2)
+    //
+    double xx2;                 // x-actual
+    double yy2;                 // y-actual
+} WinCosfit;
+static const int WinCosfitN = sizeof(WinCosfit) / sizeof(double);
 
 static void winCosfitCsf(
-    WinCosfitInternal * wci,
-    WinCosfitResult * result,
+    WinCosfit * wcf,
     Vector99 * vec99,
     const int icol
 ) {
 // This function will calculate running cosine-regression as:
 //     yy = caa*cos(cww*xx + cpp)
     // calculate csf - caa
-    double laa = result->laa;   // linest y-intercept
-    double lbb = result->lbb;   // linest slope
+    double laa = wcf->laa;      // linest y-intercept
+    double lbb = wcf->lbb;      // linest slope
     const int nbody = vec99->nbody;
     const int ncol = vec99->ncol;
     double *ttyy = vector99_body(vec99) + icol * 3;
@@ -1883,10 +1878,10 @@ static void winCosfitCsf(
     }
     const double caa = sqrt(vyy / nnn);
     const double inva = 1 / caa;
-    if (!isfinite(inva) || !isfinite(1 / result->mex)) {
+    if (!isfinite(inva) || !isfinite(1 / wcf->mxe)) {
         return;
     }
-    result->caa = caa;
+    wcf->caa = caa;
     // calculate csf - cpp, cww - using gauss-newton-method
     //
     // yy = caa*cos(cww*tt + cpp)
@@ -1901,8 +1896,8 @@ static void winCosfitCsf(
     // cpp = cpp + dp
     // cww = cww + dw
     double cww =                // angular-frequency
-        result->cww == 0 ? 2 * MATH_PI / result->mex : result->cww;
-    double cpp = result->cpp;   // angular-phase
+        wcf->cww == 0 ? 2 * MATH_PI / wcf->mxe : wcf->cww;
+    double cpp = wcf->cpp;      // angular-phase
     double gpp = 0;             // gradient-phase
     double gww = 0;             // gradient-frequency
     double hpp = 0;             // hessian ddr/dpdp
@@ -1930,18 +1925,18 @@ static void winCosfitCsf(
     if (cpp < 0) {
         cpp += 2 * MATH_PI;
     }
-    cww = MAX(cww, MATH_PI / (2 * result->mex));
-    cww = MIN(cww, MATH_PI / (4 * result->mex) * sqrt(nnn));
-    result->cpp = cpp;
-    result->cww = cww;
+    cww = MAX(cww, MATH_PI / (2 * wcf->mxe));
+    cww = MIN(cww, MATH_PI / (4 * wcf->mxe) * sqrt(nnn));
+    wcf->cpp = cpp;
+    wcf->cww = cww;
     // calculate csf - ctt, ctp
-    const int xx1 = wci->xx1;
-    result->ctt = 2 * MATH_PI / cww;
-    result->ctp = fmod(         //
-        (fmod(cww * xx1, 2 * MATH_PI) + cpp) / (cww * result->ctt),     //
+    const int xx1 = wcf->xx2;
+    wcf->ctt = 2 * MATH_PI / cww;
+    wcf->ctp = fmod(            //
+        (fmod(cww * xx1, 2 * MATH_PI) + cpp) / (cww * wcf->ctt),        //
         1);
-    if (result->ctp < 0) {
-        result->ctp += 1;
+    if (wcf->ctp < 0) {
+        wcf->ctp += 1;
     }
     // calculate csf - cyy
     myy = 0;
@@ -1951,7 +1946,7 @@ static void winCosfitCsf(
         const double cyy =
             laa + lbb * tt + caa * cos(fmod(cww * tt, 2 * MATH_PI) + cpp);
         if (tt == xx1) {
-            result->cyy = cyy;
+            wcf->cyy = cyy;
         }
         const double yy = ttyy[ii + 1] - cyy;
         // welford - increment vyy
@@ -1961,39 +1956,38 @@ static void winCosfitCsf(
     }
     // calculate csf - cee
     // degrees-of-freedom = 5
-    result->cee = sqrt(vyy / (nnn - 5));
+    wcf->cee = sqrt(vyy / (nnn - 5));
 }
 
 static void winCosfitLnr(
-    WinCosfitInternal * wci,
-    WinCosfitResult * result,
+    WinCosfit * wcf,
     const int modeWelford
 ) {
 // This function will calculate running simple-linear-regression as:
 //     yy = laa + lbb*xx
-    const double xx = wci->xx1;
-    const double xx0 = result->xx1;
-    const double yy = wci->yy1;
-    const double yy0 = result->yy1;
-    double mxx = wci->mxx;
-    double myy = wci->myy;
-    double vxx = wci->vxx;
-    double vxy = wci->vxy;
-    double vyy = wci->vyy;
+    const double xx = wcf->xx2;
+    const double xx0 = wcf->xx1;
+    const double yy = wcf->yy2;
+    const double yy0 = wcf->yy1;
+    double mxx = wcf->mxx;
+    double myy = wcf->myy;
+    double vxx = wcf->vxx;
+    double vxy = wcf->vxy;
+    double vyy = wcf->vyy;
     if (modeWelford) {
         // calculate running lnr - welford
-        wci->nnn += 1;
-        wci->inv0 = 1.0 / (wci->nnn - 0);
-        wci->inv1 = 1.0 / (wci->nnn - 1);
-        wci->inv2 = 1.0 / (wci->nnn - 2);
+        wcf->nnn += 1;
+        wcf->inv0 = 1.0 / (wcf->nnn - 0);
+        wcf->inv1 = 1.0 / (wcf->nnn - 1);
+        wcf->inv2 = 1.0 / (wcf->nnn - 2);
         double dd;
         // welford - increment vxx
         dd = xx - mxx;
-        mxx += dd * wci->inv0;
+        mxx += dd * wcf->inv0;
         vxx += dd * (xx - mxx);
         // welford - increment vyy
         dd = yy - myy;
-        myy += dd * wci->inv0;
+        myy += dd * wcf->inv0;
         vyy += dd * (yy - myy);
         // welford - increment vxy
         vxy += dd * (xx - mxx);
@@ -2001,34 +1995,31 @@ static void winCosfitLnr(
         // calculate running lnr - window
         const double dx = xx - xx0;
         const double dy = yy - yy0;
-        const double inv0 = wci->inv0;
+        const double inv0 = wcf->inv0;
         vxx += (xx * xx - xx0 * xx0) - inv0 * dx * dx - 2 * dx * mxx;
         vxy += (xx * yy - xx0 * yy0) - inv0 * dx * dy - mxx * dy - dx * myy;
         vyy += (yy * yy - yy0 * yy0) - inv0 * dy * dy - 2 * dy * myy;
         mxx += dx * inv0;
         myy += dy * inv0;
     }
-    wci->mxx = mxx;
-    wci->myy = myy;
-    wci->vxx = vxx;
-    wci->vxy = vxy;
-    wci->vyy = vyy;
     // calculate lnr - lxy, lbb, laa
     const double lxy = vxy / sqrt(vxx * vyy);
     const double lbb = vxy / vxx;
     const double laa = myy - lbb * mxx;
-    result->nnn = wci->nnn;
-    result->mxx = mxx;
-    result->myy = myy;
-    result->mex = sqrt(vxx * wci->inv1);
-    result->mee = sqrt(vyy * wci->inv1);
-    result->lxy = lxy;
-    result->laa = laa;
-    result->lbb = lbb;
-    result->lyy = laa + lbb * xx;
-    result->lee = sqrt(vyy * (1 - lxy * lxy) * wci->inv2);
-    result->xx1 = xx;
-    result->yy1 = yy;
+    wcf->laa = laa;
+    wcf->lbb = lbb;
+    wcf->lee = sqrt(vyy * (1 - lxy * lxy) * wcf->inv2);
+    wcf->lxy = lxy;
+    wcf->lyy = laa + lbb * xx;
+    wcf->mee = sqrt(vyy * wcf->inv1);
+    wcf->mxe = sqrt(vxx * wcf->inv1);
+    wcf->mxx = mxx;
+    wcf->myy = myy;
+    wcf->vxx = vxx;
+    wcf->vxy = vxy;
+    wcf->vyy = vyy;
+    wcf->xx1 = xx;
+    wcf->yy1 = yy;
 }
 
 SQLMATH_FUNC static void sql3_win_cosfit2_value(
@@ -2040,8 +2031,8 @@ SQLMATH_FUNC static void sql3_win_cosfit2_value(
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     const int ncol = vec99->ncol;
-    doublearrayResult(context, vec99_head + ncol * WinCosfitInternalN,
-        ncol * WinCosfitResultN, SQLITE_TRANSIENT);
+    doublearrayResult(context, vec99_head, ncol * WinCosfitN,
+        SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_cosfit2_final(
@@ -2050,19 +2041,10 @@ SQLMATH_FUNC static void sql3_win_cosfit2_final(
 // This function will calculate running simple-linear-regression
 // and cosine-regression as:
 //     yy = laa + lbb*xx + caa*cos(cww*xx + cpp)
+    // vec99 - value
+    sql3_win_cosfit2_value(context);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - value
-    const int ncol = vec99->ncol;
-    if (ncol <= 0) {
-        sqlite3_result_null(context);
-        return;
-    }
-    doublearrayResult(          //
-        context,                //
-        vec99_head + ncol * WinCosfitInternalN, //
-        (ncol * WinCosfitResultN + vec99->nbody),       //
-        SQLITE_TRANSIENT);
     // vec99 - cleanup
     vector99_agg_free(vec99_agg);
 }
@@ -2099,44 +2081,40 @@ static void sql3_win_cosfit2_step(
     }
     // vec99 - init
     const int ncol = (argc - 1) / 2;
-    VECTOR99_AGGREGATE_CONTEXT(ncol * (WinCosfitInternalN +
-            WinCosfitResultN));
+    VECTOR99_AGGREGATE_CONTEXT(ncol * WinCosfitN);
     if (vec99->nbody == 0) {
         // ncol
         vec99->ncol = ncol;
     }
     // vec99 - init argv - xx, yy, xx0, yy0
-    WinCosfitInternal *wci = NULL;
     const int modeNocsf = sqlite3_value_int(argv[0]);
     const int wii0 = vec99->wii;
     argv += 1;
     for (int ii = 0; ii < ncol; ii += 1) {
-        wci = (WinCosfitInternal *) vec99_head + ii;
-        sqlite3_value_double_or_prev(argv[0], &wci->xx1);
-        sqlite3_value_double_or_prev(argv[1], &wci->yy1);
-        wci->xx0 = vec99_body[wii0 + ii * 3 + 0];
-        wci->yy0 = vec99_body[wii0 + ii * 3 + 1];
-        VECTOR99_AGGREGATE_PUSH(wci->xx1);
-        VECTOR99_AGGREGATE_PUSH(wci->yy1);
+        WinCosfit *wcf = (WinCosfit *) vec99_head;
+        wcf += ii;
+        sqlite3_value_double_or_prev(argv[0], &wcf->xx2);
+        sqlite3_value_double_or_prev(argv[1], &wcf->yy2);
+        wcf->xx0 = vec99_body[wii0 + ii * 3 + 0];
+        wcf->yy0 = vec99_body[wii0 + ii * 3 + 1];
+        VECTOR99_AGGREGATE_PUSH(wcf->xx2);
+        VECTOR99_AGGREGATE_PUSH(wcf->yy2);
         VECTOR99_AGGREGATE_PUSH(0);
         argv += 2;
     }
     // vec99 - calculate lnr, csf
-    WinCosfitResult *result =
-        (WinCosfitResult *) (vec99_head + ncol * WinCosfitInternalN);
-    wci = (WinCosfitInternal *) vec99_head;
+    WinCosfit *wcf = (WinCosfit *) vec99_head;
     for (int ii = 0; ii < ncol; ii += 1) {
-        result->xx1 = wci->xx0;
-        result->yy1 = wci->yy0;
+        wcf->xx1 = wcf->xx0;
+        wcf->yy1 = wcf->yy0;
         // vec99 - calculate lnr
-        winCosfitLnr(wci, result, vec99->wnn == 0);
+        winCosfitLnr(wcf, vec99->wnn == 0);
         // vec99 - calculate csf
         if (!modeNocsf) {
-            winCosfitCsf(wci, result, vec99, ii);
+            winCosfitCsf(wcf, vec99, ii);
         }
         // increment counter
-        result += 1;
-        wci += 1;
+        wcf += 1;
     }
     return;
   catch_error:
@@ -2155,45 +2133,32 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
         goto catch_error;
     }
     const int nbody = sqlite3_value_bytes(argv[0]) / sizeof(double);
-    if (ncol <= 0 || nbody < ncol * WinCosfitResultN) {
+    if (ncol <= 0 || nbody < ncol * WinCosfitN) {
         goto catch_error;
     }
-    // init result0
-    WinCosfitResult *result0 = sqlite3_malloc(sqlite3_value_bytes(argv[0]));
-    if (result0 == NULL) {
+    // init wcf0
+    WinCosfit *wcf0 = sqlite3_malloc(sqlite3_value_bytes(argv[0]));
+    if (wcf0 == NULL) {
         sqlite3_result_error_nomem(context);
         return;
     }
-    memcpy(result0, sqlite3_value_blob(argv[0]),
-        sqlite3_value_bytes(argv[0]));
+    memcpy(wcf0, sqlite3_value_blob(argv[0]), sqlite3_value_bytes(argv[0]));
     // vec99 - calculate lnr, csf
-    WinCosfitInternal __wci = { 0 };
-    WinCosfitInternal *wci = &__wci;
-    WinCosfitResult *result = result0;
-    const double nnn = result->nnn;
+    WinCosfit *wcf = wcf0;
     argv += 2;
     for (int ii = 0; ii < ncol; ii += 1) {
-        wci->inv0 = 1.0 / (nnn - 0);
-        wci->inv1 = 1.0 / (nnn - 1);
-        wci->inv2 = 1.0 / (nnn - 2);
-        wci->mxx = result->mxx;
-        wci->myy = result->myy;
-        wci->nnn = nnn;
-        wci->vxx = result->mex * result->mex * (nnn - 1);
-        wci->vxy = wci->vxx * result->lbb;
-        wci->vyy = result->mee * result->mee * (nnn - 1);
-        sqlite3_value_double_or_prev(argv[0], &wci->xx1);
-        sqlite3_value_double_or_prev(argv[1], &wci->yy1);
+        sqlite3_value_double_or_prev(argv[0], &wcf->xx2);
+        sqlite3_value_double_or_prev(argv[1], &wcf->yy2);
         // vec99 - calculate lnr
-        winCosfitLnr(wci, result, 0);
+        winCosfitLnr(wcf, 0);
         // vec99 - calculate csf
-        // winCosfitCsf(wci, result, vec99, ii);
+        // winCosfitCsf(wcf, vec99, ii);
         argv += 2;
-        result += 1;
+        wcf += 1;
     }
     // str99 - result
-    doublearrayResult(context, (const double *) result0,
-        ncol * WinCosfitResultN, sqlite3_free);
+    doublearrayResult(context, (const double *) wcf0, ncol * WinCosfitN,
+        sqlite3_free);
     return;
   catch_error:
     sqlite3_result_error(context,

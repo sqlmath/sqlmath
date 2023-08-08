@@ -1405,7 +1405,7 @@ SELECT
                 "mxx": 2,
                 "myy": 0.5,
                 "nnn": 2,
-                "xe1": 2e-8,
+                "xe1": 0,
                 "ye1": 0.70710678,
                 "ye2": null,
                 "yy2": null
