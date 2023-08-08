@@ -24,7 +24,6 @@
 /*jslint beta, node*/
 import jslint from "./jslint.mjs";
 import {
-    SQLITE_WIN_SLR_ELEM_SIZE,
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
@@ -46,9 +45,9 @@ import {
     jsbatonValueString,
     noop,
     sqlmathWebworkerInit,
+    sqlCosfitExtract,
     version
 } from "./sqlmath.mjs";
-let SIZE_SLR = SQLITE_WIN_SLR_ELEM_SIZE;
 let {
     assertErrorThrownAsync,
     jstestDescribe,
@@ -1209,13 +1208,13 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 AS
     SELECT
         id,
-        __slr,
-        doublearray_extract(__slr, 0 * ${SIZE_SLR} + 03) AS xx1,
-        doublearray_extract(__slr, 0 * ${SIZE_SLR} + 05) AS yy1,
-        doublearray_extract(__slr, 8 * ${SIZE_SLR} + 03) AS xx2,
-        doublearray_extract(__slr, 8 * ${SIZE_SLR} + 05) AS yy2,
-        doublearray_extract(__slr, 9 * ${SIZE_SLR} + 03) AS xx3,
-        doublearray_extract(__slr, 9 * ${SIZE_SLR} + 05) AS yy3
+        __wcf,
+        ${sqlCosfitExtract("__wcf", 0, "xx1")} AS xx11,
+        ${sqlCosfitExtract("__wcf", 0, "yy1")} AS yy11,
+        ${sqlCosfitExtract("__wcf", 8, "xx1")} AS xx12,
+        ${sqlCosfitExtract("__wcf", 8, "yy1")} AS yy12,
+        ${sqlCosfitExtract("__wcf", 9, "xx1")} AS xx13,
+        ${sqlCosfitExtract("__wcf", 9, "yy1")} AS yy13
     FROM (
         SELECT
             id,
@@ -1233,13 +1232,13 @@ CREATE TEMP TABLE __tmp1 AS
             ) OVER (
                 ORDER BY NULL ASC
                 ${sqlBetween}
-            ) AS __slr
+            ) AS __wcf
         FROM JSON_EAcH($valIn)
     );
 UPDATE __tmp1
     SET
-        __slr = win_cosfit2_step(
-            __slr,
+        __wcf = win_cosfit2_step(
+            __wcf,
             0,
             0, 0,
             0, 0,
@@ -1254,61 +1253,61 @@ UPDATE __tmp1
         );
 UPDATE __tmp1
     SET
-        __slr = win_cosfit2_step(
-            __slr,
+        __wcf = win_cosfit2_step(
+            __wcf,
             0,
-            xx1, yy1,
-            xx1, yy1,
-            xx1, yy1,
-            xx1, yy1,
-            xx1, yy1,
-            xx1, yy1,
-            xx1, yy1,
-            xx1, yy1,
-            xx2, yy2,
-            xx3, yy3
+            xx11, yy11,
+            xx11, yy11,
+            xx11, yy11,
+            xx11, yy11,
+            xx11, yy11,
+            xx11, yy11,
+            xx11, yy11,
+            xx11, yy11,
+            xx12, yy12,
+            xx13, yy13
         );
 SELECT
         id,
         --
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 00), 8) AS nnn1,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 01), 8) AS mxx1,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 02), 8) AS myy1,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 03), 8) AS xx11,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 04), 8) AS xe11,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 05), 8) AS yy11,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 06), 8) AS ye11,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 07), 8) AS yy21,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 08), 8) AS ye21,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 09), 8) AS laa1,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 10), 8) AS lbb1,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 11), 8) AS lrr1,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "nnn")}, 8) AS nnn1,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "mxx")}, 8) AS mxx1,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "myy")}, 8) AS myy1,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "xx1")}, 8) AS xx11,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "xe1")}, 8) AS xe11,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "yy1")}, 8) AS yy11,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "ye1")}, 8) AS ye11,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "yy2")}, 8) AS yy21,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "ye2")}, 8) AS ye21,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "laa")}, 8) AS laa1,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "lbb")}, 8) AS lbb1,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "lrr")}, 8) AS lrr1,
         --
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 00), 8) AS nnn2,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 01), 8) AS mxx2,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 02), 8) AS myy2,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 03), 8) AS xx12,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 04), 8) AS xe12,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 05), 8) AS yy12,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 06), 8) AS ye12,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 07), 8) AS yy22,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 08), 8) AS ye22,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 09), 8) AS laa2,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 10), 8) AS lbb2,
-        ROUND(doublearray_extract(__slr, 8 * ${SIZE_SLR} + 11), 8) AS lrr2,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "nnn")}, 8) AS nnn2,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "mxx")}, 8) AS mxx2,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "myy")}, 8) AS myy2,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "xx1")}, 8) AS xx12,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "xe1")}, 8) AS xe12,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "yy1")}, 8) AS yy12,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "ye1")}, 8) AS ye12,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "yy2")}, 8) AS yy22,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "ye2")}, 8) AS ye22,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "laa")}, 8) AS laa2,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "lbb")}, 8) AS lbb2,
+        ROUND(${sqlCosfitExtract("__wcf", 8, "lrr")}, 8) AS lrr2,
         --
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 00), 8) AS nnn3,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 01), 8) AS mxx3,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 02), 8) AS myy3,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 03), 8) AS xx13,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 04), 8) AS xe13,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 05), 8) AS yy13,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 06), 8) AS ye13,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 07), 8) AS yy23,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 08), 8) AS ye23,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 09), 8) AS laa3,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 10), 8) AS lbb3,
-        ROUND(doublearray_extract(__slr, 9 * ${SIZE_SLR} + 11), 8) AS lrr3
+        ROUND(${sqlCosfitExtract("__wcf", 9, "nnn")}, 8) AS nnn3,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "mxx")}, 8) AS mxx3,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "myy")}, 8) AS myy3,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "xx1")}, 8) AS xx13,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "xe1")}, 8) AS xe13,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "yy1")}, 8) AS yy13,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "ye1")}, 8) AS ye13,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "yy2")}, 8) AS yy23,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "ye2")}, 8) AS ye23,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "laa")}, 8) AS laa3,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "lbb")}, 8) AS lbb3,
+        ROUND(${sqlCosfitExtract("__wcf", 9, "lrr")}, 8) AS lrr3
     FROM __tmp1;
                 `)
             });
@@ -1633,21 +1632,21 @@ SELECT
                         db,
                         sql: (`
 SELECT
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 00), 8) AS nnn,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 01), 8) AS mxx,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 02), 8) AS myy,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 03), 8) AS xx1,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 04), 8) AS xe1,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 05), 8) AS yy1,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 06), 8) AS ye1,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 07), 8) AS yy2,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 08), 8) AS ye2,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 09), 8) AS laa,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 10), 8) AS lbb,
-        ROUND(doublearray_extract(__slr, 0 * ${SIZE_SLR} + 11), 8) AS lrr
+        ROUND(${sqlCosfitExtract("__wcf", 0, "nnn")}, 8) AS nnn,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "mxx")}, 8) AS mxx,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "myy")}, 8) AS myy,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "xx1")}, 8) AS xx1,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "xe1")}, 8) AS xe1,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "yy1")}, 8) AS yy1,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "ye1")}, 8) AS ye1,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "yy2")}, 8) AS yy2,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "ye2")}, 8) AS ye2,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "laa")}, 8) AS laa,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "lbb")}, 8) AS lbb,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "lrr")}, 8) AS lrr
     FROM (
         SELECT
-            win_cosfit2(xx, yy) AS __slr
+            win_cosfit2(xx, yy) AS __wcf
         FROM (
             SELECT 34 AS xx, 5 AS yy
             UNION ALL SELECT 108, 17
@@ -1976,16 +1975,16 @@ date close
                         db,
                         sql: (`
 SELECT
-        ROUND(0.01 * doublearray_extract(__slr, 07), 4) AS yy2,
-        ROUND(doublearray_extract(__slr, 08) * 100.0 / yy, 4) AS ye2,
-        ROUND(0.01 * doublearray_extract(__slr, 12), 4) AS yy3,
-        ROUND(doublearray_extract(__slr, 13) * 100.0 / yy, 4) AS ye3,
+        ROUND(0.01 * doublearray_extract(__wcf, 07), 4) AS yy2,
+        ROUND(doublearray_extract(__wcf, 08) * 100.0 / yy, 4) AS ye2,
+        ROUND(0.01 * doublearray_extract(__wcf, 12), 4) AS yy3,
+        ROUND(doublearray_extract(__wcf, 13) * 100.0 / yy, 4) AS ye3,
         --
-        ROUND(doublearray_extract(__slr, 14), 4) AS caa,
-        ROUND(doublearray_extract(__slr, 15), 4) AS cww,
-        ROUND(doublearray_extract(__slr, 16), 4) AS cpp,
-        ROUND(doublearray_extract(__slr, 17), 4) AS ctt,
-        ROUND(doublearray_extract(__slr, 18), 4) AS ctp,
+        ROUND(doublearray_extract(__wcf, 14), 4) AS caa,
+        ROUND(doublearray_extract(__wcf, 15), 4) AS cww,
+        ROUND(doublearray_extract(__wcf, 16), 4) AS cpp,
+        ROUND(doublearray_extract(__wcf, 17), 4) AS ctt,
+        ROUND(doublearray_extract(__wcf, 18), 4) AS ctp,
         --
         date,
         ROUND(0.01 * yy, 4) AS yy
@@ -1994,7 +1993,7 @@ SELECT
             win_cosfit2(value->>'ii', value->>'priceClose') OVER (
                 ORDER BY NULL ASC
                 ROWS BETWEEN ${ttCosfit - 1} PRECEDING AND 0 FOLLOWING
-            ) AS __slr,
+            ) AS __wcf,
             value->>'date' AS date,
             value->>'priceClose' AS yy
         FROM JSON_EAcH($testDataSpx)

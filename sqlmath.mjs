@@ -60,7 +60,6 @@ let SQLITE_OPEN_TEMP_JOURNAL = 0x00001000;  /* VFS only */
 let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
 let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
 let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
-let SQLITE_WIN_SLR_ELEM_SIZE = 5 + 5 + 2 + 7;
 let cModule;
 let cModulePath;
 let consoleError = console.error;
@@ -1145,6 +1144,21 @@ function objectDeepCopyWithKeysSorted(obj) {
     return sorted;
 }
 
+function sqlCosfitExtract(wcf, ii, key) {
+
+// This function will return sql-code to extract value <wcf>[<ii>][<key>].
+
+    let jj = noop([
+        "nnn", "mxx", "myy",
+        "xx1", "xe1", "yy1", "ye1", "yy2", "ye2",
+        "laa", "lbb", "lrr",
+        "yy3", "ye3",
+        "caa", "cww", "cpp", "ctt", "ctp"
+    ]).indexOf(key);
+    assertOrThrow(jj >= 0);
+    return `doublearray_extract(${wcf}, ${ii * 19 + jj})`;
+}
+
 async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 // This function will post msg to <sqlWorker> and return result.
@@ -1357,7 +1371,6 @@ export {
     SQLITE_OPEN_TRANSIENT_DB,
     SQLITE_OPEN_URI,
     SQLITE_OPEN_WAL,
-    SQLITE_WIN_SLR_ELEM_SIZE,
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
@@ -1380,6 +1393,7 @@ export {
     jsbatonValueString,
     noop,
     objectDeepCopyWithKeysSorted,
+    sqlCosfitExtract,
     sqlmathWebworkerInit,
     version
 };
