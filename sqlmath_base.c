@@ -1809,315 +1809,6 @@ static void sql2_stdev_step(
 
 // SQLMATH_FUNC sql2_stdev_func - end
 
-// SQLMATH_FUNC sql3_win_ema1_func - start
-SQLMATH_FUNC static void sql3_win_ema1_value(
-    sqlite3_context * context
-) {
-// This function will calculate running exponential-moving-average.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    sqlite3_result_double(context, vec99_body[(int) vec99->wii]);
-}
-
-SQLMATH_FUNC static void sql3_win_ema1_final(
-    sqlite3_context * context
-) {
-// This function will calculate running exponential-moving-average.
-    // vec99 - value
-    sql3_win_ema1_value(context);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - cleanup
-    vector99_agg_free(vec99_agg);
-}
-
-SQLMATH_FUNC static void sql3_win_ema1_inverse(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running exponential-moving-average.
-    UNUSED_PARAMETER(argc);
-    UNUSED_PARAMETER(argv);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    if (!vec99->wnn) {
-        vec99->wnn = vec99->nbody;
-    }
-}
-
-SQLMATH_FUNC static void sql3_win_ema1_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running exponential-moving-average.
-    if (argc < 2) {
-        sqlite3_result_error(context,
-            "wrong number of arguments to function win_ema2()", -1);
-        return;
-    }
-    // vec99 - init
-    const int ncol = argc - 1;
-    double arg_alpha = NAN;
-    VECTOR99_AGGREGATE_CONTEXT(argc);
-    if (vec99->nbody == 0) {
-        // ncol
-        vec99->ncol = ncol;
-        // arg_alpha
-        arg_alpha = sqlite3_value_double_or_nan(argv[argc - 1]);
-        if (isnan(arg_alpha)) {
-            sqlite3_result_error(context,
-                "invalid argument 'alpha' to function win_emax()", -1);
-            return;
-        }
-        vec99_head[ncol + 0] = arg_alpha;
-    }
-    // declare var
-    arg_alpha = vec99_head[ncol + 0];
-    const int nrow = vec99->nbody / ncol;
-    // vec99 - calculate ema
-    for (int ii = 0; ii < ncol; ii += 1) {
-        sqlite3_value_double_or_prev(argv[ii], &vec99_head[ii]);
-        double *row = vec99_body + ii;
-        // debug
-        // fprintf(stderr,         //
-        //     "win_ema2 - nbody=%.0f xx0=%f xx=%f arg_alpha=%f\n",        //
-        //     vec99->nbody, *row, vec99_head[0], arg_alpha);
-        for (int jj = 0; jj < nrow; jj += 1) {
-            *row = arg_alpha * vec99_head[ii] + (1 - arg_alpha) * *row;
-            row += ncol;
-        }
-    }
-    // vec99 - push xx
-    for (int ii = 0; ii < ncol; ii += 1) {
-        VECTOR99_AGGREGATE_PUSH(vec99_head[ii]);
-    }
-    return;
-  catch_error:
-    vector99_agg_free(vec99_agg);
-}
-
-// SQLMATH_FUNC sql3_win_ema1_func - end
-
-// SQLMATH_FUNC sql3_win_ema2_func - start
-SQLMATH_FUNC static void sql3_win_ema2_value(
-    sqlite3_context * context
-) {
-// This function will calculate running exponential-moving-average.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    if (!vec99->ncol) {
-        sqlite3_result_null(context);
-    }
-    doublearrayResult(context, vec99_body + (int) vec99->wii,
-        (int) vec99->ncol, SQLITE_TRANSIENT);
-}
-
-SQLMATH_FUNC static void sql3_win_ema2_final(
-    sqlite3_context * context
-) {
-// This function will calculate running exponential-moving-average.
-    // vec99 - value
-    sql3_win_ema2_value(context);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - cleanup
-    vector99_agg_free(vec99_agg);
-}
-
-SQLMATH_FUNC static void sql3_win_ema2_inverse(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running exponential-moving-average.
-    sql3_win_ema1_inverse(context, argc, argv);
-}
-
-SQLMATH_FUNC static void sql3_win_ema2_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running exponential-moving-average.
-    sql3_win_ema1_step(context, argc, argv);
-}
-
-// SQLMATH_FUNC sql3_win_ema2_func - end
-
-// SQLMATH_FUNC sql3_win_quantile1_func - start
-SQLMATH_FUNC static void sql3_win_quantile1_value(
-    sqlite3_context * context
-) {
-// This function will calculate running quantile.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    sqlite3_result_double(context, vec99_head[(int) vec99->ncol + 1]);
-}
-
-SQLMATH_FUNC static void sql3_win_quantile1_final(
-    sqlite3_context * context
-) {
-// This function will calculate running quantile.
-    // vec99 - value
-    sql3_win_quantile1_value(context);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - cleanup
-    vector99_agg_free(vec99_agg);
-}
-
-SQLMATH_FUNC static void sql3_win_quantile1_inverse(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running quantile.
-    UNUSED_PARAMETER(argc);
-    UNUSED_PARAMETER(argv);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    if (!vec99->wnn) {
-        vec99->wnn = vec99->nbody;
-    }
-    // vec99 - invert
-    const int ncol = argc - 1;
-    const int nstep = ncol * 2;
-    const int nn = vec99->nbody - nstep;
-    double *arr = vec99_body + 1;
-    double *xx0 = vec99_body + 0 + (int) vec99->wii;
-    for (int ii = 0; ii < ncol; ii += 1) {
-        const double xx = *xx0;
-        int jj = 0;
-        for (; jj < nn && arr[jj] < xx; jj += nstep) {
-        }
-        for (; jj < nn; jj += nstep) {
-            arr[jj] = arr[jj + nstep];
-        }
-        arr[jj] = INFINITY;
-        arr += 2;
-        xx0 += 2;
-    }
-}
-
-SQLMATH_FUNC static void sql3_win_quantile1_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running quantile.
-    if (argc < 2) {
-        sqlite3_result_error(context,
-            "wrong number of arguments to function win_quantile2()", -1);
-        return;
-    }
-    // vec99 - init
-    const int ncol = argc - 1;
-    double arg_quantile = NAN;
-    VECTOR99_AGGREGATE_CONTEXT(argc + ncol);
-    if (vec99->nbody == 0) {
-        // ncol
-        vec99->ncol = ncol;
-        // arg_quantile
-        arg_quantile = sqlite3_value_double_or_nan(argv[ncol + 0]);
-        if (!(0 <= arg_quantile && arg_quantile <= 1)) {
-            sqlite3_result_error(context,
-                "invalid argument 'quantile' to function win_quantilex()",
-                -1);
-            return;
-        }
-        vec99_head[ncol + 0] = arg_quantile;
-    }
-    // vec99 - push xx
-    for (int ii = 0; ii < ncol; ii += 1) {
-        sqlite3_value_double_or_prev(argv[ii], &vec99_head[ii]);
-        VECTOR99_AGGREGATE_PUSH(vec99_head[ii]);
-        VECTOR99_AGGREGATE_PUSH(        //
-            vec99->wnn ? vec99_body[(int) vec99->wii] : INFINITY);
-    }
-    // vec99 - calculate quantile
-    const int nstep = ncol * 2;
-    const int nn = vec99->nbody / nstep;
-    double *arr = vec99_body + 1;
-    //
-    arg_quantile = vec99_head[ncol + 0] * (nn - 1);
-    const int kk1 = floor(arg_quantile) * nstep;
-    const int kk2 = kk1 + nstep;
-    arg_quantile = fmod(arg_quantile, 1);
-    for (int ii = 0; ii < ncol; ii += 1) {
-        const double xx = vec99_head[ii];
-        int jj = (nn - 2) * nstep;
-        for (; jj >= 0 && arr[jj] > xx; jj -= nstep) {
-            arr[jj + nstep] = arr[jj];
-        }
-        arr[jj + nstep] = xx;
-        vec99_head[ncol + 1 + ii] = arg_quantile == 0   //
-            ? arr[kk1]          //
-            : (1 - arg_quantile) * arr[kk1] + arg_quantile * arr[kk2];
-        // debug
-        // fprintf(stderr, "ii=%d arg=%f, xx0=%f\n",       //
-        //     ii, sqlite3_value_double_or_nan(argv[ii]), vec99_head[ii]);
-        // fprintf(stderr,         //
-        //     "win_quantile1 - nn=%d wii=%.0f kk1=%d kk2=%d"      //
-        //     " xx=%f qq=%f xx1=%f xx2=%f\n",     //
-        //     nn, vec99->wii, kk1, kk2,   //
-        //     xx, arg_quantile, arr[kk1], arr[kk2]);
-        arr += 2;
-    }
-    return;
-  catch_error:
-    vector99_agg_free(vec99_agg);
-}
-
-// SQLMATH_FUNC sql3_win_quantile1_func - end
-
-// SQLMATH_FUNC sql3_win_quantile2_func - start
-SQLMATH_FUNC static void sql3_win_quantile2_value(
-    sqlite3_context * context
-) {
-// This function will calculate running quantile.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    if (!vec99->ncol) {
-        sqlite3_result_null(context);
-    }
-    doublearrayResult(context, vec99_head + (int) vec99->ncol + 1,
-        (int) vec99->ncol, SQLITE_TRANSIENT);
-}
-
-SQLMATH_FUNC static void sql3_win_quantile2_final(
-    sqlite3_context * context
-) {
-// This function will calculate running quantile.
-    // vec99 - value
-    sql3_win_quantile2_value(context);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - cleanup
-    vector99_agg_free(vec99_agg);
-}
-
-SQLMATH_FUNC static void sql3_win_quantile2_inverse(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running quantile.
-    sql3_win_quantile1_inverse(context, argc, argv);
-}
-
-SQLMATH_FUNC static void sql3_win_quantile2_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running quantile.
-    sql3_win_quantile1_step(context, argc, argv);
-}
-
-// SQLMATH_FUNC sql3_win_quantile2_func - end
-
 // SQLMATH_FUNC sql3_win_cosfit2_func - start
 typedef struct WinCosfitInternal {
     double inv0;                // 1.0 / (nnn - 0)
@@ -2509,6 +2200,315 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
 }
 
 // SQLMATH_FUNC sql3_win_cosfit2_func - end
+
+// SQLMATH_FUNC sql3_win_ema1_func - start
+SQLMATH_FUNC static void sql3_win_ema1_value(
+    sqlite3_context * context
+) {
+// This function will calculate running exponential-moving-average.
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    sqlite3_result_double(context, vec99_body[(int) vec99->wii]);
+}
+
+SQLMATH_FUNC static void sql3_win_ema1_final(
+    sqlite3_context * context
+) {
+// This function will calculate running exponential-moving-average.
+    // vec99 - value
+    sql3_win_ema1_value(context);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    // vec99 - cleanup
+    vector99_agg_free(vec99_agg);
+}
+
+SQLMATH_FUNC static void sql3_win_ema1_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running exponential-moving-average.
+    UNUSED_PARAMETER(argc);
+    UNUSED_PARAMETER(argv);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    if (!vec99->wnn) {
+        vec99->wnn = vec99->nbody;
+    }
+}
+
+SQLMATH_FUNC static void sql3_win_ema1_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running exponential-moving-average.
+    if (argc < 2) {
+        sqlite3_result_error(context,
+            "wrong number of arguments to function win_ema2()", -1);
+        return;
+    }
+    // vec99 - init
+    const int ncol = argc - 1;
+    double arg_alpha = NAN;
+    VECTOR99_AGGREGATE_CONTEXT(argc);
+    if (vec99->nbody == 0) {
+        // ncol
+        vec99->ncol = ncol;
+        // arg_alpha
+        arg_alpha = sqlite3_value_double_or_nan(argv[argc - 1]);
+        if (isnan(arg_alpha)) {
+            sqlite3_result_error(context,
+                "invalid argument 'alpha' to function win_emax()", -1);
+            return;
+        }
+        vec99_head[ncol + 0] = arg_alpha;
+    }
+    // declare var
+    arg_alpha = vec99_head[ncol + 0];
+    const int nrow = vec99->nbody / ncol;
+    // vec99 - calculate ema
+    for (int ii = 0; ii < ncol; ii += 1) {
+        sqlite3_value_double_or_prev(argv[ii], &vec99_head[ii]);
+        double *row = vec99_body + ii;
+        // debug
+        // fprintf(stderr,         //
+        //     "win_ema2 - nbody=%.0f xx0=%f xx=%f arg_alpha=%f\n",        //
+        //     vec99->nbody, *row, vec99_head[0], arg_alpha);
+        for (int jj = 0; jj < nrow; jj += 1) {
+            *row = arg_alpha * vec99_head[ii] + (1 - arg_alpha) * *row;
+            row += ncol;
+        }
+    }
+    // vec99 - push xx
+    for (int ii = 0; ii < ncol; ii += 1) {
+        VECTOR99_AGGREGATE_PUSH(vec99_head[ii]);
+    }
+    return;
+  catch_error:
+    vector99_agg_free(vec99_agg);
+}
+
+// SQLMATH_FUNC sql3_win_ema1_func - end
+
+// SQLMATH_FUNC sql3_win_ema2_func - start
+SQLMATH_FUNC static void sql3_win_ema2_value(
+    sqlite3_context * context
+) {
+// This function will calculate running exponential-moving-average.
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    if (!vec99->ncol) {
+        sqlite3_result_null(context);
+    }
+    doublearrayResult(context, vec99_body + (int) vec99->wii,
+        (int) vec99->ncol, SQLITE_TRANSIENT);
+}
+
+SQLMATH_FUNC static void sql3_win_ema2_final(
+    sqlite3_context * context
+) {
+// This function will calculate running exponential-moving-average.
+    // vec99 - value
+    sql3_win_ema2_value(context);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    // vec99 - cleanup
+    vector99_agg_free(vec99_agg);
+}
+
+SQLMATH_FUNC static void sql3_win_ema2_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running exponential-moving-average.
+    sql3_win_ema1_inverse(context, argc, argv);
+}
+
+SQLMATH_FUNC static void sql3_win_ema2_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running exponential-moving-average.
+    sql3_win_ema1_step(context, argc, argv);
+}
+
+// SQLMATH_FUNC sql3_win_ema2_func - end
+
+// SQLMATH_FUNC sql3_win_quantile1_func - start
+SQLMATH_FUNC static void sql3_win_quantile1_value(
+    sqlite3_context * context
+) {
+// This function will calculate running quantile.
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    sqlite3_result_double(context, vec99_head[(int) vec99->ncol + 1]);
+}
+
+SQLMATH_FUNC static void sql3_win_quantile1_final(
+    sqlite3_context * context
+) {
+// This function will calculate running quantile.
+    // vec99 - value
+    sql3_win_quantile1_value(context);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    // vec99 - cleanup
+    vector99_agg_free(vec99_agg);
+}
+
+SQLMATH_FUNC static void sql3_win_quantile1_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running quantile.
+    UNUSED_PARAMETER(argc);
+    UNUSED_PARAMETER(argv);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    if (!vec99->wnn) {
+        vec99->wnn = vec99->nbody;
+    }
+    // vec99 - invert
+    const int ncol = argc - 1;
+    const int nstep = ncol * 2;
+    const int nn = vec99->nbody - nstep;
+    double *arr = vec99_body + 1;
+    double *xx0 = vec99_body + 0 + (int) vec99->wii;
+    for (int ii = 0; ii < ncol; ii += 1) {
+        const double xx = *xx0;
+        int jj = 0;
+        for (; jj < nn && arr[jj] < xx; jj += nstep) {
+        }
+        for (; jj < nn; jj += nstep) {
+            arr[jj] = arr[jj + nstep];
+        }
+        arr[jj] = INFINITY;
+        arr += 2;
+        xx0 += 2;
+    }
+}
+
+SQLMATH_FUNC static void sql3_win_quantile1_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running quantile.
+    if (argc < 2) {
+        sqlite3_result_error(context,
+            "wrong number of arguments to function win_quantile2()", -1);
+        return;
+    }
+    // vec99 - init
+    const int ncol = argc - 1;
+    double arg_quantile = NAN;
+    VECTOR99_AGGREGATE_CONTEXT(argc + ncol);
+    if (vec99->nbody == 0) {
+        // ncol
+        vec99->ncol = ncol;
+        // arg_quantile
+        arg_quantile = sqlite3_value_double_or_nan(argv[ncol + 0]);
+        if (!(0 <= arg_quantile && arg_quantile <= 1)) {
+            sqlite3_result_error(context,
+                "invalid argument 'quantile' to function win_quantilex()",
+                -1);
+            return;
+        }
+        vec99_head[ncol + 0] = arg_quantile;
+    }
+    // vec99 - push xx
+    for (int ii = 0; ii < ncol; ii += 1) {
+        sqlite3_value_double_or_prev(argv[ii], &vec99_head[ii]);
+        VECTOR99_AGGREGATE_PUSH(vec99_head[ii]);
+        VECTOR99_AGGREGATE_PUSH(        //
+            vec99->wnn ? vec99_body[(int) vec99->wii] : INFINITY);
+    }
+    // vec99 - calculate quantile
+    const int nstep = ncol * 2;
+    const int nn = vec99->nbody / nstep;
+    double *arr = vec99_body + 1;
+    //
+    arg_quantile = vec99_head[ncol + 0] * (nn - 1);
+    const int kk1 = floor(arg_quantile) * nstep;
+    const int kk2 = kk1 + nstep;
+    arg_quantile = fmod(arg_quantile, 1);
+    for (int ii = 0; ii < ncol; ii += 1) {
+        const double xx = vec99_head[ii];
+        int jj = (nn - 2) * nstep;
+        for (; jj >= 0 && arr[jj] > xx; jj -= nstep) {
+            arr[jj + nstep] = arr[jj];
+        }
+        arr[jj + nstep] = xx;
+        vec99_head[ncol + 1 + ii] = arg_quantile == 0   //
+            ? arr[kk1]          //
+            : (1 - arg_quantile) * arr[kk1] + arg_quantile * arr[kk2];
+        // debug
+        // fprintf(stderr, "ii=%d arg=%f, xx0=%f\n",       //
+        //     ii, sqlite3_value_double_or_nan(argv[ii]), vec99_head[ii]);
+        // fprintf(stderr,         //
+        //     "win_quantile1 - nn=%d wii=%.0f kk1=%d kk2=%d"      //
+        //     " xx=%f qq=%f xx1=%f xx2=%f\n",     //
+        //     nn, vec99->wii, kk1, kk2,   //
+        //     xx, arg_quantile, arr[kk1], arr[kk2]);
+        arr += 2;
+    }
+    return;
+  catch_error:
+    vector99_agg_free(vec99_agg);
+}
+
+// SQLMATH_FUNC sql3_win_quantile1_func - end
+
+// SQLMATH_FUNC sql3_win_quantile2_func - start
+SQLMATH_FUNC static void sql3_win_quantile2_value(
+    sqlite3_context * context
+) {
+// This function will calculate running quantile.
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    if (!vec99->ncol) {
+        sqlite3_result_null(context);
+    }
+    doublearrayResult(context, vec99_head + (int) vec99->ncol + 1,
+        (int) vec99->ncol, SQLITE_TRANSIENT);
+}
+
+SQLMATH_FUNC static void sql3_win_quantile2_final(
+    sqlite3_context * context
+) {
+// This function will calculate running quantile.
+    // vec99 - value
+    sql3_win_quantile2_value(context);
+    // vec99 - init
+    VECTOR99_AGGREGATE_CONTEXT(0);
+    // vec99 - cleanup
+    vector99_agg_free(vec99_agg);
+}
+
+SQLMATH_FUNC static void sql3_win_quantile2_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running quantile.
+    sql3_win_quantile1_inverse(context, argc, argv);
+}
+
+SQLMATH_FUNC static void sql3_win_quantile2_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running quantile.
+    sql3_win_quantile1_step(context, argc, argv);
+}
+
+// SQLMATH_FUNC sql3_win_quantile2_func - end
 
 // file sqlmath_base - init
 int sqlite3_sqlmath_base_init(
