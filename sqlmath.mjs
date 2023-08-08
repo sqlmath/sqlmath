@@ -532,26 +532,6 @@ function dbExecAndReturnLastBlobAsync({
     });
 }
 
-async function dbExecAndReturnLastJsonAsync(option) {
-
-// This function will exec <sql> in <db> and return last value retrieved
-// from execution as raw text.
-
-    return JSON.parse(
-        await dbExecAndReturnLastTextAsync(option)
-    );
-}
-
-async function dbExecAndReturnLastTextAsync(option) {
-
-// This function will exec <sql> in <db> and return last value retrieved
-// from execution as raw text.
-
-    return new TextDecoder().decode(
-        await dbExecAndReturnLastBlobAsync(option)
-    );
-}
-
 async function dbExecAsync({
     bindList = [],
     db,
@@ -1149,11 +1129,10 @@ function sqlCosfitExtract(wcf, ii, key) {
 // This function will return sql-code to extract value <wcf>[<ii>][<key>].
 
     let jj = noop([
-        "nnn", "mxx", "myy",
-        "xx1", "xe1", "yy1", "ye1", "yy2", "ye2",
-        "laa", "lbb", "lrr",
-        "yy3", "ye3",
-        "caa", "cww", "cpp", "ctt", "ctp"
+        "nnn", "xx1", "yy1",
+        "ye1", "myy", "mxx", "xe1",
+        "ye2", "yy2", "laa", "lbb", "lxy",
+        "ye3", "yy3", "caa", "cww", "cpp", "ctt", "ctp"
     ]).indexOf(key);
     assertOrThrow(jj >= 0, `sqlCosfitExtract - invalid key "${key}"`);
     return `doublearray_extract(${wcf}, ${ii * 19 + jj})`;
@@ -1378,8 +1357,6 @@ export {
     ciBuildExt,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
-    dbExecAndReturnLastJsonAsync,
-    dbExecAndReturnLastTextAsync,
     dbExecAsync,
     dbFileExportAsync,
     dbFileImportAsync,

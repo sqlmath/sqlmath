@@ -1831,23 +1831,22 @@ static const int WinCosfitInternalN =
 
 typedef struct WinCosfitResult {
     double nnn;                 // 00 number of elements
-    double mxx;                 // 01 x-average
-    double myy;                 // 02 y-average
+    double xx1;                 // 01 x-actual
+    double yy1;                 // 02 y-actual
     //
-    double xx1;                 // 03 x-actual
-    double xe1;                 // 04 x-stdev.s1
-    double yy1;                 // 05 y-actual
-    double ye1;                 // 06 y-stdev.s1
-    double yy2;                 // 07 y-estimate linest
-    double ye2;                 // 08 y-stdev.s2 linest
+    double mee;                 // 03 y-stdev.s1
+    double myy;                 // 04 y-average
+    double mxx;                 // 05 x-average
+    double mex;                 // 06 x-stdev.s1
     //
+    double lee;                 // 07 y-stdev.s2 linest
+    double lyy;                 // 08 y-estimate linest
     double laa;                 // 09 linest y-intercept
     double lbb;                 // 10 linest slope
-    double lrr;                 // 11 linest pearson-correlation xy
+    double lxy;                 // 11 linest pearson-correlation xy
     //
-    double yy3;                 // 12 y-estimate cosine
-    double ye3;                 // 13 y-stdev.s5 cosine
-    //
+    double cee;                 // 12 y-stdev.s5 cosine
+    double cyy;                 // 13 y-estimate cosine
     double caa;                 // 14 cosine amplitude
     double cww;                 // 15 cosine angular-frequency
     double cpp;                 // 16 cosine phase
@@ -1884,7 +1883,7 @@ static void winCosfitCsf(
     }
     const double caa = sqrt(vyy / nnn);
     const double inva = 1 / caa;
-    if (!isfinite(inva) || !isfinite(1 / result->xe1)) {
+    if (!isfinite(inva) || !isfinite(1 / result->mex)) {
         return;
     }
     result->caa = caa;
@@ -1902,7 +1901,7 @@ static void winCosfitCsf(
     // cpp = cpp + dp
     // cww = cww + dw
     double cww =                // angular-frequency
-        result->cww == 0 ? 2 * MATH_PI / result->xe1 : result->cww;
+        result->cww == 0 ? 2 * MATH_PI / result->mex : result->cww;
     double cpp = result->cpp;   // angular-phase
     double gpp = 0;             // gradient-phase
     double gww = 0;             // gradient-frequency
@@ -1931,8 +1930,8 @@ static void winCosfitCsf(
     if (cpp < 0) {
         cpp += 2 * MATH_PI;
     }
-    cww = MAX(cww, MATH_PI / (2 * result->xe1));
-    cww = MIN(cww, MATH_PI / (4 * result->xe1) * sqrt(nnn));
+    cww = MAX(cww, MATH_PI / (2 * result->mex));
+    cww = MIN(cww, MATH_PI / (4 * result->mex) * sqrt(nnn));
     result->cpp = cpp;
     result->cww = cww;
     // calculate csf - ctt, ctp
@@ -1944,24 +1943,25 @@ static void winCosfitCsf(
     if (result->ctp < 0) {
         result->ctp += 1;
     }
-    // calculate csf - yy3, ye3
+    // calculate csf - cyy
     myy = 0;
     vyy = 0;
     for (int ii = 0; ii < nbody; ii += ncol * 3) {
         const double tt = ttyy[ii + 0];
-        const double yy3 =
+        const double cyy =
             laa + lbb * tt + caa * cos(fmod(cww * tt, 2 * MATH_PI) + cpp);
         if (tt == xx1) {
-            result->yy3 = yy3;
+            result->cyy = cyy;
         }
-        const double yy = ttyy[ii + 1] - yy3;
+        const double yy = ttyy[ii + 1] - cyy;
         // welford - increment vyy
         const double dd = yy - myy;
         myy += dd / nnn;
         vyy += dd * (yy - myy);
     }
+    // calculate csf - cee
     // degrees-of-freedom = 5
-    result->ye3 = sqrt(vyy / (nnn - 5));
+    result->cee = sqrt(vyy / (nnn - 5));
 }
 
 static void winCosfitLnr(
@@ -2013,20 +2013,20 @@ static void winCosfitLnr(
     wci->vxx = vxx;
     wci->vxy = vxy;
     wci->vyy = vyy;
-    // calculate lnr - lrr, lbb, laa
-    const double lrr = vxy / sqrt(vxx * vyy);
+    // calculate lnr - lxy, lbb, laa
+    const double lxy = vxy / sqrt(vxx * vyy);
     const double lbb = vxy / vxx;
     const double laa = myy - lbb * mxx;
     result->nnn = wci->nnn;
     result->mxx = mxx;
     result->myy = myy;
-    result->xe1 = sqrt(vxx * wci->inv1);
-    result->ye1 = sqrt(vyy * wci->inv1);
-    result->lrr = lrr;
+    result->mex = sqrt(vxx * wci->inv1);
+    result->mee = sqrt(vyy * wci->inv1);
+    result->lxy = lxy;
     result->laa = laa;
     result->lbb = lbb;
-    result->yy2 = laa + lbb * xx;
-    result->ye2 = sqrt(vyy * (1 - lrr * lrr) * wci->inv2);
+    result->lyy = laa + lbb * xx;
+    result->lee = sqrt(vyy * (1 - lxy * lxy) * wci->inv2);
     result->xx1 = xx;
     result->yy1 = yy;
 }
@@ -2179,9 +2179,9 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
         wci->mxx = result->mxx;
         wci->myy = result->myy;
         wci->nnn = nnn;
-        wci->vxx = result->xe1 * result->xe1 * (nnn - 1);
+        wci->vxx = result->mex * result->mex * (nnn - 1);
         wci->vxy = wci->vxx * result->lbb;
-        wci->vyy = result->ye1 * result->ye1 * (nnn - 1);
+        wci->vyy = result->mee * result->mee * (nnn - 1);
         sqlite3_value_double_or_prev(argv[0], &wci->xx1);
         sqlite3_value_double_or_prev(argv[1], &wci->yy1);
         // vec99 - calculate lnr

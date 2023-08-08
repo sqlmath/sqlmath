@@ -31,7 +31,6 @@ import {
     ciBuildExt,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
-    dbExecAndReturnLastJsonAsync,
     dbExecAsync,
     dbFileExportAsync,
     dbFileImportAsync,
@@ -1182,6 +1181,22 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
         let db = await dbOpenAsync({filename: ":memory:"});
         let valExpected0;
         let valIn;
+        function sqlCosfitExtractLnr(wcf, ii, suffix) {
+            return (`
+    ROUND(${sqlCosfitExtract(wcf, ii, "nnn")}, 8) AS nnn${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "mxx")}, 8) AS mxx${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "myy")}, 8) AS myy${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "xx1")}, 8) AS xx1${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "xe1")}, 8) AS xe1${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "yy1")}, 8) AS yy1${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "ye1")}, 8) AS ye1${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "yy2")}, 8) AS yy2${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "ye2")}, 8) AS ye2${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "laa")}, 8) AS laa${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "lbb")}, 8) AS lbb${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "lxy")}, 8) AS lxy${suffix}
+            `);
+        }
         async function test_win_cosfit2_aggregate({
             aa,
             bb,
@@ -1270,45 +1285,9 @@ UPDATE __tmp1
         );
 SELECT
         id,
-        --
-        ROUND(${sqlCosfitExtract("__wcf", 0, "nnn")}, 8) AS nnn1,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "mxx")}, 8) AS mxx1,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "myy")}, 8) AS myy1,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "xx1")}, 8) AS xx11,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "xe1")}, 8) AS xe11,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "yy1")}, 8) AS yy11,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "ye1")}, 8) AS ye11,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "yy2")}, 8) AS yy21,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "ye2")}, 8) AS ye21,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "laa")}, 8) AS laa1,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "lbb")}, 8) AS lbb1,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "lrr")}, 8) AS lrr1,
-        --
-        ROUND(${sqlCosfitExtract("__wcf", 8, "nnn")}, 8) AS nnn2,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "mxx")}, 8) AS mxx2,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "myy")}, 8) AS myy2,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "xx1")}, 8) AS xx12,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "xe1")}, 8) AS xe12,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "yy1")}, 8) AS yy12,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "ye1")}, 8) AS ye12,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "yy2")}, 8) AS yy22,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "ye2")}, 8) AS ye22,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "laa")}, 8) AS laa2,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "lbb")}, 8) AS lbb2,
-        ROUND(${sqlCosfitExtract("__wcf", 8, "lrr")}, 8) AS lrr2,
-        --
-        ROUND(${sqlCosfitExtract("__wcf", 9, "nnn")}, 8) AS nnn3,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "mxx")}, 8) AS mxx3,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "myy")}, 8) AS myy3,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "xx1")}, 8) AS xx13,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "xe1")}, 8) AS xe13,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "yy1")}, 8) AS yy13,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "ye1")}, 8) AS ye13,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "yy2")}, 8) AS yy23,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "ye2")}, 8) AS ye23,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "laa")}, 8) AS laa3,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "lbb")}, 8) AS lbb3,
-        ROUND(${sqlCosfitExtract("__wcf", 9, "lrr")}, 8) AS lrr3
+        ${sqlCosfitExtractLnr("__wcf", 0, "1")},
+        ${sqlCosfitExtractLnr("__wcf", 8, "2")},
+        ${sqlCosfitExtractLnr("__wcf", 9, "3")}
     FROM __tmp1;
                 `)
             });
@@ -1320,9 +1299,9 @@ SELECT
                 lbb1,
                 lbb2,
                 lbb3,
-                lrr1,
-                lrr2,
-                lrr3,
+                lxy1,
+                lxy2,
+                lxy3,
                 mxx1,
                 mxx2,
                 mxx3,
@@ -1352,7 +1331,7 @@ SELECT
                     id,
                     laa: laa1,
                     lbb: lbb1,
-                    lrr: lrr1,
+                    lxy: lxy1,
                     mxx: mxx1,
                     myy: myy1,
                     nnn: nnn1,
@@ -1365,7 +1344,7 @@ SELECT
                     id,
                     laa: laa2,
                     lbb: lbb2,
-                    lrr: lrr2,
+                    lxy: lxy2,
                     mxx: mxx2,
                     myy: myy2,
                     nnn: nnn2,
@@ -1378,7 +1357,7 @@ SELECT
                     id,
                     laa: laa3,
                     lbb: lbb3,
-                    lrr: lrr3,
+                    lxy: lxy3,
                     mxx: mxx3,
                     myy: myy3,
                     nnn: nnn3,
@@ -1409,7 +1388,7 @@ SELECT
                 "id": 1,
                 "laa": null,
                 "lbb": null,
-                "lrr": null,
+                "lxy": null,
                 "mxx": 2,
                 "myy": 0,
                 "nnn": 1,
@@ -1422,7 +1401,7 @@ SELECT
                 "id": 4,
                 "laa": null,
                 "lbb": null,
-                "lrr": null,
+                "lxy": null,
                 "mxx": 2,
                 "myy": 0.5,
                 "nnn": 2,
@@ -1435,7 +1414,7 @@ SELECT
                 "id": 7,
                 "laa": -4.5,
                 "lbb": 2.5,
-                "lrr": 0.94491118,
+                "lxy": 0.94491118,
                 "mxx": 2.33333333,
                 "myy": 1.33333333,
                 "nnn": 3,
@@ -1448,7 +1427,7 @@ SELECT
                 "id": 10,
                 "laa": -3,
                 "lbb": 1.81818182,
-                "lrr": 0.95346259,
+                "lxy": 0.95346259,
                 "mxx": 2.75,
                 "myy": 2,
                 "nnn": 4,
@@ -1461,7 +1440,7 @@ SELECT
                 "id": 13,
                 "laa": -2.29411765,
                 "lbb": 1.52941176,
-                "lrr": 0.96164474,
+                "lxy": 0.96164474,
                 "mxx": 3.2,
                 "myy": 2.6,
                 "nnn": 5,
@@ -1474,7 +1453,7 @@ SELECT
                 "id": 16,
                 "laa": -2.54385965,
                 "lbb": 1.63157895,
-                "lrr": 0.97080629,
+                "lxy": 0.97080629,
                 "mxx": 3.5,
                 "myy": 3.16666667,
                 "nnn": 6,
@@ -1487,7 +1466,7 @@ SELECT
                 "id": 19,
                 "laa": -2.65,
                 "lbb": 1.675,
-                "lrr": 0.9752227,
+                "lxy": 0.9752227,
                 "mxx": 3.71428571,
                 "myy": 3.57142857,
                 "nnn": 7,
@@ -1500,7 +1479,7 @@ SELECT
                 "id": 22,
                 "laa": -2.5,
                 "lbb": 1.625,
-                "lrr": 0.97991187,
+                "lxy": 0.97991187,
                 "mxx": 4,
                 "myy": 4,
                 "nnn": 8,
@@ -1513,7 +1492,7 @@ SELECT
                 "id": 25,
                 "laa": 0.75,
                 "lbb": 0.85,
-                "lrr": 0.89597867,
+                "lxy": 0.89597867,
                 "mxx": 5,
                 "myy": 5,
                 "nnn": 8,
@@ -1526,7 +1505,7 @@ SELECT
                 "id": 28,
                 "laa": 2.75,
                 "lbb": 0.55,
-                "lrr": 0.81989159,
+                "lxy": 0.81989159,
                 "mxx": 5,
                 "myy": 5.5,
                 "nnn": 8,
@@ -1578,36 +1557,39 @@ SELECT doublearray_jsonto(win_cosfit2(1, 2, 3)) FROM __tmp1;
             // test win_cosfit2-aggregate-normal handling-behavior
             (async function () {
                 let valActual;
-                valActual = await dbExecAndReturnLastJsonAsync({
-                    bindList: {
-                        valIn
-                    },
-                    db,
-                    sql: (`
+                valActual = noop(
+                    await dbExecAsync({
+                        bindList: {
+                            valIn
+                        },
+                        db,
+                        sql: (`
 SELECT
-        doublearray_jsonto(win_cosfit2(0, value->>0, value->>1))
-    FROM JSON_EACH($valIn);
-                    `)
-                });
-                valActual = valActual.map(function (xx) {
-                    return Number(xx.toFixed(8));
-                }).slice(0, 12);
+        ${sqlCosfitExtractLnr("__wcf", 0, "")}
+    FROM (
+        SELECT
+            win_cosfit2(0, value->>0, value->>1) AS __wcf
+        FROM JSON_EACH($valIn)
+    );
+                        `)
+                    })
+                )[0][0];
                 assertJsonEqual(
                     valActual,
-                    [
-                        10, // nnn
-                        4.4, // mxx
-                        4.5, // myy
-                        2, // xx1
-                        2.45854519, // xe1
-                        5, // yy1
-                        2.54950976, // ye1
-                        2.47058824, // yy2
-                        1.56536502, // ye2
-                        0.77941176, // laa
-                        0.84558824, // lbb
-                        0.81541829 // lrr
-                    ]
+                    {
+                        "laa": 0.77941176,
+                        "lbb": 0.84558824,
+                        "lxy": 0.81541829,
+                        "mxx": 4.4,
+                        "myy": 4.5,
+                        "nnn": 10,
+                        "xe1": 2.45854519,
+                        "xx1": 2,
+                        "ye1": 2.54950976,
+                        "ye2": 1.56536502,
+                        "yy1": 5,
+                        "yy2": 2.47058824
+                    }
                 );
             }()),
             // test win_cosfit2-aggregate-window handling-behavior
@@ -1617,7 +1599,7 @@ SELECT
                 valActual = {
                     "laa": -0.82025678,
                     "lbb": 0.14621969,
-                    "lrr": 0.865665,
+                    "lxy": 0.865665,
                     "mxx": 74,
                     "myy": 10,
                     "nnn": 6,
@@ -1633,18 +1615,7 @@ SELECT
                         db,
                         sql: (`
 SELECT
-        ROUND(${sqlCosfitExtract("__wcf", 0, "nnn")}, 8) AS nnn,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "mxx")}, 8) AS mxx,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "myy")}, 8) AS myy,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "xx1")}, 8) AS xx1,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "xe1")}, 8) AS xe1,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "yy1")}, 8) AS yy1,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "ye1")}, 8) AS ye1,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "yy2")}, 8) AS yy2,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "ye2")}, 8) AS ye2,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "laa")}, 8) AS laa,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "lbb")}, 8) AS lbb,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "lrr")}, 8) AS lrr
+        ${sqlCosfitExtractLnr("__wcf", 0, "")}
     FROM (
         SELECT
             win_cosfit2(0, xx, yy) AS __wcf
@@ -1671,7 +1642,7 @@ SELECT
                     "id": 25,
                     "laa": 5.25,
                     "lbb": -0.275,
-                    "lrr": -0.23918696,
+                    "lxy": -0.23918696,
                     "mxx": 5,
                     "myy": 3.875,
                     "nnn": 8,
@@ -1684,7 +1655,7 @@ SELECT
                     "id": 28,
                     "laa": 7.25,
                     "lbb": -0.575,
-                    "lrr": -0.5490214,
+                    "lxy": -0.5490214,
                     "mxx": 5,
                     "myy": 4.375,
                     "nnn": 8,
@@ -1976,16 +1947,16 @@ date close
                         db,
                         sql: (`
 SELECT
-        ROUND(0.01 * doublearray_extract(__wcf, 07), 4) AS yy2,
-        ROUND(doublearray_extract(__wcf, 08) * 100.0 / yy, 4) AS ye2,
-        ROUND(0.01 * doublearray_extract(__wcf, 12), 4) AS yy3,
-        ROUND(doublearray_extract(__wcf, 13) * 100.0 / yy, 4) AS ye3,
+        ROUND(0.01 * ${sqlCosfitExtract("__wcf", 0, "yy2")}, 4) AS yy2,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "ye2")} * 100.0 / yy, 4) AS ye2,
+        ROUND(0.01 * ${sqlCosfitExtract("__wcf", 0, "yy3")}, 4) AS yy3,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "ye3")} * 100.0 / yy, 4) AS ye3,
         --
-        ROUND(doublearray_extract(__wcf, 14), 4) AS caa,
-        ROUND(doublearray_extract(__wcf, 15), 4) AS cww,
-        ROUND(doublearray_extract(__wcf, 16), 4) AS cpp,
-        ROUND(doublearray_extract(__wcf, 17), 4) AS ctt,
-        ROUND(doublearray_extract(__wcf, 18), 4) AS ctp,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "caa")}, 4) AS caa,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "cww")}, 4) AS cww,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "cpp")}, 4) AS cpp,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "ctt")}, 4) AS ctt,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "ctp")}, 4) AS ctp,
         --
         date,
         ROUND(0.01 * yy, 4) AS yy
