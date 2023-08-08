@@ -1,9 +1,11 @@
 # Changelog
 
 # Todo
+- sqlmath - Update sql-function win_cosfit2_step() to be able to update cosine-fit from last datapoint.
 - none
 
 # v2023.8.1-beta
+- sqlmath - Update sql-function win_cosfit2() with additional argument modeNoCsf.
 - sqlmath - Merge sql-functions win_slr2(), win_slrcos2() into sql-function win_cosfit2().
 - sqlmath - Streamline sql-function win_slr2_step() to only update last datapoint.
 - sqlmath - Update sql-function win_quantile2(), win_slr2() to input/output doublearray instead of json for better performance.

@@ -1228,7 +1228,8 @@ CREATE TEMP TABLE __tmp1 AS
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
-                value->>0, IIF(id = ${idLast}, -1, value->>1)
+                value->>0, IIF(id = ${idLast}, -1, value->>1),
+                0
             ) OVER (
                 ORDER BY NULL ASC
                 ${sqlBetween}
@@ -1556,7 +1557,7 @@ SELECT
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_cosfit2(1) FROM (SELECT 1);
+SELECT win_cosfit2(1, 1) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
@@ -1566,7 +1567,7 @@ SELECT win_cosfit2(1) FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT doublearray_jsonto(win_cosfit2(1, 1)) FROM __tmp1;
+SELECT doublearray_jsonto(win_cosfit2(1, 1, 0)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
@@ -1584,7 +1585,7 @@ SELECT doublearray_jsonto(win_cosfit2(1, 1)) FROM __tmp1;
                     db,
                     sql: (`
 SELECT
-        doublearray_jsonto(win_cosfit2(value->>0, value->>1))
+        doublearray_jsonto(win_cosfit2(value->>0, value->>1, 0))
     FROM JSON_EACH($valIn);
                     `)
                 });
@@ -1646,7 +1647,7 @@ SELECT
         ROUND(${sqlCosfitExtract("__wcf", 0, "lrr")}, 8) AS lrr
     FROM (
         SELECT
-            win_cosfit2(xx, yy) AS __wcf
+            win_cosfit2(xx, yy, 0) AS __wcf
         FROM (
             SELECT 34 AS xx, 5 AS yy
             UNION ALL SELECT 108, 17
@@ -1990,7 +1991,7 @@ SELECT
         ROUND(0.01 * yy, 4) AS yy
     FROM (
         SELECT
-            win_cosfit2(value->>'ii', value->>'priceClose') OVER (
+            win_cosfit2(value->>'ii', value->>'priceClose', 0) OVER (
                 ORDER BY NULL ASC
                 ROWS BETWEEN ${ttCosfit - 1} PRECEDING AND 0 FOLLOWING
             ) AS __wcf,

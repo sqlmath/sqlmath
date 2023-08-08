@@ -2401,13 +2401,13 @@ static void sql3_win_cosfit2_step(
 // This function will calculate running simple-linear-regression
 // and cosine-regression as:
 //     yy = laa + lbb*xx + caa*cos(cww*xx + cpp)
-    if (argc < 2 || argc % 2) {
+    if (argc < 2 + 1 || argc % 2 != 1) {
         sqlite3_result_error(context,
             "wrong number of arguments to function win_cosfit2()", -1);
         return;
     }
     // vec99 - init
-    const int ncol = argc / 2;
+    const int ncol = (argc - 1) / 2;
     VECTOR99_AGGREGATE_CONTEXT(ncol * (WinCosfitInternalN +
             WinCosfitResultN));
     if (vec99->nbody == 0) {
@@ -2429,6 +2429,7 @@ static void sql3_win_cosfit2_step(
         argv += 2;
     }
     // vec99 - calculate lnr, csf
+    const int modeNocsf = sqlite3_value_int(argv[0]);
     WinCosfitResult *result =
         (WinCosfitResult *) (vec99_head + ncol * WinCosfitInternalN);
     wci = (WinCosfitInternal *) vec99_head;
@@ -2438,7 +2439,9 @@ static void sql3_win_cosfit2_step(
         // vec99 - calculate lnr
         winCosfitLnr(wci, result, vec99->wnn == 0);
         // vec99 - calculate csf
-        winCosfitCsf(wci, result, vec99, ii);
+        if (!modeNocsf) {
+            winCosfitCsf(wci, result, vec99, ii);
+        }
         // increment counter
         result += 1;
         wci += 1;
