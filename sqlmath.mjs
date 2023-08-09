@@ -1134,12 +1134,11 @@ function sqlCosfitExtract(wcf, ii, key) {
         "ye2", "yy2", "laa", "lbb", "lxy",
         "ye3", "yy3", "caa", "cww", "cpp", "ctt", "ctp",
         "inv0", "inv1", "inv2",
-        "ncol",
         "vxx", "vxy", "vyy",
         "xx0", "yy0"
     ]).indexOf(key);
     assertOrThrow(jj >= 0, `sqlCosfitExtract - invalid key "${key}"`);
-    return `doublearray_extract(${wcf}, ${ii * ((3 + 4 + 5 + 7) + 9) + jj})`;
+    return `doublearray_extract(${wcf}, ${ii * ((3 + 4 + 5 + 7) + 8) + jj})`;
 }
 
 async function sqlMessagePost(baton, cFuncName, ...argList) {

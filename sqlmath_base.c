@@ -1837,7 +1837,6 @@ typedef struct WinCosfit {
     double inv0;                // 1.0 / (nnn - 0)
     double inv1;                // 1.0 / (nnn - 1)
     double inv2;                // 1.0 / (nnn - 2)
-    double ncol;                // number of columns
     double vxx;                 // yy-variance.p
     double vxy;                 // xy-covariance.p
     double vyy;                 // yy-variance.p
@@ -1848,13 +1847,13 @@ static const int WinCosfitN = sizeof(WinCosfit) / sizeof(double);
 
 static void winCosfitCsr(
     WinCosfit * wcf,
+    const int nbody,
+    const int ncol,
     const int icol
 ) {
 // This function will calculate running cosine-regression as:
 //     yy = caa*cos(cww*xx + cpp)
     // calculate csr - caa
-    const int nbody = wcf->nnn * wcf->ncol * 3;
-    const int ncol = wcf->ncol;
     double *ttyy = ((double *) (wcf + ncol - icol)) + icol * 3;
     double laa = wcf->laa;      // linest y-intercept
     double lbb = wcf->lbb;      // linest slope
@@ -2097,12 +2096,11 @@ static void sql3_win_cosfit2_step(
     // vec99 - calculate lnr, csr
     WinCosfit *wcf = (WinCosfit *) vec99_head;
     for (int ii = 0; ii < ncol; ii += 1) {
-        wcf->ncol = vec99->ncol;
         // vec99 - calculate lnr
         winCosfitLnr(wcf, vec99->wnn == 0);
         // vec99 - calculate csr
         if (!modeNocsr) {
-            winCosfitCsr(wcf, ii);
+            winCosfitCsr(wcf, vec99->nbody, vec99->ncol, ii);
         }
         // increment counter
         wcf += 1;
@@ -2123,17 +2121,22 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
     if (argc < 4 || argc != 2 + ncol * 2) {
         goto catch_error;
     }
-    const int nbody = sqlite3_value_bytes(argv[0]) / sizeof(double);
-    if (ncol <= 0 || nbody < ncol * WinCosfitN) {
+    const int bytes = sqlite3_value_bytes(argv[0]);
+    if (ncol <= 0 || bytes < ncol * WinCosfitN * sizeof(double)) {
         goto catch_error;
     }
     // init wcf0
-    WinCosfit *wcf0 = sqlite3_malloc(sqlite3_value_bytes(argv[0]));
+    const WinCosfit *blob0 = sqlite3_value_blob(argv[0]);
+    const int nbody = blob0->nnn * ncol * 3;
+    if (nbody <= 0 || bytes != (ncol * WinCosfitN + nbody) * sizeof(double)) {
+        goto catch_error;
+    }
+    WinCosfit *wcf0 = sqlite3_malloc(bytes);
     if (wcf0 == NULL) {
         sqlite3_result_error_nomem(context);
         return;
     }
-    memcpy(wcf0, sqlite3_value_blob(argv[0]), sqlite3_value_bytes(argv[0]));
+    memcpy(wcf0, blob0, bytes);
     // vec99 - calculate lnr, csr
     WinCosfit *wcf = wcf0;
     argv += 2;
@@ -2143,12 +2146,12 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
         // vec99 - calculate lnr
         winCosfitLnr(wcf, 0);
         // vec99 - calculate csr
-        //!! winCosfitCsr(wcf, ii);
+        winCosfitCsr(wcf, nbody, ncol, ii);
         argv += 2;
         wcf += 1;
     }
     // str99 - result
-    doublearrayResult(context, (const double *) wcf0, ncol * WinCosfitN,
+    doublearrayResult(context, (const double *) wcf0, bytes / sizeof(double),
         sqlite3_free);
     return;
   catch_error:
