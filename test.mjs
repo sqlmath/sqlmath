@@ -1983,28 +1983,34 @@ date close
                         db,
                         sql: (`
 SELECT
-        ROUND(0.01 * ${sqlCosfitExtract("__wcf", 0, "lyy")}, 4) AS lyy,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "lee")} * 100.0 / yy, 4) AS lee,
-        ROUND(0.01 * ${sqlCosfitExtract("__wcf", 0, "cyy")}, 4) AS cyy,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "cee")} * 100.0 / yy, 4) AS cee,
+        ${sqlCosfitExtractLnr("__wcf", 0, "")},
         --
-        ROUND(${sqlCosfitExtract("__wcf", 0, "caa")}, 4) AS caa,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "cww")}, 4) AS cww,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "cpp")}, 4) AS cpp,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "ctt")}, 4) AS ctt,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "ctp")}, 4) AS ctp,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "caa")}, 8) AS caa,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "cee")}, 8) AS cee,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "cpp")}, 8) AS cpp,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "ctp")}, 8) AS ctp,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "ctt")}, 8) AS ctt,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "cww")}, 8) AS cww,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "cyy")}, 8) AS cyy,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "vxx")}, 8) AS vxx,
         --
         date,
-        ROUND(0.01 * yy, 4) AS yy
+        ROUND(yy, 8) AS yy
     FROM (
         SELECT
-            win_cosfit2(0, value->>'ii', value->>'priceClose') OVER (
-                ORDER BY NULL ASC
+            win_cosfit2(0, ii, yy) OVER (
+                ORDER BY date ASC
                 ROWS BETWEEN ${ttCosfit - 1} PRECEDING AND 0 FOLLOWING
             ) AS __wcf,
-            value->>'date' AS date,
-            value->>'priceClose' AS yy
-        FROM JSON_EAcH($testDataSpx)
+            date,
+            yy
+        FROM (
+            SELECT
+                value->>'ii' AS ii,
+                value->>'date' AS date,
+                value->>'priceClose' AS yy
+            FROM JSON_EAcH($testDataSpx)
+        )
     );
                         `)
                     })
@@ -2019,19 +2025,20 @@ SELECT
                             elem.cpp,
                             elem.ctt,
                             elem.ctp,
-                            elem.yy,
-                            elem.lyy,
-                            elem.cyy,
-                            elem.lee,
-                            elem.cee
-                        ].join(" ");
+                            elem.yy * 0.01,
+                            elem.lyy * 0.01,
+                            elem.cyy * 0.01,
+                            elem.lee * 100 / elem.yy,
+                            elem.cee * 100 / elem.yy
+                        ].map(function (num) {
+                            return (
+                                typeof num === "number"
+                                ? num.toFixed(4)
+                                : num
+                            );
+                        }).join(" ");
                     }).join("\n")
                 );
-                valActual = valActual.replace((
-                    / -?\d[\d.]*/g
-                ), function (num) {
-                    return ` ${Number(num).toFixed(4)}`;
-                });
                 valActual = valActual.replace((/  /g), " null ");
                 valActual = valActual.replace((/ \n/g), "\n");
                 valActual = valActual.replace((/ /g), "\t");
@@ -2039,7 +2046,7 @@ SELECT
                 await fsWriteFileUnlessTest(
                     "test_data_cosfit.csv",
                     valActual,
-                    "force2"
+                    "force"
                 );
                 valExpected = await fsReadFileUnlessTest(
                     "test_data_cosfit.csv",
