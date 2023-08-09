@@ -2023,6 +2023,7 @@ SQLMATH_FUNC static void sql3_win_cosfit2_value(
 //     yy = laa + lbb*xx + caa*cos(cww*xx + cpp)
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
+    // vec99 - result
     doublearrayResult(context, vec99_head, vec99->nhead + vec99->nbody,
         SQLITE_TRANSIENT);
 }
@@ -2150,7 +2151,7 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
         argv += 2;
         wcf += 1;
     }
-    // str99 - result
+    // vec99 - result
     doublearrayResult(context, (const double *) wcf0, bytes / sizeof(double),
         sqlite3_free);
     return;
@@ -2263,6 +2264,7 @@ SQLMATH_FUNC static void sql3_win_ema2_value(
     if (!vec99->ncol) {
         sqlite3_result_null(context);
     }
+    // vec99 - result
     doublearrayResult(context, vec99_body + (int) vec99->wii,
         (int) vec99->ncol, SQLITE_TRANSIENT);
 }
@@ -2429,6 +2431,7 @@ SQLMATH_FUNC static void sql3_win_quantile2_value(
     if (!vec99->ncol) {
         sqlite3_result_null(context);
     }
+    // vec99 - result
     doublearrayResult(context, vec99_head + (int) vec99->ncol + 1,
         (int) vec99->ncol, SQLITE_TRANSIENT);
 }

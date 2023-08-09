@@ -1187,11 +1187,11 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
     ROUND(${sqlCosfitExtract(wcf, ii, "mxx")}, 8) AS mxx${suffix},
     ROUND(${sqlCosfitExtract(wcf, ii, "myy")}, 8) AS myy${suffix},
     ROUND(${sqlCosfitExtract(wcf, ii, "xx1")}, 8) AS xx1${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "xe1")}, 8) AS xe1${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "mxe")}, 8) AS mxe${suffix},
     ROUND(${sqlCosfitExtract(wcf, ii, "yy1")}, 8) AS yy1${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "ye1")}, 8) AS ye1${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "yy2")}, 8) AS yy2${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "ye2")}, 8) AS ye2${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "mee")}, 8) AS mee${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "lyy")}, 8) AS lyy${suffix},
+    ROUND(${sqlCosfitExtract(wcf, ii, "lee")}, 8) AS lee${suffix},
     ROUND(${sqlCosfitExtract(wcf, ii, "laa")}, 8) AS laa${suffix},
     ROUND(${sqlCosfitExtract(wcf, ii, "lbb")}, 8) AS lbb${suffix},
     ROUND(${sqlCosfitExtract(wcf, ii, "lxy")}, 8) AS lxy${suffix}
@@ -1299,9 +1299,21 @@ SELECT
                 lbb1,
                 lbb2,
                 lbb3,
+                lee1,
+                lee2,
+                lee3,
                 lxy1,
                 lxy2,
                 lxy3,
+                lyy1,
+                lyy2,
+                lyy3,
+                mee1,
+                mee2,
+                mee3,
+                mxe1,
+                mxe2,
+                mxe3,
                 mxx1,
                 mxx2,
                 mxx3,
@@ -1311,18 +1323,12 @@ SELECT
                 nnn1,
                 nnn2,
                 nnn3,
-                xe11,
-                xe12,
-                xe13,
-                ye11,
-                ye12,
-                ye13,
-                ye21,
-                ye22,
-                ye23,
-                yy21,
-                yy22,
-                yy23
+                xx11,
+                xx12,
+                xx13,
+                yy11,
+                yy12,
+                yy13
             }, ii, list) {
                 let obj1;
                 let obj2;
@@ -1331,40 +1337,46 @@ SELECT
                     id,
                     laa: laa1,
                     lbb: lbb1,
+                    lee: lee1,
                     lxy: lxy1,
+                    lyy: lyy1,
+                    mee: mee1,
+                    mxe: mxe1,
                     mxx: mxx1,
                     myy: myy1,
                     nnn: nnn1,
-                    xe1: xe11,
-                    ye1: ye11,
-                    ye2: ye21,
-                    yy2: yy21
+                    xx1: xx11,
+                    yy1: yy11
                 };
                 obj2 = {
                     id,
                     laa: laa2,
                     lbb: lbb2,
+                    lee: lee2,
                     lxy: lxy2,
+                    lyy: lyy2,
+                    mee: mee2,
+                    mxe: mxe2,
                     mxx: mxx2,
                     myy: myy2,
                     nnn: nnn2,
-                    xe1: xe12,
-                    ye1: ye12,
-                    ye2: ye22,
-                    yy2: yy22
+                    xx1: xx12,
+                    yy1: yy12
                 };
                 obj3 = {
                     id,
                     laa: laa3,
                     lbb: lbb3,
+                    lee: lee3,
                     lxy: lxy3,
+                    lyy: lyy3,
+                    mee: mee3,
+                    mxe: mxe3,
                     mxx: mxx3,
                     myy: myy3,
                     nnn: nnn3,
-                    xe1: xe13,
-                    ye1: ye13,
-                    ye2: ye23,
-                    yy2: yy23
+                    xx1: xx13,
+                    yy1: yy13
                 };
                 switch (list.length - ii) {
                 case 1:
@@ -1388,131 +1400,151 @@ SELECT
                 "id": 1,
                 "laa": null,
                 "lbb": null,
+                "lee": null,
                 "lxy": null,
+                "lyy": null,
+                "mee": null,
+                "mxe": null,
                 "mxx": 2,
                 "myy": 0,
                 "nnn": 1,
-                "xe1": null,
-                "ye1": null,
-                "ye2": null,
-                "yy2": null
+                "xx1": 2,
+                "yy1": 0
             },
             {
                 "id": 4,
                 "laa": null,
                 "lbb": null,
+                "lee": null,
                 "lxy": null,
+                "lyy": null,
+                "mee": 0.70710678,
+                "mxe": 0,
                 "mxx": 2,
                 "myy": 0.5,
                 "nnn": 2,
-                "xe1": 0,
-                "ye1": 0.70710678,
-                "ye2": null,
-                "yy2": null
+                "xx1": 2,
+                "yy1": 1
             },
             {
                 "id": 7,
                 "laa": -4.5,
                 "lbb": 2.5,
+                "lee": 0.70710678,
                 "lxy": 0.94491118,
+                "lyy": 3,
+                "mee": 1.52752523,
+                "mxe": 0.57735027,
                 "mxx": 2.33333333,
                 "myy": 1.33333333,
                 "nnn": 3,
-                "xe1": 0.57735027,
-                "ye1": 1.52752523,
-                "ye2": 0.70710678,
-                "yy2": 3
+                "xx1": 3,
+                "yy1": 3
             },
             {
                 "id": 10,
                 "laa": -3,
                 "lbb": 1.81818182,
+                "lee": 0.67419986,
                 "lxy": 0.95346259,
+                "lyy": 4.27272727,
+                "mee": 1.82574186,
+                "mxe": 0.95742711,
                 "mxx": 2.75,
                 "myy": 2,
                 "nnn": 4,
-                "xe1": 0.95742711,
-                "ye1": 1.82574186,
-                "ye2": 0.67419986,
-                "yy2": 4.27272727
+                "xx1": 4,
+                "yy1": 4
             },
             {
                 "id": 13,
                 "laa": -2.29411765,
                 "lbb": 1.52941176,
+                "lee": 0.65678958,
                 "lxy": 0.96164474,
+                "lyy": 5.35294118,
+                "mee": 2.07364414,
+                "mxe": 1.30384048,
                 "mxx": 3.2,
                 "myy": 2.6,
                 "nnn": 5,
-                "xe1": 1.30384048,
-                "ye1": 2.07364414,
-                "ye2": 0.65678958,
-                "yy2": 5.35294118
+                "xx1": 5,
+                "yy1": 5
             },
             {
                 "id": 16,
                 "laa": -2.54385965,
                 "lbb": 1.63157895,
+                "lee": 0.62126074,
                 "lxy": 0.97080629,
+                "lyy": 5.61403509,
+                "mee": 2.31660671,
+                "mxe": 1.37840488,
                 "mxx": 3.5,
                 "myy": 3.16666667,
                 "nnn": 6,
-                "xe1": 1.37840488,
-                "ye1": 2.31660671,
-                "ye2": 0.62126074,
-                "yy2": 5.61403509
+                "xx1": 5,
+                "yy1": 6
             },
             {
                 "id": 19,
                 "laa": -2.65,
                 "lbb": 1.675,
+                "lee": 0.57445626,
                 "lxy": 0.9752227,
+                "lyy": 5.725,
+                "mee": 2.37045304,
+                "mxe": 1.38013112,
                 "mxx": 3.71428571,
                 "myy": 3.57142857,
                 "nnn": 7,
-                "xe1": 1.38013112,
-                "ye1": 2.37045304,
-                "ye2": 0.57445626,
-                "yy2": 5.725
+                "xx1": 5,
+                "yy1": 6
             },
             {
                 "id": 22,
                 "laa": -2.5,
                 "lbb": 1.625,
+                "lee": 0.54006172,
                 "lxy": 0.97991187,
+                "lyy": 7.25,
+                "mee": 2.50713268,
+                "mxe": 1.51185789,
                 "mxx": 4,
                 "myy": 4,
                 "nnn": 8,
-                "xe1": 1.51185789,
-                "ye1": 2.50713268,
-                "ye2": 0.54006172,
-                "yy2": 7.25
+                "xx1": 6,
+                "yy1": 7
             },
             {
                 "id": 25,
                 "laa": 0.75,
                 "lbb": 0.85,
+                "lee": 1.08781126,
                 "lxy": 0.89597867,
+                "lyy": 9.25,
+                "mee": 2.26778684,
+                "mxe": 2.39045722,
                 "mxx": 5,
                 "myy": 5,
                 "nnn": 8,
-                "xe1": 2.39045722,
-                "ye1": 2.26778684,
-                "ye2": 1.08781126,
-                "yy2": 9.25
+                "xx1": 10,
+                "yy1": 8
             },
             {
                 "id": 28,
                 "laa": 2.75,
                 "lbb": 0.55,
+                "lee": 0.99163165,
                 "lxy": 0.81989159,
+                "lyy": 3.85,
+                "mee": 1.60356745,
+                "mxe": 2.39045722,
                 "mxx": 5,
                 "myy": 5.5,
                 "nnn": 8,
-                "xe1": 2.39045722,
-                "ye1": 1.60356745,
-                "ye2": 0.99163165,
-                "yy2": 3.85
+                "xx1": 2,
+                "yy1": 5
             }
         ];
         valIn = [
@@ -1579,16 +1611,16 @@ SELECT
                     {
                         "laa": 0.77941176,
                         "lbb": 0.84558824,
+                        "lee": 1.56536502,
                         "lxy": 0.81541829,
+                        "lyy": 2.47058824,
+                        "mee": 2.54950976,
+                        "mxe": 2.45854519,
                         "mxx": 4.4,
                         "myy": 4.5,
                         "nnn": 10,
-                        "xe1": 2.45854519,
                         "xx1": 2,
-                        "ye1": 2.54950976,
-                        "ye2": 1.56536502,
-                        "yy1": 5,
-                        "yy2": 2.47058824
+                        "yy1": 5
                     }
                 );
             }()),
@@ -1599,16 +1631,16 @@ SELECT
                 valActual = {
                     "laa": -0.82025678,
                     "lbb": 0.14621969,
+                    "lee": 2.74202904,
                     "lxy": 0.865665,
+                    "lyy": 6.63694722,
+                    "mee": 4.89897949,
+                    "mxe": 29.00344807,
                     "mxx": 74,
                     "myy": 10,
                     "nnn": 6,
-                    "xe1": 29.00344807,
                     "xx1": 51,
-                    "ye1": 4.89897949,
-                    "ye2": 2.74202904,
-                    "yy1": 5,
-                    "yy2": 6.63694722
+                    "yy1": 5
                 };
                 valExpected = noop(
                     await dbExecAsync({
@@ -1642,27 +1674,31 @@ SELECT
                     "id": 25,
                     "laa": 5.25,
                     "lbb": -0.275,
+                    "lee": 2.88241797,
                     "lxy": -0.23918696,
+                    "lyy": 2.5,
+                    "mee": 2.74837614,
+                    "mxe": 2.39045722,
                     "mxx": 5,
                     "myy": 3.875,
                     "nnn": 8,
-                    "xe1": 2.39045722,
-                    "ye1": 2.74837614,
-                    "ye2": 2.88241797,
-                    "yy2": 2.5
+                    "xx1": 10,
+                    "yy1": -1
                 },
                 valExpected3: {
                     "id": 28,
                     "laa": 7.25,
                     "lbb": -0.575,
+                    "lee": 2.26016224,
                     "lxy": -0.5490214,
+                    "lyy": 6.1,
+                    "mee": 2.50356888,
+                    "mxe": 2.39045722,
                     "mxx": 5,
                     "myy": 4.375,
                     "nnn": 8,
-                    "xe1": 2.39045722,
-                    "ye1": 2.50356888,
-                    "ye2": 2.26016224,
-                    "yy2": 6.1
+                    "xx1": 2,
+                    "yy1": 5
                 }
             }),
             // test win_cosfit2-spx handling-behavior
@@ -1947,10 +1983,10 @@ date close
                         db,
                         sql: (`
 SELECT
-        ROUND(0.01 * ${sqlCosfitExtract("__wcf", 0, "yy2")}, 4) AS yy2,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "ye2")} * 100.0 / yy, 4) AS ye2,
-        ROUND(0.01 * ${sqlCosfitExtract("__wcf", 0, "yy3")}, 4) AS yy3,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "ye3")} * 100.0 / yy, 4) AS ye3,
+        ROUND(0.01 * ${sqlCosfitExtract("__wcf", 0, "lyy")}, 4) AS lyy,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "lee")} * 100.0 / yy, 4) AS lee,
+        ROUND(0.01 * ${sqlCosfitExtract("__wcf", 0, "cyy")}, 4) AS cyy,
+        ROUND(${sqlCosfitExtract("__wcf", 0, "cee")} * 100.0 / yy, 4) AS cee,
         --
         ROUND(${sqlCosfitExtract("__wcf", 0, "caa")}, 4) AS caa,
         ROUND(${sqlCosfitExtract("__wcf", 0, "cww")}, 4) AS cww,
@@ -1974,7 +2010,7 @@ SELECT
                     })
                 )[0];
                 valActual = (
-                    "date caa cww cpp ctt ctp yy yy2 yy3 ye2 ye3\n"
+                    "date caa cww cpp ctt ctp yy lyy cyy lee cee\n"
                     + valActual.slice(ttCosfit).map(function (elem) {
                         return [
                             elem.date,
@@ -1984,10 +2020,10 @@ SELECT
                             elem.ctt,
                             elem.ctp,
                             elem.yy,
-                            elem.yy2,
-                            elem.yy3,
-                            elem.ye2,
-                            elem.ye3
+                            elem.lyy,
+                            elem.cyy,
+                            elem.lee,
+                            elem.cee
                         ].join(" ");
                     }).join("\n")
                 );

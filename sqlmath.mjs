@@ -1130,9 +1130,9 @@ function sqlCosfitExtract(wcf, ii, key) {
 
     let jj = noop([
         "nnn", "xx1", "yy1",
-        "ye1", "myy", "mxx", "xe1",
-        "ye2", "yy2", "laa", "lbb", "lxy",
-        "ye3", "yy3", "caa", "cww", "cpp", "ctt", "ctp",
+        "mee", "myy", "mxx", "mxe",
+        "lee", "lyy", "laa", "lbb", "lxy",
+        "cee", "cyy", "caa", "cww", "cpp", "ctt", "ctp",
         "inv0", "inv1", "inv2",
         "vxx", "vxy", "vyy",
         "xx0", "yy0"
