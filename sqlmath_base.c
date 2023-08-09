@@ -2024,8 +2024,7 @@ SQLMATH_FUNC static void sql3_win_cosfit2_value(
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     // vec99 - result
-    doublearrayResult(context, vec99_head, vec99->nhead + vec99->nbody,
-        SQLITE_TRANSIENT);
+    doublearrayResult(context, vec99_head, vec99->nhead, SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_cosfit2_final(
@@ -2128,8 +2127,10 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
     }
     // init wcf0
     const WinCosfit *blob0 = sqlite3_value_blob(argv[0]);
-    const int nbody = blob0->nnn * ncol * 3;
-    if (nbody <= 0 || bytes != (ncol * WinCosfitN + nbody) * sizeof(double)) {
+    // const int nbody = blob0->nnn * ncol * 3;
+    // if (nbody <= 0
+    // || bytes != (ncol * WinCosfitN + nbody) * sizeof(double)) {
+    if (bytes != ncol * WinCosfitN * sizeof(double)) {
         goto catch_error;
     }
     WinCosfit *wcf0 = sqlite3_malloc(bytes);
@@ -2147,7 +2148,7 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
         // vec99 - calculate lnr
         winCosfitLnr(wcf, 0);
         // vec99 - calculate csr
-        winCosfitCsr(wcf, nbody, ncol, ii);
+        // winCosfitCsr(wcf, nbody, ncol, ii);
         argv += 2;
         wcf += 1;
     }
