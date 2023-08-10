@@ -2017,7 +2017,7 @@ SELECT
                 )[0];
                 valActual = (
                     "date caa cww cpp ctt ctp yy lyy cyy lee cee\n"
-                    + valActual.slice(ttCosfit).map(function (elem) {
+                    + valActual.map(function (elem) {
                         return [
                             elem.date,
                             elem.caa,

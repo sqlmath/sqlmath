@@ -1916,7 +1916,6 @@ static void winCosfitCsr(
     if (!isfinite(inva) || !isfinite(1 / wcf->mxe)) {
         return;
     }
-    wcf->caa = caa;
     // calculate csr - cpp, cww - using gauss-newton-method
     // yy   ~ caa*cos(cww*tt + cpp)
     // cost = cos(cww*tt + cpp)
@@ -1937,11 +1936,18 @@ static void winCosfitCsr(
     // cpp  = cpp - dp
     // cww  = cww - dw
     const double ctt0 = 2 * wcf->mxe;
+    //!! const double ctt0 = 0.5000 * (2 * wcf->mxe);
     const double cww0 = 2 * MATH_PI / ctt0;
-    const double cww_max = 0.2500 * cww0 * sqrt(nnn);
     double cpp = wcf->cpp;      // angular-phase
-    double cww = wcf->cww == 0 ? cww0 : wcf->cww;       // angular-frequency
-    for (int jj = 0; jj < 1; jj += 1) {
+    double cww = wcf->cww;      // angular-freq
+    if (cww == 0) {
+        cww = cww0;
+    }
+    //!! if (cww < 0.5000 * cww0 || 0.2500 * cww0 * sqrt(nnn) < cww) {
+    //!! cpp = 0;
+    //!! cww = cww0;
+    //!! }
+    for (int jj = 1; jj > 0; jj -= 1) {
         double dw = 0;
         double dw_sign = 0;
         double gp = 0;          // gradient-phase
@@ -1952,10 +1958,10 @@ static void winCosfitCsr(
         for (int ii = 0; ii < nbody; ii += ncol * 3) {
             tt = ttyy[ii + 0];
             // tt = fmod(ttyy[ii + 0], 2 * MATH_PI / cww);
-            // const double cost = cos(cpp + cww * tt);
-            // const double sint = sin(cpp + cww * tt);
-            const double cost = cos(cpp + fmod(cww * tt, 2 * MATH_PI));
-            const double sint = sin(cpp + fmod(cww * tt, 2 * MATH_PI));
+            const double cost = cos(cpp + cww * tt);
+            const double sint = sin(cpp + cww * tt);
+            //!! const double cost = cos(cpp + fmod(cww * tt, 2 * MATH_PI));
+            //!! const double sint = sin(cpp + fmod(cww * tt, 2 * MATH_PI));
             rr = sint * (ttyy[ii + 2] * inva - cost);
             gp += rr;
             gw += rr * tt;
@@ -1969,22 +1975,15 @@ static void winCosfitCsr(
         if (!isfinite(invd)) {
             return;
         }
-        // increment cpp
-        cpp = fmod(cpp - invd * (+hww * gp - hpw * gw), 2 * MATH_PI);
-        // increment cww
-        dw = invd * (-hpw * gp + hpp * gw);
-        dw_sign = doubleSign(dw);
-        dw = doubleAbs(dw);
-        dw = doubleMin(dw, 0.2500 * cww_max);
-        cww -= dw_sign * dw;
-        cww = doubleMax(cww, MATH_PI / (2 * wcf->mxe));
-        cww = doubleMin(cww, cww_max);
+        cpp -= invd * (+hww * gp - hpw * gw), 2 * MATH_PI;
+        cww -= invd * (-hpw * gp + hpp * gw);
+        cpp = fmod(cpp, 2 * MATH_PI);
     }
     if (cpp < 0) {
         cpp += 2 * MATH_PI;
     }
-    wcf->cpp = cpp;
-    wcf->cww = cww;
+    cww = doubleMax(cww, 1.0000 * cww0);
+    cww = doubleMin(cww, 0.2500 * cww0 * sqrt(nnn));
     // calculate csr - cyy, ctt, ctp
     const int xx = wcf->xx1;
     wcf->cyy = wcf->lyy + caa * cos(fmod(cww * xx, 2 * MATH_PI) + cpp);
@@ -2007,6 +2006,10 @@ static void winCosfitCsr(
         vrr += dr * (rr - mrr);
     }
     wcf->cee = sqrt(vrr / (nnn - dof));
+    // save wcf
+    wcf->caa = caa;
+    wcf->cpp = cpp;
+    wcf->cww = cww;
 }
 
 static void winCosfitLnr(
