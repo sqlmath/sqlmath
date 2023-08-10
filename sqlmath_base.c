@@ -1902,38 +1902,43 @@ static void winCosfitCsr(
     double cww =                // angular-frequency
         wcf->cww == 0 ? 2 * MATH_PI / wcf->mxe : wcf->cww;
     double cpp = wcf->cpp;      // angular-phase
-    double gp = 0;              // gradient-phase
-    double gw = 0;              // gradient-frequency
-    double hpp = 0;             // hessian ddr/dpdp
-    double hpw = 0;             // hessian ddr/dpdw
-    double hww = 0;             // hessian ddr/dwdw
-    for (int ii = 0; ii < nbody; ii += ncol * 3) {
-        tt = ttyy[ii + 0];
-        const double cost = cos(cpp + fmod(cww * tt, 2 * MATH_PI));
-        const double sint = sin(cpp + fmod(cww * tt, 2 * MATH_PI));
-        rr = sint * (ttyy[ii + 2] * inva - cost);
-        gp += rr;
-        gw += rr * tt;
-        rr = sint * sint;
-        // rr = sint * sint + cost * (ttyy[ii + 2] * inva - cost);
-        hpp += rr;
-        hpw += rr * tt;
-        hww += rr * tt * tt;
+    for (int jj = 0; jj < 1; jj += 1) {
+        double gp = 0;          // gradient-phase
+        double gw = 0;          // gradient-frequency
+        double hpp = 0;         // hessian ddr/dpdp
+        double hpw = 0;         // hessian ddr/dpdw
+        double hww = 0;         // hessian ddr/dwdw
+        for (int ii = 0; ii < nbody; ii += ncol * 3) {
+            tt = ttyy[ii + 0];
+            // tt = fmod(ttyy[ii + 0], 2 * MATH_PI / cww);
+            // const double cost = cos(cpp + cww * tt);
+            // const double sint = sin(cpp + cww * tt);
+            const double cost = cos(cpp + fmod(cww * tt, 2 * MATH_PI));
+            const double sint = sin(cpp + fmod(cww * tt, 2 * MATH_PI));
+            rr = sint * (ttyy[ii + 2] * inva - cost);
+            gp += rr;
+            gw += rr * tt;
+            rr = sint * sint;
+            // rr = sint * sint + cost * (ttyy[ii + 2] * inva - cost);
+            hpp += rr;
+            hpw += rr * tt;
+            hww += rr * tt * tt;
+        }
+        const double invd = 1 / (hpp * hww - hpw * hpw);
+        if (!isfinite(invd)) {
+            return;
+        }
+        cpp -= invd * (+hww * gp - hpw * gw);
+        cww -= invd * (-hpw * gp + hpp * gw);
+        cpp = fmod(cpp, 2 * MATH_PI);
+        if (cpp < 0) {
+            cpp += 2 * MATH_PI;
+        }
+        cww = MAX(cww, MATH_PI / (2 * wcf->mxe));
+        cww = MIN(cww, MATH_PI / (4 * wcf->mxe) * sqrt(nnn));
+        wcf->cpp = cpp;
+        wcf->cww = cww;
     }
-    const double invd = 1 / (hpp * hww - hpw * hpw);
-    if (!isfinite(invd)) {
-        return;
-    }
-    cpp -= invd * (+hww * gp - hpw * gw);
-    cww -= invd * (-hpw * gp + hpp * gw);
-    cpp = fmod(cpp, 2 * MATH_PI);
-    if (cpp < 0) {
-        cpp += 2 * MATH_PI;
-    }
-    cww = MAX(cww, MATH_PI / (2 * wcf->mxe));
-    cww = MIN(cww, MATH_PI / (4 * wcf->mxe) * sqrt(nnn));
-    wcf->cpp = cpp;
-    wcf->cww = cww;
     // calculate csr - ctt, ctp
     const int xx1 = wcf->xx1;
     wcf->ctt = 2 * MATH_PI / cww;
