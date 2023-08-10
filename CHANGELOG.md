@@ -6,6 +6,7 @@
 - none
 
 # v2023.8.1-beta
+- sqlmath - Add c-helper-functions doubleAbs(), doubleMax(), doubleMin().
 - sqlmath - Add sql-function win_cosfit2_predict().
 - sqlmath - Revert cosine-fit-update in sql-function win_cosfit2_step() due to poor performance in general-function win_cosfit2().
 - sqlmath - merge c-struct WinCosfitInternal, WinCosfitResult into c-struct WinCosfit.

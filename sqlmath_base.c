@@ -338,6 +338,20 @@ SQLMATH_API int vector99_valid(
 
 
 // file sqlmath_h - SQLMATH_API
+SQLMATH_API double doubleAbs(
+    const double aa
+);
+
+SQLMATH_API double doubleMax(
+    const double aa,
+    const double bb
+);
+
+SQLMATH_API double doubleMin(
+    const double aa,
+    const double bb
+);
+
 SQLMATH_API int doubleSign(
     const double aa
 );
@@ -1139,7 +1153,7 @@ SQLMATH_API Vector99 *vector99_malloc(
     // zero vec99
     memset(vec99, 0, alloc);
     vec99->alloc = alloc;
-    vec99->nhead = MAX(0, nhead);
+    vec99->nhead = doubleMax(0, nhead);
     return vec99;
 }
 
@@ -1170,6 +1184,29 @@ SQLMATH_API int vector99_valid(
 }
 
 // SQLMATH_API vector99 - end
+
+SQLMATH_API double doubleAbs(
+    const double aa
+) {
+// This function will return abs of <aa>.
+    return aa < 0 ? -aa : aa;
+}
+
+SQLMATH_API double doubleMax(
+    const double aa,
+    const double bb
+) {
+// This function will return max of <aa>, <bb>.
+    return aa > bb ? aa : bb;
+}
+
+SQLMATH_API double doubleMin(
+    const double aa,
+    const double bb
+) {
+// This function will return min of <aa>, <bb>.
+    return aa < bb ? aa : bb;
+}
 
 SQLMATH_API int doubleSign(
     const double aa
@@ -1899,10 +1936,14 @@ static void winCosfitCsr(
     // dw   = 1/det*(-hpw*gp + hpp*gw)
     // cpp  = cpp - dp
     // cww  = cww - dw
-    double cww =                // angular-frequency
-        wcf->cww == 0 ? 2 * MATH_PI / wcf->mxe : wcf->cww;
+    const double ctt0 = 2 * wcf->mxe;
+    const double cww0 = 2 * MATH_PI / ctt0;
+    const double cww_max = 0.2500 * cww0 * sqrt(nnn);
     double cpp = wcf->cpp;      // angular-phase
+    double cww = wcf->cww == 0 ? cww0 : wcf->cww;       // angular-frequency
     for (int jj = 0; jj < 1; jj += 1) {
+        double dw = 0;
+        double dw_sign = 0;
         double gp = 0;          // gradient-phase
         double gw = 0;          // gradient-frequency
         double hpp = 0;         // hessian ddr/dpdp
@@ -1928,41 +1969,43 @@ static void winCosfitCsr(
         if (!isfinite(invd)) {
             return;
         }
-        cpp -= invd * (+hww * gp - hpw * gw);
-        cww -= invd * (-hpw * gp + hpp * gw);
-        cpp = fmod(cpp, 2 * MATH_PI);
-        if (cpp < 0) {
-            cpp += 2 * MATH_PI;
-        }
-        cww = MAX(cww, MATH_PI / (2 * wcf->mxe));
-        cww = MIN(cww, MATH_PI / (4 * wcf->mxe) * sqrt(nnn));
-        wcf->cpp = cpp;
-        wcf->cww = cww;
+        // increment cpp
+        cpp = fmod(cpp - invd * (+hww * gp - hpw * gw), 2 * MATH_PI);
+        // increment cww
+        dw = invd * (-hpw * gp + hpp * gw);
+        dw_sign = doubleSign(dw);
+        dw = doubleAbs(dw);
+        dw = doubleMin(dw, 0.2500 * cww_max);
+        cww -= dw_sign * dw;
+        cww = doubleMax(cww, MATH_PI / (2 * wcf->mxe));
+        cww = doubleMin(cww, cww_max);
     }
-    // calculate csr - ctt, ctp
-    const int xx1 = wcf->xx1;
+    if (cpp < 0) {
+        cpp += 2 * MATH_PI;
+    }
+    wcf->cpp = cpp;
+    wcf->cww = cww;
+    // calculate csr - cyy, ctt, ctp
+    const int xx = wcf->xx1;
+    wcf->cyy = wcf->lyy + caa * cos(fmod(cww * xx, 2 * MATH_PI) + cpp);
     wcf->ctt = 2 * MATH_PI / cww;
-    wcf->ctp = fmod((fmod(cww * xx1, 2 * MATH_PI) + cpp) / (2 * MATH_PI), 1);
+    wcf->ctp = fmod((fmod(cww * xx, 2 * MATH_PI) + cpp) / (2 * MATH_PI), 1);
     if (wcf->ctp < 0) {
         wcf->ctp += 1;
     }
-    // calculate csr - cyy
+    // calculate csr - cee
     mrr = 0;                    // r-average
     vrr = 0;                    // r-variance.p
     for (int ii = 0; ii < nbody; ii += ncol * 3) {
         tt = ttyy[ii + 0];
         const double cyy =
             laa + lbb * tt + caa * cos(fmod(cww * tt, 2 * MATH_PI) + cpp);
-        if (tt == xx1) {
-            wcf->cyy = cyy;
-        }
         rr = ttyy[ii + 1] - cyy;
         // welford - increment vrr
         dr = rr - mrr;
         mrr += dr / nnn;
         vrr += dr * (rr - mrr);
     }
-    // calculate csr - cee
     wcf->cee = sqrt(vrr / (nnn - dof));
 }
 
