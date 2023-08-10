@@ -2046,7 +2046,7 @@ SELECT
                 await fsWriteFileUnlessTest(
                     "test_data_cosfit.csv",
                     valActual,
-                    "force"
+                    "force2"
                 );
                 valExpected = await fsReadFileUnlessTest(
                     "test_data_cosfit.csv",

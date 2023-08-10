@@ -1860,6 +1860,7 @@ static void winCosfitCsr(
     double mrr = 0;             // r-average
     double nnn = 0;             // number of elements
     double rr = 0;              // r-residual
+    double tt = 0;
     double vrr = 0;             // r-variance.p
     static const int dof = 5;
     // calculate csr - caa
@@ -1880,44 +1881,51 @@ static void winCosfitCsr(
     }
     wcf->caa = caa;
     // calculate csr - cpp, cww - using gauss-newton-method
-    //
-    // yy = caa*cos(cww*tt + cpp)
-    //
-    // hpp=sin*sin    hpw=sin*sin*tt    | dp = gpp=sin*(cos-yy/caa)
-    // hpw=sin*sin*tt hww=sin*sin*tt*tt | dw = gww=sin*(cos-yy/caa)*tt
-    //
-    // det = hpp*hww - hpw*hpw
-    // dp = +hww -hpw | gpp/det
-    // dw = -hpw  hpp | gww/det
-    //
-    // cpp = cpp + dp
-    // cww = cww + dw
+    // yy   ~ caa*cos(cww*tt + cpp)
+    // cost = cos(cww*tt + cpp)
+    // sint = sin(cww*tt + cpp)
+    // rr   = yy - cos
+    // gp   =     d/dp[y-cos(w*t+p)]^2 = 2*(rr*sint            )
+    // gw   =     d/dw[y-cos(w*t+p)]^2 = 2*(rr*sint            )*tt
+    // hpp  = d^2/dpdp[y-cos(w*t+p)]^2 = 2*(rr*cost + sint*sint)
+    // hpw  = d^2/dpdw[y-cos(w*t+p)]^2 = 2*(rr*cost + sint*sint)*tt
+    // hww  = d^2/dwdw[y-cos(w*t+p)]^2 = 2*(rr*cost + sint*sint)*tt*tt
+    // [hpp hpw][dp] = [gp]
+    // [hpw hww][dw] = [gw]
+    // [dp] = 1 /    [ hww -hpw][gp]
+    // [dw] =  / det [-hpw  hpp][gw]
+    // det  = hpp*hww - hpw*hpw
+    // dp   = 1/det*( hww*gp - hpw*gw)
+    // dw   = 1/det*(-hpw*gp + hpp*gw)
+    // cpp  = cpp - dp
+    // cww  = cww - dw
     double cww =                // angular-frequency
         wcf->cww == 0 ? 2 * MATH_PI / wcf->mxe : wcf->cww;
     double cpp = wcf->cpp;      // angular-phase
-    double gpp = 0;             // gradient-phase
-    double gww = 0;             // gradient-frequency
+    double gp = 0;              // gradient-phase
+    double gw = 0;              // gradient-frequency
     double hpp = 0;             // hessian ddr/dpdp
     double hpw = 0;             // hessian ddr/dpdw
     double hww = 0;             // hessian ddr/dwdw
     for (int ii = 0; ii < nbody; ii += ncol * 3) {
-        const double tt = ttyy[ii + 0];
+        tt = ttyy[ii + 0];
         const double cost = cos(cpp + fmod(cww * tt, 2 * MATH_PI));
         const double sint = sin(cpp + fmod(cww * tt, 2 * MATH_PI));
-        const double gg0 = sint * (cost - ttyy[ii + 2] * inva);
-        const double hh0 = sint * sint;
-        gpp += gg0;
-        gww += gg0 * tt;
-        hpp += hh0;
-        hpw += hh0 * tt;
-        hww += hh0 * tt * tt;
+        rr = sint * (ttyy[ii + 2] * inva - cost);
+        gp += rr;
+        gw += rr * tt;
+        rr = sint * sint;
+        // rr = sint * sint + cost * (ttyy[ii + 2] * inva - cost);
+        hpp += rr;
+        hpw += rr * tt;
+        hww += rr * tt * tt;
     }
     const double invd = 1 / (hpp * hww - hpw * hpw);
     if (!isfinite(invd)) {
         return;
     }
-    cpp += (+hww * gpp - hpw * gww) * invd;
-    cww += (-hpw * gpp + hpp * gww) * invd;
+    cpp -= invd * (+hww * gp - hpw * gw);
+    cww -= invd * (-hpw * gp + hpp * gw);
     cpp = fmod(cpp, 2 * MATH_PI);
     if (cpp < 0) {
         cpp += 2 * MATH_PI;
@@ -1929,9 +1937,7 @@ static void winCosfitCsr(
     // calculate csr - ctt, ctp
     const int xx1 = wcf->xx1;
     wcf->ctt = 2 * MATH_PI / cww;
-    wcf->ctp = fmod(            //
-        (fmod(cww * xx1, 2 * MATH_PI) + cpp) / (cww * wcf->ctt),        //
-        1);
+    wcf->ctp = fmod((fmod(cww * xx1, 2 * MATH_PI) + cpp) / (2 * MATH_PI), 1);
     if (wcf->ctp < 0) {
         wcf->ctp += 1;
     }
@@ -1939,7 +1945,7 @@ static void winCosfitCsr(
     mrr = 0;                    // r-average
     vrr = 0;                    // r-variance.p
     for (int ii = 0; ii < nbody; ii += ncol * 3) {
-        const double tt = ttyy[ii + 0];
+        tt = ttyy[ii + 0];
         const double cyy =
             laa + lbb * tt + caa * cos(fmod(cww * tt, 2 * MATH_PI) + cpp);
         if (tt == xx1) {
@@ -2122,7 +2128,7 @@ SQLMATH_FUNC static void sql1_win_cosfit2_predict_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will predict next slr
+// This function will predict next cosfit
     UNUSED_PARAMETER(argc);
     // validate argv
     const int bytes = sqlite3_value_bytes(argv[0]);
