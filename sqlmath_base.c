@@ -1907,7 +1907,7 @@ static void winCosfitCsr(
     // calculate csr - caa
     const double caa = sqrt2 * wcf->lee * (nnn - 2) / nnn;
     const double inva = 1 / caa;        // inverse-of-amplitude
-    if (inva <= 0 || !isnormal(inva)) {
+    if (inva <= 0 || !isfinite(inva)) {
         return;
     }
     // calculate csr - cpp, cww - using gauss-newton-method
@@ -2164,7 +2164,7 @@ static void sql3_win_cosfit2_step(
     vector99_agg_free(vec99_agg);
 }
 
-SQLMATH_FUNC static void sql1_win_cosfit2_extract_func(
+SQLMATH_FUNC static void sql1_cosfit_extract_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2176,13 +2176,13 @@ SQLMATH_FUNC static void sql1_win_cosfit2_extract_func(
     const int icol = sqlite3_value_int(argv[1]);
     if (icol < 0) {
         sqlite3_result_error(context,
-            "win_cosfit2_extract()"
-            " - 2nd argument must be integer column >= 0", -1);
+            "cosfit_extract() - 2nd argument must be integer column >= 0",
+            -1);
         return;
     }
     if ((size_t) bytes < (icol + 1) * WinCosfitN * sizeof(double)) {
         sqlite3_result_error(context,
-            "win_cosfit2_extract()"
+            "cosfit_extract()"
             " - 1st argument as cosfit-object does not have enough columns",
             -1);
         return;
@@ -2233,46 +2233,40 @@ SQLMATH_FUNC static void sql1_win_cosfit2_extract_func(
             return;
         }
     }
-    //!! if (strcmp(key, "predict_lnr")) {
-    //!! const double yy = wcf->laa + wcf->lbb
-    //* sqlite3_value_double(argv[2]);
-
-    //!! }
+    if (strcmp(key, "predict") == 0) {
+        const double xx = sqlite3_value_double(argv[3]);
+        const double yy = wcf->laa + wcf->lbb * xx      //
+            + wcf->caa * cos(fmod(wcf->cww * xx, 2 * MATH_PI) + wcf->cpp);
+        if (isfinite(yy)) {
+            sqlite3_result_double(context, yy);
+            return;
+        }
+        sqlite3_result_null(context);
+        return;
+    }
+    if (strcmp(key, "predict_csr") == 0) {
+        const double xx = sqlite3_value_double(argv[3]);
+        const double yy =
+            wcf->caa * cos(fmod(wcf->cww * xx, 2 * MATH_PI) + wcf->cpp);
+        if (isfinite(yy)) {
+            sqlite3_result_double(context, yy);
+            return;
+        }
+        sqlite3_result_null(context);
+        return;
+    }
+    if (strcmp(key, "predict_lnr") == 0) {
+        const double xx = sqlite3_value_double(argv[3]);
+        const double yy = wcf->laa + wcf->lbb * xx;
+        if (isfinite(yy)) {
+            sqlite3_result_double(context, yy);
+            return;
+        }
+        sqlite3_result_null(context);
+        return;
+    }
     sqlite3_result_error(context,
-        "win_cosfit2_extract() - 3rd argument is invalid key", -1);
-}
-
-SQLMATH_FUNC static void sql1_win_cosfit2_predict_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will predict next cosfit
-    UNUSED_PARAMETER(argc);
-    // validate argv
-    const int bytes = sqlite3_value_bytes(argv[0]);
-    const int icol = sqlite3_value_int(argv[1]);
-    if (icol < 0 || (size_t) bytes < (icol + 1) * WinCosfitN * sizeof(double)) {
-        goto catch_error;
-    }
-    const WinCosfit *wcf = (WinCosfit *) sqlite3_value_blob(argv[0]) + icol;
-    const double xx = sqlite3_value_double(argv[2]);
-    const int mode = sqlite3_value_int(argv[3]);
-    const double yy =           //
-        mode == 1               //
-        ? wcf->laa + wcf->lbb * xx      //
-        : mode == 2             //
-        ? wcf->caa * cos(fmod(wcf->cww * xx, 2 * MATH_PI) + wcf->cpp)
-        : 0                     //
-        + wcf->laa + wcf->lbb * xx      //
-        + wcf->caa * cos(fmod(wcf->cww * xx, 2 * MATH_PI) + wcf->cpp);
-    if (!isfinite(yy)) {
-        goto catch_error;
-    }
-    sqlite3_result_double(context, yy);
-    return;
-  catch_error:
-    sqlite3_result_null(context);
+        "cosfit_extract() - 3rd argument is invalid key", -1);
 }
 
 SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
@@ -2650,6 +2644,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
     SQLITE3_CREATE_FUNCTION1(copyblob, 1);
+    SQLITE3_CREATE_FUNCTION1(cosfit_extract, 4);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
     SQLITE3_CREATE_FUNCTION1(doublearray_array, -1);
@@ -2661,8 +2656,6 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
-    SQLITE3_CREATE_FUNCTION1(win_cosfit2_extract, 3);
-    SQLITE3_CREATE_FUNCTION1(win_cosfit2_predict, 4);
     SQLITE3_CREATE_FUNCTION1(win_cosfit2_step, -1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);

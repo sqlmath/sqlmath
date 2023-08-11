@@ -1185,18 +1185,18 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
         let valIn;
         function sqlCosfitExtractLnr(wcf, ii, suffix) {
             return (`
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'nnn'), 8) AS nnn${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'mxx'), 8) AS mxx${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'myy'), 8) AS myy${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'xx1'), 8) AS xx1${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'mxe'), 8) AS mxe${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'yy1'), 8) AS yy1${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'mee'), 8) AS mee${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'lyy'), 8) AS lyy${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'lee'), 8) AS lee${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'laa'), 8) AS laa${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'lbb'), 8) AS lbb${suffix},
-    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'lxy'), 8) AS lxy${suffix}
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'nnn', 0), 8) AS nnn${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'mxx', 0), 8) AS mxx${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'myy', 0), 8) AS myy${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'xx1', 0), 8) AS xx1${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'mxe', 0), 8) AS mxe${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'yy1', 0), 8) AS yy1${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'mee', 0), 8) AS mee${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'lyy', 0), 8) AS lyy${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'lee', 0), 8) AS lee${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'laa', 0), 8) AS laa${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'lbb', 0), 8) AS lbb${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'lxy', 0), 8) AS lxy${suffix}
             `);
         }
         async function test_win_cosfit2_aggregate({
@@ -1226,12 +1226,12 @@ CREATE TEMP TABLE __tmp1 AS
     SELECT
         id,
         __wcf,
-        win_cosfit2_extract(__wcf, 0, 'xx1') AS xx11,
-        win_cosfit2_extract(__wcf, 0, 'yy1') AS yy11,
-        win_cosfit2_extract(__wcf, 8, 'xx1') AS xx12,
-        win_cosfit2_extract(__wcf, 8, 'yy1') AS yy12,
-        win_cosfit2_extract(__wcf, 9, 'xx1') AS xx13,
-        win_cosfit2_extract(__wcf, 9, 'yy1') AS yy13
+        cosfit_extract(__wcf, 0, 'xx1', 0) AS xx11,
+        cosfit_extract(__wcf, 0, 'yy1', 0) AS yy11,
+        cosfit_extract(__wcf, 8, 'xx1', 0) AS xx12,
+        cosfit_extract(__wcf, 8, 'yy1', 0) AS yy12,
+        cosfit_extract(__wcf, 9, 'xx1', 0) AS xx13,
+        cosfit_extract(__wcf, 9, 'yy1', 0) AS yy13
     FROM (
         SELECT
             id,
@@ -1984,41 +1984,53 @@ date close
                         },
                         db,
                         sql: (`
-SELECT
-        ${sqlCosfitExtractLnr("__wcf", 0, "")},
-        --
-        ROUND(win_cosfit2_extract(__wcf, 0, 'caa'), 8) AS caa,
-        ROUND(win_cosfit2_extract(__wcf, 0, 'cee'), 8) AS cee,
-        ROUND(win_cosfit2_extract(__wcf, 0, 'cpp'), 8) AS cpp,
-        ROUND(win_cosfit2_extract(__wcf, 0, 'ctp'), 8) AS ctp,
-        ROUND(win_cosfit2_extract(__wcf, 0, 'ctt'), 8) AS ctt,
-        ROUND(win_cosfit2_extract(__wcf, 0, 'cww'), 8) AS cww,
-        ROUND(win_cosfit2_extract(__wcf, 0, 'cyy'), 8) AS cyy,
-        ROUND(win_cosfit2_extract(__wcf, 0, 'vxx'), 8) AS vxx,
-        --
-        date,
-        ROUND(yy, 8) AS yy
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 AS
+    SELECT
+        *,
+        win_cosfit2(0, ii, yy) OVER (
+            ORDER BY date ASC
+            ROWS BETWEEN ${ttCosfit - 1} PRECEDING AND 0 FOLLOWING
+        ) AS __wcf
     FROM (
         SELECT
-            win_cosfit2(0, ii, yy) OVER (
-                ORDER BY date ASC
-                ROWS BETWEEN ${ttCosfit - 1} PRECEDING AND 0 FOLLOWING
-            ) AS __wcf,
-            date,
-            yy
-        FROM (
-            SELECT
-                value->>'ii' AS ii,
-                value->>'date' AS date,
-                value->>'priceClose' AS yy
-            FROM JSON_EAcH($testDataSpx)
-        )
+            value->>'ii' AS ii,
+            value->>'date' AS date,
+            value->>'priceClose' AS yy
+        FROM JSON_EAcH($testDataSpx)
     );
+SELECT
+        *,
+        cosfit_extract(__wcf, 0, 'caa', 0) AS caa,
+        cosfit_extract(__wcf, 0, 'cee', 0) AS cee,
+        cosfit_extract(__wcf, 0, 'cpp', 0) AS cpp,
+        cosfit_extract(__wcf, 0, 'ctp', 0) AS ctp,
+        cosfit_extract(__wcf, 0, 'ctt', 0) AS ctt,
+        cosfit_extract(__wcf, 0, 'cww', 0) AS cww,
+        cosfit_extract(__wcf, 0, 'cyy', 0) AS cyy,
+        cosfit_extract(__wcf, 0, 'vxx', 0) AS vxx,
+        ${sqlCosfitExtractLnr("__wcf", 0, "")}
+    FROM __tmp1
+    JOIN (
+        SELECT
+            MEDIAN(yy) AS yy_avg,
+            STDEV(yy) AS yy_err
+        FROM __tmp1
+    )
+    LEFT JOIN (
+        SELECT
+            ii + 1 AS ii,
+            cosfit_extract(__wcf, 0, 'predict', ii + 1) AS predict,
+            cosfit_extract(__wcf, 0, 'predict_csr', ii + 1) AS predict_csr,
+            cosfit_extract(__wcf, 0, 'predict_lnr', ii + 1) AS predict_lnr
+        FROM __tmp1
+    ) USING (ii);
                         `)
                     })
                 )[0];
                 valActual = (
-                    "date caa cww cpp ctt ctp yy lyy cyy lee cee\n"
+                    "date caa cww cpp ctt ctp"
+                    + " ii yy linear cosfit cosine\n"
                     + valActual.map(function (elem) {
                         return [
                             elem.date,
@@ -2027,11 +2039,11 @@ SELECT
                             elem.cpp,
                             elem.ctt,
                             elem.ctp,
-                            elem.yy * 0.01,
-                            elem.lyy * 0.01,
-                            elem.cyy * 0.01,
-                            elem.lee * 100 / elem.yy,
-                            elem.cee * 100 / elem.yy
+                            elem.ii,
+                            10 + (elem.yy - elem.yy_avg) / elem.yy_err,
+                            10 + (elem.predict_lnr - elem.yy_avg) / elem.yy_err,
+                            10 + (elem.predict - elem.yy_avg) / elem.yy_err,
+                            10 + elem.predict_csr / 100
                         ].map(function (num) {
                             return (
                                 typeof num === "number"
