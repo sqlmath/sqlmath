@@ -1124,23 +1124,6 @@ function objectDeepCopyWithKeysSorted(obj) {
     return sorted;
 }
 
-function sqlCosfitExtract(wcf, ii, key) {
-
-// This function will return sql-code to extract value <wcf>[<ii>][<key>].
-
-    let jj = noop([
-        "nnn", "xx1", "yy1",
-        "mee", "myy", "mxx", "mxe",
-        "lee", "lyy", "laa", "lbb", "lxy",
-        "cee", "cyy", "caa", "cww", "cpp", "ctt", "ctp",
-        "inv0", "inv1", "inv2",
-        "vxx", "vxy", "vyy",
-        "xx0", "yy0"
-    ]).indexOf(key);
-    assertOrThrow(jj >= 0, `sqlCosfitExtract - invalid key "${key}"`);
-    return `doublearray_extract(${wcf}, ${ii * ((3 + 4 + 5 + 7) + 8) + jj})`;
-}
-
 async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 // This function will post msg to <sqlWorker> and return result.
@@ -1373,7 +1356,6 @@ export {
     jsbatonValueString,
     noop,
     objectDeepCopyWithKeysSorted,
-    sqlCosfitExtract,
     sqlmathWebworkerInit,
     version
 };

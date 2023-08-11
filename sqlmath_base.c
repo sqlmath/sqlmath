@@ -1969,7 +1969,7 @@ static void winCosfitCsr(
         if (!isfinite(invd)) {
             return;
         }
-        cpp -= invd * (+hww * gp - hpw * gw), 2 * MATH_PI;
+        cpp -= invd * (+hww * gp - hpw * gw);
         cww -= invd * (-hpw * gp + hpp * gw);
         cpp = fmod(cpp, 2 * MATH_PI);
     }
@@ -2121,7 +2121,7 @@ static void sql3_win_cosfit2_step(
 //     yy = laa + lbb*xx + caa*cos(cww*xx + cpp)
     if (argc < 1 + 2 || argc % 2 != 1) {
         sqlite3_result_error(context,
-            "wrong number of arguments to function win_cosfit2()", -1);
+            "win_cosfit2() - wrong number of arguments", -1);
         return;
     }
     // vec99 - init
@@ -2164,6 +2164,84 @@ static void sql3_win_cosfit2_step(
     vector99_agg_free(vec99_agg);
 }
 
+SQLMATH_FUNC static void sql1_win_cosfit2_extract_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will extract <val> from WinCosfit-object with given <key>.
+    UNUSED_PARAMETER(argc);
+    // validate argv
+    const int bytes = sqlite3_value_bytes(argv[0]);
+    const int icol = sqlite3_value_int(argv[1]);
+    if (icol < 0) {
+        sqlite3_result_error(context,
+            "win_cosfit2_extract()"
+            " - 2nd argument must be integer column >= 0", -1);
+        return;
+    }
+    if ((size_t) bytes < (icol + 1) * WinCosfitN * sizeof(double)) {
+        sqlite3_result_error(context,
+            "win_cosfit2_extract()"
+            " - 1st argument as cosfit-object does not have enough columns",
+            -1);
+        return;
+    }
+    const WinCosfit *wcf = (WinCosfit *) sqlite3_value_blob(argv[0]) + icol;
+    const char *key = (const char *) sqlite3_value_text(argv[2]);
+    const char *keyList[] = {
+        "nnn",
+        "xx1",
+        "yy1",
+        //
+        "mee",
+        "myy",
+        "mxx",
+        "mxe",
+        //
+        "lee",
+        "lyy",
+        "laa",
+        "lbb",
+        "lxy",
+        //
+        "cee",
+        "cyy",
+        "caa",
+        "cww",
+        "cpp",
+        "ctt",
+        "ctp",
+        //
+        "inv0",
+        "inv1",
+        "inv2",
+        "vxx",
+        "vxy",
+        "vyy",
+        "xx0",
+        "yy0",
+    };
+    for (int ii = 0; ii < WinCosfitN; ii += 1) {
+        if (strcmp(key, keyList[ii]) == 0) {
+            const double val = ((double *) wcf)[ii];
+            if (isfinite(val)) {
+                sqlite3_result_double(context, val);
+                return;
+            }
+            sqlite3_result_null(context);
+            return;
+        }
+    }
+    //!! if (strcmp(key, "predict_lnr")) {
+    //!! const double yy = wcf->laa + wcf->lbb
+    //* sqlite3_value_double(argv[2]);
+
+    //!! }
+    sqlite3_result_error(context,
+        "win_cosfit2_extract() - 3rd argument is invalid key", -1);
+}
+
 SQLMATH_FUNC static void sql1_win_cosfit2_predict_func(
     sqlite3_context * context,
     int argc,
@@ -2173,9 +2251,6 @@ SQLMATH_FUNC static void sql1_win_cosfit2_predict_func(
     UNUSED_PARAMETER(argc);
     // validate argv
     const int bytes = sqlite3_value_bytes(argv[0]);
-    if (bytes <= 0) {
-        goto catch_error;
-    }
     const int icol = sqlite3_value_int(argv[1]);
     if (icol < 0 || (size_t) bytes < (icol + 1) * WinCosfitN * sizeof(double)) {
         goto catch_error;
@@ -2208,12 +2283,22 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
 // This function will step simple-linear-regression.
     const int ncol = (argc - 2) / 2;
     // validate argv
+    const int bytes = sqlite3_value_bytes(argv[0]);
+    const int icol = sqlite3_value_int(argv[1]);
     if (argc < 4 || argc != 2 + ncol * 2) {
         goto catch_error;
     }
-    const int bytes = sqlite3_value_bytes(argv[0]);
-    if (ncol <= 0 || (size_t) bytes != ncol * WinCosfitN * sizeof(double)) {
-        goto catch_error;
+    if (icol < 0) {
+        sqlite3_result_error(context,
+            "win_cosfit2_step() - 2nd argument must be >= 0", -1);
+        return;
+    }
+    if ((size_t) bytes < (icol + 1) * WinCosfitN * sizeof(double)) {
+        sqlite3_result_error(context,
+            "win_cosfit2_step()"
+            " - 1st argument as cosfit-object does not have enough columns",
+            -1);
+        return;
     }
     // init wcf0
     const WinCosfit *blob0 = sqlite3_value_blob(argv[0]);
@@ -2241,8 +2326,8 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
         sqlite3_free);
     return;
   catch_error:
-    sqlite3_result_error(context,
-        "invalid arguments to function win_cosfit2_step()", -1);
+    sqlite3_result_error(context, "win_cosfit2_step() - invalid arguments",
+        -1);
 }
 
 // SQLMATH_FUNC sql3_win_cosfit2_func - end
@@ -2292,7 +2377,7 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
 // This function will calculate running exponential-moving-average.
     if (argc < 2) {
         sqlite3_result_error(context,
-            "wrong number of arguments to function win_ema2()", -1);
+            "win_ema2() - wrong number of arguments", -1);
         return;
     }
     // vec99 - init
@@ -2306,7 +2391,7 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
         arg_alpha = sqlite3_value_double_or_nan(argv[0]);
         if (isnan(arg_alpha)) {
             sqlite3_result_error(context,
-                "invalid argument 'alpha' to function win_emax()", -1);
+                "win_emax() - invalid argument 'alpha'", -1);
             return;
         }
         vec99_head[ncol + 0] = arg_alpha;
@@ -2449,7 +2534,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
 // This function will calculate running quantile.
     if (argc < 2) {
         sqlite3_result_error(context,
-            "wrong number of arguments to function win_quantile2()", -1);
+            "win_quantile2() - wrong number of arguments", -1);
         return;
     }
     // vec99 - init
@@ -2463,8 +2548,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
         arg_quantile = sqlite3_value_double_or_nan(argv[0]);
         if (!(0 <= arg_quantile && arg_quantile <= 1)) {
             sqlite3_result_error(context,
-                "invalid argument 'quantile' to function win_quantilex()",
-                -1);
+                "win_quantilex() - invalid argument 'quantile'", -1);
             return;
         }
         vec99_head[ncol + 0] = arg_quantile;
@@ -2577,6 +2661,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
+    SQLITE3_CREATE_FUNCTION1(win_cosfit2_extract, 3);
     SQLITE3_CREATE_FUNCTION1(win_cosfit2_predict, 4);
     SQLITE3_CREATE_FUNCTION1(win_cosfit2_step, -1);
     SQLITE3_CREATE_FUNCTION2(median, 1);

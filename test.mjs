@@ -44,7 +44,6 @@ import {
     jsbatonValueString,
     noop,
     sqlmathWebworkerInit,
-    sqlCosfitExtract,
     version
 } from "./sqlmath.mjs";
 let {
@@ -1186,18 +1185,18 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
         let valIn;
         function sqlCosfitExtractLnr(wcf, ii, suffix) {
             return (`
-    ROUND(${sqlCosfitExtract(wcf, ii, "nnn")}, 8) AS nnn${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "mxx")}, 8) AS mxx${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "myy")}, 8) AS myy${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "xx1")}, 8) AS xx1${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "mxe")}, 8) AS mxe${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "yy1")}, 8) AS yy1${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "mee")}, 8) AS mee${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "lyy")}, 8) AS lyy${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "lee")}, 8) AS lee${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "laa")}, 8) AS laa${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "lbb")}, 8) AS lbb${suffix},
-    ROUND(${sqlCosfitExtract(wcf, ii, "lxy")}, 8) AS lxy${suffix}
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'nnn'), 8) AS nnn${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'mxx'), 8) AS mxx${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'myy'), 8) AS myy${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'xx1'), 8) AS xx1${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'mxe'), 8) AS mxe${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'yy1'), 8) AS yy1${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'mee'), 8) AS mee${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'lyy'), 8) AS lyy${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'lee'), 8) AS lee${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'laa'), 8) AS laa${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'lbb'), 8) AS lbb${suffix},
+    ROUND(win_cosfit2_extract(${wcf}, ${ii}, 'lxy'), 8) AS lxy${suffix}
             `);
         }
         async function test_win_cosfit2_aggregate({
@@ -1227,12 +1226,12 @@ CREATE TEMP TABLE __tmp1 AS
     SELECT
         id,
         __wcf,
-        ${sqlCosfitExtract("__wcf", 0, "xx1")} AS xx11,
-        ${sqlCosfitExtract("__wcf", 0, "yy1")} AS yy11,
-        ${sqlCosfitExtract("__wcf", 8, "xx1")} AS xx12,
-        ${sqlCosfitExtract("__wcf", 8, "yy1")} AS yy12,
-        ${sqlCosfitExtract("__wcf", 9, "xx1")} AS xx13,
-        ${sqlCosfitExtract("__wcf", 9, "yy1")} AS yy13
+        win_cosfit2_extract(__wcf, 0, 'xx1') AS xx11,
+        win_cosfit2_extract(__wcf, 0, 'yy1') AS yy11,
+        win_cosfit2_extract(__wcf, 8, 'xx1') AS xx12,
+        win_cosfit2_extract(__wcf, 8, 'yy1') AS yy12,
+        win_cosfit2_extract(__wcf, 9, 'xx1') AS xx13,
+        win_cosfit2_extract(__wcf, 9, 'yy1') AS yy13
     FROM (
         SELECT
             id,
@@ -1988,14 +1987,14 @@ date close
 SELECT
         ${sqlCosfitExtractLnr("__wcf", 0, "")},
         --
-        ROUND(${sqlCosfitExtract("__wcf", 0, "caa")}, 8) AS caa,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "cee")}, 8) AS cee,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "cpp")}, 8) AS cpp,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "ctp")}, 8) AS ctp,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "ctt")}, 8) AS ctt,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "cww")}, 8) AS cww,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "cyy")}, 8) AS cyy,
-        ROUND(${sqlCosfitExtract("__wcf", 0, "vxx")}, 8) AS vxx,
+        ROUND(win_cosfit2_extract(__wcf, 0, 'caa'), 8) AS caa,
+        ROUND(win_cosfit2_extract(__wcf, 0, 'cee'), 8) AS cee,
+        ROUND(win_cosfit2_extract(__wcf, 0, 'cpp'), 8) AS cpp,
+        ROUND(win_cosfit2_extract(__wcf, 0, 'ctp'), 8) AS ctp,
+        ROUND(win_cosfit2_extract(__wcf, 0, 'ctt'), 8) AS ctt,
+        ROUND(win_cosfit2_extract(__wcf, 0, 'cww'), 8) AS cww,
+        ROUND(win_cosfit2_extract(__wcf, 0, 'cyy'), 8) AS cyy,
+        ROUND(win_cosfit2_extract(__wcf, 0, 'vxx'), 8) AS vxx,
         --
         date,
         ROUND(yy, 8) AS yy
