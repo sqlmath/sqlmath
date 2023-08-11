@@ -1890,6 +1890,9 @@ static void winCosfitCsr(
 ) {
 // This function will calculate running cosine-regression as:
 //     yy = caa*cos(cww*xx + cpp)
+    // declare var0
+    static const double sqrt2 = 1.414213562373095048802;
+    static const int dof = 5;
     // declare var
     const double laa = wcf->laa;        // linest y-intercept
     const double lbb = wcf->lbb;        // linest slope
@@ -1901,7 +1904,13 @@ static void winCosfitCsr(
     double tmp = 0;
     double tt = 0;
     double vrr = 0;             // r-variance.p
-    // calculate csr - caa, cpp, cww - using gauss-newton-method
+    // calculate csr - caa
+    const double caa = sqrt2 * wcf->lee * (nnn - 2) / nnn;
+    const double inva = 1 / caa;        // inverse-of-amplitude
+    if (inva <= 0 || !isnormal(inva)) {
+        return;
+    }
+    // calculate csr - cpp, cww - using gauss-newton-method
     double *ttyy = ((double *) (wcf + ncol - icol)) + icol * 3;
     // yy   ~ caa*cos(cww*tt + cpp)
     // cost = cos(cww*tt + cpp)
@@ -1921,45 +1930,35 @@ static void winCosfitCsr(
     // dw   = 1/det*(-hpw*gp + hpp*gw)
     // cpp  = cpp - dp
     // cww  = cww - dw
-    double caa = wcf->caa;      // amplitude
     double cpp = wcf->cpp;      // phase
     double cww = wcf->cww;      // angular-freq
     // initial guess
-    const double caa0 = wcf->lee * (nnn - 2) / nnn;
-    const double ctt0 = 0.5000 * (2 * wcf->mxe);
-    const double cww0 = 2 * MATH_PI / ctt0;
-    if (caa < 0.2500 * caa0 || 4 * caa0 < caa) {
-        caa = caa0;
-    }
-    if (cww < 0.5000 * cww0 || 0.2500 * cww0 * sqrt(nnn) < cww) {
+    const double ctt0 = 0.5000 * (2 * wcf->mxe);        // initial period
+    const double cww0 = 2 * MATH_PI / ctt0;     // initial angular-freq
+    if (cww < 0.5000 * cww0 || 0.1250 * cww0 * sqrt(nnn) < cww) {
         cpp = 0;
         cww = cww0;
     }
     for (int jj = 0; jj < 4; jj += 1) {
-        caa = caa0;
         double gp = 0;          // gradient-phase
         double gw = 0;          // gradient-frequency
         double hpp = 0;         // hessian ddr/dpdp
         double hpw = 0;         // hessian ddr/dpdw
         double hww = 0;         // hessian ddr/dwdw
-        const double inva = 1 / caa;    // inverse-of-amplitude
-        if (!isfinite(inva)) {
-            return;
-        }
         for (int ii = 0; ii < nbody; ii += ncol * 3) {
             tt = ttyy[ii + 0];
             if (jj == 0) {
-                ttyy[ii + 2] = ttyy[ii + 1] - laa - lbb * tt;
+                ttyy[ii + 2] = inva * (ttyy[ii + 1] - laa - lbb * tt);
             }
             rr = ttyy[ii + 2];
             angle = fmod(cww * tt, 2 * MATH_PI) + cpp;
             const double cost = cos(angle);
             const double sint = sin(angle);
-            tmp = sint * (rr * inva - cost);
+            tmp = sint * (rr - cost);
             gp += tmp;
             gw += tmp * tt;
             tmp = sint * sint;
-            // tmp = sint * sint + cost * (ttyy[ii + 2] * inva - cost);
+            // tmp = sint * sint + cost * (rr - cost);
             hpp += tmp;
             hpw += tmp * tt;
             hww += tmp * tt * tt;
@@ -1989,15 +1988,13 @@ static void winCosfitCsr(
     mrr = 0;                    // r-average
     vrr = 0;                    // r-variance.p
     for (int ii = 0; ii < nbody; ii += ncol * 3) {
-        tt = ttyy[ii + 0];
-        const double cyy = rr = ttyy[ii + 1]    //
-            - laa - lbb * tt - caa * cos(fmod(cww * tt, 2 * MATH_PI) + cpp);
+        rr = caa * (            //
+            ttyy[ii + 2] - cos(fmod(cww * ttyy[ii + 0], 2 * MATH_PI) + cpp));
         // welford - increment vrr
         dr = rr - mrr;
         mrr += dr / nnn;
         vrr += dr * (rr - mrr);
     }
-    static const int dof = 5;
     wcf->cee = sqrt(vrr / (nnn - dof));
     // save wcf
     wcf->caa = caa;

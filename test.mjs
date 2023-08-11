@@ -52,6 +52,9 @@ let {
     jstestDescribe,
     jstestIt
 } = jslint;
+let {
+    npm_config_mode_test_save
+} = typeof process === "object" && process?.env;
 noop(debugInline);
 
 jstestDescribe((
@@ -1704,7 +1707,7 @@ SELECT
             // test win_cosfit2-spx handling-behavior
             (async function () {
                 let testDataSpx;
-                let ttCosfit = 252;
+                let ttCosfit = 128;
                 let valActual;
                 let valExpected;
                 testDataSpx = (`
@@ -2046,7 +2049,7 @@ SELECT
                 await fsWriteFileUnlessTest(
                     "test_data_cosfit.csv",
                     valActual,
-                    "force2"
+                    String("1").replace(npm_config_mode_test_save, "force")
                 );
                 valExpected = await fsReadFileUnlessTest(
                     "test_data_cosfit.csv",
