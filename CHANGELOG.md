@@ -2,13 +2,12 @@
 
 # Todo
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
-- sqlmath - Update sql-function win_cosfit2_step() to be able to update cosine-fit as well.
 - none
 
 # v2023.8.1-beta
+- sqlmath - Update sql-function win_cosfit2_refitlast() to be able to update cosine-fit as well.
 - sqlmath - Merge sql-functions win_cosfit2_predict(), win_cosfit2_extract() into sql-function cosfit_extract().
 - sqlmath - Add c-helper-functions doubleAbs(), doubleMax(), doubleMin().
-- sqlmath - Revert cosine-fit-update in sql-function win_cosfit2_step() due to poor performance in general-function win_cosfit2().
 - sqlmath - merge c-struct WinCosfitInternal, WinCosfitResult into c-struct WinCosfit.
 - sqlmath - Update sql-functions win_cosfit2(), win_emax(), win_quantilex() to move variable-length arguments to last position.
 - sqlmath - Update sql-function win_cosfit2() with additional argument modeNoCsf.

@@ -1186,7 +1186,7 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
     ), async function test_sqlite_extension_win_cosfit2() {
         let db = await dbOpenAsync({filename: ":memory:"});
         let valExpected0;
-        let valIn;
+        let valInput;
         function sqlCosfitExtractLnr(wcf, ii, suffix) {
             return (`
     ROUND(cosfit_extract(${wcf}, ${ii}, 'nnn', 0), 8) AS nnn${suffix},
@@ -1210,9 +1210,11 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
             valExpected2,
             valExpected3
         }) {
-            let idLast = 25;
+            let id2 = 25;
+            let id3 = 28;
             let sqlBetween = "";
             let valActual;
+            let xx2 = 2;
             if (aa !== undefined) {
                 sqlBetween = (
                     `ROWS BETWEEN ${aa - 1} PRECEDING AND ${bb} FOLLOWING`
@@ -1221,7 +1223,7 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
             // test win_cosfit2-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
-                    valIn
+                    valInput
                 },
                 db,
                 sql: (`
@@ -1240,7 +1242,7 @@ CREATE TEMP TABLE __tmp1 AS
         SELECT
             id,
             win_cosfit2(
-                0,
+                0, ${xx2},
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
@@ -1250,18 +1252,17 @@ CREATE TEMP TABLE __tmp1 AS
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
-                value->>0, IIF(id = ${idLast}, -1, value->>1)
+                value->>0, IIF(id = ${id2}, -1, value->>1)
             ) OVER (
                 ORDER BY NULL ASC
                 ${sqlBetween}
             ) AS __wcf
-        FROM JSON_EAcH($valIn)
+        FROM JSON_EAcH($valInput)
     );
 UPDATE __tmp1
     SET
-        __wcf = win_cosfit2_step(
+        __wcf = cosfit_refitlast(
             __wcf,
-            0,
             0, 0,
             0, 0,
             0, 0,
@@ -1272,12 +1273,12 @@ UPDATE __tmp1
             0, 0,
             0, 0,
             0, 0
-        );
+        )
+    WHERE id = 28;
 UPDATE __tmp1
     SET
-        __wcf = win_cosfit2_step(
+        __wcf = cosfit_refitlast(
             __wcf,
-            0,
             xx11, yy11,
             xx11, yy11,
             xx11, yy11,
@@ -1288,7 +1289,8 @@ UPDATE __tmp1
             xx11, yy11,
             xx12, yy12,
             xx13, yy13
-        );
+        )
+    WHERE id = ${id3};
 SELECT
         id,
         ${sqlCosfitExtractLnr("__wcf", 0, "1")},
@@ -1553,7 +1555,7 @@ SELECT
                 "yy1": 5
             }
         ];
-        valIn = [
+        valInput = [
             [2, "abcd"],
             [NaN, 1],
             [3, 3],
@@ -1574,7 +1576,7 @@ SELECT
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_cosfit2(1, 2) FROM (SELECT 1);
+SELECT win_cosfit2(1, 2, 3) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
@@ -1584,7 +1586,7 @@ SELECT win_cosfit2(1, 2) FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT doublearray_jsonto(win_cosfit2(1, 2, 3)) FROM __tmp1;
+SELECT doublearray_jsonto(win_cosfit2(1, 2, 3, 4)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
@@ -1598,7 +1600,7 @@ SELECT doublearray_jsonto(win_cosfit2(1, 2, 3)) FROM __tmp1;
                 valActual = noop(
                     await dbExecAsync({
                         bindList: {
-                            valIn
+                            valInput
                         },
                         db,
                         sql: (`
@@ -1606,8 +1608,8 @@ SELECT
         ${sqlCosfitExtractLnr("__wcf", 0, "")}
     FROM (
         SELECT
-            win_cosfit2(0, value->>0, value->>1) AS __wcf
-        FROM JSON_EACH($valIn)
+            win_cosfit2(0, NULL, value->>0, value->>1) AS __wcf
+        FROM JSON_EACH($valInput)
     );
                         `)
                     })
@@ -1656,7 +1658,7 @@ SELECT
         ${sqlCosfitExtractLnr("__wcf", 0, "")}
     FROM (
         SELECT
-            win_cosfit2(0, xx, yy) AS __wcf
+            win_cosfit2(0, NULL, xx, yy) AS __wcf
         FROM (
             SELECT 34 AS xx, 5 AS yy
             UNION ALL SELECT 108, 17
@@ -1992,7 +1994,7 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 AS
     SELECT
         *,
-        win_cosfit2(0, ii, yy) OVER (
+        win_cosfit2(0, NULL, ii, yy) OVER (
             ORDER BY date ASC
             ROWS BETWEEN ${ttCosfit - 1} PRECEDING AND 0 FOLLOWING
         ) AS __wcf
@@ -2078,7 +2080,7 @@ SELECT
         "test sqlite-extension-win_emax handling-behavior"
     ), async function test_sqlite_extension_win_emax() {
         let db = await dbOpenAsync({filename: ":memory:"});
-        let valIn;
+        let valInput;
         async function test_win_emax_aggregate({
             aa,
             bb,
@@ -2096,7 +2098,7 @@ SELECT
             // test win_ema1-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
-                    valIn: JSON.stringify(valIn)
+                    valInput: JSON.stringify(valInput)
                 },
                 db,
                 sql: (`
@@ -2105,7 +2107,7 @@ SELECT
             ORDER BY value->>0 ASC
             ${sqlBetween}
         ) AS val
-    FROM JSON_EAcH($valIn);
+    FROM JSON_EAcH($valInput);
                 `)
             });
             valActual = valActual[0].map(function ({val}) {
@@ -2115,7 +2117,7 @@ SELECT
             // test win_ema2-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
-                    valIn: JSON.stringify(valIn)
+                    valInput: JSON.stringify(valInput)
                 },
                 db,
                 sql: (`
@@ -2137,7 +2139,7 @@ SELECT
             ORDER BY value->>0 ASC
             ${sqlBetween}
         )) AS val
-    FROM JSON_EAcH($valIn);
+    FROM JSON_EAcH($valInput);
                 `)
             });
             valActual = valActual[0].map(function ({val}, ii, list) {
@@ -2154,7 +2156,7 @@ SELECT
             });
             assertJsonEqual(valActual, valExpected);
         }
-        valIn = [
+        valInput = [
             [11, NaN],
             [10, "10"],
             [9, 9],
@@ -2261,7 +2263,7 @@ SELECT doublearray_jsonto(win_ema2(1, 2, 3)) FROM __tmp1;
         "test sqlite-extension-win_quantilex handling-behavior"
     ), async function test_sqlite_extension_win_quantilex() {
         let db = await dbOpenAsync({filename: ":memory:"});
-        let valIn;
+        let valInput;
         async function test_win_quantilex_aggregate({
             aa,
             bb,
@@ -2279,7 +2281,7 @@ SELECT doublearray_jsonto(win_ema2(1, 2, 3)) FROM __tmp1;
             // test win_quantile1-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
-                    valIn: JSON.stringify(valIn)
+                    valInput: JSON.stringify(valInput)
                 },
                 db,
                 sql: (`
@@ -2288,7 +2290,7 @@ SELECT
             ORDER BY value->>0 ASC
             ${sqlBetween}
         ) AS val
-    FROM JSON_EAcH($valIn);
+    FROM JSON_EAcH($valInput);
                 `)
             });
             valActual = valActual[0].map(function ({val}) {
@@ -2298,7 +2300,7 @@ SELECT
             // test win_quantile2-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
-                    valIn: JSON.stringify(valIn)
+                    valInput: JSON.stringify(valInput)
                 },
                 db,
                 sql: (`
@@ -2320,7 +2322,7 @@ SELECT
             ORDER BY value->>0 ASC
             ${sqlBetween}
         )) AS val
-    FROM JSON_EAcH($valIn);
+    FROM JSON_EAcH($valInput);
                 `)
             });
             valActual = valActual[0].map(function ({val}, ii) {
@@ -2337,7 +2339,7 @@ SELECT
             });
             assertJsonEqual(valActual, valExpected);
         }
-        valIn = [
+        valInput = [
             [1, undefined],
             [2, "1"],
             [3, "2"],

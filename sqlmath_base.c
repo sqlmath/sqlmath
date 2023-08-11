@@ -1883,11 +1883,13 @@ typedef struct WinCosfit {
     double vyy;                 // y-variance.p
     //
     double xx0;                 // x-trailing-window
-    double xx1;                 // x-actual
+    double xx1;                 // x-current
+    double xx2;                 // x-refit
     double yy0;                 // y-trailing-window
-    double yy1;                 // y-actual
+    double yy1;                 // y-current
 } WinCosfit;
-static const int WinCosfitN = sizeof(WinCosfit) / sizeof(double);
+static const int WIN_COSFIT_N = sizeof(WinCosfit) / sizeof(double);
+static const int WIN_COSFIT_STEP = 3;
 
 static void winCosfitCsr(
     WinCosfit * wcf,
@@ -1902,7 +1904,7 @@ static void winCosfitCsr(
     // declare var
     const double laa = wcf->laa;        // linest y-intercept
     const double lbb = wcf->lbb;        // linest slope
-    const double nnn = nbody / (ncol * 3);      // number of elements
+    const double nnn = nbody / (ncol * WIN_COSFIT_STEP);
     double dr = 0;
     double mrr = 0;             // r-average
     double rr = 0;              // r-residual
@@ -1917,7 +1919,7 @@ static void winCosfitCsr(
         return;
     }
     // calculate csr - cpp, cww - using gauss-newton-method
-    double *ttyy = ((double *) (wcf + ncol - icol)) + icol * 3;
+    double *ttyy = ((double *) (wcf + ncol - icol)) + icol * WIN_COSFIT_STEP;
     // yy   ~ caa*cos(cww*tt + cpp)
     // cost = cos(cww*tt + cpp)
     // sint = sin(cww*tt + cpp)
@@ -1952,7 +1954,7 @@ static void winCosfitCsr(
         double hpp = 0;         // hessian ddr/dpdp
         double hpw = 0;         // hessian ddr/dpdw
         double hww = 0;         // hessian ddr/dwdw
-        for (int ii = 0; ii < nbody; ii += ncol * 3) {
+        for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
             tt = ttyy[ii + 0];
             if (jj == 0) {
                 ttyy[ii + 2] = inva * (ttyy[ii + 1] - laa - lbb * tt);
@@ -1986,7 +1988,7 @@ static void winCosfitCsr(
     // calculate csr - cee
     mrr = 0;                    // r-average
     vrr = 0;                    // r-variance.p
-    for (int ii = 0; ii < nbody; ii += ncol * 3) {
+    for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
         rr = caa * (            //
             ttyy[ii + 2] - cos(fmod(cww * ttyy[ii + 0], 2 * MATH_PI) + cpp));
         // welford - increment vrr
@@ -2071,8 +2073,13 @@ SQLMATH_FUNC static void sql3_win_cosfit2_value(
 //     yy = laa + lbb*xx + caa*cos(cww*xx + cpp)
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
+    const WinCosfit *wcf = (const WinCosfit *) vec99_head;
     // vec99 - result
-    doublearrayResult(context, vec99_head, vec99->nhead, SQLITE_TRANSIENT);
+    doublearrayResult(context, vec99_head,      //
+        // If x-current == x-refit, then include extra data needed for refit.
+        // This data is normally not included, due to memory performance.
+        wcf->xx2 == wcf->xx1 ? vec99->nhead + vec99->nbody : vec99->nhead,
+        SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_cosfit2_final(
@@ -2114,14 +2121,15 @@ static void sql3_win_cosfit2_step(
 // This function will calculate running simple-linear-regression
 // and cosine-regression as:
 //     yy = laa + lbb*xx + caa*cos(cww*xx + cpp)
-    if (argc < 1 + 2 || argc % 2 != 1) {
+    static const int argc0 = 2;
+    if (argc < argc0 + 2 || (argc0 + 2) % 2) {
         sqlite3_result_error(context,
             "win_cosfit2() - wrong number of arguments", -1);
         return;
     }
     // vec99 - init
-    const int ncol = (argc - 1) / 2;
-    VECTOR99_AGGREGATE_CONTEXT(ncol * WinCosfitN);
+    const int ncol = (argc - argc0) / 2;
+    VECTOR99_AGGREGATE_CONTEXT(ncol * WIN_COSFIT_N);
     if (vec99->nbody == 0) {
         // ncol
         vec99->ncol = ncol;
@@ -2129,11 +2137,13 @@ static void sql3_win_cosfit2_step(
     // vec99 - init argv - xx, yy, xx0, yy0
     const int modeNocsr = sqlite3_value_int(argv[0]);
     const int wii0 = vec99->wii;
-    argv += 1;
+    const double xx2 = sqlite3_value_double_or_nan(argv[1]);
+    argv += argc0;
     for (int ii = 0; ii < ncol; ii += 1) {
         WinCosfit *wcf = (WinCosfit *) vec99_head + ii;
-        wcf->xx0 = vec99_body[wii0 + ii * 3 + 0];
-        wcf->yy0 = vec99_body[wii0 + ii * 3 + 1];
+        wcf->xx0 = vec99_body[wii0 + ii * WIN_COSFIT_STEP + 0];
+        wcf->xx2 = xx2;
+        wcf->yy0 = vec99_body[wii0 + ii * WIN_COSFIT_STEP + 1];
         sqlite3_value_double_or_prev(argv[0], &wcf->xx1);
         sqlite3_value_double_or_prev(argv[1], &wcf->yy1);
         // vec99 - push xx, yy, rr
@@ -2175,7 +2185,7 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
             -1);
         return;
     }
-    if ((size_t) bytes < (icol + 1) * WinCosfitN * sizeof(double)) {
+    if ((size_t) bytes < (icol + 1) * WIN_COSFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
             "cosfit_extract()"
             " - 1st argument as cosfit-object does not have enough columns",
@@ -2208,10 +2218,11 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
         //
         "xx0",
         "xx1",
+        "xx2",
         "yy0",
         "yy1"
     };
-    for (int ii = 0; ii < WinCosfitN; ii += 1) {
+    for (int ii = 0; ii < WIN_COSFIT_N; ii += 1) {
         if (strcmp(key, keyList[ii]) == 0) {
             sqlite3_result_double_or_null(context, ((double *) wcf)[ii]);
             return;
@@ -2285,33 +2296,38 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
         "cosfit_extract() - 3rd argument is invalid key", -1);
 }
 
-SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
+SQLMATH_FUNC static void sql1_cosfit_refitlast_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will step simple-linear-regression.
-    const int ncol = (argc - 2) / 2;
+// This function will refit last datapoint.
+    static const int argc0 = 1;
     // validate argv
     const int bytes = sqlite3_value_bytes(argv[0]);
-    const int icol = sqlite3_value_int(argv[1]);
-    if (argc < 4 || argc != 2 + ncol * 2) {
-        goto catch_error;
-    }
-    if (icol < 0) {
+    const int ncol = (argc - argc0) / 2;
+    if (argc < argc0 + 2 || argc != argc0 + ncol * 2) {
         sqlite3_result_error(context,
-            "win_cosfit2_step() - 2nd argument must be >= 0", -1);
+            "cosfit_refitlast() - invalid arguments", -1);
         return;
     }
-    if ((size_t) bytes < (icol + 1) * WinCosfitN * sizeof(double)) {
+    if ((size_t) bytes < ncol * WIN_COSFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
-            "win_cosfit2_step()"
+            "cosfit_refitlast()"
+            " - 1st argument as cosfit-object does not have enough columns",
+            -1);
+        return;
+    }
+    const WinCosfit *blob0 = sqlite3_value_blob(argv[0]);
+    const int nbody = blob0->nnn * ncol * WIN_COSFIT_STEP;
+    if ((size_t) bytes < (ncol * WIN_COSFIT_N + nbody) * sizeof(double)) {
+        sqlite3_result_error(context,
+            "cosfit_refitlast()"
             " - 1st argument as cosfit-object does not have enough columns",
             -1);
         return;
     }
     // init wcf0
-    const WinCosfit *blob0 = sqlite3_value_blob(argv[0]);
     WinCosfit *wcf0 = sqlite3_malloc(bytes);
     if (wcf0 == NULL) {
         sqlite3_result_error_nomem(context);
@@ -2320,24 +2336,20 @@ SQLMATH_FUNC static void sql1_win_cosfit2_step_func(
     memcpy(wcf0, blob0, bytes);
     // vec99 - calculate lnr, csr
     WinCosfit *wcf = wcf0;
-    argv += 2;
+    argv += argc0;
     for (int ii = 0; ii < ncol; ii += 1) {
         sqlite3_value_double_or_prev(argv[0], &wcf->xx1);
         sqlite3_value_double_or_prev(argv[1], &wcf->yy1);
         // vec99 - calculate lnr
         winCosfitLnr(wcf, 0);
         // vec99 - calculate csr
-        // winCosfitCsr(wcf, nbody, ncol, ii);
+        winCosfitCsr(wcf, nbody, ncol, ii);
         argv += 2;
         wcf += 1;
     }
     // vec99 - result
     doublearrayResult(context, (const double *) wcf0, bytes / sizeof(double),
         sqlite3_free);
-    return;
-  catch_error:
-    sqlite3_result_error(context, "win_cosfit2_step() - invalid arguments",
-        -1);
 }
 
 // SQLMATH_FUNC sql3_win_cosfit2_func - end
@@ -2661,6 +2673,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
     SQLITE3_CREATE_FUNCTION1(copyblob, 1);
     SQLITE3_CREATE_FUNCTION1(cosfit_extract, 4);
+    SQLITE3_CREATE_FUNCTION1(cosfit_refitlast, -1);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
     SQLITE3_CREATE_FUNCTION1(doublearray_array, -1);
@@ -2672,7 +2685,6 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
-    SQLITE3_CREATE_FUNCTION1(win_cosfit2_step, -1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
     SQLITE3_CREATE_FUNCTION2(stdev, 1);
