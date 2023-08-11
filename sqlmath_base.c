@@ -1921,29 +1921,31 @@ static void winCosfitCsr(
     // dw   = 1/det*(-hpw*gp + hpp*gw)
     // cpp  = cpp - dp
     // cww  = cww - dw
-    const double ctt0 = 0.5000 * (2 * wcf->mxe);        // initial period
-    const double cww0 = 2 * MATH_PI / ctt0;     // initial angular-freq
     double caa = wcf->caa;      // amplitude
     double cpp = wcf->cpp;      // phase
     double cww = wcf->cww;      // angular-freq
-    double inva = 0;            // inverse-of-amplitude
-    caa = wcf->lee;
-    // Use initial values if any parameters are off.
+    // initial guess
+    const double caa0 = wcf->lee * (nnn - 2) / nnn;
+    const double ctt0 = 0.5000 * (2 * wcf->mxe);
+    const double cww0 = 2 * MATH_PI / ctt0;
+    if (caa < 0.2500 * caa0 || 4 * caa0 < caa) {
+        caa = caa0;
+    }
     if (cww < 0.5000 * cww0 || 0.2500 * cww0 * sqrt(nnn) < cww) {
-        caa = wcf->lee * (nnn - 2) / nnn;
         cpp = 0;
         cww = cww0;
     }
-    inva = 1 / caa;
-    if (!isfinite(inva)) {
-        return;
-    }
     for (int jj = 0; jj < 4; jj += 1) {
+        caa = caa0;
         double gp = 0;          // gradient-phase
         double gw = 0;          // gradient-frequency
         double hpp = 0;         // hessian ddr/dpdp
         double hpw = 0;         // hessian ddr/dpdw
         double hww = 0;         // hessian ddr/dwdw
+        const double inva = 1 / caa;    // inverse-of-amplitude
+        if (!isfinite(inva)) {
+            return;
+        }
         for (int ii = 0; ii < nbody; ii += ncol * 3) {
             tt = ttyy[ii + 0];
             if (jj == 0) {
@@ -1962,6 +1964,8 @@ static void winCosfitCsr(
             hpw += tmp * tt;
             hww += tmp * tt * tt;
         }
+        hpp = doubleAbs(hpp);   // ensure second derivative is positive
+        hww = doubleAbs(hww);   // ensure second derivative is positive
         const double invd = 1 / (hpp * hww - hpw * hpw);
         if (!isfinite(invd)) {
             return;
