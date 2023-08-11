@@ -397,6 +397,11 @@ SQLMATH_API double quantile(
     const double pp
 );
 
+SQLMATH_API void sqlite3_result_double_or_null(
+    sqlite3_context * context,
+    const double xx
+);
+
 SQLMATH_API double sqlite3_value_double_or_nan(
     sqlite3_value * arg
 );
@@ -1297,6 +1302,14 @@ SQLMATH_API int noop(
     return 0;
 }
 
+SQLMATH_API void sqlite3_result_double_or_null(
+    sqlite3_context * context,
+    const double xx
+) {
+// This function will return NULL if <xx> is not finite else <xx>.
+    sqlite3_result_double(context, isfinite(xx) ? xx : NAN);
+}
+
 SQLMATH_API double sqlite3_value_double_or_nan(
     sqlite3_value * arg
 ) {
@@ -1848,37 +1861,33 @@ static void sql2_stdev_step(
 
 // SQLMATH_FUNC sql3_win_cosfit2_func - start
 typedef struct WinCosfit {
-    double nnn;                 // 00 number of elements
-    double xx1;                 // 01 x-actual
-    double yy1;                 // 02 y-actual
-    //
-    double mee;                 // 03 y-stdev.s1
-    double myy;                 // 04 y-average
-    double mxx;                 // 05 x-average
-    double mxe;                 // 06 x-stdev.s1
-    //
-    double lee;                 // 07 y-stdev.s2 linest
-    double lyy;                 // 08 y-estimate linest
-    double laa;                 // 09 linest y-intercept
-    double lbb;                 // 10 linest slope
-    double lxy;                 // 11 linest pearson-correlation xy
-    //
-    double cee;                 // 12 y-stdev.s5 cosine
-    double cyy;                 // 13 y-estimate cosine
-    double caa;                 // 14 cosine amplitude
-    double cww;                 // 15 cosine angular-frequency
-    double cpp;                 // 16 cosine phase
-    double ctt;                 // 17 cosine period
-    double ctp;                 // 18 cosine period-phase
+    double caa;                 // cosine amplitude
+    double cee;                 // cosine y-stdev.s5
+    double cpp;                 // cosine phase
+    double cww;                 // cosine angular-frequency
+    double cyy;                 // cosine y-estimate
     //
     double inv0;                // 1.0 / (nnn - 0)
     double inv1;                // 1.0 / (nnn - 1)
     double inv2;                // 1.0 / (nnn - 2)
+    //
+    double laa;                 // linest y-intercept
+    double lbb;                 // linest slope
+    double lxy;                 // linest pearson-correlation xy
+    double lyy;                 // linest y-estimate
+    //
+    double mxx;                 // x-average
+    double myy;                 // y-average
+    double nnn;                 // number of elements
+    //
     double vxx;                 // y-variance.p
     double vxy;                 // xy-covariance.p
     double vyy;                 // y-variance.p
-    double xx0;                 // trailing-window-x
-    double yy0;                 // trailing-window-y
+    //
+    double xx0;                 // x-trailing-window
+    double xx1;                 // x-actual
+    double yy0;                 // y-trailing-window
+    double yy1;                 // y-actual
 } WinCosfit;
 static const int WinCosfitN = sizeof(WinCosfit) / sizeof(double);
 
@@ -1891,13 +1900,11 @@ static void winCosfitCsr(
 // This function will calculate running cosine-regression as:
 //     yy = caa*cos(cww*xx + cpp)
     // declare var0
-    static const double sqrt2 = 1.414213562373095048802;
-    static const int dof = 5;
+    static const int dof = 2 + 3;
     // declare var
     const double laa = wcf->laa;        // linest y-intercept
     const double lbb = wcf->lbb;        // linest slope
     const double nnn = nbody / (ncol * 3);      // number of elements
-    double angle = 0;           // cosine-angle in radians
     double dr = 0;
     double mrr = 0;             // r-average
     double rr = 0;              // r-residual
@@ -1905,7 +1912,8 @@ static void winCosfitCsr(
     double tt = 0;
     double vrr = 0;             // r-variance.p
     // calculate csr - caa
-    const double caa = sqrt2 * wcf->lee * (nnn - 2) / nnn;
+    const double caa =
+        sqrt(2 * wcf->inv0 * wcf->vyy * (1 - pow(wcf->lxy, 2)));
     const double inva = 1 / caa;        // inverse-of-amplitude
     if (inva <= 0 || !isfinite(inva)) {
         return;
@@ -1933,11 +1941,12 @@ static void winCosfitCsr(
     double cpp = wcf->cpp;      // phase
     double cww = wcf->cww;      // angular-freq
     // initial guess
-    const double ctt0 = 0.5000 * (2 * wcf->mxe);        // initial period
-    const double cww0 = 2 * MATH_PI / ctt0;     // initial angular-freq
-    if (cww < 0.5000 * cww0 || 0.1250 * cww0 * sqrt(nnn) < cww) {
-        cpp = 0;
-        cww = cww0;
+    {
+        const double cww0 = 2 * MATH_PI / (sqrt(wcf->inv0 * wcf->vxx));
+        if (cww < 0.5000 * cww0 || 0.1250 * cww0 * sqrt(nnn) < cww) {
+            cpp = 0;
+            cww = cww0;
+        }
     }
     for (int jj = 0; jj < 4; jj += 1) {
         double gp = 0;          // gradient-phase
@@ -1951,7 +1960,7 @@ static void winCosfitCsr(
                 ttyy[ii + 2] = inva * (ttyy[ii + 1] - laa - lbb * tt);
             }
             rr = ttyy[ii + 2];
-            angle = fmod(cww * tt, 2 * MATH_PI) + cpp;
+            const double angle = fmod(cww * tt, 2 * MATH_PI) + cpp;
             const double cost = cos(angle);
             const double sint = sin(angle);
             tmp = sint * (rr - cost);
@@ -1976,14 +1985,8 @@ static void winCosfitCsr(
     if (cpp < 0) {
         cpp += 2 * MATH_PI;
     }
-    // calculate csr - cyy, ctt, ctp
-    angle = fmod(cww * wcf->xx1, 2 * MATH_PI) + cpp;
-    wcf->cyy = wcf->lyy + caa * cos(angle);
-    wcf->ctt = 2 * MATH_PI / cww;
-    wcf->ctp = fmod(angle / (2 * MATH_PI), 1);
-    if (wcf->ctp < 0) {
-        wcf->ctp += 1;
-    }
+    // calculate csr - cyy
+    wcf->cyy = wcf->lyy + caa * cos(fmod(cww * wcf->xx1, 2 * MATH_PI) + cpp);
     // calculate csr - cee
     mrr = 0;                    // r-average
     vrr = 0;                    // r-variance.p
@@ -2054,11 +2057,8 @@ static void winCosfitLnr(
     wcf->inv0 = inv0;
     wcf->laa = laa;
     wcf->lbb = lbb;
-    wcf->lee = sqrt(vyy * (1 - lxy * lxy) * wcf->inv2);
     wcf->lxy = lxy;
     wcf->lyy = laa + lbb * xx;
-    wcf->mee = sqrt(vyy * wcf->inv1);
-    wcf->mxe = sqrt(vxx * wcf->inv1);
     wcf->mxx = mxx;
     wcf->myy = myy;
     wcf->vxx = vxx;
@@ -2190,79 +2190,88 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
     const WinCosfit *wcf = (WinCosfit *) sqlite3_value_blob(argv[0]) + icol;
     const char *key = (const char *) sqlite3_value_text(argv[2]);
     const char *keyList[] = {
-        "nnn",
-        "xx1",
-        "yy1",
-        //
-        "mee",
-        "myy",
-        "mxx",
-        "mxe",
-        //
-        "lee",
-        "lyy",
-        "laa",
-        "lbb",
-        "lxy",
-        //
-        "cee",
-        "cyy",
         "caa",
-        "cww",
+        "cee",
         "cpp",
-        "ctt",
-        "ctp",
+        "cww",
+        "cyy",
         //
         "inv0",
         "inv1",
         "inv2",
+        //
+        "laa",
+        "lbb",
+        "lxy",
+        "lyy",
+        //
+        "mxx",
+        "myy",
+        "nnn",
+        //
         "vxx",
         "vxy",
         "vyy",
+        //
         "xx0",
+        "xx1",
         "yy0",
+        "yy1"
     };
     for (int ii = 0; ii < WinCosfitN; ii += 1) {
         if (strcmp(key, keyList[ii]) == 0) {
-            const double val = ((double *) wcf)[ii];
-            if (isfinite(val)) {
-                sqlite3_result_double(context, val);
-                return;
-            }
-            sqlite3_result_null(context);
+            sqlite3_result_double_or_null(context, ((double *) wcf)[ii]);
             return;
         }
     }
+    // cosine period
+    if (strcmp(key, "ctt") == 0) {
+        sqlite3_result_double_or_null(context, 2 * MATH_PI / wcf->cww);
+        return;
+    }
+    // cosine period-phase
+    if (strcmp(key, "ctp") == 0) {
+        double ctp = fmod((fmod(wcf->cww * wcf->xx1,
+                    2 * MATH_PI) + wcf->cpp) / (2 * MATH_PI), 1);
+        if (ctp < 0) {
+            ctp += 1;
+        }
+        sqlite3_result_double_or_null(context, ctp);
+        return;
+    }
+    // linest y-stdev.s2
+    if (strcmp(key, "lee") == 0) {
+        sqlite3_result_double_or_null(context,
+            sqrt(wcf->vyy * (1 - pow(wcf->lxy, 2)) * wcf->inv2));
+        return;
+    }
+    // y-stdev.s1
+    if (strcmp(key, "mee") == 0) {
+        sqlite3_result_double_or_null(context, sqrt(wcf->inv1 * wcf->vyy));
+        return;
+    }
+    // x-stdev.s1
+    if (strcmp(key, "mxe") == 0) {
+        sqlite3_result_double_or_null(context, sqrt(wcf->inv1 * wcf->vxx));
+        return;
+    }
     if (strcmp(key, "predict") == 0) {
         const double xx = sqlite3_value_double(argv[3]);
-        const double yy = wcf->laa + wcf->lbb * xx      //
-            + wcf->caa * cos(fmod(wcf->cww * xx, 2 * MATH_PI) + wcf->cpp);
-        if (isfinite(yy)) {
-            sqlite3_result_double(context, yy);
-            return;
-        }
-        sqlite3_result_null(context);
+        sqlite3_result_double_or_null(context, 0        //
+            + wcf->laa + wcf->lbb * xx  //
+            + wcf->caa * cos(fmod(wcf->cww * xx, 2 * MATH_PI) + wcf->cpp));
         return;
     }
     if (strcmp(key, "predict_csr") == 0) {
         const double xx = sqlite3_value_double(argv[3]);
-        const double yy =
-            wcf->caa * cos(fmod(wcf->cww * xx, 2 * MATH_PI) + wcf->cpp);
-        if (isfinite(yy)) {
-            sqlite3_result_double(context, yy);
-            return;
-        }
-        sqlite3_result_null(context);
+        sqlite3_result_double_or_null(context, 0        //
+            + wcf->caa * cos(fmod(wcf->cww * xx, 2 * MATH_PI) + wcf->cpp));
         return;
     }
     if (strcmp(key, "predict_lnr") == 0) {
         const double xx = sqlite3_value_double(argv[3]);
-        const double yy = wcf->laa + wcf->lbb * xx;
-        if (isfinite(yy)) {
-            sqlite3_result_double(context, yy);
-            return;
-        }
-        sqlite3_result_null(context);
+        sqlite3_result_double_or_null(context, 0        //
+            + wcf->laa + wcf->lbb * xx);
         return;
     }
     sqlite3_result_error(context,
