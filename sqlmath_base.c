@@ -1865,7 +1865,6 @@ typedef struct WinCosfit {
     double cee;                 // cosine y-stdev.s5
     double cpp;                 // cosine phase
     double cww;                 // cosine angular-frequency
-    double cyy;                 // cosine y-estimate
     //
     double inv0;                // 1.0 / (nnn - 0)
     double inv1;                // 1.0 / (nnn - 1)
@@ -1874,7 +1873,6 @@ typedef struct WinCosfit {
     double laa;                 // linest y-intercept
     double lbb;                 // linest slope
     double lxy;                 // linest pearson-correlation xy
-    double lyy;                 // linest y-estimate
     //
     double mxx;                 // x-average
     double myy;                 // y-average
@@ -1985,8 +1983,6 @@ static void winCosfitCsr(
     if (cpp < 0) {
         cpp += 2 * MATH_PI;
     }
-    // calculate csr - cyy
-    wcf->cyy = wcf->lyy + caa * cos(fmod(cww * wcf->xx1, 2 * MATH_PI) + cpp);
     // calculate csr - cee
     mrr = 0;                    // r-average
     vrr = 0;                    // r-variance.p
@@ -2058,7 +2054,6 @@ static void winCosfitLnr(
     wcf->laa = laa;
     wcf->lbb = lbb;
     wcf->lxy = lxy;
-    wcf->lyy = laa + lbb * xx;
     wcf->mxx = mxx;
     wcf->myy = myy;
     wcf->vxx = vxx;
@@ -2194,7 +2189,6 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
         "cee",
         "cpp",
         "cww",
-        "cyy",
         //
         "inv0",
         "inv1",
@@ -2203,7 +2197,6 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
         "laa",
         "lbb",
         "lxy",
-        "lyy",
         //
         "mxx",
         "myy",
@@ -2239,10 +2232,24 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
         sqlite3_result_double_or_null(context, ctp);
         return;
     }
+    // cosine y-estimate
+    if (strcmp(key, "cyy") == 0) {
+        sqlite3_result_double_or_null(context,
+            wcf->laa + wcf->lbb * wcf->xx1 +
+            wcf->caa * cos(fmod(wcf->cww * wcf->xx1,
+                    2 * MATH_PI) + wcf->cpp));
+        return;
+    }
     // linest y-stdev.s2
     if (strcmp(key, "lee") == 0) {
         sqlite3_result_double_or_null(context,
             sqrt(wcf->vyy * (1 - pow(wcf->lxy, 2)) * wcf->inv2));
+        return;
+    }
+    // linest y-estimate
+    if (strcmp(key, "lyy") == 0) {
+        sqlite3_result_double_or_null(context,
+            wcf->laa + wcf->lbb * wcf->xx1);
         return;
     }
     // y-stdev.s1
