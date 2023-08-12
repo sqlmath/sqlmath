@@ -1550,10 +1550,9 @@ SQLMATH_FUNC static void sql1_random1_func(
 // This function will generate high-quality random-float between 0 <= xx < 1.
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
-    static const double inv = 1.0 / 0x100000000;
     uint32_t xx[1];
     sqlite3_randomness(4, (void *) xx);
-    sqlite3_result_double(context, ((double) *xx) * inv);
+    sqlite3_result_double(context, ((double) *xx) / 0x100000000);
 }
 
 SQLMATH_FUNC static void sql1_roundorzero_func(
@@ -1866,13 +1865,8 @@ typedef struct WinCosfit {
     double cpp;                 // cosine phase
     double cww;                 // cosine angular-frequency
     //
-    double inv0;                // 1.0 / (nnn - 0)
-    double inv1;                // 1.0 / (nnn - 1)
-    double inv2;                // 1.0 / (nnn - 2)
-    //
     double laa;                 // linest y-intercept
     double lbb;                 // linest slope
-    double lxy;                 // linest pearson-correlation xy
     //
     double mxx;                 // x-average
     double myy;                 // y-average
@@ -1899,27 +1893,16 @@ static void winCosfitCsr(
 ) {
 // This function will calculate running cosine-regression as:
 //     yy = caa*cos(cww*xx + cpp)
-    // declare var0
-    static const int dof = 2 + 3;
-    // declare var
-    const double laa = wcf->laa;        // linest y-intercept
-    const double lbb = wcf->lbb;        // linest slope
-    const double nnn = nbody / (ncol * WIN_COSFIT_STEP);
-    double dr = 0;
-    double mrr = 0;             // r-average
-    double rr = 0;              // r-residual
-    double tmp = 0;
-    double tt = 0;
-    double vrr = 0;             // r-variance.p
     // calculate csr - caa
-    const double caa =
-        sqrt(2 * wcf->inv0 * wcf->vyy * (1 - pow(wcf->lxy, 2)));
-    const double inva = 1 / caa;        // inverse-of-amplitude
+    const double nnn = nbody / (ncol * WIN_COSFIT_STEP);
+    const double invn0 = 1.0 / nnn;
+    const double caa = sqrt(2 * wcf->vyy * invn0        //
+        * (1 - wcf->vxy * wcf->vxy / (wcf->vxx * wcf->vyy)));
+    const double inva = 1.0 / caa;
     if (inva <= 0 || !isfinite(inva)) {
         return;
     }
     // calculate csr - cpp, cww - using gauss-newton-method
-    double *ttyy = ((double *) (wcf + ncol - icol)) + icol * WIN_COSFIT_STEP;
     // yy   ~ caa*cos(cww*tt + cpp)
     // cost = cos(cww*tt + cpp)
     // sint = sin(cww*tt + cpp)
@@ -1938,11 +1921,15 @@ static void winCosfitCsr(
     // dw   = 1/det*(-hpw*gp + hpp*gw)
     // cpp  = cpp - dp
     // cww  = cww - dw
+    const double laa = wcf->laa;        // linest y-intercept
+    const double lbb = wcf->lbb;        // linest slope
+    double *ttyy = ((double *) (wcf + ncol - icol)) + icol * WIN_COSFIT_STEP;
     double cpp = wcf->cpp;      // phase
     double cww = wcf->cww;      // angular-freq
+    double tmp = 0;
     // initial guess
     {
-        const double cww0 = 2 * MATH_PI / (sqrt(wcf->inv0 * wcf->vxx));
+        const double cww0 = 2 * MATH_PI / (sqrt(wcf->vxx * invn0));
         if (cww < 0.5000 * cww0 || 0.1250 * cww0 * sqrt(nnn) < cww) {
             cpp = 0;
             cww = cww0;
@@ -1955,14 +1942,14 @@ static void winCosfitCsr(
         double hpw = 0;         // hessian ddr/dpdw
         double hww = 0;         // hessian ddr/dwdw
         for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
-            tt = ttyy[ii + 0];
+            const double tt = ttyy[ii + 0];
             if (jj == 0) {
                 ttyy[ii + 2] = inva * (ttyy[ii + 1] - laa - lbb * tt);
             }
-            rr = ttyy[ii + 2];
-            const double angle = fmod(cww * tt, 2 * MATH_PI) + cpp;
-            const double cost = cos(angle);
-            const double sint = sin(angle);
+            const double rr = ttyy[ii + 2];
+            tmp = fmod(cww * tt, 2 * MATH_PI) + cpp;
+            const double cost = cos(tmp);
+            const double sint = sin(tmp);
             tmp = sint * (rr - cost);
             gp += tmp;
             gw += tmp * tt;
@@ -1974,7 +1961,7 @@ static void winCosfitCsr(
         }
         hpp = doubleAbs(hpp);   // ensure second derivative is positive
         hww = doubleAbs(hww);   // ensure second derivative is positive
-        const double invd = 1 / (hpp * hww - hpw * hpw);
+        const double invd = 1.0 / (hpp * hww - hpw * hpw);
         if (!isfinite(invd)) {
             return;
         }
@@ -1986,17 +1973,17 @@ static void winCosfitCsr(
         cpp += 2 * MATH_PI;
     }
     // calculate csr - cee
-    mrr = 0;                    // r-average
-    vrr = 0;                    // r-variance.p
+    double mrr = 0;             // r-average
+    double vrr = 0;             // r-variance.p
     for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
-        rr = caa * (            //
+        const double rr = caa * (       //
             ttyy[ii + 2] - cos(fmod(cww * ttyy[ii + 0], 2 * MATH_PI) + cpp));
         // welford - increment vrr
-        dr = rr - mrr;
-        mrr += dr / nnn;
+        const double dr = rr - mrr;
+        mrr += dr * invn0;
         vrr += dr * (rr - mrr);
     }
-    wcf->cee = sqrt(vrr / (nnn - dof));
+    wcf->cee = sqrt(vrr / (nnn - 5));
     // save wcf
     wcf->caa = caa;
     wcf->cpp = cpp;
@@ -2013,9 +2000,6 @@ static void winCosfitLnr(
     const double xx0 = wcf->xx0;
     const double yy = wcf->yy1;
     const double yy0 = wcf->yy0;
-    double dx = 0;
-    double dy = 0;
-    double inv0 = wcf->inv0;
     double mxx = wcf->mxx;
     double myy = wcf->myy;
     double vxx = wcf->vxx;
@@ -2024,38 +2008,32 @@ static void winCosfitLnr(
     if (modeWelford) {
         // calculate running lnr - welford
         wcf->nnn += 1;
-        inv0 = 1.0 / (wcf->nnn - 0);
-        wcf->inv1 = 1.0 / (wcf->nnn - 1);
-        wcf->inv2 = 1.0 / (wcf->nnn - 2);
+        const double invn0 = 1.0 / wcf->nnn;
+        const double dx = xx - mxx;
+        const double dy = yy - myy;
         // welford - increment vxx
-        dx = xx - mxx;
-        mxx += dx * inv0;
+        mxx += dx * invn0;
         vxx += dx * (xx - mxx);
         // welford - increment vyy
-        dy = yy - myy;
-        myy += dy * inv0;
+        myy += dy * invn0;
         vyy += dy * (yy - myy);
         // welford - increment vxy
         vxy += dy * (xx - mxx);
     } else {
         // calculate running lnr - window
-        dx = xx - xx0;
-        dy = yy - yy0;
-        vxx += (xx * xx - xx0 * xx0) - inv0 * dx * dx - 2 * dx * mxx;
-        vxy += (xx * yy - xx0 * yy0) - inv0 * dx * dy - mxx * dy - dx * myy;
-        vyy += (yy * yy - yy0 * yy0) - inv0 * dy * dy - 2 * dy * myy;
-        mxx += dx * inv0;
-        myy += dy * inv0;
+        const double invn0 = 1.0 / wcf->nnn;
+        const double dx = xx - xx0;
+        const double dy = yy - yy0;
+        vxx += (xx * xx - xx0 * xx0) - invn0 * dx * dx - 2 * dx * mxx;
+        vyy += (yy * yy - yy0 * yy0) - invn0 * dy * dy - 2 * dy * myy;
+        vxy += (xx * yy - xx0 * yy0) - invn0 * dx * dy - mxx * dy - dx * myy;
+        mxx += dx * invn0;
+        myy += dy * invn0;
     }
-    // calculate lnr - lxy, lbb, laa
-    const double lxy = vxy / sqrt(vxx * vyy);
-    const double lbb = vxy / vxx;
-    const double laa = myy - lbb * mxx;
-    // save wcf
-    wcf->inv0 = inv0;
-    wcf->laa = laa;
-    wcf->lbb = lbb;
-    wcf->lxy = lxy;
+    // calculate lnr - laa, lbb
+    wcf->lbb = vxy / vxx;
+    wcf->laa = myy - wcf->lbb * mxx;
+    // wcf - save
     wcf->mxx = mxx;
     wcf->myy = myy;
     wcf->vxx = vxx;
@@ -2200,13 +2178,8 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
         "cpp",
         "cww",
         //
-        "inv0",
-        "inv1",
-        "inv2",
-        //
         "laa",
         "lbb",
-        "lxy",
         //
         "mxx",
         "myy",
@@ -2235,8 +2208,9 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
     }
     // cosine period-phase
     if (strcmp(key, "ctp") == 0) {
-        double ctp = fmod((fmod(wcf->cww * wcf->xx1,
-                    2 * MATH_PI) + wcf->cpp) / (2 * MATH_PI), 1);
+        double ctp = fmod(      //
+            (fmod(wcf->cww * wcf->xx1, 2 * MATH_PI) + wcf->cpp) //
+            / (2 * MATH_PI), 1);
         if (ctp < 0) {
             ctp += 1;
         }
@@ -2253,8 +2227,16 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
     }
     // linest y-stdev.s2
     if (strcmp(key, "lee") == 0) {
+        sqlite3_result_double_or_null(context, sqrt(    //
+                wcf->vyy        //
+                * (1 - wcf->vxy * wcf->vxy / (wcf->vxx * wcf->vyy))     //
+                / (wcf->nnn - 2)));
+        return;
+    }
+    // linest pearson-correlation xy
+    if (strcmp(key, "lxy") == 0) {
         sqlite3_result_double_or_null(context,
-            sqrt(wcf->vyy * (1 - pow(wcf->lxy, 2)) * wcf->inv2));
+            wcf->vxy / sqrt(wcf->vxx * wcf->vyy));
         return;
     }
     // linest y-estimate
@@ -2265,12 +2247,14 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
     }
     // y-stdev.s1
     if (strcmp(key, "mee") == 0) {
-        sqlite3_result_double_or_null(context, sqrt(wcf->inv1 * wcf->vyy));
+        sqlite3_result_double_or_null(context,
+            sqrt(wcf->vyy / (wcf->nnn - 1)));
         return;
     }
     // x-stdev.s1
     if (strcmp(key, "mxe") == 0) {
-        sqlite3_result_double_or_null(context, sqrt(wcf->inv1 * wcf->vxx));
+        sqlite3_result_double_or_null(context,
+            sqrt(wcf->vxx / (wcf->nnn - 1)));
         return;
     }
     if (strcmp(key, "predict") == 0) {
