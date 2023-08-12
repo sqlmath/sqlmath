@@ -137,7 +137,7 @@ file sqlmath_h - start
     type *agg = (type *) sqlite3_aggregate_context(context, sizeof(*agg)); \
     if (agg == NULL) { \
         sqlite3_result_error_nomem(context); \
-        goto catch_error; \
+        return; \
     }
 
 #define SQLITE3_CREATE_FUNCTION1(func, argc) \
@@ -1811,52 +1811,85 @@ SQLMATH_FUNC static void sql2_median_step(
 
 // SQLMATH_FUNC sql2_quantile_func - end
 
-// SQLMATH_FUNC sql2_stdev_func - start
+// SQLMATH_FUNC sql3_stdev_func - start
 typedef struct AggStdev {
     double mxx;                 // x-average
     double nnn;                 // number of elements
-    double sxx;                 // xx-variance.p
+    double vxx;                 // x-variance.p
+    double wnn;                 // number of window elements
+    double xx0;                 // x-trailing
 } AggStdev;
 
-SQLMATH_FUNC static void sql2_stdev_final(
+SQLMATH_FUNC static void sql3_stdev_value(
     sqlite3_context * context
 ) {
-// This function will aggregate elements and calculate sample stdev.
+// This function will aggregate elements and calculate sample-stdev.
     // agg - init
     SQLITE3_AGGREGATE_CONTEXT(AggStdev);
     // agg - null-case
     if (agg->nnn <= 0) {
         sqlite3_result_null(context);
-        goto catch_error;
+        return;
     }
     sqlite3_result_double(context,
-        agg->nnn == 1 ? 0 : sqrt(agg->sxx / (agg->nnn - 1)));
-  catch_error:
-    (void) 0;
+        agg->nnn == 1 ? 0 : sqrt(agg->vxx / (agg->nnn - 1)));
 }
 
-static void sql2_stdev_step(
+SQLMATH_FUNC static void sql3_stdev_final(
+    sqlite3_context * context
+) {
+// This function will aggregate elements and calculate sample-stdev.
+    // agg - value
+    sql3_stdev_value(context);
+}
+
+SQLMATH_FUNC static void sql3_stdev_inverse(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will aggregate elements and calculate stdev.
+// This function will calculate running exponential-moving-average.
     UNUSED_PARAMETER(argc);
     // agg - init
     SQLITE3_AGGREGATE_CONTEXT(AggStdev);
-    // agg - welford - increment agg->sxx
+    // agg - welford - increment agg->vxx
     if (sqlite3_value_numeric_type(argv[0]) != SQLITE_NULL) {
-        const double xx = sqlite3_value_double(argv[0]);
-        const double dxx0 = xx - agg->mxx;
-        agg->nnn += 1;
-        agg->mxx += dxx0 / agg->nnn;
-        agg->sxx += dxx0 * (xx - agg->mxx);
+        agg->wnn = agg->nnn;
+        agg->xx0 = sqlite3_value_double(argv[0]);
     }
-  catch_error:
-    (void) 0;
 }
 
-// SQLMATH_FUNC sql2_stdev_func - end
+static void sql3_stdev_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will aggregate elements and calculate sample-stdev.
+    UNUSED_PARAMETER(argc);
+    // agg - init
+    SQLITE3_AGGREGATE_CONTEXT(AggStdev);
+    // agg - welford - increment agg->vxx
+    if (sqlite3_value_numeric_type(argv[0]) != SQLITE_NULL) {
+        const double xx = sqlite3_value_double(argv[0]);
+        if (agg->wnn) {
+            // calculate vxx - window
+            const double invn0 = 1.0 / agg->nnn;
+            const double xx0 = agg->xx0;
+            const double dx = xx - xx0;
+            agg->vxx +=
+                (xx * xx - xx0 * xx0) - dx * (invn0 * dx + 2 * agg->mxx);
+            agg->mxx += dx * invn0;
+        } else {
+            // calculate vxx - welford
+            const double dx = xx - agg->mxx;
+            agg->nnn += 1;
+            agg->mxx += dx / agg->nnn;
+            agg->vxx += dx * (xx - agg->mxx);
+        }
+    }
+}
+
+// SQLMATH_FUNC sql3_stdev_func - end
 
 // SQLMATH_FUNC sql3_win_cosfit2_func - start
 typedef struct WinCosfit {
@@ -1876,10 +1909,10 @@ typedef struct WinCosfit {
     double vxy;                 // xy-covariance.p
     double vyy;                 // y-variance.p
     //
-    double xx0;                 // x-trailing-window
+    double xx0;                 // x-trailing
     double xx1;                 // x-current
     double xx2;                 // x-refit
-    double yy0;                 // y-trailing-window
+    double yy0;                 // y-trailing
     double yy1;                 // y-current
 } WinCosfit;
 static const int WIN_COSFIT_N = sizeof(WinCosfit) / sizeof(double);
@@ -2024,9 +2057,9 @@ static void winCosfitLnr(
         const double invn0 = 1.0 / wcf->nnn;
         const double dx = xx - xx0;
         const double dy = yy - yy0;
-        vxx += (xx * xx - xx0 * xx0) - invn0 * dx * dx - 2 * dx * mxx;
-        vyy += (yy * yy - yy0 * yy0) - invn0 * dy * dy - 2 * dy * myy;
-        vxy += (xx * yy - xx0 * yy0) - invn0 * dx * dy - mxx * dy - dx * myy;
+        vxx += (xx * xx - xx0 * xx0) - dx * (invn0 * dx + 2 * mxx);
+        vyy += (yy * yy - yy0 * yy0) - dy * (invn0 * dy + 2 * myy);
+        vxy += (xx * yy - xx0 * yy0) - dx * myy - dy * (invn0 * dx + mxx);
         mxx += dx * invn0;
         myy += dy * invn0;
     }
@@ -2671,7 +2704,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
-    SQLITE3_CREATE_FUNCTION2(stdev, 1);
+    SQLITE3_CREATE_FUNCTION3(stdev, 1);
     SQLITE3_CREATE_FUNCTION3(win_cosfit2, -1);
     SQLITE3_CREATE_FUNCTION3(win_ema1, 2);
     SQLITE3_CREATE_FUNCTION3(win_ema2, -1);

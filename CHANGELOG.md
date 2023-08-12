@@ -5,6 +5,7 @@
 - none
 
 # v2023.8.1-beta
+- sqlmath - Update sql-agg-function stdev() to aggregate over running-window.
 - sqlmath - Update sql-function win_cosfit2_refitlast() to be able to update cosine-fit as well.
 - sqlmath - Merge sql-functions win_cosfit2_predict(), win_cosfit2_extract() into sql-function cosfit_extract().
 - sqlmath - Add c-helper-functions doubleAbs(), doubleMax(), doubleMin().
