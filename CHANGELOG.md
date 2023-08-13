@@ -7,6 +7,7 @@
 - none
 
 # v2023.8.1-beta
+- sqlmath - Update sql-function win_cosfit2() to use sine() instead of cosine() for better phase-continuity of initial guesses of phase at cpp=0.
 - sqlmath - Revamp sql-function win_cosfit2() to 1) find frequency cww from dft, and then 2) find phase cpp from linear equation y=b*cos(w*t)+c*sin(w*t).
 - sqlmath - Update sql-agg-function stdev() to aggregate over running-window.
 - sqlmath - Update sql-function win_cosfit2_refitlast() to be able to update cosine-fit as well.
