@@ -1933,55 +1933,57 @@ static void winCosfitCsr(
 ) {
 // This function will calculate running cosine-regression as:
 //     yy = caa*cos(cww*xx + cpp)
-    double tmp = 0;
-    // calculate csr - caa
+    // declare var0
     const double nnn = nbody / (ncol * WIN_COSFIT_STEP);
     const double invn0 = 1.0 / nnn;
+    double cpp = 0;
+    double cww = 0;
+    double tmp = 0;
+    // calculate csr - caa
     const double caa = sqrt(2 * wcf->vyy * invn0        //
         * (1 - wcf->vxy * wcf->vxy / (wcf->vxx * wcf->vyy)));
     const double inva = 1.0 / caa;
-    if (inva <= 0 || !isfinite(inva)) {
-        return;
-    }
-    double cpp = 0;
-    double cww = 0;
     // calculate csr - cww - using incremental-discrete-fourier-transform
+    const double wtt0 = sqrt(12.0 * invn0 * wcf->vxx);  // window-period
     for (int ii = 0; ii < 1; ii += 1) {
-        const double rr0 = wcf->rr0;
-        const double rr1 = wcf->rr1;
-        if (!isfinite(rr1) || !isfinite(rr1)) {
-            return;
-        }
+        const double rr0 = isfinite(wcf->rr0) ? wcf->rr0 : 0;
+        const double rr1 = isfinite(wcf->rr1) ? wcf->rr1 : 0;
+        const int wnn = wcf->wnn;
         const double waa = wcf->waa;
         const double wbb = wcf->wbb;
-        const double wtt0 = sqrt(12.0 * invn0 * wcf->vxx);      // window-period
-        double cffmax = 0;
-        double cww = ncol * WIN_COSFIT_STEP;
+        double cfkmax = 0;
         double tmp = 0;
-        xxyy[(int) wbb + 2] = wcf->rr1;
-        for (int jj = 0; jj < nbody; jj += ncol * WIN_COSFIT_STEP) {
-            xxyy[jj + 2] = xxyy[jj + 1] - wcf->laa - wcf->lbb * xxyy[jj + 0];
+        // save rr1 in window
+        xxyy[(int) wbb + 2] = rr1;
+        for (int kk = 0; kk < nbody; kk += ncol * WIN_COSFIT_STEP) {
             // rr   = yy - (laa + lbb*tt)
-            // dfk  = rr1*cos(2*pi/nnn*jj*wbb) - rr0*cos(2pi/nnn*jj*waa)
-            // cfk  = cfk + dfi
-            tmp = 2 * MATH_PI * invn0 * jj;
-            xxyy[jj + 3] += wcf->wnn ?  //
-                wcf->rr1 * cos(tmp * wbb) - wcf->rr0 * cos(tmp * waa)   //
-                : wcf->rr1 * cos(tmp * wbb);
-            xxyy[jj + 4] += wcf->wnn ?  //
-                wcf->rr1 * sin(tmp * wbb) - wcf->rr0 * sin(tmp * waa)   //
-                : wcf->rr1 * sin(tmp * wbb);
-            tmp = pow(xxyy[jj + 3], 2) + pow(xxyy[jj + 4], 2);
-            if (ncol * WIN_COSFIT_STEP < jj && jj < nbody * 0.0625
-                && cffmax < tmp) {
-                cffmax = tmp;
-                cww = jj;
+            // dfkr = rr1*cos(2*pi/nnn*kk*wbb) - rr0*cos(2pi/nnn*kk*waa)
+            // dfki = rr1*sin(2*pi/nnn*kk*wbb) - rr0*sin(2pi/nnn*kk*waa)
+            // cfk = cfk + sum(dfkr)^2 + sum(dfki)^2
+            tmp = 2 * MATH_PI * invn0 * kk;
+            xxyy[kk + 3] += wnn ?       //
+                rr1 * cos(tmp * wbb) - rr0 * cos(tmp * waa)     //
+                : rr1 * cos(tmp * wbb);
+            xxyy[kk + 4] += wnn ?       //
+                rr1 * sin(tmp * wbb) - rr0 * sin(tmp * waa)     //
+                : rr1 * sin(tmp * wbb);
+            tmp = pow(xxyy[kk + 3], 2) + pow(xxyy[kk + 4], 2);
+            if (ncol * WIN_COSFIT_STEP <= kk && kk <= 0.0625 * nbody
+                && cfkmax < tmp) {
+                cfkmax = tmp;
+                cww = kk;
             }
         }
-        cww = cww * MATH_PI / (nnn * ncol * WIN_COSFIT_STEP * wtt0);
+        cww *= 2 * MATH_PI / (ncol * WIN_COSFIT_STEP * wtt0);
     }
+    // smooth cww with previous value
+    cww = 0.5 * (cww + wcf->cww);
+    if (inva <= 0 || !isfinite(inva) || cww == 0) {
+        return;
+    }
+    //!! fprintf(stderr, "1 cww=%f cpp=%f\n", cww, cpp);
     // calculate csr - cpp - using multivariate-linear-regression
-    for (int ii = 0; ii < 0; ii += 1) {
+    for (int ii = 0; ii < 1; ii += 1) {
         double sxx = 0;
         double sxy = 0;
         double sxz = 0;
@@ -2009,23 +2011,26 @@ static void winCosfitCsr(
             syy += cyy * cyy;
             syz += cyy * czz;
         }
-        tmp = 1.0 / (sxx * syy - sxy * syz);
+        tmp = 1.0 / (sxx * syy - sxy * sxy);
         cpp = 0.5 * (0          //
             + asin(tmp * (syy * sxz - sxy * syz))
             + acos(tmp * (sxx * syz - sxy * sxz)));
+        cpp = asin(tmp * (syy * sxz - sxy * syz));
+        cpp = acos(tmp * (sxx * syz - sxy * sxz));
     }
+    //!! fprintf(stderr, "2 cww=%f cpp=%f\n", cww, cpp);
     // calculate csr - cpp, cww - using gauss-newton-method
-    cpp = wcf->cpp;             // phase
-    cww = wcf->cww;             // angular-freq
     // initial guess
-    for (int ii = 0; ii < 1; ii += 1) {
+    for (int ii = 0; ii < 0; ii += 1) {
+        cpp = wcf->cpp;         // phase
+        cww = wcf->cww;         // angular-freq
         const double cww0 = 2 * MATH_PI / (sqrt(wcf->vxx * invn0));
         if (cww < 0.5000 * cww0 || 0.1250 * cww0 * sqrt(nnn) < cww) {
             cpp = 0;
             cww = cww0;
         }
     }
-    for (int ii = 0; ii < 4; ii += 1) {
+    for (int ii = 0; ii < 0; ii += 1) {
         double gp = 0;          // gradient-phase
         double gw = 0;          // gradient-frequency
         double hpp = 0;         // hessian ddr/dpdp
@@ -2260,12 +2265,14 @@ static void sql3_win_cosfit2_step(
         wcf->yy0 = xxyy[(int) wcf->waa + 1];
         wcf->wbb = wbb;
         wcf->xx2 = xx2;
+        const double xx = wcf->xx1;
+        const double yy = wcf->yy1;
         // vec99 - push xx, yy, rr, cff
-        VECTOR99_AGGREGATE_PUSH(wcf->xx1);
-        VECTOR99_AGGREGATE_PUSH(wcf->yy1);
-        VECTOR99_AGGREGATE_PUSH(0);
-        VECTOR99_AGGREGATE_PUSH(0);
-        VECTOR99_AGGREGATE_PUSH(0);
+        VECTOR99_AGGREGATE_PUSH(xx);
+        VECTOR99_AGGREGATE_PUSH(yy);
+        for (int jj = 2; jj < WIN_COSFIT_STEP; jj += 1) {
+            VECTOR99_AGGREGATE_PUSH(0);
+        }
         // increment counter
         argv += 2;
     }
