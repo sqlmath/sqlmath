@@ -1994,7 +1994,7 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 AS
     SELECT
         *,
-        win_cosfit2(0, NULL, ii, yy) OVER (
+        win_cosfit2(0, NULL, ii, yy, ii, yy) OVER (
             ORDER BY date ASC
             ROWS BETWEEN ${ttCosfit - 1} PRECEDING AND 0 FOLLOWING
         ) AS __wcf

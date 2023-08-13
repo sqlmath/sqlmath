@@ -3,7 +3,7 @@
 # Todo
 - sqlmath - Revamp sql-function win_cosfit2() to 1) find frequency cww from dft, and then 2) find phase cpp from linear equation y=b*cos(w*t)+c*sin(w*t).
 - sqlmath - Update sql-function win_cosfit2() to use sine() instead of cosine(), to avoid phase-jumps falling back to initial-guess.
-- sqlmath - Rename c-struct Vector99 to Doublering.
+- sqlmath - Rename c-struct Vector99 to Doublewin.
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 
