@@ -1923,7 +1923,7 @@ typedef struct WinCosfit {
     double yy1;                 // y-current
 } WinCosfit;
 static const int WIN_COSFIT_N = sizeof(WinCosfit) / sizeof(double);
-static const int WIN_COSFIT_STEP = 5;
+static const int WIN_COSFIT_STEP = 6;
 
 static void winCosfitCsr(
     WinCosfit * wcf,
@@ -1943,45 +1943,70 @@ static void winCosfitCsr(
     const double caa = sqrt(2 * wcf->vyy * invn0        //
         * (1 - wcf->vxy * wcf->vxy / (wcf->vxx * wcf->vyy)));
     const double inva = 1.0 / caa;
-    // calculate csr - cww - using incremental-discrete-fourier-transform
     const double wtt0 = sqrt(12.0 * invn0 * wcf->vxx);  // window-period
-    for (int ii = 0; ii < 1; ii += 1) {
+    // calculate csr - cpp, cww - initial guess
+    if (0) {
+        cpp = wcf->cpp;         // phase
+        cww = wcf->cww;         // angular-freq
+        const double cww0 = 2 * MATH_PI / (sqrt(wcf->vxx * invn0));
+        if (cww < 0.5000 * cww0 || 0.1250 * cww0 * sqrt(nnn) < cww) {
+            cpp = 0;
+            cww = cww0;
+        }
+    } else {
+        // calculate csr - cww - using incremental-discrete-fourier-transform
         const double rr0 = isfinite(wcf->rr0) ? wcf->rr0 : 0;
         const double rr1 = isfinite(wcf->rr1) ? wcf->rr1 : 0;
         const int wnn = wcf->wnn;
-        const double waa = wcf->waa;
-        const double wbb = wcf->wbb;
+        const double waa =
+            2 * MATH_PI * floor(wcf->waa / (ncol * WIN_COSFIT_STEP));
+        const double wbb =
+            2 * MATH_PI * floor(wcf->wbb / (ncol * WIN_COSFIT_STEP));
         double cfkmax = 0;
         double tmp = 0;
-        for (int kk = 0; kk < nbody; kk += ncol * WIN_COSFIT_STEP) {
+        int kk = 0;
+        for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
             // rr   = yy - (laa + lbb*tt)
             // dfkr = rr1*cos(2*pi/nnn*kk*wbb) - rr0*cos(2pi/nnn*kk*waa)
             // dfki = rr1*sin(2*pi/nnn*kk*wbb) - rr0*sin(2pi/nnn*kk*waa)
             // cfk = cfk + sum(dfkr)^2 + sum(dfki)^2
-            tmp = 2 * MATH_PI * invn0 * kk;
-            xxyy[kk + 3] += wnn ?       //
-                rr1 * cos(tmp * wbb) - rr0 * cos(tmp * waa)     //
-                : rr1 * cos(tmp * wbb);
-            xxyy[kk + 4] += wnn ?       //
-                rr1 * sin(tmp * wbb) - rr0 * sin(tmp * waa)     //
-                : rr1 * sin(tmp * wbb);
-            tmp = pow(xxyy[kk + 3], 2) + pow(xxyy[kk + 4], 2);
-            if (ncol * WIN_COSFIT_STEP <= kk && kk <= 0.0625 * nbody
+            xxyy[ii + 3] += wnn ?       //
+                rr1 * cos(kk * wbb) - rr0 * cos(kk * waa)       //
+                : rr1 * cos(kk * wbb);
+            xxyy[ii + 4] += wnn ?       //
+                rr1 * sin(kk * wbb) - rr0 * sin(kk * waa)       //
+                : rr1 * sin(kk * wbb);
+            tmp = pow(xxyy[ii + 3], 2) + pow(xxyy[ii + 4], 2);
+            if (                //
+                1 <= kk         //
+                && kk <= 0.5 * nnn      //
+                && kk <= doubleMax(0.0625 * nnn, 16.0 / nnn)    //
                 && cfkmax < tmp) {
                 cfkmax = tmp;
                 cww = kk;
             }
+            kk += 1;
         }
-        cww *= 2 * MATH_PI / (ncol * WIN_COSFIT_STEP * wtt0);
+        cww *= 2 * MATH_PI / wtt0;
     }
-    // smooth cww with previous value
-    cww = 0.5 * (cww + wcf->cww);
-    if (inva <= 0 || !isfinite(inva) || cww == 0) {
+    // calculate csr - cww - smooth with sma
+    if (1) {
+        int weight = 0;
+        xxyy[(int) wcf->wbb + 5] = cww;
+        cww = 0;
+        for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
+            if (isnormal(xxyy[ii + 5])) {
+                cww += xxyy[ii + 5];
+                weight += 1;
+            }
+        }
+        cww *= 1.0 / weight;
+    }
+    if (inva <= 0 || !isfinite(inva) || !isnormal(cww)) {
         return;
     }
-    //!! fprintf(stderr, "1 cww=%f cpp=%f\n", cww, cpp);
     // calculate csr - cpp - using multivariate-linear-regression
-    for (int ii = 0; ii < 1; ii += 1) {
+    if (1) {
         double sxx = 0;
         double sxy = 0;
         double sxz = 0;
@@ -1989,6 +2014,8 @@ static void winCosfitCsr(
         double syz = 0;
         // czz  ~ sin(cww*tt + cpp)
         // czz  ~ cbb*cxx + ccc*cyy
+        // cbb  = sin(cpp)
+        // ccc  = cos(cpp)
         // cxx  = cos(cww*tt)
         // cyy  = sin(cww*tt)
         // rr   = czz - cbb*cxx - ccc*cyy
@@ -1998,6 +2025,7 @@ static void winCosfitCsr(
         // cbb  = invp*(sum(yy)*sum(xz) - sum(xy)*sum(yz))
         // ccc  = invp*(sum(xx)*sum(yz) - sum(xy)*sum(xz))
         // cpp  = asin(cbb) = acos(ccc)
+        // cpp  = atan(cbb/ccc)
         for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
             tmp = cww * xxyy[ii + 0];
             const double cxx = cos(tmp);
@@ -2009,26 +2037,15 @@ static void winCosfitCsr(
             syy += cyy * cyy;
             syz += cyy * czz;
         }
-        tmp = 1.0 / (sxx * syy - sxy * sxy);
-        cpp = 0.5 * (0          //
-            + asin(tmp * (syy * sxz - sxy * syz))
-            + acos(tmp * (sxx * syz - sxy * sxz)));
-        cpp = asin(tmp * (syy * sxz - sxy * syz));
-        cpp = acos(tmp * (sxx * syz - sxy * sxz));
-    }
-    //!! fprintf(stderr, "2 cww=%f cpp=%f\n", cww, cpp);
-    // calculate csr - cpp, cww - using gauss-newton-method
-    // initial guess
-    for (int ii = 0; ii < 0; ii += 1) {
-        cpp = wcf->cpp;         // phase
-        cww = wcf->cww;         // angular-freq
-        const double cww0 = 2 * MATH_PI / (sqrt(wcf->vxx * invn0));
-        if (cww < 0.5000 * cww0 || 0.1250 * cww0 * sqrt(nnn) < cww) {
+        const double cbb = syy * sxz - sxy * syz;
+        const double ccc = sxx * syz - sxy * sxz;
+        cpp = atan(cbb / ccc);
+        if (!isfinite(cpp)) {
             cpp = 0;
-            cww = cww0;
         }
     }
-    for (int ii = 0; ii < 0; ii += 1) {
+    // calculate csr - cpp, cww - using gauss-newton-method
+    for (int jj = 0; jj < 4; jj += 1) {
         double gp = 0;          // gradient-phase
         double gw = 0;          // gradient-frequency
         double hpp = 0;         // hessian ddr/dpdp
@@ -2053,13 +2070,12 @@ static void winCosfitCsr(
         // hpp  = d^2/dpdp[y-sin(w*t+p)]^2 = 2*(cost*cost + sint*rr)
         // hpw  = d^2/dpdw[y-sin(w*t+p)]^2 = 2*(cost*cost + sint*rr)*tt
         // hww  = d^2/dwdw[y-sin(w*t+p)]^2 = 2*(cost*cost + sint*rr)*tt*tt
-        for (int jj = 0; jj < nbody; jj += ncol * WIN_COSFIT_STEP) {
-            const double tt = xxyy[jj + 0];
-            xxyy[jj + 2] = xxyy[jj + 1] - wcf->laa - wcf->lbb * xxyy[jj + 0];
+        for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
+            const double tt = xxyy[ii + 0];
             tmp = fmod(cww * tt, 2 * MATH_PI) + cpp;
             const double cost = cos(tmp);
             const double sint = sin(tmp);
-            const double rr = inva * xxyy[jj + 2] - sint;
+            const double rr = inva * xxyy[ii + 2] - sint;
             tmp = -cost * rr;
             gp += tmp;
             gw += tmp * tt;
@@ -2086,8 +2102,10 @@ static void winCosfitCsr(
         cww -= invd * (-hpw * gp + hpp * gw);
         cpp = fmod(cpp, 2 * MATH_PI);
     }
+    // calculate cpp - shift phase to left for better prediction
+    // cpp += 0.0625 * MATH_PI;
     // calculate csr - cee
-    for (int ii = 0; ii < 1; ii += 1) {
+    if (1) {
         const double cpp2 = fmod(cpp + MATH_PI, 2 * MATH_PI);
         double dr = 0;
         double mrr1 = 0;        // r-average
@@ -2095,15 +2113,15 @@ static void winCosfitCsr(
         double rr = 0;
         double vrr1 = 0;        // r-variance.p
         double vrr2 = 0;        // r-variance.p
-        for (int jj = 0; jj < nbody; jj += ncol * WIN_COSFIT_STEP) {
-            tmp = fmod(cww * xxyy[jj + 0], 2 * MATH_PI);
+        for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
+            tmp = fmod(cww * xxyy[ii + 0], 2 * MATH_PI);
             // welford - increment vrr1
-            rr = inva * xxyy[jj + 2] - sin(tmp + cpp);
+            rr = xxyy[ii + 2] - caa * sin(tmp + cpp);
             dr = rr - mrr1;
             mrr1 += dr * invn0;
             vrr1 += dr * (rr - mrr1);
             // welford - increment vrr2
-            rr = inva * xxyy[jj + 2] - sin(tmp + cpp2);
+            rr = xxyy[ii + 2] - caa * sin(tmp + cpp2);
             dr = rr - mrr2;
             mrr2 += dr * invn0;
             vrr2 += dr * (rr - mrr2);
@@ -2113,7 +2131,7 @@ static void winCosfitCsr(
             cpp = cpp2;
             vrr1 = vrr2;
         }
-        wcf->cee = caa * sqrt(vrr1 / (nnn - 5));
+        wcf->cee = sqrt(vrr1 / (nnn - 5));
     }
     // save wcf
     if (cpp < 0) {

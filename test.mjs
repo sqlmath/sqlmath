@@ -2078,7 +2078,7 @@ SELECT
                 )[0];
                 valActual = (
                     "date caa cww cpp ctt ctp"
-                    + " ii yy linear cosfit cosine\n"
+                    + " rr0 rr1 ii yy linear cosfit cosine\n"
                     + valActual.map(function (elem) {
                         return [
                             elem.date,
@@ -2087,6 +2087,8 @@ SELECT
                             elem.cpp,
                             elem.ctt,
                             elem.ctp,
+                            elem.rr0,
+                            elem.rr1,
                             elem.ii,
                             10 + (elem.yy - elem.yy_avg) / elem.yy_err,
                             10 + (elem.predict_lnr - elem.yy_avg) / elem.yy_err,
