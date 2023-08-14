@@ -1189,18 +1189,20 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
         let valInput;
         function sqlCosfitExtractLnr(wcf, ii, suffix) {
             return (`
-    ROUND(cosfit_extract(${wcf}, ${ii}, 'nnn', 0), 8) AS nnn${suffix},
-    ROUND(cosfit_extract(${wcf}, ${ii}, 'mxx', 0), 8) AS mxx${suffix},
-    ROUND(cosfit_extract(${wcf}, ${ii}, 'myy', 0), 8) AS myy${suffix},
-    ROUND(cosfit_extract(${wcf}, ${ii}, 'xx1', 0), 8) AS xx1${suffix},
-    ROUND(cosfit_extract(${wcf}, ${ii}, 'mxe', 0), 8) AS mxe${suffix},
-    ROUND(cosfit_extract(${wcf}, ${ii}, 'yy1', 0), 8) AS yy1${suffix},
-    ROUND(cosfit_extract(${wcf}, ${ii}, 'mee', 0), 8) AS mee${suffix},
-    ROUND(cosfit_extract(${wcf}, ${ii}, 'lyy', 0), 8) AS lyy${suffix},
-    ROUND(cosfit_extract(${wcf}, ${ii}, 'lee', 0), 8) AS lee${suffix},
     ROUND(cosfit_extract(${wcf}, ${ii}, 'laa', 0), 8) AS laa${suffix},
     ROUND(cosfit_extract(${wcf}, ${ii}, 'lbb', 0), 8) AS lbb${suffix},
-    ROUND(cosfit_extract(${wcf}, ${ii}, 'lxy', 0), 8) AS lxy${suffix}
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'lee', 0), 8) AS lee${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'lxy', 0), 8) AS lxy${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'lyy', 0), 8) AS lyy${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'mee', 0), 8) AS mee${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'mxe', 0), 8) AS mxe${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'mxx', 0), 8) AS mxx${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'myy', 0), 8) AS myy${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'nnn', 0), 8) AS nnn${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'rr0', 0), 8) AS rr0${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'rr1', 0), 8) AS rr1${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'xx1', 0), 8) AS xx1${suffix},
+    ROUND(cosfit_extract(${wcf}, ${ii}, 'yy1', 0), 8) AS yy1${suffix}
             `);
         }
         async function test_win_cosfit2_aggregate({
@@ -1331,6 +1333,12 @@ SELECT
                 nnn1,
                 nnn2,
                 nnn3,
+                rr01,
+                rr02,
+                rr03,
+                rr11,
+                rr12,
+                rr13,
                 xx11,
                 xx12,
                 xx13,
@@ -1353,6 +1361,8 @@ SELECT
                     mxx: mxx1,
                     myy: myy1,
                     nnn: nnn1,
+                    rr0: rr01,
+                    rr1: rr11,
                     xx1: xx11,
                     yy1: yy11
                 };
@@ -1368,6 +1378,8 @@ SELECT
                     mxx: mxx2,
                     myy: myy2,
                     nnn: nnn2,
+                    rr0: rr02,
+                    rr1: rr12,
                     xx1: xx12,
                     yy1: yy12
                 };
@@ -1383,6 +1395,8 @@ SELECT
                     mxx: mxx3,
                     myy: myy3,
                     nnn: nnn3,
+                    rr0: rr03,
+                    rr1: rr13,
                     xx1: xx13,
                     yy1: yy13
                 };
@@ -1416,6 +1430,8 @@ SELECT
                 "mxx": 2,
                 "myy": 0,
                 "nnn": 1,
+                "rr0": 0,
+                "rr1": null,
                 "xx1": 2,
                 "yy1": 0
             },
@@ -1431,6 +1447,8 @@ SELECT
                 "mxx": 2,
                 "myy": 0.5,
                 "nnn": 2,
+                "rr0": 0,
+                "rr1": null,
                 "xx1": 2,
                 "yy1": 1
             },
@@ -1446,6 +1464,8 @@ SELECT
                 "mxx": 2.33333333,
                 "myy": 1.33333333,
                 "nnn": 3,
+                "rr0": 0,
+                "rr1": 0,
                 "xx1": 3,
                 "yy1": 3
             },
@@ -1461,6 +1481,8 @@ SELECT
                 "mxx": 2.75,
                 "myy": 2,
                 "nnn": 4,
+                "rr0": 0,
+                "rr1": -0.27272727,
                 "xx1": 4,
                 "yy1": 4
             },
@@ -1476,6 +1498,8 @@ SELECT
                 "mxx": 3.2,
                 "myy": 2.6,
                 "nnn": 5,
+                "rr0": 0,
+                "rr1": -0.35294118,
                 "xx1": 5,
                 "yy1": 5
             },
@@ -1491,6 +1515,8 @@ SELECT
                 "mxx": 3.5,
                 "myy": 3.16666667,
                 "nnn": 6,
+                "rr0": 0,
+                "rr1": 0.38596491,
                 "xx1": 5,
                 "yy1": 6
             },
@@ -1506,6 +1532,8 @@ SELECT
                 "mxx": 3.71428571,
                 "myy": 3.57142857,
                 "nnn": 7,
+                "rr0": 0,
+                "rr1": 0.275,
                 "xx1": 5,
                 "yy1": 6
             },
@@ -1521,6 +1549,8 @@ SELECT
                 "mxx": 4,
                 "myy": 4,
                 "nnn": 8,
+                "rr0": 0,
+                "rr1": -0.25,
                 "xx1": 6,
                 "yy1": 7
             },
@@ -1536,6 +1566,8 @@ SELECT
                 "mxx": 5,
                 "myy": 5,
                 "nnn": 8,
+                "rr0": 0,
+                "rr1": -1.25,
                 "xx1": 10,
                 "yy1": 8
             },
@@ -1551,6 +1583,8 @@ SELECT
                 "mxx": 5,
                 "myy": 5.5,
                 "nnn": 8,
+                "rr0": -0.87387387,
+                "rr1": 1.15,
                 "xx1": 2,
                 "yy1": 5
             }
@@ -1627,6 +1661,8 @@ SELECT
                         "mxx": 4.4,
                         "myy": 4.5,
                         "nnn": 10,
+                        "rr0": 0,
+                        "rr1": 2.52941176,
                         "xx1": 2,
                         "yy1": 5
                     }
@@ -1636,7 +1672,7 @@ SELECT
             (async function () {
                 let valActual;
                 let valExpected;
-                valActual = {
+                valExpected = {
                     "laa": -0.82025678,
                     "lbb": 0.14621969,
                     "lee": 2.74202904,
@@ -1647,10 +1683,12 @@ SELECT
                     "mxx": 74,
                     "myy": 10,
                     "nnn": 6,
+                    "rr0": 0,
+                    "rr1": -1.63694722,
                     "xx1": 51,
                     "yy1": 5
                 };
-                valExpected = noop(
+                valActual = noop(
                     await dbExecAsync({
                         db,
                         sql: (`
@@ -1690,6 +1728,8 @@ SELECT
                     "mxx": 5,
                     "myy": 3.875,
                     "nnn": 8,
+                    "rr0": 0,
+                    "rr1": -3.5,
                     "xx1": 10,
                     "yy1": -1
                 },
@@ -1705,6 +1745,8 @@ SELECT
                     "mxx": 5,
                     "myy": 4.375,
                     "nnn": 8,
+                    "rr0": -3.79279279,
+                    "rr1": -1.1,
                     "xx1": 2,
                     "yy1": 5
                 }

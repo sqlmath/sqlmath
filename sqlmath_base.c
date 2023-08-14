@@ -1953,8 +1953,6 @@ static void winCosfitCsr(
         const double wbb = wcf->wbb;
         double cfkmax = 0;
         double tmp = 0;
-        // save rr1 in window
-        xxyy[(int) wbb + 2] = rr1;
         for (int kk = 0; kk < nbody; kk += ncol * WIN_COSFIT_STEP) {
             // rr   = yy - (laa + lbb*tt)
             // dfkr = rr1*cos(2*pi/nnn*kk*wbb) - rr0*cos(2pi/nnn*kk*waa)
@@ -2127,7 +2125,8 @@ static void winCosfitCsr(
 }
 
 static void winCosfitLnr(
-    WinCosfit * wcf
+    WinCosfit * wcf,
+    double *xxyy
 ) {
 // This function will calculate running simple-linear-regression as:
 //     yy = laa + lbb*xx
@@ -2176,6 +2175,8 @@ static void winCosfitLnr(
     wcf->vxx = vxx;
     wcf->vxy = vxy;
     wcf->vyy = vyy;
+    // save rr1 in window
+    xxyy[(int) wcf->wbb + 2] = isfinite(rr) ? rr : 0;
 }
 
 SQLMATH_FUNC static void sql3_win_cosfit2_value(
@@ -2284,7 +2285,7 @@ static void sql3_win_cosfit2_step(
         wcf->waa = vec99->waa;
         wcf->wnn = vec99->wnn;
         // vec99 - calculate lnr
-        winCosfitLnr(wcf);
+        winCosfitLnr(wcf, xxyy);
         // vec99 - calculate csr
         if (!modeNocsr) {
             winCosfitCsr(wcf, xxyy, vec99->nbody, vec99->ncol);
@@ -2496,7 +2497,7 @@ SQLMATH_FUNC static void sql1_cosfit_refitlast_func(
         xxyy[(int) wcf->wbb + 0] = wcf->xx1;
         xxyy[(int) wcf->wbb + 1] = wcf->yy1;
         // vec99 - calculate lnr
-        winCosfitLnr(wcf);
+        winCosfitLnr(wcf, xxyy);
         // vec99 - calculate csr
         winCosfitCsr(wcf, xxyy, nbody, ncol);
         // increment counter
