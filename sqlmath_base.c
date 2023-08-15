@@ -1893,11 +1893,6 @@ static void sql3_stdev_step(
 
 // SQLMATH_FUNC sql3_win_sinefit2_func - start
 typedef struct WinSinefit {
-    double caa;                 // sine amplitude
-    double cee;                 // sine y-stdev.s5
-    double cpp;                 // sine phase
-    double cww;                 // sine angular-frequency
-    //
     double laa;                 // linest y-intercept
     double lbb;                 // linest slope
     //
@@ -1907,6 +1902,11 @@ typedef struct WinSinefit {
     //
     double rr0;                 // r-trailing
     double rr1;                 // r-current
+    //
+    double saa;                 // sine amplitude
+    double see;                 // sine y-stdev.s5
+    double spp;                 // sine phase
+    double sww;                 // sine angular-frequency
     //
     double vxx;                 // y-variance.p
     double vxy;                 // xy-covariance.p
@@ -1947,7 +1947,7 @@ static double winSinefitSma(
     return yy / weight;
 }
 
-static void winSinefitCsr(
+static void winSinefitSnr(
     WinSinefit * wsf,
     double *xxyy,
     const int wbb,
@@ -1955,32 +1955,32 @@ static void winSinefitCsr(
     const int ncol
 ) {
 // This function will calculate running sine-regression as:
-//     yy = caa*sin(cww*xx + cpp)
+//     yy = saa*sin(sww*xx + spp)
     // declare var0
     const double nnn = nbody / (ncol * WIN_SINEFIT_STEP);
     const double invn0 = 1.0 / nnn;
     const double wtt0 = sqrt(12.0 * invn0 * wsf->vxx);  // window-period
-    double caa = 0;
-    double cpp = 0;
-    double cww = 0;
+    double saa = 0;
+    double spp = 0;
+    double sww = 0;
     double tmp = 0;
-    // calculate csr - caa
-    caa = sqrt(2 * wsf->vyy * invn0     //
+    // calculate snr - saa
+    saa = sqrt(2 * wsf->vyy * invn0     //
         * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
-    // calculate csr - caa - smooth with moving-average
-    // caa = winSinefitSma(wsf, xxyy, nbody, ncol, 5, caa);
-    const double inva = 1.0 / caa;
-    // calculate csr - cpp, cww - initial guess
+    // calculate snr - saa - smooth with moving-average
+    // saa = winSinefitSma(wsf, xxyy, nbody, ncol, 5, saa);
+    const double inva = 1.0 / saa;
+    // calculate snr - spp, sww - initial guess
     if (0) {
-        cpp = wsf->cpp;         // phase
-        cww = wsf->cww;         // angular-freq
+        spp = wsf->spp;         // phase
+        sww = wsf->sww;         // angular-freq
         const double cww0 = 2 * MATH_PI / wtt0;
-        if (cww < 0.5000 * cww0 || 0.1250 * cww0 * sqrt(nnn) < cww) {
-            cpp = 0;
-            cww = cww0;
+        if (sww < 0.5000 * cww0 || 0.1250 * cww0 * sqrt(nnn) < sww) {
+            spp = 0;
+            sww = cww0;
         }
     } else {
-        // calculate csr - cww - using incremental-discrete-fourier-transform
+        // calculate snr - sww - using incremental-discrete-fourier-transform
         const double ibb = 2 * MATH_PI * (wbb / (ncol * WIN_SINEFIT_STEP));
         const double rr0 = isfinite(wsf->rr0) ? wsf->rr0 : 0;
         const double rr1 = isfinite(wsf->rr1) ? wsf->rr1 : 0;
@@ -2002,59 +2002,59 @@ static void winSinefitCsr(
                 && kk <= doubleMax(0.03125 * nnn, 4.0 / nnn)    //
                 && cfkmax < tmp) {
                 cfkmax = tmp;
-                cww = kk;
+                sww = kk;
             }
             kk += 1;
         }
-        cww *= 2 * MATH_PI / wtt0;
+        sww *= 2 * MATH_PI / wtt0;
     }
-    // calculate csr - cww - smooth with moving-average
-    // cww = winSinefitSma(wsf, xxyy, nbody, ncol, 6, cww);
-    if (inva <= 0 || !isfinite(inva) || !isnormal(cww)) {
+    // calculate snr - sww - smooth with moving-average
+    // sww = winSinefitSma(wsf, xxyy, nbody, ncol, 6, sww);
+    if (inva <= 0 || !isfinite(inva) || !isnormal(sww)) {
         return;
     }
-    // calculate csr - cpp - using multivariate-linear-regression
+    // calculate snr - spp - using multivariate-linear-regression
     if (1) {
-        double sxx = 0;
-        double sxy = 0;
-        double sxz = 0;
-        double syy = 0;
-        double syz = 0;
-        // czz  ~ sin(cww*tt + cpp)
-        // czz  ~ cbb*cxx + ccc*cyy
-        // cbb  = sin(cpp)
-        // ccc  = cos(cpp)
-        // cxx  = cos(cww*tt)
-        // cyy  = sin(cww*tt)
-        // rr   = czz - cbb*cxx - ccc*cyy
+        double sumxx = 0;
+        double sumxy = 0;
+        double sumxz = 0;
+        double sumyy = 0;
+        double sumyz = 0;
+        // czz  ~ sin(sww*tt + spp)
+        // czz  ~ cbb*cxx + ccc*syy
+        // cbb  = sin(spp)
+        // ccc  = cos(spp)
+        // cxx  = cos(sww*tt)
+        // syy  = sin(sww*tt)
+        // rr   = czz - cbb*cxx - ccc*syy
         // gb   = d/db[z-b*x-c*y]^2 = -2*x*(z - b*x - c*y)
         // gc   = d/dc[z-b*x-c*y]^2 = -2*y*(z - b*x - c*y)
         // invp = 1/(sum(xx)*sum(yy) - sum(xy)^2)
         // cbb  = invp*(sum(yy)*sum(xz) - sum(xy)*sum(yz))
         // ccc  = invp*(sum(xx)*sum(yz) - sum(xy)*sum(xz))
-        // cpp  = asin(cbb) = acos(ccc)
-        // cpp  = atan(cbb/ccc)
+        // spp  = asin(cbb) = acos(ccc)
+        // spp  = atan(cbb/ccc)
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
-            tmp = cww * xxyy[ii + 0];
+            tmp = sww * xxyy[ii + 0];
             const double cxx = cos(tmp);
-            const double cyy = sin(tmp);
+            const double syy = sin(tmp);
             const double czz = inva * xxyy[ii + 2];
-            sxx += cxx * cxx;
-            sxy += cxx * cyy;
-            sxz += cxx * czz;
-            syy += cyy * cyy;
-            syz += cyy * czz;
+            sumxx += cxx * cxx;
+            sumxy += cxx * syy;
+            sumxz += cxx * czz;
+            sumyy += syy * syy;
+            sumyz += syy * czz;
         }
-        const double cbb = syy * sxz - sxy * syz;
-        const double ccc = sxx * syz - sxy * sxz;
-        cpp = atan(cbb / ccc);
-        if (!isfinite(cpp)) {
-            cpp = 0;
+        const double cbb = sumyy * sumxz - sumxy * sumyz;
+        const double ccc = sumxx * sumyz - sumxy * sumxz;
+        spp = atan(cbb / ccc);
+        if (!isfinite(spp)) {
+            spp = 0;
         }
     }
-    // Offset cpp by pi if root of derivative is maxima instead of minima.
+    // Offset spp by pi if root of derivative is maxima instead of minima.
     if (1) {
-        const double cpp2 = fmod(cpp + MATH_PI, 2 * MATH_PI);
+        const double cpp2 = fmod(spp + MATH_PI, 2 * MATH_PI);
         double dr = 0;
         double mrr1 = 0;        // r-average
         double mrr2 = 0;        // r-average
@@ -2062,25 +2062,25 @@ static void winSinefitCsr(
         double vrr1 = 0;        // r-variance.p
         double vrr2 = 0;        // r-variance.p
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
-            tmp = fmod(cww * xxyy[ii + 0], 2 * MATH_PI);
+            tmp = fmod(sww * xxyy[ii + 0], 2 * MATH_PI);
             // welford - increment vrr1
-            rr = xxyy[ii + 2] - caa * sin(tmp + cpp);
+            rr = xxyy[ii + 2] - saa * sin(tmp + spp);
             dr = rr - mrr1;
             mrr1 += dr * invn0;
             vrr1 += dr * (rr - mrr1);
             // welford - increment vrr2
-            rr = xxyy[ii + 2] - caa * sin(tmp + cpp2);
+            rr = xxyy[ii + 2] - saa * sin(tmp + cpp2);
             dr = rr - mrr2;
             mrr2 += dr * invn0;
             vrr2 += dr * (rr - mrr2);
         }
         if (vrr2 < vrr1) {
-            cpp = cpp2;
+            spp = cpp2;
         }
     }
-    // calculate csr - cpp - smooth with moving-average
-    // cpp = winSinefitSma(wsf, xxyy, nbody, ncol, 7, cpp);
-    // calculate csr - cpp, cww - using gauss-newton-method
+    // calculate snr - spp - smooth with moving-average
+    // spp = winSinefitSma(wsf, xxyy, nbody, ncol, 7, spp);
+    // calculate snr - spp, sww - using gauss-newton-method
     for (int jj = 4; jj > 0; jj -= 1) {
         // for (int jj = sqrt(nnn); jj > 1; jj -= 1) {
         double cxx = 0;
@@ -2090,17 +2090,17 @@ static void winSinefitCsr(
         double hpp = 0;         // hessian ddr/dpdp
         double hpw = 0;         // hessian ddr/dpdw
         double hww = 0;         // hessian ddr/dwdw
-        // yy   ~ caa*sin(cww*tt + cpp)
-        // cost = cos(cww*tt + cpp)
-        // sint = sin(cww*tt + cpp)
+        // yy   ~ saa*sin(sww*tt + spp)
+        // cost = cos(sww*tt + spp)
+        // sint = sin(sww*tt + spp)
         // cxx  = sint*sint
         // cxy  = sint*yy
-        // caa  = cxy/cxx
+        // saa  = cxy/cxx
         //
-        // yy   ~ caa*sin(cww*tt + cpp)
-        // cost = cos(cww*tt + cpp)
-        // sint = sin(cww*tt + cpp)
-        // rr   = yy/caa - sint
+        // yy   ~ saa*sin(sww*tt + spp)
+        // cost = cos(sww*tt + spp)
+        // sint = sin(sww*tt + spp)
+        // rr   = yy/saa - sint
         // gp   =     d/dp[y-sin(w*t+p)]^2 = 2*(        0 - cost*rr)
         // gw   =     d/dw[y-sin(w*t+p)]^2 = 2*(        0 - cost*rr)*tt
         // hpp  = d^2/dpdp[y-sin(w*t+p)]^2 = 2*(cost*cost + sint*rr)
@@ -2108,13 +2108,13 @@ static void winSinefitCsr(
         // hww  = d^2/dwdw[y-sin(w*t+p)]^2 = 2*(cost*cost + sint*rr)*tt*tt
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
             const double tt = xxyy[ii + 0];
-            tmp = fmod(cww * tt, 2 * MATH_PI) + cpp;
+            tmp = fmod(sww * tt, 2 * MATH_PI) + spp;
             const double cost = cos(tmp);
             const double sint = sin(tmp);
-            // solve caa
+            // solve saa
             cxx += sint * sint;
             cxy += sint * xxyy[ii + 2];
-            // solve cpp, cww
+            // solve spp, sww
             const double rr = inva * xxyy[ii + 2] - sint;
             tmp = -cost * rr;
             gp += tmp;
@@ -2132,22 +2132,22 @@ static void winSinefitCsr(
         // det  = hpp*hww - hpw*hpw
         // dp   = 1/det*( hww*gp - hpw*gw)
         // dw   = 1/det*(-hpw*gp + hpp*gw)
-        // cpp  = cpp - dp
-        // cww  = cww - dw
+        // spp  = spp - dp
+        // sww  = sww - dw
         const double invd = 1.0 / (hpp * hww - hpw * hpw);
         if (!isfinite(invd)) {
             return;
         }
-        caa = cxy / cxx;
-        cpp -= invd * (+hww * gp - hpw * gw);
-        cww -= invd * (-hpw * gp + hpp * gw);
-        cpp = fmod(cpp, 2 * MATH_PI);
+        saa = cxy / cxx;
+        spp -= invd * (+hww * gp - hpw * gw);
+        sww -= invd * (-hpw * gp + hpp * gw);
+        spp = fmod(spp, 2 * MATH_PI);
     }
-    // calculate cpp - shift phase to left for better prediction
-    // cpp += 0.0625 * MATH_PI;
-    // calculate csr - cee
+    // calculate spp - shift phase to left for better prediction
+    // spp += 0.0625 * MATH_PI;
+    // calculate snr - see
     if (1) {
-        const double cpp2 = fmod(cpp + MATH_PI, 2 * MATH_PI);
+        const double cpp2 = fmod(spp + MATH_PI, 2 * MATH_PI);
         double dr = 0;
         double mrr1 = 0;        // r-average
         double mrr2 = 0;        // r-average
@@ -2155,32 +2155,32 @@ static void winSinefitCsr(
         double vrr1 = 0;        // r-variance.p
         double vrr2 = 0;        // r-variance.p
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
-            tmp = fmod(cww * xxyy[ii + 0], 2 * MATH_PI);
+            tmp = fmod(sww * xxyy[ii + 0], 2 * MATH_PI);
             // welford - increment vrr1
-            rr = xxyy[ii + 2] - caa * sin(tmp + cpp);
+            rr = xxyy[ii + 2] - saa * sin(tmp + spp);
             dr = rr - mrr1;
             mrr1 += dr * invn0;
             vrr1 += dr * (rr - mrr1);
             // welford - increment vrr2
-            rr = xxyy[ii + 2] - caa * sin(tmp + cpp2);
+            rr = xxyy[ii + 2] - saa * sin(tmp + cpp2);
             dr = rr - mrr2;
             mrr2 += dr * invn0;
             vrr2 += dr * (rr - mrr2);
         }
         // Offset phase by pi if root of derivative is maxima instead of minima.
         if (vrr2 < vrr1) {
-            cpp = cpp2;
+            spp = cpp2;
             vrr1 = vrr2;
         }
-        wsf->cee = sqrt(vrr1 / (nnn - 5));
+        wsf->see = sqrt(vrr1 / (nnn - 5));
     }
     // save wsf
-    if (cpp < 0) {
-        cpp += 2 * MATH_PI;
+    if (spp < 0) {
+        spp += 2 * MATH_PI;
     }
-    wsf->caa = caa;
-    wsf->cpp = cpp;
-    wsf->cww = cww;
+    wsf->saa = saa;
+    wsf->spp = spp;
+    wsf->sww = sww;
 }
 
 static void winSinefitLnr(
@@ -2244,7 +2244,7 @@ SQLMATH_FUNC static void sql3_win_sinefit2_value(
 ) {
 // This function will calculate running simple-linear-regression
 // and sine-regression as:
-//     yy = laa + lbb*xx + caa*sin(cww*xx + cpp)
+//     yy = laa + lbb*xx + saa*sin(sww*xx + spp)
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     const WinSinefit *wsf = (const WinSinefit *) vec99_head;
@@ -2261,7 +2261,7 @@ SQLMATH_FUNC static void sql3_win_sinefit2_final(
 ) {
 // This function will calculate running simple-linear-regression
 // and sine-regression as:
-//     yy = laa + lbb*xx + caa*sin(cww*xx + cpp)
+//     yy = laa + lbb*xx + saa*sin(sww*xx + spp)
     // vec99 - value
     sql3_win_sinefit2_value(context);
     // vec99 - init
@@ -2277,7 +2277,7 @@ SQLMATH_FUNC static void sql3_win_sinefit2_inverse(
 ) {
 // This function will calculate running simple-linear-regression
 // and sine-regression as:
-//     yy = laa + lbb*xx + caa*sin(cww*xx + cpp)
+//     yy = laa + lbb*xx + saa*sin(sww*xx + spp)
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
     // vec99 - init
@@ -2294,7 +2294,7 @@ static void sql3_win_sinefit2_step(
 ) {
 // This function will calculate running simple-linear-regression
 // and sine-regression as:
-//     yy = laa + lbb*xx + caa*sin(cww*xx + cpp)
+//     yy = laa + lbb*xx + saa*sin(sww*xx + spp)
     static const int argc0 = 2;
     if (argc < argc0 + 2 || (argc0 + 2) % 2) {
         sqlite3_result_error(context,
@@ -2310,7 +2310,7 @@ static void sql3_win_sinefit2_step(
     }
     // vec99 - init argv
     const double xx2 = sqlite3_value_double_or_nan(argv[1]);
-    const int modeNocsr = sqlite3_value_int(argv[0]);
+    const int modeNosnr = sqlite3_value_int(argv[0]);
     argv += argc0;
     WinSinefit *wsf = NULL;
     const int waa = vec99->waa;
@@ -2338,7 +2338,7 @@ static void sql3_win_sinefit2_step(
         // increment counter
         argv += 2;
     }
-    // vec99 - calculate lnr, csr
+    // vec99 - calculate lnr, snr
     wsf = (WinSinefit *) vec99_head;
     xxyy = vec99_body;
     for (int ii = 0; ii < ncol; ii += 1) {
@@ -2346,9 +2346,9 @@ static void sql3_win_sinefit2_step(
         wsf->wnn = vec99->wnn;
         // vec99 - calculate lnr
         winSinefitLnr(wsf, xxyy, wbb);
-        // vec99 - calculate csr
-        if (!modeNocsr) {
-            winSinefitCsr(wsf, xxyy, wbb, vec99->nbody, vec99->ncol);
+        // vec99 - calculate snr
+        if (!modeNosnr) {
+            winSinefitSnr(wsf, xxyy, wbb, vec99->nbody, vec99->ncol);
         }
         // increment counter
         wsf += 1;
@@ -2385,11 +2385,6 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
     const WinSinefit *wsf = (WinSinefit *) sqlite3_value_blob(argv[0]) + icol;
     const char *key = (const char *) sqlite3_value_text(argv[2]);
     const char *keyList[] = {
-        "caa",
-        "cee",
-        "cpp",
-        "cww",
-        //
         "laa",
         "lbb",
         //
@@ -2399,6 +2394,11 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
         //
         "rr0",
         "rr1",
+        //
+        "saa",
+        "see",
+        "spp",
+        "sww",
         //
         "vxx",
         "vxy",
@@ -2418,30 +2418,6 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
             sqlite3_result_double_or_null(context, ((double *) wsf)[ii]);
             return;
         }
-    }
-    // sine period
-    if (strcmp(key, "ctt") == 0) {
-        sqlite3_result_double_or_null(context, 2 * MATH_PI / wsf->cww);
-        return;
-    }
-    // sine period-phase
-    if (strcmp(key, "ctp") == 0) {
-        double ctp = fmod(      //
-            (fmod(wsf->cww * wsf->xx1, 2 * MATH_PI) + wsf->cpp) //
-            / (2 * MATH_PI), 1);
-        if (ctp < 0) {
-            ctp += 1;
-        }
-        sqlite3_result_double_or_null(context, ctp);
-        return;
-    }
-    // sine y-estimate
-    if (strcmp(key, "cyy") == 0) {
-        sqlite3_result_double_or_null(context,
-            wsf->yy1 - wsf->rr1 +
-            wsf->caa * sin(fmod(wsf->cww * wsf->xx1,
-                    2 * MATH_PI) + wsf->cpp));
-        return;
     }
     // linest y-stdev.s2
     if (strcmp(key, "lee") == 0) {
@@ -2478,19 +2454,43 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
         const double xx = sqlite3_value_double(argv[3]);
         sqlite3_result_double_or_null(context, 0        //
             + wsf->laa + wsf->lbb * xx  //
-            + wsf->caa * sin(fmod(wsf->cww * xx, 2 * MATH_PI) + wsf->cpp));
-        return;
-    }
-    if (strcmp(key, "predict_csr") == 0) {
-        const double xx = sqlite3_value_double(argv[3]);
-        sqlite3_result_double_or_null(context, 0        //
-            + wsf->caa * sin(fmod(wsf->cww * xx, 2 * MATH_PI) + wsf->cpp));
+            + wsf->saa * sin(fmod(wsf->sww * xx, 2 * MATH_PI) + wsf->spp));
         return;
     }
     if (strcmp(key, "predict_lnr") == 0) {
         const double xx = sqlite3_value_double(argv[3]);
         sqlite3_result_double_or_null(context, 0        //
             + wsf->laa + wsf->lbb * xx);
+        return;
+    }
+    if (strcmp(key, "predict_snr") == 0) {
+        const double xx = sqlite3_value_double(argv[3]);
+        sqlite3_result_double_or_null(context, 0        //
+            + wsf->saa * sin(fmod(wsf->sww * xx, 2 * MATH_PI) + wsf->spp));
+        return;
+    }
+    // sine period
+    if (strcmp(key, "stt") == 0) {
+        sqlite3_result_double_or_null(context, 2 * MATH_PI / wsf->sww);
+        return;
+    }
+    // sine period-phase
+    if (strcmp(key, "stp") == 0) {
+        double stp = fmod(      //
+            (fmod(wsf->sww * wsf->xx1, 2 * MATH_PI) + wsf->spp) //
+            / (2 * MATH_PI), 1);
+        if (stp < 0) {
+            stp += 1;
+        }
+        sqlite3_result_double_or_null(context, stp);
+        return;
+    }
+    // sine y-estimate
+    if (strcmp(key, "syy") == 0) {
+        sqlite3_result_double_or_null(context,
+            wsf->yy1 - wsf->rr1 +
+            wsf->saa * sin(fmod(wsf->sww * wsf->xx1,
+                    2 * MATH_PI) + wsf->spp));
         return;
     }
     sqlite3_result_error(context,
@@ -2535,7 +2535,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
         return;
     }
     memcpy(wsf0, blob0, bytes);
-    // vec99 - calculate lnr, csr
+    // vec99 - calculate lnr, snr
     WinSinefit *wsf = wsf0;
     argv += argc0;
     double *xxyy = (double *) (wsf0 + ncol);
@@ -2554,8 +2554,8 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
         xxyy[wbb + 1] = wsf->yy1;
         // vec99 - calculate lnr
         winSinefitLnr(wsf, xxyy, wbb);
-        // vec99 - calculate csr
-        winSinefitCsr(wsf, xxyy, wbb, nbody, ncol);
+        // vec99 - calculate snr
+        winSinefitSnr(wsf, xxyy, wbb, nbody, ncol);
         // increment counter
         argv += 2;
         wsf += 1;

@@ -1655,22 +1655,22 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
         let db = await dbOpenAsync({filename: ":memory:"});
         let valExpected0;
         let valInput;
-        function sqlSinefitExtractLnr(wcf, ii, suffix) {
+        function sqlSinefitExtractLnr(wsf, ii, suffix) {
             return (`
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'laa', 0), 8) AS laa${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'lbb', 0), 8) AS lbb${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'lee', 0), 8) AS lee${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'lxy', 0), 8) AS lxy${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'lyy', 0), 8) AS lyy${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'mee', 0), 8) AS mee${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'mxe', 0), 8) AS mxe${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'mxx', 0), 8) AS mxx${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'myy', 0), 8) AS myy${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'nnn', 0), 8) AS nnn${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'rr0', 0), 8) AS rr0${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'rr1', 0), 8) AS rr1${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'xx1', 0), 8) AS xx1${suffix},
-    ROUND(sinefit_extract(${wcf}, ${ii}, 'yy1', 0), 8) AS yy1${suffix}
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'laa', 0), 8) AS laa${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'lbb', 0), 8) AS lbb${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'lee', 0), 8) AS lee${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'lxy', 0), 8) AS lxy${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'lyy', 0), 8) AS lyy${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'mee', 0), 8) AS mee${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'mxe', 0), 8) AS mxe${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'mxx', 0), 8) AS mxx${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'myy', 0), 8) AS myy${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'nnn', 0), 8) AS nnn${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'rr0', 0), 8) AS rr0${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'rr1', 0), 8) AS rr1${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'xx1', 0), 8) AS xx1${suffix},
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'yy1', 0), 8) AS yy1${suffix}
             `);
         }
         async function test_win_sinefit2_aggregate({
@@ -1701,13 +1701,13 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 AS
     SELECT
         id,
-        __wcf,
-        sinefit_extract(__wcf, 0, 'xx1', 0) AS xx11,
-        sinefit_extract(__wcf, 0, 'yy1', 0) AS yy11,
-        sinefit_extract(__wcf, 8, 'xx1', 0) AS xx12,
-        sinefit_extract(__wcf, 8, 'yy1', 0) AS yy12,
-        sinefit_extract(__wcf, 9, 'xx1', 0) AS xx13,
-        sinefit_extract(__wcf, 9, 'yy1', 0) AS yy13
+        __wsf,
+        sinefit_extract(__wsf, 0, 'xx1', 0) AS xx11,
+        sinefit_extract(__wsf, 0, 'yy1', 0) AS yy11,
+        sinefit_extract(__wsf, 8, 'xx1', 0) AS xx12,
+        sinefit_extract(__wsf, 8, 'yy1', 0) AS yy12,
+        sinefit_extract(__wsf, 9, 'xx1', 0) AS xx13,
+        sinefit_extract(__wsf, 9, 'yy1', 0) AS yy13
     FROM (
         SELECT
             id,
@@ -1726,13 +1726,13 @@ CREATE TEMP TABLE __tmp1 AS
             ) OVER (
                 ORDER BY NULL ASC
                 ${sqlBetween}
-            ) AS __wcf
+            ) AS __wsf
         FROM JSON_EAcH($valInput)
     );
 UPDATE __tmp1
     SET
-        __wcf = sinefit_refitlast(
-            __wcf,
+        __wsf = sinefit_refitlast(
+            __wsf,
             0, 0,
             0, 0,
             0, 0,
@@ -1747,8 +1747,8 @@ UPDATE __tmp1
     WHERE id = 28;
 UPDATE __tmp1
     SET
-        __wcf = sinefit_refitlast(
-            __wcf,
+        __wsf = sinefit_refitlast(
+            __wsf,
             xx11, yy11,
             xx11, yy11,
             xx11, yy11,
@@ -1763,9 +1763,9 @@ UPDATE __tmp1
     WHERE id = ${id3};
 SELECT
         id,
-        ${sqlSinefitExtractLnr("__wcf", 0, "1")},
-        ${sqlSinefitExtractLnr("__wcf", 8, "2")},
-        ${sqlSinefitExtractLnr("__wcf", 9, "3")}
+        ${sqlSinefitExtractLnr("__wsf", 0, "1")},
+        ${sqlSinefitExtractLnr("__wsf", 8, "2")},
+        ${sqlSinefitExtractLnr("__wsf", 9, "3")}
     FROM __tmp1;
                 `)
             });
@@ -2107,10 +2107,10 @@ SELECT doublearray_jsonto(win_sinefit2(1, 2, 3, 4)) FROM __tmp1;
                         db,
                         sql: (`
 SELECT
-        ${sqlSinefitExtractLnr("__wcf", 0, "")}
+        ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM (
         SELECT
-            win_sinefit2(0, NULL, value->>0, value->>1) AS __wcf
+            win_sinefit2(0, NULL, value->>0, value->>1) AS __wsf
         FROM JSON_EACH($valInput)
     );
                         `)
@@ -2161,10 +2161,10 @@ SELECT
                         db,
                         sql: (`
 SELECT
-        ${sqlSinefitExtractLnr("__wcf", 0, "")}
+        ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM (
         SELECT
-            win_sinefit2(0, NULL, xx, yy) AS __wcf
+            win_sinefit2(0, NULL, xx, yy) AS __wsf
         FROM (
             SELECT 34 AS xx, 5 AS yy
             UNION ALL SELECT 108, 17
@@ -2507,7 +2507,7 @@ CREATE TEMP TABLE __tmp1 AS
         win_sinefit2(0, NULL, ii, yy, ii, yy) OVER (
             ORDER BY date ASC
             ROWS BETWEEN ${ttSinefit - 1} PRECEDING AND 0 FOLLOWING
-        ) AS __wcf
+        ) AS __wsf
     FROM (
         SELECT
             value->>'ii' AS ii,
@@ -2517,15 +2517,15 @@ CREATE TEMP TABLE __tmp1 AS
     );
 SELECT
         *,
-        sinefit_extract(__wcf, 0, 'caa', 0) AS caa,
-        sinefit_extract(__wcf, 0, 'cee', 0) AS cee,
-        sinefit_extract(__wcf, 0, 'cpp', 0) AS cpp,
-        sinefit_extract(__wcf, 0, 'ctp', 0) AS ctp,
-        sinefit_extract(__wcf, 0, 'ctt', 0) AS ctt,
-        sinefit_extract(__wcf, 0, 'cww', 0) AS cww,
-        sinefit_extract(__wcf, 0, 'cyy', 0) AS cyy,
-        sinefit_extract(__wcf, 0, 'vxx', 0) AS vxx,
-        ${sqlSinefitExtractLnr("__wcf", 0, "")}
+        sinefit_extract(__wsf, 0, 'saa', 0) AS saa,
+        sinefit_extract(__wsf, 0, 'see', 0) AS see,
+        sinefit_extract(__wsf, 0, 'spp', 0) AS spp,
+        sinefit_extract(__wsf, 0, 'stp', 0) AS stp,
+        sinefit_extract(__wsf, 0, 'stt', 0) AS stt,
+        sinefit_extract(__wsf, 0, 'sww', 0) AS sww,
+        sinefit_extract(__wsf, 0, 'syy', 0) AS syy,
+        sinefit_extract(__wsf, 0, 'vxx', 0) AS vxx,
+        ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM __tmp1
     JOIN (
         SELECT
@@ -2536,32 +2536,32 @@ SELECT
     LEFT JOIN (
         SELECT
             ii + 1 AS ii,
-            sinefit_extract(__wcf, 0, 'predict', ii + 1) AS predict,
-            sinefit_extract(__wcf, 0, 'predict_csr', ii + 1) AS predict_csr,
-            sinefit_extract(__wcf, 0, 'predict_lnr', ii + 1) AS predict_lnr
+            sinefit_extract(__wsf, 0, 'predict', ii + 1) AS predict,
+            sinefit_extract(__wsf, 0, 'predict_lnr', ii + 1) AS predict_lnr,
+            sinefit_extract(__wsf, 0, 'predict_snr', ii + 1) AS predict_snr
         FROM __tmp1
     ) USING (ii);
                         `)
                     })
                 )[0];
                 valActual = (
-                    "date caa cww cpp ctt ctp"
+                    "date saa sww spp stt stp"
                     + " rr0 rr1 ii yy linear sinefit sine\n"
                     + valActual.map(function (elem) {
                         return [
                             elem.date,
-                            elem.caa,
-                            elem.cww,
-                            elem.cpp,
-                            elem.ctt,
-                            elem.ctp,
+                            elem.saa,
+                            elem.sww,
+                            elem.spp,
+                            elem.stt,
+                            elem.stp,
                             elem.rr0,
                             elem.rr1,
                             elem.ii,
                             10 + (elem.yy - elem.yy_avg) / elem.yy_err,
                             10 + (elem.predict_lnr - elem.yy_avg) / elem.yy_err,
                             10 + (elem.predict - elem.yy_avg) / elem.yy_err,
-                            10 + elem.predict_csr / 100
+                            10 + elem.predict_snr / 100
                         ].map(function (num) {
                             return (
                                 typeof num === "number"
