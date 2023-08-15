@@ -1,14 +1,14 @@
 # Changelog
 
 # Todo
-- sqlmath - Update sql-function win_cosfit2() to use sine() instead of cosine(), to avoid phase-jumps falling back to initial-guess.
 - sqlmath - Rename c-struct Vector99 to Doublewin.
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 
 # v2023.8.1-beta
-- sqlmath - Update sql-function win_cosfit2() to use sine() instead of cosine() for better phase-continuity of initial guesses of phase at cpp=0.
+- sqlmath - Rename sql-functions xxx_cosfit_xxx() to xxx_sinefit_xxx().
 - sqlmath - Revamp sql-function win_cosfit2() to 1) find frequency cww from dft, and then 2) find phase cpp from linear equation y=b*cos(w*t)+c*sin(w*t).
+- sqlmath - Update sql-function win_cosfit2() to use sine() instead of cosine() for better phase-continuity of initial guesses of phase at cpp=0.
 - sqlmath - Update sql-agg-function stdev() to aggregate over running-window.
 - sqlmath - Update sql-function win_cosfit2_refitlast() to be able to update cosine-fit as well.
 - sqlmath - Merge sql-functions win_cosfit2_predict(), win_cosfit2_extract() into sql-function cosfit_extract().
