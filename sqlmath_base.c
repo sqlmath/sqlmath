@@ -1891,7 +1891,7 @@ static void sql3_stdev_step(
 
 // SQLMATH_FUNC sql3_stdev_func - end
 
-// SQLMATH_FUNC sql3_win_cosfit2_func - start
+// SQLMATH_FUNC sql3_win_sinefit2_func - start
 typedef struct WinSinefit {
     double caa;                 // sine amplitude
     double cee;                 // sine y-stdev.s5
@@ -2247,7 +2247,7 @@ static void winSinefitLnr(
     xxyy[wbb + 2] = isfinite(rr) ? rr : 0;
 }
 
-SQLMATH_FUNC static void sql3_win_cosfit2_value(
+SQLMATH_FUNC static void sql3_win_sinefit2_value(
     sqlite3_context * context
 ) {
 // This function will calculate running simple-linear-regression
@@ -2264,21 +2264,21 @@ SQLMATH_FUNC static void sql3_win_cosfit2_value(
         SQLITE_TRANSIENT);
 }
 
-SQLMATH_FUNC static void sql3_win_cosfit2_final(
+SQLMATH_FUNC static void sql3_win_sinefit2_final(
     sqlite3_context * context
 ) {
 // This function will calculate running simple-linear-regression
 // and sine-regression as:
 //     yy = laa + lbb*xx + caa*sin(cww*xx + cpp)
     // vec99 - value
-    sql3_win_cosfit2_value(context);
+    sql3_win_sinefit2_value(context);
     // vec99 - init
     VECTOR99_AGGREGATE_CONTEXT(0);
     // vec99 - cleanup
     vector99_agg_free(vec99_agg);
 }
 
-SQLMATH_FUNC static void sql3_win_cosfit2_inverse(
+SQLMATH_FUNC static void sql3_win_sinefit2_inverse(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2295,7 +2295,7 @@ SQLMATH_FUNC static void sql3_win_cosfit2_inverse(
     }
 }
 
-static void sql3_win_cosfit2_step(
+static void sql3_win_sinefit2_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2306,7 +2306,7 @@ static void sql3_win_cosfit2_step(
     static const int argc0 = 2;
     if (argc < argc0 + 2 || (argc0 + 2) % 2) {
         sqlite3_result_error(context,
-            "win_cosfit2() - wrong number of arguments", -1);
+            "win_sinefit2() - wrong number of arguments", -1);
         return;
     }
     // vec99 - init
@@ -2578,7 +2578,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
         "sinefit_refitlast() - invalid arguments", -1);
 }
 
-// SQLMATH_FUNC sql3_win_cosfit2_func - end
+// SQLMATH_FUNC sql3_win_sinefit2_func - end
 
 // SQLMATH_FUNC sql3_win_ema1_func - start
 SQLMATH_FUNC static void sql3_win_ema1_value(
@@ -2914,11 +2914,11 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
     SQLITE3_CREATE_FUNCTION3(stdev, 1);
-    SQLITE3_CREATE_FUNCTION3(win_cosfit2, -1);
     SQLITE3_CREATE_FUNCTION3(win_ema1, 2);
     SQLITE3_CREATE_FUNCTION3(win_ema2, -1);
     SQLITE3_CREATE_FUNCTION3(win_quantile1, 2);
     SQLITE3_CREATE_FUNCTION3(win_quantile2, -1);
+    SQLITE3_CREATE_FUNCTION3(win_sinefit2, -1);
     errcode =
         sqlite3_create_function(db, "random1", 0,
         SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, sql1_random1_func, NULL, NULL);
