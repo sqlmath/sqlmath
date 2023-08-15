@@ -1921,8 +1921,8 @@ typedef struct WinSinefit {
     double yy0;                 // y-trailing
     double yy1;                 // y-current
 } WinSinefit;
-static const int WIN_COSFIT_N = sizeof(WinSinefit) / sizeof(double);
-static const int WIN_COSFIT_STEP = 3 + 2 + 0;
+static const int WIN_SINEFIT_N = sizeof(WinSinefit) / sizeof(double);
+static const int WIN_SINEFIT_STEP = 3 + 2 + 0;
 
 static double winSinefitSma(
     WinSinefit * wsf,
@@ -1938,7 +1938,7 @@ static double winSinefitSma(
     xxyy += offset;
     xxyy[wbb] = yy;
     yy = 0;
-    for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
+    for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
         if (isnormal(xxyy[ii])) {
             yy += xxyy[ii];
             weight += 1;
@@ -1957,7 +1957,7 @@ static void winSinefitCsr(
 // This function will calculate running sine-regression as:
 //     yy = caa*sin(cww*xx + cpp)
     // declare var0
-    const double nnn = nbody / (ncol * WIN_COSFIT_STEP);
+    const double nnn = nbody / (ncol * WIN_SINEFIT_STEP);
     const double invn0 = 1.0 / nnn;
     const double wtt0 = sqrt(12.0 * invn0 * wsf->vxx);  // window-period
     double caa = 0;
@@ -1981,14 +1981,14 @@ static void winSinefitCsr(
         }
     } else {
         // calculate csr - cww - using incremental-discrete-fourier-transform
-        const double ibb = 2 * MATH_PI * (wbb / (ncol * WIN_COSFIT_STEP));
+        const double ibb = 2 * MATH_PI * (wbb / (ncol * WIN_SINEFIT_STEP));
         const double rr0 = isfinite(wsf->rr0) ? wsf->rr0 : 0;
         const double rr1 = isfinite(wsf->rr1) ? wsf->rr1 : 0;
         const double rr2 = wsf->wnn ? rr1 - rr0 : rr1;
         double cfkmax = 0;
         double tmp = 0;
         int kk = 0;
-        for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
+        for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
             // rr   = yy - (laa + lbb*tt)
             // dfkr = cos(2*pi/nnn*kk*ibb)*(rr1 - rr0)
             // dfki = sin(2*pi/nnn*kk*ibb)*(rr1 - rr0)
@@ -2034,7 +2034,7 @@ static void winSinefitCsr(
         // ccc  = invp*(sum(xx)*sum(yz) - sum(xy)*sum(xz))
         // cpp  = asin(cbb) = acos(ccc)
         // cpp  = atan(cbb/ccc)
-        for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
+        for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
             tmp = cww * xxyy[ii + 0];
             const double cxx = cos(tmp);
             const double cyy = sin(tmp);
@@ -2061,7 +2061,7 @@ static void winSinefitCsr(
         double rr = 0;
         double vrr1 = 0;        // r-variance.p
         double vrr2 = 0;        // r-variance.p
-        for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
+        for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
             tmp = fmod(cww * xxyy[ii + 0], 2 * MATH_PI);
             // welford - increment vrr1
             rr = xxyy[ii + 2] - caa * sin(tmp + cpp);
@@ -2116,7 +2116,7 @@ static void winSinefitCsr(
         // hpp  = d^2/dpdp[y-sin(w*t+p)]^2 = 2*(cost*cost + sint*rr)
         // hpw  = d^2/dpdw[y-sin(w*t+p)]^2 = 2*(cost*cost + sint*rr)*tt
         // hww  = d^2/dwdw[y-sin(w*t+p)]^2 = 2*(cost*cost + sint*rr)*tt*tt
-        for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
+        for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
             const double tt = xxyy[ii + 0];
             tmp = fmod(cww * tt, 2 * MATH_PI) + cpp;
             const double cost = cos(tmp);
@@ -2162,7 +2162,7 @@ static void winSinefitCsr(
         double rr = 0;
         double vrr1 = 0;        // r-variance.p
         double vrr2 = 0;        // r-variance.p
-        for (int ii = 0; ii < nbody; ii += ncol * WIN_COSFIT_STEP) {
+        for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
             tmp = fmod(cww * xxyy[ii + 0], 2 * MATH_PI);
             // welford - increment vrr1
             rr = xxyy[ii + 2] - caa * sin(tmp + cpp);
@@ -2311,7 +2311,7 @@ static void sql3_win_cosfit2_step(
     }
     // vec99 - init
     const int ncol = (argc - argc0) / 2;
-    VECTOR99_AGGREGATE_CONTEXT(ncol * WIN_COSFIT_N);
+    VECTOR99_AGGREGATE_CONTEXT(ncol * WIN_SINEFIT_N);
     if (vec99->nbody == 0) {
         // init ncol
         vec99->ncol = ncol;
@@ -2327,7 +2327,7 @@ static void sql3_win_cosfit2_step(
     for (int ii = 0; ii < ncol; ii += 1) {
         // vec99 - init xx, yy, rr
         wsf = (WinSinefit *) vec99_head + ii;
-        xxyy = vec99_body + ii * WIN_COSFIT_STEP;
+        xxyy = vec99_body + ii * WIN_SINEFIT_STEP;
         sqlite3_value_double_or_prev(argv[0], &wsf->xx1);
         sqlite3_value_double_or_prev(argv[1], &wsf->yy1);
         wsf->rr0 = xxyy[waa + 2];
@@ -2340,7 +2340,7 @@ static void sql3_win_cosfit2_step(
         // vec99 - push xx, yy, rr, cff
         VECTOR99_AGGREGATE_PUSH(xx);
         VECTOR99_AGGREGATE_PUSH(yy);
-        for (int jj = 2; jj < WIN_COSFIT_STEP; jj += 1) {
+        for (int jj = 2; jj < WIN_SINEFIT_STEP; jj += 1) {
             VECTOR99_AGGREGATE_PUSH(0);
         }
         // increment counter
@@ -2350,7 +2350,7 @@ static void sql3_win_cosfit2_step(
     wsf = (WinSinefit *) vec99_head;
     xxyy = vec99_body;
     for (int ii = 0; ii < ncol; ii += 1) {
-        wsf->nnn = vec99->nbody / (ncol * WIN_COSFIT_STEP);
+        wsf->nnn = vec99->nbody / (ncol * WIN_SINEFIT_STEP);
         wsf->wnn = vec99->wnn;
         // vec99 - calculate lnr
         winSinefitLnr(wsf, xxyy, wbb);
@@ -2360,14 +2360,14 @@ static void sql3_win_cosfit2_step(
         }
         // increment counter
         wsf += 1;
-        xxyy += WIN_COSFIT_STEP;
+        xxyy += WIN_SINEFIT_STEP;
     }
     return;
   catch_error:
     vector99_agg_free(vec99_agg);
 }
 
-SQLMATH_FUNC static void sql1_cosfit_extract_func(
+SQLMATH_FUNC static void sql1_sinefit_extract_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2379,13 +2379,13 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
     const int icol = sqlite3_value_int(argv[1]);
     if (icol < 0) {
         sqlite3_result_error(context,
-            "cosfit_extract() - 2nd argument must be integer column >= 0",
+            "sinefit_extract() - 2nd argument must be integer column >= 0",
             -1);
         return;
     }
-    if ((size_t) bytes < (icol + 1) * WIN_COSFIT_N * sizeof(double)) {
+    if ((size_t) bytes < (icol + 1) * WIN_SINEFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
-            "cosfit_extract()"
+            "sinefit_extract()"
             " - 1st argument as cosfit-object does not have enough columns",
             -1);
         return;
@@ -2421,7 +2421,7 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
         "yy0",
         "yy1"
     };
-    for (int ii = 0; ii < WIN_COSFIT_N; ii += 1) {
+    for (int ii = 0; ii < WIN_SINEFIT_N; ii += 1) {
         if (strcmp(key, keyList[ii]) == 0) {
             sqlite3_result_double_or_null(context, ((double *) wsf)[ii]);
             return;
@@ -2502,10 +2502,10 @@ SQLMATH_FUNC static void sql1_cosfit_extract_func(
         return;
     }
     sqlite3_result_error(context,
-        "cosfit_extract() - 3rd argument is invalid key", -1);
+        "sinefit_extract() - 3rd argument is invalid key", -1);
 }
 
-SQLMATH_FUNC static void sql1_cosfit_refitlast_func(
+SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -2518,19 +2518,20 @@ SQLMATH_FUNC static void sql1_cosfit_refitlast_func(
     if (argc < argc0 + 2 || argc != argc0 + ncol * 2) {
         goto catch_error;
     }
-    if ((size_t) bytes < ncol * WIN_COSFIT_N * sizeof(double)) {
+    if ((size_t) bytes < ncol * WIN_SINEFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
-            "cosfit_refitlast()"
+            "sinefit_refitlast()"
             " - 1st argument as cosfit-object does not have enough columns",
             -1);
         return;
     }
     const WinSinefit *blob0 = sqlite3_value_blob(argv[0]);
-    const int nbody = blob0->nnn * ncol * WIN_COSFIT_STEP;
+    const int nbody = blob0->nnn * ncol * WIN_SINEFIT_STEP;
     if (blob0->nnn <= 0
-        || (size_t) bytes != (ncol * WIN_COSFIT_N + nbody) * sizeof(double)) {
+        || (size_t) bytes !=
+        (ncol * WIN_SINEFIT_N + nbody) * sizeof(double)) {
         sqlite3_result_error(context,
-            "cosfit_refitlast()"
+            "sinefit_refitlast()"
             " - 1st argument as cosfit-object does not have enough columns",
             -1);
         return;
@@ -2547,7 +2548,7 @@ SQLMATH_FUNC static void sql1_cosfit_refitlast_func(
     argv += argc0;
     double *xxyy = (double *) (wsf0 + ncol);
     const int wbb = wsf->wbb;
-    if (!(0 <= wbb && wbb + ncol * WIN_COSFIT_STEP <= nbody)) {
+    if (!(0 <= wbb && wbb + ncol * WIN_SINEFIT_STEP <= nbody)) {
         goto catch_error;
     }
     for (int ii = 0; ii < ncol; ii += 1) {
@@ -2566,7 +2567,7 @@ SQLMATH_FUNC static void sql1_cosfit_refitlast_func(
         // increment counter
         argv += 2;
         wsf += 1;
-        xxyy += WIN_COSFIT_STEP;
+        xxyy += WIN_SINEFIT_STEP;
     }
     // vec99 - result
     doublearrayResult(context, (const double *) wsf0, bytes / sizeof(double),
@@ -2574,7 +2575,7 @@ SQLMATH_FUNC static void sql1_cosfit_refitlast_func(
     return;
   catch_error:
     sqlite3_result_error(context,
-        "cosfit_refitlast() - invalid arguments", -1);
+        "sinefit_refitlast() - invalid arguments", -1);
 }
 
 // SQLMATH_FUNC sql3_win_cosfit2_func - end
@@ -2897,8 +2898,6 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
     SQLITE3_CREATE_FUNCTION1(copyblob, 1);
-    SQLITE3_CREATE_FUNCTION1(cosfit_extract, 4);
-    SQLITE3_CREATE_FUNCTION1(cosfit_refitlast, -1);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
     SQLITE3_CREATE_FUNCTION1(doublearray_array, -1);
@@ -2908,6 +2907,8 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);
+    SQLITE3_CREATE_FUNCTION1(sinefit_extract, 4);
+    SQLITE3_CREATE_FUNCTION1(sinefit_refitlast, -1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
