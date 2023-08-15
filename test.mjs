@@ -1655,7 +1655,7 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
         let db = await dbOpenAsync({filename: ":memory:"});
         let valExpected0;
         let valInput;
-        function sqlCosfitExtractLnr(wcf, ii, suffix) {
+        function sqlSinefitExtractLnr(wcf, ii, suffix) {
             return (`
     ROUND(sinefit_extract(${wcf}, ${ii}, 'laa', 0), 8) AS laa${suffix},
     ROUND(sinefit_extract(${wcf}, ${ii}, 'lbb', 0), 8) AS lbb${suffix},
@@ -1763,9 +1763,9 @@ UPDATE __tmp1
     WHERE id = ${id3};
 SELECT
         id,
-        ${sqlCosfitExtractLnr("__wcf", 0, "1")},
-        ${sqlCosfitExtractLnr("__wcf", 8, "2")},
-        ${sqlCosfitExtractLnr("__wcf", 9, "3")}
+        ${sqlSinefitExtractLnr("__wcf", 0, "1")},
+        ${sqlSinefitExtractLnr("__wcf", 8, "2")},
+        ${sqlSinefitExtractLnr("__wcf", 9, "3")}
     FROM __tmp1;
                 `)
             });
@@ -2107,7 +2107,7 @@ SELECT doublearray_jsonto(win_sinefit2(1, 2, 3, 4)) FROM __tmp1;
                         db,
                         sql: (`
 SELECT
-        ${sqlCosfitExtractLnr("__wcf", 0, "")}
+        ${sqlSinefitExtractLnr("__wcf", 0, "")}
     FROM (
         SELECT
             win_sinefit2(0, NULL, value->>0, value->>1) AS __wcf
@@ -2161,7 +2161,7 @@ SELECT
                         db,
                         sql: (`
 SELECT
-        ${sqlCosfitExtractLnr("__wcf", 0, "")}
+        ${sqlSinefitExtractLnr("__wcf", 0, "")}
     FROM (
         SELECT
             win_sinefit2(0, NULL, xx, yy) AS __wcf
@@ -2222,7 +2222,7 @@ SELECT
             // test win_sinefit2-spx handling-behavior
             (async function () {
                 let testDataSpx;
-                let ttCosfit = 128;
+                let ttSinefit = 128;
                 let valActual;
                 let valExpected;
                 testDataSpx = (`
@@ -2506,7 +2506,7 @@ CREATE TEMP TABLE __tmp1 AS
         *,
         win_sinefit2(0, NULL, ii, yy, ii, yy) OVER (
             ORDER BY date ASC
-            ROWS BETWEEN ${ttCosfit - 1} PRECEDING AND 0 FOLLOWING
+            ROWS BETWEEN ${ttSinefit - 1} PRECEDING AND 0 FOLLOWING
         ) AS __wcf
     FROM (
         SELECT
@@ -2525,7 +2525,7 @@ SELECT
         sinefit_extract(__wcf, 0, 'cww', 0) AS cww,
         sinefit_extract(__wcf, 0, 'cyy', 0) AS cyy,
         sinefit_extract(__wcf, 0, 'vxx', 0) AS vxx,
-        ${sqlCosfitExtractLnr("__wcf", 0, "")}
+        ${sqlSinefitExtractLnr("__wcf", 0, "")}
     FROM __tmp1
     JOIN (
         SELECT
@@ -2546,7 +2546,7 @@ SELECT
                 )[0];
                 valActual = (
                     "date caa cww cpp ctt ctp"
-                    + " rr0 rr1 ii yy linear cosfit sine\n"
+                    + " rr0 rr1 ii yy linear sinefit sine\n"
                     + valActual.map(function (elem) {
                         return [
                             elem.date,
@@ -2576,12 +2576,12 @@ SELECT
                 valActual = valActual.replace((/ /g), "\t");
                 valActual = valActual.trim() + "\n";
                 await fsWriteFileUnlessTest(
-                    "test_data_cosfit.csv",
+                    "test_data_sinefit.csv",
                     valActual,
                     String("1").replace(npm_config_mode_test_save, "force")
                 );
                 valExpected = await fsReadFileUnlessTest(
-                    "test_data_cosfit.csv",
+                    "test_data_sinefit.csv",
                     "force"
                 );
                 assertJsonEqual(valActual, valExpected);

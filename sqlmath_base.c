@@ -2097,16 +2097,6 @@ static void winSinefitCsr(
         // cxy  = sint*yy
         // caa  = cxy/cxx
         //
-        // yy   ~ caa*cos(cww*tt + cpp)
-        // cost = cos(cww*tt + cpp)
-        // sint = sin(cww*tt + cpp)
-        // rr   = yy/caa - cost
-        // gp   =     d/dp[y-cos(w*t+p)]^2 = 2*(        0 + sint*rr)
-        // gw   =     d/dw[y-cos(w*t+p)]^2 = 2*(        0 + sint*rr)*tt
-        // hpp  = d^2/dpdp[y-cos(w*t+p)]^2 = 2*(sint*sint + cost*rr)
-        // hpw  = d^2/dpdw[y-cos(w*t+p)]^2 = 2*(sint*sint + cost*rr)*tt
-        // hww  = d^2/dwdw[y-cos(w*t+p)]^2 = 2*(sint*sint + cost*rr)*tt*tt
-        //
         // yy   ~ caa*sin(cww*tt + cpp)
         // cost = cos(cww*tt + cpp)
         // sint = sin(cww*tt + cpp)
@@ -2121,8 +2111,10 @@ static void winSinefitCsr(
             tmp = fmod(cww * tt, 2 * MATH_PI) + cpp;
             const double cost = cos(tmp);
             const double sint = sin(tmp);
+            // solve caa
             cxx += sint * sint;
             cxy += sint * xxyy[ii + 2];
+            // solve cpp, cww
             const double rr = inva * xxyy[ii + 2] - sint;
             tmp = -cost * rr;
             gp += tmp;
@@ -2386,7 +2378,7 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
     if ((size_t) bytes < (icol + 1) * WIN_SINEFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
             "sinefit_extract()"
-            " - 1st argument as cosfit-object does not have enough columns",
+            " - 1st argument as sinefit-object does not have enough columns",
             -1);
         return;
     }
@@ -2521,7 +2513,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
     if ((size_t) bytes < ncol * WIN_SINEFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
             "sinefit_refitlast()"
-            " - 1st argument as cosfit-object does not have enough columns",
+            " - 1st argument as sinefit-object does not have enough columns",
             -1);
         return;
     }
@@ -2532,7 +2524,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
         (ncol * WIN_SINEFIT_N + nbody) * sizeof(double)) {
         sqlite3_result_error(context,
             "sinefit_refitlast()"
-            " - 1st argument as cosfit-object does not have enough columns",
+            " - 1st argument as sinefit-object does not have enough columns",
             -1);
         return;
     }

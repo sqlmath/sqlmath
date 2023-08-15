@@ -35,4 +35,4 @@ include sqlmath_custom.c
 include sqlmath_custom.mjs
 include sqlmath_wrapper_wasm.js
 include test.mjs
-include test_data_cosfit.csv
+include test_data_sinefit.csv
