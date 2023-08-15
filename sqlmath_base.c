@@ -1974,10 +1974,10 @@ static void winSinefitSnr(
     if (0) {
         spp = wsf->spp;         // phase
         sww = wsf->sww;         // angular-freq
-        const double cww0 = 2 * MATH_PI / wtt0;
-        if (sww < 0.5000 * cww0 || 0.1250 * cww0 * sqrt(nnn) < sww) {
+        const double sww0 = 2 * MATH_PI / wtt0;
+        if (sww < 0.5000 * sww0 || 0.1250 * sww0 * sqrt(nnn) < sww) {
             spp = 0;
-            sww = cww0;
+            sww = sww0;
         }
     } else {
         // calculate snr - sww - using incremental-discrete-fourier-transform
@@ -1992,7 +1992,7 @@ static void winSinefitSnr(
             // rr   = yy - (laa + lbb*tt)
             // dfkr = cos(2*pi/nnn*kk*ibb)*(rr1 - rr0)
             // dfki = sin(2*pi/nnn*kk*ibb)*(rr1 - rr0)
-            // cfk = cfk + sum(dfkr)^2 + sum(dfki)^2
+            // sfk = sfk + sum(dfkr)^2 + sum(dfki)^2
             xxyy[ii + 3] += cos(kk * ibb) * rr2;
             xxyy[ii + 4] += sin(kk * ibb) * rr2;
             tmp = pow(xxyy[ii + 3], 2) + pow(xxyy[ii + 4], 2);
@@ -2020,41 +2020,41 @@ static void winSinefitSnr(
         double sumxz = 0;
         double sumyy = 0;
         double sumyz = 0;
-        // czz  ~ sin(sww*tt + spp)
-        // czz  ~ cbb*cxx + ccc*syy
-        // cbb  = sin(spp)
-        // ccc  = cos(spp)
-        // cxx  = cos(sww*tt)
+        // szz  ~ sin(sww*tt + spp)
+        // szz  ~ sbb*sxx + scc*syy
+        // sbb  = sin(spp)
+        // scc  = cos(spp)
+        // sxx  = cos(sww*tt)
         // syy  = sin(sww*tt)
-        // rr   = czz - cbb*cxx - ccc*syy
+        // rr   = szz - sbb*sxx - scc*syy
         // gb   = d/db[z-b*x-c*y]^2 = -2*x*(z - b*x - c*y)
         // gc   = d/dc[z-b*x-c*y]^2 = -2*y*(z - b*x - c*y)
         // invp = 1/(sum(xx)*sum(yy) - sum(xy)^2)
-        // cbb  = invp*(sum(yy)*sum(xz) - sum(xy)*sum(yz))
-        // ccc  = invp*(sum(xx)*sum(yz) - sum(xy)*sum(xz))
-        // spp  = asin(cbb) = acos(ccc)
-        // spp  = atan(cbb/ccc)
+        // sbb  = invp*(sum(yy)*sum(xz) - sum(xy)*sum(yz))
+        // scc  = invp*(sum(xx)*sum(yz) - sum(xy)*sum(xz))
+        // spp  = asin(sbb) = acos(scc)
+        // spp  = atan(sbb/scc)
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
             tmp = sww * xxyy[ii + 0];
-            const double cxx = cos(tmp);
+            const double sxx = cos(tmp);
             const double syy = sin(tmp);
-            const double czz = inva * xxyy[ii + 2];
-            sumxx += cxx * cxx;
-            sumxy += cxx * syy;
-            sumxz += cxx * czz;
+            const double szz = inva * xxyy[ii + 2];
+            sumxx += sxx * sxx;
+            sumxy += sxx * syy;
+            sumxz += sxx * szz;
             sumyy += syy * syy;
-            sumyz += syy * czz;
+            sumyz += syy * szz;
         }
-        const double cbb = sumyy * sumxz - sumxy * sumyz;
-        const double ccc = sumxx * sumyz - sumxy * sumxz;
-        spp = atan(cbb / ccc);
+        const double sbb = sumyy * sumxz - sumxy * sumyz;
+        const double scc = sumxx * sumyz - sumxy * sumxz;
+        spp = atan(sbb / scc);
         if (!isfinite(spp)) {
             spp = 0;
         }
     }
     // Offset spp by pi if root of derivative is maxima instead of minima.
     if (1) {
-        const double cpp2 = fmod(spp + MATH_PI, 2 * MATH_PI);
+        const double spp2 = fmod(spp + MATH_PI, 2 * MATH_PI);
         double dr = 0;
         double mrr1 = 0;        // r-average
         double mrr2 = 0;        // r-average
@@ -2069,13 +2069,13 @@ static void winSinefitSnr(
             mrr1 += dr * invn0;
             vrr1 += dr * (rr - mrr1);
             // welford - increment vrr2
-            rr = xxyy[ii + 2] - saa * sin(tmp + cpp2);
+            rr = xxyy[ii + 2] - saa * sin(tmp + spp2);
             dr = rr - mrr2;
             mrr2 += dr * invn0;
             vrr2 += dr * (rr - mrr2);
         }
         if (vrr2 < vrr1) {
-            spp = cpp2;
+            spp = spp2;
         }
     }
     // calculate snr - spp - smooth with moving-average
@@ -2083,19 +2083,19 @@ static void winSinefitSnr(
     // calculate snr - spp, sww - using gauss-newton-method
     for (int jj = 4; jj > 0; jj -= 1) {
         // for (int jj = sqrt(nnn); jj > 1; jj -= 1) {
-        double cxx = 0;
-        double cxy = 0;
         double gp = 0;          // gradient-phase
         double gw = 0;          // gradient-frequency
         double hpp = 0;         // hessian ddr/dpdp
         double hpw = 0;         // hessian ddr/dpdw
         double hww = 0;         // hessian ddr/dwdw
+        double sxx = 0;
+        double sxy = 0;
         // yy   ~ saa*sin(sww*tt + spp)
         // cost = cos(sww*tt + spp)
         // sint = sin(sww*tt + spp)
-        // cxx  = sint*sint
-        // cxy  = sint*yy
-        // saa  = cxy/cxx
+        // sxx  = sint*sint
+        // sxy  = sint*yy
+        // saa  = sxy/sxx
         //
         // yy   ~ saa*sin(sww*tt + spp)
         // cost = cos(sww*tt + spp)
@@ -2112,8 +2112,8 @@ static void winSinefitSnr(
             const double cost = cos(tmp);
             const double sint = sin(tmp);
             // solve saa
-            cxx += sint * sint;
-            cxy += sint * xxyy[ii + 2];
+            sxx += sint * sint;
+            sxy += sint * xxyy[ii + 2];
             // solve spp, sww
             const double rr = inva * xxyy[ii + 2] - sint;
             tmp = -cost * rr;
@@ -2138,7 +2138,7 @@ static void winSinefitSnr(
         if (!isfinite(invd)) {
             return;
         }
-        saa = cxy / cxx;
+        saa = sxy / sxx;
         spp -= invd * (+hww * gp - hpw * gw);
         sww -= invd * (-hpw * gp + hpp * gw);
         spp = fmod(spp, 2 * MATH_PI);
@@ -2147,7 +2147,7 @@ static void winSinefitSnr(
     // spp += 0.0625 * MATH_PI;
     // calculate snr - see
     if (1) {
-        const double cpp2 = fmod(spp + MATH_PI, 2 * MATH_PI);
+        const double spp2 = fmod(spp + MATH_PI, 2 * MATH_PI);
         double dr = 0;
         double mrr1 = 0;        // r-average
         double mrr2 = 0;        // r-average
@@ -2162,14 +2162,14 @@ static void winSinefitSnr(
             mrr1 += dr * invn0;
             vrr1 += dr * (rr - mrr1);
             // welford - increment vrr2
-            rr = xxyy[ii + 2] - saa * sin(tmp + cpp2);
+            rr = xxyy[ii + 2] - saa * sin(tmp + spp2);
             dr = rr - mrr2;
             mrr2 += dr * invn0;
             vrr2 += dr * (rr - mrr2);
         }
         // Offset phase by pi if root of derivative is maxima instead of minima.
         if (vrr2 < vrr1) {
-            spp = cpp2;
+            spp = spp2;
             vrr1 = vrr2;
         }
         wsf->see = sqrt(vrr1 / (nnn - 5));
@@ -2329,7 +2329,7 @@ static void sql3_win_sinefit2_step(
         wsf->xx2 = xx2;
         const double xx = wsf->xx1;
         const double yy = wsf->yy1;
-        // vec99 - push xx, yy, rr, cff
+        // vec99 - push xx, yy, rr, sff
         VECTOR99_AGGREGATE_PUSH(xx);
         VECTOR99_AGGREGATE_PUSH(yy);
         for (int jj = 2; jj < WIN_SINEFIT_STEP; jj += 1) {
