@@ -6,6 +6,7 @@
 - none
 
 # v2023.8.1-beta
+- sqlmath - Add sql-function fmod().
 - sqlmath - Rename sql-functions xxx_cosfit_xxx() to xxx_sinefit_xxx().
 - sqlmath - Revamp sql-function win_cosfit2() to 1) find frequency cww from dft, and then 2) find phase cpp from linear equation y=b*cos(w*t)+c*sin(w*t).
 - sqlmath - Update sql-function win_cosfit2() to use sine() instead of cosine() for better phase-continuity of initial guesses of phase at cpp=0.

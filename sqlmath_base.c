@@ -1519,6 +1519,18 @@ SQLMATH_FUNC static void sql1_doublearray_jsonto_func(
         sqlite3_value_bytes(argv[0]) / sizeof(double));
 }
 
+SQLMATH_FUNC static void sql1_fmod_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return fmod(dividend, divisor).
+    UNUSED_PARAMETER(argc);
+    sqlite3_result_double_or_null(context, fmod(        //
+            sqlite3_value_double_or_nan(argv[0]),       //
+            sqlite3_value_double_or_nan(argv[1])));
+}
+
 // SQLMATH_FUNC sql1_marginoferror95_func - start
 SQLMATH_API double marginoferror95(
     double nn,
@@ -2896,6 +2908,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(doublearray_extract, 2);
     SQLITE3_CREATE_FUNCTION1(doublearray_jsonfrom, 1);
     SQLITE3_CREATE_FUNCTION1(doublearray_jsonto, 1);
+    SQLITE3_CREATE_FUNCTION1(fmod, 2);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sign, 1);
