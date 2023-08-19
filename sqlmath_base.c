@@ -93,6 +93,39 @@ file sqlmath_h - start
 #define UNUSED_PARAMETER(x) ((void)(x))
 
 
+#define DOUBLEWIN_AGGREGATE_CONTEXT(nhead) \
+    Doublewin **dblwin_agg = (Doublewin **) \
+        sqlite3_aggregate_context(context, sizeof(*dblwin_agg)); \
+    if (dblwin_agg == NULL) { \
+        sqlite3_result_error_nomem(context); \
+        return; \
+    } \
+    Doublewin *dblwin = *dblwin_agg; \
+    if (dblwin == NULL) { \
+        dblwin = doublewin_malloc(nhead); \
+        if (dblwin == NULL) { \
+            sqlite3_result_error_nomem(context); \
+            return; \
+        } \
+        *dblwin_agg = dblwin; \
+    } \
+    double *dblwin_body = doublewin_body(dblwin); \
+    double *dblwin_head = doublewin_head(dblwin); \
+    int errcode = 0; \
+    UNUSED_PARAMETER(errcode); \
+    UNUSED_PARAMETER(dblwin_body); \
+    UNUSED_PARAMETER(dblwin_head);
+
+#define DOUBLEWIN_AGGREGATE_PUSH(xx) \
+    errcode = doublewin_agg_push(dblwin_agg, xx); \
+    if (errcode) { \
+        sqlite3_result_error_code(context, errcode); \
+        goto catch_error; \
+    } \
+    dblwin = *dblwin_agg; \
+    dblwin_body = doublewin_body(dblwin); \
+    dblwin_head = doublewin_head(dblwin);
+
 // This function will exec <sql> and if <errcode> is not ok,
 // throw <baton>->errmsg with given sqlite-<errcode>.
 #define JSBATON_ASSERT_OK() \
@@ -183,39 +216,6 @@ file sqlmath_h - start
         goto catch_error; \
     }
 
-#define DOUBLEWIN_AGGREGATE_CONTEXT(nhead) \
-    Doublewin **dblwin_agg = (Doublewin **) \
-        sqlite3_aggregate_context(context, sizeof(*dblwin_agg)); \
-    if (dblwin_agg == NULL) { \
-        sqlite3_result_error_nomem(context); \
-        return; \
-    } \
-    Doublewin *dblwin = *dblwin_agg; \
-    if (dblwin == NULL) { \
-        dblwin = doublewin_malloc(nhead); \
-        if (dblwin == NULL) { \
-            sqlite3_result_error_nomem(context); \
-            return; \
-        } \
-        *dblwin_agg = dblwin; \
-    } \
-    double *dblwin_body = doublewin_body(dblwin); \
-    double *dblwin_head = doublewin_head(dblwin); \
-    int errcode = 0; \
-    UNUSED_PARAMETER(errcode); \
-    UNUSED_PARAMETER(dblwin_body); \
-    UNUSED_PARAMETER(dblwin_head);
-
-#define DOUBLEWIN_AGGREGATE_PUSH(xx) \
-    errcode = doublewin_agg_push(dblwin_agg, xx); \
-    if (errcode) { \
-        sqlite3_result_error_code(context, errcode); \
-        goto catch_error; \
-    } \
-    dblwin = *dblwin_agg; \
-    dblwin_body = doublewin_body(dblwin); \
-    dblwin_head = doublewin_head(dblwin);
-
 // file sqlmath_h - sqlite3
 // *INDENT-OFF*
 SQLITE_API const sqlite3_api_routines *sqlite3ApiGet();
@@ -259,45 +259,6 @@ SQLMATH_API void dbOpen(
 
 
 
-// file sqlmath_h - str99
-/*
-** An objected used to accumulate the text of a string where we
-** do not necessarily know how big the string will be in the end.
-*/
-struct sqlite3_str {
-  sqlite3 *db;         /* Optional database for lookaside.  Can be NULL */
-  char *zText;         /* The string collected so far */
-  u32  nAlloc;         /* Amount of space allocated in zText */
-  u32  mxAlloc;        /* Maximum allowed allocation.  0 for no malloc usage */
-  u32  nChar;          /* Length of the string so far */
-  u8   accError;       /* SQLITE_NOMEM or SQLITE_TOOBIG */
-  u8   printfFlags;    /* SQLITE_PRINTF flags below */
-};
-// *INDENT-ON*
-SQLITE_API void str99JsonAppendText(
-    sqlite3_str * str99,
-    const char *zIn,
-    u32 nn
-);
-SQLMATH_API void str99ArrayAppendDouble(
-    sqlite3_str * str99,
-    const double xx
-);
-SQLMATH_API void str99ArrayAppendJsonarray(
-    sqlite3_str * str99,
-    const char *json,
-    int nn
-);
-SQLMATH_API void str99ResultBlob(
-    sqlite3_str * str99,
-    sqlite3_context * context
-);
-SQLMATH_API void str99ResultText(
-    sqlite3_str * str99,
-    sqlite3_context * context
-);
-
-
 // file sqlmath_h - doublewin
 typedef struct Doublewin {
     double alloc;               // allocated size in bytes
@@ -334,6 +295,45 @@ SQLMATH_API void doublewin_result_blob(
 );
 SQLMATH_API int doublewin_valid(
     const Doublewin * dblwin
+);
+
+
+// file sqlmath_h - str99
+/*
+** An objected used to accumulate the text of a string where we
+** do not necessarily know how big the string will be in the end.
+*/
+struct sqlite3_str {
+  sqlite3 *db;         /* Optional database for lookaside.  Can be NULL */
+  char *zText;         /* The string collected so far */
+  u32  nAlloc;         /* Amount of space allocated in zText */
+  u32  mxAlloc;        /* Maximum allowed allocation.  0 for no malloc usage */
+  u32  nChar;          /* Length of the string so far */
+  u8   accError;       /* SQLITE_NOMEM or SQLITE_TOOBIG */
+  u8   printfFlags;    /* SQLITE_PRINTF flags below */
+};
+// *INDENT-ON*
+SQLITE_API void str99JsonAppendText(
+    sqlite3_str * str99,
+    const char *zIn,
+    u32 nn
+);
+SQLMATH_API void str99ArrayAppendDouble(
+    sqlite3_str * str99,
+    const double xx
+);
+SQLMATH_API void str99ArrayAppendJsonarray(
+    sqlite3_str * str99,
+    const char *json,
+    int nn
+);
+SQLMATH_API void str99ResultBlob(
+    sqlite3_str * str99,
+    sqlite3_context * context
+);
+SQLMATH_API void str99ResultText(
+    sqlite3_str * str99,
+    sqlite3_context * context
 );
 
 
@@ -920,100 +920,6 @@ SQLMATH_API void dbOpen(
 
 // SQLMATH_API db - end
 
-// SQLMATH_API str99 - start
-SQLMATH_API void str99ArrayAppendDouble(
-    sqlite3_str * str99,
-    const double xx
-) {
-// This function will append double <xx> to <str99>.
-    sqlite3_str_append(str99, (const char *) &xx, 8);
-}
-
-SQLMATH_API void str99ArrayAppendJsonarray(
-    sqlite3_str * str99,
-    const char *json,
-    int nn
-) {
-// This function will append float-values from json-encoded-flat-array.
-    // declare var
-    int ii = 0;
-    int jj = 0;
-    // validate json
-    for (; ii < nn; ii += 1) {
-        if (json[ii] == '[') {
-            break;
-        }
-    }
-    for (; nn > ii; nn -= 1) {
-        if (json[nn - 1] == ']') {
-            break;
-        }
-    }
-    if (nn <= ii) {
-        goto catch_error_json;
-    }
-    jj = ii;
-    // str99 - append double
-    for (; ii < nn; ii += 1) {
-        // skip whitespace
-        switch (json[jj]) {
-        case '[':
-        case '\x09':
-        case '\x0a':
-        case '\x0d':
-        case '\x20':
-            jj = ii;
-            break;
-        default:
-            switch (json[ii]) {
-            case ',':
-            case ']':
-                str99ArrayAppendDouble(str99, atof(json + jj));
-                jj = ii + 1;
-                break;
-            }
-            break;
-        }
-        switch (json[jj]) {
-        case ',':
-            goto catch_error_json;
-        case ']':
-            if (sqlite3_str_length(str99) > 0) {
-                goto catch_error_json;
-            }
-            break;
-        }
-    }
-    return;
-  catch_error_json:
-    sqlite3_str_reset(str99);
-    str99->accError = SQLITE_ERROR_JSON_ARRAY_INVALID;
-}
-
-SQLMATH_API void str99ResultBlob(
-    sqlite3_str * str99,
-    sqlite3_context * context
-) {
-// This function will return <str99> as result-blob in given <context>.
-    sqlite3_result_blob(context, (const char *) sqlite3_str_value(str99),
-        sqlite3_str_length(str99),
-        // destructor
-        sqlite3_free);
-}
-
-SQLMATH_API void str99ResultText(
-    sqlite3_str * str99,
-    sqlite3_context * context
-) {
-// This function will return <str99> as result-text in given <context>.
-    sqlite3_result_text(context, (const char *) sqlite3_str_value(str99),
-        sqlite3_str_length(str99),
-        // destructor
-        sqlite3_free);
-}
-
-// SQLMATH_API str99 - end
-
 // SQLMATH_API doublewin - start
 SQLMATH_API void doublewin_agg_free(
     Doublewin ** dblwin_agg
@@ -1189,6 +1095,100 @@ SQLMATH_API int doublewin_valid(
 }
 
 // SQLMATH_API doublewin - end
+
+// SQLMATH_API str99 - start
+SQLMATH_API void str99ArrayAppendDouble(
+    sqlite3_str * str99,
+    const double xx
+) {
+// This function will append double <xx> to <str99>.
+    sqlite3_str_append(str99, (const char *) &xx, 8);
+}
+
+SQLMATH_API void str99ArrayAppendJsonarray(
+    sqlite3_str * str99,
+    const char *json,
+    int nn
+) {
+// This function will append float-values from json-encoded-flat-array.
+    // declare var
+    int ii = 0;
+    int jj = 0;
+    // validate json
+    for (; ii < nn; ii += 1) {
+        if (json[ii] == '[') {
+            break;
+        }
+    }
+    for (; nn > ii; nn -= 1) {
+        if (json[nn - 1] == ']') {
+            break;
+        }
+    }
+    if (nn <= ii) {
+        goto catch_error_json;
+    }
+    jj = ii;
+    // str99 - append double
+    for (; ii < nn; ii += 1) {
+        // skip whitespace
+        switch (json[jj]) {
+        case '[':
+        case '\x09':
+        case '\x0a':
+        case '\x0d':
+        case '\x20':
+            jj = ii;
+            break;
+        default:
+            switch (json[ii]) {
+            case ',':
+            case ']':
+                str99ArrayAppendDouble(str99, atof(json + jj));
+                jj = ii + 1;
+                break;
+            }
+            break;
+        }
+        switch (json[jj]) {
+        case ',':
+            goto catch_error_json;
+        case ']':
+            if (sqlite3_str_length(str99) > 0) {
+                goto catch_error_json;
+            }
+            break;
+        }
+    }
+    return;
+  catch_error_json:
+    sqlite3_str_reset(str99);
+    str99->accError = SQLITE_ERROR_JSON_ARRAY_INVALID;
+}
+
+SQLMATH_API void str99ResultBlob(
+    sqlite3_str * str99,
+    sqlite3_context * context
+) {
+// This function will return <str99> as result-blob in given <context>.
+    sqlite3_result_blob(context, (const char *) sqlite3_str_value(str99),
+        sqlite3_str_length(str99),
+        // destructor
+        sqlite3_free);
+}
+
+SQLMATH_API void str99ResultText(
+    sqlite3_str * str99,
+    sqlite3_context * context
+) {
+// This function will return <str99> as result-text in given <context>.
+    sqlite3_result_text(context, (const char *) sqlite3_str_value(str99),
+        sqlite3_str_length(str99),
+        // destructor
+        sqlite3_free);
+}
+
+// SQLMATH_API str99 - end
 
 SQLMATH_API double doubleAbs(
     const double aa
