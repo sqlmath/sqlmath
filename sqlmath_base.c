@@ -1915,30 +1915,7 @@ typedef struct WinSinefit {
     double yy1;                 // y-current
 } WinSinefit;
 static const int WIN_SINEFIT_N = sizeof(WinSinefit) / sizeof(double);
-static const int WIN_SINEFIT_STEP = 3 + 2 + 0;
-
-static double winSinefitSma(
-    WinSinefit * wsf,
-    double *xxyy,
-    const int wbb,
-    const int nbody,
-    const int ncol,
-    const int offset,
-    double yy
-) {
-// This function will calculate running simple-moving-average
-    double weight = 0;
-    xxyy += offset;
-    xxyy[wbb] = yy;
-    yy = 0;
-    for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
-        if (isnormal(xxyy[ii])) {
-            yy += xxyy[ii];
-            weight += 1;
-        }
-    }
-    return yy / weight;
-}
+static const int WIN_SINEFIT_STEP = 3 + 2;
 
 static void winSinefitSnr(
     WinSinefit * wsf,
@@ -1960,8 +1937,6 @@ static void winSinefitSnr(
     // calculate snr - saa
     saa = sqrt(2 * wsf->vyy * invn0     //
         * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
-    // calculate snr - saa - smooth with moving-average
-    // saa = winSinefitSma(wsf, xxyy, nbody, ncol, 5, saa);
     const double inva = 1.0 / saa;
     // calculate snr - spp, sww - initial guess
     if (0) {
@@ -2001,8 +1976,6 @@ static void winSinefitSnr(
         }
         sww *= 2 * MATH_PI / wtt0;
     }
-    // calculate snr - sww - smooth with moving-average
-    // sww = winSinefitSma(wsf, xxyy, nbody, ncol, 6, sww);
     if (inva <= 0 || !isfinite(inva) || !isnormal(sww)) {
         return;
     }
@@ -2071,8 +2044,6 @@ static void winSinefitSnr(
             spp = spp2;
         }
     }
-    // calculate snr - spp - smooth with moving-average
-    // spp = winSinefitSma(wsf, xxyy, nbody, ncol, 7, spp);
     // calculate snr - spp, sww - using gauss-newton-method
     for (int jj = 4; jj > 0; jj -= 1) {
         // for (int jj = sqrt(nnn); jj > 1; jj -= 1) {
@@ -2500,7 +2471,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
     if (argc < argc0 + 2 || argc != argc0 + ncol * 2) {
         goto catch_error;
     }
-    if ((size_t) bytes < ncol * WIN_SINEFIT_N * sizeof(double)) {
+    if (bytes <= 0 || (size_t) bytes < ncol * WIN_SINEFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
             "sinefit_refitlast()"
             " - 1st argument as sinefit-object does not have enough columns",
