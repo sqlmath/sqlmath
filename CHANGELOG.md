@@ -1,11 +1,11 @@
 # Changelog
 
 # Todo
-- sqlmath - Rename c-struct Vector99 to Doublewin.
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 
 # v2023.8.1-beta
+- sqlmath - Rename c-struct Vector99 to Doublewin.
 - sqlmath - Add sql-function fmod().
 - sqlmath - Rename sql-functions xxx_cosfit_xxx() to xxx_sinefit_xxx().
 - sqlmath - Revamp sql-function win_cosfit2() to 1) find frequency cww from dft, and then 2) find phase cpp from linear equation y=b*cos(w*t)+c*sin(w*t).

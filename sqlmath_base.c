@@ -183,38 +183,38 @@ file sqlmath_h - start
         goto catch_error; \
     }
 
-#define VECTOR99_AGGREGATE_CONTEXT(nhead) \
-    Vector99 **vec99_agg = \
-        (Vector99 **) sqlite3_aggregate_context(context, sizeof(*vec99_agg)); \
-    if (vec99_agg == NULL) { \
+#define DOUBLEWIN_AGGREGATE_CONTEXT(nhead) \
+    Doublewin **dblwin_agg = (Doublewin **) \
+        sqlite3_aggregate_context(context, sizeof(*dblwin_agg)); \
+    if (dblwin_agg == NULL) { \
         sqlite3_result_error_nomem(context); \
         return; \
     } \
-    Vector99 *vec99 = *vec99_agg; \
-    if (vec99 == NULL) { \
-        vec99 = vector99_malloc(nhead); \
-        if (vec99 == NULL) { \
+    Doublewin *dblwin = *dblwin_agg; \
+    if (dblwin == NULL) { \
+        dblwin = doublewin_malloc(nhead); \
+        if (dblwin == NULL) { \
             sqlite3_result_error_nomem(context); \
             return; \
         } \
-        *vec99_agg = vec99; \
+        *dblwin_agg = dblwin; \
     } \
-    double *vec99_body = vector99_body(vec99); \
-    double *vec99_head = vector99_head(vec99); \
+    double *dblwin_body = doublewin_body(dblwin); \
+    double *dblwin_head = doublewin_head(dblwin); \
     int errcode = 0; \
     UNUSED_PARAMETER(errcode); \
-    UNUSED_PARAMETER(vec99_body); \
-    UNUSED_PARAMETER(vec99_head);
+    UNUSED_PARAMETER(dblwin_body); \
+    UNUSED_PARAMETER(dblwin_head);
 
-#define VECTOR99_AGGREGATE_PUSH(xx) \
-    errcode = vector99_agg_push(vec99_agg, xx); \
+#define DOUBLEWIN_AGGREGATE_PUSH(xx) \
+    errcode = doublewin_agg_push(dblwin_agg, xx); \
     if (errcode) { \
         sqlite3_result_error_code(context, errcode); \
         goto catch_error; \
     } \
-    vec99 = *vec99_agg; \
-    vec99_body = vector99_body(vec99); \
-    vec99_head = vector99_head(vec99);
+    dblwin = *dblwin_agg; \
+    dblwin_body = doublewin_body(dblwin); \
+    dblwin_head = doublewin_head(dblwin);
 
 // file sqlmath_h - sqlite3
 // *INDENT-OFF*
@@ -298,8 +298,8 @@ SQLMATH_API void str99ResultText(
 );
 
 
-// file sqlmath_h - vector99
-typedef struct Vector99 {
+// file sqlmath_h - doublewin
+typedef struct Doublewin {
     double alloc;               // allocated size in bytes
     double nbody;               // number of body elements
     double nhead;               // number of head elements
@@ -307,33 +307,33 @@ typedef struct Vector99 {
     double ncol;                // number of columns
     double waa;                 // window-position-left
     double wnn;                 // number of window elements
-} Vector99;
-SQLMATH_API void vector99_agg_free(
-    Vector99 ** vec99_agg
+} Doublewin;
+SQLMATH_API void doublewin_agg_free(
+    Doublewin ** dblwin_agg
 );
-SQLMATH_API int vector99_agg_push(
-    Vector99 ** vec99_agg,
+SQLMATH_API int doublewin_agg_push(
+    Doublewin ** dblwin_agg,
     double xx
 );
-SQLMATH_API double *vector99_body(
-    const Vector99 * vec99
+SQLMATH_API double *doublewin_body(
+    const Doublewin * dblwin
 );
-SQLMATH_API Vector99 *vector99_from_json(
+SQLMATH_API Doublewin *doublewin_from_json(
     const char *json,
     int nn
 );
-SQLMATH_API double *vector99_head(
-    const Vector99 * vec99
+SQLMATH_API double *doublewin_head(
+    const Doublewin * dblwin
 );
-SQLMATH_API Vector99 *vector99_malloc(
+SQLMATH_API Doublewin *doublewin_malloc(
     const int nhead
 );
-SQLMATH_API void vector99_result_blob(
-    Vector99 * vec99,
+SQLMATH_API void doublewin_result_blob(
+    Doublewin * dblwin,
     sqlite3_context * context
 );
-SQLMATH_API int vector99_valid(
-    const Vector99 * vec99
+SQLMATH_API int doublewin_valid(
+    const Doublewin * dblwin
 );
 
 
@@ -1014,66 +1014,66 @@ SQLMATH_API void str99ResultText(
 
 // SQLMATH_API str99 - end
 
-// SQLMATH_API vector99 - start
-SQLMATH_API void vector99_agg_free(
-    Vector99 ** vec99_agg
+// SQLMATH_API doublewin - start
+SQLMATH_API void doublewin_agg_free(
+    Doublewin ** dblwin_agg
 ) {
-    if (vec99_agg != NULL) {
-        sqlite3_free(*vec99_agg);
-        *vec99_agg = NULL;
+    if (dblwin_agg != NULL) {
+        sqlite3_free(*dblwin_agg);
+        *dblwin_agg = NULL;
     }
 }
 
-SQLMATH_API int vector99_agg_push(
-    Vector99 ** vec99_agg,
+SQLMATH_API int doublewin_agg_push(
+    Doublewin ** dblwin_agg,
     double xx
 ) {
-    if (vec99_agg == NULL || *vec99_agg == NULL) {
+    if (dblwin_agg == NULL || *dblwin_agg == NULL) {
         return SQLITE_NOMEM;
     }
-    Vector99 *vec99 = *vec99_agg;
+    Doublewin *dblwin = *dblwin_agg;
     // rotate wnn
-    if (vec99->wnn) {
-        vector99_body(vec99)[(int) vec99->waa] = xx;
-        vec99->waa += 1;
-        if (vec99->waa >= vec99->nbody) {
-            vec99->waa = 0;
+    if (dblwin->wnn) {
+        doublewin_body(dblwin)[(int) dblwin->waa] = xx;
+        dblwin->waa += 1;
+        if (dblwin->waa >= dblwin->nbody) {
+            dblwin->waa = 0;
         }
         return SQLITE_OK;
     }
     const int nn =
-        sizeof(Vector99) / sizeof(double) + vec99->nhead + vec99->nbody;
-    uint32_t alloc = vec99->alloc;
+        sizeof(Doublewin) / sizeof(double) + dblwin->nhead + dblwin->nbody;
+    uint32_t alloc = dblwin->alloc;
     if (nn * sizeof(double) >= alloc) {
         // error - toobig
         if (alloc >= SQLITE_MAX_LENGTH2) {
             goto catch_error;
         }
         alloc = MIN(SQLITE_MAX_LENGTH2, 2 * alloc);
-        vec99 = sqlite3_realloc(vec99, alloc);
+        dblwin = sqlite3_realloc(dblwin, alloc);
         // error - nomem
-        if (vec99 == NULL) {
+        if (dblwin == NULL) {
             goto catch_error;
         }
-        vec99->alloc = alloc;
-        *vec99_agg = vec99;
+        dblwin->alloc = alloc;
+        *dblwin_agg = dblwin;
     }
-    ((double *) vec99)[nn] = xx;
-    vec99->nbody += 1;
+    ((double *) dblwin)[nn] = xx;
+    dblwin->nbody += 1;
     return SQLITE_OK;
   catch_error:
-    vector99_agg_free(vec99_agg);
+    doublewin_agg_free(dblwin_agg);
     return SQLITE_NOMEM;
 }
 
-SQLMATH_API double *vector99_body(
-    const Vector99 * vec99
+SQLMATH_API double *doublewin_body(
+    const Doublewin * dblwin
 ) {
-    return (double *) ((char *) vec99 + sizeof(Vector99)) +
-        (int) vec99->nhead;
+    return (double *) ((char *) dblwin + sizeof(Doublewin)) +
+        (int) dblwin->nhead;
 }
 
-SQLMATH_API Vector99 *vector99_from_json(
+SQLMATH_API Doublewin *doublewin_from_json(
     const char *json,
     int nn
 ) {
@@ -1095,10 +1095,10 @@ SQLMATH_API Vector99 *vector99_from_json(
         return NULL;
     }
     jj = ii;
-    // init vec99_agg
-    Vector99 *vec99_agg[1] = { 0 };
-    *vec99_agg = vector99_malloc(0);
-    if (*vec99_agg == NULL) {
+    // init dblwin_agg
+    Doublewin *dblwin_agg[1] = { 0 };
+    *dblwin_agg = doublewin_malloc(0);
+    if (*dblwin_agg == NULL) {
         return NULL;
     }
     // str99 - append double
@@ -1116,7 +1116,7 @@ SQLMATH_API Vector99 *vector99_from_json(
             switch (json[ii]) {
             case ',':
             case ']':
-                vector99_agg_push(vec99_agg, atof(json + jj));
+                doublewin_agg_push(dblwin_agg, atof(json + jj));
                 jj = ii + 1;
                 break;
             }
@@ -1126,69 +1126,69 @@ SQLMATH_API Vector99 *vector99_from_json(
         case ',':
             goto catch_error_json;
         case ']':
-            if ((*vec99_agg)->nbody > 0) {
+            if ((*dblwin_agg)->nbody > 0) {
                 goto catch_error_json;
             }
             break;
         }
     }
-    return *vec99_agg;
+    return *dblwin_agg;
   catch_error_json:
-    vector99_agg_free(vec99_agg);
+    doublewin_agg_free(dblwin_agg);
     return NULL;
 }
 
-SQLMATH_API double *vector99_head(
-    const Vector99 * vec99
+SQLMATH_API double *doublewin_head(
+    const Doublewin * dblwin
 ) {
-    return (double *) ((char *) vec99 + sizeof(Vector99));
+    return (double *) ((char *) dblwin + sizeof(Doublewin));
 }
 
-SQLMATH_API Vector99 *vector99_malloc(
+SQLMATH_API Doublewin *doublewin_malloc(
     const int nhead
 ) {
-    const int alloc = sizeof(Vector99) + nhead * sizeof(double) + 256;
+    const int alloc = sizeof(Doublewin) + nhead * sizeof(double) + 256;
     if (alloc > SQLITE_MAX_LENGTH2) {
         return NULL;
     }
-    Vector99 *vec99 = sqlite3_malloc(alloc);
-    if (vec99 == NULL) {
+    Doublewin *dblwin = sqlite3_malloc(alloc);
+    if (dblwin == NULL) {
         return NULL;
     }
-    // zero vec99
-    memset(vec99, 0, alloc);
-    vec99->alloc = alloc;
-    vec99->nhead = doubleMax(0, nhead);
-    return vec99;
+    // zero dblwin
+    memset(dblwin, 0, alloc);
+    dblwin->alloc = alloc;
+    dblwin->nhead = doubleMax(0, nhead);
+    return dblwin;
 }
 
-SQLMATH_API void vector99_result_blob(
-    Vector99 * vec99,
+SQLMATH_API void doublewin_result_blob(
+    Doublewin * dblwin,
     sqlite3_context * context
 ) {
-// This function will return <vec99> as result-blob in given <context>.
-    vec99->alloc =
-        sizeof(Vector99) + (vec99->nhead + vec99->nbody) * sizeof(double);
-    sqlite3_result_blob(context, (const char *) vec99, vec99->alloc,
+// This function will return <dblwin> as result-blob in given <context>.
+    dblwin->alloc =
+        sizeof(Doublewin) + (dblwin->nhead + dblwin->nbody) * sizeof(double);
+    sqlite3_result_blob(context, (const char *) dblwin, dblwin->alloc,
         // destructor
         sqlite3_free);
 }
 
-SQLMATH_API int vector99_valid(
-    const Vector99 * vec99
+SQLMATH_API int doublewin_valid(
+    const Doublewin * dblwin
 ) {
-// This function will validate <vec99>.
-    if (vec99 == NULL) {
+// This function will validate <dblwin>.
+    if (dblwin == NULL) {
         return 0;
     }
-    const double alloc = vec99->alloc;
-    const double nbody = vec99->nbody;
-    return (alloc >= sizeof(*vec99) + nbody * sizeof(double)
+    const double alloc = dblwin->alloc;
+    const double nbody = dblwin->nbody;
+    return (alloc >= sizeof(*dblwin) + nbody * sizeof(double)
         && alloc <= SQLITE_MAX_LENGTH2 && nbody >= 0
         && nbody <= SQLITE_MAX_LENGTH2);
 }
 
-// SQLMATH_API vector99 - end
+// SQLMATH_API doublewin - end
 
 SQLMATH_API double doubleAbs(
     const double aa
@@ -1761,17 +1761,17 @@ SQLMATH_FUNC static void sql2_quantile_final(
     sqlite3_context * context
 ) {
 // This function will aggregate kth-quantile element.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - null-case
-    if (vec99->nbody == 0) {
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - null-case
+    if (dblwin->nbody == 0) {
         sqlite3_result_null(context);
         goto catch_error;
     }
-    sqlite3_result_double(context, quantile(vec99_body, vec99->nbody,
-            vec99_head[0]));
+    sqlite3_result_double(context, quantile(dblwin_body, dblwin->nbody,
+            dblwin_head[0]));
   catch_error:
-    vector99_agg_free(vec99_agg);
+    doublewin_agg_free(dblwin_agg);
 }
 
 static void sql2_quantile_step0(
@@ -1782,19 +1782,19 @@ static void sql2_quantile_step0(
 ) {
 // This function will aggregate kth-quantile element.
     UNUSED_PARAMETER(argc);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(1);
-    if (vec99->nbody == 0) {
-        vec99_head[0] = qq;     // kth-quantile
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(1);
+    if (dblwin->nbody == 0) {
+        dblwin_head[0] = qq;    // kth-quantile
     }
-    // vec99 - append isfinite
+    // dblwin - append isfinite
     const double xx = sqlite3_value_double_or_nan(argv[0]);
     if (!isnan(xx)) {
-        VECTOR99_AGGREGATE_PUSH(xx);
+        DOUBLEWIN_AGGREGATE_PUSH(xx);
     }
     return;
   catch_error:
-    vector99_agg_free(vec99_agg);
+    doublewin_agg_free(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql2_quantile_step(
@@ -2257,14 +2257,14 @@ SQLMATH_FUNC static void sql3_win_sinefit2_value(
 // This function will calculate running simple-linear-regression
 // and sine-regression as:
 //     yy = laa + lbb*xx + saa*sin(sww*xx + spp)
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    const WinSinefit *wsf = (const WinSinefit *) vec99_head;
-    // vec99 - result
-    doublearrayResult(context, vec99_head,      //
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    const WinSinefit *wsf = (const WinSinefit *) dblwin_head;
+    // dblwin - result
+    doublearrayResult(context, dblwin_head,     //
         // If x-current == x-refit, then include extra data needed for refit.
         // This data is normally not included, due to memory performance.
-        wsf->xx2 == wsf->xx1 ? vec99->nhead + vec99->nbody : vec99->nhead,
+        wsf->xx2 == wsf->xx1 ? dblwin->nhead + dblwin->nbody : dblwin->nhead,
         SQLITE_TRANSIENT);
 }
 
@@ -2274,12 +2274,12 @@ SQLMATH_FUNC static void sql3_win_sinefit2_final(
 // This function will calculate running simple-linear-regression
 // and sine-regression as:
 //     yy = laa + lbb*xx + saa*sin(sww*xx + spp)
-    // vec99 - value
+    // dblwin - value
     sql3_win_sinefit2_value(context);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - cleanup
-    vector99_agg_free(vec99_agg);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - cleanup
+    doublewin_agg_free(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql3_win_sinefit2_inverse(
@@ -2292,10 +2292,10 @@ SQLMATH_FUNC static void sql3_win_sinefit2_inverse(
 //     yy = laa + lbb*xx + saa*sin(sww*xx + spp)
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    if (!vec99->wnn) {
-        vec99->wnn = vec99->nbody;
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    if (!dblwin->wnn) {
+        dblwin->wnn = dblwin->nbody;
     }
 }
 
@@ -2313,25 +2313,25 @@ static void sql3_win_sinefit2_step(
             "win_sinefit2() - wrong number of arguments", -1);
         return;
     }
-    // vec99 - init
+    // dblwin - init
     const int ncol = (argc - argc0) / 2;
-    VECTOR99_AGGREGATE_CONTEXT(ncol * WIN_SINEFIT_N);
-    if (vec99->nbody == 0) {
+    DOUBLEWIN_AGGREGATE_CONTEXT(ncol * WIN_SINEFIT_N);
+    if (dblwin->nbody == 0) {
         // init ncol
-        vec99->ncol = ncol;
+        dblwin->ncol = ncol;
     }
-    // vec99 - init argv
+    // dblwin - init argv
     const double xx2 = sqlite3_value_double_or_nan(argv[1]);
     const int modeNosnr = sqlite3_value_int(argv[0]);
     argv += argc0;
     WinSinefit *wsf = NULL;
-    const int waa = vec99->waa;
-    const int wbb = vec99->wnn ? vec99->waa : vec99->nbody;
+    const int waa = dblwin->waa;
+    const int wbb = dblwin->wnn ? dblwin->waa : dblwin->nbody;
     double *xxyy = NULL;
     for (int ii = 0; ii < ncol; ii += 1) {
-        // vec99 - init xx, yy, rr
-        wsf = (WinSinefit *) vec99_head + ii;
-        xxyy = vec99_body + ii * WIN_SINEFIT_STEP;
+        // dblwin - init xx, yy, rr
+        wsf = (WinSinefit *) dblwin_head + ii;
+        xxyy = dblwin_body + ii * WIN_SINEFIT_STEP;
         sqlite3_value_double_or_prev(argv[0], &wsf->xx1);
         sqlite3_value_double_or_prev(argv[1], &wsf->yy1);
         wsf->rr0 = xxyy[waa + 2];
@@ -2341,26 +2341,26 @@ static void sql3_win_sinefit2_step(
         wsf->xx2 = xx2;
         const double xx = wsf->xx1;
         const double yy = wsf->yy1;
-        // vec99 - push xx, yy, rr, sff
-        VECTOR99_AGGREGATE_PUSH(xx);
-        VECTOR99_AGGREGATE_PUSH(yy);
+        // dblwin - push xx, yy, rr, sff
+        DOUBLEWIN_AGGREGATE_PUSH(xx);
+        DOUBLEWIN_AGGREGATE_PUSH(yy);
         for (int jj = 2; jj < WIN_SINEFIT_STEP; jj += 1) {
-            VECTOR99_AGGREGATE_PUSH(0);
+            DOUBLEWIN_AGGREGATE_PUSH(0);
         }
         // increment counter
         argv += 2;
     }
-    // vec99 - calculate lnr, snr
-    wsf = (WinSinefit *) vec99_head;
-    xxyy = vec99_body;
+    // dblwin - calculate lnr, snr
+    wsf = (WinSinefit *) dblwin_head;
+    xxyy = dblwin_body;
     for (int ii = 0; ii < ncol; ii += 1) {
-        wsf->nnn = vec99->nbody / (ncol * WIN_SINEFIT_STEP);
-        wsf->wnn = vec99->wnn;
-        // vec99 - calculate lnr
+        wsf->nnn = dblwin->nbody / (ncol * WIN_SINEFIT_STEP);
+        wsf->wnn = dblwin->wnn;
+        // dblwin - calculate lnr
         winSinefitLnr(wsf, xxyy, wbb);
-        // vec99 - calculate snr
+        // dblwin - calculate snr
         if (!modeNosnr) {
-            winSinefitSnr(wsf, xxyy, wbb, vec99->nbody, vec99->ncol);
+            winSinefitSnr(wsf, xxyy, wbb, dblwin->nbody, dblwin->ncol);
         }
         // increment counter
         wsf += 1;
@@ -2368,7 +2368,7 @@ static void sql3_win_sinefit2_step(
     }
     return;
   catch_error:
-    vector99_agg_free(vec99_agg);
+    doublewin_agg_free(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql1_sinefit_extract_func(
@@ -2547,7 +2547,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
         return;
     }
     memcpy(wsf0, blob0, bytes);
-    // vec99 - calculate lnr, snr
+    // dblwin - calculate lnr, snr
     WinSinefit *wsf = wsf0;
     argv += argc0;
     double *xxyy = (double *) (wsf0 + ncol);
@@ -2564,16 +2564,16 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
         sqlite3_value_double_or_prev(argv[1], &wsf->yy1);
         xxyy[wbb + 0] = wsf->xx1;
         xxyy[wbb + 1] = wsf->yy1;
-        // vec99 - calculate lnr
+        // dblwin - calculate lnr
         winSinefitLnr(wsf, xxyy, wbb);
-        // vec99 - calculate snr
+        // dblwin - calculate snr
         winSinefitSnr(wsf, xxyy, wbb, nbody, ncol);
         // increment counter
         argv += 2;
         wsf += 1;
         xxyy += WIN_SINEFIT_STEP;
     }
-    // vec99 - result
+    // dblwin - result
     doublearrayResult(context, (const double *) wsf0, bytes / sizeof(double),
         sqlite3_free);
     return;
@@ -2589,21 +2589,21 @@ SQLMATH_FUNC static void sql3_win_ema1_value(
     sqlite3_context * context
 ) {
 // This function will calculate running exponential-moving-average.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    sqlite3_result_double(context, vec99_body[(int) vec99->waa]);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    sqlite3_result_double(context, dblwin_body[(int) dblwin->waa]);
 }
 
 SQLMATH_FUNC static void sql3_win_ema1_final(
     sqlite3_context * context
 ) {
 // This function will calculate running exponential-moving-average.
-    // vec99 - value
+    // dblwin - value
     sql3_win_ema1_value(context);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - cleanup
-    vector99_agg_free(vec99_agg);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - cleanup
+    doublewin_agg_free(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql3_win_ema1_inverse(
@@ -2614,10 +2614,10 @@ SQLMATH_FUNC static void sql3_win_ema1_inverse(
 // This function will calculate running exponential-moving-average.
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    if (!vec99->wnn) {
-        vec99->wnn = vec99->nbody;
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    if (!dblwin->wnn) {
+        dblwin->wnn = dblwin->nbody;
     }
 }
 
@@ -2632,13 +2632,13 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
             "win_ema2() - wrong number of arguments", -1);
         return;
     }
-    // vec99 - init
+    // dblwin - init
     const int ncol = argc - 1;
     double arg_alpha = NAN;
-    VECTOR99_AGGREGATE_CONTEXT(argc);
-    if (vec99->nbody == 0) {
+    DOUBLEWIN_AGGREGATE_CONTEXT(argc);
+    if (dblwin->nbody == 0) {
         // ncol
-        vec99->ncol = ncol;
+        dblwin->ncol = ncol;
         // arg_alpha
         arg_alpha = sqlite3_value_double_or_nan(argv[0]);
         if (isnan(arg_alpha)) {
@@ -2646,32 +2646,32 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
                 "win_emax() - invalid argument 'alpha'", -1);
             return;
         }
-        vec99_head[ncol + 0] = arg_alpha;
+        dblwin_head[ncol + 0] = arg_alpha;
     }
-    // vec99 - calculate ema
-    arg_alpha = vec99_head[ncol + 0];
-    const int nrow = vec99->nbody / ncol;
+    // dblwin - calculate ema
+    arg_alpha = dblwin_head[ncol + 0];
+    const int nrow = dblwin->nbody / ncol;
     argv += 1;
     for (int ii = 0; ii < ncol; ii += 1) {
-        sqlite3_value_double_or_prev(argv[0], &vec99_head[ii]);
-        double *row = vec99_body + ii;
+        sqlite3_value_double_or_prev(argv[0], &dblwin_head[ii]);
+        double *row = dblwin_body + ii;
         // debug
         // fprintf(stderr,         //
         //     "win_ema2 - nbody=%.0f xx0=%f xx=%f arg_alpha=%f\n",        //
-        //     vec99->nbody, *row, vec99_head[0], arg_alpha);
+        //     dblwin->nbody, *row, dblwin_head[0], arg_alpha);
         for (int jj = 0; jj < nrow; jj += 1) {
-            *row = arg_alpha * vec99_head[ii] + (1 - arg_alpha) * *row;
+            *row = arg_alpha * dblwin_head[ii] + (1 - arg_alpha) * *row;
             row += ncol;
         }
         argv += 1;
     }
-    // vec99 - push xx
+    // dblwin - push xx
     for (int ii = 0; ii < ncol; ii += 1) {
-        VECTOR99_AGGREGATE_PUSH(vec99_head[ii]);
+        DOUBLEWIN_AGGREGATE_PUSH(dblwin_head[ii]);
     }
     return;
   catch_error:
-    vector99_agg_free(vec99_agg);
+    doublewin_agg_free(dblwin_agg);
 }
 
 // SQLMATH_FUNC sql3_win_ema1_func - end
@@ -2681,26 +2681,26 @@ SQLMATH_FUNC static void sql3_win_ema2_value(
     sqlite3_context * context
 ) {
 // This function will calculate running exponential-moving-average.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    if (!vec99->ncol) {
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    if (!dblwin->ncol) {
         sqlite3_result_null(context);
     }
-    // vec99 - result
-    doublearrayResult(context, vec99_body + (int) vec99->waa,
-        (int) vec99->ncol, SQLITE_TRANSIENT);
+    // dblwin - result
+    doublearrayResult(context, dblwin_body + (int) dblwin->waa,
+        (int) dblwin->ncol, SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_ema2_final(
     sqlite3_context * context
 ) {
 // This function will calculate running exponential-moving-average.
-    // vec99 - value
+    // dblwin - value
     sql3_win_ema2_value(context);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - cleanup
-    vector99_agg_free(vec99_agg);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - cleanup
+    doublewin_agg_free(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql3_win_ema2_inverse(
@@ -2728,21 +2728,21 @@ SQLMATH_FUNC static void sql3_win_quantile1_value(
     sqlite3_context * context
 ) {
 // This function will calculate running quantile.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    sqlite3_result_double(context, vec99_head[(int) vec99->ncol + 1]);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    sqlite3_result_double(context, dblwin_head[(int) dblwin->ncol + 1]);
 }
 
 SQLMATH_FUNC static void sql3_win_quantile1_final(
     sqlite3_context * context
 ) {
 // This function will calculate running quantile.
-    // vec99 - value
+    // dblwin - value
     sql3_win_quantile1_value(context);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - cleanup
-    vector99_agg_free(vec99_agg);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - cleanup
+    doublewin_agg_free(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql3_win_quantile1_inverse(
@@ -2753,17 +2753,17 @@ SQLMATH_FUNC static void sql3_win_quantile1_inverse(
 // This function will calculate running quantile.
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    if (!vec99->wnn) {
-        vec99->wnn = vec99->nbody;
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    if (!dblwin->wnn) {
+        dblwin->wnn = dblwin->nbody;
     }
-    // vec99 - invert
+    // dblwin - invert
     const int ncol = argc - 1;
     const int nstep = ncol * 2;
-    const int nn = vec99->nbody - nstep;
-    double *arr = vec99_body + 1;
-    double *xx0 = vec99_body + 0 + (int) vec99->waa;
+    const int nn = dblwin->nbody - nstep;
+    double *arr = dblwin_body + 1;
+    double *xx0 = dblwin_body + 0 + (int) dblwin->waa;
     for (int ii = 0; ii < ncol; ii += 1) {
         const double xx = *xx0;
         int jj = 0;
@@ -2789,13 +2789,13 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
             "win_quantile2() - wrong number of arguments", -1);
         return;
     }
-    // vec99 - init
+    // dblwin - init
     const int ncol = argc - 1;
     double arg_quantile = NAN;
-    VECTOR99_AGGREGATE_CONTEXT(argc + ncol);
-    if (vec99->nbody == 0) {
+    DOUBLEWIN_AGGREGATE_CONTEXT(argc + ncol);
+    if (dblwin->nbody == 0) {
         // ncol
-        vec99->ncol = ncol;
+        dblwin->ncol = ncol;
         // arg_quantile
         arg_quantile = sqlite3_value_double_or_nan(argv[0]);
         if (!(0 <= arg_quantile && arg_quantile <= 1)) {
@@ -2803,41 +2803,41 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
                 "win_quantilex() - invalid argument 'quantile'", -1);
             return;
         }
-        vec99_head[ncol + 0] = arg_quantile;
+        dblwin_head[ncol + 0] = arg_quantile;
     }
-    // vec99 - push xx
+    // dblwin - push xx
     argv += 1;
     for (int ii = 0; ii < ncol; ii += 1) {
-        sqlite3_value_double_or_prev(argv[0], &vec99_head[ii]);
-        VECTOR99_AGGREGATE_PUSH(vec99_head[ii]);
-        VECTOR99_AGGREGATE_PUSH(        //
-            vec99->wnn ? vec99_body[(int) vec99->waa] : INFINITY);
+        sqlite3_value_double_or_prev(argv[0], &dblwin_head[ii]);
+        DOUBLEWIN_AGGREGATE_PUSH(dblwin_head[ii]);
+        DOUBLEWIN_AGGREGATE_PUSH(       //
+            dblwin->wnn ? dblwin_body[(int) dblwin->waa] : INFINITY);
         argv += 1;
     }
-    // vec99 - calculate quantile
+    // dblwin - calculate quantile
     const int nstep = ncol * 2;
-    const int nn = vec99->nbody / nstep;
-    double *arr = vec99_body + 1;
+    const int nn = dblwin->nbody / nstep;
+    double *arr = dblwin_body + 1;
     //
-    arg_quantile = vec99_head[ncol + 0] * (nn - 1);
+    arg_quantile = dblwin_head[ncol + 0] * (nn - 1);
     const int kk1 = floor(arg_quantile) * nstep;
     const int kk2 = kk1 + nstep;
     arg_quantile = fmod(arg_quantile, 1);
     for (int ii = 0; ii < ncol; ii += 1) {
-        const double xx = vec99_head[ii];
+        const double xx = dblwin_head[ii];
         int jj = (nn - 2) * nstep;
         for (; jj >= 0 && arr[jj] > xx; jj -= nstep) {
             arr[jj + nstep] = arr[jj];
         }
         arr[jj + nstep] = xx;
-        vec99_head[ncol + 1 + ii] = arg_quantile == 0   //
+        dblwin_head[ncol + 1 + ii] = arg_quantile == 0  //
             ? arr[kk1]          //
             : (1 - arg_quantile) * arr[kk1] + arg_quantile * arr[kk2];
         arr += 2;
     }
     return;
   catch_error:
-    vector99_agg_free(vec99_agg);
+    doublewin_agg_free(dblwin_agg);
 }
 
 // SQLMATH_FUNC sql3_win_quantile1_func - end
@@ -2847,26 +2847,26 @@ SQLMATH_FUNC static void sql3_win_quantile2_value(
     sqlite3_context * context
 ) {
 // This function will calculate running quantile.
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    if (!vec99->ncol) {
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    if (!dblwin->ncol) {
         sqlite3_result_null(context);
     }
-    // vec99 - result
-    doublearrayResult(context, vec99_head + (int) vec99->ncol + 1,
-        (int) vec99->ncol, SQLITE_TRANSIENT);
+    // dblwin - result
+    doublearrayResult(context, dblwin_head + (int) dblwin->ncol + 1,
+        (int) dblwin->ncol, SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_quantile2_final(
     sqlite3_context * context
 ) {
 // This function will calculate running quantile.
-    // vec99 - value
+    // dblwin - value
     sql3_win_quantile2_value(context);
-    // vec99 - init
-    VECTOR99_AGGREGATE_CONTEXT(0);
-    // vec99 - cleanup
-    vector99_agg_free(vec99_agg);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - cleanup
+    doublewin_agg_free(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql3_win_quantile2_inverse(
