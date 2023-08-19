@@ -357,8 +357,7 @@ async function ciBuildExt1NodejsConfigure({
             "conditions": [
                 [
                     "OS == \u0027win\u0027",
-                    {"defines": ["WIN32"]},
-                    {"defines": ["HAVE_UNISTD_H"]}
+                    {"defines": ["WIN32"]}
                 ]
             ],
 // https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
