@@ -102,29 +102,30 @@ file sqlmath_h - start
     } \
     Doublewin *dblwin = *dblwin_agg; \
     if (dblwin == NULL) { \
-        dblwin = doublewin_malloc(nhead); \
+        dblwin = doublewinMalloc(nhead); \
         if (dblwin == NULL) { \
             sqlite3_result_error_nomem(context); \
             return; \
         } \
         *dblwin_agg = dblwin; \
     } \
-    double *dblwin_body = doublewin_body(dblwin); \
-    double *dblwin_head = doublewin_head(dblwin); \
+    double *dblwin_body = doublewinBody(dblwin); \
+    double *dblwin_head = doublewinHead(dblwin); \
     int errcode = 0; \
     UNUSED_PARAMETER(errcode); \
     UNUSED_PARAMETER(dblwin_body); \
     UNUSED_PARAMETER(dblwin_head);
 
 #define DOUBLEWIN_AGGREGATE_PUSH(xx) \
-    errcode = doublewin_agg_push(dblwin_agg, xx); \
+    errcode = doublewinAggpush(dblwin_agg, xx); \
     if (errcode) { \
+        doublewinAggfree(dblwin_agg); \
         sqlite3_result_error_code(context, errcode); \
-        goto catch_error; \
+        return; \
     } \
     dblwin = *dblwin_agg; \
-    dblwin_body = doublewin_body(dblwin); \
-    dblwin_head = doublewin_head(dblwin);
+    dblwin_body = doublewinBody(dblwin); \
+    dblwin_head = doublewinHead(dblwin);
 
 // This function will exec <sql> and if <errcode> is not ok,
 // throw <baton>->errmsg with given sqlite-<errcode>.
@@ -269,32 +270,29 @@ typedef struct Doublewin {
     double waa;                 // window-position-left
     double wnn;                 // number of window elements
 } Doublewin;
-SQLMATH_API void doublewin_agg_free(
+SQLMATH_API void doublewinAggfree(
     Doublewin ** dblwin_agg
 );
-SQLMATH_API int doublewin_agg_push(
+SQLMATH_API int doublewinAggpush(
     Doublewin ** dblwin_agg,
     double xx
 );
-SQLMATH_API double *doublewin_body(
+SQLMATH_API double *doublewinBody(
     const Doublewin * dblwin
 );
-SQLMATH_API Doublewin *doublewin_from_json(
+SQLMATH_API double *doublewinHead(
+    const Doublewin * dblwin
+);
+SQLMATH_API Doublewin *doublewinJsonfrom(
     const char *json,
     int nn
 );
-SQLMATH_API double *doublewin_head(
-    const Doublewin * dblwin
-);
-SQLMATH_API Doublewin *doublewin_malloc(
+SQLMATH_API Doublewin *doublewinMalloc(
     const int nhead
 );
-SQLMATH_API void doublewin_result_blob(
+SQLMATH_API void doublewinResultBlob(
     Doublewin * dblwin,
     sqlite3_context * context
-);
-SQLMATH_API int doublewin_valid(
-    const Doublewin * dblwin
 );
 
 
@@ -921,7 +919,7 @@ SQLMATH_API void dbOpen(
 // SQLMATH_API db - end
 
 // SQLMATH_API doublewin - start
-SQLMATH_API void doublewin_agg_free(
+SQLMATH_API void doublewinAggfree(
     Doublewin ** dblwin_agg
 ) {
     if (dblwin_agg != NULL) {
@@ -930,7 +928,7 @@ SQLMATH_API void doublewin_agg_free(
     }
 }
 
-SQLMATH_API int doublewin_agg_push(
+SQLMATH_API int doublewinAggpush(
     Doublewin ** dblwin_agg,
     double xx
 ) {
@@ -940,7 +938,7 @@ SQLMATH_API int doublewin_agg_push(
     Doublewin *dblwin = *dblwin_agg;
     // rotate wnn
     if (dblwin->wnn) {
-        doublewin_body(dblwin)[(int) dblwin->waa] = xx;
+        doublewinBody(dblwin)[(int) dblwin->waa] = xx;
         dblwin->waa += 1;
         if (dblwin->waa >= dblwin->nbody) {
             dblwin->waa = 0;
@@ -968,18 +966,24 @@ SQLMATH_API int doublewin_agg_push(
     dblwin->nbody += 1;
     return SQLITE_OK;
   catch_error:
-    doublewin_agg_free(dblwin_agg);
+    doublewinAggfree(dblwin_agg);
     return SQLITE_NOMEM;
 }
 
-SQLMATH_API double *doublewin_body(
+SQLMATH_API double *doublewinBody(
     const Doublewin * dblwin
 ) {
     return (double *) ((char *) dblwin + sizeof(Doublewin)) +
         (int) dblwin->nhead;
 }
 
-SQLMATH_API Doublewin *doublewin_from_json(
+SQLMATH_API double *doublewinHead(
+    const Doublewin * dblwin
+) {
+    return (double *) ((char *) dblwin + sizeof(Doublewin));
+}
+
+SQLMATH_API Doublewin *doublewinJsonfrom(
     const char *json,
     int nn
 ) {
@@ -1003,7 +1007,7 @@ SQLMATH_API Doublewin *doublewin_from_json(
     jj = ii;
     // init dblwin_agg
     Doublewin *dblwin_agg[1] = { 0 };
-    *dblwin_agg = doublewin_malloc(0);
+    *dblwin_agg = doublewinMalloc(0);
     if (*dblwin_agg == NULL) {
         return NULL;
     }
@@ -1022,7 +1026,7 @@ SQLMATH_API Doublewin *doublewin_from_json(
             switch (json[ii]) {
             case ',':
             case ']':
-                doublewin_agg_push(dblwin_agg, atof(json + jj));
+                doublewinAggpush(dblwin_agg, atof(json + jj));
                 jj = ii + 1;
                 break;
             }
@@ -1040,17 +1044,11 @@ SQLMATH_API Doublewin *doublewin_from_json(
     }
     return *dblwin_agg;
   catch_error_json:
-    doublewin_agg_free(dblwin_agg);
+    doublewinAggfree(dblwin_agg);
     return NULL;
 }
 
-SQLMATH_API double *doublewin_head(
-    const Doublewin * dblwin
-) {
-    return (double *) ((char *) dblwin + sizeof(Doublewin));
-}
-
-SQLMATH_API Doublewin *doublewin_malloc(
+SQLMATH_API Doublewin *doublewinMalloc(
     const int nhead
 ) {
     const int alloc = sizeof(Doublewin) + nhead * sizeof(double) + 256;
@@ -1068,7 +1066,7 @@ SQLMATH_API Doublewin *doublewin_malloc(
     return dblwin;
 }
 
-SQLMATH_API void doublewin_result_blob(
+SQLMATH_API void doublewinResultBlob(
     Doublewin * dblwin,
     sqlite3_context * context
 ) {
@@ -1078,20 +1076,6 @@ SQLMATH_API void doublewin_result_blob(
     sqlite3_result_blob(context, (const char *) dblwin, dblwin->alloc,
         // destructor
         sqlite3_free);
-}
-
-SQLMATH_API int doublewin_valid(
-    const Doublewin * dblwin
-) {
-// This function will validate <dblwin>.
-    if (dblwin == NULL) {
-        return 0;
-    }
-    const double alloc = dblwin->alloc;
-    const double nbody = dblwin->nbody;
-    return (alloc >= sizeof(*dblwin) + nbody * sizeof(double)
-        && alloc <= SQLITE_MAX_LENGTH2 && nbody >= 0
-        && nbody <= SQLITE_MAX_LENGTH2);
 }
 
 // SQLMATH_API doublewin - end
@@ -1771,7 +1755,7 @@ SQLMATH_FUNC static void sql2_quantile_final(
     sqlite3_result_double(context, quantile(dblwin_body, dblwin->nbody,
             dblwin_head[0]));
   catch_error:
-    doublewin_agg_free(dblwin_agg);
+    doublewinAggfree(dblwin_agg);
 }
 
 static void sql2_quantile_step0(
@@ -1792,9 +1776,6 @@ static void sql2_quantile_step0(
     if (!isnan(xx)) {
         DOUBLEWIN_AGGREGATE_PUSH(xx);
     }
-    return;
-  catch_error:
-    doublewin_agg_free(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql2_quantile_step(
@@ -2279,7 +2260,7 @@ SQLMATH_FUNC static void sql3_win_sinefit2_final(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - cleanup
-    doublewin_agg_free(dblwin_agg);
+    doublewinAggfree(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql3_win_sinefit2_inverse(
@@ -2366,9 +2347,6 @@ static void sql3_win_sinefit2_step(
         wsf += 1;
         xxyy += WIN_SINEFIT_STEP;
     }
-    return;
-  catch_error:
-    doublewin_agg_free(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql1_sinefit_extract_func(
@@ -2603,7 +2581,7 @@ SQLMATH_FUNC static void sql3_win_ema1_final(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - cleanup
-    doublewin_agg_free(dblwin_agg);
+    doublewinAggfree(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql3_win_ema1_inverse(
@@ -2669,9 +2647,6 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
     for (int ii = 0; ii < ncol; ii += 1) {
         DOUBLEWIN_AGGREGATE_PUSH(dblwin_head[ii]);
     }
-    return;
-  catch_error:
-    doublewin_agg_free(dblwin_agg);
 }
 
 // SQLMATH_FUNC sql3_win_ema1_func - end
@@ -2700,7 +2675,7 @@ SQLMATH_FUNC static void sql3_win_ema2_final(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - cleanup
-    doublewin_agg_free(dblwin_agg);
+    doublewinAggfree(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql3_win_ema2_inverse(
@@ -2742,7 +2717,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_final(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - cleanup
-    doublewin_agg_free(dblwin_agg);
+    doublewinAggfree(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql3_win_quantile1_inverse(
@@ -2835,9 +2810,6 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
             : (1 - arg_quantile) * arr[kk1] + arg_quantile * arr[kk2];
         arr += 2;
     }
-    return;
-  catch_error:
-    doublewin_agg_free(dblwin_agg);
 }
 
 // SQLMATH_FUNC sql3_win_quantile1_func - end
@@ -2866,7 +2838,7 @@ SQLMATH_FUNC static void sql3_win_quantile2_final(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - cleanup
-    doublewin_agg_free(dblwin_agg);
+    doublewinAggfree(dblwin_agg);
 }
 
 SQLMATH_FUNC static void sql3_win_quantile2_inverse(
