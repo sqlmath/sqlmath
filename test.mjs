@@ -1697,8 +1697,8 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
                 },
                 db,
                 sql: (`
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
+DROP TABLE IF EXISTS __sinefit_win;
+CREATE TEMP TABLE __sinefit_win AS
     SELECT
         id,
         __wsf,
@@ -1729,7 +1729,7 @@ CREATE TEMP TABLE __tmp1 AS
             ) AS __wsf
         FROM JSON_EAcH($valInput)
     );
-UPDATE __tmp1
+UPDATE __sinefit_win
     SET
         __wsf = sinefit_refitlast(
             __wsf,
@@ -1745,7 +1745,7 @@ UPDATE __tmp1
             0, 0
         )
     WHERE id = 28;
-UPDATE __tmp1
+UPDATE __sinefit_win
     SET
         __wsf = sinefit_refitlast(
             __wsf,
@@ -1766,7 +1766,7 @@ SELECT
         ${sqlSinefitExtractLnr("__wsf", 0, "1")},
         ${sqlSinefitExtractLnr("__wsf", 8, "2")},
         ${sqlSinefitExtractLnr("__wsf", 9, "3")}
-    FROM __tmp1;
+    FROM __sinefit_win;
                 `)
             });
             valActual = valActual[0].map(function ({
@@ -1878,8 +1878,8 @@ SELECT
                     assertJsonEqual(obj3, valExpected2, valActual);
                     break;
                 default:
-                    assertJsonEqual(obj2, obj1, valActual);
-                    assertJsonEqual(obj3, obj1, valActual);
+                    assertJsonEqual(obj2, obj1, valActual); // flaky
+                    assertJsonEqual(obj3, obj1, valActual); // flaky
                 }
                 return obj1;
             });
@@ -1898,6 +1898,9 @@ SELECT
                 "mxx": 2,
                 "myy": 0,
                 "nnn": 1,
+                // #2858 "rr0": null,
+                // #2851 "rr0": 2,
+                // #2848 "rr0": -3.97134429794811e+305,
                 "rr0": 0,
                 "rr1": null,
                 "xx1": 2,
@@ -2500,8 +2503,8 @@ date close
                         },
                         db,
                         sql: (`
-DROP TABLE IF EXISTS __tmp1;
-CREATE TEMP TABLE __tmp1 AS
+DROP TABLE IF EXISTS __sinefit_csv;
+CREATE TEMP TABLE __sinefit_csv AS
     SELECT
         *,
         win_sinefit2(0, NULL, ii, yy, ii, yy) OVER (
@@ -2526,12 +2529,12 @@ SELECT
         sinefit_extract(__wsf, 0, 'syy', 0) AS syy,
         sinefit_extract(__wsf, 0, 'vxx', 0) AS vxx,
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
-    FROM __tmp1
+    FROM __sinefit_csv
     JOIN (
         SELECT
             MEDIAN(yy) AS yy_avg,
             STDEV(yy) AS yy_err
-        FROM __tmp1
+        FROM __sinefit_csv
     )
     LEFT JOIN (
         SELECT
@@ -2539,7 +2542,7 @@ SELECT
             sinefit_extract(__wsf, 0, 'predict', ii + 1) AS predict,
             sinefit_extract(__wsf, 0, 'predict_lnr', ii + 1) AS predict_lnr,
             sinefit_extract(__wsf, 0, 'predict_snr', ii + 1) AS predict_snr
-        FROM __tmp1
+        FROM __sinefit_csv
     ) USING (ii);
                         `)
                     })

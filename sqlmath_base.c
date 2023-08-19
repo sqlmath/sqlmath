@@ -283,10 +283,6 @@ SQLMATH_API double *doublewinBody(
 SQLMATH_API double *doublewinHead(
     const Doublewin * dblwin
 );
-SQLMATH_API Doublewin *doublewinJsonfrom(
-    const char *json,
-    int nn
-);
 SQLMATH_API Doublewin *doublewinMalloc(
     const int nhead
 );
@@ -950,7 +946,7 @@ SQLMATH_API int doublewinAggpush(
     uint32_t alloc = dblwin->alloc;
     if (nn * sizeof(double) >= alloc) {
         // error - toobig
-        if (alloc >= SQLITE_MAX_LENGTH2) {
+        if (alloc <= 0 || SQLITE_MAX_LENGTH2 <= alloc) {
             goto catch_error;
         }
         alloc = MIN(SQLITE_MAX_LENGTH2, 2 * alloc);
@@ -959,6 +955,11 @@ SQLMATH_API int doublewinAggpush(
         if (dblwin == NULL) {
             goto catch_error;
         }
+        // Zero dblwin after realloc.
+        memset(                 //
+            (char *) dblwin + (int) dblwin->alloc,      //
+            0,                  //
+            alloc - (int) dblwin->alloc);
         dblwin->alloc = alloc;
         *dblwin_agg = dblwin;
     }
@@ -983,71 +984,6 @@ SQLMATH_API double *doublewinHead(
     return (double *) ((char *) dblwin + sizeof(Doublewin));
 }
 
-SQLMATH_API Doublewin *doublewinJsonfrom(
-    const char *json,
-    int nn
-) {
-    // declare var
-    int ii = 0;
-    int jj = 0;
-    // validate json
-    for (; ii < nn; ii += 1) {
-        if (json[ii] == '[') {
-            break;
-        }
-    }
-    for (; nn > ii; nn -= 1) {
-        if (json[nn - 1] == ']') {
-            break;
-        }
-    }
-    if (nn <= ii) {
-        return NULL;
-    }
-    jj = ii;
-    // init dblwin_agg
-    Doublewin *dblwin_agg[1] = { 0 };
-    *dblwin_agg = doublewinMalloc(0);
-    if (*dblwin_agg == NULL) {
-        return NULL;
-    }
-    // str99 - append double
-    for (; ii < nn; ii += 1) {
-        // skip whitespace
-        switch (json[jj]) {
-        case '[':
-        case '\x09':
-        case '\x0a':
-        case '\x0d':
-        case '\x20':
-            jj = ii;
-            break;
-        default:
-            switch (json[ii]) {
-            case ',':
-            case ']':
-                doublewinAggpush(dblwin_agg, atof(json + jj));
-                jj = ii + 1;
-                break;
-            }
-            break;
-        }
-        switch (json[jj]) {
-        case ',':
-            goto catch_error_json;
-        case ']':
-            if ((*dblwin_agg)->nbody > 0) {
-                goto catch_error_json;
-            }
-            break;
-        }
-    }
-    return *dblwin_agg;
-  catch_error_json:
-    doublewinAggfree(dblwin_agg);
-    return NULL;
-}
-
 SQLMATH_API Doublewin *doublewinMalloc(
     const int nhead
 ) {
@@ -1059,7 +995,7 @@ SQLMATH_API Doublewin *doublewinMalloc(
     if (dblwin == NULL) {
         return NULL;
     }
-    // zero dblwin
+    // Zero dblwin after malloc.
     memset(dblwin, 0, alloc);
     dblwin->alloc = alloc;
     dblwin->nhead = doubleMax(0, nhead);
@@ -2283,12 +2219,15 @@ static void sql3_win_sinefit2_step(
     for (int ii = 0; ii < ncol; ii += 1) {
         // dblwin - init xx, yy, rr
         wsf = (WinSinefit *) dblwin_head + ii;
-        xxyy = dblwin_body + ii * WIN_SINEFIT_STEP;
         sqlite3_value_double_or_prev(argv[0], &wsf->xx1);
         sqlite3_value_double_or_prev(argv[1], &wsf->yy1);
-        wsf->rr0 = xxyy[waa + 2];
-        wsf->xx0 = xxyy[waa + 0];
-        wsf->yy0 = xxyy[waa + 1];
+        // bugfix - Fix buffer-overlow, reading pointer past dblwin->nbody.
+        if (dblwin->nbody) {
+            xxyy = dblwin_body + ii * WIN_SINEFIT_STEP;
+            wsf->rr0 = xxyy[waa + 2];
+            wsf->xx0 = xxyy[waa + 0];
+            wsf->yy0 = xxyy[waa + 1];
+        }
         wsf->wbb = wbb;
         wsf->xx2 = xx2;
         const double xx = wsf->xx1;
@@ -2328,15 +2267,16 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
 // This function will extract <val> from WinSinefit-object with given <key>.
     UNUSED_PARAMETER(argc);
     // validate argv
-    const int bytes = sqlite3_value_bytes(argv[0]);
     const int icol = sqlite3_value_int(argv[1]);
+    const uint32_t bytes = (uint32_t) sqlite3_value_bytes(argv[0]);
     if (icol < 0) {
         sqlite3_result_error(context,
             "sinefit_extract() - 2nd argument must be integer column >= 0",
             -1);
         return;
     }
-    if ((size_t) bytes < (icol + 1) * WIN_SINEFIT_N * sizeof(double)) {
+    if (bytes <= 0 || SQLITE_MAX_LENGTH2 < bytes        //
+        || bytes < (icol + 1) * WIN_SINEFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
             "sinefit_extract()"
             " - 1st argument as sinefit-object does not have enough columns",
@@ -2466,12 +2406,13 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
 // This function will refit last datapoint.
     static const int argc0 = 1;
     // validate argv
-    const int bytes = sqlite3_value_bytes(argv[0]);
     const int ncol = (argc - argc0) / 2;
+    const uint32_t bytes = (uint32_t) sqlite3_value_bytes(argv[0]);
     if (argc < argc0 + 2 || argc != argc0 + ncol * 2) {
         goto catch_error;
     }
-    if (bytes <= 0 || (size_t) bytes < ncol * WIN_SINEFIT_N * sizeof(double)) {
+    if (bytes <= 0 || SQLITE_MAX_LENGTH2 < bytes        //
+        || bytes < ncol * WIN_SINEFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
             "sinefit_refitlast()"
             " - 1st argument as sinefit-object does not have enough columns",
@@ -2481,8 +2422,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
     const WinSinefit *blob0 = sqlite3_value_blob(argv[0]);
     const int nbody = blob0->nnn * ncol * WIN_SINEFIT_STEP;
     if (blob0->nnn <= 0
-        || (size_t) bytes !=
-        (ncol * WIN_SINEFIT_N + nbody) * sizeof(double)) {
+        || bytes != (ncol * WIN_SINEFIT_N + nbody) * sizeof(double)) {
         sqlite3_result_error(context,
             "sinefit_refitlast()"
             " - 1st argument as sinefit-object does not have enough columns",
