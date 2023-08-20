@@ -60,7 +60,6 @@ let SQLITE_OPEN_TEMP_JOURNAL = 0x00001000;  /* VFS only */
 let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
 let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
 let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
-let SQLITE_WIN_SLR_ELEM_SIZE = 10;
 let cModule;
 let cModulePath;
 let consoleError = console.error;
@@ -98,7 +97,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2023.7.21";
+let version = "v2023.8.20";
 
 function assertJsonEqual(aa, bb, message) {
 
@@ -358,8 +357,7 @@ async function ciBuildExt1NodejsConfigure({
             "conditions": [
                 [
                     "OS == \u0027win\u0027",
-                    {"defines": ["WIN32"]},
-                    {"defines": ["HAVE_UNISTD_H"]}
+                    {"defines": ["WIN32"]}
                 ]
             ],
 // https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
@@ -531,26 +529,6 @@ function dbExecAndReturnLastBlobAsync({
         responseType: "lastBlob",
         sql
     });
-}
-
-async function dbExecAndReturnLastJsonAsync(option) {
-
-// This function will exec <sql> in <db> and return last value retrieved
-// from execution as raw text.
-
-    return JSON.parse(
-        await dbExecAndReturnLastTextAsync(option)
-    );
-}
-
-async function dbExecAndReturnLastTextAsync(option) {
-
-// This function will exec <sql> in <db> and return last value retrieved
-// from execution as raw text.
-
-    return new TextDecoder().decode(
-        await dbExecAndReturnLastBlobAsync(option)
-    );
 }
 
 async function dbExecAsync({
@@ -1357,7 +1335,6 @@ export {
     SQLITE_OPEN_TRANSIENT_DB,
     SQLITE_OPEN_URI,
     SQLITE_OPEN_WAL,
-    SQLITE_WIN_SLR_ELEM_SIZE,
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
@@ -1365,8 +1342,6 @@ export {
     ciBuildExt,
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
-    dbExecAndReturnLastJsonAsync,
-    dbExecAndReturnLastTextAsync,
     dbExecAsync,
     dbFileExportAsync,
     dbFileImportAsync,
