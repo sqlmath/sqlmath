@@ -114,7 +114,7 @@
      "functionName": "assertOrThrow",
      "ranges": [
       {
-       "count": 8049,
+       "count": 8046,
        "endOffset": 5419,
        "startOffset": 5121
       },
@@ -140,17 +140,17 @@
      "functionName": "cCallAsync",
      "ranges": [
       {
-       "count": 634,
+       "count": 633,
        "endOffset": 7991,
        "startOffset": 5421
       },
       {
-       "count": 70,
+       "count": 69,
        "endOffset": 5765,
        "startOffset": 5747
       },
       {
-       "count": 15557,
+       "count": 15526,
        "endOffset": 5888,
        "startOffset": 5855
       },
@@ -160,12 +160,12 @@
        "startOffset": 7800
       },
       {
-       "count": 622,
+       "count": 621,
        "endOffset": 7882,
        "startOffset": 7847
       },
       {
-       "count": 569,
+       "count": 568,
        "endOffset": 7900,
        "startOffset": 7882
       },
@@ -181,17 +181,17 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 19988,
+       "count": 19956,
        "endOffset": 7380,
        "startOffset": 5952
       },
       {
-       "count": 15859,
+       "count": 15827,
        "endOffset": 6048,
        "startOffset": 6034
       },
       {
-       "count": 16426,
+       "count": 16394,
        "endOffset": 6164,
        "startOffset": 6057
       },
@@ -782,17 +782,17 @@
      "functionName": "isExternalBuffer",
      "ranges": [
       {
-       "count": 3550,
+       "count": 3549,
        "endOffset": 22894,
        "startOffset": 22589
       },
       {
-       "count": 1744,
+       "count": 1743,
        "endOffset": 22891,
        "startOffset": 22713
       },
       {
-       "count": 1742,
+       "count": 1741,
        "endOffset": 22885,
        "startOffset": 22766
       }
@@ -803,7 +803,7 @@
      "functionName": "jsbatonCreate",
      "ranges": [
       {
-       "count": 638,
+       "count": 637,
        "endOffset": 23123,
        "startOffset": 22896
       }
@@ -814,12 +814,12 @@
      "functionName": "jsbatonValuePush",
      "ranges": [
       {
-       "count": 2098,
+       "count": 2097,
        "endOffset": 29362,
        "startOffset": 23125
       },
       {
-       "count": 2089,
+       "count": 2088,
        "endOffset": 24303,
        "startOffset": 24288
       },
@@ -889,7 +889,7 @@
        "startOffset": 25446
       },
       {
-       "count": 1739,
+       "count": 1738,
        "endOffset": 26853,
        "startOffset": 25589
       },
@@ -899,7 +899,7 @@
        "startOffset": 25670
       },
       {
-       "count": 1735,
+       "count": 1734,
        "endOffset": 26201,
        "startOffset": 26134
       },
@@ -919,12 +919,12 @@
        "startOffset": 26354
       },
       {
-       "count": 1707,
+       "count": 1706,
        "endOffset": 26569,
        "startOffset": 26467
       },
       {
-       "count": 1687,
+       "count": 1686,
        "endOffset": 26576,
        "startOffset": 26569
       },
@@ -954,12 +954,12 @@
        "startOffset": 27711
       },
       {
-       "count": 1727,
+       "count": 1726,
        "endOffset": 28411,
        "startOffset": 27742
       },
       {
-       "count": 1210,
+       "count": 1209,
        "endOffset": 27913,
        "startOffset": 27847
       },
@@ -984,7 +984,7 @@
        "startOffset": 28953
       },
       {
-       "count": 2096,
+       "count": 2095,
        "endOffset": 29361,
        "startOffset": 29342
       }
@@ -1175,7 +1175,7 @@
      "functionName": "dbFinalizationRegistry",
      "ranges": [
       {
-       "count": 14,
+       "count": 13,
        "endOffset": 33161,
        "startOffset": 32853
       },
