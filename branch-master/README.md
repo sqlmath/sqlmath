@@ -2,7 +2,7 @@
 
 
 # Status
-| Branch | [master<br>(v2023.7.21)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
+| Branch | [master<br>(v2023.8.20)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
 |--:|:--:|:--:|:--:|
 | CI | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Amaster) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=beta)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Abeta) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=alpha)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Aalpha) |
 | Coverage | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) |
@@ -107,7 +107,6 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 - JSLint is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
 - [cpplint.py](cpplint.py) is under [BSD 3-clause license](https://github.com/cpplint/cpplint/blob/develop/LICENSE).
 - [indent.exe](indent.exe) is under [GPLv3 License](https://www.gnu.org/licenses/gpl-3.0.txt).
-- [sqlmath_jenks.c](sqlmath_jenks.c) is derived from [GPLv3 licensed CalcNaturalBreaks](https://www.geodms.nl/CalcNaturalBreaks).
 - Everything else is under MIT License.
 
 
@@ -120,9 +119,9 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 ```shell
 python -m build
 #
-twine upload --repository testpypi dist/sqlmath-2023.7.21*
-py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2023.7.21
+twine upload --repository testpypi dist/sqlmath-2023.8.20*
+py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2023.8.20
 #
-twine upload dist/sqlmath-2023.7.21*
-pip install sqlmath==2023.7.21
+twine upload dist/sqlmath-2023.8.20*
+pip install sqlmath==2023.8.20
 ```
