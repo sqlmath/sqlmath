@@ -1,7 +1,38 @@
 # Changelog
 
 # Todo
+- sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
+
+# v2023.8.20
+- jslint - Update jslint to v2023.8.20.
+- chart - Add technical-chart tradebot_technical_sinefit.
+- sqlmath - bugfix - Fix buffer-overflow in c-function sql3_win_sinefit2_step().
+- sqlmath - Rename c-struct Vector99 to Doublewin.
+- sqlmath - Add sql-function fmod().
+- sqlmath - Rename sql-functions xxx_cosfit_xxx() to xxx_sinefit_xxx().
+- sqlmath - Revamp sql-function win_cosfit2() to 1) find frequency cww from dft, and then 2) find phase cpp from linear equation y=b*cos(w*t)+c*sin(w*t).
+- sqlmath - Update sql-function win_cosfit2() to use sine() instead of cosine() for better phase-continuity of initial guesses of phase at cpp=0.
+- sqlmath - Update sql-agg-function stdev() to aggregate over running-window.
+- sqlmath - Update sql-function win_cosfit2_refitlast() to be able to update cosine-fit as well.
+- sqlmath - Merge sql-functions win_cosfit2_predict(), win_cosfit2_extract() into sql-function cosfit_extract().
+- sqlmath - Add c-helper-functions doubleAbs(), doubleMax(), doubleMin().
+- sqlmath - merge c-struct WinCosfitInternal, WinCosfitResult into c-struct WinCosfit.
+- sqlmath - Update sql-functions win_cosfit2(), win_emax(), win_quantilex() to move variable-length arguments to last position.
+- sqlmath - Update sql-function win_cosfit2() with additional argument modeNoCsf.
+- sqlmath - Merge sql-functions win_slr2(), win_slrcos2() into sql-function win_cosfit2().
+- sqlmath - Streamline sql-function win_slr2_step() to only update last datapoint.
+- sqlmath - Update sql-function win_quantile2(), win_slr2() to input/output doublearray instead of json for better performance.
+- sqlmath - Add test-file test_data_cosfit.csv.
+- sqlmath - Add sql-function win_slrcos2().
+- sqlmath - Update sql-function win_slr2() to input/output doublearray instead of json for better performance.
+- sqlmath - Rename sql-functions jsonfromdoublearray() to doublearray_jsonto(), jsontodoublearray() to doublearray_jsonfrom().
+- sqlmath - Remove unused sql-functions:
+    btobase64(), btotext()
+    jenks_blob(), jenks_concat(), jenks_json()
+    vec_concat()
+- betadog - Migrate sql-functions matrix2d_concat() from sqlmath to betadog.
+- sqlmath - Add sql-function win_slr2_step() to incrementally step from last slr-state.
 
 # v2023.7.21
 - sqlmath - Update sql-function win_slr2() to additionally return predicted y-value and rmse.
