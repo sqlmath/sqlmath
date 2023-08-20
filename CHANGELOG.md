@@ -5,6 +5,7 @@
 - none
 
 # v2023.8.1-beta
+- chart - Add technical-chart tradebot_technical_sinefit.
 - sqlmath - bugfix - Fix buffer-overflow in c-function sql3_win_sinefit2_step().
 - sqlmath - Rename c-struct Vector99 to Doublewin.
 - sqlmath - Add sql-function fmod().

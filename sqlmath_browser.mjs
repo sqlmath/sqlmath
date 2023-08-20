@@ -1348,7 +1348,177 @@ UPDATE ${tableChart}
     WHERE
         datatype = 'series_label';
             `);
-        })
+        }),
+        (function () {
+            let tableChart = `chart._{{ii}}_tradebot_technical_sinefit`;
+            return (`
+CREATE TABLE ${tableChart} (
+    datatype TEXT NOT NULL,
+    series_index INTEGER,
+    xx REAL,
+    yy REAL,
+    series_label REAL,
+    xx_label TEXT,
+    options TEXT
+);
+
+-- table - ${tableChart} - insert
+INSERT INTO ${tableChart} (datatype, options)
+    SELECT
+        'options' AS datatype,
+        '{
+            "title": "tradebot technical - sinusoidal fit of spx",
+            "xaxisTitle": "date",
+            "xvalueConvert": "juliandayToDate",
+            "yaxisTitle": "percent gain",
+            "yvalueSuffix": " %"
+        }' AS options;
+INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
+    SELECT
+        'series_label' AS datatype,
+        IIF(value <= 4, '{}', '{"isHidden": 1}') AS options,
+        value AS series_index,
+        (CASE
+            WHEN (value = 1) THEN
+                'spx'
+            WHEN (value = 2) THEN
+                'spx predicted linear+sine - 2 month window'
+            WHEN (value = 3) THEN
+                'spx predicted linear - 2 month window'
+            WHEN (value = 4) THEN
+                'spx predicted sine - 2 month window'
+            WHEN (value = 5) THEN
+                'spx predicted linear+sine - 6 month window'
+            WHEN (value = 6) THEN
+                'spx predicted linear - 6 month window'
+            WHEN (value = 7) THEN
+                'spx predicted sine - 6 month window'
+        END) AS series_label
+    FROM GENERATE_SERIES(1, 7);
+INSERT INTO ${tableChart} (datatype, xx, xx_label)
+    SELECT
+        'xx_label' AS datatype,
+        JULIANDAY(ydate) AS xx,
+        ydate AS xx_label
+    FROM (
+        SELECT DISTINCT ydate FROM tradebot_technical_sinefit ORDER BY ttt DESC
+    );
+INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
+    SELECT
+        'yy_value' AS datatype,
+        series_index,
+        xx,
+        yy
+    FROM (SELECT xx, xx_label FROM ${tableChart} WHERE datatype = 'xx_label')
+    LEFT JOIN (
+        SELECT
+            1 AS series_index,
+            ydate,
+            IIF(ttt >= 1, price_actual, NULL) AS yy
+        FROM tradebot_technical_sinefit
+        WHERE
+            nnn = (SELECT wsf_nnn02 FROM tradebot_state)
+        --
+        UNION ALL
+        --
+        SELECT
+            2 AS series_index,
+            ydate,
+            price_predicted AS yy
+        FROM tradebot_technical_sinefit
+        WHERE
+            nnn = (SELECT wsf_nnn02 FROM tradebot_state)
+        --
+        UNION ALL
+        --
+        SELECT
+            3 AS series_index,
+            ydate,
+            price_linear AS yy
+        FROM tradebot_technical_sinefit
+        WHERE
+            nnn = (SELECT wsf_nnn02 FROM tradebot_state)
+        --
+        UNION ALL
+        --
+        SELECT
+            4 AS series_index,
+            ydate,
+            price_sine + __offset AS yy
+        FROM tradebot_technical_sinefit
+        JOIN (
+            SELECT
+                price_actual - price_sine AS __offset
+            FROM tradebot_technical_sinefit
+            WHERE
+                nnn = (SELECT wsf_nnn02 FROM tradebot_state)
+                AND ttt = 1
+        )
+        WHERE
+            nnn = (SELECT wsf_nnn02 FROM tradebot_state)
+        --
+        UNION ALL
+        --
+        SELECT
+            5 AS series_index,
+            ydate,
+            price_predicted AS yy
+        FROM tradebot_technical_sinefit
+        WHERE
+            nnn = (SELECT wsf_nnn06 FROM tradebot_state)
+        --
+        UNION ALL
+        --
+        SELECT
+            6 AS series_index,
+            ydate,
+            price_linear AS yy
+        FROM tradebot_technical_sinefit
+        WHERE
+            nnn = (SELECT wsf_nnn06 FROM tradebot_state)
+        --
+        UNION ALL
+        --
+        SELECT
+            7 AS series_index,
+            ydate,
+            price_sine + __offset AS yy
+        FROM tradebot_technical_sinefit
+        JOIN (
+            SELECT
+                price_actual - price_sine AS __offset
+            FROM tradebot_technical_sinefit
+            WHERE
+                nnn = (SELECT wsf_nnn06 FROM tradebot_state)
+                AND ttt = 1
+        )
+        WHERE
+            nnn = (SELECT wsf_nnn06 FROM tradebot_state)
+    ) ON ydate = xx_label;
+
+-- table - ${tableChart} - normalize - yy
+UPDATE ${tableChart}
+    SET
+        yy = yy * __inv
+    FROM (
+        SELECT
+            100.0 / price_actual AS __inv
+        FROM tradebot_technical_sinefit
+        WHERE
+            ttt = (SELECT MAX(ttt) FROM tradebot_technical_sinefit)
+    );
+UPDATE ${tableChart}
+    SET
+        yy = ROUND(yy - __avg, 4)
+    FROM (
+        SELECT
+            MEDIAN(yy) AS __avg
+        FROM ${tableChart}
+        WHERE
+            series_index = 1
+    );
+            `);
+        }())
     ].flat().flat().map(function (sql, ii) {
         return sql.trim().replace((
             /\{\{ii\}\}/g
