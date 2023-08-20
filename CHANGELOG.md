@@ -4,7 +4,8 @@
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 
-# v2023.8.1-beta
+# v2023.8.20
+- jslint - Update jslint to v2023.8.20.
 - chart - Add technical-chart tradebot_technical_sinefit.
 - sqlmath - bugfix - Fix buffer-overflow in c-function sql3_win_sinefit2_step().
 - sqlmath - Rename c-struct Vector99 to Doublewin.
