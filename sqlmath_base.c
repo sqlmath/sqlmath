@@ -1454,7 +1454,7 @@ SQLMATH_API double marginoferror95(
     double pp
 ) {
 // This function will calculate margin-of-error sqrt(pp*(1-pp)/nn).
-    return 1.9599639845400542 * sqrt(pp * (1 - pp) / nn);
+    return 1.9599639845400543 * sqrt(pp * (1 - pp) / nn);
 }
 
 SQLMATH_FUNC static void sql1_marginoferror95_func(
@@ -2207,7 +2207,7 @@ static void sql3_win_sinefit2_step(
     }
     // dblwin - init argv
     const double xx2 = sqlite3_value_double_or_nan(argv[1]);
-    const int modeNosnr = sqlite3_value_int(argv[0]);
+    const int modeSnr = sqlite3_value_int(argv[0]);
     argv += argc0;
     WinSinefit *wsf = NULL;
     const int waa = dblwin->waa;
@@ -2247,7 +2247,7 @@ static void sql3_win_sinefit2_step(
         // dblwin - calculate lnr
         winSinefitLnr(wsf, xxyy, wbb);
         // dblwin - calculate snr
-        if (!modeNosnr) {
+        if (modeSnr) {
             winSinefitSnr(wsf, xxyy, wbb, dblwin->nbody, dblwin->ncol);
         }
         // increment counter
@@ -2261,7 +2261,7 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will extract <val> from WinSinefit-object with given <key>.
+// This function will extract <val> from WinSinefit-object, with given <key>.
     UNUSED_PARAMETER(argc);
     // validate argv
     const int icol = sqlite3_value_int(argv[1]);
@@ -2316,6 +2316,12 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
             sqlite3_result_double_or_null(context, ((double *) wsf)[ii]);
             return;
         }
+    }
+    // gaussian-normalized y-value
+    if (strcmp(key, "gyy") == 0) {
+        sqlite3_result_double_or_null(context,  //
+            (wsf->yy1 - wsf->myy) * sqrt((wsf->nnn - 1) / wsf->vyy));
+        return;
     }
     // linest y-stdev.s2
     if (strcmp(key, "lee") == 0) {

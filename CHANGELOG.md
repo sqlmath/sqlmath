@@ -4,6 +4,9 @@
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 
+# v2023.9.1-beta
+- sqlmath - Update function win_sinefit() to allow outputting gaussian-normalized y-value gyy.
+
 # v2023.8.20
 - jslint - Update jslint to v2023.8.20.
 - chart - Add technical-chart tradebot_technical_sinefit.

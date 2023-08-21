@@ -1657,6 +1657,7 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
         let valInput;
         function sqlSinefitExtractLnr(wsf, ii, suffix) {
             return (`
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'gyy', 0), 8) AS gyy${suffix},
     ROUND(sinefit_extract(${wsf}, ${ii}, 'laa', 0), 8) AS laa${suffix},
     ROUND(sinefit_extract(${wsf}, ${ii}, 'lbb', 0), 8) AS lbb${suffix},
     ROUND(sinefit_extract(${wsf}, ${ii}, 'lee', 0), 8) AS lee${suffix},
@@ -1712,7 +1713,7 @@ CREATE TEMP TABLE __sinefit_win AS
         SELECT
             id,
             win_sinefit2(
-                0, ${xx2},
+                1, ${xx2},
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
@@ -2113,7 +2114,7 @@ SELECT
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM (
         SELECT
-            win_sinefit2(0, NULL, value->>0, value->>1) AS __wsf
+            win_sinefit2(1, NULL, value->>0, value->>1) AS __wsf
         FROM JSON_EACH($valInput)
     );
                         `)
@@ -2122,6 +2123,7 @@ SELECT
                 assertJsonEqual(
                     valActual,
                     {
+                        "gyy": 0.19611614,
                         "laa": 0.77941176,
                         "lbb": 0.84558824,
                         "lee": 1.56536502,
@@ -2144,6 +2146,7 @@ SELECT
                 let valActual;
                 let valExpected;
                 valExpected = {
+                    "gyy": -1.02062073,
                     "laa": -0.82025678,
                     "lbb": 0.14621969,
                     "lee": 2.74202904,
@@ -2167,7 +2170,7 @@ SELECT
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM (
         SELECT
-            win_sinefit2(0, NULL, xx, yy) AS __wsf
+            win_sinefit2(1, NULL, xx, yy) AS __wsf
         FROM (
             SELECT 34 AS xx, 5 AS yy
             UNION ALL SELECT 108, 17
@@ -2507,7 +2510,7 @@ DROP TABLE IF EXISTS __sinefit_csv;
 CREATE TEMP TABLE __sinefit_csv AS
     SELECT
         *,
-        win_sinefit2(0, NULL, ii, yy, ii, yy) OVER (
+        win_sinefit2(1, NULL, ii, yy, ii, yy) OVER (
             ORDER BY date ASC
             ROWS BETWEEN ${ttSinefit - 1} PRECEDING AND 0 FOLLOWING
         ) AS __wsf
