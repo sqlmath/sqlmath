@@ -1414,7 +1414,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         SELECT
             1 AS series_index,
             ydate,
-            IIF(ttt >= 1, price_actual, NULL) AS yy
+            price_actual AS yy
         FROM tradebot_technical_sinefit
         WHERE
             nnn = (SELECT wsf_nnn02 FROM tradebot_state)
