@@ -1417,7 +1417,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
             price_actual AS yy
         FROM tradebot_technical_sinefit
         WHERE
-            nnn = (SELECT wsf_nnn02 FROM tradebot_state)
+            wnn = (SELECT wsf_wnn02 FROM tradebot_state)
         --
         UNION ALL
         --
@@ -1427,7 +1427,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
             price_predicted AS yy
         FROM tradebot_technical_sinefit
         WHERE
-            nnn = (SELECT wsf_nnn02 FROM tradebot_state)
+            wnn = (SELECT wsf_wnn02 FROM tradebot_state)
         --
         UNION ALL
         --
@@ -1437,7 +1437,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
             price_linear AS yy
         FROM tradebot_technical_sinefit
         WHERE
-            nnn = (SELECT wsf_nnn02 FROM tradebot_state)
+            wnn = (SELECT wsf_wnn02 FROM tradebot_state)
         --
         UNION ALL
         --
@@ -1451,11 +1451,11 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
                 price_actual - price_sine AS __offset
             FROM tradebot_technical_sinefit
             WHERE
-                nnn = (SELECT wsf_nnn02 FROM tradebot_state)
+                wnn = (SELECT wsf_wnn02 FROM tradebot_state)
                 AND ttt = 1
         )
         WHERE
-            nnn = (SELECT wsf_nnn02 FROM tradebot_state)
+            wnn = (SELECT wsf_wnn02 FROM tradebot_state)
         --
         UNION ALL
         --
@@ -1465,7 +1465,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
             price_predicted AS yy
         FROM tradebot_technical_sinefit
         WHERE
-            nnn = (SELECT wsf_nnn06 FROM tradebot_state)
+            wnn = (SELECT wsf_wnn06 FROM tradebot_state)
         --
         UNION ALL
         --
@@ -1475,7 +1475,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
             price_linear AS yy
         FROM tradebot_technical_sinefit
         WHERE
-            nnn = (SELECT wsf_nnn06 FROM tradebot_state)
+            wnn = (SELECT wsf_wnn06 FROM tradebot_state)
         --
         UNION ALL
         --
@@ -1489,11 +1489,11 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
                 price_actual - price_sine AS __offset
             FROM tradebot_technical_sinefit
             WHERE
-                nnn = (SELECT wsf_nnn06 FROM tradebot_state)
+                wnn = (SELECT wsf_wnn06 FROM tradebot_state)
                 AND ttt = 1
         )
         WHERE
-            nnn = (SELECT wsf_nnn06 FROM tradebot_state)
+            wnn = (SELECT wsf_wnn06 FROM tradebot_state)
     ) ON ydate = xx_label;
 
 -- table - ${tableChart} - normalize - yy
