@@ -1412,17 +1412,16 @@ SELECT
 SELECT
         id,
         doublearray_jsonto(win_quantile2(
-            ${quantile},
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            IIF(id = 34, -1, value->>1)
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, IIF(id = 34, -1, value->>1)
         ) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
@@ -1477,7 +1476,7 @@ SELECT win_quantile2(1) FROM (SELECT 1);
 SELECT win_quantile2(NULL, 1) FROM (SELECT 1);
                         `)
                     });
-                }, "invalid argument 'quantile'");
+                }, "argument 'quantile'");
                 // test win_quantile1-null-case handling-behavior
                 valActual = await dbExecAsync({
                     db,
@@ -1879,8 +1878,8 @@ SELECT
                     assertJsonEqual(obj3, valExpected2, valActual);
                     break;
                 default:
-                    assertJsonEqual(obj2, obj1, valActual); // flaky
-                    assertJsonEqual(obj3, obj1, valActual); // flaky
+                    assertJsonEqual(obj2, obj1, valActual);
+                    assertJsonEqual(obj3, obj1, valActual);
                 }
                 return obj1;
             });
@@ -1899,9 +1898,6 @@ SELECT
                 "mxx": 2,
                 "myy": 0,
                 "nnn": 1,
-                // #2858 "rr0": null,
-                // #2851 "rr0": 2,
-                // #2848 "rr0": -3.97134429794811e+305,
                 "rr0": 0,
                 "rr1": null,
                 "xx1": 2,

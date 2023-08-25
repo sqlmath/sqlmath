@@ -5,6 +5,7 @@
 - none
 
 # v2023.9.1-beta
+- sqlmath - Update function win_quantile2() to accept different quantile-arg for each icol.
 - sqlmath - Update function win_sinefit() to allow outputting gaussian-normalized y-value gyy.
 
 # v2023.8.20

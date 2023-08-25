@@ -2193,7 +2193,7 @@ static void sql3_win_sinefit2_step(
 // and sine-regression as:
 //     yy = laa + lbb*xx + saa*sin(sww*xx + spp)
     static const int argc0 = 2;
-    if (argc < argc0 + 2 || (argc0 + 2) % 2) {
+    if (argc < argc0 + 2 || (argc - argc0) % 2) {
         sqlite3_result_error(context,
             "win_sinefit2() - wrong number of arguments", -1);
         return;
@@ -2202,7 +2202,7 @@ static void sql3_win_sinefit2_step(
     const int ncol = (argc - argc0) / 2;
     DOUBLEWIN_AGGREGATE_CONTEXT(ncol * WIN_SINEFIT_N);
     if (dblwin->nbody == 0) {
-        // init ncol
+        // dbwin - init ncol
         dblwin->ncol = ncol;
     }
     // dblwin - init argv
@@ -2529,7 +2529,7 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
     double arg_alpha = NAN;
     DOUBLEWIN_AGGREGATE_CONTEXT(argc);
     if (dblwin->nbody == 0) {
-        // ncol
+        // dbwin - init ncol
         dblwin->ncol = ncol;
         // arg_alpha
         arg_alpha = sqlite3_value_double_or_nan(argv[0]);
@@ -2619,7 +2619,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_value(
 // This function will calculate running quantile.
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    sqlite3_result_double(context, dblwin_head[(int) dblwin->ncol + 1]);
+    sqlite3_result_double(context, dblwin_head[(int) dblwin->ncol]);
 }
 
 SQLMATH_FUNC static void sql3_win_quantile1_final(
@@ -2648,7 +2648,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_inverse(
         dblwin->wnn = dblwin->nbody;
     }
     // dblwin - invert
-    const int ncol = argc - 1;
+    const int ncol = argc / 2;
     const int nstep = ncol * 2;
     const int nn = dblwin->nbody - nstep;
     double *arr = dblwin_body + 1;
@@ -2673,55 +2673,53 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
     sqlite3_value ** argv
 ) {
 // This function will calculate running quantile.
-    if (argc < 2) {
+    if (argc < 2 || argc % 2) {
         sqlite3_result_error(context,
             "win_quantile2() - wrong number of arguments", -1);
         return;
     }
     // dblwin - init
-    const int ncol = argc - 1;
-    double arg_quantile = NAN;
-    DOUBLEWIN_AGGREGATE_CONTEXT(argc + ncol);
+    const int ncol = argc / 2;
+    DOUBLEWIN_AGGREGATE_CONTEXT(2 * ncol);
     if (dblwin->nbody == 0) {
-        // ncol
+        // dbwin - init ncol
         dblwin->ncol = ncol;
-        // arg_quantile
-        arg_quantile = sqlite3_value_double_or_nan(argv[0]);
-        if (!(0 <= arg_quantile && arg_quantile <= 1)) {
-            sqlite3_result_error(context,
-                "win_quantilex() - invalid argument 'quantile'", -1);
-            return;
-        }
-        dblwin_head[ncol + 0] = arg_quantile;
     }
     // dblwin - push xx
-    argv += 1;
     for (int ii = 0; ii < ncol; ii += 1) {
-        sqlite3_value_double_or_prev(argv[0], &dblwin_head[ii]);
+        sqlite3_value_double_or_prev(argv[ii * 2 + 1], &dblwin_head[ii]);
         DOUBLEWIN_AGGREGATE_PUSH(dblwin_head[ii]);
         DOUBLEWIN_AGGREGATE_PUSH(       //
             dblwin->wnn ? dblwin_body[(int) dblwin->waa] : INFINITY);
-        argv += 1;
     }
     // dblwin - calculate quantile
     const int nstep = ncol * 2;
     const int nn = dblwin->nbody / nstep;
     double *arr = dblwin_body + 1;
-    //
-    arg_quantile = dblwin_head[ncol + 0] * (nn - 1);
-    const int kk1 = floor(arg_quantile) * nstep;
-    const int kk2 = kk1 + nstep;
-    arg_quantile = fmod(arg_quantile, 1);
     for (int ii = 0; ii < ncol; ii += 1) {
+        // init argQuantile
+        double argQuantile = sqlite3_value_double_or_nan(argv[2 * ii + 0]);
+        if (!(0 <= argQuantile && argQuantile <= 1)) {
+            sqlite3_result_error(context,
+                "win_quantilex()"
+                " - argument 'quantile' must be between 0 and 1 inclusive",
+                -1);
+            return;
+        }
+        argQuantile *= (nn - 1);
+        const int kk1 = floor(argQuantile) * nstep;
+        const int kk2 = kk1 + nstep;
+        argQuantile = fmod(argQuantile, 1);
+        // calculate quantile
         const double xx = dblwin_head[ii];
         int jj = (nn - 2) * nstep;
         for (; jj >= 0 && arr[jj] > xx; jj -= nstep) {
             arr[jj + nstep] = arr[jj];
         }
         arr[jj + nstep] = xx;
-        dblwin_head[ncol + 1 + ii] = arg_quantile == 0  //
+        dblwin_head[ncol + ii] = argQuantile == 0       //
             ? arr[kk1]          //
-            : (1 - arg_quantile) * arr[kk1] + arg_quantile * arr[kk2];
+            : (1 - argQuantile) * arr[kk1] + argQuantile * arr[kk2];
         arr += 2;
     }
 }
@@ -2739,7 +2737,7 @@ SQLMATH_FUNC static void sql3_win_quantile2_value(
         sqlite3_result_null(context);
     }
     // dblwin - result
-    doublearrayResult(context, dblwin_head + (int) dblwin->ncol + 1,
+    doublearrayResult(context, dblwin_head + (int) dblwin->ncol,
         (int) dblwin->ncol, SQLITE_TRANSIENT);
 }
 
