@@ -1521,28 +1521,15 @@ SQLMATH_FUNC static void sql1_roundorzero_func(
     sqlite3_result_double(context, rr);
 }
 
-SQLMATH_FUNC static void sql1_sign_func(
+SQLMATH_FUNC static void sql1_sqrtwithsign_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-/*
-** Implementation of the sign() function
-** return one of 3 possibilities +1,0 or -1 when the argument is respectively
-** positive, 0 or negative.
-** When the argument is NULL the result is also NULL (completly conventional)
-*/
+// This function will return sqrt() of magnitude of value, with sign preserved.
     UNUSED_PARAMETER(argc);
-    switch (sqlite3_value_numeric_type(argv[0])) {
-    case SQLITE_INTEGER:
-    case SQLITE_FLOAT:
-        {
-            double rVal = sqlite3_value_double(argv[0]);
-            sqlite3_result_double(context,
-                (rVal > 0) ? 1 : (rVal < 0) ? -1 : 0);
-        }
-        return;
-    }
+    const double xx = sqlite3_value_double_or_nan(argv[0]);
+    sqlite3_result_double(context, xx < 0 ? -sqrt(-xx) : sqrt(xx));
 }
 
 SQLMATH_FUNC static void sql1_squared_func(
@@ -2795,9 +2782,9 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(fmod, 2);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
-    SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(sinefit_extract, 4);
     SQLITE3_CREATE_FUNCTION1(sinefit_refitlast, -1);
+    SQLITE3_CREATE_FUNCTION1(sqrtwithsign, 1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION2(median, 1);

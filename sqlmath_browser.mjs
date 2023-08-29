@@ -1376,23 +1376,23 @@ INSERT INTO ${tableChart} (datatype, options)
 INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
-        IIF(value <= 4, '{}', '{"isHidden": 1}') AS options,
+        IIF(value <= 3, '{}', '{"isHidden": 1}') AS options,
         value AS series_index,
         (CASE
             WHEN (value = 1) THEN
                 'spx'
             WHEN (value = 2) THEN
-                'spx predicted linear+sine - 2 month window'
-            WHEN (value = 3) THEN
                 'spx predicted linear - 2 month window'
-            WHEN (value = 4) THEN
+            WHEN (value = 3) THEN
                 'spx predicted sine - 2 month window'
+            WHEN (value = 4) THEN
+                'spx predicted linear+sine - 2 month window'
             WHEN (value = 5) THEN
-                'spx predicted linear+sine - 6 month window'
-            WHEN (value = 6) THEN
                 'spx predicted linear - 6 month window'
-            WHEN (value = 7) THEN
+            WHEN (value = 6) THEN
                 'spx predicted sine - 6 month window'
+            WHEN (value = 7) THEN
+                'spx predicted linear+sine - 6 month window'
         END) AS series_label
     FROM GENERATE_SERIES(1, 7);
 INSERT INTO ${tableChart} (datatype, xx, xx_label)
@@ -1416,84 +1416,68 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
             ydate,
             price_actual AS yy
         FROM tradebot_technical_sinefit
-        WHERE
-            wnn = (SELECT wsf_wnn02 FROM tradebot_state)
         --
         UNION ALL
         --
         SELECT
             2 AS series_index,
             ydate,
-            price_predicted AS yy
+            price_linear_02 AS yy
         FROM tradebot_technical_sinefit
-        WHERE
-            wnn = (SELECT wsf_wnn02 FROM tradebot_state)
         --
         UNION ALL
         --
         SELECT
             3 AS series_index,
             ydate,
-            price_linear AS yy
+            price_sine_02 + __offset AS yy
         FROM tradebot_technical_sinefit
-        WHERE
-            wnn = (SELECT wsf_wnn02 FROM tradebot_state)
+        JOIN (
+            SELECT
+                price_actual - price_sine_02 AS __offset
+            FROM tradebot_technical_sinefit
+            WHERE
+                ttt = 1
+        )
         --
         UNION ALL
         --
         SELECT
             4 AS series_index,
             ydate,
-            price_sine + __offset AS yy
+            price_predicted_02 AS yy
         FROM tradebot_technical_sinefit
-        JOIN (
-            SELECT
-                price_actual - price_sine AS __offset
-            FROM tradebot_technical_sinefit
-            WHERE
-                wnn = (SELECT wsf_wnn02 FROM tradebot_state)
-                AND ttt = 1
-        )
-        WHERE
-            wnn = (SELECT wsf_wnn02 FROM tradebot_state)
         --
         UNION ALL
         --
         SELECT
             5 AS series_index,
             ydate,
-            price_predicted AS yy
+            price_linear_06 AS yy
         FROM tradebot_technical_sinefit
-        WHERE
-            wnn = (SELECT wsf_wnn06 FROM tradebot_state)
         --
         UNION ALL
         --
         SELECT
             6 AS series_index,
             ydate,
-            price_linear AS yy
+            price_sine_06 + __offset AS yy
         FROM tradebot_technical_sinefit
-        WHERE
-            wnn = (SELECT wsf_wnn06 FROM tradebot_state)
+        JOIN (
+            SELECT
+                price_actual - price_sine_06 AS __offset
+            FROM tradebot_technical_sinefit
+            WHERE
+                ttt = 1
+        )
         --
         UNION ALL
         --
         SELECT
             7 AS series_index,
             ydate,
-            price_sine + __offset AS yy
+            price_predicted_06 AS yy
         FROM tradebot_technical_sinefit
-        JOIN (
-            SELECT
-                price_actual - price_sine AS __offset
-            FROM tradebot_technical_sinefit
-            WHERE
-                wnn = (SELECT wsf_wnn06 FROM tradebot_state)
-                AND ttt = 1
-        )
-        WHERE
-            wnn = (SELECT wsf_wnn06 FROM tradebot_state)
     ) ON ydate = xx_label;
 
 -- table - ${tableChart} - normalize - yy

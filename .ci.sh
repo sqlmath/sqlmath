@@ -418,7 +418,7 @@ ciBuildExt({process});
     PID_LIST="$PID_LIST $!"
     # test nodejs
     (
-    rm -f *~ .*test.sqlite
+    rm -f *~ .test*.sqlite __data/.test*.sqlite
     COVERAGE_EXCLUDE="--exclude=jslint.mjs"
     if (node --eval '
 require("assert")(require("./package.json").name !== "sqlmath");

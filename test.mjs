@@ -865,7 +865,8 @@ SELECT
                 "copyblob": "-1",
                 "cot": -0.642092615934331,
                 "coth": -1.31303528549933,
-                "sign": -1
+                "sign": -1,
+                "sqrtwithsign": -1
             },
             "'0'": {
                 "castrealornull": 0,
@@ -874,7 +875,8 @@ SELECT
                 "copyblob": "0",
                 "cot": null,
                 "coth": null,
-                "sign": 0
+                "sign": 0,
+                "sqrtwithsign": 0
             },
             "'0.5'": {
                 "castrealornull": 0.5,
@@ -889,7 +891,8 @@ SELECT
                 "copyblob": "1",
                 "cot": 0.642092615934331,
                 "coth": 1.31303528549933,
-                "sign": 1
+                "sign": 1,
+                "sqrtwithsign": 1
             },
             "'aa'": {
                 "castrealornull": 0,
@@ -910,7 +913,10 @@ SELECT
                 "copyblob": -0.5
             },
             "-0x7fffffffffffffff": {
-                "sign": -1
+                "cot": -0.0118008981305845,
+                "coth": -1,
+                "sign": -1,
+                "sqrtwithsign": -3037000499.97605
             },
             "-1": {
                 "castrealornull": -1,
@@ -919,10 +925,14 @@ SELECT
                 "copyblob": -1,
                 "cot": -0.642092615934331,
                 "coth": -1.31303528549933,
-                "sign": -1
+                "sign": -1,
+                "sqrtwithsign": -1
             },
             "-1e999": {
-                "sign": -1
+                "cot": null,
+                "coth": -1,
+                "sign": -1,
+                "sqrtwithsign": null
             },
             "0": {
                 "castrealornull": 0,
@@ -931,7 +941,8 @@ SELECT
                 "copyblob": 0,
                 "cot": null,
                 "coth": null,
-                "sign": 0
+                "sign": 0,
+                "sqrtwithsign": 0
             },
             "0.5": {
                 "castrealornull": 0.5,
@@ -949,13 +960,22 @@ SELECT
                 "roundorzero": 1
             },
             "0x7fffffffffffffff": {
-                "sign": 1
+                "cot": 0.0118008981305845,
+                "coth": 1,
+                "sign": 1,
+                "sqrtwithsign": 3037000499.97605
             },
             "0x8000000000000000": {
-                "sign": -1
+                "cot": -0.0118008981305845,
+                "coth": -1,
+                "sign": -1,
+                "sqrtwithsign": -3037000499.97605
             },
             "0xffffffffffffffff": {
-                "sign": -1
+                "cot": -0.642092615934331,
+                "coth": -1.31303528549933,
+                "sign": -1,
+                "sqrtwithsign": -1
             },
             "1": {
                 "castrealornull": 1,
@@ -964,12 +984,16 @@ SELECT
                 "copyblob": 1,
                 "cot": 0.642092615934331,
                 "coth": 1.31303528549933,
-                "sign": 1
+                "sign": 1,
+                "sqrtwithsign": 1
             },
             "1e999": {
                 "castrealornull": null,
                 "castrealorzero": 0,
-                "sign": 1
+                "cot": null,
+                "coth": 1,
+                "sign": 1,
+                "sqrtwithsign": null
             },
             "null": {
                 "castrealornull": null,
@@ -978,7 +1002,8 @@ SELECT
                 "copyblob": null,
                 "cot": null,
                 "coth": null,
-                "sign": null
+                "sign": null,
+                "sqrtwithsign": null
             },
             "null, 0": {
                 "roundorzero": 0

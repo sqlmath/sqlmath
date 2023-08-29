@@ -5,6 +5,7 @@
 - none
 
 # v2023.9.1-beta
+- sqlmath - Add sql-function sqrtwithsign(), and remove redundant sql-function sign().
 - sqlmath - Update function win_quantile2() to accept different quantile-arg for each icol.
 - sqlmath - Update function win_sinefit() to allow outputting gaussian-normalized y-value gyy.
 
