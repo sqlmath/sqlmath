@@ -1,10 +1,12 @@
 # Changelog
 
 # Todo
+- python - Revamp python-c-extension to support cp311, cp312.
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 
 # v2023.9.1-beta
+- python - Update ci to build python-manylinux wheel.
 - sqlmath - Add sql-function sqrtwithsign(), and remove redundant sql-function sign().
 - sqlmath - Update function win_quantile2() to accept different quantile-arg for each icol.
 - sqlmath - Update function win_sinefit() to allow outputting gaussian-normalized y-value gyy.

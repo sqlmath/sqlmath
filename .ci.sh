@@ -53,6 +53,19 @@ shCiBaseCustom() {(set -e
     fi
     # cleanup
     rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
+    # cibuildwheel
+    if (shCiMatrixIsmainNodeversion) && ( \
+        [ "$GITHUB_BRANCH0" = alpha ] \
+        || [ "$GITHUB_BRANCH0" = beta ] \
+        || [ "$GITHUB_BRANCH0" = master ] \
+    )
+    then
+        find build/ -name "*.so" | xargs rm -f
+        rm -f sqlmath/*.so
+        pip install build==1.0.3 cibuildwheel==2.15.0
+        python -m build --sdist
+        python -m cibuildwheel
+    fi
     # run nodejs-ci
     shCiTestNodejs
     if (shCiMatrixIsmainName)
@@ -129,6 +142,9 @@ shCiBaseCustomArtifactUpload() {(set -e
     then
         cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
     fi
+    # cibuildwheel
+    cp ../../dist/*.tar.gz "branch-$GITHUB_BRANCH0"
+    cp ../../wheelhouse/* "branch-$GITHUB_BRANCH0"
     # git commit
     git add .
     git add -f "branch-$GITHUB_BRANCH0"/_sqlmath*

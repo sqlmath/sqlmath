@@ -2,7 +2,7 @@
 [build-system]
 requires = [
     "pycodestyle == 2.11.0",
-    "ruff >= 0.0.281",
+    "ruff >= 0.0.288",
     "setuptools >= 65.5.0",
 ]
 build-backend = "setuptools.build_meta"
@@ -45,6 +45,17 @@ changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
 
 # to disable scanning PEP 420 namespaces (true by default)
 # namespaces = false
+
+# https://cibuildwheel.readthedocs.io/en/stable/options/
+[tool.cibuildwheel]
+archs = ["native"]
+build = ["cp310-*"]
+build-verbosity = "3"
+skip = ["pp*", "*-musllinux*"]
+# test-command = ["cd {project} && python setup.py test"]
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
 
 [tool.setuptools]
 py-modules = ["sqlmath"]

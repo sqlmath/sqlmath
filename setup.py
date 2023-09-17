@@ -148,10 +148,14 @@ async def build_ext_async(): # noqa: C901
         )
 
     async def create_subprocess_exec_and_check(*args, **kwds):
-        child = await asyncio.create_subprocess_exec(*args, **kwds)
+        # bugfix - fix multi-word cc_compiler="gcc -pthread"
+        args2 = args[0].split(" ")
+        args2.extend([arg for arg in args[1:] if arg])
+        child = await asyncio.create_subprocess_exec(*args2, **kwds)
         await child.communicate()
         if child.returncode != 0:
-            raise subprocess.SubprocessError("returncode=" + child.returncode)
+            msg = f"returncode={child.returncode}"
+            raise subprocess.SubprocessError(msg)
     #
     # build_ext - update version
     with pathlib.Path("package.json").open() as file1:
@@ -194,7 +198,9 @@ async def build_ext_async(): # noqa: C901
     # build_ext - init sysconfig
     cc_ccshared = sysconfig.get_config_var("CCSHARED") or ""
     cc_cflags = sysconfig.get_config_var("CFLAGS") or ""
-    cc_compiler = sysconfig.get_config_var("CC")
+    cc_compiler = sysconfig.get_config_var("CC") or ""
+    if cc_compiler.startswith("gcc"):
+        cc_compiler += " -ldl"
     cc_ldflags = sysconfig.get_config_var("LDFLAGS") or ""
     cc_ldshared = sysconfig.get_config_var("LDSHARED") or ""
     dir_wheel = f"build/bdist.{sysconfig.get_platform()}/wheel/sqlmath"
@@ -271,14 +277,17 @@ async def build_ext_async(): # noqa: C901
                 ).stdout.readline(),
             )
         [exe_cl, exe_link] = [
-            exe.splitlines()[0] for exe in await asyncio.gather(*await_list)
+            str(exe.splitlines()[0], "utf8")
+            for exe in await asyncio.gather(*await_list)
         ]
     #
     # build_ext - virtualenv
     for arr in [path_include, path_library]:
         for path in arr:
             if path_prefix_base != path_prefix:
-                arr.append(path.replace(path_prefix, path_prefix_base)) # noqa: PERF401
+                path2 = path.replace(path_prefix, path_prefix_base)
+                if path2 not in arr:
+                    arr.append(path2)
     #
     # build_ext - compile .obj file
     await asyncio.gather(*[
