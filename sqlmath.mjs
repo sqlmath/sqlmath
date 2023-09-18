@@ -350,6 +350,13 @@ async function ciBuildExt1NodejsConfigure({
 
 // This function will setup posix/win32 env for building c-extension.
 
+    let cflagsNowarning = [
+        "-Wno-all",
+        "-Wno-extra",
+        "-Wno-implicit-fallthrough",
+        "-Wno-int-conversion",
+        "-Wno-unused-parameter"
+    ];
     consoleError(`ciBuildExt1Nodejs - configure binding.gyp`);
     await fsWriteFileUnlessTest("binding.gyp", JSON.stringify({
         "target_defaults": {
@@ -370,11 +377,7 @@ async function ciBuildExt1NodejsConfigure({
         },
         "targets": [
             {
-                "cflags": [
-                    "-Wno-all",
-                    "-Wno-implicit-fallthrough",
-                    "-Wno-unused-parameter"
-                ],
+                "cflags": cflagsNowarning,
                 "sources": [
                     "build/SRC_ZLIB_BASE.c",
                     "build/SRC_SQLITE_BASE.c",
@@ -382,11 +385,7 @@ async function ciBuildExt1NodejsConfigure({
                 ],
                 "target_name": "SRC_SQLITE_BASE",
                 "type": "static_library",
-                "xcode_settings": {"OTHER_CFLAGS": [
-                    "-Wno-all",
-                    "-Wno-implicit-fallthrough",
-                    "-Wno-unused-parameter"
-                ]}
+                "xcode_settings": {"OTHER_CFLAGS": cflagsNowarning}
             },
             {
                 "sources": [
@@ -401,8 +400,27 @@ async function ciBuildExt1NodejsConfigure({
                     "SQLMATH_CUSTOM",
                     "SRC_SQLITE_BASE"
                 ],
-                "sources": ["sqlmath_base.c"],
+                "sources": [
+                    "sqlmath_base.c"
+                ],
                 "target_name": "binding"
+            },
+            {
+                "cflags": cflagsNowarning,
+                "defines": [
+                    "SQLITE3_SHELL_C2"
+                ],
+                "dependencies": [
+                    "SQLMATH_CUSTOM",
+                    "SRC_SQLITE_BASE"
+                ],
+                "sources": [
+                    "sqlmath_base.c",
+                    "build/SRC_SQLITE_SHELL.c"
+                ],
+                "target_name": "shell",
+                "type": "executable",
+                "xcode_settings": {"OTHER_CFLAGS": cflagsNowarning}
             }
         ]
     }, undefined, 4) + "\n");
@@ -449,6 +467,14 @@ async function ciBuildExt2NodejsBuild({
     rm -rf build/Release/obj/SQLMATH_CUSTOM/
     node "${binNodegyp}" build --release
     mv build/Release/binding.node "${cModulePath}"
+    if [ "${process.platform}" = "win32" ]
+    then
+        mv build/Release/shell \
+            "_sqlmath.shell_${process.platform}_${process.arch}.exe"
+    else
+        mv build/Release/shell \
+            "_sqlmath.shell_${process.platform}_${process.arch}"
+    fi
 )
             `)
         ],

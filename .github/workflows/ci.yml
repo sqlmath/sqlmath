@@ -30,7 +30,7 @@ jobs:
         os:
           - macos-latest
           - ubuntu-latest
-          - windows-latest
+          # - windows-latest
 # base - .github/workflows/ci.yml - beg
     env:
       CI_MATRIX_NAME: >

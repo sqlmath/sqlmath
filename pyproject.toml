@@ -2,8 +2,8 @@
 [build-system]
 requires = [
     "pycodestyle == 2.11.0",
-    "ruff >= 0.0.288",
-    "setuptools >= 65.5.0",
+    "ruff >= 0.0.290",
+    "setuptools >= 68.2.2",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -49,13 +49,15 @@ changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
 # https://cibuildwheel.readthedocs.io/en/stable/options/
 [tool.cibuildwheel]
 archs = ["native"]
-build = ["cp310-*"]
-build-verbosity = "3"
-skip = ["pp*", "*-musllinux*"]
-# test-command = ["cd {project} && python setup.py test"]
-
-[tool.cibuildwheel.linux]
+before-test = ["pip install setuptools"]
+build = ["cp*-*"]
+build-verbosity = "1"
 manylinux-x86_64-image = "manylinux_2_28"
+skip = ["pp*", "*-musllinux*"]
+test-command = [
+    "python --version",
+    "cd {project} && python setup.py test",
+]
 
 [tool.setuptools]
 py-modules = ["sqlmath"]

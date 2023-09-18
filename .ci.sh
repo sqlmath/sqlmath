@@ -132,6 +132,19 @@ shCiBaseCustomArtifactUpload() {(set -e
     cp ../../.git/config .git/config
     # update dir branch-$GITHUB_BRANCH0
     mkdir -p "branch-$GITHUB_BRANCH0"
+    case "$(uname)" in
+    Darwin*)
+        rm -f "branch-$GITHUB_BRANCH0/"*darwin*
+        rm -f "branch-$GITHUB_BRANCH0/"*macos*
+        ;;
+    Linux*)
+        rm -f "branch-$GITHUB_BRANCH0/"*linux*
+        ;;
+    MSYS*)
+        rm -f "branch-$GITHUB_BRANCH0/"*win32*
+        rm -f "branch-$GITHUB_BRANCH0/"*win_*
+        ;;
+    esac
     cp ../../_sqlmath* "branch-$GITHUB_BRANCH0"
     cp ../../sqlmath/_sqlmath* "branch-$GITHUB_BRANCH0"
     if [ -f ../../sqlmath_wasm.wasm ]
@@ -143,8 +156,8 @@ shCiBaseCustomArtifactUpload() {(set -e
         cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
     fi
     # cibuildwheel
-    cp ../../dist/*.tar.gz "branch-$GITHUB_BRANCH0"
-    cp ../../wheelhouse/* "branch-$GITHUB_BRANCH0"
+    cp ../../dist/sqlmath-*.tar.gz "branch-$GITHUB_BRANCH0"
+    cp ../../wheelhouse/sqlmath-*.whl "branch-$GITHUB_BRANCH0"
     # git commit
     git add .
     git add -f "branch-$GITHUB_BRANCH0"/_sqlmath*
