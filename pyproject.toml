@@ -4,44 +4,47 @@ requires = [
     "pycodestyle == 2.11.0",
     "ruff >= 0.0.290",
     "setuptools >= 68.2.2",
+    "wheel >= 0.41.2",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "setup"
+backend-path = ["."]
 
 # https://peps.python.org/pep-0621/#example
 [project]
-authors = [{name = "Kai Zhu"}]
-dependencies = []
-description = "sqlite for datascience"
-dynamic = ["version"]
-license = {file = "LICENSE"}
-maintainers = []
 name = "sqlmath"
-readme = "README.md"
+version = "2023.9.1"
+description = "sqlite for datascience"
+authors = [{name = "Kai Zhu"}]
+maintainers = []
 requires-python = ">=3.10"
+#
+dependencies = []
+license = {file = "LICENSE"}
+readme = "README.md"
 classifiers = [
-    'Development Status :: 4 - Beta',
-    'Intended Audience :: Developers',
-    'Intended Audience :: Science/Research',
-    'License :: OSI Approved :: MIT License',
-    'Operating System :: MacOS',
-    'Operating System :: Microsoft :: Windows',
-    'Operating System :: POSIX :: Linux',
-    'Programming Language :: C',
-    'Programming Language :: JavaScript',
-    'Programming Language :: Python',
-    'Topic :: Database',
-    'Topic :: Scientific/Engineering',
-    'Topic :: Software Development',
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: C",
+    "Programming Language :: JavaScript",
+    "Programming Language :: Python",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development",
 ]
 
 [project.scripts]
 # spam-cli = "spam:main_cli"
 
 [project.urls]
+changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
 documentation = "https://github.com/sqlmath/sqlmath"
 homepage = "https://github.com/sqlmath/sqlmath"
 repository = "https://github.com/sqlmath/sqlmath"
-changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
 
 # to disable scanning PEP 420 namespaces (true by default)
 # namespaces = false
@@ -53,14 +56,15 @@ before-test = ["pip install setuptools"]
 build = ["cp*-*"]
 build-verbosity = "1"
 manylinux-x86_64-image = "manylinux_2_28"
-skip = ["pp*", "*-musllinux*"]
+skip = [
+    "*-musllinux*",
+    "cp312-*",
+    "pp*",
+]
 test-command = [
     "python --version",
-    "cd {project} && python setup.py test",
+    "python -c \"import sqlmath; sqlmath.test_python_run()\"",
 ]
 
 [tool.setuptools]
 py-modules = ["sqlmath"]
-
-[tool.setuptools.dynamic]
-version = {attr = "sqlmath.__version__"}

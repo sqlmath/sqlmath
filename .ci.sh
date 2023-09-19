@@ -53,21 +53,30 @@ shCiBaseCustom() {(set -e
     fi
     # cleanup
     rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
-    # cibuildwheel
+    PID_LIST=""
+    #
+    # python -m build --sdist
+    # python -m cibuildwheel
+    (
     if (shCiMatrixIsmainNodeversion) && ( \
         [ "$GITHUB_BRANCH0" = alpha ] \
         || [ "$GITHUB_BRANCH0" = beta ] \
         || [ "$GITHUB_BRANCH0" = master ] \
     )
     then
-        find build/ -name "*.so" | xargs rm -f
-        rm -f sqlmath/*.so
-        pip install build==1.0.3 cibuildwheel==2.15.0
-        python -m build --sdist
-        python -m cibuildwheel
+        python setup.py sdist
+        pip install cibuildwheel
+        python -m cibuildwheel --output-dir=dist/
     fi
+    ) &
+    PID_LIST="$PID_LIST $!"
+    #
     # run nodejs-ci
-    shCiTestNodejs
+    shCiTestNodejs &
+    PID_LIST="$PID_LIST $!"
+    #
+    # shCiBuildWasm
+    (
     if (shCiMatrixIsmainName)
     then
         shImageLogoCreate &
@@ -79,6 +88,10 @@ shCiBaseCustom() {(set -e
             cp -a "$EMSDK" .github_cache
         fi
     fi
+    ) &
+    PID_LIST="$PID_LIST $!"
+    shPidListWait build_ext "$PID_LIST"
+    #
     # upload artifact
     if (shCiMatrixIsmainNodeversion) && ( \
         [ "$GITHUB_BRANCH0" = alpha ] \
@@ -86,7 +99,7 @@ shCiBaseCustom() {(set -e
         || [ "$GITHUB_BRANCH0" = master ] \
     )
     then
-        export GITHUB_UPLOAD_RETRY=-1
+        export GITHUB_UPLOAD_RETRY=0
         while true
         do
             GITHUB_UPLOAD_RETRY="$((GITHUB_UPLOAD_RETRY + 1))"
@@ -140,7 +153,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     Linux*)
         rm -f "branch-$GITHUB_BRANCH0/"*linux*
         ;;
-    MSYS*)
+    *)
         rm -f "branch-$GITHUB_BRANCH0/"*win32*
         rm -f "branch-$GITHUB_BRANCH0/"*win_*
         ;;
@@ -155,9 +168,9 @@ shCiBaseCustomArtifactUpload() {(set -e
     then
         cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
     fi
-    # cibuildwheel
+    # save cibuildwheel
     cp ../../dist/sqlmath-*.tar.gz "branch-$GITHUB_BRANCH0"
-    cp ../../wheelhouse/sqlmath-*.whl "branch-$GITHUB_BRANCH0"
+    cp ../../dist/sqlmath-*.whl "branch-$GITHUB_BRANCH0"
     # git commit
     git add .
     git add -f "branch-$GITHUB_BRANCH0"/_sqlmath*
@@ -405,6 +418,8 @@ shCiTestNodejs() {(set -e
         then
             git ls-tree -r --name-only HEAD | sed "s|^|include |" > MANIFEST.in
         fi
+        # create PKG-INFO
+        python setup.py build_pkg_info
         # init build/xxx.c
         python setup.py build_ext_init
         # build nodejs c-addon

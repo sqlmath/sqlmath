@@ -7,6 +7,7 @@ include .npmignore
 include CHANGELOG.md
 include LICENSE
 include MANIFEST.in
+include PKG-INFO
 include README.md
 include asset_image_folder_open_solid.svg
 include asset_image_github_brands.svg

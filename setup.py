@@ -6,6 +6,7 @@ python -m build
 """
 
 import asyncio
+import distutils.dist
 import json
 import os
 import pathlib
@@ -13,17 +14,23 @@ import re
 import subprocess
 import sys
 import sysconfig
+import tempfile
 
 import setuptools
 import setuptools.command.build_ext
 import setuptools.command.install_lib
 
 
+def assert_or_throw(condition, message=None):
+    """This function will throw <message> if <condition> is falsy."""
+    if not condition:
+        raise SetupError(message)
+
+
 def build_ext():
     """This function will build c-extension."""
     build_ext_init()
     subprocess.run(["python", "setup.py", "build_ext_async"], check=True)
-    setuptools.setup(ext_modules=[setuptools.Extension("_sqlmath", [])])
 
 
 async def build_ext_async(): # noqa: C901
@@ -132,6 +139,7 @@ async def build_ext_async(): # noqa: C901
         version = package_json["version"].split("-")[0]
     for filename in [
         "README.md",
+        "pyproject.toml",
         "sqlmath/__init__.py",
     ]:
         with pathlib.Path(filename).open("r+", newline="\n") as file1:
@@ -143,18 +151,19 @@ async def build_ext_async(): # noqa: C901
                 f"\\g<1>{version}",
                 data1,
             )
+            # update version - pyproject.toml
+            data1 = re.sub("\nversion = .*", f'\nversion = "{version}"', data1)
             # update version - sqlmath/__init__.py
             data1 = re.sub(
-                "__version__ = .*",
-                f'__version__ = "{version}"',
+                "\n__version__ = .*",
+                f'\n__version__ = "{version}"',
                 data1,
             )
             data1 = re.sub(
-                "__version_info__ = .*",
+                "\n__version_info__ = .*",
                 (
-                    '__version_info__ = ("'
-                    + '", "'.join(version.split("."))
-                    + '")'
+                    "\n__version_info__ = "
+                    + str(tuple(version.split("."))).replace("'", '"')
                 ),
                 data1,
             )
@@ -366,12 +375,175 @@ def build_ext_init():
     """], check=True)
 
 
-# monkey-patch setuptools to accept c-extension compiled in nodejs
-setuptools.command.build_ext.build_ext.run = lambda self: self
-setuptools.command.install_lib.install_lib.install = lambda self: self
+def build_pkg_info():
+    """This function will build PKG-INFO."""
+    toml = ""
+    with pathlib.Path("pyproject.toml").open() as file1:
+        toml = file1.read()
+    data = ""
+    data += "Metadata-Version: 2.1\n"
+    for match in re.finditer(
+        '\n(.*?) = .*?"(.*?)"',
+        toml,
+    ):
+        match match[1]:
+            case "authors":
+                data += f"Author: {match[2]}\n"
+            case "description":
+                data += f"Summary: {match[2]}\n"
+            case "name":
+                data += f"{match[1].capitalize()}: {match[2]}\n"
+            case "requires-python":
+                data += f"Requires-Python: {match[2]}\n"
+            case "version":
+                data += f"{match[1].capitalize()}: {match[2]}\n"
+    for match in re.finditer(
+        '\n    "(.*? :: .*)"',
+        toml,
+    ):
+        data += f"Classifier: {match[1]}\n"
+    for match in re.finditer(
+        '\n(changelog|documentation|homepage|repository) = "(.*?)"',
+        toml,
+    ):
+        data += f"Project-URL: {match[1]}, {match[2]}\n"
+    with pathlib.Path("LICENSE").open() as file1:
+        data += "License-File: LICENSE\n"
+        data += "License: "
+        data += file1.read().replace("\n", "\n        ").strip() + "\n\n"
+    with pathlib.Path("README.md").open() as file1:
+        data += "Description-Content-Type: text/markdown\n\n"
+        data += file1.read().strip() + "\n"
+    with pathlib.Path("PKG-INFO").open("w", newline="\n") as file1:
+        file1.write(re.sub(" +\n", "\n", data))
+
+
+def build_sdist(sdist_directory, config_settings=None):
+    """`build_sdist`: build an sdist in the folder and return the basename."""
+    assert_or_throw(
+        config_settings is None or config_settings == {},
+        config_settings,
+    )
+    # build PKG-INFO
+    build_pkg_info()
+    # init sdist_directory
+    sdist_directory = pathlib.Path(sdist_directory).resolve()
+    # init file_sdist
+    name_version = ""
+    with pathlib.Path("pyproject.toml").open() as file1:
+        toml = file1.read()
+        name_version = (
+            re.search('\nname = "(.*?)"', toml)[1]
+            + "-"
+            + re.search('\nversion = "(.*?)"', toml)[1]
+        )
+    file_sdist = sdist_directory / f"{name_version}.tar.gz"
+    print(f"setup.py sdist - building file {file_sdist}")
+    # Copy files from MANIFEST.in to dir_tmp and create tarball.
+    with tempfile.TemporaryDirectory() as dir_tmp:
+        script = ""
+        with pathlib.Path("MANIFEST.in").open() as file1:
+            script = file1.read()
+        script = "\n".join(
+            f"cp --parents '{file}' '{dir_tmp}/{name_version}/'"
+            for file in re.sub(
+                "\ninclude ",
+                "\n",
+                f"\n{script}\n",
+            ).strip().split("\n")
+        )
+        if sys.platform == "darwin":
+            script = script.replace("cp --parents", "rsync -R")
+        script = f"""(set -e
+        mkdir -p '{dir_tmp}/{name_version}/' '{sdist_directory}/'
+        {script}
+        (cd '{dir_tmp}' && tar -zcf out.tgz {name_version}/)
+        cp '{dir_tmp}/out.tgz' '{file_sdist}'
+        )
+        """
+        file_tmp = ""
+        with tempfile.NamedTemporaryFile("w", delete=False) as file1:
+            file1.write(script)
+            file_tmp = file1.name
+        subprocess.run(["sh", file_tmp], check=True)
+        pathlib.Path(file_tmp).unlink()
+    print(f"setup.py sdist - built file {file_sdist}")
+    return file_sdist.name
+
+
+def build_wheel(
+    wheel_directory,
+    config_settings=None,
+    metadata_directory=None,
+):
+    """`build_wheel`: build a wheel in the folder and return the basename."""
+    assert_or_throw(
+        config_settings is None or config_settings == {},
+        config_settings,
+    )
+    noop(metadata_directory)
+    wheel_directory = pathlib.Path(wheel_directory).resolve()
+    # Build in a temporary directory, then copy to the target.
+    pathlib.Path(wheel_directory).mkdir(exist_ok=True)
+    with tempfile.TemporaryDirectory(
+        dir=wheel_directory.as_posix(),
+        prefix=".tmp-",
+    ) as dir_tmp:
+        sys.argv = [
+            *sys.argv[:1],
+            "bdist_wheel",
+            "--dist-dir",
+            dir_tmp,
+        ]
+        # override build_ext, install_lib
+        setuptools.command.build_ext.build_ext.run = noop
+        setuptools.command.install_lib.install_lib.install = noop
+        build_ext()
+        # _install_setup_requires - disable
+        setuptools._install_setup_requires = noop # noqa: SLF001
+        # run backend
+        setuptools.setup(
+            ext_modules=[setuptools.Extension("_sqlmath", [])],
+            script_args=sys.argv[1:],
+            script_name=pathlib.Path(sys.argv[0]).name,
+        )
+        for result_file in pathlib.Path(dir_tmp).iterdir():
+            if result_file.name.endswith(".whl"):
+                result_file.replace(wheel_directory / result_file.name)
+                return result_file.name
+        return None
+
+
+def debuginline(*argv):
+    """This function will print <argv> to stderr and then return <argv>[0]."""
+    print("\n\ndebuginline")
+    print(*argv)
+    print("\n")
+    return argv[0]
+
+
+def noop(*args, **kwargs): # noqa: ARG001
+    """This function will do nothing."""
+    return
+
+
+def raise_setup_error(*args, **kwargs):
+    """This function will raise SetupError."""
+    raise SetupError({args, kwargs})
+
+
+class Distribution2(distutils.dist.Distribution):
+    """Custom build-distribution."""
+
+
+class SetupError(Exception):
+    """Setup error."""
+
 
 if __name__ == "__main__":
     match sys.argv[1]:
+        case "bdist_wheel":
+            build_wheel("dist")
         case "build_ext":
             build_ext()
         case "build_ext_async":
@@ -379,21 +551,12 @@ if __name__ == "__main__":
             asyncio.get_event_loop().run_until_complete(build_ext_async())
         case "build_ext_init":
             build_ext_init()
-        case "bdist_wheel":
-            build_ext()
+        case "build_pkg_info":
+            build_pkg_info()
+        case "sdist":
+            build_sdist("dist")
         case "test":
-            # ugly-hack - Disable test certain github-actions env.
-            if (
-                sys.version_info >= (3, 12)
-                or (
-                    os.getenv("GITHUB_ACTION")
-                    and os.getenv("CIBUILDWHEEL")
-                    and sys.platform == "win32"
-                )
-            ):
-                pass
-            else:
-                import sqlmath
-                sqlmath.test_python_run()
+            import sqlmath
+            sqlmath.test_python_run()
         case _:
-            setuptools.setup()
+            raise_setup_error(sys.argv)
