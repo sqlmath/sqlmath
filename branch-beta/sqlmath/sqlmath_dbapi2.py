@@ -1,4 +1,51 @@
+import re
+import os
+
+
+def check_disallow_instantiation(testcase, tp, *args, **kwds):
+    """
+    Check that given type cannot be instantiated using *args and **kwds.
+
+    See bpo-43916: Add Py_TPFLAGS_DISALLOW_INSTANTIATION type flag.
+    """
+    mod = tp.__module__
+    name = tp.__name__
+    if mod != 'builtins':
+        qualname = f"{mod}.{name}"
+    else:
+        qualname = f"{name}"
+    msg = f"cannot create '{re.escape(qualname)}' instances"
+    testcase.assertRaisesRegex(TypeError, msg, tp, *args, **kwds)
+
+
+def gc_collect():
+    """Force as many objects as possible to be collected.
+
+    In non-CPython implementations of Python, this is needed because timely
+    deallocation is not guaranteed by the garbage collector.  (Even in CPython
+    this can be the case in case of reference cycles.)  This means that __del__
+    methods may be called later than expected and weakrefs may remain alive for
+    longer than expected.  This function tries its best to force all garbage
+    objects to disappear.
+    """
+    import gc
+    gc.collect()
+    gc.collect()
+    gc.collect()
+
+
+def unlink(filename):
+    try:
+        os.unlink(filename)
+    except (FileNotFoundError, NotADirectoryError):
+        pass
+
+
+SHORT_TIMEOUT = 30.0
+TESTFN = "{}_{}_tmp".format('@test', os.getpid())
 test_suite_list = []
+
+
 """
 /*jslint-disable*/
 /*
@@ -89,6 +136,12 @@ shRollupFetch
             "substr": ""
         },
         {
+            "aa": "from test.support",
+            "bb": "# hack-python - fix test for win32\n# $&",
+            "flags": "g",
+            "substr": ""
+        },
+        {
             "aa": "import sqlite3 as sqlite",
             "bb": "from . import sqlmath_dbapi2 as sqlite",
             "flags": "g",
@@ -100,9 +153,17 @@ shRollupFetch
 +# hack-python - fix import
 +            import sqlmath as sqlite3
 
+-        support.gc_collect()
++        # hack-python - fix test for win32
++        gc_collect()
+
 -    from _sqlmath import *
 +# hack-python - fix import
 +    from ._sqlmath import *
+
+-from test import support
++# hack-python - fix test for win32
++# from test import support
 */
 
 
@@ -719,8 +780,10 @@ import unittest
 from . import sqlmath_dbapi2 as sqlite
 import sys
 
-from test.support import check_disallow_instantiation, SHORT_TIMEOUT
-from test.support.os_helper import TESTFN, unlink
+# hack-python - fix test for win32
+# from test.support import check_disallow_instantiation, SHORT_TIMEOUT
+# hack-python - fix test for win32
+# from test.support.os_helper import TESTFN, unlink
 
 
 class ModuleTests(unittest.TestCase):
@@ -2250,7 +2313,8 @@ import contextlib
 import unittest
 from . import sqlmath_dbapi2 as sqlite
 
-from test.support.os_helper import TESTFN, unlink
+# hack-python - fix test for win32
+# from test.support.os_helper import TESTFN, unlink
 
 
 class CollationTests(unittest.TestCase):
@@ -2565,7 +2629,8 @@ import unittest
 from . import sqlmath_dbapi2 as sqlite
 import weakref
 import functools
-from test import support
+# hack-python - fix test for win32
+# from test import support
 
 from unittest.mock import patch
 
@@ -2932,7 +2997,8 @@ class RegressionTests(unittest.TestCase):
         del cur
         # The interpreter shouldn't crash when ref is collected.
         del ref
-        support.gc_collect()
+        # hack-python - fix test for win32
+        gc_collect()
 
     def test_del_isolation_level_segfault(self):
         with self.assertRaises(AttributeError):
@@ -3519,7 +3585,8 @@ import unittest
 import unittest.mock
 from . import sqlmath_dbapi2 as sqlite
 
-from test.support import gc_collect
+# hack-python - fix test for win32
+# from test.support import gc_collect
 
 
 def func_returntext():

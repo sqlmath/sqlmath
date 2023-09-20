@@ -2,11 +2,13 @@ include .ci.sh
 include .gitconfig
 include .github/workflows/ci.yml
 include .github/workflows/publish.yml
+include .github/workflows/publish_pypi_test.yml
 include .gitignore
 include .npmignore
 include CHANGELOG.md
 include LICENSE
 include MANIFEST.in
+include PKG-INFO
 include README.md
 include asset_image_folder_open_solid.svg
 include asset_image_github_brands.svg
