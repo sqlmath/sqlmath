@@ -9,7 +9,7 @@ on:
 jobs:
 
 
-  publish_npm:
+  job1:
     strategy:
       matrix:
         architecture:

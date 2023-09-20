@@ -5,7 +5,7 @@
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 
-# v2023.9.1-beta
+# v2023.9.19
 - ci - Update ci-workflow publish to auto-publish pypi-package.
 - ci - Add ci-workflow publish_pypi_test.
 - python - Remove setuptools dependency. - part1

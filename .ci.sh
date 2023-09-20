@@ -59,11 +59,7 @@ shCiBaseCustom() {(set -e
     # python -m build --sdist
     # python -m cibuildwheel
     (
-    if (shCiMatrixIsmainNodeversion) && ( \
-        [ "$GITHUB_BRANCH0" = alpha ] \
-        || [ "$GITHUB_BRANCH0" = beta ] \
-        || [ "$GITHUB_BRANCH0" = master ] \
-    )
+    if (shCiMatrixIsmainNodeversion)
     then
         python setup.py sdist
         pip install cibuildwheel
@@ -88,10 +84,10 @@ shCiBaseCustom() {(set -e
     ) &
     PID_LIST="$PID_LIST $!"
     #
-    # run nodejs-ci
-    shCiTestNodejs &
-    PID_LIST="$PID_LIST $!"
     shPidListWait build_ext "$PID_LIST"
+    #
+    # run nodejs-ci
+    shCiTestNodejs
     #
     # upload artifact
     if (shCiMatrixIsmainNodeversion) && ( \
