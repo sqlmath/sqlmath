@@ -865,7 +865,8 @@ SELECT
                 "copyblob": "-1",
                 "cot": -0.642092615934331,
                 "coth": -1.31303528549933,
-                "sign": -1
+                "sign": -1,
+                "sqrtwithsign": -1
             },
             "'0'": {
                 "castrealornull": 0,
@@ -874,7 +875,8 @@ SELECT
                 "copyblob": "0",
                 "cot": null,
                 "coth": null,
-                "sign": 0
+                "sign": 0,
+                "sqrtwithsign": 0
             },
             "'0.5'": {
                 "castrealornull": 0.5,
@@ -889,7 +891,8 @@ SELECT
                 "copyblob": "1",
                 "cot": 0.642092615934331,
                 "coth": 1.31303528549933,
-                "sign": 1
+                "sign": 1,
+                "sqrtwithsign": 1
             },
             "'aa'": {
                 "castrealornull": 0,
@@ -910,7 +913,10 @@ SELECT
                 "copyblob": -0.5
             },
             "-0x7fffffffffffffff": {
-                "sign": -1
+                "cot": -0.0118008981305845,
+                "coth": -1,
+                "sign": -1,
+                "sqrtwithsign": -3037000499.97605
             },
             "-1": {
                 "castrealornull": -1,
@@ -919,10 +925,14 @@ SELECT
                 "copyblob": -1,
                 "cot": -0.642092615934331,
                 "coth": -1.31303528549933,
-                "sign": -1
+                "sign": -1,
+                "sqrtwithsign": -1
             },
             "-1e999": {
-                "sign": -1
+                "cot": null,
+                "coth": -1,
+                "sign": -1,
+                "sqrtwithsign": null
             },
             "0": {
                 "castrealornull": 0,
@@ -931,7 +941,8 @@ SELECT
                 "copyblob": 0,
                 "cot": null,
                 "coth": null,
-                "sign": 0
+                "sign": 0,
+                "sqrtwithsign": 0
             },
             "0.5": {
                 "castrealornull": 0.5,
@@ -949,13 +960,22 @@ SELECT
                 "roundorzero": 1
             },
             "0x7fffffffffffffff": {
-                "sign": 1
+                "cot": 0.0118008981305845,
+                "coth": 1,
+                "sign": 1,
+                "sqrtwithsign": 3037000499.97605
             },
             "0x8000000000000000": {
-                "sign": -1
+                "cot": -0.0118008981305845,
+                "coth": -1,
+                "sign": -1,
+                "sqrtwithsign": -3037000499.97605
             },
             "0xffffffffffffffff": {
-                "sign": -1
+                "cot": -0.642092615934331,
+                "coth": -1.31303528549933,
+                "sign": -1,
+                "sqrtwithsign": -1
             },
             "1": {
                 "castrealornull": 1,
@@ -964,12 +984,16 @@ SELECT
                 "copyblob": 1,
                 "cot": 0.642092615934331,
                 "coth": 1.31303528549933,
-                "sign": 1
+                "sign": 1,
+                "sqrtwithsign": 1
             },
             "1e999": {
                 "castrealornull": null,
                 "castrealorzero": 0,
-                "sign": 1
+                "cot": null,
+                "coth": 1,
+                "sign": 1,
+                "sqrtwithsign": null
             },
             "null": {
                 "castrealornull": null,
@@ -978,7 +1002,8 @@ SELECT
                 "copyblob": null,
                 "cot": null,
                 "coth": null,
-                "sign": null
+                "sign": null,
+                "sqrtwithsign": null
             },
             "null, 0": {
                 "roundorzero": 0
@@ -1412,17 +1437,16 @@ SELECT
 SELECT
         id,
         doublearray_jsonto(win_quantile2(
-            ${quantile},
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            value->>1,
-            IIF(id = 34, -1, value->>1)
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, value->>1,
+            ${quantile}, IIF(id = 34, -1, value->>1)
         ) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
@@ -1477,7 +1501,7 @@ SELECT win_quantile2(1) FROM (SELECT 1);
 SELECT win_quantile2(NULL, 1) FROM (SELECT 1);
                         `)
                     });
-                }, "invalid argument 'quantile'");
+                }, "argument 'quantile'");
                 // test win_quantile1-null-case handling-behavior
                 valActual = await dbExecAsync({
                     db,
@@ -1657,6 +1681,7 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
         let valInput;
         function sqlSinefitExtractLnr(wsf, ii, suffix) {
             return (`
+    ROUND(sinefit_extract(${wsf}, ${ii}, 'gyy', 0), 8) AS gyy${suffix},
     ROUND(sinefit_extract(${wsf}, ${ii}, 'laa', 0), 8) AS laa${suffix},
     ROUND(sinefit_extract(${wsf}, ${ii}, 'lbb', 0), 8) AS lbb${suffix},
     ROUND(sinefit_extract(${wsf}, ${ii}, 'lee', 0), 8) AS lee${suffix},
@@ -1712,7 +1737,7 @@ CREATE TEMP TABLE __sinefit_win AS
         SELECT
             id,
             win_sinefit2(
-                0, ${xx2},
+                1, ${xx2},
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
@@ -1878,8 +1903,8 @@ SELECT
                     assertJsonEqual(obj3, valExpected2, valActual);
                     break;
                 default:
-                    assertJsonEqual(obj2, obj1, valActual); // flaky
-                    assertJsonEqual(obj3, obj1, valActual); // flaky
+                    assertJsonEqual(obj2, obj1, valActual);
+                    assertJsonEqual(obj3, obj1, valActual);
                 }
                 return obj1;
             });
@@ -1898,9 +1923,6 @@ SELECT
                 "mxx": 2,
                 "myy": 0,
                 "nnn": 1,
-                // #2858 "rr0": null,
-                // #2851 "rr0": 2,
-                // #2848 "rr0": -3.97134429794811e+305,
                 "rr0": 0,
                 "rr1": null,
                 "xx1": 2,
@@ -2113,7 +2135,7 @@ SELECT
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM (
         SELECT
-            win_sinefit2(0, NULL, value->>0, value->>1) AS __wsf
+            win_sinefit2(1, NULL, value->>0, value->>1) AS __wsf
         FROM JSON_EACH($valInput)
     );
                         `)
@@ -2122,6 +2144,7 @@ SELECT
                 assertJsonEqual(
                     valActual,
                     {
+                        "gyy": 0.19611614,
                         "laa": 0.77941176,
                         "lbb": 0.84558824,
                         "lee": 1.56536502,
@@ -2144,6 +2167,7 @@ SELECT
                 let valActual;
                 let valExpected;
                 valExpected = {
+                    "gyy": -1.02062073,
                     "laa": -0.82025678,
                     "lbb": 0.14621969,
                     "lee": 2.74202904,
@@ -2167,7 +2191,7 @@ SELECT
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM (
         SELECT
-            win_sinefit2(0, NULL, xx, yy) AS __wsf
+            win_sinefit2(1, NULL, xx, yy) AS __wsf
         FROM (
             SELECT 34 AS xx, 5 AS yy
             UNION ALL SELECT 108, 17
@@ -2507,7 +2531,7 @@ DROP TABLE IF EXISTS __sinefit_csv;
 CREATE TEMP TABLE __sinefit_csv AS
     SELECT
         *,
-        win_sinefit2(0, NULL, ii, yy, ii, yy) OVER (
+        win_sinefit2(1, NULL, ii, yy, ii, yy) OVER (
             ORDER BY date ASC
             ROWS BETWEEN ${ttSinefit - 1} PRECEDING AND 0 FOLLOWING
         ) AS __wsf

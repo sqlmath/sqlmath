@@ -47,7 +47,7 @@ jobs:
           # Defaults to the user or organization that owns the workflow file
           # scope: '@octocat'
       # Publish to GitHub Packages
-      - run: sh jslint_ci.sh shCiNpmPublish
+      - run: sh jslint_ci.sh shCiPublishNpm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
           NPM_REGISTRY: github
@@ -61,8 +61,27 @@ jobs:
           architecture: ${{ matrix.architecture }}
           registry-url: 'https://registry.npmjs.org'
       # Publish to npm
-      - run: sh jslint_ci.sh shCiNpmPublish
+      - run: sh jslint_ci.sh shCiPublishNpm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_REGISTRY: npm
 # base - .github/workflows/publish.yml - end
+
+
+  publish_pypi:
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/sqlmath/
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      # retrieve your distributions here
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: sh jslint_ci.sh shCiPublishPypi
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

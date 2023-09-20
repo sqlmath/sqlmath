@@ -1454,7 +1454,7 @@ SQLMATH_API double marginoferror95(
     double pp
 ) {
 // This function will calculate margin-of-error sqrt(pp*(1-pp)/nn).
-    return 1.9599639845400542 * sqrt(pp * (1 - pp) / nn);
+    return 1.9599639845400543 * sqrt(pp * (1 - pp) / nn);
 }
 
 SQLMATH_FUNC static void sql1_marginoferror95_func(
@@ -1521,28 +1521,15 @@ SQLMATH_FUNC static void sql1_roundorzero_func(
     sqlite3_result_double(context, rr);
 }
 
-SQLMATH_FUNC static void sql1_sign_func(
+SQLMATH_FUNC static void sql1_sqrtwithsign_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-/*
-** Implementation of the sign() function
-** return one of 3 possibilities +1,0 or -1 when the argument is respectively
-** positive, 0 or negative.
-** When the argument is NULL the result is also NULL (completly conventional)
-*/
+// This function will return sqrt() of magnitude of value, with sign preserved.
     UNUSED_PARAMETER(argc);
-    switch (sqlite3_value_numeric_type(argv[0])) {
-    case SQLITE_INTEGER:
-    case SQLITE_FLOAT:
-        {
-            double rVal = sqlite3_value_double(argv[0]);
-            sqlite3_result_double(context,
-                (rVal > 0) ? 1 : (rVal < 0) ? -1 : 0);
-        }
-        return;
-    }
+    const double xx = sqlite3_value_double_or_nan(argv[0]);
+    sqlite3_result_double(context, xx < 0 ? -sqrt(-xx) : sqrt(xx));
 }
 
 SQLMATH_FUNC static void sql1_squared_func(
@@ -2193,7 +2180,7 @@ static void sql3_win_sinefit2_step(
 // and sine-regression as:
 //     yy = laa + lbb*xx + saa*sin(sww*xx + spp)
     static const int argc0 = 2;
-    if (argc < argc0 + 2 || (argc0 + 2) % 2) {
+    if (argc < argc0 + 2 || (argc - argc0) % 2) {
         sqlite3_result_error(context,
             "win_sinefit2() - wrong number of arguments", -1);
         return;
@@ -2202,12 +2189,12 @@ static void sql3_win_sinefit2_step(
     const int ncol = (argc - argc0) / 2;
     DOUBLEWIN_AGGREGATE_CONTEXT(ncol * WIN_SINEFIT_N);
     if (dblwin->nbody == 0) {
-        // init ncol
+        // dbwin - init ncol
         dblwin->ncol = ncol;
     }
     // dblwin - init argv
     const double xx2 = sqlite3_value_double_or_nan(argv[1]);
-    const int modeNosnr = sqlite3_value_int(argv[0]);
+    const int modeSnr = sqlite3_value_int(argv[0]);
     argv += argc0;
     WinSinefit *wsf = NULL;
     const int waa = dblwin->waa;
@@ -2247,7 +2234,7 @@ static void sql3_win_sinefit2_step(
         // dblwin - calculate lnr
         winSinefitLnr(wsf, xxyy, wbb);
         // dblwin - calculate snr
-        if (!modeNosnr) {
+        if (modeSnr) {
             winSinefitSnr(wsf, xxyy, wbb, dblwin->nbody, dblwin->ncol);
         }
         // increment counter
@@ -2261,7 +2248,7 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will extract <val> from WinSinefit-object with given <key>.
+// This function will extract <val> from WinSinefit-object, with given <key>.
     UNUSED_PARAMETER(argc);
     // validate argv
     const int icol = sqlite3_value_int(argv[1]);
@@ -2316,6 +2303,12 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
             sqlite3_result_double_or_null(context, ((double *) wsf)[ii]);
             return;
         }
+    }
+    // gaussian-normalized y-value
+    if (strcmp(key, "gyy") == 0) {
+        sqlite3_result_double_or_null(context,  //
+            (wsf->yy1 - wsf->myy) * sqrt((wsf->nnn - 1) / wsf->vyy));
+        return;
     }
     // linest y-stdev.s2
     if (strcmp(key, "lee") == 0) {
@@ -2523,7 +2516,7 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
     double arg_alpha = NAN;
     DOUBLEWIN_AGGREGATE_CONTEXT(argc);
     if (dblwin->nbody == 0) {
-        // ncol
+        // dbwin - init ncol
         dblwin->ncol = ncol;
         // arg_alpha
         arg_alpha = sqlite3_value_double_or_nan(argv[0]);
@@ -2613,7 +2606,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_value(
 // This function will calculate running quantile.
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    sqlite3_result_double(context, dblwin_head[(int) dblwin->ncol + 1]);
+    sqlite3_result_double(context, dblwin_head[(int) dblwin->ncol]);
 }
 
 SQLMATH_FUNC static void sql3_win_quantile1_final(
@@ -2642,7 +2635,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_inverse(
         dblwin->wnn = dblwin->nbody;
     }
     // dblwin - invert
-    const int ncol = argc - 1;
+    const int ncol = argc / 2;
     const int nstep = ncol * 2;
     const int nn = dblwin->nbody - nstep;
     double *arr = dblwin_body + 1;
@@ -2667,55 +2660,53 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
     sqlite3_value ** argv
 ) {
 // This function will calculate running quantile.
-    if (argc < 2) {
+    if (argc < 2 || argc % 2) {
         sqlite3_result_error(context,
             "win_quantile2() - wrong number of arguments", -1);
         return;
     }
     // dblwin - init
-    const int ncol = argc - 1;
-    double arg_quantile = NAN;
-    DOUBLEWIN_AGGREGATE_CONTEXT(argc + ncol);
+    const int ncol = argc / 2;
+    DOUBLEWIN_AGGREGATE_CONTEXT(2 * ncol);
     if (dblwin->nbody == 0) {
-        // ncol
+        // dbwin - init ncol
         dblwin->ncol = ncol;
-        // arg_quantile
-        arg_quantile = sqlite3_value_double_or_nan(argv[0]);
-        if (!(0 <= arg_quantile && arg_quantile <= 1)) {
-            sqlite3_result_error(context,
-                "win_quantilex() - invalid argument 'quantile'", -1);
-            return;
-        }
-        dblwin_head[ncol + 0] = arg_quantile;
     }
     // dblwin - push xx
-    argv += 1;
     for (int ii = 0; ii < ncol; ii += 1) {
-        sqlite3_value_double_or_prev(argv[0], &dblwin_head[ii]);
+        sqlite3_value_double_or_prev(argv[ii * 2 + 1], &dblwin_head[ii]);
         DOUBLEWIN_AGGREGATE_PUSH(dblwin_head[ii]);
         DOUBLEWIN_AGGREGATE_PUSH(       //
             dblwin->wnn ? dblwin_body[(int) dblwin->waa] : INFINITY);
-        argv += 1;
     }
     // dblwin - calculate quantile
     const int nstep = ncol * 2;
     const int nn = dblwin->nbody / nstep;
     double *arr = dblwin_body + 1;
-    //
-    arg_quantile = dblwin_head[ncol + 0] * (nn - 1);
-    const int kk1 = floor(arg_quantile) * nstep;
-    const int kk2 = kk1 + nstep;
-    arg_quantile = fmod(arg_quantile, 1);
     for (int ii = 0; ii < ncol; ii += 1) {
+        // init argQuantile
+        double argQuantile = sqlite3_value_double_or_nan(argv[2 * ii + 0]);
+        if (!(0 <= argQuantile && argQuantile <= 1)) {
+            sqlite3_result_error(context,
+                "win_quantilex()"
+                " - argument 'quantile' must be between 0 and 1 inclusive",
+                -1);
+            return;
+        }
+        argQuantile *= (nn - 1);
+        const int kk1 = floor(argQuantile) * nstep;
+        const int kk2 = kk1 + nstep;
+        argQuantile = fmod(argQuantile, 1);
+        // calculate quantile
         const double xx = dblwin_head[ii];
         int jj = (nn - 2) * nstep;
         for (; jj >= 0 && arr[jj] > xx; jj -= nstep) {
             arr[jj + nstep] = arr[jj];
         }
         arr[jj + nstep] = xx;
-        dblwin_head[ncol + 1 + ii] = arg_quantile == 0  //
+        dblwin_head[ncol + ii] = argQuantile == 0       //
             ? arr[kk1]          //
-            : (1 - arg_quantile) * arr[kk1] + arg_quantile * arr[kk2];
+            : (1 - argQuantile) * arr[kk1] + argQuantile * arr[kk2];
         arr += 2;
     }
 }
@@ -2733,7 +2724,7 @@ SQLMATH_FUNC static void sql3_win_quantile2_value(
         sqlite3_result_null(context);
     }
     // dblwin - result
-    doublearrayResult(context, dblwin_head + (int) dblwin->ncol + 1,
+    doublearrayResult(context, dblwin_head + (int) dblwin->ncol,
         (int) dblwin->ncol, SQLITE_TRANSIENT);
 }
 
@@ -2791,9 +2782,9 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(fmod, 2);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
-    SQLITE3_CREATE_FUNCTION1(sign, 1);
     SQLITE3_CREATE_FUNCTION1(sinefit_extract, 4);
     SQLITE3_CREATE_FUNCTION1(sinefit_refitlast, -1);
+    SQLITE3_CREATE_FUNCTION1(sqrtwithsign, 1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION2(median, 1);

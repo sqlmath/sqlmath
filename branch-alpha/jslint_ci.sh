@@ -441,6 +441,7 @@ globalThis.assert(
     if [ "$(git branch --show-current)" = alpha ]
     then
         node --input-type=module --eval '
+import moduleChildProcess from "child_process";
 import moduleFs from "fs";
 (async function () {
     let fileDict = {};
@@ -501,7 +502,13 @@ import moduleFs from "fs";
         }
     }));
     if (fileModified) {
-        throw new Error("modified file " + fileModified);
+        moduleChildProcess.spawn(
+            "git",
+            ["diff"],
+            {stdio: ["ignore", 1, 2]}
+        ).on("exit", function () {
+            throw new Error("modified file " + fileModified);
+        });
     }
 }());
 ' "$@" # '
@@ -585,32 +592,6 @@ shCiMatrixIsmainNodeversion() {(set -e
         && [ "$CI_MATRIX_NODE_VERSION" = "$CI_MATRIX_NODE_VERSION_MAIN" ]
 )}
 
-shCiNpmPublish() {(set -e
-# this function will npm-publish package
-# shCiNpmPublishCustom() {(set -e
-# # this function will run custom-code to npm-publish package
-#     # npm publish --access public
-# )}
-    if ! ([ -f package.json ] \
-        && grep -q '^    "shCiNpmPublish": 1,$' package.json)
-    then
-        return
-    fi
-    # init package.json for npm-publish
-    npm install
-    # update package-name
-    if [ "$NPM_REGISTRY" = github ]
-    then
-        sed -i \
-            "s|^    \"name\":.*|    \"name\": \"@$GITHUB_REPOSITORY\",|" \
-            package.json
-    fi
-    if (command -v shCiNpmPublishCustom >/dev/null)
-    then
-        shCiNpmPublishCustom
-    fi
-)}
-
 shCiPre() {(set -e
 # this function will run pre-ci
 # shCiPreCustom() {(set -e
@@ -629,6 +610,49 @@ shCiPre() {(set -e
     if (command -v shCiPreCustom2 >/dev/null)
     then
         shCiPreCustom2
+    fi
+)}
+
+shCiPublishNpm() {(set -e
+# this function will publish npm-package
+# shCiPublishNpmCustom() {(set -e
+# # this function will run custom-code to npm-publish package
+#     # npm publish --access public
+# )}
+    if ! ([ -f package.json ] \
+        && grep -q '^    "shCiPublishNpm": 1,$' package.json)
+    then
+        return
+    fi
+    # init package.json for npm-publish
+    npm install
+    # update package-name
+    if [ "$NPM_REGISTRY" = github ]
+    then
+        sed -i \
+            "s|^    \"name\":.*|    \"name\": \"@$GITHUB_REPOSITORY\",|" \
+            package.json
+    fi
+    if (command -v shCiPublishNpmCustom >/dev/null)
+    then
+        shCiPublishNpmCustom
+    fi
+)}
+
+shCiPublishPypi() {(set -e
+# this function will publish pypi-package
+# shCiPublishPypiCustom() {(set -e
+# # this function will run custom-code to npm-publish package
+#     # npm publish --access public
+# )}
+    if ! ([ -f pyproject.toml ] \
+        && grep -q '^shCiPublishPypi = 1$' pyproject.toml)
+    then
+        return
+    fi
+    if (command -v shCiPublishPypiCustom >/dev/null)
+    then
+        shCiPublishPypiCustom
     fi
 )}
 
@@ -826,17 +850,18 @@ shGitCommitPushOrSquash() {(set -e
     COMMIT_MESSAGE="${1:-$(git diff HEAD --stat)}"
     COMMIT_LIMIT="$2"
     MODE_NOBACKUP="$3"
-    MODE_FORCE="$4"
+    MODE_SQUASH="$4"
     git commit -am "$COMMIT_MESSAGE" || true
     COMMIT_COUNT="$(git rev-list --count HEAD)"
-    if (! [ "$COMMIT_COUNT" -gt "$COMMIT_LIMIT" ] &>/dev/null)
+    if [ "$COMMIT_COUNT" -gt "$COMMIT_LIMIT" ]
     then
-        if [ "$MODE_FORCE" = force ]
-        then
-            shGitCmdWithGithubToken push origin "$BRANCH" -f
-        else
-            shGitCmdWithGithubToken push origin "$BRANCH"
-        fi
+        MODE_SQUASH=squash
+    fi
+    printf "shGitCommitPushOrSquash COMMIT_COUNT=$COMMIT_COUNT \
+COMMIT_LIMIT=$COMMIT_LIMIT MODE_SQUASH=$MODE_SQUASH\n"
+    if [ "$MODE_SQUASH" != squash ]
+    then
+        shGitCmdWithGithubToken push origin "$BRANCH"
         return
     fi
     # backup
@@ -1507,6 +1532,7 @@ shImageLogoCreate() {(set -e
         return
     fi
     # screenshot asset_image_logo_512.png
+    mkdir -p .artifact
     shBrowserScreenshot asset_image_logo_512.html \
         --window-size=512x512 \
         -screenshot=.artifact/asset_image_logo_512.png
@@ -3504,9 +3530,10 @@ fi
     unset shCiBaseCustom2
     unset shCiLintCustom
     unset shCiLintCustom2
-    unset shCiNpmPublishCustom
     unset shCiPreCustom
     unset shCiPreCustom2
+    unset shCiPublishNpmCustom
+    unset shCiPublishPypiCustom
     if [ -f ./myci2.sh ]
     then
         . ./myci2.sh :
