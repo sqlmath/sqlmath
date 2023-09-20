@@ -6,6 +6,7 @@
 - none
 
 # v2023.9.1-beta
+- ci - Update ci-workflow publish to auto-publish pypi-package.
 - ci - Add ci-workflow publish_pypi_test.
 - python - Remove setuptools dependency. - part1
 - python - Update ci to build python-manylinux wheel.

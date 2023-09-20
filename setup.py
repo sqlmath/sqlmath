@@ -392,6 +392,8 @@ def build_pkg_info():
                 data += f"Author: {match[2]}\n"
             case "description":
                 data += f"Summary: {match[2]}\n"
+            case "license":
+                data += f"{match[1].capitalize()}: {match[2]}\n"
             case "name":
                 data += f"{match[1].capitalize()}: {match[2]}\n"
             case "requires-python":
@@ -406,12 +408,10 @@ def build_pkg_info():
     for match in re.finditer(
         '\n(changelog|documentation|homepage|repository) = "(.*?)"',
         toml,
+        re.IGNORECASE,
     ):
         data += f"Project-URL: {match[1]}, {match[2]}\n"
-    with pathlib.Path("LICENSE").open() as file1:
-        data += "License-File: LICENSE\n"
-        data += "License: "
-        data += file1.read().replace("\n", "\n        ").strip() + "\n\n"
+    data += "License-File: LICENSE\n"
     with pathlib.Path("README.md").open() as file1:
         data += "Description-Content-Type: text/markdown\n\n"
         data += file1.read().strip() + "\n"

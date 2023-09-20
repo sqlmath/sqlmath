@@ -402,10 +402,10 @@ shCiPublishPypiCustom() {(set -e
 # this function will run custom-code to npm-publish package
     # fetch artifact
     git fetch origin artifact --depth=1
-    git checkout origin/artifact branch-beta/
+    git checkout origin/artifact branch-alpha/
     mkdir dist/
-    cp -a branch-beta/sqlmath-*.tar.gz dist/
-    cp -a branch-beta/sqlmath-*.whl dist/
+    cp -a branch-alpha/sqlmath-*.tar.gz dist/
+    cp -a branch-alpha/sqlmath-*.whl dist/
     ls -la dist/
 )}
 

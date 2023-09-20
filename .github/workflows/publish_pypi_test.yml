@@ -5,12 +5,12 @@ on:
   #   types: [created]
   workflow_dispatch:
 jobs:
-  pypi-publish:
+  publish_pypi:
     name: Upload release to PyPI
     runs-on: ubuntu-latest
     environment:
-      name: testpypi
-      url: https://test.pypi.org/project/sqlmath/
+      name: pypi
+      url: https://pypi.org/project/sqlmath/
     permissions:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:

@@ -41,10 +41,8 @@ classifiers = [
 # spam-cli = "spam:main_cli"
 
 [project.urls]
-changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
-documentation = "https://github.com/sqlmath/sqlmath"
-homepage = "https://github.com/sqlmath/sqlmath"
-repository = "https://github.com/sqlmath/sqlmath"
+Homepage = "https://github.com/sqlmath/sqlmath"
+Changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
 
 # to disable scanning PEP 420 namespaces (true by default)
 # namespaces = false
