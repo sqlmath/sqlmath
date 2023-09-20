@@ -19,7 +19,7 @@ maintainers = []
 requires-python = ">=3.10"
 #
 dependencies = []
-license = {file = "LICENSE"}
+license = {text = "MIT"}
 readme = "README.md"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -68,3 +68,6 @@ test-command = [
 
 [tool.setuptools]
 py-modules = ["sqlmath"]
+
+[tool.sqlmath]
+shCiPublishPypi = 1

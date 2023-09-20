@@ -6,7 +6,8 @@
 - none
 
 # v2023.9.1-beta
-- python - - python - Remove setuptools dependency. - part1
+- ci - Add ci-workflow publish_pypi_test.
+- python - Remove setuptools dependency. - part1
 - python - Update ci to build python-manylinux wheel.
 - sqlmath - Add sql-function sqrtwithsign(), and remove redundant sql-function sign().
 - sqlmath - Update function win_quantile2() to accept different quantile-arg for each icol.

@@ -2,6 +2,7 @@ include .ci.sh
 include .gitconfig
 include .github/workflows/ci.yml
 include .github/workflows/publish.yml
+include .github/workflows/publish_pypi_test.yml
 include .gitignore
 include .npmignore
 include CHANGELOG.md

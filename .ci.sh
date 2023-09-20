@@ -53,6 +53,7 @@ shCiBaseCustom() {(set -e
     fi
     # cleanup
     rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
+    python setup.py build_ext_init
     PID_LIST=""
     #
     # python -m build --sdist
@@ -71,15 +72,11 @@ shCiBaseCustom() {(set -e
     ) &
     PID_LIST="$PID_LIST $!"
     #
-    # run nodejs-ci
-    shCiTestNodejs &
-    PID_LIST="$PID_LIST $!"
-    #
     # shCiBuildWasm
     (
     if (shCiMatrixIsmainName)
     then
-        shImageLogoCreate &
+        shImageLogoCreate
         shCiBuildWasm
         # .github_cache - save
         if [ "$GITHUB_ACTION" ] && [ ! -d .github_cache/_emsdk ]
@@ -89,6 +86,10 @@ shCiBaseCustom() {(set -e
         fi
     fi
     ) &
+    PID_LIST="$PID_LIST $!"
+    #
+    # run nodejs-ci
+    shCiTestNodejs &
     PID_LIST="$PID_LIST $!"
     shPidListWait build_ext "$PID_LIST"
     #
@@ -153,7 +154,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     Linux*)
         rm -f "branch-$GITHUB_BRANCH0/"*linux*
         ;;
-    *)
+    MINGW64_NT*)
         rm -f "branch-$GITHUB_BRANCH0/"*win32*
         rm -f "branch-$GITHUB_BRANCH0/"*win_*
         ;;
@@ -181,7 +182,7 @@ shCiBaseCustomArtifactUpload() {(set -e
         # git push
         if (shCiMatrixIsmainName) && [ "$GITHUB_BRANCH0" = alpha ]
         then
-            shGitCommitPushOrSquash "" 20
+            shGitCommitPushOrSquash "" 50
         else
             shGitCmdWithGithubToken pull origin artifact
             shGitCmdWithGithubToken push origin artifact
@@ -384,7 +385,7 @@ shCiLintCustom() {(set -e
         sqlmath/__init__.py
 )}
 
-shCiNpmPublishCustom() {(set -e
+shCiPublishNpmCustom() {(set -e
 # this function will run custom-code to npm-publish package
     # fetch artifact
     git fetch origin artifact --depth=1
@@ -395,6 +396,17 @@ shCiNpmPublishCustom() {(set -e
     cp -a branch-beta/sqlmath_wasm.* .
     # npm-publish
     npm publish --access public
+)}
+
+shCiPublishPypiCustom() {(set -e
+# this function will run custom-code to npm-publish package
+    # fetch artifact
+    git fetch origin artifact --depth=1
+    git checkout origin/artifact branch-beta/
+    mkdir dist/
+    cp -a branch-beta/sqlmath-*.tar.gz dist/
+    cp -a branch-beta/sqlmath-*.whl dist/
+    ls -la dist/
 )}
 
 shCiTestNodejs() {(set -e

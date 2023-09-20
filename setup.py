@@ -377,6 +377,7 @@ def build_ext_init():
 
 def build_pkg_info():
     """This function will build PKG-INFO."""
+    # https://packaging.python.org/en/latest/specifications/core-metadata/#core-metadata
     toml = ""
     with pathlib.Path("pyproject.toml").open() as file1:
         toml = file1.read()
