@@ -1,0 +1,71 @@
+# https://setuptools.pypa.io/en/latest/userguide/ext_modules.html
+[build-system]
+requires = [
+    "pycodestyle == 2.11.0",
+    "ruff >= 0.0.290",
+    "setuptools >= 68.2.2",
+    "wheel >= 0.41.2",
+]
+build-backend = "setup"
+backend-path = ["."]
+
+# https://peps.python.org/pep-0621/#example
+[project]
+name = "sqlmath"
+version = "2023.9.19"
+description = "sqlite for datascience"
+authors = [{name = "Kai Zhu"}]
+maintainers = []
+requires-python = ">=3.10"
+#
+dependencies = []
+license = {text = "MIT"}
+readme = "README.md"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: C",
+    "Programming Language :: JavaScript",
+    "Programming Language :: Python",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development",
+]
+
+[project.scripts]
+# spam-cli = "spam:main_cli"
+
+[project.urls]
+Homepage = "https://github.com/sqlmath/sqlmath"
+Changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
+
+# to disable scanning PEP 420 namespaces (true by default)
+# namespaces = false
+
+# https://cibuildwheel.readthedocs.io/en/stable/options/
+[tool.cibuildwheel]
+archs = ["native"]
+before-test = ["pip install setuptools"]
+build = ["cp*-*"]
+build-verbosity = "1"
+manylinux-x86_64-image = "manylinux_2_28"
+skip = [
+    "*-musllinux*",
+    "cp312-*",
+    "pp*",
+]
+test-command = [
+    "python --version",
+    "python -c \"import sqlmath; sqlmath.test_python_run()\"",
+]
+
+[tool.setuptools]
+py-modules = ["sqlmath"]
+
+[tool.sqlmath]
+shCiPublishPypi = 1

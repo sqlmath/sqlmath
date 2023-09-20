@@ -1,0 +1,2659 @@
+{
+ "result": [
+  {
+   "scriptId": "0",
+   "url": "sqlmath.mjs",
+   "functions": [
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 37765,
+       "startOffset": 0
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 3714,
+       "startOffset": 3291
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "__consoleError",
+     "ranges": [
+      {
+       "count": 3,
+       "endOffset": 3365,
+       "startOffset": 3330
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "debug",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 3606,
+       "startOffset": 3371
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "assertJsonEqual",
+     "ranges": [
+      {
+       "count": 2744,
+       "endOffset": 4679,
+       "startOffset": 4103
+      },
+      {
+       "count": 3,
+       "endOffset": 4677,
+       "startOffset": 4390
+      },
+      {
+       "count": 1,
+       "endOffset": 4549,
+       "startOffset": 4532
+      },
+      {
+       "count": 2,
+       "endOffset": 4646,
+       "startOffset": 4566
+      },
+      {
+       "count": 1,
+       "endOffset": 4625,
+       "startOffset": 4592
+      },
+      {
+       "count": 1,
+       "endOffset": 4646,
+       "startOffset": 4642
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "assertNumericalEqual",
+     "ranges": [
+      {
+       "count": 4,
+       "endOffset": 5119,
+       "startOffset": 4681
+      },
+      {
+       "count": 2,
+       "endOffset": 5117,
+       "startOffset": 4916
+      },
+      {
+       "count": 1,
+       "endOffset": 5065,
+       "startOffset": 5048
+      },
+      {
+       "count": 1,
+       "endOffset": 5086,
+       "startOffset": 5082
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "assertOrThrow",
+     "ranges": [
+      {
+       "count": 8324,
+       "endOffset": 5419,
+       "startOffset": 5121
+      },
+      {
+       "count": 73,
+       "endOffset": 5417,
+       "startOffset": 5251
+      },
+      {
+       "count": 19,
+       "endOffset": 5378,
+       "startOffset": 5335
+      },
+      {
+       "count": 54,
+       "endOffset": 5400,
+       "startOffset": 5391
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "cCallAsync",
+     "ranges": [
+      {
+       "count": 659,
+       "endOffset": 7991,
+       "startOffset": 5421
+      },
+      {
+       "count": 70,
+       "endOffset": 5765,
+       "startOffset": 5747
+      },
+      {
+       "count": 16157,
+       "endOffset": 5888,
+       "startOffset": 5855
+      },
+      {
+       "count": 2,
+       "endOffset": 7847,
+       "startOffset": 7800
+      },
+      {
+       "count": 647,
+       "endOffset": 7882,
+       "startOffset": 7847
+      },
+      {
+       "count": 594,
+       "endOffset": 7900,
+       "startOffset": 7882
+      },
+      {
+       "count": 53,
+       "endOffset": 7989,
+       "startOffset": 7900
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 20788,
+       "endOffset": 7380,
+       "startOffset": 5952
+      },
+      {
+       "count": 16484,
+       "endOffset": 6048,
+       "startOffset": 6034
+      },
+      {
+       "count": 17076,
+       "endOffset": 6164,
+       "startOffset": 6057
+      },
+      {
+       "count": 1212,
+       "endOffset": 6691,
+       "startOffset": 6173
+      },
+      {
+       "count": 1207,
+       "endOffset": 6384,
+       "startOffset": 6351
+      },
+      {
+       "count": 611,
+       "endOffset": 7093,
+       "startOffset": 6748
+      },
+      {
+       "count": 1,
+       "endOffset": 6944,
+       "startOffset": 6937
+      },
+      {
+       "count": 610,
+       "endOffset": 7039,
+       "startOffset": 7021
+      },
+      {
+       "count": 1889,
+       "endOffset": 7143,
+       "startOffset": 7103
+      },
+      {
+       "count": 4,
+       "endOffset": 7299,
+       "startOffset": 7143
+      },
+      {
+       "count": 1885,
+       "endOffset": 7337,
+       "startOffset": 7299
+      },
+      {
+       "count": 1,
+       "endOffset": 7374,
+       "startOffset": 7337
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "childProcessSpawn2",
+     "ranges": [
+      {
+       "count": 15,
+       "endOffset": 10473,
+       "startOffset": 7993
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 15,
+       "endOffset": 10468,
+       "startOffset": 8143
+      },
+      {
+       "count": 1,
+       "endOffset": 8476,
+       "startOffset": 8350
+      },
+      {
+       "count": 1,
+       "endOffset": 8742,
+       "startOffset": 8734
+      },
+      {
+       "count": 14,
+       "endOffset": 8777,
+       "startOffset": 8767
+      },
+      {
+       "count": 1,
+       "endOffset": 8891,
+       "startOffset": 8883
+      },
+      {
+       "count": 14,
+       "endOffset": 8926,
+       "startOffset": 8916
+      },
+      {
+       "count": 1,
+       "endOffset": 9737,
+       "startOffset": 9018
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 3,
+       "endOffset": 9725,
+       "startOffset": 9112
+      },
+      {
+       "count": 1,
+       "endOffset": 9211,
+       "startOffset": 9164
+      },
+      {
+       "count": 2,
+       "endOffset": 9724,
+       "startOffset": 9211
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 2,
+       "endOffset": 9709,
+       "startOffset": 9244
+      },
+      {
+       "count": 1,
+       "endOffset": 9519,
+       "startOffset": 9420
+      },
+      {
+       "count": 1,
+       "endOffset": 9643,
+       "startOffset": 9544
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 15,
+       "endOffset": 10460,
+       "startOffset": 9763
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 30,
+       "endOffset": 10399,
+       "startOffset": 10169
+      },
+      {
+       "count": 2,
+       "endOffset": 10325,
+       "startOffset": 10283
+      },
+      {
+       "count": 28,
+       "endOffset": 10366,
+       "startOffset": 10346
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "ciBuildExt",
+     "ranges": [
+      {
+       "count": 7,
+       "endOffset": 11012,
+       "startOffset": 10475
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "ciBuildExt1NodejsConfigure",
+     "ranges": [
+      {
+       "count": 7,
+       "endOffset": 13847,
+       "startOffset": 11014
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "ciBuildExt2NodejsBuild",
+     "ranges": [
+      {
+       "count": 7,
+       "endOffset": 14863,
+       "startOffset": 13849
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "dbCallAsync",
+     "ranges": [
+      {
+       "count": 594,
+       "endOffset": 15320,
+       "startOffset": 14865
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 592,
+       "endOffset": 15316,
+       "startOffset": 15169
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "dbCloseAsync",
+     "ranges": [
+      {
+       "count": 3,
+       "endOffset": 15930,
+       "startOffset": 15322
+      },
+      {
+       "count": 1,
+       "endOffset": 15929,
+       "startOffset": 15905
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 15902,
+       "startOffset": 15700
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "dbDeref",
+     "ranges": [
+      {
+       "count": 597,
+       "endOffset": 16348,
+       "startOffset": 15932
+      },
+      {
+       "count": 594,
+       "endOffset": 16077,
+       "startOffset": 16067
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "dbExecAndReturnLastBlobAsync",
+     "ranges": [
+      {
+       "count": 48,
+       "endOffset": 16653,
+       "startOffset": 16350
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "dbExecAsync",
+     "ranges": [
+      {
+       "count": 593,
+       "endOffset": 19257,
+       "startOffset": 16655
+      },
+      {
+       "count": 1,
+       "endOffset": 17565,
+       "startOffset": 16949
+      },
+      {
+       "count": 409,
+       "endOffset": 17717,
+       "startOffset": 17700
+      },
+      {
+       "count": 184,
+       "endOffset": 17756,
+       "startOffset": 17726
+      },
+      {
+       "count": 46,
+       "endOffset": 18472,
+       "startOffset": 18469
+      },
+      {
+       "count": 545,
+       "endOffset": 18488,
+       "startOffset": 18485
+      },
+      {
+       "count": 536,
+       "endOffset": 18692,
+       "startOffset": 18631
+      },
+      {
+       "count": 46,
+       "endOffset": 18711,
+       "startOffset": 18692
+      },
+      {
+       "count": 92,
+       "endOffset": 18755,
+       "startOffset": 18716
+      },
+      {
+       "count": 139,
+       "endOffset": 18833,
+       "startOffset": 18760
+      },
+      {
+       "count": 305,
+       "endOffset": 19249,
+       "startOffset": 18838
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 17547,
+       "startOffset": 17445
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 612,
+       "endOffset": 18151,
+       "startOffset": 17830
+      },
+      {
+       "count": 276,
+       "endOffset": 18024,
+       "startOffset": 17891
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 380,
+       "endOffset": 19247,
+       "startOffset": 18936
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1805,
+       "endOffset": 19235,
+       "startOffset": 19031
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 34026,
+       "endOffset": 19190,
+       "startOffset": 19111
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "dbFileExportAsync",
+     "ranges": [
+      {
+       "count": 6,
+       "endOffset": 19989,
+       "startOffset": 19259
+      },
+      {
+       "count": 1,
+       "endOffset": 19458,
+       "startOffset": 19435
+      },
+      {
+       "count": 5,
+       "endOffset": 19479,
+       "startOffset": 19458
+      },
+      {
+       "count": 1,
+       "endOffset": 19521,
+       "startOffset": 19479
+      },
+      {
+       "count": 5,
+       "endOffset": 19578,
+       "startOffset": 19521
+      },
+      {
+       "count": 3,
+       "endOffset": 19589,
+       "startOffset": 19578
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "dbFileImportAsync",
+     "ranges": [
+      {
+       "count": 2,
+       "endOffset": 20222,
+       "startOffset": 19991
+      },
+      {
+       "count": 1,
+       "endOffset": 20221,
+       "startOffset": 20220
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "dbNoopAsync",
+     "ranges": [
+      {
+       "count": 36,
+       "endOffset": 20387,
+       "startOffset": 20224
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "dbOpenAsync",
+     "ranges": [
+      {
+       "count": 16,
+       "endOffset": 22145,
+       "startOffset": 20389
+      },
+      {
+       "count": 1,
+       "endOffset": 21048,
+       "startOffset": 21021
+      },
+      {
+       "count": 15,
+       "endOffset": 22144,
+       "startOffset": 22032
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 15,
+       "endOffset": 22029,
+       "startOffset": 21176
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "fsCopyFileUnlessTest",
+     "ranges": [
+      {
+       "count": 2,
+       "endOffset": 22425,
+       "startOffset": 22147
+      },
+      {
+       "count": 1,
+       "endOffset": 22424,
+       "startOffset": 22338
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "fsExistsUnlessTest",
+     "ranges": [
+      {
+       "count": 10,
+       "endOffset": 22765,
+       "startOffset": 22427
+      },
+      {
+       "count": 8,
+       "endOffset": 22635,
+       "startOffset": 22606
+      },
+      {
+       "count": 2,
+       "endOffset": 22691,
+       "startOffset": 22635
+      },
+      {
+       "count": 1,
+       "endOffset": 22763,
+       "startOffset": 22691
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "fsReadFileUnlessTest",
+     "ranges": [
+      {
+       "count": 3,
+       "endOffset": 23112,
+       "startOffset": 22767
+      },
+      {
+       "count": 1,
+       "endOffset": 22998,
+       "startOffset": 22963
+      },
+      {
+       "count": 2,
+       "endOffset": 23103,
+       "startOffset": 22998
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "fsWriteFileUnlessTest",
+     "ranges": [
+      {
+       "count": 10,
+       "endOffset": 23379,
+       "startOffset": 23114
+      },
+      {
+       "count": 9,
+       "endOffset": 23326,
+       "startOffset": 23303
+      },
+      {
+       "count": 1,
+       "endOffset": 23378,
+       "startOffset": 23326
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "isExternalBuffer",
+     "ranges": [
+      {
+       "count": 3675,
+       "endOffset": 23686,
+       "startOffset": 23381
+      },
+      {
+       "count": 1794,
+       "endOffset": 23683,
+       "startOffset": 23505
+      },
+      {
+       "count": 1792,
+       "endOffset": 23677,
+       "startOffset": 23558
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "jsbatonCreate",
+     "ranges": [
+      {
+       "count": 663,
+       "endOffset": 23915,
+       "startOffset": 23688
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "jsbatonValuePush",
+     "ranges": [
+      {
+       "count": 2148,
+       "endOffset": 30154,
+       "startOffset": 23917
+      },
+      {
+       "count": 2139,
+       "endOffset": 25095,
+       "startOffset": 25080
+      },
+      {
+       "count": 13,
+       "endOffset": 25126,
+       "startOffset": 25097
+      },
+      {
+       "count": 8,
+       "endOffset": 25227,
+       "startOffset": 25207
+      },
+      {
+       "count": 12,
+       "endOffset": 25278,
+       "startOffset": 25257
+      },
+      {
+       "count": 165,
+       "endOffset": 25404,
+       "startOffset": 25307
+      },
+      {
+       "count": 65,
+       "endOffset": 25509,
+       "startOffset": 25489
+      },
+      {
+       "count": 65,
+       "endOffset": 25558,
+       "startOffset": 25538
+      },
+      {
+       "count": 70,
+       "endOffset": 25613,
+       "startOffset": 25590
+      },
+      {
+       "count": 74,
+       "endOffset": 25664,
+       "startOffset": 25643
+      },
+      {
+       "count": 78,
+       "endOffset": 25839,
+       "startOffset": 25692
+      },
+      {
+       "count": 9,
+       "endOffset": 25962,
+       "startOffset": 25868
+      },
+      {
+       "count": 22,
+       "endOffset": 26084,
+       "startOffset": 25990
+      },
+      {
+       "count": 17,
+       "endOffset": 26210,
+       "startOffset": 26113
+      },
+      {
+       "count": 68,
+       "endOffset": 26330,
+       "startOffset": 26238
+      },
+      {
+       "count": 1789,
+       "endOffset": 27645,
+       "startOffset": 26381
+      },
+      {
+       "count": 4,
+       "endOffset": 26926,
+       "startOffset": 26462
+      },
+      {
+       "count": 1785,
+       "endOffset": 26993,
+       "startOffset": 26926
+      },
+      {
+       "count": 28,
+       "endOffset": 27259,
+       "startOffset": 26993
+      },
+      {
+       "count": 8,
+       "endOffset": 27146,
+       "startOffset": 27035
+      },
+      {
+       "count": 20,
+       "endOffset": 27259,
+       "startOffset": 27146
+      },
+      {
+       "count": 1757,
+       "endOffset": 27361,
+       "startOffset": 27259
+      },
+      {
+       "count": 1737,
+       "endOffset": 27368,
+       "startOffset": 27361
+      },
+      {
+       "count": 20,
+       "endOffset": 27482,
+       "startOffset": 27381
+      },
+      {
+       "count": 4,
+       "endOffset": 27446,
+       "startOffset": 27430
+      },
+      {
+       "count": 16,
+       "endOffset": 27482,
+       "startOffset": 27459
+      },
+      {
+       "count": 130,
+       "endOffset": 28332,
+       "startOffset": 27909
+      },
+      {
+       "count": 20,
+       "endOffset": 28529,
+       "startOffset": 28503
+      },
+      {
+       "count": 1777,
+       "endOffset": 29203,
+       "startOffset": 28534
+      },
+      {
+       "count": 1260,
+       "endOffset": 28705,
+       "startOffset": 28639
+      },
+      {
+       "count": 68,
+       "endOffset": 29300,
+       "startOffset": 29208
+      },
+      {
+       "count": 22,
+       "endOffset": 29740,
+       "startOffset": 29305
+      },
+      {
+       "count": 21,
+       "endOffset": 29479,
+       "startOffset": 29441
+      },
+      {
+       "count": 4,
+       "endOffset": 30128,
+       "startOffset": 29745
+      },
+      {
+       "count": 2146,
+       "endOffset": 30153,
+       "startOffset": 30134
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "jsbatonValueString",
+     "ranges": [
+      {
+       "count": 3,
+       "endOffset": 30542,
+       "startOffset": 30156
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "moduleFsInit",
+     "ranges": [
+      {
+       "count": 8,
+       "endOffset": 31380,
+       "startOffset": 30544
+      },
+      {
+       "count": 6,
+       "endOffset": 30764,
+       "startOffset": 30741
+      },
+      {
+       "count": 2,
+       "endOffset": 30861,
+       "startOffset": 30764
+      },
+      {
+       "count": 1,
+       "endOffset": 31378,
+       "startOffset": 30861
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "moduleFsInitResolveList",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 30971,
+       "startOffset": 30890
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "noop",
+     "ranges": [
+      {
+       "count": 242,
+       "endOffset": 31476,
+       "startOffset": 31382
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "objectDeepCopyWithKeysSorted",
+     "ranges": [
+      {
+       "count": 12618,
+       "endOffset": 32050,
+       "startOffset": 31478
+      },
+      {
+       "count": 2887,
+       "endOffset": 31648,
+       "startOffset": 31641
+      },
+      {
+       "count": 10650,
+       "endOffset": 31677,
+       "startOffset": 31650
+      },
+      {
+       "count": 1968,
+       "endOffset": 31762,
+       "startOffset": 31677
+      },
+      {
+       "count": 1748,
+       "endOffset": 31823,
+       "startOffset": 31762
+      },
+      {
+       "count": 220,
+       "endOffset": 32049,
+       "startOffset": 31823
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1426,
+       "endOffset": 32027,
+       "startOffset": 31943
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "sqlMessagePost",
+     "ranges": [
+      {
+       "count": 2,
+       "endOffset": 33456,
+       "startOffset": 32052
+      },
+      {
+       "count": 1,
+       "endOffset": 33326,
+       "startOffset": 33154
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 64,
+       "endOffset": 32706,
+       "startOffset": 32610
+      },
+      {
+       "count": 3,
+       "endOffset": 32691,
+       "startOffset": 32656
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "result",
+     "ranges": [
+      {
+       "count": 2,
+       "endOffset": 32954,
+       "startOffset": 32890
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "sqlmathInit",
+     "ranges": [
+      {
+       "count": 3,
+       "endOffset": 35616,
+       "startOffset": 33458
+      },
+      {
+       "count": 1,
+       "endOffset": 33954,
+       "startOffset": 33617
+      },
+      {
+       "count": 1,
+       "endOffset": 34161,
+       "startOffset": 34138
+      },
+      {
+       "count": 2,
+       "endOffset": 35614,
+       "startOffset": 34161
+      },
+      {
+       "count": 1,
+       "endOffset": 34857,
+       "startOffset": 34739
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "dbFinalizationRegistry",
+     "ranges": [
+      {
+       "count": 14,
+       "endOffset": 33953,
+       "startOffset": 33645
+      },
+      {
+       "count": 1,
+       "endOffset": 33947,
+       "startOffset": 33903
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "moduleChildProcessSpawn",
+     "ranges": [
+      {
+       "count": 15,
+       "endOffset": 35607,
+       "startOffset": 35018
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "on",
+     "ranges": [
+      {
+       "count": 17,
+       "endOffset": 35391,
+       "startOffset": 35105
+      },
+      {
+       "count": 2,
+       "endOffset": 35286,
+       "startOffset": 35192
+      },
+      {
+       "count": 15,
+       "endOffset": 35351,
+       "startOffset": 35307
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "sqlmathWebworkerInit",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 36596,
+       "startOffset": 35618
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "Worker",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 35892,
+       "startOffset": 35849
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "sqlWorker.onmessage",
+     "ranges": [
+      {
+       "count": 2,
+       "endOffset": 36051,
+       "startOffset": 35973
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "sqlWorker.postMessage",
+     "ranges": [
+      {
+       "count": 2,
+       "endOffset": 36268,
+       "startOffset": 36105
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 2,
+       "endOffset": 36256,
+       "startOffset": 36146
+      }
+     ],
+     "isBlockCoverage": true
+    }
+   ]
+  },
+  {
+   "scriptId": "1",
+   "url": "test.mjs",
+   "functions": [
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 95690,
+       "startOffset": 0
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_apidoc",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 2521,
+       "startOffset": 1947
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 2517,
+       "startOffset": 2034
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_assertXxx",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 3061,
+       "startOffset": 2566
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 3057,
+       "startOffset": 2659
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 2767,
+       "startOffset": 2704
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 2894,
+       "startOffset": 2831
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 3007,
+       "startOffset": 2938
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_ccallAsync",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 5399,
+       "startOffset": 3107
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 5395,
+       "startOffset": 3202
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 36,
+       "endOffset": 5386,
+       "startOffset": 4368
+      },
+      {
+       "count": 10,
+       "endOffset": 4710,
+       "startOffset": 4526
+      },
+      {
+       "count": 26,
+       "endOffset": 4899,
+       "startOffset": 4710
+      },
+      {
+       "count": 3,
+       "endOffset": 4995,
+       "startOffset": 4899
+      },
+      {
+       "count": 23,
+       "endOffset": 5056,
+       "startOffset": 5012
+      },
+      {
+       "count": 10,
+       "endOffset": 5225,
+       "startOffset": 5165
+      },
+      {
+       "count": 26,
+       "endOffset": 5385,
+       "startOffset": 5225
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 10,
+       "endOffset": 4670,
+       "startOffset": 4567
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_childProcessSpawn2",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 5787,
+       "startOffset": 5453
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 5783,
+       "startOffset": 5564
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_ciBuildExtXxx",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 6464,
+       "startOffset": 5836
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 6460,
+       "startOffset": 5934
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_dbBind",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 14290,
+       "startOffset": 6506
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_dbBindValue",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 14286,
+       "startOffset": 6600
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_dbExecAndReturnLastBlobAsync",
+     "ranges": [
+      {
+       "count": 48,
+       "endOffset": 7008,
+       "startOffset": 6726
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 2,
+       "endOffset": 7291,
+       "startOffset": 7143
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 46,
+       "endOffset": 14277,
+       "startOffset": 9035
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 46,
+       "endOffset": 11076,
+       "startOffset": 9253
+      },
+      {
+       "count": 8,
+       "endOffset": 9633,
+       "startOffset": 9543
+      },
+      {
+       "count": 1,
+       "endOffset": 9666,
+       "startOffset": 9650
+      },
+      {
+       "count": 2,
+       "endOffset": 9697,
+       "startOffset": 9683
+      },
+      {
+       "count": 3,
+       "endOffset": 9796,
+       "startOffset": 9714
+      },
+      {
+       "count": 16,
+       "endOffset": 10350,
+       "startOffset": 9813
+      },
+      {
+       "count": 1,
+       "endOffset": 9973,
+       "startOffset": 9888
+      },
+      {
+       "count": 3,
+       "endOffset": 10086,
+       "startOffset": 9994
+      },
+      {
+       "count": 1,
+       "endOffset": 10190,
+       "startOffset": 10107
+      },
+      {
+       "count": 3,
+       "endOffset": 10301,
+       "startOffset": 10211
+      },
+      {
+       "count": 10,
+       "endOffset": 10816,
+       "startOffset": 10367
+      },
+      {
+       "count": 4,
+       "endOffset": 10564,
+       "startOffset": 10436
+      },
+      {
+       "count": 6,
+       "endOffset": 10656,
+       "startOffset": 10564
+      },
+      {
+       "count": 5,
+       "endOffset": 10701,
+       "startOffset": 10656
+      },
+      {
+       "count": 2,
+       "endOffset": 10789,
+       "startOffset": 10724
+      },
+      {
+       "count": 6,
+       "endOffset": 10816,
+       "startOffset": 10789
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 138,
+       "endOffset": 12254,
+       "startOffset": 11276
+      },
+      {
+       "count": 46,
+       "endOffset": 11807,
+       "startOffset": 11625
+      },
+      {
+       "count": 46,
+       "endOffset": 11915,
+       "startOffset": 11824
+      },
+      {
+       "count": 46,
+       "endOffset": 11993,
+       "startOffset": 11932
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 92,
+       "endOffset": 14264,
+       "startOffset": 13254
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_dbXxxAsync",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 19699,
+       "startOffset": 14336
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_dbCloseAsync",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 14809,
+       "startOffset": 14433
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 14687,
+       "startOffset": 14627
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_dbExecAsync",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 17903,
+       "startOffset": 14879
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 15195,
+       "startOffset": 15072
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 4,
+       "endOffset": 17450,
+       "startOffset": 15324
+      },
+      {
+       "count": 1,
+       "endOffset": 17206,
+       "startOffset": 16483
+      },
+      {
+       "count": 3,
+       "endOffset": 17440,
+       "startOffset": 17206
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 17627,
+       "startOffset": 17535
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 17871,
+       "startOffset": 17770
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_dbFileXxx",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 19183,
+       "startOffset": 17971
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 18344,
+       "startOffset": 18247
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 18505,
+       "startOffset": 18408
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_dbOpenAsync",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 19695,
+       "startOffset": 19253
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 19520,
+       "startOffset": 19367
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 19657,
+       "startOffset": 19598
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_fsXxx",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 20544,
+       "startOffset": 19740
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 20540,
+       "startOffset": 19825
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_misc",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 21520,
+       "startOffset": 20584
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 21516,
+       "startOffset": 20667
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 20859,
+       "startOffset": 20787
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 21013,
+       "startOffset": 20955
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 21124,
+       "startOffset": 21053
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 21226,
+       "startOffset": 21164
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 21394,
+       "startOffset": 21320
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 21508,
+       "startOffset": 21434
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqlite",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 95280,
+       "startOffset": 21562
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqliteError",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 23578,
+       "startOffset": 21655
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 30,
+       "endOffset": 23569,
+       "startOffset": 23288
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 30,
+       "endOffset": 23549,
+       "startOffset": 23386
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqlite_extension_doublearray_xxx",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 25602,
+       "startOffset": 23669
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 23,
+       "endOffset": 25593,
+       "startOffset": 24620
+      },
+      {
+       "count": 9,
+       "endOffset": 25134,
+       "startOffset": 25087
+      },
+      {
+       "count": 14,
+       "endOffset": 25412,
+       "startOffset": 25134
+      },
+      {
+       "count": 9,
+       "endOffset": 25592,
+       "startOffset": 25412
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqlite_extension_fill_forward",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 26583,
+       "startOffset": 25690
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 10,
+       "endOffset": 26504,
+       "startOffset": 26452
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqlite_extension_math",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 33086,
+       "startOffset": 26663
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 28,
+       "endOffset": 33078,
+       "startOffset": 32477
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 124,
+       "endOffset": 33066,
+       "startOffset": 32573
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqlite_extension_quantile",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 38207,
+       "startOffset": 33170
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 33890,
+       "startOffset": 33317
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 30,
+       "endOffset": 35729,
+       "startOffset": 35340
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 38,
+       "endOffset": 38198,
+       "startOffset": 35752
+      },
+      {
+       "count": 19,
+       "endOffset": 36317,
+       "startOffset": 36212
+      },
+      {
+       "count": 19,
+       "endOffset": 36367,
+       "startOffset": 36334
+      },
+      {
+       "count": 6,
+       "endOffset": 36709,
+       "startOffset": 36703
+      },
+      {
+       "count": 32,
+       "endOffset": 36894,
+       "startOffset": 36789
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 422,
+       "endOffset": 36030,
+       "startOffset": 35962
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 422,
+       "endOffset": 36116,
+       "startOffset": 36039
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 267,
+       "endOffset": 36469,
+       "startOffset": 36409
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 267,
+       "endOffset": 36619,
+       "startOffset": 36535
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 76,
+       "endOffset": 38185,
+       "startOffset": 37025
+      },
+      {
+       "count": 12,
+       "endOffset": 37831,
+       "startOffset": 37824
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqlite_extension_win_emax",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 44276,
+       "startOffset": 38291
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_win_emax_aggregate",
+     "ranges": [
+      {
+       "count": 4,
+       "endOffset": 40816,
+       "startOffset": 38431
+      },
+      {
+       "count": 3,
+       "endOffset": 38844,
+       "startOffset": 38704
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 48,
+       "endOffset": 39408,
+       "startOffset": 39329
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 48,
+       "endOffset": 40751,
+       "startOffset": 40238
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 480,
+       "endOffset": 40704,
+       "startOffset": 40309
+      },
+      {
+       "count": 240,
+       "endOffset": 40420,
+       "startOffset": 40416
+      },
+      {
+       "count": 80,
+       "endOffset": 40452,
+       "startOffset": 40441
+      },
+      {
+       "count": 8,
+       "endOffset": 40549,
+       "startOffset": 40454
+      },
+      {
+       "count": 472,
+       "endOffset": 40653,
+       "startOffset": 40549
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 42844,
+       "startOffset": 41157
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 41529,
+       "startOffset": 41310
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 41831,
+       "startOffset": 41606
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 42280,
+       "startOffset": 42212
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 42776,
+       "startOffset": 42708
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqlite_extension_win_quantilex",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 54189,
+       "startOffset": 44365
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_win_quantilex_aggregate",
+     "ranges": [
+      {
+       "count": 14,
+       "endOffset": 46981,
+       "startOffset": 44510
+      },
+      {
+       "count": 7,
+       "endOffset": 44907,
+       "startOffset": 44767
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 168,
+       "endOffset": 45484,
+       "startOffset": 45405
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 168,
+       "endOffset": 46916,
+       "startOffset": 46433
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1680,
+       "endOffset": 46869,
+       "startOffset": 46498
+      },
+      {
+       "count": 140,
+       "endOffset": 46617,
+       "startOffset": 46606
+      },
+      {
+       "count": 14,
+       "endOffset": 46714,
+       "startOffset": 46619
+      },
+      {
+       "count": 1666,
+       "endOffset": 46818,
+       "startOffset": 46714
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 49035,
+       "startOffset": 47318
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 47700,
+       "startOffset": 47476
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 48007,
+       "startOffset": 47777
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 48461,
+       "startOffset": 48393
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 48967,
+       "startOffset": 48899
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqlite_extension_win_sinefit2",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 95276,
+       "startOffset": 54277
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "sqlSinefitExtractLnr",
+     "ranges": [
+      {
+       "count": 6,
+       "endOffset": 55622,
+       "startOffset": 54447
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_win_sinefit2_aggregate",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 61554,
+       "startOffset": 55631
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 10,
+       "endOffset": 61489,
+       "startOffset": 58319
+      },
+      {
+       "count": 1,
+       "endOffset": 61104,
+       "startOffset": 60942
+      },
+      {
+       "count": 1,
+       "endOffset": 61283,
+       "startOffset": 61121
+      },
+      {
+       "count": 8,
+       "endOffset": 61428,
+       "startOffset": 61300
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 67579,
+       "startOffset": 66641
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 67027,
+       "startOffset": 66798
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 67511,
+       "startOffset": 67443
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 68947,
+       "startOffset": 67665
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 70361,
+       "startOffset": 69033
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 95255,
+       "startOffset": 71767
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1012,
+       "endOffset": 91668,
+       "startOffset": 91414
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1012,
+       "endOffset": 94544,
+       "startOffset": 93548
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 13156,
+       "endOffset": 94510,
+       "startOffset": 94257
+      },
+      {
+       "count": 12141,
+       "endOffset": 94415,
+       "startOffset": 94399
+      },
+      {
+       "count": 1015,
+       "endOffset": 94453,
+       "startOffset": 94448
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "test_sqlmathWebworkerInit",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 95687,
+       "startOffset": 95336
+      }
+     ],
+     "isBlockCoverage": true
+    },
+    {
+     "functionName": "",
+     "ranges": [
+      {
+       "count": 1,
+       "endOffset": 95683,
+       "startOffset": 95451
+      }
+     ],
+     "isBlockCoverage": true
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,999 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>sqlmath demo</title>
+    <link rel="modulepreload" href="sqlmath.mjs" />
+    <link rel="modulepreload" href="sqlmath_wasm.js" />
+    <script defer src="asset_sqlmath_external_rollup.js"></script>
+    <script type="module" src="./sqlmath_browser.mjs"></script>
+<style>
+/*jslint-disable*/
+/*
+shRollupFetch
+{
+    "fetchList": [
+        {
+            "url": "https://github.com/codemirror/codemirror5/blob/5.65.10/lib/codemirror.css"
+        }
+    ],
+    "replaceList": []
+}
+*/
+
+
+/*
+repo https://github.com/codemirror/codemirror5/tree/5.65.10
+committed 2022-11-20T15:35:33Z
+*/
+
+
+/*
+file https://github.com/codemirror/codemirror5/blob/5.65.10/lib/codemirror.css
+*/
+/* BASICS */
+
+.CodeMirror {
+  /* Set height, width, borders, and global font properties here */
+  font-family: monospace;
+  height: 300px;
+  color: black;
+  direction: ltr;
+}
+
+/* PADDING */
+
+.CodeMirror-lines {
+  padding: 4px 0; /* Vertical padding around content */
+}
+.CodeMirror pre.CodeMirror-line,
+.CodeMirror pre.CodeMirror-line-like {
+  padding: 0 4px; /* Horizontal padding of content */
+}
+
+.CodeMirror-scrollbar-filler, .CodeMirror-gutter-filler {
+  background-color: white; /* The little square between H and V scrollbars */
+}
+
+/* GUTTER */
+
+.CodeMirror-gutters {
+  border-right: 1px solid #ddd;
+  background-color: #f7f7f7;
+  white-space: nowrap;
+}
+.CodeMirror-linenumbers {}
+.CodeMirror-linenumber {
+  padding: 0 3px 0 5px;
+  min-width: 20px;
+  text-align: right;
+  color: #999;
+  white-space: nowrap;
+}
+
+.CodeMirror-guttermarker { color: black; }
+.CodeMirror-guttermarker-subtle { color: #999; }
+
+/* CURSOR */
+
+.CodeMirror-cursor {
+  border-left: 1px solid black;
+  border-right: none;
+  width: 0;
+}
+/* Shown when moving in bi-directional text */
+.CodeMirror div.CodeMirror-secondarycursor {
+  border-left: 1px solid silver;
+}
+.cm-fat-cursor .CodeMirror-cursor {
+  width: auto;
+  border: 0 !important;
+  background: #7e7;
+}
+.cm-fat-cursor div.CodeMirror-cursors {
+  z-index: 1;
+}
+.cm-fat-cursor .CodeMirror-line::selection,
+.cm-fat-cursor .CodeMirror-line > span::selection,
+.cm-fat-cursor .CodeMirror-line > span > span::selection { background: transparent; }
+.cm-fat-cursor .CodeMirror-line::-moz-selection,
+.cm-fat-cursor .CodeMirror-line > span::-moz-selection,
+.cm-fat-cursor .CodeMirror-line > span > span::-moz-selection { background: transparent; }
+.cm-fat-cursor { caret-color: transparent; }
+@-moz-keyframes blink {
+  0% {}
+  50% { background-color: transparent; }
+  100% {}
+}
+@-webkit-keyframes blink {
+  0% {}
+  50% { background-color: transparent; }
+  100% {}
+}
+@keyframes blink {
+  0% {}
+  50% { background-color: transparent; }
+  100% {}
+}
+
+/* Can style cursor different in overwrite (non-insert) mode */
+.CodeMirror-overwrite .CodeMirror-cursor {}
+
+.cm-tab { display: inline-block; text-decoration: inherit; }
+
+.CodeMirror-rulers {
+  position: absolute;
+  left: 0; right: 0; top: -50px; bottom: 0;
+  overflow: hidden;
+}
+.CodeMirror-ruler {
+  border-left: 1px solid #ccc;
+  top: 0; bottom: 0;
+  position: absolute;
+}
+
+/* DEFAULT THEME */
+
+.cm-s-default .cm-header {color: blue;}
+.cm-s-default .cm-quote {color: #090;}
+.cm-negative {color: #d44;}
+.cm-positive {color: #292;}
+.cm-header, .cm-strong {font-weight: bold;}
+.cm-em {font-style: italic;}
+.cm-link {text-decoration: underline;}
+.cm-strikethrough {text-decoration: line-through;}
+
+.cm-s-default .cm-keyword {color: #708;}
+.cm-s-default .cm-atom {color: #219;}
+.cm-s-default .cm-number {color: #164;}
+.cm-s-default .cm-def {color: #00f;}
+.cm-s-default .cm-variable,
+.cm-s-default .cm-punctuation,
+.cm-s-default .cm-property,
+.cm-s-default .cm-operator {}
+.cm-s-default .cm-variable-2 {color: #05a;}
+.cm-s-default .cm-variable-3, .cm-s-default .cm-type {color: #085;}
+.cm-s-default .cm-comment {color: #a50;}
+.cm-s-default .cm-string {color: #a11;}
+.cm-s-default .cm-string-2 {color: #f50;}
+.cm-s-default .cm-meta {color: #555;}
+.cm-s-default .cm-qualifier {color: #555;}
+.cm-s-default .cm-builtin {color: #30a;}
+.cm-s-default .cm-bracket {color: #997;}
+.cm-s-default .cm-tag {color: #170;}
+.cm-s-default .cm-attribute {color: #00c;}
+.cm-s-default .cm-hr {color: #999;}
+.cm-s-default .cm-link {color: #00c;}
+
+.cm-s-default .cm-error {color: #f00;}
+.cm-invalidchar {color: #f00;}
+
+.CodeMirror-composing { border-bottom: 2px solid; }
+
+/* Default styles for common addons */
+
+div.CodeMirror span.CodeMirror-matchingbracket {color: #0b0;}
+div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #a22;}
+.CodeMirror-matchingtag { background: rgba(255, 150, 0, .3); }
+.CodeMirror-activeline-background {background: #e8f2ff;}
+
+/* STOP */
+
+/* The rest of this file contains styles related to the mechanics of
+   the editor. You probably shouldn't touch them. */
+
+.CodeMirror {
+  position: relative;
+  overflow: hidden;
+  background: white;
+}
+
+.CodeMirror-scroll {
+  overflow: scroll !important; /* Things will break if this is overridden */
+  /* 50px is the magic margin used to hide the element's real scrollbars */
+  /* See overflow: hidden in .CodeMirror */
+  margin-bottom: -50px; margin-right: -50px;
+  padding-bottom: 50px;
+  height: 100%;
+  outline: none; /* Prevent dragging from highlighting the element */
+  position: relative;
+  z-index: 0;
+}
+.CodeMirror-sizer {
+  position: relative;
+  border-right: 50px solid transparent;
+}
+
+/* The fake, visible scrollbars. Used to force redraw during scrolling
+   before actual scrolling happens, thus preventing shaking and
+   flickering artifacts. */
+.CodeMirror-vscrollbar, .CodeMirror-hscrollbar, .CodeMirror-scrollbar-filler, .CodeMirror-gutter-filler {
+  position: absolute;
+  z-index: 6;
+  display: none;
+  outline: none;
+}
+.CodeMirror-vscrollbar {
+  right: 0; top: 0;
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+.CodeMirror-hscrollbar {
+  bottom: 0; left: 0;
+  overflow-y: hidden;
+  overflow-x: scroll;
+}
+.CodeMirror-scrollbar-filler {
+  right: 0; bottom: 0;
+}
+.CodeMirror-gutter-filler {
+  left: 0; bottom: 0;
+}
+
+.CodeMirror-gutters {
+  position: absolute; left: 0; top: 0;
+  min-height: 100%;
+  z-index: 3;
+}
+.CodeMirror-gutter {
+  white-space: normal;
+  height: 100%;
+  display: inline-block;
+  vertical-align: top;
+  margin-bottom: -50px;
+}
+.CodeMirror-gutter-wrapper {
+  position: absolute;
+  z-index: 4;
+  background: none !important;
+  border: none !important;
+}
+.CodeMirror-gutter-background {
+  position: absolute;
+  top: 0; bottom: 0;
+  z-index: 4;
+}
+.CodeMirror-gutter-elt {
+  position: absolute;
+  cursor: default;
+  z-index: 4;
+}
+.CodeMirror-gutter-wrapper ::selection { background-color: transparent }
+.CodeMirror-gutter-wrapper ::-moz-selection { background-color: transparent }
+
+.CodeMirror-lines {
+  cursor: text;
+  min-height: 1px; /* prevents collapsing before first draw */
+}
+.CodeMirror pre.CodeMirror-line,
+.CodeMirror pre.CodeMirror-line-like {
+  /* Reset some styles that the rest of the page might have set */
+  -moz-border-radius: 0; -webkit-border-radius: 0; border-radius: 0;
+  border-width: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  margin: 0;
+  white-space: pre;
+  word-wrap: normal;
+  line-height: inherit;
+  color: inherit;
+  z-index: 2;
+  position: relative;
+  overflow: visible;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-variant-ligatures: contextual;
+  font-variant-ligatures: contextual;
+}
+.CodeMirror-wrap pre.CodeMirror-line,
+.CodeMirror-wrap pre.CodeMirror-line-like {
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  word-break: normal;
+}
+
+.CodeMirror-linebackground {
+  position: absolute;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 0;
+}
+
+.CodeMirror-linewidget {
+  position: relative;
+  z-index: 2;
+  padding: 0.1px; /* Force widget margins to stay inside of the container */
+}
+
+.CodeMirror-widget {}
+
+.CodeMirror-rtl pre { direction: rtl; }
+
+.CodeMirror-code {
+  outline: none;
+}
+
+/* Force content-box sizing for the elements where we expect it */
+.CodeMirror-scroll,
+.CodeMirror-sizer,
+.CodeMirror-gutter,
+.CodeMirror-gutters,
+.CodeMirror-linenumber {
+  -moz-box-sizing: content-box;
+  box-sizing: content-box;
+}
+
+.CodeMirror-measure {
+  position: absolute;
+  width: 100%;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.CodeMirror-cursor {
+  position: absolute;
+  pointer-events: none;
+}
+.CodeMirror-measure pre { position: static; }
+
+div.CodeMirror-cursors {
+  visibility: hidden;
+  position: relative;
+  z-index: 3;
+}
+div.CodeMirror-dragcursors {
+  visibility: visible;
+}
+
+.CodeMirror-focused div.CodeMirror-cursors {
+  visibility: visible;
+}
+
+.CodeMirror-selected { background: #d9d9d9; }
+.CodeMirror-focused .CodeMirror-selected { background: #d7d4f0; }
+.CodeMirror-crosshair { cursor: crosshair; }
+.CodeMirror-line::selection, .CodeMirror-line > span::selection, .CodeMirror-line > span > span::selection { background: #d7d4f0; }
+.CodeMirror-line::-moz-selection, .CodeMirror-line > span::-moz-selection, .CodeMirror-line > span > span::-moz-selection { background: #d7d4f0; }
+
+.cm-searching {
+  background-color: #ffa;
+  background-color: rgba(255, 255, 0, .4);
+}
+
+/* Used to force a border model for a node */
+.cm-force-border { padding-right: .1px; }
+
+@media print {
+  /* Hide the cursor when printing */
+  .CodeMirror div.CodeMirror-cursors {
+    visibility: hidden;
+  }
+}
+
+/* See issue #2901 */
+.cm-tab-wrap-hack:after { content: ''; }
+
+/* Help users use markselection to safely style text background */
+span.CodeMirror-selectedtext { background: none; }
+
+
+/*
+file none
+*/
+/*jslint-enable*/
+
+
+</style>
+<style>
+/* jslint utility2:true */
+/*csslint
+    box-model: false,
+    box-sizing: false,
+    ids: false,
+    known-properties: false,
+    universal-selector: false,
+*/
+* {
+    border: 0;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    text-decoration: none;
+}
+/*
+*:focus {
+    outline: none;
+}
+*/
+body {
+    font-family: sans-serif;
+    font-size: 0.75rem;
+    overflow-y: scroll;
+}
+button {
+    background: #ccc;
+    cursor: pointer;
+    font-size: 0.75rem;
+    height: 1.25rem;
+    line-height: 1.25rem;
+    min-width: 4rem;
+    padding: 0 0.5rem;
+}
+table {
+    border-collapse: collapse;
+}
+textarea {
+    display: block;
+    font-size: 0.75rem;
+    overflow-y: scroll;
+    padding: 0.25rem;
+    resize: none;
+    width: 100%;
+}
+.modalClose {
+    color: #777;
+    cursor: pointer;
+    font-size: 24px;
+    font-weight: bold;
+    margin: -4px 4px;
+    position: absolute;
+    right: 0;
+}
+.modalContent {
+    padding: 1rem;
+    width: 100%;
+    white-space: normal;
+}
+.modalPanel {
+    background: #fff;
+    left: 50%;
+    position: fixed;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 24rem;
+    z-index: 1;
+}
+.modalTitle {
+    line-height: 1.5rem;
+    text-align: center;
+}
+.title {
+    background: #bbd;
+    font-weight: bold;
+    padding: 0.5rem;
+}
+#sqliteEditor1 {
+    height: 300px;
+}
+
+/*css section content*/
+.contentSectionTitle {
+    font-size: x-large;
+    font-weight: bold;
+    margin: 2rem 0 1rem 0;
+}
+#contentPanel1 {
+    overflow: hidden;
+    padding: 0 48px 2rem 304px;
+    width: 100%;
+}
+#contentPanel1 tbody {
+    border-bottom: 1px solid #999;
+}
+#contentPanel1 td,
+#contentPanel1 th {
+    border-right: 1px solid #999;
+    max-width: 16rem;
+    padding: 0 2px;
+    text-align: left;
+}
+#contentPanel1 th {
+    background: #bbd;
+    cursor: pointer;
+    height: 16px;
+    padding-left: 12px;
+    position: sticky;
+    top: 0;
+}
+#contentPanel1 th::after,
+#contentPanel1 th::before {
+    font-size: 16px;
+    left: 1px;
+    line-height: 8px;
+    opacity: 0.25;
+    position: absolute;
+}
+#contentPanel1 th::after {
+    content: "\25be";
+    top: 50%;
+}
+#contentPanel1 th::before {
+    bottom: 50%;
+    content: "\25b4";
+}
+#contentPanel1 th[data-sort="asc"]::before,
+#contentPanel1 th[data-sort="desc"]::after {
+    opacity: 0.75;
+}
+#contentPanel1 tr {
+    background: transparent;
+    height: 16px;
+}
+#contentPanel1 tr:nth-child(even) {
+    background: #e7e7e7;
+}
+#contentPanel1 .contentElem {
+    margin-top: 2rem;
+    position: relative;
+}
+#contentPanel1 .uitable {
+    font-family: monospace;
+    position: relative;
+}
+#contentPanel1 .uitableInfo {
+    height: 16px;
+    padding: 2px;
+    width: 100%;
+}
+#contentPanel1 .uitableLoading {
+    background: #fff;
+    left: 50%;
+    margin-left: -100px;
+    margin-top: -26px;
+    opacity: 0.875;
+    padding: 1rem;
+    position: absolute;
+    text-align: center;
+    top: 50%;
+    width: 200px;
+    z-index: 1;
+}
+#contentPanel1 .uitableLoading::after {
+    animation: uitableLoading steps(1, end) 1s infinite;
+    content: "";
+    display: inline-block;
+    text-align: left;
+    width: 1rem;
+}
+@keyframes uitableLoading {
+    0% {
+        content: "";
+    }
+    25% {
+        content: ".";
+    }
+    50% {
+        content: "..";
+    }
+    75% {
+        content: "...";
+    }
+    100% {
+        content: "";
+    }
+}
+#contentPanel1 .uitableScroller {
+    background: #ddd;
+    overflow: scroll;
+    position: relative;
+}
+#contentPanel1 .uitableScrollerDummy {
+    width: 1px;
+}
+#contentPanel1 .uitableTable {
+    background: #fff;
+    font-size: 11px;
+    left: 0;
+    margin: 0;
+    position: absolute;
+    top: 0;
+}
+
+/*css section contextmenu*/
+.contextmenuDivider {
+    height: 1rem;
+}
+.contextmenuElem,
+.contextmenuTitle {
+    border-bottom: 1px solid #bbb;
+    line-height: 1.5rem;
+    padding: 0 0.5rem;
+}
+.contextmenuElem {
+    cursor: pointer;
+    height: 1.5rem;
+}
+.contextmenuTitle {
+    font-weight: bold;
+}
+.contextmenuWarning {
+    color: #b00;
+}
+#contextmenu1 {
+    background: #fff;
+    position: fixed;
+    width: 256px;
+    z-index: 99;
+}
+
+/*css section crud*/
+.crudInput,
+.crudLabel {
+    background: #bbd;
+    display: inline-block;
+    height: 1.25rem;
+    line-height: 1.25rem;
+    padding: 0 0.5rem;
+    width: 100%;
+}
+.crudInput {
+    background: transparent;
+    border: 1px solid #999;
+}
+#crudPanel1 {
+    padding-bottom: 1rem;
+    text-align: center;
+}
+#crudPanel1 .tdInput {
+    height: 2rem;
+    padding-left: 1rem;
+}
+
+/*css section error*/
+#errorPanel1 {
+    color: #b00;
+    z-index: 999;
+}
+#errorPanel1 .modalTitle {
+    background: #d777;
+    color: #700;
+}
+
+/*css section loading*/
+.uiLoading,
+.uiLoading::after,
+.uiLoading::before {
+    animation: uiLoading 1s infinite alternate;
+    background: #777;
+    border-radius: 10px;
+    content: "";
+    display: inline-block;
+    height: 20px;
+    left: -30px;
+    line-height: 20px;
+    position: absolute;
+    top: 0;
+    width: 20px;
+}
+.uiLoading {
+    animation-delay: .5s;
+    left: 0;
+    position: relative;
+}
+.uiLoading::after {
+    animation-delay: 1s;
+    left: 30px;
+}
+@keyframes uiLoading {
+    0% {
+        background: #33b;
+    }
+}
+#loadingPanel1 {
+    background: #ddd;
+    left: 50%;
+    opacity: 0.875;
+    padding: 1rem;
+    position: fixed;
+    text-align: center;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    z-index: 99;
+}
+
+/*css section toc*/
+.tocDivider,
+.tocElemA,
+.tocTitle,
+#tocPanel1 button {
+    border-bottom: 1px solid #777;
+    height: 20px;
+    line-height: 20px;
+    padding-left: 0.5rem;
+    text-align: left;
+    width: 100%;
+}
+.tocDivider {
+    background: #777;
+    height: 4px;
+}
+.tocElemA {
+    color: #037;
+    cursor: pointer;
+    display: block;
+}
+.tocTitle {
+    font-weight: bold;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+}
+#tocPanel1 {
+    height: 100%;
+    left: 0;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    padding-bottom: 20px;
+    position: fixed;
+    top: 0;
+    width: 256px;
+}
+
+
+/*css section uichart*/
+.uichart {
+    font-family: "Lucida Grande", "Lucida Sans Unicode", Verdana, Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    user-select: none;
+}
+.uichartCanvasFlex {
+    border: 2px solid transparent;
+    border-radius: 4px;
+    cursor: crosshair;
+    margin-right: 16px;
+    overflow: hidden;
+    position: relative;
+}
+.uichartAxislabel0,
+.uichartAxislabel1,
+.uichartTitle {
+    color: #333;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+}
+.uichartAxislabel1 {
+    left: 50%;
+    margin-left: -4px;
+    position: absolute;
+    top: 50%;
+    transform:  translateX(-50%) translateY(-50%) rotate(-90deg);
+    white-space: nowrap;
+}
+.uichartLegend {
+    border: 1px solid #999;
+    flex: 1;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.uichartLegendElem {
+    display: block;
+    height: 16px;
+    line-height: 16px;
+    padding-left: 2px;
+    position: relative;
+}
+.uichartLegendElem[data-dummy="1"],
+.uichartLegendElem[data-hidden="1"] {
+    opacity: 0.5;
+}
+.uichartLegendElemSvg {
+    height: 16px;
+    position: absolute;
+}
+.uichartNav {
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0 16px 16px;
+}
+.uichartNav button.uichartAction {
+    margin-bottom: 10px;
+    width: 100%
+}
+
+/* section misc */
+button:hover {
+    background: #999;
+}
+.contextmenuElem,
+.contextmenuTitle,
+.tocElemA,
+#contentPanel1 td,
+#contentPanel1 th {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.contextmenuElem:hover,
+.tocElemA:hover,
+#contentPanel1 tr:hover {
+    background: #cce;
+}
+.modalClose:hover {
+    color: #333;
+}
+.modalPanel,
+#contentPanel1 .uitableLoading,
+#contextmenu1,
+#loadingPanel1 {
+    box-shadow: 4px 4px 8px 2px #777;
+    opacity: 0;
+    transition: visibility 0.5s, opacity 0.5s;
+}
+.uichartCanvasFlex:hover {
+    border-color: #bbb;
+}
+.uichartLegendElem[data-dummy="0"]:hover {
+    cursor: pointer;
+}
+#contentPanel1 .contentElem,
+#tocPanel1 {
+    box-shadow: 2px 2px 4px 2px #bbb;
+}
+</style>
+</head>
+<body>
+
+
+<!-- contentPanel1 start -->
+<!-- improve seo by keeping contentPanel1 at top -->
+<div id="contentPanel1">
+
+<div class="contentSectionTitle" style="margin-top: 0.5rem;">sqlite editor</div>
+<div class="contentElem" id="editor1">
+<div class="contentElemTitle title">script editor</div>
+<textarea id="sqliteEditor1" style="border: 0; padding-left: 30px;"></textarea>
+</div>
+<button class="dbExec" style="margin-top: 1rem;">script - execute</button>
+
+<div class="contentSectionTitle">sqlite chart</div>
+<div id="dbchartList1"></div>
+
+<div class="contentSectionTitle">sqlite query result</div>
+<div id="dbqueryList1"></div>
+
+<div class="contentSectionTitle">sqlite table</div>
+<div id="dbtableList1"></div>
+
+</div>
+<!-- contentPanel1 end -->
+
+
+<!-- tocPanel1 start -->
+<div id="tocPanel1">
+<div id="tocDatabase1">
+    <button data-action="dbRefresh">ui - refresh</button>
+    <div class="tocDivider"></div>
+    <button data-action="dbOpen">database - open</button>
+    <button data-action="dbExportMain" style="border-bottom: 1px solid #999;">database - save</button>
+    <button data-action="dbAttach" style="border-bottom: 1px solid #999;">database - attach</button>
+    <div class="tocDivider"></div>
+    <button data-action="dbtableImportCsv" style="border-bottom: 1px solid #999;">table - import from csv file</button>
+    <button data-action="dbtableImportJson" style="border-bottom: 1px solid #999;">table - import from json file</button>
+</div>
+<div id="tocEditor1">
+    <div class="tocTitle">sqlite editor</div>
+    <button data-action="dbExec" style="border-bottom: 1px solid #999;">script - execute</button>
+    <a class="tocElemA" href="#editor1" data-dbtype="script" title="[right-click for crud operation]">script editor</a>
+</div>
+<div id="tocDbList1"></div>
+<div class="tocDivider"></div>
+</div>
+<!-- tocPanel1 end -->
+
+
+<!-- bannerFork1 start -->
+<div id="bannerFork1" style="
+    height: 100px;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 100px;
+    z-index: 99;
+">
+<div style="
+    background: #37f;
+    overflow: visible;
+    position: absolute;
+    right: -60px;
+    text-align: center;
+    top: 30px;
+    transform: rotate(45deg);
+    width: 200%;
+">
+<a
+    href="https://github.com/sqlmath/sqlmath"
+    style="color: #fff;"
+    target="_blank"
+>
+fork on github
+</a>
+</div>
+</div>
+<!-- bannerFork1 end -->
+
+
+<!-- contextmenu1 start -->
+<div id="contextmenu1">
+    <div class="contextmenuTitle title"></div>
+    <!---->
+    <a class="contextmenuElem" data-dbtype="script" data-action="dbscriptOpen">script - open</a>
+    <a class="contextmenuElem" data-dbtype="script" data-action="dbscriptSave">script - save</a>
+    <!---->
+    <a class="contextmenuElem" data-dbtype="chart" data-action="dbtableSaveCsv">chart - save to csv</a>
+    <a class="contextmenuElem" data-dbtype="chart" data-action="dbtableSaveJson">chart - save to json</a>
+    <!---->
+    <a class="contextmenuElem" data-dbtype="query" data-action="dbtableSaveCsv">query - save to csv</a>
+    <a class="contextmenuElem" data-dbtype="query" data-action="dbtableSaveJson">query - save to json</a>
+    <!---->
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbExport">database - save</a>
+    <!---->
+    <a class="contextmenuElem" data-dbtype="row" data-action="dbrowInsert">row - insert</a>
+    <a class="contextmenuElem" data-dbtype="row" data-action="dbrowUpdate">row - update</a>
+    <!---->
+    <div class="contextmenuDivider" data-dbtype="table"></div>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableRename">table &nbsp;&nbsp; - rename</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableSaveCsv">table &nbsp;&nbsp; - save to csv</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbtableSaveJson">table &nbsp;&nbsp; - save to json</a>
+    <!---->
+    <div class="contextmenuDivider" data-dbtype="table"></div>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbcolumnAdd">column &nbsp; - add</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbcolumnRename">column &nbsp; - rename</a>
+    <a class="contextmenuElem" data-dbtype="table" data-action="dbcolumnDrop">column &nbsp; - drop</a>
+    <div class="contextmenuDivider" data-dbtype="table"></div>
+    <a class="contextmenuElem contextmenuWarning" data-dbtype="table" data-action="dbtableDrop">table &nbsp;&nbsp; - drop</a>
+    <a class="contextmenuElem contextmenuWarning" data-dbtype="table" data-action="dbDetach">database - detach and close</a>
+    <!---->
+    <div class="contextmenuDivider" data-dbtype="row"></div>
+    <a class="contextmenuElem contextmenuWarning" data-dbtype="row" data-action="dbrowDelete">row - delete</a>
+</div>
+<!-- contextmenu1 end -->
+
+
+<!-- crudPanel1 start -->
+<div id="crudPanel1" class="modalPanel" style="z-index: -1;">
+<span class="modalClose">&times;</span>
+<div class="modalTitle title"></div>
+<div class="modalContent">
+    <table style="margin-bottom: 1rem; text-align: left; width: 100%;">
+    <thead>
+    <tr>
+    <th style="height: 1px; min-width: 10rem; visibility: hidden;"></th>
+    <th></th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+    </table>
+    <div>inspect and/or edit sql, then click "ok"</div>
+    <textarea
+        style="border: 1px solid #999; height: 10rem; margin-top: 0.25rem;"
+    ></textarea>
+</div>
+<button class="dbcrudExec">ok</button>
+<button class="modalCancel" style="margin-left: 1rem;">cancel</button>
+</div>
+<!-- crudPanel1 end -->
+
+
+<!-- errorPanel1 start -->
+<div id="errorPanel1" class="modalPanel">
+<span class="modalClose">&times;</span>
+<div class="modalTitle title">sqlite error</div>
+<pre class="modalContent"></pre>
+</div>
+<!-- errorPanel1 end -->
+
+
+<!-- loadingPanel1 start -->
+<div id="loadingPanel1" style="opacity: 1;"><div class="uiLoading"></div></div>
+<!-- loadingPanel1 end -->
+
+</body>
+</html>
