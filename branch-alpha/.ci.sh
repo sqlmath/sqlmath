@@ -151,8 +151,8 @@ shCiBaseCustomArtifactUpload() {(set -e
         rm -f "branch-$GITHUB_BRANCH0/"*linux*
         ;;
     MINGW64_NT*)
-        rm -f "branch-$GITHUB_BRANCH0/"*win32*
-        rm -f "branch-$GITHUB_BRANCH0/"*win_*
+        rm -f "branch-$GITHUB_BRANCH0/"*-win*
+        rm -f "branch-$GITHUB_BRANCH0/"*_win*
         ;;
     esac
     cp ../../_sqlmath* "branch-$GITHUB_BRANCH0"
@@ -173,15 +173,12 @@ shCiBaseCustomArtifactUpload() {(set -e
     git add -f "branch-$GITHUB_BRANCH0"/_sqlmath*
     if (git commit -am "$COMMIT_MESSAGE")
     then
-        # sync before push
-        shGitCmdWithGithubToken pull origin artifact
         # git push
+        shGitCmdWithGithubToken push origin artifact
+        # git squash
         if (shCiMatrixIsmainName) && [ "$GITHUB_BRANCH0" = alpha ]
         then
             shGitCommitPushOrSquash "" 50
-        else
-            shGitCmdWithGithubToken pull origin artifact
-            shGitCmdWithGithubToken push origin artifact
         fi
     fi
     # debug
