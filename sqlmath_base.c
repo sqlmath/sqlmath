@@ -366,11 +366,6 @@ SQLMATH_API void jsonResultDoublearray(
     int nn
 );
 
-SQLMATH_API double marginoferror95(
-    double nn,
-    double pp
-);
-
 SQLMATH_API int noop(
 );
 
@@ -1448,15 +1443,6 @@ SQLMATH_FUNC static void sql1_fmod_func(
             sqlite3_value_double_or_nan(argv[1])));
 }
 
-// SQLMATH_FUNC sql1_marginoferror95_func - start
-SQLMATH_API double marginoferror95(
-    double nn,
-    double pp
-) {
-// This function will calculate margin-of-error sqrt(pp*(1-pp)/nn).
-    return 1.9599639845400543 * sqrt(pp * (1 - pp) / nn);
-}
-
 SQLMATH_FUNC static void sql1_marginoferror95_func(
     sqlite3_context * context,
     int argc,
@@ -1464,12 +1450,23 @@ SQLMATH_FUNC static void sql1_marginoferror95_func(
 ) {
 // This function will calculate margin-of-error sqrt(pp*(1-pp)/nn).
     UNUSED_PARAMETER(argc);
+    const double pp = sqlite3_value_double_or_nan(argv[0]);
+    const double nn = sqlite3_value_double_or_nan(argv[1]);
     sqlite3_result_double(context,
-        marginoferror95(sqlite3_value_double_or_nan(argv[0]),
-            sqlite3_value_double_or_nan(argv[1])));
+        1.9599639845400543 * sqrt(pp * (1 - pp) / nn));
 }
 
-// SQLMATH_FUNC sql1_marginoferror95_func - end
+SQLMATH_FUNC static void sql1_normalizewithsqrt_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will sqrt() and normalize <xx> to +/-1.
+    UNUSED_PARAMETER(argc);
+    double xx = sqlite3_value_double_or_nan(argv[0]);
+    sqlite3_result_double(context,      //
+        doubleMax(-1, doubleMin(1, xx < 0 ? -sqrt(-xx) : sqrt(xx))));
+}
 
 SQLMATH_FUNC static void sql1_random1_func(
     sqlite3_context * context,
@@ -1803,6 +1800,173 @@ static void sql3_stdev_step(
 }
 
 // SQLMATH_FUNC sql3_stdev_func - end
+
+// SQLMATH_FUNC sql3_win_coinflip2_func - start
+typedef struct WinCoinflip {
+    double nflip;               // number of coin-flips
+    double nhead;               // number of coin-flips landing on head
+    double nstreak;             // current head/tail win-streak
+    double ntail;               // number of coin-flips landing on tail
+    double outcome;             // current-outcome - head=+1, tail=-1, tie=0
+} WinCoinflip;
+static const int WIN_COINFLIP_N = sizeof(WinCoinflip) / sizeof(double);
+
+SQLMATH_FUNC static void sql3_win_coinflip2_value(
+    sqlite3_context * context
+) {
+// This function will aggregate bias of given coin-flips landing on head,
+// ranging from -0.5 (never head) to 0.0 (no bias) to 0.5 (always head).
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - result
+    doublearrayResult(context, dblwin_head, dblwin->nhead, SQLITE_TRANSIENT);
+}
+
+SQLMATH_FUNC static void sql3_win_coinflip2_final(
+    sqlite3_context * context
+) {
+// This function will aggregate bias of given coin-flips landing on head,
+// ranging from -0.5 (never head) to 0.0 (no bias) to 0.5 (always head).
+    // dblwin - value
+    sql3_win_coinflip2_value(context);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - cleanup
+    doublewinAggfree(dblwinAgg);
+}
+
+SQLMATH_FUNC static void sql3_win_coinflip2_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will aggregate bias of given coin-flips landing on head,
+// ranging from -0.5 (never head) to 0.0 (no bias) to 0.5 (always head).
+    UNUSED_PARAMETER(argv);
+    // dblwin - init
+    const int ncol = argc;
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - inverse
+    WinCoinflip *agg = (WinCoinflip *) dblwin_head;
+    for (int ii = 0; ii < ncol; ii += 1) {
+        const int outcome = doubleSign(sqlite3_value_double(argv[0]));
+        const int sstreak = doubleSign(agg->nstreak);
+        agg->nflip -= 1;
+        agg->nhead -= outcome == +1;
+        agg->nstreak =
+            sstreak * doubleMin(sstreak * agg->nstreak, agg->nflip);
+        agg->ntail -= outcome == -1;
+        // increment counter
+        agg += 1;
+        argv += 1;
+    }
+}
+
+SQLMATH_FUNC static void sql3_win_coinflip2_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will aggregate bias of given coin-flips landing on head,
+// ranging from -0.5 (never head) to 0.0 (no bias) to 0.5 (always head).
+    if (argc < 1) {
+        sqlite3_result_error(context,
+            "win_coinflip2() - wrong number of arguments", -1);
+        return;
+    }
+    // dblwin - init
+    const int ncol = argc;
+    DOUBLEWIN_AGGREGATE_CONTEXT(ncol * WIN_COINFLIP_N);
+    // dblwin - calculate coin-flip-bias
+    WinCoinflip *agg = (WinCoinflip *) dblwin_head;
+    for (int ii = 0; ii < ncol; ii += 1) {
+        const int outcome = doubleSign(sqlite3_value_double(argv[0]));
+        const int sstreak = doubleSign(agg->nstreak);
+        agg->nflip += 1;
+        agg->nhead += outcome == +1;
+        agg->nstreak = outcome == sstreak ? agg->nstreak + outcome : outcome;
+        agg->ntail += outcome == -1;
+        agg->outcome = outcome;
+        // increment counter
+        agg += 1;
+        argv += 1;
+    }
+}
+
+SQLMATH_FUNC static void sql1_coinflip_extract_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will extract <val> from WinCoinflip-object, with given <key>.
+    UNUSED_PARAMETER(argc);
+    // validate argv
+    const int icol = sqlite3_value_int(argv[1]);
+    const uint32_t bytes = (uint32_t) sqlite3_value_bytes(argv[0]);
+    if (icol < 0) {
+        sqlite3_result_error(context,
+            "coinflip_extract() - 2nd argument must be integer column >= 0",
+            -1);
+        return;
+    }
+    if (bytes <= 0 || SQLITE_MAX_LENGTH2 < bytes        //
+        || bytes < (icol + 1) * WIN_COINFLIP_N * sizeof(double)) {
+        sqlite3_result_error(context,
+            "coinflip_extract()"
+            " - 1st argument as coinflip-object does not have enough columns",
+            -1);
+        return;
+    }
+    const WinCoinflip *agg =
+        (WinCoinflip *) sqlite3_value_blob(argv[0]) + icol;
+    const char *key = (const char *) sqlite3_value_text(argv[2]);
+    const char *keyList[] = {
+        "nflip",
+        "nhead",
+        "nstreak",
+        "ntail",
+        "outcome"
+    };
+    for (int ii = 0; ii < WIN_COINFLIP_N; ii += 1) {
+        if (strcmp(key, keyList[ii]) == 0) {
+            sqlite3_result_int(context, (int) (((double *) agg)[ii]));
+            return;
+        }
+    }
+    // bias for head
+    if (strcmp(key, "biashead") == 0) {
+        sqlite3_result_double_or_null(context, agg->nhead / agg->nflip - 0.5);
+        return;
+    }
+    // bias for head or tail, whichever is greater in magnitude
+    if (strcmp(key, "biasmax") == 0) {
+        sqlite3_result_double_or_null(context, (        //
+                doubleAbs(agg->ntail) > doubleAbs(agg->nhead)   //
+                ? -agg->ntail / agg->nflip + 0.5        //
+                : +agg->nhead / agg->nflip - 0.5));     //
+        return;
+    }
+    // bias for tail
+    if (strcmp(key, "biastail") == 0) {
+        sqlite3_result_double_or_null(context, agg->ntail / agg->nflip - 0.5);
+        return;
+    }
+    // fair-coin-flip margin-of-error within 95th percentile
+    if (strcmp(key, "moe95") == 0) {
+        sqlite3_result_double_or_null(context,
+            1.9599639845400543 * 0.5 / sqrt(agg->nflip));
+        return;
+    }
+    // fair-coin-flip stdev.s
+    if (strcmp(key, "stdev") == 0) {
+        sqlite3_result_double_or_null(context, 0.5 / sqrt(agg->nflip));
+        return;
+    }
+    sqlite3_result_error(context,
+        "coinflip_extract() - 3rd argument is invalid key", -1);
+}
+
+// SQLMATH_FUNC sql3_win_coinflip2_func - end
 
 // SQLMATH_FUNC sql3_win_sinefit2_func - start
 typedef struct WinSinefit {
@@ -2772,6 +2936,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(castrealornull, 1);
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);
+    SQLITE3_CREATE_FUNCTION1(coinflip_extract, 3);
     SQLITE3_CREATE_FUNCTION1(copyblob, 1);
     SQLITE3_CREATE_FUNCTION1(cot, 1);
     SQLITE3_CREATE_FUNCTION1(coth, 1);
@@ -2781,6 +2946,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(doublearray_jsonto, 1);
     SQLITE3_CREATE_FUNCTION1(fmod, 2);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
+    SQLITE3_CREATE_FUNCTION1(normalizewithsqrt, 1);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sinefit_extract, 4);
     SQLITE3_CREATE_FUNCTION1(sinefit_refitlast, -1);
@@ -2790,6 +2956,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
     SQLITE3_CREATE_FUNCTION3(stdev, 1);
+    SQLITE3_CREATE_FUNCTION3(win_coinflip2, -1);
     SQLITE3_CREATE_FUNCTION3(win_ema1, 2);
     SQLITE3_CREATE_FUNCTION3(win_ema2, -1);
     SQLITE3_CREATE_FUNCTION3(win_quantile1, 2);

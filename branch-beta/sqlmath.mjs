@@ -97,7 +97,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2023.9.19";
+let version = "v2023.9.25";
 
 function assertJsonEqual(aa, bb, message) {
 
