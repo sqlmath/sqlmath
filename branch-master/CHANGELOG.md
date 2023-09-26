@@ -5,6 +5,9 @@
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 
+# v2023.9.25
+- sqlmath - Add sql-functions coinflip_extract(), normalizewithsqrt(), win_coinflip2().
+
 # v2023.9.19
 - ci - Update ci-workflow publish to auto-publish pypi-package.
 - ci - Add ci-workflow publish_pypi_test.
