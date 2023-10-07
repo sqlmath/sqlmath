@@ -108,7 +108,7 @@ function noop(val) {
                 break;
             }
             // call c-function
-            Module[cFuncName](batonPtr);
+            Module["_dbCall"](batonPtr);
             // init errmsg
             errmsg = jsbatonValueErrmsg(batonPtr);
             // update baton

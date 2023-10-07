@@ -31,7 +31,7 @@ let JSBATON_ARGC = 16;
 let SQLITE_DATATYPE_BLOB = 0x04;
 let SQLITE_DATATYPE_FLOAT = 0x02;
 let SQLITE_DATATYPE_INTEGER = 0x01;
-let SQLITE_DATATYPE_INTEGER_0 = 0x11;
+let SQLITE_DATATYPE_INTEGER_0 = 0x00;
 let SQLITE_DATATYPE_INTEGER_1 = 0x21;
 let SQLITE_DATATYPE_NULL = 0x05;
 let SQLITE_DATATYPE_OFFSET = 768;
@@ -153,20 +153,14 @@ async function cCallAsync(baton, cFuncName, ...argList) {
 // This function will serialize <argList> to a c <baton>,
 // suitable for passing into napi.
 
-    let argi = 0;
     let errStack;
     assertOrThrow(
-        argList.length < 16,
-        "cCallAsync - argList.length must be less than than 16"
+        argList.length < JSBATON_ARGC,
+        `cCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
     );
     baton = baton || jsbatonCreate();
-    // pad argList to length JSBATON_ARGC
-    while (argList.length < 2 * JSBATON_ARGC) {
-        argList.push(0n);
-    }
     // serialize js-value to c-value
-    argList = argList.map(function (value, ii) {
-        argi = ii;
+    argList = argList.map(function (value, argi) {
         switch (typeof value) {
         case "bigint":
         case "boolean":
@@ -189,16 +183,12 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         // case "object":
         //     break;
         case "string":
-            baton = jsbatonValuePush({
-                argi,
-                baton,
-                value: (
-                    value.endsWith("\u0000")
-                    ? value
-                    // append null-terminator to string
-                    : value + "\u0000"
-                )
-            });
+            baton = jsbatonValuePush(baton, argi, (
+                value.endsWith("\u0000")
+                ? value
+                // append null-terminator to string
+                : value + "\u0000"
+            ));
             return;
         }
         if (ArrayBuffer.isView(value)) {
@@ -213,25 +203,16 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         }
     });
     // encode cFuncName into baton
-    argi += 1;
-    baton = jsbatonValuePush({
-        argi,
-        baton,
-        value: cFuncName + "\u0000"
-    });
+    baton = jsbatonValuePush(baton, 2 * JSBATON_ARGC, `${cFuncName}\u0000`);
     // prepend baton, cFuncName to argList
-    argList = [
-        baton, cFuncName, ...argList
-    ];
+    argList = [baton, cFuncName, ...argList];
     // preserve stack-trace
-    errStack = new Error().stack.replace((
-        /.*$/m
-    ), "");
+    errStack = new Error().stack.replace((/.*$/m), "");
     try {
         return (
             IS_BROWSER
             ? await sqlMessagePost(...argList)
-            : await cModule[cFuncName](argList)
+            : await cModule._jspromiseCreate(argList)
         );
     } catch (err) {
         err.stack += errStack;
@@ -517,12 +498,7 @@ async function dbCloseAsync({
     await Promise.all(__db.connPool.map(async function (ptr) {
         let val = ptr[0];
         ptr[0] = 0n;
-        await cCallAsync(
-            undefined,
-            "_dbClose",
-            val,
-            __db.filename
-        );
+        await cCallAsync(undefined, "_dbClose", val, __db.filename);
     }));
     dbDict.delete(db);
 }
@@ -602,20 +578,11 @@ async function dbExecAsync({
         : Object.keys(bindList).length
     );
     externalbufferList = [];
-    Object.entries(bindList).forEach(function ([
-        key, val
-    ]) {
+    Object.entries(bindList).forEach(function ([key, val]) {
         if (bindByKey) {
-            baton = jsbatonValuePush({
-                baton,
-                value: ":" + key + "\u0000"
-            });
+            baton = jsbatonValuePush(baton, undefined, `:${key}\u0000`);
         }
-        baton = jsbatonValuePush({
-            baton,
-            externalbufferList,
-            value: val
-        });
+        baton = jsbatonValuePush(baton, undefined, val, externalbufferList);
     });
     result = await dbCallAsync(
         baton,
@@ -705,7 +672,7 @@ async function dbFileImportAsync({
 
 async function dbNoopAsync(...argList) {
 
-// This function will do nothing except return argList.
+// This function will do nothing except return <argList>.
 
     return await cCallAsync(undefined, "_dbNoop", ...argList);
 }
@@ -846,12 +813,7 @@ function jsbatonCreate() {
     return baton;
 }
 
-function jsbatonValuePush({
-    argi,
-    baton,
-    externalbufferList,
-    value
-}) {
+function jsbatonValuePush(baton, argi, value, externalbufferList) {
 
 // This function will push <value> to buffer <baton>.
 
@@ -864,7 +826,7 @@ function jsbatonValuePush({
 #define SQLITE_DATATYPE_BLOB            0x04
 #define SQLITE_DATATYPE_FLOAT           0x02
 #define SQLITE_DATATYPE_INTEGER         0x01
-#define SQLITE_DATATYPE_INTEGER_0       0x11
+#define SQLITE_DATATYPE_INTEGER_0       0x00
 #define SQLITE_DATATYPE_INTEGER_1       0x21
 #define SQLITE_DATATYPE_NULL            0x05
 #define SQLITE_DATATYPE_OFFSET          768
@@ -1019,10 +981,10 @@ function jsbatonValuePush({
         vsize -= 4;
         // push vsize
         assertOrThrow(
-            0 <= vsize && vsize <= 1_000_000_000,
+            0 <= vsize && vsize <= SQLITE_MAX_LENGTH2,
             (
                 "sqlite-blob byte-length must be within inclusive-range"
-                + " 0 to 1,000,000,000"
+                + ` 0 to ${SQLITE_MAX_LENGTH2}`
             )
         );
         baton.setInt32(nused + 1, vsize, true);
@@ -1064,10 +1026,7 @@ function jsbatonValuePush({
     return baton;
 }
 
-function jsbatonValueString({
-    argi,
-    baton
-}) {
+function jsbatonValueString(baton, argi) {
 
 // This function will return string-value from <baton> at given <offset>.
 

@@ -75,7 +75,7 @@ file sqlmath_h - start
 #define SQLITE_DATATYPE_BLOB            0x04
 #define SQLITE_DATATYPE_FLOAT           0x02
 #define SQLITE_DATATYPE_INTEGER         0x01
-#define SQLITE_DATATYPE_INTEGER_0       0x11
+#define SQLITE_DATATYPE_INTEGER_0       0x00
 #define SQLITE_DATATYPE_INTEGER_1       0x21
 #define SQLITE_DATATYPE_NULL            0x05
 #define SQLITE_DATATYPE_OFFSET          768
@@ -142,18 +142,6 @@ file sqlmath_h - start
     if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) { \
         return NULL; \
     }
-
-#define NAPI_EXPORT_MEMBER(name) \
-    {#name, NULL, name, NULL, NULL, NULL, napi_default, NULL}
-
-#define NAPI_JSPROMISE_CREATE(func) \
-    static void __##napi##_##func(napi_env env, void *data) { \
-        UNUSED_PARAMETER(env); \
-        func((Jsbaton *) data); \
-    } \
-    static napi_value _##func(napi_env env, napi_callback_info info) { \
-        return jspromiseCreate(env, info, __##napi##_##func); \
-    } \
 
 #define SQLITE3_AGGREGATE_CONTEXT(type) \
     type *agg = (type *) sqlite3_aggregate_context(context, sizeof(*agg)); \
@@ -229,6 +217,9 @@ SQLMATH_API int __dbFileImportOrExport(
     sqlite3 * pInMemory,
     char *zFilename,
     const int isSave
+);
+SQLMATH_API void dbCall(
+    Jsbaton * baton
 );
 SQLMATH_API void dbClose(
     Jsbaton * baton
@@ -389,7 +380,7 @@ SQLMATH_API double sqlite3_value_double_or_prev(
     double *previous
 );
 
-SQLMATH_API const char *sqlmathSnprintfTrace(
+SQLMATH_API char *sqlmathSnprintfTrace(
     char *buf,
     const char *prefix,
     const char *errmsg,
@@ -397,8 +388,6 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
     const char *file,
     int line
 );
-
-
 #endif                          // SQLMATH_H3
 /*
 file sqlmath_h - end
@@ -483,6 +472,26 @@ SQLMATH_API int __dbFileImportOrExport(
      ** and return the result of this function. */
     (void) sqlite3_close(pFile);
     return rc;
+}
+
+SQLMATH_API void dbCall(
+    Jsbaton * baton
+) {
+    const char *cFuncName = jsbatonValueStringArgi(baton, 2 * JSBATON_ARGC);
+    if (strcmp(cFuncName, "_dbClose") == 0) {
+        dbClose(baton);
+    } else if (strcmp(cFuncName, "_dbExec") == 0) {
+        dbExec(baton);
+    } else if (strcmp(cFuncName, "_dbFileImportOrExport") == 0) {
+        dbFileImportOrExport(baton);
+    } else if (strcmp(cFuncName, "_dbNoop") == 0) {
+        dbNoop(baton);
+    } else if (strcmp(cFuncName, "_dbOpen") == 0) {
+        dbOpen(baton);
+    } else {
+        snprintf(baton->errmsg, SIZEOF_MESSAGE_DEFAULT,
+            "sqlmath.dbCall() - invalid cFuncName '%s'", cFuncName);
+    }
 }
 
 SQLMATH_API void dbClose(
@@ -1241,7 +1250,7 @@ SQLMATH_API double sqlite3_value_double_or_prev(
     return *previous;
 }
 
-SQLMATH_API const char *sqlmathSnprintfTrace(
+SQLMATH_API char *sqlmathSnprintfTrace(
     char *buf,
     const char *prefix,
     const char *errmsg,
@@ -1250,11 +1259,9 @@ SQLMATH_API const char *sqlmathSnprintfTrace(
     int line
 ) {
 // This function will write <errmsg> to <buf> with additional trace-info.
-    if (snprintf(buf, SIZEOF_MESSAGE_DEFAULT, "%s%s\n    at %s (%s:%d)",
-            prefix, errmsg, func, file, line) < 0) {
-        abort();
-    }
-    return (const char *) buf;
+    snprintf(buf, SIZEOF_MESSAGE_DEFAULT, "%s%s\n    at %s (%s:%d)", prefix,
+        errmsg, func, file, line);
+    return buf;
 }
 
 
@@ -3157,6 +3164,14 @@ static napi_value jsstringCreate(
     return result;
 }
 
+static void jspromiseExecute(
+    napi_env env,
+    void *data
+) {
+    UNUSED_PARAMETER(env);
+    dbCall((Jsbaton *) data);
+}
+
 static void jspromiseResolve(
     napi_env env,
     napi_status errcode,
@@ -3211,8 +3226,7 @@ static void jspromiseResolve(
 
 static napi_value jspromiseCreate(
     napi_env env,
-    napi_callback_info info,
-    napi_async_execute_callback jspromiseExecute
+    napi_callback_info info
 ) {
 // Create a deferred promise and an async queue work item.
     // init baton
@@ -3270,12 +3284,6 @@ static napi_value jspromiseCreate(
 
 
 // file sqlmath_nodejs - init
-NAPI_JSPROMISE_CREATE(dbClose);
-NAPI_JSPROMISE_CREATE(dbExec);
-NAPI_JSPROMISE_CREATE(dbFileImportOrExport);
-NAPI_JSPROMISE_CREATE(dbNoop);
-NAPI_JSPROMISE_CREATE(dbOpen);
-
 napi_value napi_module_sqlmath_init(
     napi_env env,
     napi_value exports
@@ -3298,11 +3306,8 @@ napi_value napi_module_sqlmath_init(
     // declare var
     int errcode = 0;
     const napi_property_descriptor propList[] = {
-        NAPI_EXPORT_MEMBER(_dbClose),
-        NAPI_EXPORT_MEMBER(_dbExec),
-        NAPI_EXPORT_MEMBER(_dbFileImportOrExport),
-        NAPI_EXPORT_MEMBER(_dbNoop),
-        NAPI_EXPORT_MEMBER(_dbOpen),
+        {"_jspromiseCreate", NULL, jspromiseCreate, NULL, NULL, NULL,
+            napi_default, NULL},
     };
     errcode = napi_define_properties(env, exports,
         sizeof(propList) / sizeof(napi_property_descriptor), propList);
@@ -3313,8 +3318,74 @@ napi_value napi_module_sqlmath_init(
     return exports;
 }
 
-NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_sqlmath_init)
+NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_sqlmath_init);
 #endif                          // SQLMATH_NODEJS_C3
 /*
 file sqlmath_nodejs - end
+*/
+
+
+/*
+file sqlmath_python - start
+*/
+#if defined(SQLMATH_PYTHON_C2) && !defined(SQLMATH_PYTHON_C3)
+#define SQLMATH_PYTHON_C3
+
+
+#include <Python.h>
+
+static PyObject *_pymethod_db_call(
+    PyObject * self,
+    PyObject * args
+) {
+    UNUSED_PARAMETER(self);
+    // init baton
+    Py_buffer view;
+    if (!PyArg_ParseTuple(args, "y*", &view)) {
+        return NULL;
+    }
+    Jsbaton *baton = view.buf;
+    PyBuffer_Release(&view);
+    dbCall(baton);
+    if (baton->errmsg[0] == '\x00') {
+        return Py_None;
+    }
+    PyErr_SetString(PyExc_RuntimeError, baton->errmsg);
+    return NULL;
+}
+
+static PyMethodDef SqlmathMethods[] = {
+    {"_pymethod_db_call", _pymethod_db_call, METH_VARARGS, NULL},
+    {NULL, NULL, 0, NULL}       // sentinel
+};
+
+static struct PyModuleDef _sqlmathmodule = {
+    PyModuleDef_HEAD_INIT,
+    // name of module
+    "_sqlmath",
+    // module documentation, may be NULL
+    NULL,
+    // size of per-interpreter state of the module,
+    // or -1 if the module keeps state in global variables.
+    -1,
+    SqlmathMethods,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
+PyMODINIT_FUNC PyInit__sqlmath(
+    void
+) {
+    int rc = sqlite3_initialize();
+    if (rc != SQLITE_OK) {
+        PyErr_SetString(PyExc_ImportError, sqlite3_errstr(rc));
+        return NULL;
+    }
+    return PyModule_Create(&_sqlmathmodule);
+}
+#endif                          // SQLMATH_PYTHON_C3
+/*
+file sqlmath_python - end
 */

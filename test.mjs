@@ -163,10 +163,7 @@ jstestDescribe((
             baton = baton[0];
             valActual = (
                 typeof valInput === "string"
-                ? jsbatonValueString({
-                    argi: 1,
-                    baton
-                })
+                ? jsbatonValueString(baton, 1)
                 : String(baton.getBigInt64(4 + 4 + 8, true))
             );
             valExpected = String(valExpected);

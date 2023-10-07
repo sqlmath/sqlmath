@@ -41,7 +41,7 @@ async def build_ext_async(): # noqa: C901
         match cdefine:
             case "SQLMATH_BASE":
                 pass
-            case "SRC_SQLITE_PYTHON":
+            case "SQLMATH_CUSTOM":
                 pass
             case _:
                 if pathlib.Path(file_obj).exists():
@@ -53,26 +53,19 @@ async def build_ext_async(): # noqa: C901
             f"-D{cdefine}_C2=",
             "-DSRC_SQLITE_BASE_C2=",
             "-D_REENTRANT=1",
+            "-DSQLMATH_PYTHON_C2=" if cdefine == "SQLMATH_CUSTOM" else "",
         ]
         if npm_config_mode_debug and is_win32:
             arg_list += ["/W3"]
         elif npm_config_mode_debug:
             arg_list += ["-Wextra"]
         elif is_win32:
-            if cdefine == "SRC_SQLITE_PYTHON":
-                arg_list += [
-                    "/W1",
-                    "/wd4047",
-                    "/wd4244",
-                    "/wd4996",
-                ]
-            else:
-                arg_list += [
-                    "/W3",
-                    "/wd4047",
-                    "/wd4244",
-                    "/wd4996",
-                ]
+            arg_list += [
+                "/W3",
+                "/wd4047",
+                "/wd4244",
+                "/wd4996",
+            ]
         elif cdefine in [
             "SQLMATH_BASE",
             "SQLMATH_CUSTOM",
@@ -114,7 +107,7 @@ async def build_ext_async(): # noqa: C901
                 "-c", file_src,
                 "-o", file_obj,
             ]
-        if cdefine == "SRC_SQLITE_PYTHON":
+        if cdefine == "SQLMATH_CUSTOM":
             arg_list = [arg for arg in arg_list if arg != "-DHAVE_UNISTD_H="]
         print(f"build_ext - compile {file_obj}")
         await create_subprocess_exec_and_check(
@@ -276,7 +269,6 @@ async def build_ext_async(): # noqa: C901
             "SRC_ZLIB_TEST_MINIGZIP",
             #
             "SRC_SQLITE_BASE",
-            "SRC_SQLITE_PYTHON",
             #
             "SQLMATH_BASE",
             "SQLMATH_CUSTOM",
@@ -290,7 +282,6 @@ async def build_ext_async(): # noqa: C901
         "build/SRC_ZLIB_BASE.obj",
         #
         "build/SRC_SQLITE_BASE.obj",
-        "build/SRC_SQLITE_PYTHON.obj",
         #
         "build/SQLMATH_BASE.obj",
         "build/SQLMATH_CUSTOM.obj",
@@ -351,7 +342,6 @@ def build_ext_init():
         SRC_ZLIB_TEST_MINIGZIP \\
         \\
         SRC_SQLITE_BASE \\
-        SRC_SQLITE_PYTHON \\
         SRC_SQLITE_SHELL
     do
         printf "

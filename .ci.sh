@@ -231,11 +231,7 @@ shCiBuildWasm() {(set -e
     #
     OPTION2="$OPTION2 -s EXPORTED_FUNCTIONS=_sqlite3_initialize"
     OPTION2="$OPTION2,___dbFileImportOrExport"
-    OPTION2="$OPTION2,_dbClose"
-    OPTION2="$OPTION2,_dbExec"
-    OPTION2="$OPTION2,_dbFileImportOrExport"
-    OPTION2="$OPTION2,_dbNoop"
-    OPTION2="$OPTION2,_dbOpen"
+    OPTION2="$OPTION2,_dbCall"
     OPTION2="$OPTION2,_jsbatonValueErrmsg"
     OPTION2="$OPTION2,_jsbatonValueStringArgi"
     OPTION2="$OPTION2,_sqlite3_errmsg"
