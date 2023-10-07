@@ -2547,7 +2547,6 @@ SELECT
         sinefit_extract(__wsf, 0, 'saa', 0) AS saa,
         sinefit_extract(__wsf, 0, 'see', 0) AS see,
         sinefit_extract(__wsf, 0, 'spp', 0) AS spp,
-        sinefit_extract(__wsf, 0, 'stp', 0) AS stp,
         sinefit_extract(__wsf, 0, 'stt', 0) AS stt,
         sinefit_extract(__wsf, 0, 'sww', 0) AS sww,
         sinefit_extract(__wsf, 0, 'syy', 0) AS syy,
@@ -2563,7 +2562,7 @@ SELECT
     LEFT JOIN (
         SELECT
             ii + 1 AS ii,
-            sinefit_extract(__wsf, 0, 'predict', ii + 1) AS predict,
+            sinefit_extract(__wsf, 0, 'predict_all', ii + 1) AS predict,
             sinefit_extract(__wsf, 0, 'predict_lnr', ii + 1) AS predict_lnr,
             sinefit_extract(__wsf, 0, 'predict_snr', ii + 1) AS predict_snr
         FROM __sinefit_csv
@@ -2572,7 +2571,7 @@ SELECT
                     })
                 )[0];
                 valActual = (
-                    "date saa sww spp stt stp"
+                    "date saa sww spp stt"
                     + " rr0 rr1 ii yy linear sinefit sine\n"
                     + valActual.map(function (elem) {
                         return [
@@ -2581,7 +2580,6 @@ SELECT
                             elem.sww,
                             elem.spp,
                             elem.stt,
-                            elem.stp,
                             elem.rr0,
                             elem.rr1,
                             elem.ii,

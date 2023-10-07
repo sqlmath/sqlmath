@@ -2505,19 +2505,43 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
             sqrt(wsf->vxx / (wsf->nnn - 1)));
         return;
     }
-    if (strcmp(key, "predict") == 0) {
+    // predict simple-linear-regression + sine-wave
+    if (strcmp(key, "predict_all") == 0) {
         const double xx = sqlite3_value_double(argv[3]);
         sqlite3_result_double_or_null(context, 0        //
             + wsf->laa + wsf->lbb * xx  //
             + wsf->saa * sin(fmod(wsf->sww * xx, 2 * MATH_PI) + wsf->spp));
         return;
     }
+    // predict cosine-wave
+    if (strcmp(key, "predict_cnr") == 0) {
+        const double xx = sqlite3_value_double(argv[3]);
+        sqlite3_result_double_or_null(context, 0        //
+            + wsf->saa * cos(fmod(wsf->sww * xx, 2 * MATH_PI) + wsf->spp));
+        return;
+    }
+    // predict cosine-wave normalized between -1, 1
+    if (strcmp(key, "predict_cos") == 0) {
+        const double xx = sqlite3_value_double(argv[3]);
+        sqlite3_result_double_or_null(context, 0        //
+            + cos(fmod(wsf->sww * xx, 2 * MATH_PI) + wsf->spp));
+        return;
+    }
+    // predict simple-linear-regression
     if (strcmp(key, "predict_lnr") == 0) {
         const double xx = sqlite3_value_double(argv[3]);
         sqlite3_result_double_or_null(context, 0        //
             + wsf->laa + wsf->lbb * xx);
         return;
     }
+    // predict sine-wave normalized between -1, 1
+    if (strcmp(key, "predict_sin") == 0) {
+        const double xx = sqlite3_value_double(argv[3]);
+        sqlite3_result_double_or_null(context, 0        //
+            + sin(fmod(wsf->sww * xx, 2 * MATH_PI) + wsf->spp));
+        return;
+    }
+    // predict sine-wave
     if (strcmp(key, "predict_snr") == 0) {
         const double xx = sqlite3_value_double(argv[3]);
         sqlite3_result_double_or_null(context, 0        //
@@ -2527,17 +2551,6 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
     // sine period
     if (strcmp(key, "stt") == 0) {
         sqlite3_result_double_or_null(context, 2 * MATH_PI / wsf->sww);
-        return;
-    }
-    // sine period-phase
-    if (strcmp(key, "stp") == 0) {
-        double stp = fmod(      //
-            (fmod(wsf->sww * wsf->xx1, 2 * MATH_PI) + wsf->spp) //
-            / (2 * MATH_PI), 1);
-        if (stp < 0) {
-            stp += 1;
-        }
-        sqlite3_result_double_or_null(context, stp);
         return;
     }
     // sine y-estimate

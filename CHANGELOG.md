@@ -5,6 +5,10 @@
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 
+# v2023.10.1-beta
+- sqlmath - Remove unused sql-function-prm in sinefit_extra(), stp.
+- sqlmath - Add sql-function-prm in sinefit_extra(), predict_cnr, predict_cos, predict_sin.
+
 # v2023.9.25
 - sqlmath - Add sql-functions coinflip_extract(), normalizewithsqrt(), win_coinflip2().
 
