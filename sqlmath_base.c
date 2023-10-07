@@ -477,6 +477,7 @@ SQLMATH_API int __dbFileImportOrExport(
 SQLMATH_API void dbCall(
     Jsbaton * baton
 ) {
+// This function will call dbXxx() with given <cFuncName>.
     const char *cFuncName = jsbatonValueStringArgi(baton, 2 * JSBATON_ARGC);
     if (strcmp(cFuncName, "_dbClose") == 0) {
         dbClose(baton);
@@ -3168,6 +3169,7 @@ static void jspromiseExecute(
     napi_env env,
     void *data
 ) {
+// This function will execute dbCall() in a thread.
     UNUSED_PARAMETER(env);
     dbCall((Jsbaton *) data);
 }
