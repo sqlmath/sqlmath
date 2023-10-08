@@ -99,6 +99,19 @@ let sqlMessageId = 0;
 let sqlWorker;
 let version = "v2023.10.1-beta";
 
+function assertInt64(val) {
+    // This function will assert <val> is within range of c99-signed-long-long.
+    val = BigInt(val);
+    if (!(
+        -9_223_372_036_854_775_808n <= val && val <= 9_223_372_036_854_775_807n
+    )) {
+        throw new Error(
+            `integer ${val} outside signed-64-bit inclusive-range`
+            + " -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
+        );
+    }
+}
+
 function assertJsonEqual(aa, bb, message) {
 
 // This function will assert JSON.stringify(<aa>) === JSON.stringify(<bb>).
@@ -155,7 +168,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
 
     let errStack;
     assertOrThrow(
-        argList.length < JSBATON_ARGC,
+        argList.length <= JSBATON_ARGC,
         `cCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
     );
     baton = baton || jsbatonCreate();
@@ -168,6 +181,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         switch (typeof value) {
         case "bigint":
         case "boolean":
+            assertInt64(value);
             baton.setBigInt64(8 + argi * 8, BigInt(value), true);
             return value;
         case "number":
@@ -195,6 +209,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
             ));
             return;
         }
+        // normalize buffer to zero-byte-offset
         if (ArrayBuffer.isView(value)) {
             return new DataView(
                 value.buffer,
@@ -837,80 +852,89 @@ function jsbatonValuePush(baton, argi, value, externalbufferList) {
 #define SQLITE_DATATYPE_SHAREDARRAYBUFFER       0x71
 #define SQLITE_DATATYPE_TEXT            0x03
 #define SQLITE_DATATYPE_TEXT_0          0x13
-    //  1. false.bigint
-    //  2. false.boolean
-    //  3. false.function
-    //  4. false.number
-    //  5. false.object
-    //  6. false.string
-    //  7. false.symbol
-    //  8. false.undefined
-    //  9. true.bigint
-    // 10. true.boolean
-    // 11. true.function
-    // 12. true.number
-    // 13. true.object
-    // 14. true.string
-    // 15. true.symbol
-    // 16. true.undefined
-    // 17. true.buffer
-    // 18. true.externalbuffer
+    //  1. 0.bigint
+    //  2. 0.boolean
+    //  3. 0.function
+    //  4. 0.number
+    //  5. 0.object
+    //  6. 0.string
+    //  7. 0.symbol
+    //  8. 0.undefined
+    //  9. 1.bigint
+    // 10. 1.boolean
+    // 11. 1.function
+    // 12. 1.number
+    // 13. 1.object
+    // 14. 1.string
+    // 15. 1.symbol
+    // 16. 1.undefined
+    // 17. 1.buffer
+    // 18. 1.externalbuffer
 */
-    // 10. true.boolean
+    // 10. 1.boolean
     if (value === 1 || value === 1n) {
         value = true;
     }
-    switch (Boolean(value) + "." + typeof(value)) {
-    //  1. false.bigint
-    case "false.bigint":
-    //  2. false.boolean
-    case "false.boolean":
-    //  4. false.number
-    case "false.number":
+    switch (
+        value
+        ? "1." + typeof(value)
+        : "0." + typeof(value)
+    ) {
+    //  1. 0.bigint
+    case "0.bigint":
+    //  2. 0.boolean
+    case "0.boolean":
+    //  4. 0.number
+    case "0.number":
         vtype = SQLITE_DATATYPE_INTEGER_0;
         vsize = 0;
         break;
-    //  3. false.function
-    // case "false.function":
-    //  5. false.object
-    case "false.object":
-    //  7. false.symbol
-    case "false.symbol":
-    //  8. false.undefined
-    case "false.undefined":
-    // 11. true.function
-    case "true.function":
-    // 15. true.symbol
-    case "true.symbol":
-    // 16. true.undefined
-    // case "true.undefined":
+    //  3. 0.function
+    // case "0.function":
+    //  5. 0.object
+    case "0.object":
+    //  7. 0.symbol
+    case "0.symbol":
+    //  8. 0.undefined
+    case "0.undefined":
+    // 11. 1.function
+    case "1.function":
+    // 15. 1.symbol
+    case "1.symbol":
+    // 16. 1.undefined
+    // case "1.undefined":
         vtype = SQLITE_DATATYPE_NULL;
         vsize = 0;
         break;
-    //  6. false.string
-    case "false.string":
+    //  6. 0.string
+    case "0.string":
         vtype = SQLITE_DATATYPE_TEXT_0;
         vsize = 0;
         break;
-    //  9. true.bigint
-    case "true.bigint":
+    //  9. 1.bigint
+    case "1.bigint":
         vtype = SQLITE_DATATYPE_INTEGER;
         vsize = 8;
         break;
-    // 10. true.boolean
-    case "true.boolean":
+    // 10. 1.boolean
+    case "1.boolean":
         vtype = SQLITE_DATATYPE_INTEGER_1;
         vsize = 0;
         break;
-    // 12. true.number
-    case "true.number":
+    // 12. 1.number
+    case "1.number":
         vtype = SQLITE_DATATYPE_FLOAT;
         vsize = 8;
         break;
-    // 13. true.object
-    // 14. true.string
+    // 14. 1.string
+    case "1.string":
+        value = new TextEncoder().encode(value);
+        vtype = SQLITE_DATATYPE_TEXT;
+        vsize = 4 + value.byteLength;
+        break;
+    // 13. 1.object
     default:
-        // 18. true.externalbuffer
+        // 18. 1.externalbuffer
         if (isExternalBuffer(value)) {
             assertOrThrow(
                 !IS_BROWSER,
@@ -918,14 +942,14 @@ function jsbatonValuePush(baton, argi, value, externalbufferList) {
             );
             assertOrThrow(
                 externalbufferList.length <= 8,
-                "externalbufferList.length must be less than 8"
+                "externalbufferList.length must be less than or equal to 8"
             );
             externalbufferList.push(new DataView(value));
             vtype = SQLITE_DATATYPE_SHAREDARRAYBUFFER;
             vsize = 4;
             break;
         }
-        // 17. true.buffer
+        // 17. 1.buffer
         if (ArrayBuffer.isView(value)) {
             if (value.byteLength === 0) {
                 vtype = SQLITE_DATATYPE_NULL;
@@ -936,16 +960,12 @@ function jsbatonValuePush(baton, argi, value, externalbufferList) {
             vsize = 4 + value.byteLength;
             break;
         }
-        // 13. true.object
-        value = String(
-            typeof value === "string"
-            ? value
-            : typeof value.toJSON === "function"
+        // 13. 1.object
+        value = new TextEncoder().encode(
+            typeof value.toJSON === "function"
             ? value.toJSON()
             : JSON.stringify(value)
         );
-        // 14. true.string
-        value = new TextEncoder().encode(value);
         vtype = SQLITE_DATATYPE_TEXT;
         vsize = 4 + value.byteLength;
     }
@@ -1002,21 +1022,11 @@ function jsbatonValuePush(baton, argi, value, externalbufferList) {
         baton.setFloat64(nused + 1, value, true);
         break;
     case SQLITE_DATATYPE_INTEGER:
-        assertOrThrow(
-            (
-                -9_223_372_036_854_775_808n <= value
-                && value <= 9_223_372_036_854_775_807n
-            ),
-            (
-                "sqlite-integer must be within inclusive-range "
-                + "-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
-            )
-        );
+        assertInt64(value);
         baton.setBigInt64(nused + 1, value, true);
         break;
     case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
         vsize = value.byteLength;
-        // push vsize
         assertOrThrow(
             0 <= vsize && vsize <= 1_000_000_000,
             (
@@ -1324,6 +1334,7 @@ export {
     SQLITE_OPEN_TRANSIENT_DB,
     SQLITE_OPEN_URI,
     SQLITE_OPEN_WAL,
+    assertInt64,
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,

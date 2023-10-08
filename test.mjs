@@ -385,31 +385,31 @@ jstestDescribe((
             ["\u0000", ""],
             ["aa", "aa"],
             [-0, 0],
-            [-0.5, undefined],
+            [-0.5, Error],
             [-0n, -0],
             [-0x8000000000000000n, -0x8000000000000000n],
-            [-0x8000000000000001n, 0x7fffffffffffffffn],
-            [-1 / 0, undefined],
+            [-0x8000000000000001n, Error],
+            [-1 / 0, Error],
             [-1e-999, 0],
-            [-1e999, undefined],
+            [-1e999, Error],
             [-1n, -1],
             [-2, -2],
             [-2n, -2],
-            [-Infinity, undefined],
-            [-NaN, undefined],
+            [-Infinity, Error],
+            [-NaN, Error],
             [0, 0],
-            [0.5, undefined],
+            [0.5, Error],
             [0n, 0],
             [0x7fffffffffffffffn, 0x7fffffffffffffffn],
-            [0x8000000000000000n, -0x8000000000000000n],
-            [1 / 0, undefined],
+            [0x8000000000000000n, Error],
+            [1 / 0, Error],
             [1e-999, 0],
-            [1e999, undefined],
+            [1e999, Error],
             [1n, 1],
             [2, 2],
             [2n, 2],
-            [Infinity, undefined],
-            [NaN, undefined],
+            [Infinity, Error],
+            [NaN, Error],
             [Symbol(), 0],
             [false, 0],
             [noop, 0],
@@ -422,7 +422,7 @@ jstestDescribe((
         ]) {
             let baton;
             let valActual;
-            if (valExpected === undefined) {
+            if (valExpected === Error) {
                 assertErrorThrownAsync(function () {
                     return dbNoopAsync(undefined, valInput, undefined);
                 });

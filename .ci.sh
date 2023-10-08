@@ -496,7 +496,6 @@ shSqlmathUpdate() {(set -e
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
         shRollupFetch sqlite_rollup.c
-        shRollupFetch sqlmath/sqlmath_dbapi2.py
         git grep '3\.39\.[^4]' \
             ":(exclude)CHANGELOG.md" \
             ":(exclude)sqlite_rollup.c" \
@@ -518,7 +517,6 @@ shSqlmathUpdate() {(set -e
             sqlite_rollup.c \
             sqlmath.mjs \
             sqlmath/__init__.py \
-            sqlmath/sqlmath_dbapi2.py \
             sqlmath_base.c \
             sqlmath_browser.mjs \
             sqlmath_wrapper_wasm.js

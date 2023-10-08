@@ -1,3 +1,24 @@
+# Copyright (c) 2021 Kai Zhu
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
 """sqlmath.py."""
 
 __version__ = "2023.10.1"
@@ -64,8 +85,8 @@ def asserterrorthrown(func, regexp=None):
 def assertjsonequal(aa, bb, message):
     """This function will assert."""
     """JSON.stringify(<aa>) === JSON.stringify(<bb>)."""
-    aa = json.dumps(aa, indent=1)
-    bb = json.dumps(bb, indent=1)
+    aa = json.dumps(objectdeepcopywithkeyssorted(aa), indent=1)
+    bb = json.dumps(objectdeepcopywithkeyssorted(bb), indent=1)
     if aa != bb:
         raise SqlmathError(
             f"\n{aa}\n!==\n{bb}"
@@ -79,6 +100,18 @@ def assertjsonequal(aa, bb, message):
         )
 
 
+def assertint64(val):
+    """This function will assert <val> is within range."""
+    """of c99-signed-long-long."""
+    assertorthrow(
+        -9_223_372_036_854_775_808 <= val <= 9_223_372_036_854_775_807, # noqa: PLR2004
+        (
+            f"integer {val} outside signed-64-bit inclusive-range"
+            " -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
+        ),
+    )
+
+
 def assertorthrow(condition, message):
     """This function will throw <message> if <condition> is falsy."""
     if not condition:
@@ -89,29 +122,41 @@ def assertorthrow(condition, message):
         )
 
 
-def c_call(baton, c_func_name, *arglist):
+def db_call(baton, cfuncname, *arglist):
     """This function will serialize <arglist> to a c <baton>."""
     """suitable for passing into napi."""
 
     def arg_serialize(argi, value):
         nonlocal baton
         if isinstance(value, (bool, int)):
+            assertint64(value)
             struct.pack_into("q", baton, 8 + argi * 8, value)
-        elif isinstance(value, float):
+            return value
+        if isinstance(value, float):
             assertorthrow(
                 int(value) == value,
-                f"c_call - float {value} is not an integer",
+                f"db_call - float {value} is not an integer",
             )
+            assertint64(value)
             struct.pack_into("q", baton, 8 + argi * 8, int(value))
-        elif isinstance(value, str):
+            return value
+        if isinstance(value, str):
             baton = jsbaton_value_push(
                 baton,
                 argi,
                 value if value.endswith("\u0000") else value + "\u0000",
             )
+            return None
+        if isinstance(value, memoryview):
+            assertorthrow(
+                value.contiguous,
+                "db_call - memoryview-object must be contiguous",
+            )
+            return value
+        return None
     assertorthrow(
-        len(arglist) < JSBATON_ARGC,
-        f"c_call - arglist.length must be less than than {JSBATON_ARGC}",
+        len(arglist) <= JSBATON_ARGC,
+        f"db_call - len(arglist) must be less than than {JSBATON_ARGC}",
     )
     # init baton
     baton = memoryview(bytearray(1024))
@@ -124,21 +169,22 @@ def c_call(baton, c_func_name, *arglist):
     # pad argList to length JSBATON_ARGC
     while len(arglist) < 2 * JSBATON_ARGC:
         arglist.append(0)
-    # encode c_func_name into baton
-    baton = jsbaton_value_push(baton, 2 * JSBATON_ARGC, f"{c_func_name}\u0000")
-    arglist = [baton, c_func_name, *arglist]
-    _pybatonCall(baton, c_func_name, arglist)
+    # encode cfuncname into baton
+    baton = jsbaton_value_push(baton, 2 * JSBATON_ARGC, f"{cfuncname}\u0000")
+    # prepend baton, cfuncname to arglist
+    arglist = [baton, cfuncname, *arglist]
+    _pybatonCall(baton, cfuncname, arglist)
     return arglist
 
 
 def db_noop(*arglist):
     """This function will do nothing except return <arglist>."""
-    return c_call(None, "_dbNoop", *arglist)
+    return db_call(None, "_dbNoop", *arglist)
 
 
 def db_open(*arglist):
     """This function will open and return sqlite-database-connection <db>."""
-    c_call(None, "_dbNoop", *arglist)
+    db_call(None, "_dbNoop", *arglist)
 
 
 def debuginline(*argv):
@@ -150,17 +196,137 @@ def debuginline(*argv):
     return arg0
 
 
-def jsbaton_value_push(baton, argi, value):
-    """This function will push <value> to buffer <baton>."""
-    noop(argi)
-    match (f"{bool(value)}.{type(value)}"):
-        case "false.str":
+def jsbaton_value_push(baton, argi, value, externalbufferlist=None):
+    """
+    This function will push <value> to buffer <baton>.
+
+    #define SQLITE_DATATYPE_BLOB            0x04
+    #define SQLITE_DATATYPE_FLOAT           0x02
+    #define SQLITE_DATATYPE_INTEGER         0x01
+    #define SQLITE_DATATYPE_INTEGER_0       0x00
+    #define SQLITE_DATATYPE_INTEGER_1       0x21
+    #define SQLITE_DATATYPE_NULL            0x05
+    #define SQLITE_DATATYPE_OFFSET          768
+    #define SQLITE_DATATYPE_SHAREDARRAYBUFFER       0x71
+    #define SQLITE_DATATYPE_TEXT            0x03
+    #define SQLITE_DATATYPE_TEXT_0          0x13
+        #  1. 0.NoneType
+        #  2. 0.bool
+        #  3. 0.bytearray
+        #  4. 0.bytes
+        #  5. 0.complex
+        #  6. 0.dict
+        #  7. 0.float
+        #  8. 0.frozenset
+        #  9. 0.int
+        # 10. 0.list
+        # 11. 0.memoryview
+        # 12. 0.range
+        # 13. 0.set
+        # 14. 0.str
+        # 15. 0.tuple
+        # 16. 1.NoneType
+        # 17. 1.bool
+        # 18. 1.bytearray
+        # 19. 1.bytes
+        # 20. 1.complex
+        # 21. 1.dict
+        # 22. 1.float
+        # 23. 1.frozenset
+        # 24. 1.int
+        # 25. 1.list
+        # 26. 1.memoryview
+        # 27. 1.range
+        # 28. 1.set
+        # 29. 1.str
+        # 20. 1.tuple
+        # 21. json
+    """
+    # 17. 1.bool
+    if value == 1:
+        value = True
+    match (("1." if value else "0.") + type(value).__name__):
+        #  1. 0.NoneType
+        case "0.NoneType":
+            vtype = SQLITE_DATATYPE_NULL
+            vsize = 0
+        #  2. 0.bool
+        case "0.bool":
+            vtype = SQLITE_DATATYPE_INTEGER_0
+            vsize = 0
+        #  3. 0.bytearray
+        case "0.bytearray":
+            vtype = SQLITE_DATATYPE_NULL
+            vsize = 0
+        #  4. 0.bytes
+        case "0.bytes":
+            vtype = SQLITE_DATATYPE_NULL
+            vsize = 0
+        #  5. 0.complex
+        #  6. 0.dict
+        #  7. 0.float
+        case "0.float":
+            vtype = SQLITE_DATATYPE_INTEGER_0
+            vsize = 0
+        #  8. 0.frozenset
+        #  9. 0.int
+        case "0.int":
+            vtype = SQLITE_DATATYPE_INTEGER_0
+            vsize = 0
+        # 10. 0.list
+        # 11. 0.memoryview
+        case "0.memoryview":
+            vtype = SQLITE_DATATYPE_NULL
+            vsize = 0
+        # 12. 0.range
+        # 13. 0.set
+        # 14. 0.str
+        case "0.str":
             vtype = SQLITE_DATATYPE_TEXT_0
             vsize = 0
-        # case "true.str":
-        case _:
-            # 14. true.string
+        # 15. 0.tuple
+        # 16. 1.NoneType
+        # 17. 1.bool
+        case "1.bool":
+            vtype = SQLITE_DATATYPE_INTEGER_1
+            vsize = 0
+        # 18. 1.bytearray
+            vtype = SQLITE_DATATYPE_BLOB
+            vsize = 4 + len(value)
+        # 19. 1.bytes
+            vtype = SQLITE_DATATYPE_BLOB
+            vsize = 4 + len(value)
+        # 20. 1.complex
+        # 21. 1.dict
+        # 22. 1.float
+        case "1.float":
+            vtype = SQLITE_DATATYPE_FLOAT
+            vsize = 8
+        # 23. 1.frozenset
+        # 24. 1.int
+        case "1.int":
+            vtype = SQLITE_DATATYPE_INTEGER
+            vsize = 8
+        # 25. 1.list
+        # 26. 1.memoryview
+            assertorthrow(
+                len(externalbufferlist) <= 8, # noqa: PLR2004
+                "len(externalbufferList) must be less than or equal to 8",
+            )
+            externalbufferlist.append(value)
+            vtype = SQLITE_DATATYPE_SHAREDARRAYBUFFER
+            vsize = 4
+        # 27. 1.range
+        # 28. 1.set
+        # 29. 1.str
+        case "1.str":
             value = bytes(value, "utf-8")
+            vtype = SQLITE_DATATYPE_TEXT
+            vsize = 4 + len(value)
+        # 30. 1.tuple
+        # 31. json
+        case _:
+            value = bytes(json.dumps(value), "utf-8")
             vtype = SQLITE_DATATYPE_TEXT
             vsize = 4 + len(value)
     nused = struct.unpack_from("i", baton, 4)[0]
@@ -199,6 +365,25 @@ def jsbaton_value_push(baton, argi, value):
         )
         struct.pack_into("i", baton, nused + 1, vsize)
         baton[nused + 1 + 4:nused + 1 + 4 + vsize] = value
+        return baton
+    if vtype == SQLITE_DATATYPE_FLOAT:
+        struct.pack_into("d", baton, nused + 1, value)
+        return baton
+    if vtype == SQLITE_DATATYPE_INTEGER:
+        assertint64(value)
+        struct.pack_into("q", baton, nused + 1, value)
+        return baton
+    if vtype == SQLITE_DATATYPE_SHAREDARRAYBUFFER:
+        vsize = len(value)
+        assertorthrow(
+            vsize >= 0 and vsize <= 1_000_000_000, # noqa: PLR2004
+            (
+                "sqlite-blob byte-length must be within inclusive-range"
+                " 0 to 1,000,000,000"
+            ),
+        )
+        struct.pack_into("i", baton, nused + 1, value)
+        return baton
     return baton
 
 
@@ -219,3 +404,16 @@ def jsbaton_value_string(baton, argi):
 def noop(val=None, *_, **__):
     """This function will do nothing except return <val>."""
     return val
+
+
+def objectdeepcopywithkeyssorted(obj):
+    """This function will recursively deep-copy <obj> with keys sorted."""
+    if isinstance(obj, float):
+        return int(obj) if int(obj) == obj else obj
+    if not obj or not isinstance(obj, dict):
+        return obj
+    # Recursively deep-copy list with child-keys sorted.
+    if isinstance(obj, list):
+        return [objectdeepcopywithkeyssorted(elem) for elem in obj]
+    # Recursively deep-copy obj with keys sorted.
+    return dict(sorted((str(key), val) for key, val in obj.items()))
