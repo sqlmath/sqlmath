@@ -60,7 +60,8 @@ skip = [
 ]
 test-command = [
     "python --version",
-    "python -c \"import sqlmath; sqlmath.test_python_run()\"",
+    "cp {project}/test.py .",
+    "python test.py --verbose",
 ]
 
 [tool.setuptools]

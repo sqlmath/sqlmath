@@ -105,81 +105,6 @@ jstestDescribe((
 });
 
 jstestDescribe((
-    "test_ccallAsync"
-), function test_ccallAsync() {
-    jstestIt((
-        "test cCallAsync handling-behavior"
-    ), async function () {
-        // test datatype handling-behavior
-        await Promise.all([
-            ["", ""],
-            ["\u0000", ""],
-            ["aa", "aa"],
-            [-0, 0],
-            [-0.5, undefined],
-            [-0n, -0],
-            [-0x8000000000000000n, -0x8000000000000000n],
-            [-0x8000000000000001n, 0x7fffffffffffffffn],
-            [-1 / 0, undefined],
-            [-1e-999, 0],
-            [-1e999, undefined],
-            [-1n, -1],
-            [-2, -2],
-            [-2n, -2],
-            [-Infinity, undefined],
-            [-NaN, undefined],
-            [0, 0],
-            [0.5, undefined],
-            [0n, 0],
-            [0x7fffffffffffffffn, 0x7fffffffffffffffn],
-            [0x8000000000000000n, -0x8000000000000000n],
-            [1 / 0, undefined],
-            [1e-999, 0],
-            [1e999, undefined],
-            [1n, 1],
-            [2, 2],
-            [2n, 2],
-            [Infinity, undefined],
-            [NaN, undefined],
-            [Symbol(), 0],
-            [false, 0],
-            [noop, 0],
-            [null, 0],
-            [true, 1],
-            [undefined, 0],
-            [{}, 0]
-        ].map(async function ([
-            valInput, valExpected
-        ]) {
-            let baton;
-            let valActual;
-            if (valExpected === undefined) {
-                assertErrorThrownAsync(function () {
-                    return dbNoopAsync(undefined, valInput, undefined);
-                });
-                return;
-            }
-            baton = await dbNoopAsync(undefined, valInput, undefined);
-            baton = baton[0];
-            valActual = (
-                typeof valInput === "string"
-                ? jsbatonValueString(baton, 1)
-                : String(baton.getBigInt64(4 + 4 + 8, true))
-            );
-            valExpected = String(valExpected);
-            if (typeof valInput === "bigint") {
-                valInput = String(valInput);
-            }
-            assertJsonEqual(valActual, valExpected, {
-                valActual,
-                valExpected,
-                valInput
-            });
-        }));
-    });
-});
-
-jstestDescribe((
     "test_childProcessSpawn2"
 ), function test_childProcessSpawn2() {
     jstestIt((
@@ -444,6 +369,81 @@ jstestDescribe((
                     }
                 );
             }));
+        }));
+    });
+});
+
+jstestDescribe((
+    "test_dbNoopAsync"
+), function test_dbNoopAsync() {
+    jstestIt((
+        "test dbNoopAsync handling-behavior"
+    ), async function () {
+        // test datatype handling-behavior
+        await Promise.all([
+            ["", ""],
+            ["\u0000", ""],
+            ["aa", "aa"],
+            [-0, 0],
+            [-0.5, undefined],
+            [-0n, -0],
+            [-0x8000000000000000n, -0x8000000000000000n],
+            [-0x8000000000000001n, 0x7fffffffffffffffn],
+            [-1 / 0, undefined],
+            [-1e-999, 0],
+            [-1e999, undefined],
+            [-1n, -1],
+            [-2, -2],
+            [-2n, -2],
+            [-Infinity, undefined],
+            [-NaN, undefined],
+            [0, 0],
+            [0.5, undefined],
+            [0n, 0],
+            [0x7fffffffffffffffn, 0x7fffffffffffffffn],
+            [0x8000000000000000n, -0x8000000000000000n],
+            [1 / 0, undefined],
+            [1e-999, 0],
+            [1e999, undefined],
+            [1n, 1],
+            [2, 2],
+            [2n, 2],
+            [Infinity, undefined],
+            [NaN, undefined],
+            [Symbol(), 0],
+            [false, 0],
+            [noop, 0],
+            [null, 0],
+            [true, 1],
+            [undefined, 0],
+            [{}, 0]
+        ].map(async function ([
+            valInput, valExpected
+        ]) {
+            let baton;
+            let valActual;
+            if (valExpected === undefined) {
+                assertErrorThrownAsync(function () {
+                    return dbNoopAsync(undefined, valInput, undefined);
+                });
+                return;
+            }
+            baton = await dbNoopAsync(undefined, valInput, undefined);
+            baton = baton[0];
+            valActual = (
+                typeof valInput === "string"
+                ? jsbatonValueString(baton, 1)
+                : String(baton.getBigInt64(4 + 4 + 8, true))
+            );
+            valExpected = String(valExpected);
+            if (typeof valInput === "bigint") {
+                valInput = String(valInput);
+            }
+            assertJsonEqual(valActual, valExpected, {
+                valActual,
+                valExpected,
+                valInput
+            });
         }));
     });
 });

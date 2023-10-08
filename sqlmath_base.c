@@ -209,9 +209,9 @@ typedef struct Jsbaton {
     int64_t bufv[JSBATON_ARGC]; // offset - 136-264
     int64_t cfuncname;          // offset - 264-272
     char errmsg[SIZEOF_MESSAGE_DEFAULT];        // offset 272-528
-    void *napi_argv;
-    void *napi_work;
-    void *napi_deferred;
+    void *napi_argv;            // offset 528-536
+    void *napi_work;            // offset 536-544
+    void *napi_deferred;        // offset 544-552
 } Jsbaton;
 SQLMATH_API int __dbFileImportOrExport(
     sqlite3 * pInMemory,
@@ -491,7 +491,7 @@ SQLMATH_API void dbCall(
         dbOpen(baton);
     } else {
         snprintf(baton->errmsg, SIZEOF_MESSAGE_DEFAULT,
-            "sqlmath.dbCall() - invalid cFuncName '%s'", cFuncName);
+            "sqlmath.dbCall - invalid cFuncName '%s'", cFuncName);
     }
 }
 
@@ -3040,10 +3040,10 @@ static int napiAssertOk(
 #pragma warning(disable: 26812)
 #endif
     errcode = napi_get_last_error_info(env, &info);
+    NAPI_ASSERT_FATAL(errcode == 0, "napi_get_last_error_info");
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-    NAPI_ASSERT_FATAL(errcode == 0, "napi_get_last_error_info");
     errcode = napi_is_exception_pending(env, &is_exception_pending);
     NAPI_ASSERT_FATAL(errcode == 0, "napi_is_exception_pending");
     // A pending exception takes precedence over any internal error status.
@@ -3076,95 +3076,6 @@ static void jsbatonBufferFinalize(
     sqlite3_free(finalize_data);
 }
 
-static Jsbaton *jsbatonCreate(
-    napi_env env,
-    napi_callback_info info
-) {
-// This function will create a baton for passing data between nodejs <-> c.
-    // declare var
-    Jsbaton *baton = NULL;
-    bool is_dataview;
-    int errcode = 0;
-    napi_value argv;
-    size_t ii = 0;
-    // init argv
-    ii = 1;
-    errcode = napi_get_cb_info(env, info, &ii, &argv, NULL, NULL);
-    NAPI_ASSERT_OK();
-    // init baton
-    errcode = napi_get_element(env, argv, 0, (napi_value *) & baton);
-    NAPI_ASSERT_OK();
-    errcode =
-        napi_get_dataview_info(env, (napi_value) baton, NULL,
-        (void **) &baton, NULL, NULL);
-    NAPI_ASSERT_OK();
-    // save argv
-    baton->napi_argv = argv;
-    // init argv - external dataview
-    for (ii = 0; ii < JSBATON_ARGC; ii += 1) {
-        errcode = napi_get_element(env, baton->napi_argv, ii + 2, &argv);
-        NAPI_ASSERT_OK();
-        errcode = napi_is_dataview(env, argv, &is_dataview);
-        NAPI_ASSERT_OK();
-        if (is_dataview) {
-            errcode =
-                napi_get_dataview_info(env, argv, NULL,
-                (void **) baton->argv + ii, NULL, NULL);
-            NAPI_ASSERT_OK();
-        }
-    }
-    // fprintf(stderr, "\nsqlmath.jsbatonCreate(cfuncname=%s)\n",
-    //     jsbatonValueStringArgi(baton, 2 * JSBATON_ARGC));
-    return baton;
-}
-
-static napi_value jsbatonExport(
-    napi_env env,
-    Jsbaton * baton
-) {
-// This function will export c-data to js-data in <jsbaton>.
-    // declare var
-    int errcode = 0;
-    napi_value val;
-    size_t ii = 0;
-    // export baton->argv and baton->bufv to baton->napi_argv
-    while (ii < JSBATON_ARGC) {
-        if (baton->bufv[ii] == 0) {
-            // init argList[ii] = argv[ii]
-            errcode = napi_create_bigint_int64(env, baton->argv[ii], &val);
-            NAPI_ASSERT_OK();
-        } else {
-            // init argList[ii] = bufv[ii]
-            errcode = napi_create_external_arraybuffer(env,     // napi_env env,
-                (void *) baton->bufv[ii],       // void* external_data,
-                (size_t) baton->argv[ii],       // size_t byte_length,
-                jsbatonBufferFinalize,  // napi_finalize finalize_cb,
-                NULL,           // void* finalize_hint,
-                &val);          // napi_value* result
-            NAPI_ASSERT_OK();
-        }
-        errcode = napi_set_element(env, baton->napi_argv, ii + 2, val);
-        NAPI_ASSERT_OK();
-        ii += 1;
-    }
-    return baton->napi_argv;
-}
-
-static napi_value jsstringCreate(
-    napi_env env,
-    const char *ss
-) {
-// This API creates a JavaScript string value from a UTF8-encoded C string.
-// The native string is copied.
-    // declare var
-    int errcode = 0;
-    napi_value result = NULL;
-    // return result
-    errcode = napi_create_string_utf8(env, ss, NAPI_AUTO_LENGTH, &result);
-    NAPI_ASSERT_OK();
-    return result;
-}
-
 static void jspromiseExecute(
     napi_env env,
     void *data
@@ -3185,6 +3096,7 @@ static void jspromiseResolve(
     Jsbaton *baton = (Jsbaton *) data;
     // declare var
     napi_ref ref = (napi_ref) baton->napi_argv;
+    napi_value val = NULL;
     uint32_t refcount = 1;
     // dereference result to allow gc
     errcode = napi_reference_unref(env, ref, &refcount);
@@ -3197,26 +3109,48 @@ static void jspromiseResolve(
     NAPI_ASSERT_FATAL(errcode == 0, "napi_delete_reference");
     // Resolve or reject the promise associated with the deferred depending on
     // whether the asynchronous action succeeded.
-    if (baton->errmsg[0] == '\x00') {
-        // resolve promise with result
-        if (jsbatonExport(env, baton) == NULL) {
-            return;
+    if (baton->errmsg[0] != '\x00') {
+        // create error
+        errcode =
+            napi_create_string_utf8(env, baton->errmsg, NAPI_AUTO_LENGTH,
+            &val);
+        NAPI_ASSERT_FATAL(errcode == 0, "napi_create_string_utf8");
+        errcode = napi_create_error(env, NULL, val, &val);
+        NAPI_ASSERT_FATAL(errcode == 0, "napi_create_error");
+        // reject promise with error
+        errcode = napi_reject_deferred(env, baton->napi_deferred, val);
+        NAPI_ASSERT_FATAL(errcode == 0, "napi_reject_deferred");
+    } else {
+        // Resolve promise with result.
+        // export baton->argv and baton->bufv to baton->napi_argv
+        size_t ii = 0;
+        while (ii < JSBATON_ARGC) {
+            if (baton->bufv[ii] == 0) {
+                // init argList[ii] = argv[ii]
+                errcode =
+                    napi_create_bigint_int64(env, baton->argv[ii], &val);
+            } else {
+                // init argList[ii] = bufv[ii]
+                errcode = napi_create_external_arraybuffer(env, // napi_env env,
+                    (void *) baton->bufv[ii],   // void* external_data,
+                    (size_t) baton->argv[ii],   // size_t byte_length,
+                    jsbatonBufferFinalize,      // napi_finalize finalize_cb,
+                    NULL,       // void* finalize_hint,
+                    &val);      // napi_value* result
+            }
+            if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) {
+                return;
+            }
+            errcode = napi_set_element(env, baton->napi_argv, 2 + ii, val);
+            if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) {
+                return;
+            }
+            ii += 1;
         }
         errcode =
             napi_resolve_deferred(env, baton->napi_deferred,
             baton->napi_argv);
         NAPI_ASSERT_FATAL(errcode == 0, "napi_resolve_deferred");
-    } else {
-        // declare var
-        napi_value err;
-        // create error
-        errcode =
-            napi_create_error(env, NULL, jsstringCreate(env, baton->errmsg),
-            &err);
-        NAPI_ASSERT_FATAL(errcode == 0, "napi_create_error");
-        // reject promise with error
-        errcode = napi_reject_deferred(env, baton->napi_deferred, err);
-        NAPI_ASSERT_FATAL(errcode == 0, "napi_reject_deferred");
     }
     // Clean up the work item associated with this run.
     errcode = napi_delete_async_work(env, baton->napi_work);
@@ -3231,16 +3165,42 @@ static napi_value jspromiseCreate(
     napi_callback_info info
 ) {
 // Create a deferred promise and an async queue work item.
-    // init baton
-    Jsbaton *baton = jsbatonCreate(env, info);
-    if (baton == NULL) {
-        return NULL;
-    }
+    //
+    // Create a baton for passing data between nodejs <-> c.
     // declare var
-    char buf[SIZEOF_MESSAGE_DEFAULT] = { 0 };
+    Jsbaton *baton = NULL;
     int errcode = 0;
     napi_value promise = 0;
-    napi_value async_resource_name;
+    napi_value val = NULL;
+    size_t ii = 0;
+    // init argv
+    ii = 1;
+    errcode = napi_get_cb_info(env, info, &ii, &val, NULL, NULL);
+    NAPI_ASSERT_OK();
+    // init baton
+    errcode = napi_get_element(env, val, 0, (napi_value *) & baton);
+    NAPI_ASSERT_OK();
+    errcode =
+        napi_get_dataview_info(env, (napi_value) baton, NULL,
+        (void **) &baton, NULL, NULL);
+    NAPI_ASSERT_OK();
+    // init argv - external buffer
+    baton->napi_argv = val;
+    for (ii = 0; ii < JSBATON_ARGC; ii += 1) {
+        bool is_dataview = 0;
+        errcode = napi_get_element(env, baton->napi_argv, 2 + ii, &val);
+        NAPI_ASSERT_OK();
+        errcode = napi_is_dataview(env, val, &is_dataview);
+        NAPI_ASSERT_OK();
+        if (is_dataview) {
+            errcode =
+                napi_get_dataview_info(env, val, NULL,
+                (void **) (baton->argv + ii), NULL, NULL);
+            NAPI_ASSERT_OK();
+        }
+    }
+    //
+    // Create a nodejs promise.
     // reference result to prevent gc
     errcode = napi_create_reference(env,        // napi_env env
         baton->napi_argv,       // napi_value value
@@ -3249,7 +3209,7 @@ static napi_value jspromiseCreate(
     NAPI_ASSERT_OK();
     // Ensure that no work is currently in progress.
     if (baton->napi_work != NULL) {
-        napi_throw_error(env, NULL, sqlmathSnprintfTrace(buf, "",
+        napi_throw_error(env, NULL, sqlmathSnprintfTrace(baton->errmsg, "",
                 "sqlmath.jspromiseCreate()"
                 " - Only one work item must exist at a time", __func__,
                 __FILE__, __LINE__));
@@ -3265,12 +3225,12 @@ static napi_value jspromiseCreate(
     errcode =
         napi_create_string_utf8(env,
         "sqlmath.jspromiseCreate() - napi_create_async_work()",
-        NAPI_AUTO_LENGTH, &async_resource_name);
+        NAPI_AUTO_LENGTH, &val);
     // Create an async work item, passing in the addon data, which will give the
     // worker thread access to the above-created deferred promise.
     errcode = napi_create_async_work(env,       // napi_env env,
         NULL,                   // napi_value async_resource,
-        async_resource_name,    // napi_value async_resource_name,
+        val,                    // napi_value async_resource_name,
         jspromiseExecute,       // napi_async_execute_callback execute,
         jspromiseResolve,       // napi_async_complete_callback complete,
         baton,                  // void* data,
@@ -3336,28 +3296,74 @@ file sqlmath_python - start
 
 #include <Python.h>
 
-static PyObject *_pymethod_db_call(
+
+static PyObject *pybatonCall(
     PyObject * self,
     PyObject * args
 ) {
     UNUSED_PARAMETER(self);
-    // init baton
-    Py_buffer view;
-    if (!PyArg_ParseTuple(args, "y*", &view)) {
+    //
+    // Create a baton for passing data between python <-> c.
+    // declare var
+    Jsbaton *baton = NULL;
+    PyObject *argv = NULL;
+    PyObject *val = NULL;
+    const char *cFuncName = NULL;
+    size_t ii = 0;
+    // init argv, baton
+    {
+        Py_buffer pybuf = { 0 };
+        if (!PyArg_ParseTuple(args, "y*sO!", &pybuf, &cFuncName, &PyList_Type,
+                &argv)) {
+            return NULL;
+        }
+        baton = pybuf.buf;
+        PyBuffer_Release(&pybuf);
+    }
+    // init argv - external buffer
+    for (ii = 0; ii < JSBATON_ARGC; ii += 1) {
+        val = PyList_GetItem(argv, 2 + ii);
+        if (val == NULL) {
+            return NULL;
+        }
+        if (PyMemoryView_Check(val)) {
+            baton->argv[ii] = (intptr_t) PyMemoryView_GET_BUFFER(val)->buf;
+        }
+    }
+    //
+    // Execute dbCall().
+    dbCall(baton);
+    if (baton->errmsg[0] != '\x00') {
+        PyErr_SetString(PyExc_RuntimeError, baton->errmsg);
         return NULL;
     }
-    Jsbaton *baton = view.buf;
-    PyBuffer_Release(&view);
-    dbCall(baton);
-    if (baton->errmsg[0] == '\x00') {
-        return Py_None;
+    //
+    // Return argv.
+    // export baton->argv and baton->bufv to argv
+    while (ii < JSBATON_ARGC) {
+        if (baton->bufv[ii] == 0) {
+            // init argList[ii] = argv[ii]
+            val = PyLong_FromLongLong(baton->argv[ii]);
+        } else {
+            // init argList[ii] = bufv[ii]
+            val = PyMemoryView_FromMemory(      //
+                (char *) baton->bufv[ii],       // char *mem
+                (Py_ssize_t) baton->argv[ii],   // Py_ssize_t size
+                PyBUF_WRITE);   // int flags
+        }
+        if (val == NULL) {
+            return NULL;
+        }
+        if (PyList_SetItem(argv, 2 + ii, val) == -1) {
+            return NULL;
+        }
+        ii += 1;
     }
-    PyErr_SetString(PyExc_RuntimeError, baton->errmsg);
-    return NULL;
+    Py_RETURN_NONE;
 }
 
 static PyMethodDef SqlmathMethods[] = {
-    {"_pymethod_db_call", _pymethod_db_call, METH_VARARGS, NULL},
+    {"_pybatonCall", pybatonCall, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}       // sentinel
 };
 

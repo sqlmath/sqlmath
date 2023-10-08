@@ -6,7 +6,6 @@ python -m build
 """
 
 import asyncio
-import distutils.dist
 import json
 import os
 import pathlib
@@ -523,10 +522,6 @@ def raise_setup_error(*args, **kwargs):
     raise SetupError({args, kwargs})
 
 
-class Distribution2(distutils.dist.Distribution):
-    """Custom build-distribution."""
-
-
 class SetupError(Exception):
     """Setup error."""
 
@@ -547,7 +542,6 @@ if __name__ == "__main__":
         case "sdist":
             build_sdist("dist")
         case "test":
-            import sqlmath
-            sqlmath.test_python_run()
+            subprocess.run(["python", "test.py", "--verbose"], check=True)
         case _:
             raise_setup_error(sys.argv)

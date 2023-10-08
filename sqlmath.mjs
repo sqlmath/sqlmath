@@ -159,6 +159,10 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         `cCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
     );
     baton = baton || jsbatonCreate();
+    // pad argList to length JSBATON_ARGC
+    while (argList.length < 2 * JSBATON_ARGC) {
+        argList.push(0n);
+    }
     // serialize js-value to c-value
     argList = argList.map(function (value, argi) {
         switch (typeof value) {

@@ -371,7 +371,8 @@ shCiLintCustom() {(set -e
     fi
     shLintPython \
         setup.py \
-        sqlmath/__init__.py
+        sqlmath/__init__.py \
+        test.py
 )}
 
 shCiPublishNpmCustom() {(set -e

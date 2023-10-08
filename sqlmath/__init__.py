@@ -3,11 +3,13 @@
 __version__ = "2023.10.1"
 __version_info__ = ("2023", "10", "1")
 
+import json
 import math
+import re
 import struct
 import sys
 
-from ._sqlmath import _pymethod_db_call
+from ._sqlmath import _pybatonCall
 
 JSBATON_ARGC = 16
 SQLITE_DATATYPE_BLOB = 0x04
@@ -44,11 +46,44 @@ SQLITE_OPEN_URI = 0x00000040           # Ok for sqlite3_open_v2()
 SQLITE_OPEN_WAL = 0x00080000           # VFS only
 
 
+class SqlmathError(Exception):
+    """Custom error."""
+
+
+def asserterrorthrown(func, regexp=None):
+    """This function will assert calling <func> throws an error."""
+    err = None
+    try:
+        func()
+    except Exception as err_caught: # noqa: BLE001
+        err = err_caught
+    assertorthrow(err, "No error thrown.")
+    assertorthrow(regexp is None or re.match(regexp, str(err)), err)
+
+
+def assertjsonequal(aa, bb, message):
+    """This function will assert."""
+    """JSON.stringify(<aa>) === JSON.stringify(<bb>)."""
+    aa = json.dumps(aa, indent=1)
+    bb = json.dumps(bb, indent=1)
+    if aa != bb:
+        raise SqlmathError(
+            f"\n{aa}\n!==\n{bb}"
+            + (
+                " - " + message
+                if isinstance(message, str)
+                else " - " + json.dumps(message)
+                if message
+                else ""
+            ),
+        )
+
+
 def assertorthrow(condition, message):
     """This function will throw <message> if <condition> is falsy."""
     if not condition:
         raise (
-            Exception(str(message)[:2048])
+            SqlmathError(str(message)[:2048])
             if not message or isinstance(message, str)
             else message
         )
@@ -57,16 +92,9 @@ def assertorthrow(condition, message):
 def c_call(baton, c_func_name, *arglist):
     """This function will serialize <arglist> to a c <baton>."""
     """suitable for passing into napi."""
-    assertorthrow(
-        len(arglist) < JSBATON_ARGC,
-        f"c_call - arglist.length must be less than than {JSBATON_ARGC}",
-    )
-    # init baton
-    baton = bytearray(1024)
-    # offset nalloc, nused
-    struct.pack_into("i", baton, 4, SQLITE_DATATYPE_OFFSET)
-    # serialize js-value to c-value
-    for argi, value in enumerate(arglist):
+
+    def arg_serialize(argi, value):
+        nonlocal baton
         if isinstance(value, (bool, int)):
             struct.pack_into("q", baton, 8 + argi * 8, value)
         elif isinstance(value, float):
@@ -81,15 +109,36 @@ def c_call(baton, c_func_name, *arglist):
                 argi,
                 value if value.endswith("\u0000") else value + "\u0000",
             )
+    assertorthrow(
+        len(arglist) < JSBATON_ARGC,
+        f"c_call - arglist.length must be less than than {JSBATON_ARGC}",
+    )
+    # init baton
+    baton = memoryview(bytearray(1024))
+    # offset nalloc, nused
+    struct.pack_into("i", baton, 4, SQLITE_DATATYPE_OFFSET)
+    # serialize js-value to c-value
+    arglist = [
+        arg_serialize(argi, value) for argi, value in enumerate(arglist)
+    ]
+    # pad argList to length JSBATON_ARGC
+    while len(arglist) < 2 * JSBATON_ARGC:
+        arglist.append(0)
     # encode c_func_name into baton
     baton = jsbaton_value_push(baton, 2 * JSBATON_ARGC, f"{c_func_name}\u0000")
-    # !! debuginline(baton)
-    _pymethod_db_call(baton)
+    arglist = [baton, c_func_name, *arglist]
+    _pybatonCall(baton, c_func_name, arglist)
+    return arglist
 
 
 def db_noop(*arglist):
-    """This function will do nothing."""
+    """This function will do nothing except return <arglist>."""
     return c_call(None, "_dbNoop", *arglist)
+
+
+def db_open(*arglist):
+    """This function will open and return sqlite-database-connection <db>."""
+    c_call(None, "_dbNoop", *arglist)
 
 
 def debuginline(*argv):
@@ -123,7 +172,9 @@ def jsbaton_value_push(baton, argi, value):
     # exponentially grow baton as needed
     if len(baton) < nn:
         tmp = baton
-        baton = bytearray(min(2 ** math.ceil(math.log(nn, 2)), 0x7fff_ffff))
+        baton = memoryview(
+            bytearray(min(2 ** math.ceil(math.log(nn, 2)), 0x7fff_ffff)),
+        )
         # update nalloc
         struct.pack_into("i", baton, 0, len(baton))
         # copy tmp to baton
@@ -147,26 +198,24 @@ def jsbaton_value_push(baton, argi, value):
             ),
         )
         struct.pack_into("i", baton, nused + 1, vsize)
-        memoryview(baton)[nused + 1 + 4:nused + 1 + 4 + vsize] = value
+        baton[nused + 1 + 4:nused + 1 + 4 + vsize] = value
     return baton
+
+
+def jsbaton_value_string(baton, argi):
+    """This function will return string-value from <baton>."""
+    """at given <offset>."""
+    offset = struct.unpack_from("q", baton, 4 + 4 + argi * 8)[0]
+    return str(
+        baton[
+            offset + 1 + 4:
+            # remove null-terminator from string
+            offset + 1 + 4 + struct.unpack_from("i", baton, offset + 1)[0] - 1
+        ],
+        "utf-8",
+    )
 
 
 def noop(val=None, *_, **__):
     """This function will do nothing except return <val>."""
     return val
-
-
-def test_python_run():
-    """This function will run python tests."""
-    noop(_pymethod_db_call)
-    db_noop(None)
-    # !! import unittest
-
-    # !! from .sqlmath_dbapi2 import test_suite_list
-    # !! for test_suite in test_suite_list:
-        # !! results = unittest.TextTestRunner(
-            # !! verbosity=1,
-            # !! failfast=False,
-        # !! ).run(test_suite())
-        # !! if results.failures or results.errors:
-            # !! sys.exit(1)

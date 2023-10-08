@@ -423,7 +423,7 @@ shCiBase() {(set -e
 # # this function will run custom-code for base-ci
 #     return
 # )}
-# shCiLintCustom2() {(set -e
+# shCiLintCustom() {(set -e
 # # this function will run custom-code to lint files
 # )}
     export GITHUB_BRANCH0="$(git rev-parse --abbrev-ref HEAD)"
