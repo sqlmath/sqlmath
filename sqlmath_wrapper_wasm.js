@@ -34,6 +34,9 @@
 */
 
 
+let JSBATON_OFFSET_ARGV = 8;
+
+
 // init debugInline
 let debugInline = (function () {
     let __consoleError = function () {
@@ -117,7 +120,7 @@ function noop(val) {
                 HEAPU8.byteOffset + batonPtr,
                 1024
             ));
-            baton = new BigInt64Array(baton.buffer, 4 + 4);
+            baton = new BigInt64Array(baton.buffer, JSBATON_OFFSET_ARGV);
             baton.subarray(
                 JSBATON_ARGC,
                 2 * JSBATON_ARGC
@@ -153,7 +156,7 @@ function noop(val) {
                 // export dbData
                 if (modeExport) {
                     dbData = FS.readFile(FILENAME_DBTMP);
-                    argList[4] = dbData.buffer;
+                    argList[0] = dbData.buffer;
                 }
                 break;
             case "_dbOpen":

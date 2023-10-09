@@ -1,5 +1,6 @@
 /*jslint beta, bitwise, browser, devel, nomen*/
 import {
+    JSBATON_OFFSET_ARG0,
     assertOrThrow,
     dbCloseAsync,
     dbExecAsync,
@@ -2200,20 +2201,17 @@ RENAME TO
         await onDbExec({});
         return;
     case "dbExport":
-        data = await dbFileExportAsync({
-            db: baton.db
-        });
-        data = data[6];
+        data = await dbFileExportAsync({db: baton.db});
+        console.error(data);
+        data = data[JSBATON_OFFSET_ARG0 + 0];
         fileSave({
             buf: data,
             filename: `sqlite_database_${baton.dbName}.sqlite`
         });
         return;
     case "dbExportMain":
-        data = await dbFileExportAsync({
-            db: DB_MAIN
-        });
-        data = data[6];
+        data = await dbFileExportAsync({db: DB_MAIN});
+        data = data[JSBATON_OFFSET_ARG0 + 0];
         fileSave({
             buf: data,
             filename: `sqlite_database_${DB_MAIN.dbName}.sqlite`

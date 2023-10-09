@@ -64,32 +64,37 @@ file sqlmath_h - start
 #endif
 
 
-#define JSBATON_ARGC 16
-#define JS_MAX_SAFE_INTEGER 0x1fffffffffffff
-#define JS_MIN_SAFE_INTEGER -0x1fffffffffffff
-#define MATH_PI 3.141592653589793238463
-#define MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
-#define MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
-#define SGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
-#define SIZEOF_MESSAGE_DEFAULT 256
+#define JSBATON_ARGC            16
+#define JSBATON_OFFSET_ALL      768
+#define JSBATON_OFFSET_ARG0     2
+#define JSBATON_OFFSET_ARGV     8
+#define JSBATON_OFFSET_BUFV     136
+#define JS_MAX_SAFE_INTEGER     0x1fffffffffffff
+#define JS_MIN_SAFE_INTEGER     -0x1fffffffffffff
+#define SIZEOF_BLOB_MAX         1000000000
+#define SIZEOF_MESSAGE          256
 #define SQLITE_DATATYPE_BLOB            0x04
 #define SQLITE_DATATYPE_FLOAT           0x02
 #define SQLITE_DATATYPE_INTEGER         0x01
 #define SQLITE_DATATYPE_INTEGER_0       0x00
 #define SQLITE_DATATYPE_INTEGER_1       0x21
 #define SQLITE_DATATYPE_NULL            0x05
-#define SQLITE_DATATYPE_OFFSET          768
 #define SQLITE_DATATYPE_SHAREDARRAYBUFFER       0x71
 #define SQLITE_DATATYPE_TEXT            0x03
 #define SQLITE_DATATYPE_TEXT_0          0x13
+#define SQLITE_RESPONSETYPE_LASTBLOB    1
+
+
 #define SQLITE_ERROR_DATATYPE_INVALID   0x10003
 #define SQLITE_ERROR_JSON_ARRAY_INVALID         0x71
 #define SQLITE_ERROR_ZSQL_NULL          0x10004
-#define SQLITE_MAX_LENGTH2 1000000000
-#define SQLITE_RESPONSETYPE_LASTBLOB 1
+#define MATH_MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
+#define MATH_MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
+#define MATH_PI 3.141592653589793238463
+#define MATH_SIGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
+#define MATH_SWAP(aa, bb, tmp) tmp = (aa); (aa) = (bb); (bb) = tmp
 #define SQLMATH_API
 #define SQLMATH_FUNC
-#define SWAP(aa, bb, tmp) tmp = (aa); (aa) = (bb); (bb) = tmp
 #define UNUSED_PARAMETER(x) ((void)(x))
 
 
@@ -172,7 +177,7 @@ file sqlmath_h - start
 #define STR99_ALLOCA(str99) \
     sqlite3_str __##str99 = { 0 }; \
     sqlite3_str *str99 = &__##str99; \
-    str99->mxAlloc = SQLITE_MAX_LENGTH2; \
+    str99->mxAlloc = SIZEOF_BLOB_MAX; \
 
 #define STR99_RESULT_ERROR(str99) \
     errcode = sqlite3_str_errcode(str99); \
@@ -208,7 +213,7 @@ typedef struct Jsbaton {
     int64_t argv[JSBATON_ARGC]; // offset - 8-136
     int64_t bufv[JSBATON_ARGC]; // offset - 136-264
     int64_t cfuncname;          // offset - 264-272
-    char errmsg[SIZEOF_MESSAGE_DEFAULT];        // offset 272-528
+    char errmsg[SIZEOF_MESSAGE];        // offset 272-528
     void *napi_argv;            // offset 528-536
     void *napi_work;            // offset 536-544
     void *napi_deferred;        // offset 544-552
@@ -490,7 +495,7 @@ SQLMATH_API void dbCall(
     } else if (strcmp(cFuncName, "_dbOpen") == 0) {
         dbOpen(baton);
     } else {
-        snprintf(baton->errmsg, SIZEOF_MESSAGE_DEFAULT,
+        snprintf(baton->errmsg, SIZEOF_MESSAGE,
             "sqlmath.dbCall - invalid cFuncName '%s'", cFuncName);
     }
 }
@@ -531,7 +536,7 @@ SQLMATH_API void dbExec(
     DbExecBindElem *bindElem = NULL;
     DbExecBindElem *bindList = NULL;
     const char **pzShared = ((const char **) baton->argv) + 8;
-    const char *zBind = (const char *) baton + SQLITE_DATATYPE_OFFSET;
+    const char *zBind = (const char *) baton + JSBATON_OFFSET_ALL;
     const char *zSql = jsbatonValueStringArgi(baton, 1);
     const char *zTmp = NULL;
     double rTmp = 0;
@@ -833,8 +838,8 @@ SQLMATH_API void dbExec(
     errcode = sqlite3_str_errcode(str99);
     JSBATON_ASSERT_OK();
     // copy str99 to baton
-    baton->argv[7] = sqlite3_str_length(str99);
-    baton->bufv[7] = (int64_t) str99->zText;
+    baton->argv[0] = sqlite3_str_length(str99);
+    baton->bufv[0] = (int64_t) str99->zText;
   catch_error:
     // cleanup pStmt
     sqlite3_finalize(pStmt);
@@ -928,7 +933,7 @@ SQLMATH_API int doublewinAggmalloc(
     const int alloc = sizeof(Doublewin) + nhead * sizeof(double) + 256;
     if (dblwinAgg == NULL       //
         || nhead < 0            //
-        || alloc <= 0 || SQLITE_MAX_LENGTH2 < alloc) {
+        || alloc <= 0 || SIZEOF_BLOB_MAX < alloc) {
         doublewinAggfree(dblwinAgg);
         return SQLITE_NOMEM;
     }
@@ -967,11 +972,11 @@ SQLMATH_API int doublewinAggpush(
     uint32_t alloc = dblwin->alloc;
     if (nn * sizeof(double) >= alloc) {
         // error - toobig
-        if (alloc <= 0 || SQLITE_MAX_LENGTH2 <= alloc) {
+        if (alloc <= 0 || SIZEOF_BLOB_MAX <= alloc) {
             doublewinAggfree(dblwinAgg);
             return SQLITE_NOMEM;
         }
-        alloc = MIN(SQLITE_MAX_LENGTH2, 2 * alloc);
+        alloc = MATH_MIN(SIZEOF_BLOB_MAX, 2 * alloc);
         dblwin = sqlite3_realloc(dblwin, alloc);
         // error - nomem
         if (dblwin == NULL) {
@@ -1260,8 +1265,8 @@ SQLMATH_API char *sqlmathSnprintfTrace(
     int line
 ) {
 // This function will write <errmsg> to <buf> with additional trace-info.
-    snprintf(buf, SIZEOF_MESSAGE_DEFAULT, "%s%s\n    at %s (%s:%d)", prefix,
-        errmsg, func, file, line);
+    snprintf(buf, SIZEOF_MESSAGE, "%s%s\n    at %s (%s:%d)", prefix, errmsg,
+        func, file, line);
     return buf;
 }
 
@@ -1504,8 +1509,8 @@ SQLMATH_FUNC static void sql1_roundorzero_func(
     char *zBuf = NULL;
     double rr = sqlite3_value_double(argv[0]);
     int nn = sqlite3_value_int(argv[1]);
-    nn = MIN(nn, 30);
-    nn = MAX(nn, 0);
+    nn = MATH_MIN(nn, 30);
+    nn = MATH_MAX(nn, 0);
     // If YY==0 and XX will fit in a 64-bit int,
     // handle the rounding directly,
     // otherwise use printf.
@@ -1598,20 +1603,20 @@ static double quickselect(
     while (1) {
         if (ir <= ll + 1) {
             if (ir == ll + 1 && arr[ir] < arr[ll]) {
-                SWAP(arr[ll], arr[ir], tmp);
+                MATH_SWAP(arr[ll], arr[ir], tmp);
             }
             return arr[kk];
         } else {
             mid = (ll + ir) >> 1;
-            SWAP(arr[mid], arr[ll + 1], tmp);
+            MATH_SWAP(arr[mid], arr[ll + 1], tmp);
             if (arr[ll] > arr[ir]) {
-                SWAP(arr[ll], arr[ir], tmp);
+                MATH_SWAP(arr[ll], arr[ir], tmp);
             }
             if (arr[ll + 1] > arr[ir]) {
-                SWAP(arr[ll + 1], arr[ir], tmp);
+                MATH_SWAP(arr[ll + 1], arr[ir], tmp);
             }
             if (arr[ll] > arr[ll + 1]) {
-                SWAP(arr[ll], arr[ll + 1], tmp);
+                MATH_SWAP(arr[ll], arr[ll + 1], tmp);
             }
             ii = ll + 1;
             jj = ir;
@@ -1632,7 +1637,7 @@ static double quickselect(
                 if (jj < ii) {
                     break;
                 }
-                SWAP(arr[ii], arr[jj], tmp);
+                MATH_SWAP(arr[ii], arr[jj], tmp);
             }
             arr[ll + 1] = arr[jj];
             arr[jj] = aa;
@@ -1657,7 +1662,7 @@ SQLMATH_API double quantile(
     if (!(nn >= 1)) {
         return NAN;
     }
-    double kmod = MAX(0, MIN(1, qq)) * (nn - 1);
+    double kmod = MATH_MAX(0, MATH_MIN(1, qq)) * (nn - 1);
     const int kk = kmod;
     kmod = fmod(kmod, 1);
     return kmod == 0            //
@@ -1917,7 +1922,7 @@ SQLMATH_FUNC static void sql1_coinflip_extract_func(
             -1);
         return;
     }
-    if (bytes <= 0 || SQLITE_MAX_LENGTH2 < bytes        //
+    if (bytes <= 0 || SIZEOF_BLOB_MAX < bytes   //
         || bytes < (icol + 1) * WIN_COINFLIP_N * sizeof(double)) {
         sqlite3_result_error(context,
             "coinflip_extract()"
@@ -2431,7 +2436,7 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
             -1);
         return;
     }
-    if (bytes <= 0 || SQLITE_MAX_LENGTH2 < bytes        //
+    if (bytes <= 0 || SIZEOF_BLOB_MAX < bytes   //
         || bytes < (icol + 1) * WIN_SINEFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
             "sinefit_extract()"
@@ -2586,7 +2591,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
     if (argc < argc0 + 2 || argc != argc0 + ncol * 2) {
         goto catch_error;
     }
-    if (bytes <= 0 || SQLITE_MAX_LENGTH2 < bytes        //
+    if (bytes <= 0 || SIZEOF_BLOB_MAX < bytes   //
         || bytes < ncol * WIN_SINEFIT_N * sizeof(double)) {
         sqlite3_result_error(context,
             "sinefit_refitlast()"
@@ -3029,7 +3034,7 @@ static int napiAssertOk(
         return errcode;
     }
     // declare var
-    char buf[SIZEOF_MESSAGE_DEFAULT] = { 0 };
+    char buf[SIZEOF_MESSAGE] = { 0 };
     bool is_exception_pending;
     const napi_extended_error_info *info;
     napi_value val = NULL;
@@ -3124,28 +3129,23 @@ static void jspromiseResolve(
         // Resolve promise with result.
         // export baton->argv and baton->bufv to baton->napi_argv
         size_t ii = 0;
-        while (ii < JSBATON_ARGC) {
-            if (baton->bufv[ii] == 0) {
-                // init argList[ii] = argv[ii]
-                errcode =
-                    napi_create_bigint_int64(env, baton->argv[ii], &val);
-            } else {
-                // init argList[ii] = bufv[ii]
-                errcode = napi_create_external_arraybuffer(env, // napi_env env,
-                    (void *) baton->bufv[ii],   // void* external_data,
-                    (size_t) baton->argv[ii],   // size_t byte_length,
-                    jsbatonBufferFinalize,      // napi_finalize finalize_cb,
-                    NULL,       // void* finalize_hint,
-                    &val);      // napi_value* result
-            }
+        if (baton->bufv[ii]) {
+            // init argList[ii] = bufv[ii]
+            errcode = napi_create_external_arraybuffer(env,     // napi_env env,
+                (void *) baton->bufv[ii],       // void* external_data,
+                (size_t) baton->argv[ii],       // size_t byte_length,
+                jsbatonBufferFinalize,  // napi_finalize finalize_cb,
+                NULL,           // void* finalize_hint,
+                &val);          // napi_value* result
             if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) {
                 return;
             }
-            errcode = napi_set_element(env, baton->napi_argv, 2 + ii, val);
+            errcode =
+                napi_set_element(env, baton->napi_argv,
+                JSBATON_OFFSET_ARG0 + ii, val);
             if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) {
                 return;
             }
-            ii += 1;
         }
         errcode =
             napi_resolve_deferred(env, baton->napi_deferred,
@@ -3188,7 +3188,9 @@ static napi_value jspromiseCreate(
     baton->napi_argv = val;
     for (ii = 0; ii < JSBATON_ARGC; ii += 1) {
         bool is_dataview = 0;
-        errcode = napi_get_element(env, baton->napi_argv, 2 + ii, &val);
+        errcode =
+            napi_get_element(env, baton->napi_argv, JSBATON_OFFSET_ARG0 + ii,
+            &val);
         NAPI_ASSERT_OK();
         errcode = napi_is_dataview(env, val, &is_dataview);
         NAPI_ASSERT_OK();
@@ -3297,7 +3299,62 @@ file sqlmath_python - start
 #include <Python.h>
 
 
-static PyObject *pybatonCall(
+typedef struct {
+    PyObject_HEAD void *buf;
+    Py_ssize_t shape[1];
+} SqliteBuffer;
+
+// https://stackoverflow.com/questions/37988849/safer-way-to-expose-a-c-allocated-memory-buffer-using-numpy-ctypes
+// Called when we want a new view of the buffer, using the buffer protocol
+// See: https://docs.python.org/3/c-api/buffer.html
+static int SqliteBuffer_getbuf(
+    SqliteBuffer * self,
+    Py_buffer * view,
+    int flags
+) {
+    static Py_ssize_t strides[1] = { 1 };
+    // Set the view info
+    view->buf = self->buf;      // Base pointer
+    view->obj = (PyObject *) self;
+    view->len = self->shape[0]; // Length
+    view->readonly = 1;
+    view->itemsize = 1;
+    view->format = "B";         // unsigned byte
+    view->ndim = 1;
+    view->shape = self->shape;
+    view->strides = strides;
+    view->suboffsets = NULL;
+    view->internal = NULL;
+    // We need to increase the reference count of our buffer object here, but
+    // Python will automatically decrease it when the view goes out of scope
+    Py_INCREF(self);
+    // Done
+    return 0;
+}
+
+// Called when there are no more references to the object
+static void SqliteBuffer_dealloc(
+    SqliteBuffer * self
+) {
+    sqlite3_free(self->buf);
+}
+
+static PyBufferProcs SqliteBuffer_as_buffer = {
+    .bf_getbuffer = (getbufferproc) SqliteBuffer_getbuf,
+    .bf_releasebuffer = (releasebufferproc) NULL,
+};
+
+static PyTypeObject SqliteBuffer_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+        .tp_name = "sqlmath.SqliteBuffer",
+    .tp_basicsize = sizeof(SqliteBuffer),
+    .tp_dealloc = &SqliteBuffer_dealloc,
+    .tp_as_buffer = &SqliteBuffer_as_buffer,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc = "External Sqlite Buffer",
+};
+
+static PyObject *pydbCall(
     PyObject * self,
     PyObject * args
 ) {
@@ -3322,7 +3379,7 @@ static PyObject *pybatonCall(
     }
     // init argv - external buffer
     for (ii = 0; ii < JSBATON_ARGC; ii += 1) {
-        val = PyList_GetItem(argv, 2 + ii);
+        val = PyList_GetItem(argv, JSBATON_OFFSET_ARG0 + ii);
         if (val == NULL) {
             return NULL;
         }
@@ -3340,30 +3397,25 @@ static PyObject *pybatonCall(
     //
     // Return argv.
     // export baton->argv and baton->bufv to argv
-    while (ii < JSBATON_ARGC) {
-        if (baton->bufv[ii] == 0) {
-            // init argList[ii] = argv[ii]
-            val = PyLong_FromLongLong(baton->argv[ii]);
-        } else {
-            // init argList[ii] = bufv[ii]
-            val = PyMemoryView_FromMemory(      //
-                (char *) baton->bufv[ii],       // char *mem
-                (Py_ssize_t) baton->argv[ii],   // Py_ssize_t size
-                PyBUF_WRITE);   // int flags
-        }
-        if (val == NULL) {
-            return NULL;
-        }
-        if (PyList_SetItem(argv, 2 + ii, val) == -1) {
-            return NULL;
-        }
-        ii += 1;
+    ii = 0;
+    if (baton->bufv[ii]) {
+        // init argList[ii] = bufv[ii]
+        val = PyMemoryView_FromMemory(  //
+            (char *) baton->bufv[ii],   // char *mem
+            (Py_ssize_t) baton->argv[ii],       // Py_ssize_t size
+            PyBUF_WRITE);       // int flags
+    }
+    if (val == NULL) {
+        return NULL;
+    }
+    if (PyList_SetItem(argv, JSBATON_OFFSET_ARG0 + ii, val) == -1) {
+        return NULL;
     }
     Py_RETURN_NONE;
 }
 
 static PyMethodDef SqlmathMethods[] = {
-    {"_pybatonCall", pybatonCall, METH_VARARGS, NULL},
+    {"_pydbCall", pydbCall, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}       // sentinel
 };
 

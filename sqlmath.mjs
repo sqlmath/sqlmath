@@ -27,19 +27,28 @@
 
 let FILENAME_DBTMP = "/tmp/__dbtmp1";
 let IS_BROWSER;
+
 let JSBATON_ARGC = 16;
+let JSBATON_OFFSET_ALL = 768;
+let JSBATON_OFFSET_ARG0 = 2;
+let JSBATON_OFFSET_ARGV = 8;
+let JSBATON_OFFSET_BUFV = 136;
+let JS_MAX_SAFE_INTEGER = 0x1fffffffffffff;
+let JS_MIN_SAFE_INTEGER = -0x1fffffffffffff;
+let SIZEOF_BLOB_MAX = 1000000000;
+let SIZEOF_MESSAGE = 256;
 let SQLITE_DATATYPE_BLOB = 0x04;
 let SQLITE_DATATYPE_FLOAT = 0x02;
 let SQLITE_DATATYPE_INTEGER = 0x01;
 let SQLITE_DATATYPE_INTEGER_0 = 0x00;
 let SQLITE_DATATYPE_INTEGER_1 = 0x21;
 let SQLITE_DATATYPE_NULL = 0x05;
-let SQLITE_DATATYPE_OFFSET = 768;
 let SQLITE_DATATYPE_SHAREDARRAYBUFFER = 0x71;
 let SQLITE_DATATYPE_TEXT = 0x03;
 let SQLITE_DATATYPE_TEXT_0 = 0x13;
-let SQLITE_MAX_LENGTH2 = 1_000_000_000;
-let SQLITE_OPEN_AUTOPROXY = 0x00000020;     /* VFS only */
+let SQLITE_RESPONSETYPE_LASTBLOB = 1;
+
+let SQLITE_OPEN_AUTOPROXY = 0x00000020;     /* VFS only */ //jslint-ignore-line
 let SQLITE_OPEN_CREATE = 0x00000004;        /* Ok for sqlite3_open_v2() */
 let SQLITE_OPEN_DELETEONCLOSE = 0x00000008; /* VFS only */
 let SQLITE_OPEN_EXCLUSIVE = 0x00000010;     /* VFS only */
@@ -177,48 +186,54 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         argList.push(0n);
     }
     // serialize js-value to c-value
-    argList = argList.map(function (value, argi) {
-        switch (typeof value) {
+    argList = argList.map(function (val, argi) {
+        switch (typeof val) {
         case "bigint":
         case "boolean":
-            assertInt64(value);
-            baton.setBigInt64(8 + argi * 8, BigInt(value), true);
-            return value;
+            assertInt64(val);
+            baton.setBigInt64(
+                JSBATON_OFFSET_ARGV + argi * 8,
+                BigInt(val),
+                true
+            );
+            return val;
         case "number":
             // check for min/max safe-integer
             assertOrThrow(
-                (
-                    -9_007_199_254_740_991 <= value
-                    && value <= 9_007_199_254_740_991
-                ),
+                JS_MIN_SAFE_INTEGER <= val && val <= JS_MAX_SAFE_INTEGER,
                 (
                     "non-bigint integer must be within inclusive-range"
-                    + " -9,007,199,254,740,991 to 9,007,199,254,740,991"
+                    + ` ${JS_MIN_SAFE_INTEGER} to ${JS_MAX_SAFE_INTEGER}`
                 )
             );
-            baton.setBigInt64(8 + argi * 8, BigInt(value), true);
-            return value;
+            assertInt64(val);
+            baton.setBigInt64(
+                JSBATON_OFFSET_ARGV + argi * 8,
+                BigInt(val),
+                true
+            );
+            return val;
         // case "object":
         //     break;
         case "string":
             baton = jsbatonValuePush(baton, argi, (
-                value.endsWith("\u0000")
-                ? value
+                val.endsWith("\u0000")
+                ? val
                 // append null-terminator to string
-                : value + "\u0000"
+                : val + "\u0000"
             ));
             return;
         }
         // normalize buffer to zero-byte-offset
-        if (ArrayBuffer.isView(value)) {
+        if (ArrayBuffer.isView(val)) {
             return new DataView(
-                value.buffer,
-                value.byteOffset,
-                value.byteLength
+                val.buffer,
+                val.byteOffset,
+                val.byteLength
             );
         }
-        if (isExternalBuffer(value)) {
-            return value;
+        if (isExternalBuffer(val)) {
+            return val;
         }
     });
     // encode cFuncName into baton
@@ -612,7 +627,7 @@ async function dbExecAsync({
         bindByKey,              // 3
         (                       // 4
             responseType === "lastBlob"
-            ? 1
+            ? SQLITE_RESPONSETYPE_LASTBLOB
             : 0
         ),
         undefined, // 5
@@ -620,7 +635,7 @@ async function dbExecAsync({
         undefined, // 7 - response
         ...externalbufferList        // 8
     );
-    result = result[2 + 7];
+    result = result[JSBATON_OFFSET_ARG0 + 0];
     switch (responseType) {
     case "arraybuffer":
     case "lastBlob":
@@ -713,13 +728,8 @@ async function dbOpenAsync({
 //   const char *zVfs        /* Name of VFS module to use */
 // );
     let connPool;
-    let db = {
-        filename
-    };
-    assertOrThrow(
-        typeof filename === "string",
-        `invalid filename ${filename}`
-    );
+    let db = {filename};
+    assertOrThrow(typeof filename === "string", `invalid filename ${filename}`);
     assertOrThrow(
         !dbData || isExternalBuffer(dbData),
         "dbData must be ArrayBuffer"
@@ -731,7 +741,7 @@ async function dbOpenAsync({
             undefined,
             "_dbOpen",
             // 0. const char *filename,   Database filename (UTF-8)
-            String(filename),
+            filename,
             // 1. sqlite3 **ppDb,         OUT: SQLite db handle
             undefined,
             // 2. int flags,              Flags
@@ -743,21 +753,11 @@ async function dbOpenAsync({
             // 4. wasm-only - arraybuffer of raw sqlite-database to open in wasm
             dbData
         );
-        ptr = [
-            ptr[0].getBigInt64(4 + 4, true)
-        ];
-        dbFinalizationRegistry.register(db, {
-            afterFinalization,
-            ptr
-        });
+        ptr = [ptr[0].getBigInt64(JSBATON_OFFSET_ARGV + 0, true)];
+        dbFinalizationRegistry.register(db, {afterFinalization, ptr});
         return ptr;
     }));
-    dbDict.set(db, {
-        busy: 0,
-        connPool,
-        filename,
-        ii: 0
-    });
+    dbDict.set(db, {busy: 0, connPool, filename, ii: 0});
     return db;
 }
 
@@ -813,11 +813,14 @@ function isExternalBuffer(buf) {
 
 // This function will check if <buf> is ArrayBuffer or SharedArrayBuffer.
 
-    return buf && (
-        buf.constructor === ArrayBuffer
-        || (
-            typeof SharedArrayBuffer === "function"
-            && buf.constructor === SharedArrayBuffer
+    return (
+        buf
+        && (
+            buf.constructor === ArrayBuffer
+            || (
+                typeof SharedArrayBuffer === "function"
+                && buf.constructor === SharedArrayBuffer
+            )
         )
     );
 }
@@ -827,14 +830,14 @@ function jsbatonCreate() {
 // This function will create buffer <baton>.
 
     let baton = new DataView(new ArrayBuffer(1024));
-    // offset nalloc, nused
-    baton.setInt32(4, SQLITE_DATATYPE_OFFSET, true);
+    // init nallc, nused
+    baton.setInt32(4, JSBATON_OFFSET_ALL, true);
     return baton;
 }
 
-function jsbatonValuePush(baton, argi, value, externalbufferList) {
+function jsbatonValuePush(baton, argi, val, externalbufferList) {
 
-// This function will push <value> to buffer <baton>.
+// This function will push <val> to buffer <baton>.
 
     let nn;
     let nused;
@@ -848,7 +851,6 @@ function jsbatonValuePush(baton, argi, value, externalbufferList) {
 #define SQLITE_DATATYPE_INTEGER_0       0x00
 #define SQLITE_DATATYPE_INTEGER_1       0x21
 #define SQLITE_DATATYPE_NULL            0x05
-#define SQLITE_DATATYPE_OFFSET          768
 #define SQLITE_DATATYPE_SHAREDARRAYBUFFER       0x71
 #define SQLITE_DATATYPE_TEXT            0x03
 #define SQLITE_DATATYPE_TEXT_0          0x13
@@ -872,13 +874,13 @@ function jsbatonValuePush(baton, argi, value, externalbufferList) {
     // 18. 1.externalbuffer
 */
     // 10. 1.boolean
-    if (value === 1 || value === 1n) {
-        value = true;
+    if (val === 1 || val === 1n) {
+        val = true;
     }
     switch (
-        value
-        ? "1." + typeof(value)
-        : "0." + typeof(value)
+        val
+        ? "1." + typeof(val)
+        : "0." + typeof(val)
     ) {
     //  1. 0.bigint
     case "0.bigint":
@@ -928,14 +930,14 @@ function jsbatonValuePush(baton, argi, value, externalbufferList) {
         break;
     // 14. 1.string
     case "1.string":
-        value = new TextEncoder().encode(value);
+        val = new TextEncoder().encode(val);
         vtype = SQLITE_DATATYPE_TEXT;
-        vsize = 4 + value.byteLength;
+        vsize = 4 + val.byteLength;
         break;
     // 13. 1.object
     default:
         // 18. 1.externalbuffer
-        if (isExternalBuffer(value)) {
+        if (isExternalBuffer(val)) {
             assertOrThrow(
                 !IS_BROWSER,
                 "external ArrayBuffer cannot be passed directly to wasm"
@@ -944,30 +946,30 @@ function jsbatonValuePush(baton, argi, value, externalbufferList) {
                 externalbufferList.length <= 8,
                 "externalbufferList.length must be less than or equal to 8"
             );
-            externalbufferList.push(new DataView(value));
+            externalbufferList.push(new DataView(val));
             vtype = SQLITE_DATATYPE_SHAREDARRAYBUFFER;
             vsize = 4;
             break;
         }
         // 17. 1.buffer
-        if (ArrayBuffer.isView(value)) {
-            if (value.byteLength === 0) {
+        if (ArrayBuffer.isView(val)) {
+            if (val.byteLength === 0) {
                 vtype = SQLITE_DATATYPE_NULL;
                 vsize = 0;
                 break;
             }
             vtype = SQLITE_DATATYPE_BLOB;
-            vsize = 4 + value.byteLength;
+            vsize = 4 + val.byteLength;
             break;
         }
         // 13. 1.object
-        value = new TextEncoder().encode(
-            typeof value.toJSON === "function"
-            ? value.toJSON()
-            : JSON.stringify(value)
+        val = new TextEncoder().encode(
+            typeof val.toJSON === "function"
+            ? val.toJSON()
+            : JSON.stringify(val)
         );
         vtype = SQLITE_DATATYPE_TEXT;
-        vsize = 4 + value.byteLength;
+        vsize = 4 + val.byteLength;
     }
     nused = baton.getInt32(4, true);
     nn = nused + 1 + vsize;
@@ -981,7 +983,7 @@ function jsbatonValuePush(baton, argi, value, externalbufferList) {
         baton = new DataView(new ArrayBuffer(
             Math.min(2 ** Math.ceil(Math.log2(nn)), 0x7fff_ffff)
         ));
-        // update nalloc
+        // update nallc
         baton.setInt32(0, baton.byteLength, true);
         // copy tmp to baton
         new Uint8Array(
@@ -1000,40 +1002,40 @@ function jsbatonValuePush(baton, argi, value, externalbufferList) {
     case SQLITE_DATATYPE_TEXT:
         // set argv[ii] to blob/text location
         if (argi !== undefined) {
-            baton.setInt32(8 + argi * 8, nused, true);
+            baton.setInt32(JSBATON_OFFSET_ARGV + argi * 8, nused, true);
         }
         vsize -= 4;
-        // push vsize
         assertOrThrow(
-            0 <= vsize && vsize <= SQLITE_MAX_LENGTH2,
+            0 <= vsize && vsize <= SIZEOF_BLOB_MAX,
             (
                 "sqlite-blob byte-length must be within inclusive-range"
-                + ` 0 to ${SQLITE_MAX_LENGTH2}`
+                + ` 0 to ${SIZEOF_BLOB_MAX}`
             )
         );
+        // push vsize
         baton.setInt32(nused + 1, vsize, true);
-        new Uint8Array(
-            baton.buffer,
-            nused + 1 + 4,
-            vsize
-        ).set(new Uint8Array(value.buffer, value.byteOffset, vsize), 0);
+        new Uint8Array(baton.buffer, nused + 1 + 4, vsize).set(
+            new Uint8Array(val.buffer, val.byteOffset, vsize),
+            0
+        );
         break;
     case SQLITE_DATATYPE_FLOAT:
-        baton.setFloat64(nused + 1, value, true);
+        baton.setFloat64(nused + 1, val, true);
         break;
     case SQLITE_DATATYPE_INTEGER:
-        assertInt64(value);
-        baton.setBigInt64(nused + 1, value, true);
+        assertInt64(val);
+        baton.setBigInt64(nused + 1, val, true);
         break;
     case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
-        vsize = value.byteLength;
+        vsize = val.byteLength;
         assertOrThrow(
-            0 <= vsize && vsize <= 1_000_000_000,
+            0 <= vsize && vsize <= SIZEOF_BLOB_MAX,
             (
                 "sqlite-blob byte-length must be within inclusive-range"
-                + " 0 to 1,000,000,000"
+                + ` 0 to ${SIZEOF_BLOB_MAX}`
             )
         );
+        // push vsize
         baton.setInt32(nused + 1, vsize, true);
         break;
     }
@@ -1044,7 +1046,7 @@ function jsbatonValueString(baton, argi) {
 
 // This function will return string-value from <baton> at given <offset>.
 
-    let offset = baton.getInt32(4 + 4 + argi * 8, true);
+    let offset = baton.getInt32(JSBATON_OFFSET_ARGV + argi * 8, true);
     return new TextDecoder().decode(new Uint8Array(
         baton.buffer,
         offset + 1 + 4,
@@ -1182,10 +1184,7 @@ async function sqlmathInit() {
     let moduleModule;
     dbFinalizationRegistry = (
         dbFinalizationRegistry
-    ) || new FinalizationRegistry(function ({
-        afterFinalization,
-        ptr
-    }) {
+    ) || new FinalizationRegistry(function ({afterFinalization, ptr}) {
 
 // This function will auto-close any open sqlite3-db-pointer,
 // after its js-wrapper has been garbage-collected.
@@ -1312,8 +1311,27 @@ await sqlmathInit();
 sqlmathInit(); // coverage-hack
 
 export {
-    SQLITE_MAX_LENGTH2,
-    SQLITE_OPEN_AUTOPROXY,
+    JSBATON_ARGC,
+    JSBATON_OFFSET_ALL,
+    JSBATON_OFFSET_ARG0,
+    JSBATON_OFFSET_ARGV,
+    JSBATON_OFFSET_BUFV,
+    JS_MAX_SAFE_INTEGER,
+    JS_MIN_SAFE_INTEGER,
+    SIZEOF_BLOB_MAX,
+    SIZEOF_MESSAGE,
+    SQLITE_DATATYPE_BLOB,
+    SQLITE_DATATYPE_FLOAT,
+    SQLITE_DATATYPE_INTEGER,
+    SQLITE_DATATYPE_INTEGER_0,
+    SQLITE_DATATYPE_INTEGER_1,
+    SQLITE_DATATYPE_NULL,
+    SQLITE_DATATYPE_SHAREDARRAYBUFFER,
+    SQLITE_DATATYPE_TEXT,
+    SQLITE_DATATYPE_TEXT_0,
+    SQLITE_RESPONSETYPE_LASTBLOB,
+    //
+    SQLITE_OPEN_AUTOPROXY, //jslint-ignore-line
     SQLITE_OPEN_CREATE,
     SQLITE_OPEN_DELETEONCLOSE,
     SQLITE_OPEN_EXCLUSIVE,
