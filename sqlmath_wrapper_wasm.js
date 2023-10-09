@@ -34,7 +34,27 @@
 */
 
 
+let JSBATON_ARGC = 16;
+let JSBATON_OFFSET_ALL = 768;
+let JSBATON_OFFSET_ARG0 = 2;
 let JSBATON_OFFSET_ARGV = 8;
+let JSBATON_OFFSET_BUFV = 136;
+let JSBATON_OFFSET_CFUNCNAME = 552;
+let JS_MAX_SAFE_INTEGER = 0x1fffffffffffff;
+let JS_MIN_SAFE_INTEGER = -0x1fffffffffffff;
+let SIZEOF_BLOB_MAX = 1000000000;
+let SIZEOF_CFUNCNAME = 24;
+let SIZEOF_MESSAGE = 256;
+let SQLITE_DATATYPE_BLOB = 0x04;
+let SQLITE_DATATYPE_FLOAT = 0x02;
+let SQLITE_DATATYPE_INTEGER = 0x01;
+let SQLITE_DATATYPE_INTEGER_0 = 0x00;
+let SQLITE_DATATYPE_INTEGER_1 = 0x21;
+let SQLITE_DATATYPE_NULL = 0x05;
+let SQLITE_DATATYPE_SHAREDARRAYBUFFER = 0x71;
+let SQLITE_DATATYPE_TEXT = 0x03;
+let SQLITE_DATATYPE_TEXT_0 = 0x13;
+let SQLITE_RESPONSETYPE_LASTBLOB = 1;
 
 
 // init debugInline
@@ -56,6 +76,22 @@ let debugInline = (function () {
     return debug;
 }());
 
+function isExternalBuffer(buf) {
+
+// This function will check if <buf> is ArrayBuffer or SharedArrayBuffer.
+
+    return (
+        buf
+        && (
+            buf.constructor === ArrayBuffer
+            || (
+                typeof SharedArrayBuffer === "function"
+                && buf.constructor === SharedArrayBuffer
+            )
+        )
+    );
+}
+
 function noop(val) {
 
 // This function will do nothing except return <val>.
@@ -65,10 +101,9 @@ function noop(val) {
 
 (async function () {
     let FILENAME_DBTMP = "/tmp/__dbtmp1";
-    let JSBATON_ARGC = 16;
     let __dbFileImportOrExport;
-    let jsbatonValueErrmsg;
-    let jsbatonValueStringArgi;
+    let jsbatonGetErrmsg;
+    let jsbatonGetString;
     let onModulePostRun;
     let sqlite3_errmsg;
 
@@ -76,7 +111,7 @@ function noop(val) {
         let argList = data["argList"];
         let baton = new Uint8Array(data["baton"] && data["baton"].buffer);
         let batonPtr = 0;
-        let cFuncName = data["cFuncName"];
+        let cfuncname;
         let dbData = argList[4];
         let dbPtr = 0;
         let errcode = 0;
@@ -84,7 +119,13 @@ function noop(val) {
         let filename;
         let id = data.id;
         let modeExport = argList[2];
-        switch (cFuncName) {
+        cfuncname = new TextDecoder().decode(
+            baton.subarray(
+                JSBATON_OFFSET_CFUNCNAME,
+                JSBATON_OFFSET_CFUNCNAME + SIZEOF_CFUNCNAME - 1
+            )
+        ).replace((/\u0000/g), "");
+        switch (cfuncname) {
         case "_dbClose":
         case "_dbExec":
         case "_dbFileImportOrExport":
@@ -94,9 +135,9 @@ function noop(val) {
             batonPtr = _sqlite3_malloc(baton.byteLength);
             data["batonPtr"] = batonPtr;
             HEAPU8.set(baton, batonPtr);
-            switch (cFuncName) {
+            switch (cfuncname) {
             case "_dbClose":
-                filename = jsbatonValueStringArgi(batonPtr, 1);
+                filename = jsbatonGetString(batonPtr, 1);
                 console.error(`_dbClose("${filename}")`);
                 break;
             case "_dbFileImportOrExport":
@@ -106,33 +147,23 @@ function noop(val) {
                 }
                 break;
             case "_dbOpen":
-                filename = jsbatonValueStringArgi(batonPtr, 0);
+                filename = jsbatonGetString(batonPtr, 0);
                 console.error(`_dbOpen("${filename}")`);
                 break;
             }
             // call c-function
             Module["_dbCall"](batonPtr);
             // init errmsg
-            errmsg = jsbatonValueErrmsg(batonPtr);
+            errmsg = jsbatonGetErrmsg(batonPtr);
             // update baton
-            baton.set(new Uint8Array(
-                HEAPU8.buffer,
-                HEAPU8.byteOffset + batonPtr,
-                1024
-            ));
+            baton.set(HEAPU8.subarray(batonPtr, batonPtr + JSBATON_OFFSET_ALL));
             baton = new BigInt64Array(baton.buffer, JSBATON_OFFSET_ARGV);
             baton.subarray(
                 JSBATON_ARGC,
                 2 * JSBATON_ARGC
             ).forEach(function (ptr, ii) {
                 // ignore ArrayBuffer
-                if (argList[ii] && (
-                    argList[ii].constructor === ArrayBuffer
-                    || (
-                        typeof SharedArrayBuffer === "function"
-                        && argList[ii].constructor === SharedArrayBuffer
-                    )
-                )) {
+                if (isExternalBuffer(argList[ii])) {
                     return;
                 }
                 ptr = Number(ptr);
@@ -141,9 +172,7 @@ function noop(val) {
                     argList[ii] = baton[ii];
                 // init argList[ii] = bufv[ii]
                 } else {
-                    argList[ii] = new ArrayBuffer(
-                        Number(baton[ii])
-                    );
+                    argList[ii] = new ArrayBuffer(Number(baton[ii]));
                     new Uint8Array(argList[ii]).set(
                         HEAPU8.subarray(ptr, ptr + argList[ii].byteLength)
                     );
@@ -151,7 +180,7 @@ function noop(val) {
                     _sqlite3_free(ptr);
                 }
             });
-            switch (!errmsg && cFuncName) {
+            switch (!errmsg && cfuncname) {
             case "_dbFileImportOrExport":
                 // export dbData
                 if (modeExport) {
@@ -175,33 +204,28 @@ function noop(val) {
                 {
                     "argList": argList,
                     "baton": new DataView(baton.buffer),
-                    "cFuncName": cFuncName,
+                    "cfuncname": cfuncname,
                     "errmsg": errmsg,
                     "id": id
                 },
                 // transfer arraybuffer without copying
-                [
-                    baton.buffer,
-                    ...argList.filter(function (elem) {
-                        return elem && elem.constructor === ArrayBuffer;
-                    })
-                ]
+                [baton.buffer, ...argList.filter(isExternalBuffer)]
             );
             return;
         }
-        throw new Error(`invalid cFuncName "${cFuncName}"`);
+        throw new Error(`invalid cfuncname "${cfuncname}"`);
     }
 
     // init event-handling
     globalThis["onmessage"] = async function ({
         data
     }) {
-        let cFuncName = data["cFuncName"];
+        let cfuncname = data["cfuncname"];
         function cleanup() {
             // cleanup batonPtr
             _sqlite3_free(data["batonPtr"]);
             // cleanup FILENAME_DBTMP
-            switch (cFuncName) {
+            switch (cfuncname) {
             case "_dbFileImportOrExport":
             case "_dbOpen":
                 try {
@@ -233,19 +257,15 @@ function noop(val) {
     __dbFileImportOrExport = cwrap(
         "__dbFileImportOrExport",
         "number",
-        [
-            "number", "string", "number"
-        ]
+        ["number", "string", "number"]
     );
-    jsbatonValueErrmsg = cwrap("jsbatonValueErrmsg", "string", [
-        "number"
-    ]);
-    jsbatonValueStringArgi = cwrap("jsbatonValueStringArgi", "string", [
-        "number", "number"
-    ]);
-    sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", [
-        "number"
-    ]);
+    jsbatonGetErrmsg = cwrap("jsbatonGetErrmsg", "string", ["number"]);
+    jsbatonGetString = cwrap(
+        "jsbatonGetString",
+        "string",
+        ["number", "number"]
+    );
+    sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
 
     // init sqlite
     _sqlite3_initialize();

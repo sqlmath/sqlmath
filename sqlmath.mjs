@@ -172,7 +172,7 @@ function assertOrThrow(condition, message) {
     }
 }
 
-async function cCallAsync(baton, cFuncName, ...argList) {
+async function cCallAsync(baton, cfuncname, ...argList) {
 
 // This function will serialize <argList> to a c <baton>,
 // suitable for passing into napi.
@@ -206,7 +206,7 @@ async function cCallAsync(baton, cFuncName, ...argList) {
             val = BigInt(val);
             assertInt64(val);
             baton.setBigInt64(JSBATON_OFFSET_ARGV + argi * 8, val, true);
-            return;
+            return val;
         // case "object":
         //     break;
         case "string":
@@ -226,10 +226,12 @@ async function cCallAsync(baton, cFuncName, ...argList) {
             return val;
         }
     });
-    //!! // encode cFuncName into baton
-    baton = jsbatonValuePush(baton, 2 * JSBATON_ARGC, `${cFuncName}\u0000`);
-    // prepend baton, cFuncName to argList
-    argList = [baton, cFuncName, ...argList];
+    // prepend baton, cfuncname to argList
+    argList = [baton, cfuncname, ...argList];
+    // assert byteOffset === 0
+    argList.forEach(function (arg) {
+        assertOrThrow(!ArrayBuffer.isView(arg) || arg.byteOffset === 0, arg);
+    });
     // preserve stack-trace
     errStack = new Error().stack.replace((/.*$/m), "");
     try {
@@ -487,16 +489,16 @@ async function ciBuildExt2NodejsBuild({
     );
 }
 
-function dbCallAsync(baton, cFuncName, db, ...argList) {
+function dbCallAsync(baton, cfuncname, db, ...argList) {
 
-// This function will call <cFuncName> using db <argList>[0].
+// This function will call <cfuncname> using db <argList>[0].
 
     let __db = dbDeref(db);
     // increment __db.busy
     __db.busy += 1;
     return cCallAsync(
         baton,
-        cFuncName,
+        cfuncname,
         __db.ptr,
         ...argList
     ).finally(function () {
@@ -818,19 +820,19 @@ function isExternalBuffer(buf) {
     );
 }
 
-function jsbatonCreate(cFuncName) {
+function jsbatonCreate(cfuncname) {
 
 // This function will create buffer <baton>.
 
     let baton = new DataView(new ArrayBuffer(1024));
     // init nallc, nused
     baton.setInt32(4, JSBATON_OFFSET_ALL, true);
-    // copy cFuncName into baton
+    // copy cfuncname into baton
     new Uint8Array(
         baton.buffer,
         baton.byteOffset + JSBATON_OFFSET_CFUNCNAME,
         SIZEOF_CFUNCNAME - 1
-    ).set(new TextEncoder().encode(cFuncName));
+    ).set(new TextEncoder().encode(cfuncname));
     return baton;
 }
 
@@ -1123,7 +1125,7 @@ function objectDeepCopyWithKeysSorted(obj) {
     return sorted;
 }
 
-async function sqlMessagePost(baton, cFuncName, ...argList) {
+async function sqlMessagePost(baton, cfuncname, ...argList) {
 
 // This function will post msg to <sqlWorker> and return result.
 
@@ -1136,9 +1138,9 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     id = sqlMessageId;
     // postMessage to web-worker
     sqlWorker.postMessage(
-        {argList, baton, cFuncName, id},
+        {argList, baton, cfuncname, id},
         // transfer arraybuffer without copying
-        [baton.buffer, ...argList.filter(noop)]
+        [baton.buffer, ...argList.filter(isExternalBuffer)]
     );
     // preserve stack-trace
     errStack = new Error().stack.replace((
@@ -1152,15 +1154,15 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     delete sqlMessageDict[id];
     // debug slow postMessage
     timeElapsed = Date.now() - timeElapsed;
-    if (timeElapsed > 500 || cFuncName === "testTimeElapsed") {
+    if (timeElapsed > 500 || cfuncname === "testTimeElapsed") {
         consoleError(
             "sqlMessagePost - "
-            + JSON.stringify({cFuncName, timeElapsed})
+            + JSON.stringify({cfuncname, timeElapsed})
             + errStack
         );
     }
     assertOrThrow(!result.errmsg, result.errmsg);
-    return [result.baton, result.cFuncName, ...result.argList];
+    return [result.baton, result.cfuncname, ...result.argList];
 }
 
 async function sqlmathInit() {

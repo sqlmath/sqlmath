@@ -2192,9 +2192,7 @@ RENAME TO
             db: DB_MAIN,
             sql: `DETACH ${baton.dbName};`
         });
-        await dbCloseAsync({
-            db: baton.db
-        });
+        await dbCloseAsync(baton.db);
         await uiRenderDb();
         return;
     case "dbExec":

@@ -70,6 +70,7 @@ file sqlmath_h - start
 #define JSBATON_OFFSET_ARGV     8
 #define JSBATON_OFFSET_BUFV     136
 #define JSBATON_OFFSET_CFUNCNAME        552
+#define JSBATON_OFFSET_ERRMSG   272
 #define JS_MAX_SAFE_INTEGER     0x1fffffffffffff
 #define JS_MIN_SAFE_INTEGER     -0x1fffffffffffff
 #define SIZEOF_BLOB_MAX         1000000000
@@ -126,8 +127,8 @@ file sqlmath_h - start
 // throw <baton>->errmsg with given sqlite-<errcode>.
 #define JSBATON_ASSERT_OK() \
     if (errcode != SQLITE_OK) { \
-        if (baton != NULL && baton->errmsg[0] == '\x00') { \
-            sqlmathSnprintfTrace(baton->errmsg, "sqlite - ", ( \
+        if (baton != NULL && jsbatonGetErrmsg(baton)[0] == '\x00') { \
+            sqlmathSnprintfTrace(jsbatonGetErrmsg(baton), "sqlite - ", ( \
                 errcode == SQLITE_ERROR_DATATYPE_INVALID ? "invalid datatype" \
                 : errcode == SQLITE_ERROR_ZSQL_NULL \
                     ? "sqlite - cannot execute null sql-string" \
@@ -214,7 +215,7 @@ typedef struct Jsbaton {
     int32_t nused;              // offset - 4-8
     int64_t argv[JSBATON_ARGC]; // offset - 8-136
     int64_t bufv[JSBATON_ARGC]; // offset - 136-264
-    int64_t cfuncname_ptr;      // offset - 264-272
+    int64_t cfuncname_old;      // offset - 264-272
     char errmsg[SIZEOF_MESSAGE];        // offset 272-528
     void *napi_argv;            // offset 528-536
     void *napi_work;            // offset 536-544
@@ -350,11 +351,11 @@ SQLMATH_API int doubleSortCompare(
     const void *bb
 );
 
-SQLMATH_API const char *jsbatonValueErrmsg(
+SQLMATH_API char *jsbatonGetErrmsg(
     Jsbaton * baton
 );
 
-SQLMATH_API const char *jsbatonValueStringArgi(
+SQLMATH_API char *jsbatonGetString(
     Jsbaton * baton,
     int argi
 );
@@ -485,22 +486,21 @@ SQLMATH_API int __dbFileImportOrExport(
 SQLMATH_API void dbCall(
     Jsbaton * baton
 ) {
-// This function will call dbXxx() with given <cFuncName>.
-    //!! char *cFuncName = baton->cfuncname;
-    const char *cFuncName = jsbatonValueStringArgi(baton, 2 * JSBATON_ARGC);
-    if (strcmp(cFuncName, "_dbClose") == 0) {
+// This function will call dbXxx() with given <cfuncname>.
+    char *cfuncname = (char *) baton + JSBATON_OFFSET_CFUNCNAME;
+    if (strcmp(cfuncname, "_dbClose") == 0) {
         dbClose(baton);
-    } else if (strcmp(cFuncName, "_dbExec") == 0) {
+    } else if (strcmp(cfuncname, "_dbExec") == 0) {
         dbExec(baton);
-    } else if (strcmp(cFuncName, "_dbFileImportOrExport") == 0) {
+    } else if (strcmp(cfuncname, "_dbFileImportOrExport") == 0) {
         dbFileImportOrExport(baton);
-    } else if (strcmp(cFuncName, "_dbNoop") == 0) {
+    } else if (strcmp(cfuncname, "_dbNoop") == 0) {
         dbNoop(baton);
-    } else if (strcmp(cFuncName, "_dbOpen") == 0) {
+    } else if (strcmp(cfuncname, "_dbOpen") == 0) {
         dbOpen(baton);
     } else {
-        snprintf(baton->errmsg, SIZEOF_MESSAGE,
-            "sqlmath.dbCall - invalid cFuncName '%s'", cFuncName);
+        snprintf(jsbatonGetErrmsg(baton), SIZEOF_MESSAGE,
+            "sqlmath.dbCall - invalid cfuncname '%s'", cfuncname);
     }
 }
 
@@ -541,7 +541,7 @@ SQLMATH_API void dbExec(
     DbExecBindElem *bindList = NULL;
     const char **pzShared = ((const char **) baton->argv) + 8;
     const char *zBind = (const char *) baton + JSBATON_OFFSET_ALL;
-    const char *zSql = jsbatonValueStringArgi(baton, 1);
+    const char *zSql = jsbatonGetString(baton, 1);
     const char *zTmp = NULL;
     double rTmp = 0;
     int bindByKey = (int) baton->argv[3];
@@ -869,9 +869,8 @@ SQLMATH_API void dbFileImportOrExport(
     int errcode = 0;
     sqlite3 *db = (sqlite3 *) baton->argv[0];
     // call __dbFileImportOrExport()
-    errcode = __dbFileImportOrExport(   //
-        db,                     //
-        (char *) jsbatonValueStringArgi(baton, 1),      //
+    errcode =
+        __dbFileImportOrExport(db, jsbatonGetString(baton, 1),
         (const int) baton->argv[2]);
     JSBATON_ASSERT_OK();
   catch_error:
@@ -897,7 +896,7 @@ SQLMATH_API void dbOpen(
     // declare var
     int errcode = 0;
     sqlite3 *db;
-    const char *filename = jsbatonValueStringArgi(baton, 0);
+    const char *filename = jsbatonGetString(baton, 0);
     const int flags = (int) baton->argv[2];
     // call c-function
     errcode = sqlite3_open_v2(  //
@@ -1171,14 +1170,14 @@ SQLMATH_API void doublearrayResult(
     sqlite3_result_blob(context, arr, nn * sizeof(double), xDel);
 }
 
-SQLMATH_API const char *jsbatonValueErrmsg(
+SQLMATH_API char *jsbatonGetErrmsg(
     Jsbaton * baton
 ) {
 // This function will return <baton>->errmsg.
-    return (const char *) baton->errmsg;
+    return (char *) baton + JSBATON_OFFSET_ERRMSG;
 }
 
-SQLMATH_API const char *jsbatonValueStringArgi(
+SQLMATH_API char *jsbatonGetString(
     Jsbaton * baton,
     int argi
 ) {
@@ -1186,7 +1185,7 @@ SQLMATH_API const char *jsbatonValueStringArgi(
     if (baton->argv[argi] == 0) {
         return NULL;
     }
-    return ((const char *) baton) + ((size_t) baton->argv[argi] + 1 + 4);
+    return (char *) baton + ((size_t) baton->argv[argi] + 1 + 4);
 }
 
 SQLMATH_API void jsonResultDoublearray(
@@ -3118,11 +3117,11 @@ static void jspromiseResolve(
     NAPI_ASSERT_FATAL(errcode == 0, "napi_delete_reference");
     // Resolve or reject the promise associated with the deferred depending on
     // whether the asynchronous action succeeded.
-    if (baton->errmsg[0] != '\x00') {
+    if (jsbatonGetErrmsg(baton)[0] != '\x00') {
         // create error
         errcode =
-            napi_create_string_utf8(env, baton->errmsg, NAPI_AUTO_LENGTH,
-            &val);
+            napi_create_string_utf8(env, jsbatonGetErrmsg(baton),
+            NAPI_AUTO_LENGTH, &val);
         NAPI_ASSERT_FATAL(errcode == 0, "napi_create_string_utf8");
         errcode = napi_create_error(env, NULL, val, &val);
         NAPI_ASSERT_FATAL(errcode == 0, "napi_create_error");
@@ -3215,7 +3214,8 @@ static napi_value jspromiseCreate(
     NAPI_ASSERT_OK();
     // Ensure that no work is currently in progress.
     if (baton->napi_work != NULL) {
-        napi_throw_error(env, NULL, sqlmathSnprintfTrace(baton->errmsg, "",
+        napi_throw_error(env, NULL,
+            sqlmathSnprintfTrace(jsbatonGetErrmsg(baton), "",
                 "sqlmath.jspromiseCreate()"
                 " - Only one work item must exist at a time", __func__,
                 __FILE__, __LINE__));
@@ -3368,12 +3368,12 @@ static PyObject *pydbCall(
     Jsbaton *baton = NULL;
     PyObject *argv = NULL;
     PyObject *val = NULL;
-    const char *cFuncName = NULL;
+    const char *cfuncname = NULL;
     size_t ii = 0;
     // init argv, baton
     {
         Py_buffer pybuf = { 0 };
-        if (!PyArg_ParseTuple(args, "y*sO!", &pybuf, &cFuncName, &PyList_Type,
+        if (!PyArg_ParseTuple(args, "y*sO!", &pybuf, &cfuncname, &PyList_Type,
                 &argv)) {
             return NULL;
         }
@@ -3393,8 +3393,8 @@ static PyObject *pydbCall(
     //
     // Execute dbCall().
     dbCall(baton);
-    if (baton->errmsg[0] != '\x00') {
-        PyErr_SetString(PyExc_RuntimeError, baton->errmsg);
+    if (jsbatonGetErrmsg(baton)[0] != '\x00') {
+        PyErr_SetString(PyExc_RuntimeError, jsbatonGetErrmsg(baton));
         return NULL;
     }
     //

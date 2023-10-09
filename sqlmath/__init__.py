@@ -192,7 +192,7 @@ def db_call(baton, cfuncname, *arglist):
     # pad argList to length JSBATON_ARGC
     while len(arglist) < JSBATON_ARGC:
         arglist.append(0)
-    # copy cFuncName into baton
+    # copy cfuncname into baton
     baton[
         JSBATON_OFFSET_CFUNCNAME:
         JSBATON_OFFSET_CFUNCNAME + len(bytes(cfuncname, "utf-8"))
