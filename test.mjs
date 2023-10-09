@@ -462,9 +462,7 @@ jstestDescribe((
             return dbCloseAsync({});
         }, "invalid or closed db");
         // test close handling-behavior
-        dbCloseAsync({
-            db
-        });
+        dbCloseAsync(db);
     });
     jstestIt((
         "test dbExecAsync handling-behavior"
@@ -547,11 +545,9 @@ SELECT * FROM testDbExecAsync2;
         });
         // test close-while-busy handling-behavior
         assertErrorThrownAsync(function () {
-            return dbCloseAsync({
-                db
-            });
+            return dbCloseAsync(db);
         }, (
-            /db cannot close with \d+? actions pending/
+            /cannot close with \d+? actions pending/
         ));
         // test retry handling-behavior
         assertErrorThrownAsync(function () {

@@ -38,9 +38,11 @@ JSBATON_OFFSET_ALL = 768
 JSBATON_OFFSET_ARG0 = 2
 JSBATON_OFFSET_ARGV = 8
 JSBATON_OFFSET_BUFV = 136
+JSBATON_OFFSET_CFUNCNAME = 552
 JS_MAX_SAFE_INTEGER = 0x1fffffffffffff
 JS_MIN_SAFE_INTEGER = -0x1fffffffffffff
 SIZEOF_BLOB_MAX = 1000000000
+SIZEOF_CFUNCNAME = 24
 SIZEOF_MESSAGE = 256
 SQLITE_DATATYPE_BLOB = 0x04
 SQLITE_DATATYPE_FLOAT = 0x02
@@ -77,11 +79,19 @@ SQLITE_OPEN_URI = 0x00000040           # Ok for sqlite3_open_v2()
 SQLITE_OPEN_WAL = 0x00080000           # VFS only
 
 
+class SqlmathDb:
+    """Sqlmath database class."""
+
+    closed = False
+    filename = ""
+    ptr = 0
+
+
 class SqlmathError(Exception):
-    """Custom error."""
+    """Sqlmath error."""
 
 
-def asserterrorthrown(func, regexp=None):
+def asserterrorthrown(func, regexp):
     """This function will assert calling <func> throws an error."""
     err = None
     try:
@@ -89,7 +99,7 @@ def asserterrorthrown(func, regexp=None):
     except Exception as err_caught: # noqa: BLE001
         err = err_caught
     assertorthrow(err, "No error thrown.")
-    assertorthrow(regexp is None or re.match(regexp, str(err)), err)
+    assertorthrow(not regexp or re.match(regexp, str(err)), err)
 
 
 def assertjsonequal(aa, bb, message):
@@ -180,14 +190,80 @@ def db_call(baton, cfuncname, *arglist):
     # serialize js-value to c-value
     arglist = [arg_serialize(argi, val) for argi, val in enumerate(arglist)]
     # pad argList to length JSBATON_ARGC
-    while len(arglist) < 2 * JSBATON_ARGC:
+    while len(arglist) < JSBATON_ARGC:
         arglist.append(0)
-    # encode cfuncname into baton
-    baton = jsbaton_value_push(baton, 2 * JSBATON_ARGC, f"{cfuncname}\u0000")
+    # copy cFuncName into baton
+    baton[
+        JSBATON_OFFSET_CFUNCNAME:
+        JSBATON_OFFSET_CFUNCNAME + len(bytes(cfuncname, "utf-8"))
+    ] = bytes(cfuncname, "utf-8")
     # prepend baton, cfuncname to arglist
     arglist = [baton, cfuncname, *arglist]
     _pydbCall(baton, cfuncname, arglist)
     return arglist
+
+
+def db_close(db):
+    """This function will close sqlite-database-connection <db>."""
+    # prevent segfault - do not close db if actions are pending
+    if not db.closed:
+        db.closed = True
+        db_call(None, "_dbClose", db.ptr, db.filename)
+
+
+# !! def db_exec(db, sql, bindList = []):
+    # !! """This function will exec <sql> in <db> and return <result>."""
+    # !! baton = jsbatonCreate()
+    # !! bindByKey = !Array.isArray(bindList)
+    # !! bindListLength = (
+        # !! Array.isArray(bindList)
+        # !! ? bindList.length
+        # !! : Object.keys(bindList).length
+    # !! )
+    # !! externalbufferList = []
+    # !! Object.entries(bindList).forEach(function ([key, val]) {
+        # !! if (bindByKey) {
+            # !! baton = jsbatonValuePush(baton, undefined, `:${key}\u0000`)
+        # !! }
+        # !! baton = jsbatonValuePush(baton, undefined, val,
+        # !! externalbufferList)
+    # !! })
+    # !! result = await dbCallAsync(
+        # !! baton,
+        # !! "_dbExec",
+        # !! db,                     // 0
+        # !! String(sql) + "\n\nPRAGMA noop",   // 1
+        # !! bindListLength,         // 2
+        # !! bindByKey,              // 3
+        # !! (                       // 4
+            # !! responseType === "lastBlob"
+            # !! ? SQLITE_RESPONSETYPE_LASTBLOB
+            # !! : 0
+        # !! ),
+        # !! undefined, // 5
+        # !! undefined, // 6
+        # !! undefined, // 7 - response
+        # !! ...externalbufferList        // 8
+    # !! )
+    # !! result = result[JSBATON_OFFSET_ARG0 + 0]
+    # !! switch (responseType) {
+    # !! case "arraybuffer":
+    # !! case "lastBlob":
+        # !! return result
+    # !! case "list":
+        # !! return JSON.parse(new TextDecoder().decode(result))
+    # !! default:
+        # !! result = JSON.parse(new TextDecoder().decode(result))
+        # !! return result.map(function (rowList) {
+            # !! colList = rowList.shift()
+            # !! return rowList.map(function (row) {
+                # !! dict = {}
+                # !! colList.forEach(function (key, ii) {
+                    # !! dict[key] = row[ii]
+                # !! })
+                # !! return dict
+            # !! })
+        # !! })
 
 
 def db_noop(*arglist):
@@ -222,12 +298,10 @@ def db_open(filename, flags=None):
         None,
     )[0]
     ptr = struct.unpack_from("q", ptr, JSBATON_OFFSET_ARGV + 0)[0]
-    db = {
-        "busy": 0,
-        "filename": filename,
-        "ptr": ptr,
-    }
-    weakref.finalize(db, noop, db)
+    db = SqlmathDb()
+    db.filename = filename
+    db.ptr = ptr
+    weakref.finalize(db, db_close, db)
     return db
 
 
@@ -386,7 +460,7 @@ def jsbaton_value_push(baton, argi, val, externalbufferlist=None):
         )
         # update nallc
         struct.pack_into("i", baton, 0, len(baton))
-        # copy tmp to baton
+        # copy old-baton into new-baton
         baton[:len(tmp)] = tmp
     # push vtype
     struct.pack_into("b", baton, nused, vtype)
@@ -407,6 +481,7 @@ def jsbaton_value_push(baton, argi, val, externalbufferlist=None):
         )
         # push vsize
         struct.pack_into("i", baton, nused + 1, vsize)
+        # copy val into baton
         baton[nused + 1 + 4:nused + 1 + 4 + vsize] = val
         return baton
     if vtype == SQLITE_DATATYPE_FLOAT:

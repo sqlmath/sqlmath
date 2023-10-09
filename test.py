@@ -46,6 +46,14 @@ noop(assertorthrow, asserterrorthrown, assertjsonequal, debuginline)
 class TestCaseSqlmath(unittest.TestCase):
     """Custom TestCase."""
 
+    def test_db_close(self):
+        """Test db_close."""
+        db = sqlmath.db_open(":memory:")
+        # test null-case handling-behavior
+        asserterrorthrown(lambda: sqlmath.db_close(None), "")
+        # test close handling-behavior
+        sqlmath.db_close(db)
+
     def test_db_noop(self):
         """Test db_noop."""
         for val_input, val_expected in [
@@ -104,6 +112,7 @@ class TestCaseSqlmath(unittest.TestCase):
                         val_input,
                         None,
                     ),
+                    "",
                 )
                 continue
             baton = sqlmath.db_noop(None, val_input, None)[0]
@@ -118,6 +127,12 @@ class TestCaseSqlmath(unittest.TestCase):
                 "val_input": val_input,
             })
 
+    def test_db_open(self):
+        """Test db_open."""
+        # test null-case handling-behavior
+        asserterrorthrown(lambda: sqlmath.db_open(None), "invalid filename")
+
 
 if __name__ == "__main__":
-    unittest.main()
+    # !! unittest.main()
+    pass

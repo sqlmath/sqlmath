@@ -33,9 +33,11 @@ let JSBATON_OFFSET_ALL = 768;
 let JSBATON_OFFSET_ARG0 = 2;
 let JSBATON_OFFSET_ARGV = 8;
 let JSBATON_OFFSET_BUFV = 136;
+let JSBATON_OFFSET_CFUNCNAME = 552;
 let JS_MAX_SAFE_INTEGER = 0x1fffffffffffff;
 let JS_MIN_SAFE_INTEGER = -0x1fffffffffffff;
 let SIZEOF_BLOB_MAX = 1000000000;
+let SIZEOF_CFUNCNAME = 24;
 let SIZEOF_MESSAGE = 256;
 let SQLITE_DATATYPE_BLOB = 0x04;
 let SQLITE_DATATYPE_FLOAT = 0x02;
@@ -180,9 +182,8 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         argList.length <= JSBATON_ARGC,
         `cCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
     );
-    baton = baton || jsbatonCreate();
     // pad argList to length JSBATON_ARGC
-    while (argList.length < 2 * JSBATON_ARGC) {
+    while (argList.length < JSBATON_ARGC) {
         argList.push(0n);
     }
     // serialize js-value to c-value
@@ -190,29 +191,22 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         switch (typeof val) {
         case "bigint":
         case "boolean":
-            assertInt64(val);
-            baton.setBigInt64(
-                JSBATON_OFFSET_ARGV + argi * 8,
-                BigInt(val),
-                true
-            );
-            return val;
         case "number":
             // check for min/max safe-integer
             assertOrThrow(
-                JS_MIN_SAFE_INTEGER <= val && val <= JS_MAX_SAFE_INTEGER,
+                (
+                    (JS_MIN_SAFE_INTEGER <= val && val <= JS_MAX_SAFE_INTEGER)
+                    || typeof val !== "number"
+                ),
                 (
                     "non-bigint integer must be within inclusive-range"
                     + ` ${JS_MIN_SAFE_INTEGER} to ${JS_MAX_SAFE_INTEGER}`
                 )
             );
+            val = BigInt(val);
             assertInt64(val);
-            baton.setBigInt64(
-                JSBATON_OFFSET_ARGV + argi * 8,
-                BigInt(val),
-                true
-            );
-            return val;
+            baton.setBigInt64(JSBATON_OFFSET_ARGV + argi * 8, val, true);
+            return;
         // case "object":
         //     break;
         case "string":
@@ -226,17 +220,13 @@ async function cCallAsync(baton, cFuncName, ...argList) {
         }
         // normalize buffer to zero-byte-offset
         if (ArrayBuffer.isView(val)) {
-            return new DataView(
-                val.buffer,
-                val.byteOffset,
-                val.byteLength
-            );
+            return new DataView(val.buffer, val.byteOffset, val.byteLength);
         }
         if (isExternalBuffer(val)) {
             return val;
         }
     });
-    // encode cFuncName into baton
+    //!! // encode cFuncName into baton
     baton = jsbatonValuePush(baton, 2 * JSBATON_ARGC, `${cFuncName}\u0000`);
     // prepend baton, cFuncName to argList
     argList = [baton, cFuncName, ...argList];
@@ -516,9 +506,7 @@ function dbCallAsync(baton, cFuncName, db, ...argList) {
     });
 }
 
-async function dbCloseAsync({
-    db
-}) {
+async function dbCloseAsync(db) {
 
 // This function will close sqlite-database-connection <db>.
 
@@ -526,13 +514,18 @@ async function dbCloseAsync({
     // prevent segfault - do not close db if actions are pending
     assertOrThrow(
         __db.busy === 0,
-        "db cannot close with " + __db.busy + " actions pending"
+        `dbCloseAsync - cannot close with ${__db.busy} actions pending`
     );
     // cleanup connPool
     await Promise.all(__db.connPool.map(async function (ptr) {
         let val = ptr[0];
         ptr[0] = 0n;
-        await cCallAsync(undefined, "_dbClose", val, __db.filename);
+        await cCallAsync(
+            jsbatonCreate("_dbClose"),
+            "_dbClose",
+            val,
+            __db.filename
+        );
     }));
     dbDict.delete(db);
 }
@@ -604,7 +597,7 @@ async function dbExecAsync({
             });
         }
     }
-    baton = jsbatonCreate();
+    baton = jsbatonCreate("_dbExec");
     bindByKey = !Array.isArray(bindList);
     bindListLength = (
         Array.isArray(bindList)
@@ -678,7 +671,7 @@ async function dbFileExportAsync({
         `invalid filename ${filename}`
     );
     return await dbCallAsync(
-        undefined,
+        jsbatonCreate("_dbFileImportOrExport"),
         "_dbFileImportOrExport",
         db,                     // 0. sqlite3 * pInMemory,
         String(filename),       // 1. char *zFilename,
@@ -708,7 +701,7 @@ async function dbNoopAsync(...argList) {
 
 // This function will do nothing except return <argList>.
 
-    return await cCallAsync(undefined, "_dbNoop", ...argList);
+    return await cCallAsync(jsbatonCreate("_dbNoop"), "_dbNoop", ...argList);
 }
 
 async function dbOpenAsync({
@@ -738,7 +731,7 @@ async function dbOpenAsync({
         threadCount
     ), async function () {
         let ptr = await cCallAsync(
-            undefined,
+            jsbatonCreate("_dbOpen"),
             "_dbOpen",
             // 0. const char *filename,   Database filename (UTF-8)
             filename,
@@ -825,13 +818,19 @@ function isExternalBuffer(buf) {
     );
 }
 
-function jsbatonCreate() {
+function jsbatonCreate(cFuncName) {
 
 // This function will create buffer <baton>.
 
     let baton = new DataView(new ArrayBuffer(1024));
     // init nallc, nused
     baton.setInt32(4, JSBATON_OFFSET_ALL, true);
+    // copy cFuncName into baton
+    new Uint8Array(
+        baton.buffer,
+        baton.byteOffset + JSBATON_OFFSET_CFUNCNAME,
+        SIZEOF_CFUNCNAME - 1
+    ).set(new TextEncoder().encode(cFuncName));
     return baton;
 }
 
@@ -985,12 +984,10 @@ function jsbatonValuePush(baton, argi, val, externalbufferList) {
         ));
         // update nallc
         baton.setInt32(0, baton.byteLength, true);
-        // copy tmp to baton
-        new Uint8Array(
-            baton.buffer,
-            baton.byteOffset,
-            nused
-        ).set(new Uint8Array(tmp.buffer, tmp.byteOffset, nused), 0);
+        // copy old-baton into new-baton
+        new Uint8Array(baton.buffer, baton.byteOffset, nused).set(
+            new Uint8Array(tmp.buffer, tmp.byteOffset, nused)
+        );
     }
     // push vtype
     baton.setUint8(nused, vtype);
@@ -1014,10 +1011,12 @@ function jsbatonValuePush(baton, argi, val, externalbufferList) {
         );
         // push vsize
         baton.setInt32(nused + 1, vsize, true);
-        new Uint8Array(baton.buffer, nused + 1 + 4, vsize).set(
-            new Uint8Array(val.buffer, val.byteOffset, vsize),
-            0
-        );
+        // copy val into baton
+        new Uint8Array(
+            baton.buffer,
+            baton.byteOffset + nused + 1 + 4,
+            vsize
+        ).set(new Uint8Array(val.buffer, val.byteOffset, vsize));
         break;
     case SQLITE_DATATYPE_FLOAT:
         baton.setFloat64(nused + 1, val, true);
@@ -1049,7 +1048,7 @@ function jsbatonValueString(baton, argi) {
     let offset = baton.getInt32(JSBATON_OFFSET_ARGV + argi * 8, true);
     return new TextDecoder().decode(new Uint8Array(
         baton.buffer,
-        offset + 1 + 4,
+        baton.byteOffset + offset + 1 + 4,
         // remove null-terminator from string
         baton.getInt32(offset + 1, true) - 1
     ));
@@ -1137,19 +1136,9 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     id = sqlMessageId;
     // postMessage to web-worker
     sqlWorker.postMessage(
-        {
-            argList,
-            baton,
-            cFuncName,
-            id
-        },
+        {argList, baton, cFuncName, id},
         // transfer arraybuffer without copying
-        [
-            baton.buffer,
-            ...argList.filter(function (elem) {
-                return elem && elem.constructor === ArrayBuffer;
-            })
-        ]
+        [baton.buffer, ...argList.filter(noop)]
     );
     // preserve stack-trace
     errStack = new Error().stack.replace((
@@ -1165,16 +1154,13 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     timeElapsed = Date.now() - timeElapsed;
     if (timeElapsed > 500 || cFuncName === "testTimeElapsed") {
         consoleError(
-            "sqlMessagePost - " + JSON.stringify({
-                cFuncName,
-                timeElapsed
-            }) + errStack
+            "sqlMessagePost - "
+            + JSON.stringify({cFuncName, timeElapsed})
+            + errStack
         );
     }
     assertOrThrow(!result.errmsg, result.errmsg);
-    return [
-        result.baton, result.cFuncName, ...result.argList
-    ];
+    return [result.baton, result.cFuncName, ...result.argList];
 }
 
 async function sqlmathInit() {
@@ -1189,7 +1175,7 @@ async function sqlmathInit() {
 // This function will auto-close any open sqlite3-db-pointer,
 // after its js-wrapper has been garbage-collected.
 
-        cCallAsync(undefined, "_dbClose", ptr[0]);
+        cCallAsync(jsbatonCreate("_dbClose"), "_dbClose", ptr[0]);
         if (afterFinalization) {
             afterFinalization();
         }
@@ -1198,10 +1184,8 @@ async function sqlmathInit() {
 // Feature-detect nodejs.
 
     if (
-        !(
-            typeof process === "object"
-            && typeof process?.versions?.node === "string"
-        )
+        typeof process !== "object"
+        || typeof process?.versions?.node !== "string"
         || cModule
     ) {
         return;
@@ -1294,7 +1278,7 @@ function sqlmathWebworkerInit({
             });
         };
         // test cCallAsync handling-behavior
-        cCallAsync(undefined, "testTimeElapsed", true);
+        cCallAsync(jsbatonCreate("testTimeElapsed"), "testTimeElapsed", true);
         // test dbFileExportAsync handling-behavior
         dbFileExportAsync({
             db,
@@ -1316,9 +1300,11 @@ export {
     JSBATON_OFFSET_ARG0,
     JSBATON_OFFSET_ARGV,
     JSBATON_OFFSET_BUFV,
+    JSBATON_OFFSET_CFUNCNAME,
     JS_MAX_SAFE_INTEGER,
     JS_MIN_SAFE_INTEGER,
     SIZEOF_BLOB_MAX,
+    SIZEOF_CFUNCNAME,
     SIZEOF_MESSAGE,
     SQLITE_DATATYPE_BLOB,
     SQLITE_DATATYPE_FLOAT,

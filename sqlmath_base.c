@@ -69,9 +69,11 @@ file sqlmath_h - start
 #define JSBATON_OFFSET_ARG0     2
 #define JSBATON_OFFSET_ARGV     8
 #define JSBATON_OFFSET_BUFV     136
+#define JSBATON_OFFSET_CFUNCNAME        552
 #define JS_MAX_SAFE_INTEGER     0x1fffffffffffff
 #define JS_MIN_SAFE_INTEGER     -0x1fffffffffffff
 #define SIZEOF_BLOB_MAX         1000000000
+#define SIZEOF_CFUNCNAME        24
 #define SIZEOF_MESSAGE          256
 #define SQLITE_DATATYPE_BLOB            0x04
 #define SQLITE_DATATYPE_FLOAT           0x02
@@ -212,11 +214,12 @@ typedef struct Jsbaton {
     int32_t nused;              // offset - 4-8
     int64_t argv[JSBATON_ARGC]; // offset - 8-136
     int64_t bufv[JSBATON_ARGC]; // offset - 136-264
-    int64_t cfuncname;          // offset - 264-272
+    int64_t cfuncname_ptr;      // offset - 264-272
     char errmsg[SIZEOF_MESSAGE];        // offset 272-528
     void *napi_argv;            // offset 528-536
     void *napi_work;            // offset 536-544
     void *napi_deferred;        // offset 544-552
+    char cfuncname[SIZEOF_CFUNCNAME];    // offset 552-576
 } Jsbaton;
 SQLMATH_API int __dbFileImportOrExport(
     sqlite3 * pInMemory,
@@ -483,6 +486,7 @@ SQLMATH_API void dbCall(
     Jsbaton * baton
 ) {
 // This function will call dbXxx() with given <cFuncName>.
+    //!! char *cFuncName = baton->cfuncname;
     const char *cFuncName = jsbatonValueStringArgi(baton, 2 * JSBATON_ARGC);
     if (strcmp(cFuncName, "_dbClose") == 0) {
         dbClose(baton);
@@ -3302,54 +3306,53 @@ file sqlmath_python - start
 typedef struct {
     PyObject_HEAD void *buf;
     Py_ssize_t shape[1];
-} SqliteBuffer;
+} Pysqlbuf;
 
-// https://stackoverflow.com/questions/37988849/safer-way-to-expose-a-c-allocated-memory-buffer-using-numpy-ctypes
-// Called when we want a new view of the buffer, using the buffer protocol
-// See: https://docs.python.org/3/c-api/buffer.html
-static int SqliteBuffer_getbuf(
-    SqliteBuffer * self,
+// https://docs.python.org/3/c-api/buffer.html
+static int Pysqlbuf_getbuf(
+    Pysqlbuf * self,
     Py_buffer * view,
     int flags
 ) {
+    UNUSED_PARAMETER(flags);
     static Py_ssize_t strides[1] = { 1 };
-    // Set the view info
-    view->buf = self->buf;      // Base pointer
+    view->buf = self->buf;
     view->obj = (PyObject *) self;
-    view->len = self->shape[0]; // Length
+    view->len = self->shape[0];
     view->readonly = 1;
     view->itemsize = 1;
-    view->format = "B";         // unsigned byte
+    view->format = "B";
     view->ndim = 1;
     view->shape = self->shape;
     view->strides = strides;
     view->suboffsets = NULL;
     view->internal = NULL;
     // We need to increase the reference count of our buffer object here, but
-    // Python will automatically decrease it when the view goes out of scope
+    // Python will automatically decrease it when the view goes out of scope.
     Py_INCREF(self);
     // Done
     return 0;
 }
 
-// Called when there are no more references to the object
-static void SqliteBuffer_dealloc(
-    SqliteBuffer * self
+static void Pysqlbuf_dealloc(
+    PyObject * self
 ) {
-    sqlite3_free(self->buf);
+// Called when there are no more references to the object.
+    fprintf(stderr, "\nPysqlbuf_dealloc()\n");
+    sqlite3_free(((Pysqlbuf *) self)->buf);
 }
 
-static PyBufferProcs SqliteBuffer_as_buffer = {
-    .bf_getbuffer = (getbufferproc) SqliteBuffer_getbuf,
+static PyBufferProcs Pysqlbuf_as_buffer = {
+    .bf_getbuffer = (getbufferproc) Pysqlbuf_getbuf,
     .bf_releasebuffer = (releasebufferproc) NULL,
 };
 
-static PyTypeObject SqliteBuffer_Type = {
+static PyTypeObject Pysqlbuf_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
-        .tp_name = "sqlmath.SqliteBuffer",
-    .tp_basicsize = sizeof(SqliteBuffer),
-    .tp_dealloc = &SqliteBuffer_dealloc,
-    .tp_as_buffer = &SqliteBuffer_as_buffer,
+        .tp_name = "sqlmath.Pysqlbuf",
+    .tp_basicsize = sizeof(Pysqlbuf),
+    .tp_dealloc = &Pysqlbuf_dealloc,
+    .tp_as_buffer = &Pysqlbuf_as_buffer,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "External Sqlite Buffer",
 };
@@ -3400,10 +3403,11 @@ static PyObject *pydbCall(
     ii = 0;
     if (baton->bufv[ii]) {
         // init argList[ii] = bufv[ii]
-        val = PyMemoryView_FromMemory(  //
-            (char *) baton->bufv[ii],   // char *mem
-            (Py_ssize_t) baton->argv[ii],       // Py_ssize_t size
-            PyBUF_WRITE);       // int flags
+        Pysqlbuf *buf =
+            (Pysqlbuf *) (&Pysqlbuf_Type)->tp_alloc(&Pysqlbuf_Type, 0);
+        buf->buf = (void *) baton->bufv[ii];
+        buf->shape[0] = baton->argv[ii];
+        val = PyMemoryView_FromObject((PyObject *) buf);
     }
     if (val == NULL) {
         return NULL;
