@@ -26,9 +26,9 @@
 "use strict";
 
 let JSBATON_ARGC = 16;
-let JSBATON_OFFSET_ALL = 768;
-let JSBATON_OFFSET_ARG0 = 2;
-let JSBATON_OFFSET_ARGV = 256;
+let JSBATON_OFFSET_ALL = 512;
+let JSBATON_OFFSET_ARG0 = 1;
+let JSBATON_OFFSET_ARGV = 128;
 let JSBATON_OFFSET_FUNCNAME = 8;
 let JS_MAX_SAFE_INTEGER = 0x1fffffffffffff;
 let JS_MIN_SAFE_INTEGER = -0x1fffffffffffff;
@@ -175,6 +175,9 @@ async function cCallAsync(baton, funcname, ...argList) {
 // suitable for passing into napi.
 
     let errStack;
+    let id;
+    let result;
+    let timeElapsed = Date.now();
     assertOrThrow(
         argList.length <= JSBATON_ARGC,
         `cCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
@@ -223,8 +226,8 @@ async function cCallAsync(baton, funcname, ...argList) {
             return val;
         }
     });
-    // prepend baton, funcname to argList
-    argList = [baton, funcname, ...argList];
+    // prepend baton to argList
+    argList.unshift(baton);
     // assert byteOffset === 0
     argList.forEach(function (arg) {
         assertOrThrow(!ArrayBuffer.isView(arg) || arg.byteOffset === 0, arg);
@@ -232,11 +235,43 @@ async function cCallAsync(baton, funcname, ...argList) {
     // preserve stack-trace
     errStack = new Error().stack.replace((/.*$/m), "");
     try {
-        return (
-            IS_BROWSER
-            ? await sqlMessagePost(...argList)
-            : await cModule._jspromiseCreate(argList)
+
+// Dispatch to nodejs-napi.
+
+        if (!IS_BROWSER) {
+            return await cModule._jspromiseCreate(argList);
+        }
+
+// Dispatch to web-worker.
+
+        // increment sqlMessageId
+        sqlMessageId += 1;
+        id = sqlMessageId;
+        // postMessage to web-worker
+        sqlWorker.postMessage(
+            {argList, baton, funcname, id},
+            // transfer arraybuffer without copying
+            [baton.buffer, ...argList.filter(isExternalBuffer)]
         );
+        // init timeElapsed
+        timeElapsed = Date.now();
+        // await result from web-worker
+        result = await new Promise(function (resolve) {
+            sqlMessageDict[id] = resolve;
+        });
+        // cleanup sqlMessageDict
+        delete sqlMessageDict[id];
+        // debug slow postMessage
+        timeElapsed = Date.now() - timeElapsed;
+        if (timeElapsed > 500 || funcname === "testTimeElapsed") {
+            consoleError(
+                "sqlMessagePost - "
+                + JSON.stringify({funcname, timeElapsed})
+                + errStack
+            );
+        }
+        assertOrThrow(!result.errmsg, result.errmsg);
+        return result.argList;
     } catch (err) {
         err.stack += errStack;
         assertOrThrow(undefined, err);
@@ -670,8 +705,8 @@ async function dbFileLoadAsync({
         `invalid filename ${filename}`
     );
     return await dbCallAsync(
-        jsbatonCreate("_dbLoadOrSave"),
-        "_dbLoadOrSave",
+        jsbatonCreate("_dbFileLoad"),
+        "_dbFileLoad",
         db,                     // 0. sqlite3 * pInMemory,
         String(filename),       // 1. char *zFilename,
         modeSave,               // 2. const int isSave
@@ -1127,46 +1162,6 @@ function objectDeepCopyWithKeysSorted(obj) {
         sorted[key] = objectDeepCopyWithKeysSorted(obj[key]);
     });
     return sorted;
-}
-
-async function sqlMessagePost(baton, funcname, ...argList) {
-
-// This function will post msg to <sqlWorker> and return result.
-
-    let errStack;
-    let id;
-    let result;
-    let timeElapsed = Date.now();
-    // increment sqlMessageId
-    sqlMessageId += 1;
-    id = sqlMessageId;
-    // postMessage to web-worker
-    sqlWorker.postMessage(
-        {argList, baton, funcname, id},
-        // transfer arraybuffer without copying
-        [baton.buffer, ...argList.filter(isExternalBuffer)]
-    );
-    // preserve stack-trace
-    errStack = new Error().stack.replace((
-        /.*$/m
-    ), "");
-    // await result from web-worker
-    result = await new Promise(function (resolve) {
-        sqlMessageDict[id] = resolve;
-    });
-    // cleanup sqlMessageDict
-    delete sqlMessageDict[id];
-    // debug slow postMessage
-    timeElapsed = Date.now() - timeElapsed;
-    if (timeElapsed > 500 || funcname === "testTimeElapsed") {
-        consoleError(
-            "sqlMessagePost - "
-            + JSON.stringify({funcname, timeElapsed})
-            + errStack
-        );
-    }
-    assertOrThrow(!result.errmsg, result.errmsg);
-    return [result.baton, result.funcname, ...result.argList];
 }
 
 async function sqlmathInit() {

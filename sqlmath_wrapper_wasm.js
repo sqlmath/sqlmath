@@ -27,6 +27,10 @@
     FS
     HEAPU8
     Module
+    _dbCall
+    _dbFileLoadOrSave
+    _jsbatonGetString
+    _sqlite3_errmsg
     _sqlite3_free
     _sqlite3_initialize
     _sqlite3_malloc
@@ -78,20 +82,16 @@ function noop(val) {
 
 (async function () {
     let JSBATON_ARGC = 16;
-    let JSBATON_OFFSET_ALL = 768;
-    let JSBATON_OFFSET_ARGV = 256;
-    let JSBATON_OFFSET_FUNCNAME = 8;
-    let SIZEOF_FUNCNAME = 24;
-
+    let JSBATON_OFFSET_ALL = 512;
+    let JSBATON_OFFSET_ARG0 = 1;
+    let JSBATON_OFFSET_ARGV = 128;
+    //
     let FILENAME_DBTMP = "/tmp/__dbtmp1"; //jslint-ignore-line
-    let __dbLoadOrSave;
     let jsbatonGetErrmsg;
-    let jsbatonGetString;
     let onModulePostRun;
-    let sqlite3_errmsg;
 
     function messageDispatch(data) {
-        let argList = data["argList"];
+        let argList = data["argList"].slice(JSBATON_OFFSET_ARG0);
         let baton = new Uint8Array(data["baton"] && data["baton"].buffer);
         let batonPtr = 0;
         let dbData = argList[4];
@@ -99,19 +99,13 @@ function noop(val) {
         let errcode = 0;
         let errmsg = "";
         let filename;
-        let funcname;
+        let funcname = data["funcname"];
         let id = data.id;
         let modeSave = argList[2];
-        funcname = new TextDecoder().decode(
-            baton.subarray(
-                JSBATON_OFFSET_FUNCNAME,
-                JSBATON_OFFSET_FUNCNAME + SIZEOF_FUNCNAME - 1
-            )
-        ).replace((/\u0000/g), "");
         switch (funcname) {
         case "_dbClose":
         case "_dbExec":
-        case "_dbLoadOrSave":
+        case "_dbFileLoad":
         case "_dbNoop":
         case "_dbOpen":
             // copy baton to wasm
@@ -120,22 +114,22 @@ function noop(val) {
             HEAPU8.set(baton, batonPtr);
             switch (funcname) {
             case "_dbClose":
-                filename = jsbatonGetString(batonPtr, 1);
+                filename = _jsbatonGetString(batonPtr, 1);
                 console.error(`_dbClose("${filename}")`);
                 break;
-            case "_dbLoadOrSave":
+            case "_dbFileLoad":
                 // import dbData
                 if (!modeSave) {
                     FS.writeFile(FILENAME_DBTMP, new Uint8Array(dbData));
                 }
                 break;
             case "_dbOpen":
-                filename = jsbatonGetString(batonPtr, 0);
+                filename = _jsbatonGetString(batonPtr, 0);
                 console.error(`_dbOpen("${filename}")`);
                 break;
             }
             // call c-function
-            Module["_dbCall"](batonPtr);
+            _dbCall(batonPtr);
             // init errmsg
             errmsg = jsbatonGetErrmsg(batonPtr);
             // update baton
@@ -164,7 +158,7 @@ function noop(val) {
                 }
             });
             switch (!errmsg && funcname) {
-            case "_dbLoadOrSave":
+            case "_dbFileLoad":
                 // export dbData
                 if (modeSave) {
                     dbData = FS.readFile(FILENAME_DBTMP);
@@ -176,17 +170,19 @@ function noop(val) {
                 if (dbData) {
                     FS.writeFile(FILENAME_DBTMP, new Uint8Array(dbData));
                     dbPtr = Number(argList[0]);
-                    errcode = __dbLoadOrSave(dbPtr, FILENAME_DBTMP, 0);
+                    errcode = _dbFileLoadOrSave(dbPtr, FILENAME_DBTMP, 0);
                     if (errcode) {
-                        errmsg = sqlite3_errmsg(dbPtr);
+                        errmsg = _sqlite3_errmsg(dbPtr);
                     }
                 }
                 break;
             }
+            baton = new DataView(baton.buffer);
+            // prepend baton to argList
+            argList.unshift(baton);
             postMessage(
                 {
                     "argList": argList,
-                    "baton": new DataView(baton.buffer),
                     "errmsg": errmsg,
                     "funcname": funcname,
                     "id": id
@@ -209,7 +205,7 @@ function noop(val) {
             _sqlite3_free(data["batonPtr"]);
             // cleanup FILENAME_DBTMP
             switch (funcname) {
-            case "_dbLoadOrSave":
+            case "_dbFileLoad":
             case "_dbOpen":
                 try {
                     FS.unlink(FILENAME_DBTMP);
@@ -237,18 +233,7 @@ function noop(val) {
         Module["postRun"] = resolve;
     });
     await onModulePostRun;
-    __dbLoadOrSave = cwrap(
-        "__dbLoadOrSave",
-        "number",
-        ["number", "string", "number"]
-    );
     jsbatonGetErrmsg = cwrap("jsbatonGetErrmsg", "string", ["number"]);
-    jsbatonGetString = cwrap(
-        "jsbatonGetString",
-        "string",
-        ["number", "number"]
-    );
-    sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
 
     // init sqlite
     _sqlite3_initialize();
