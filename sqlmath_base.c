@@ -67,14 +67,14 @@ file sqlmath_h - start
 #define JSBATON_ARGC            16
 #define JSBATON_OFFSET_ALL      768
 #define JSBATON_OFFSET_ARG0     2
-#define JSBATON_OFFSET_ARGV     8
-#define JSBATON_OFFSET_BUFV     136
-#define JSBATON_OFFSET_ERRMSG   272
-#define JSBATON_OFFSET_FUNCNAME         552
+#define JSBATON_OFFSET_ARGV     256
+#define JSBATON_OFFSET_BUFV     384
+#define JSBATON_OFFSET_ERRMSG   24
+#define JSBATON_OFFSET_FUNCNAME 8
 #define JS_MAX_SAFE_INTEGER     0x1fffffffffffff
 #define JS_MIN_SAFE_INTEGER     -0x1fffffffffffff
 #define SIZEOF_BLOB_MAX         1000000000
-#define SIZEOF_ERRMSG           256
+#define SIZEOF_ERRMSG           232
 #define SIZEOF_FUNCNAME         16
 #define SQLITE_DATATYPE_BLOB            0x04
 #define SQLITE_DATATYPE_FLOAT           0x02
@@ -211,16 +211,15 @@ typedef uint8_t u8;
 
 // file sqlmath_h - db
 typedef struct Jsbaton {
-    int32_t nallc;              // offset - 0-4
-    int32_t nused;              // offset - 4-8
-    int64_t argv[JSBATON_ARGC]; // offset - 8-136
-    int64_t bufv[JSBATON_ARGC]; // offset - 136-264
-    int64_t cfuncname_old;      // offset - 264-272
-    char errmsg[SIZEOF_ERRMSG];        // offset 272-528
-    void *napi_argv;            // offset 528-536
-    void *napi_work;            // offset 536-544
-    void *napi_deferred;        // offset 544-552
-    char funcname[SIZEOF_FUNCNAME];       // offset 552-576
+    int32_t nallc;              // offset 000-004
+    int32_t nused;              // offset 004-008
+    char funcname[SIZEOF_FUNCNAME];     // offset 008-024
+    char errmsg[SIZEOF_ERRMSG]; // offset 024-256
+    int64_t argv[JSBATON_ARGC]; // offset 256-384
+    int64_t bufv[JSBATON_ARGC]; // offset 384-512
+    void *napi_argv;            // offset 512-520
+    void *napi_deferred;        // offset 520-528
+    void *napi_work;            // offset 528-536
 } Jsbaton;
 SQLMATH_API int __dbLoadOrSave(
     sqlite3 * pInMemory,
@@ -3103,7 +3102,7 @@ static void jspromiseResolve(
     // init baton
     Jsbaton *baton = (Jsbaton *) data;
     // declare var
-    napi_ref ref = (napi_ref) baton->napi_argv;
+    napi_ref ref = baton->napi_argv;
     napi_value val = NULL;
     uint32_t refcount = 1;
     // dereference result to allow gc
@@ -3159,8 +3158,9 @@ static void jspromiseResolve(
     errcode = napi_delete_async_work(env, baton->napi_work);
     NAPI_ASSERT_FATAL(errcode == 0, "napi_delete_async_work");
     // Set both values to NULL so JavaScript can order a new run of the thread.
-    baton->napi_work = NULL;
+    baton->napi_argv = NULL;
     baton->napi_deferred = NULL;
+    baton->napi_work = NULL;
 }
 
 static napi_value jspromiseCreate(

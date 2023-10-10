@@ -45,7 +45,8 @@ import {
     fsExistsUnlessTest,
     fsReadFileUnlessTest,
     fsWriteFileUnlessTest,
-    jsbatonValueString,
+    jsbatonGetInt64,
+    jsbatonGetString,
     noop,
     sqlmathWebworkerInit,
     version
@@ -432,8 +433,8 @@ jstestDescribe((
             baton = baton[0];
             valActual = (
                 typeof valInput === "string"
-                ? jsbatonValueString(baton, 1)
-                : String(baton.getBigInt64(4 + 4 + 8, true))
+                ? jsbatonGetString(baton, 1)
+                : String(jsbatonGetInt64(baton, 1))
             );
             valExpected = String(valExpected);
             if (typeof valInput === "bigint") {

@@ -79,8 +79,8 @@ function noop(val) {
 (async function () {
     let JSBATON_ARGC = 16;
     let JSBATON_OFFSET_ALL = 768;
-    let JSBATON_OFFSET_ARGV = 8;
-    let JSBATON_OFFSET_FUNCNAME = 552;
+    let JSBATON_OFFSET_ARGV = 256;
+    let JSBATON_OFFSET_FUNCNAME = 8;
     let SIZEOF_FUNCNAME = 24;
 
     let FILENAME_DBTMP = "/tmp/__dbtmp1"; //jslint-ignore-line

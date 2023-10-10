@@ -28,8 +28,8 @@
 let JSBATON_ARGC = 16;
 let JSBATON_OFFSET_ALL = 768;
 let JSBATON_OFFSET_ARG0 = 2;
-let JSBATON_OFFSET_ARGV = 8;
-let JSBATON_OFFSET_FUNCNAME = 552;
+let JSBATON_OFFSET_ARGV = 256;
+let JSBATON_OFFSET_FUNCNAME = 8;
 let JS_MAX_SAFE_INTEGER = 0x1fffffffffffff;
 let JS_MIN_SAFE_INTEGER = -0x1fffffffffffff;
 let SIZEOF_BLOB_MAX = 1000000000;
@@ -207,7 +207,7 @@ async function cCallAsync(baton, funcname, ...argList) {
         // case "object":
         //     break;
         case "string":
-            baton = jsbatonValuePush(baton, argi, (
+            baton = jsbatonSetValue(baton, argi, (
                 val.endsWith("\u0000")
                 ? val
                 // append null-terminator to string
@@ -606,9 +606,9 @@ async function dbExecAsync({
     externalbufferList = [];
     Object.entries(bindList).forEach(function ([key, val]) {
         if (bindByKey) {
-            baton = jsbatonValuePush(baton, undefined, `:${key}\u0000`);
+            baton = jsbatonSetValue(baton, undefined, `:${key}\u0000`);
         }
-        baton = jsbatonValuePush(baton, undefined, val, externalbufferList);
+        baton = jsbatonSetValue(baton, undefined, val, externalbufferList);
     });
     result = await dbCallAsync(
         baton,
@@ -657,7 +657,7 @@ async function dbFileLoadAsync({
     modeSave = 0
 }) {
 
-// This function will export <db> to <filename>.
+// This function will load <filename> to <db>.
 
     if (modeNoop) {
         return;
@@ -686,7 +686,7 @@ async function dbFileSaveAsync({
     filename
 }) {
 
-// This function will import <filename> to <db>.
+// This function will save <db> to <filename>.
 
     await dbFileLoadAsync({
         db,
@@ -821,7 +821,7 @@ function jsbatonCreate(funcname) {
 
 // This function will create buffer <baton>.
 
-    let baton = new DataView(new ArrayBuffer(1024));
+    let baton = new DataView(new ArrayBuffer(JSBATON_OFFSET_ALL));
     // init nallc, nused
     baton.setInt32(4, JSBATON_OFFSET_ALL, true);
     // copy funcname into baton
@@ -833,9 +833,29 @@ function jsbatonCreate(funcname) {
     return baton;
 }
 
-function jsbatonValuePush(baton, argi, val, externalbufferList) {
+function jsbatonGetInt64(baton, argi) {
 
-// This function will push <val> to buffer <baton>.
+// This function will return int64-value from <baton> at <argi>.
+
+    return baton.getBigInt64(JSBATON_OFFSET_ARGV + argi * 8, true);
+}
+
+function jsbatonGetString(baton, argi) {
+
+// This function will return string-value from <baton> at <argi>.
+
+    let offset = baton.getInt32(JSBATON_OFFSET_ARGV + argi * 8, true);
+    return new TextDecoder().decode(new Uint8Array(
+        baton.buffer,
+        baton.byteOffset + offset + 1 + 4,
+        // remove null-terminator from string
+        baton.getInt32(offset + 1, true) - 1
+    ));
+}
+
+function jsbatonSetValue(baton, argi, val, externalbufferList) {
+
+// This function will set <val> to buffer <baton>.
 
     let nn;
     let nused;
@@ -1038,19 +1058,6 @@ function jsbatonValuePush(baton, argi, val, externalbufferList) {
         break;
     }
     return baton;
-}
-
-function jsbatonValueString(baton, argi) {
-
-// This function will return string-value from <baton> at given <offset>.
-
-    let offset = baton.getInt32(JSBATON_OFFSET_ARGV + argi * 8, true);
-    return new TextDecoder().decode(new Uint8Array(
-        baton.buffer,
-        baton.byteOffset + offset + 1 + 4,
-        // remove null-terminator from string
-        baton.getInt32(offset + 1, true) - 1
-    ));
 }
 
 async function moduleFsInit() {
@@ -1334,7 +1341,8 @@ export {
     fsExistsUnlessTest,
     fsReadFileUnlessTest,
     fsWriteFileUnlessTest,
-    jsbatonValueString,
+    jsbatonGetInt64,
+    jsbatonGetString,
     noop,
     objectDeepCopyWithKeysSorted,
     sqlmathWebworkerInit,
