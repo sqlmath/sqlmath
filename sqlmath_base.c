@@ -69,13 +69,13 @@ file sqlmath_h - start
 #define JSBATON_OFFSET_ARG0     2
 #define JSBATON_OFFSET_ARGV     8
 #define JSBATON_OFFSET_BUFV     136
-#define JSBATON_OFFSET_CFUNCNAME        552
 #define JSBATON_OFFSET_ERRMSG   272
+#define JSBATON_OFFSET_FUNCNAME         552
 #define JS_MAX_SAFE_INTEGER     0x1fffffffffffff
 #define JS_MIN_SAFE_INTEGER     -0x1fffffffffffff
 #define SIZEOF_BLOB_MAX         1000000000
-#define SIZEOF_CFUNCNAME        24
-#define SIZEOF_MESSAGE          256
+#define SIZEOF_ERRMSG           256
+#define SIZEOF_FUNCNAME         16
 #define SQLITE_DATATYPE_BLOB            0x04
 #define SQLITE_DATATYPE_FLOAT           0x02
 #define SQLITE_DATATYPE_INTEGER         0x01
@@ -216,13 +216,13 @@ typedef struct Jsbaton {
     int64_t argv[JSBATON_ARGC]; // offset - 8-136
     int64_t bufv[JSBATON_ARGC]; // offset - 136-264
     int64_t cfuncname_old;      // offset - 264-272
-    char errmsg[SIZEOF_MESSAGE];        // offset 272-528
+    char errmsg[SIZEOF_ERRMSG];        // offset 272-528
     void *napi_argv;            // offset 528-536
     void *napi_work;            // offset 536-544
     void *napi_deferred;        // offset 544-552
-    char cfuncname[SIZEOF_CFUNCNAME];    // offset 552-576
+    char funcname[SIZEOF_FUNCNAME];       // offset 552-576
 } Jsbaton;
-SQLMATH_API int __dbFileImportOrExport(
+SQLMATH_API int __dbLoadOrSave(
     sqlite3 * pInMemory,
     char *zFilename,
     const int isSave
@@ -236,7 +236,7 @@ SQLMATH_API void dbClose(
 SQLMATH_API void dbExec(
     Jsbaton * baton
 );
-SQLMATH_API void dbFileImportOrExport(
+SQLMATH_API void dbLoadOrSave(
     Jsbaton * baton
 );
 SQLMATH_API void dbNoop(
@@ -417,12 +417,12 @@ static int dbCount = 0;
 // file sqlmath_base - SQLMATH_API
 
 // SQLMATH_API db - start
-SQLMATH_API int __dbFileImportOrExport(
+SQLMATH_API int __dbLoadOrSave(
     sqlite3 * pInMemory,
     char *zFilename,
     const int isSave
 ) {
-    // fprintf(stderr, "\nsqlmath.dbFileImportOrExport(pp=%p ff=%s ss=%d)\n",
+    // fprintf(stderr, "\nsqlmath.dbLoadOrSave(pp=%p ff=%s ss=%d)\n",
     //     pInMemory, zFilename, isSave);
 /*
 ** https://www.sqlite.org/backup.html
@@ -486,21 +486,21 @@ SQLMATH_API int __dbFileImportOrExport(
 SQLMATH_API void dbCall(
     Jsbaton * baton
 ) {
-// This function will call dbXxx() with given <cfuncname>.
-    char *cfuncname = (char *) baton + JSBATON_OFFSET_CFUNCNAME;
-    if (strcmp(cfuncname, "_dbClose") == 0) {
+// This function will call dbXxx() with given <funcname>.
+    char *funcname = (char *) baton + JSBATON_OFFSET_FUNCNAME;
+    if (strcmp(funcname, "_dbClose") == 0) {
         dbClose(baton);
-    } else if (strcmp(cfuncname, "_dbExec") == 0) {
+    } else if (strcmp(funcname, "_dbExec") == 0) {
         dbExec(baton);
-    } else if (strcmp(cfuncname, "_dbFileImportOrExport") == 0) {
-        dbFileImportOrExport(baton);
-    } else if (strcmp(cfuncname, "_dbNoop") == 0) {
+    } else if (strcmp(funcname, "_dbLoadOrSave") == 0) {
+        dbLoadOrSave(baton);
+    } else if (strcmp(funcname, "_dbNoop") == 0) {
         dbNoop(baton);
-    } else if (strcmp(cfuncname, "_dbOpen") == 0) {
+    } else if (strcmp(funcname, "_dbOpen") == 0) {
         dbOpen(baton);
     } else {
-        snprintf(jsbatonGetErrmsg(baton), SIZEOF_MESSAGE,
-            "sqlmath.dbCall - invalid cfuncname '%s'", cfuncname);
+        snprintf(jsbatonGetErrmsg(baton), SIZEOF_ERRMSG,
+            "sqlmath.dbCall - invalid funcname '%s'", funcname);
     }
 }
 
@@ -861,16 +861,16 @@ SQLMATH_API void dbExec(
 
 // SQLMATH_API dbExec - end
 
-SQLMATH_API void dbFileImportOrExport(
+SQLMATH_API void dbLoadOrSave(
     Jsbaton * baton
 ) {
 // This function will load/save <zFilename> to/from <db>.
     // declare var
     int errcode = 0;
     sqlite3 *db = (sqlite3 *) baton->argv[0];
-    // call __dbFileImportOrExport()
+    // call __dbLoadOrSave()
     errcode =
-        __dbFileImportOrExport(db, jsbatonGetString(baton, 1),
+        __dbLoadOrSave(db, jsbatonGetString(baton, 1),
         (const int) baton->argv[2]);
     JSBATON_ASSERT_OK();
   catch_error:
@@ -1268,7 +1268,7 @@ SQLMATH_API char *sqlmathSnprintfTrace(
     int line
 ) {
 // This function will write <errmsg> to <buf> with additional trace-info.
-    snprintf(buf, SIZEOF_MESSAGE, "%s%s\n    at %s (%s:%d)", prefix, errmsg,
+    snprintf(buf, SIZEOF_ERRMSG, "%s%s\n    at %s (%s:%d)", prefix, errmsg,
         func, file, line);
     return buf;
 }
@@ -3037,7 +3037,7 @@ static int napiAssertOk(
         return errcode;
     }
     // declare var
-    char buf[SIZEOF_MESSAGE] = { 0 };
+    char buf[SIZEOF_ERRMSG] = { 0 };
     bool is_exception_pending;
     const napi_extended_error_info *info;
     napi_value val = NULL;
@@ -3368,12 +3368,12 @@ static PyObject *pydbCall(
     Jsbaton *baton = NULL;
     PyObject *argv = NULL;
     PyObject *val = NULL;
-    const char *cfuncname = NULL;
+    const char *funcname = NULL;
     size_t ii = 0;
     // init argv, baton
     {
         Py_buffer pybuf = { 0 };
-        if (!PyArg_ParseTuple(args, "y*sO!", &pybuf, &cfuncname, &PyList_Type,
+        if (!PyArg_ParseTuple(args, "y*sO!", &pybuf, &funcname, &PyList_Type,
                 &argv)) {
             return NULL;
         }

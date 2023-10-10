@@ -6,7 +6,7 @@
 
 # v2023.10.1-beta
 - python - Revamp python-c-extension to support cp312.
-- python - Revamp python-c-extension to use nodejs-like-api dbClose, dbExec, dbFileImportOrExport, dbNoop, dbOpen.
+- python - Revamp python-c-extension to use nodejs-like-api dbClose, dbExec, dbLoadOrSave, dbNoop, dbOpen.
 - sqlmath - Remove unused sql-function-prm in sinefit_extra(), stp.
 - sqlmath - Add sql-function-prm in sinefit_extra(), predict_cnr, predict_cos, predict_sin.
 

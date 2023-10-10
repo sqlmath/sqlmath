@@ -35,15 +35,9 @@ from ._sqlmath import _pydbCall
 
 JSBATON_ARGC = 16
 JSBATON_OFFSET_ALL = 768
-JSBATON_OFFSET_ARG0 = 2
 JSBATON_OFFSET_ARGV = 8
-JSBATON_OFFSET_BUFV = 136
-JSBATON_OFFSET_CFUNCNAME = 552
-JS_MAX_SAFE_INTEGER = 0x1fffffffffffff
-JS_MIN_SAFE_INTEGER = -0x1fffffffffffff
+JSBATON_OFFSET_FUNCNAME = 552
 SIZEOF_BLOB_MAX = 1000000000
-SIZEOF_CFUNCNAME = 24
-SIZEOF_MESSAGE = 256
 SQLITE_DATATYPE_BLOB = 0x04
 SQLITE_DATATYPE_FLOAT = 0x02
 SQLITE_DATATYPE_INTEGER = 0x01
@@ -142,7 +136,7 @@ def assertorthrow(condition, message):
         )
 
 
-def db_call(baton, cfuncname, *arglist):
+def db_call(baton, funcname, *arglist):
     """This function will serialize <arglist> to a c <baton>."""
     """suitable for passing into napi."""
 
@@ -192,14 +186,14 @@ def db_call(baton, cfuncname, *arglist):
     # pad argList to length JSBATON_ARGC
     while len(arglist) < JSBATON_ARGC:
         arglist.append(0)
-    # copy cfuncname into baton
+    # copy funcname into baton
     baton[
-        JSBATON_OFFSET_CFUNCNAME:
-        JSBATON_OFFSET_CFUNCNAME + len(bytes(cfuncname, "utf-8"))
-    ] = bytes(cfuncname, "utf-8")
-    # prepend baton, cfuncname to arglist
-    arglist = [baton, cfuncname, *arglist]
-    _pydbCall(baton, cfuncname, arglist)
+        JSBATON_OFFSET_FUNCNAME:
+        JSBATON_OFFSET_FUNCNAME + len(bytes(funcname, "utf-8"))
+    ] = bytes(funcname, "utf-8")
+    # prepend baton, funcname to arglist
+    arglist = [baton, funcname, *arglist]
+    _pydbCall(baton, funcname, arglist)
     return arglist
 
 

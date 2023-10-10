@@ -36,8 +36,8 @@ import {
     dbCloseAsync,
     dbExecAndReturnLastBlobAsync,
     dbExecAsync,
-    dbFileExportAsync,
-    dbFileImportAsync,
+    dbFileLoadAsync,
+    dbFileSaveAsync,
     dbNoopAsync,
     dbOpenAsync,
     debugInline,
@@ -564,16 +564,16 @@ SELECT * FROM testDbExecAsync2;
             filename: ":memory:"
         });
         // test null-case handling-behavior
-        dbFileExportAsync({
+        dbFileLoadAsync({
             modeNoop: true
         });
         assertErrorThrownAsync(function () {
-            return dbFileImportAsync({
+            return dbFileLoadAsync({
                 db
             });
         }, "invalid filename undefined");
         assertErrorThrownAsync(function () {
-            return dbFileExportAsync({
+            return dbFileLoadAsync({
                 db
             });
         }, "invalid filename undefined");
@@ -581,14 +581,14 @@ SELECT * FROM testDbExecAsync2;
             db,
             sql: "CREATE TABLE t01 AS SELECT 1 AS c01"
         });
-        await dbFileExportAsync({
+        await dbFileSaveAsync({
             db,
             filename: ".testDbFileXxx.sqlite"
         });
         db = await dbOpenAsync({
             filename: ":memory:"
         });
-        await dbFileImportAsync({
+        await dbFileLoadAsync({
             db,
             filename: ".testDbFileXxx.sqlite"
         });

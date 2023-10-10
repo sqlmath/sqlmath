@@ -4,8 +4,8 @@ import {
     assertOrThrow,
     dbCloseAsync,
     dbExecAsync,
-    dbFileExportAsync,
-    dbFileImportAsync,
+    dbFileSaveAsync,
+    dbFileLoadAsync,
     dbOpenAsync,
     debugInline,
     noop,
@@ -43,7 +43,7 @@ let UI_VIEW_SIZE = 20;
 noop({
     UI_EDITOR,
     assertOrThrow,
-    dbFileExportAsync,
+    dbFileSaveAsync,
     debugInline
 });
 
@@ -392,7 +392,7 @@ async function demoTradebot() {
         return;
     }
     tmp = await tmp.arrayBuffer();
-    await dbFileImportAsync({
+    await dbFileLoadAsync({
         db: DB_MAIN,
         dbData: tmp
     });
@@ -1682,7 +1682,7 @@ async function init() {
             DB_INIT = new Promise(async function (resolve) {
                 val = await fetch(val);
                 val = await val.arrayBuffer();
-                await dbFileImportAsync({
+                await dbFileLoadAsync({
                     db: DB_MAIN,
                     dbData: val
                 });
@@ -2143,7 +2143,7 @@ RENAME TO
         if (target.files.length === 0) {
             return;
         }
-        await dbFileImportAsync({
+        await dbFileLoadAsync({
             db: DB_MAIN,
             dbData: (
                 await target.files[0].arrayBuffer()
@@ -2199,7 +2199,7 @@ RENAME TO
         await onDbExec({});
         return;
     case "dbExport":
-        data = await dbFileExportAsync({db: baton.db});
+        data = await dbFileSaveAsync({db: baton.db});
         console.error(data);
         data = data[JSBATON_OFFSET_ARG0 + 0];
         fileSave({
@@ -2208,7 +2208,7 @@ RENAME TO
         });
         return;
     case "dbExportMain":
-        data = await dbFileExportAsync({db: DB_MAIN});
+        data = await dbFileSaveAsync({db: DB_MAIN});
         data = data[JSBATON_OFFSET_ARG0 + 0];
         fileSave({
             buf: data,
