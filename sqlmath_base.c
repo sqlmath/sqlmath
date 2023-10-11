@@ -417,7 +417,7 @@ static int dbCount = 0;
 SQLMATH_API void dbCall(
     Jsbaton * baton
 ) {
-// This function will call dbXxx() with given <funcname>.
+// This function will call c-function dbXxx() with given <funcname>.
     char *funcname = (char *) baton + JSBATON_OFFSET_FUNCNAME;
     if (strcmp(funcname, "_dbClose") == 0) {
         dbClose(baton);

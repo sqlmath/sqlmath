@@ -461,7 +461,7 @@ jstestDescribe((
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbCloseAsync({});
-        }, "invalid or closed db");
+        }, "cannot close db");
         // test close handling-behavior
         dbCloseAsync(db);
     });
@@ -547,15 +547,7 @@ SELECT * FROM testDbExecAsync2;
         // test close-while-busy handling-behavior
         assertErrorThrownAsync(function () {
             return dbCloseAsync(db);
-        }, (
-            /cannot close with \d+? actions pending/
-        ));
-        // test retry handling-behavior
-        assertErrorThrownAsync(function () {
-            return dbExecAsync({
-                modeRetry: 1
-            });
-        }, "invalid or closed db");
+        }, "cannot close db");
     });
     jstestIt((
         "test dbFileXxx handling-behavior"

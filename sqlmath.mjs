@@ -71,7 +71,6 @@ let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
 let cModule;
 let cModulePath;
 let consoleError = console.error;
-let dbDict = new WeakMap(); // private-dict of sqlite-database-connections
 let dbFinalizationRegistry;
 // init debugInline
 let debugInline = (function () {
@@ -166,132 +165,6 @@ function assertOrThrow(condition, message) {
             ? new Error(String(message).slice(0, 2048))
             : message
         );
-    }
-}
-
-async function cCallAsync(baton, argList) {
-
-// This function will serialize <argList> to a c <baton>,
-// suitable for passing into napi.
-
-    let errStack;
-    let funcname;
-    let id;
-    let result;
-    let timeElapsed = Date.now();
-    assertOrThrow(
-        argList.length <= JSBATON_ARGC,
-        `cCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
-    );
-    // copy argList to avoid side-effect
-    argList = [...argList];
-    // pad argList to length JSBATON_ARGC
-    while (argList.length < JSBATON_ARGC) {
-        argList.push(0n);
-    }
-    // serialize js-value to c-value
-    argList = argList.map(function (val, argi) {
-        switch (typeof val) {
-        case "bigint":
-        case "boolean":
-        case "number":
-            // check for min/max safe-integer
-            assertOrThrow(
-                (
-                    (JS_MIN_SAFE_INTEGER <= val && val <= JS_MAX_SAFE_INTEGER)
-                    || typeof val !== "number"
-                ),
-                (
-                    "non-bigint integer must be within inclusive-range"
-                    + ` ${JS_MIN_SAFE_INTEGER} to ${JS_MAX_SAFE_INTEGER}`
-                )
-            );
-            val = BigInt(val);
-            assertInt64(val);
-            baton.setBigInt64(JSBATON_OFFSET_ARGV + argi * 8, val, true);
-            return val;
-        // case "object":
-        //     break;
-        case "string":
-            baton = jsbatonSetValue(baton, argi, (
-                val.endsWith("\u0000")
-                ? val
-                // append null-terminator to string
-                : val + "\u0000"
-            ));
-            return;
-        }
-        // normalize buffer to zero-byte-offset
-        if (ArrayBuffer.isView(val)) {
-            return new DataView(val.buffer, val.byteOffset, val.byteLength);
-        }
-        if (isExternalBuffer(val)) {
-            return val;
-        }
-    });
-    // assert byteOffset === 0
-    [baton, ...argList].forEach(function (arg) {
-        assertOrThrow(!ArrayBuffer.isView(arg) || arg.byteOffset === 0, arg);
-    });
-    // preserve stack-trace
-    errStack = new Error().stack.replace((/.*$/m), "");
-    try {
-
-// Dispatch to nodejs-napi.
-
-        if (!IS_BROWSER) {
-            await cModule._jspromiseCreate(baton, argList);
-            // prepend baton to argList
-            return [baton, ...argList];
-        }
-
-// Dispatch to web-worker.
-
-        // extract funcname
-        funcname = new TextDecoder().decode(
-            new DataView(baton.buffer, JSBATON_OFFSET_FUNCNAME, SIZEOF_FUNCNAME)
-        ).replace((/\u0000/g), "");
-        // increment sqlMessageId
-        sqlMessageId += 1;
-        id = sqlMessageId;
-        // postMessage to web-worker
-        sqlWorker.postMessage(
-            {
-                FILENAME_DBTMP,
-                JSBATON_ARGC,
-                JSBATON_OFFSET_ALL,
-                JSBATON_OFFSET_ARGV,
-                argList,
-                baton,
-                funcname,
-                id
-            },
-            // transfer arraybuffer without copying
-            [baton.buffer, ...argList.filter(isExternalBuffer)]
-        );
-        // init timeElapsed
-        timeElapsed = Date.now();
-        // await result from web-worker
-        result = await new Promise(function (resolve) {
-            sqlMessageDict[id] = resolve;
-        });
-        // cleanup sqlMessageDict
-        delete sqlMessageDict[id];
-        // debug slow postMessage
-        timeElapsed = Date.now() - timeElapsed;
-        if (timeElapsed > 500 || funcname === "testTimeElapsed") {
-            consoleError(
-                "sqlMessagePost - "
-                + JSON.stringify({funcname, timeElapsed})
-                + errStack
-            );
-        }
-        assertOrThrow(!result.errmsg, result.errmsg);
-        // prepend baton to argList
-        return [result.baton, ...result.argList];
-    } catch (err) {
-        err.stack += errStack;
-        assertOrThrow(undefined, err);
     }
 }
 
@@ -538,19 +411,149 @@ async function ciBuildExt2NodejsBuild({
     );
 }
 
-async function dbCallAsync(baton, db, argList) {
+async function dbCallAsync(baton, argList, mode) {
 
-// This function will call <funcname> using db <argList>[0].
+// This function will call c-function dbXxx() with given <funcname>
+// and return [<baton>, ...argList].
 
-    let __db = dbDeref(db);
-    // increment __db.busy
-    __db.busy += 1;
+    let db;
+    let errStack;
+    let funcname;
+    let id;
+    let result;
+    let timeElapsed;
+
+// If argList contains <db>, then mark it as busy.
+
+    if (mode === "modeDb") {
+        // init db
+        db = argList[0];
+        assertOrThrow(db?.busy >= 0, `invalid db.busy = ${db?.busy}`);
+        db.ii = (db.ii + 1) % db.connPool.length;
+        db.ptr = db.connPool[db.ii][0];
+        // increment db.busy
+        db.busy += 1;
+        try {
+            return await dbCallAsync(baton, [db.ptr, ...argList.slice(1)]);
+        } finally {
+            // decrement db.busy
+            db.busy -= 1;
+            assertOrThrow(db?.busy >= 0, `invalid db.busy = ${db?.busy}`);
+        }
+    }
+    // copy argList to avoid side-effects
+    argList = [...argList];
+    assertOrThrow(
+        argList.length <= JSBATON_ARGC,
+        `dbCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
+    );
+    // pad argList to length JSBATON_ARGC
+    while (argList.length < JSBATON_ARGC) {
+        argList.push(0n);
+    }
+    // serialize js-value to c-value
+    argList = argList.map(function (val, argi) {
+        switch (typeof val) {
+        case "bigint":
+        case "boolean":
+        case "number":
+            // check for min/max safe-integer
+            assertOrThrow(
+                (
+                    (JS_MIN_SAFE_INTEGER <= val && val <= JS_MAX_SAFE_INTEGER)
+                    || typeof val !== "number"
+                ),
+                (
+                    "non-bigint integer must be within inclusive-range"
+                    + ` ${JS_MIN_SAFE_INTEGER} to ${JS_MAX_SAFE_INTEGER}`
+                )
+            );
+            val = BigInt(val);
+            assertInt64(val);
+            baton.setBigInt64(JSBATON_OFFSET_ARGV + argi * 8, val, true);
+            return val;
+        // case "object":
+        //     break;
+        case "string":
+            baton = jsbatonSetValue(baton, argi, (
+                val.endsWith("\u0000")
+                ? val
+                // append null-terminator to string
+                : val + "\u0000"
+            ));
+            return;
+        }
+        // normalize buffer to zero-byte-offset
+        if (ArrayBuffer.isView(val)) {
+            return new DataView(val.buffer, val.byteOffset, val.byteLength);
+        }
+        if (isExternalBuffer(val)) {
+            return val;
+        }
+    });
+    // assert byteOffset === 0
+    [baton, ...argList].forEach(function (arg) {
+        assertOrThrow(!ArrayBuffer.isView(arg) || arg.byteOffset === 0, arg);
+    });
+    // preserve stack-trace
+    errStack = new Error().stack.replace((/.*$/m), "");
     try {
-        return await cCallAsync(baton, [__db.ptr, ...argList]);
-    } finally {
-        // decrement __db.busy
-        __db.busy -= 1;
-        assertOrThrow(__db.busy >= 0, `invalid __db.busy ${__db.busy}`);
+
+// Dispatch to nodejs-napi.
+
+        if (!IS_BROWSER) {
+            await cModule._jspromiseCreate(baton, argList);
+            // prepend baton to argList
+            return [baton, ...argList];
+        }
+
+// Dispatch to web-worker.
+
+        // extract funcname
+        funcname = new TextDecoder().decode(
+            new DataView(baton.buffer, JSBATON_OFFSET_FUNCNAME, SIZEOF_FUNCNAME)
+        ).replace((/\u0000/g), "");
+        // increment sqlMessageId
+        sqlMessageId += 1;
+        id = sqlMessageId;
+        // postMessage to web-worker
+        sqlWorker.postMessage(
+            {
+                FILENAME_DBTMP,
+                JSBATON_ARGC,
+                JSBATON_OFFSET_ALL,
+                JSBATON_OFFSET_ARGV,
+                argList,
+                baton,
+                funcname,
+                id
+            },
+            // transfer arraybuffer without copying
+            [baton.buffer, ...argList.filter(isExternalBuffer)]
+        );
+        // init timeElapsed
+        timeElapsed = Date.now();
+        // await result from web-worker
+        result = await new Promise(function (resolve) {
+            sqlMessageDict[id] = resolve;
+        });
+        // cleanup sqlMessageDict
+        delete sqlMessageDict[id];
+        // debug slow postMessage
+        timeElapsed = Date.now() - timeElapsed;
+        if (timeElapsed > 500 || funcname === "testTimeElapsed") {
+            consoleError(
+                "sqlMessagePost - "
+                + JSON.stringify({funcname, timeElapsed})
+                + errStack
+            );
+        }
+        assertOrThrow(!result.errmsg, result.errmsg);
+        // prepend baton to argList
+        return [result.baton, ...result.argList];
+    } catch (err) {
+        err.stack += errStack;
+        assertOrThrow(undefined, err);
     }
 }
 
@@ -558,32 +561,17 @@ async function dbCloseAsync(db) {
 
 // This function will close sqlite-database-connection <db>.
 
-    let __db = dbDeref(db);
     // prevent segfault - do not close db if actions are pending
     assertOrThrow(
-        __db.busy === 0,
-        `dbCloseAsync - cannot close with ${__db.busy} actions pending`
+        db?.busy === 0,
+        `dbCloseAsync - cannot close db with ${db?.busy} actions pending`
     );
     // cleanup connPool
-    await Promise.all(__db.connPool.map(async function (ptr) {
+    await Promise.all(db.connPool.map(async function (ptr) {
         let val = ptr[0];
         ptr[0] = 0n;
-        await cCallAsync(jsbatonCreate("_dbClose"), [val, __db.filename]);
+        await dbCallAsync(jsbatonCreate("_dbClose"), [val, db.filename]);
     }));
-    dbDict.delete(db);
-}
-
-function dbDeref(db) {
-
-// This function will get private-object mapped to <db>.
-
-    let __db = dbDict.get(db);
-    assertOrThrow(__db?.connPool[0] > 0, "invalid or closed db");
-    assertOrThrow(__db.busy >= 0, "invalid db.busy " + __db.busy);
-    __db.ii = (__db.ii + 1) % __db.connPool.length;
-    __db.ptr = __db.connPool[__db.ii][0];
-    assertOrThrow(__db.ptr > 0n, "invalid or closed db");
-    return __db;
 }
 
 function dbExecAndReturnLastBlobAsync({
@@ -606,7 +594,6 @@ function dbExecAndReturnLastBlobAsync({
 async function dbExecAsync({
     bindList = [],
     db,
-    modeRetry,
     responseType,
     sql
 }) {
@@ -618,28 +605,6 @@ async function dbExecAsync({
     let bindListLength;
     let externalbufferList;
     let result;
-    while (modeRetry > 0) {
-        try {
-            return await dbExecAsync({
-                bindList,
-                db,
-                responseType,
-                sql
-            });
-        } catch (err) {
-            assertOrThrow(modeRetry > 0, err);
-            consoleError(err);
-            consoleError(
-                "dbExecAsync - retry failed sql-query with "
-                + modeRetry
-                + " remaining retries"
-            );
-            modeRetry -= 1;
-            await new Promise(function (resolve) {
-                setTimeout(resolve, 5_000 * !npm_config_mode_test);
-            });
-        }
-    }
     baton = jsbatonCreate("_dbExec");
     bindByKey = !Array.isArray(bindList);
     bindListLength = (
@@ -656,8 +621,8 @@ async function dbExecAsync({
     });
     result = await dbCallAsync(
         baton,
-        db,                     // 0 - response
         [
+            db,                     // 0 - response
             String(sql) + "\n;\nPRAGMA noop",   // 1
             bindListLength,         // 2
             bindByKey,              // 3
@@ -670,7 +635,8 @@ async function dbExecAsync({
             undefined, // 6
             undefined, // 7
             ...externalbufferList        // 8
-        ]
+        ],
+        "modeDb"
     );
     result = result[JSBATON_OFFSET_ARG0 + 0];
     switch (responseType) {
@@ -716,13 +682,14 @@ async function dbFileLoadAsync({
     );
     dbData = await dbCallAsync(
         jsbatonCreate("_dbFileLoad"),
-        db,                     // 0. sqlite3 * pInMemory,
         [
+            db,                     // 0. sqlite3 * pInMemory,
             String(filename),       // 1. char *zFilename,
             modeSave,               // 2. const int isSave
             undefined,              // 3. undefined
             dbData                  // 4. dbData
-        ]
+        ],
+        "modeDb"
     );
     return dbData[JSBATON_OFFSET_ARG0 + 0];
 }
@@ -747,7 +714,7 @@ async function dbNoopAsync(...argList) {
 
 // This function will do nothing except return <argList>.
 
-    return await cCallAsync(jsbatonCreate("_dbNoop"), argList);
+    return await dbCallAsync(jsbatonCreate("_dbNoop"), argList);
 }
 
 async function dbOpenAsync({
@@ -767,7 +734,7 @@ async function dbOpenAsync({
 //   const char *zVfs        /* Name of VFS module to use */
 // );
     let connPool;
-    let db = {filename};
+    let db = {busy: 0, filename, ii: 0};
     assertOrThrow(typeof filename === "string", `invalid filename ${filename}`);
     assertOrThrow(
         !dbData || isExternalBuffer(dbData),
@@ -776,25 +743,28 @@ async function dbOpenAsync({
     connPool = await Promise.all(Array.from(new Array(
         threadCount
     ), async function () {
-        let ptr = await cCallAsync(jsbatonCreate("_dbOpen"), [
-            // 0. const char *filename,   Database filename (UTF-8)
-            filename,
-            // 1. sqlite3 **ppDb,         OUT: SQLite db handle
-            undefined,
-            // 2. int flags,              Flags
-            flags ?? (
-                SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
-            ),
-            // 3. const char *zVfs        Name of VFS module to use
-            undefined,
-            // 4. wasm-only - arraybuffer of raw sqlite-database to open in wasm
-            dbData
-        ]);
+        let ptr = await dbCallAsync(
+            jsbatonCreate("_dbOpen"),
+            [
+                // 0. const char *filename,   Database filename (UTF-8)
+                filename,
+                // 1. sqlite3 **ppDb,         OUT: SQLite db handle
+                undefined,
+                // 2. int flags,              Flags
+                flags ?? (
+                    SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
+                ),
+                // 3. const char *zVfs        Name of VFS module to use
+                undefined,
+                // 4. wasm-only - arraybuffer of raw sqlite-database
+                dbData
+            ]
+        );
         ptr = [ptr[0].getBigInt64(JSBATON_OFFSET_ARGV + 0, true)];
         dbFinalizationRegistry.register(db, {afterFinalization, ptr});
         return ptr;
     }));
-    dbDict.set(db, {busy: 0, connPool, filename, ii: 0});
+    db.connPool = connPool;
     return db;
 }
 
@@ -1186,7 +1156,7 @@ async function sqlmathInit() {
 // This function will auto-close any open sqlite3-db-pointer,
 // after its js-wrapper has been garbage-collected.
 
-        cCallAsync(jsbatonCreate("_dbClose"), [ptr[0]]);
+        dbCallAsync(jsbatonCreate("_dbClose"), [ptr[0]]);
         if (afterFinalization) {
             afterFinalization();
         }
@@ -1288,8 +1258,8 @@ function sqlmathWebworkerInit({
                 });
             });
         };
-        // test cCallAsync handling-behavior
-        cCallAsync(jsbatonCreate("testTimeElapsed"), [true]);
+        // test dbCallAsync handling-behavior
+        dbCallAsync(jsbatonCreate("testTimeElapsed"), [true]);
         // test dbFileLoadAsync handling-behavior
         dbFileLoadAsync({
             db,

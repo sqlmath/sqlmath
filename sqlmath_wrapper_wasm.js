@@ -78,6 +78,7 @@ function noop(val) {
 }
 
 (async function () {
+    // cwrap string-based c-functions
     let dbFileLoadOrSave = cwrap("dbFileLoadOrSave", "number", [
         "number", "string", "number"
     ]);
@@ -86,6 +87,7 @@ function noop(val) {
         "number", "number"
     ]);
     let sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
+
     let onModulePostRun; //jslint-ignore-line
 
     function messageDispatch(data) {
