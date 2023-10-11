@@ -169,12 +169,13 @@ function assertOrThrow(condition, message) {
     }
 }
 
-async function cCallAsync(baton, funcname, ...argList) {
+async function cCallAsync(baton, argList) {
 
 // This function will serialize <argList> to a c <baton>,
 // suitable for passing into napi.
 
     let errStack;
+    let funcname;
     let id;
     let result;
     let timeElapsed = Date.now();
@@ -182,6 +183,8 @@ async function cCallAsync(baton, funcname, ...argList) {
         argList.length <= JSBATON_ARGC,
         `cCallAsync - argList.length must be less than than ${JSBATON_ARGC}`
     );
+    // copy argList to avoid side-effect
+    argList = [...argList];
     // pad argList to length JSBATON_ARGC
     while (argList.length < JSBATON_ARGC) {
         argList.push(0n);
@@ -226,10 +229,8 @@ async function cCallAsync(baton, funcname, ...argList) {
             return val;
         }
     });
-    // prepend baton to argList
-    argList.unshift(baton);
     // assert byteOffset === 0
-    argList.forEach(function (arg) {
+    [baton, ...argList].forEach(function (arg) {
         assertOrThrow(!ArrayBuffer.isView(arg) || arg.byteOffset === 0, arg);
     });
     // preserve stack-trace
@@ -239,17 +240,32 @@ async function cCallAsync(baton, funcname, ...argList) {
 // Dispatch to nodejs-napi.
 
         if (!IS_BROWSER) {
-            return await cModule._jspromiseCreate(argList);
+            await cModule._jspromiseCreate(baton, argList);
+            // prepend baton to argList
+            return [baton, ...argList];
         }
 
 // Dispatch to web-worker.
 
+        // extract funcname
+        funcname = new TextDecoder().decode(
+            new DataView(baton.buffer, JSBATON_OFFSET_FUNCNAME, SIZEOF_FUNCNAME)
+        ).replace((/\u0000/g), "");
         // increment sqlMessageId
         sqlMessageId += 1;
         id = sqlMessageId;
         // postMessage to web-worker
         sqlWorker.postMessage(
-            {argList, baton, funcname, id},
+            {
+                FILENAME_DBTMP,
+                JSBATON_ARGC,
+                JSBATON_OFFSET_ALL,
+                JSBATON_OFFSET_ARGV,
+                argList,
+                baton,
+                funcname,
+                id
+            },
             // transfer arraybuffer without copying
             [baton.buffer, ...argList.filter(isExternalBuffer)]
         );
@@ -271,7 +287,8 @@ async function cCallAsync(baton, funcname, ...argList) {
             );
         }
         assertOrThrow(!result.errmsg, result.errmsg);
-        return result.argList;
+        // prepend baton to argList
+        return [result.baton, ...result.argList];
     } catch (err) {
         err.stack += errStack;
         assertOrThrow(undefined, err);
@@ -521,23 +538,20 @@ async function ciBuildExt2NodejsBuild({
     );
 }
 
-function dbCallAsync(baton, funcname, db, ...argList) {
+async function dbCallAsync(baton, db, argList) {
 
 // This function will call <funcname> using db <argList>[0].
 
     let __db = dbDeref(db);
     // increment __db.busy
     __db.busy += 1;
-    return cCallAsync(
-        baton,
-        funcname,
-        __db.ptr,
-        ...argList
-    ).finally(function () {
+    try {
+        return await cCallAsync(baton, [__db.ptr, ...argList]);
+    } finally {
         // decrement __db.busy
         __db.busy -= 1;
         assertOrThrow(__db.busy >= 0, `invalid __db.busy ${__db.busy}`);
-    });
+    }
 }
 
 async function dbCloseAsync(db) {
@@ -554,12 +568,7 @@ async function dbCloseAsync(db) {
     await Promise.all(__db.connPool.map(async function (ptr) {
         let val = ptr[0];
         ptr[0] = 0n;
-        await cCallAsync(
-            jsbatonCreate("_dbClose"),
-            "_dbClose",
-            val,
-            __db.filename
-        );
+        await cCallAsync(jsbatonCreate("_dbClose"), [val, __db.filename]);
     }));
     dbDict.delete(db);
 }
@@ -647,20 +656,21 @@ async function dbExecAsync({
     });
     result = await dbCallAsync(
         baton,
-        "_dbExec",
-        db,                     // 0
-        String(sql) + "\n;\nPRAGMA noop",   // 1
-        bindListLength,         // 2
-        bindByKey,              // 3
-        (                       // 4
-            responseType === "lastBlob"
-            ? SQLITE_RESPONSETYPE_LASTBLOB
-            : 0
-        ),
-        undefined, // 5
-        undefined, // 6
-        undefined, // 7 - response
-        ...externalbufferList        // 8
+        db,                     // 0 - response
+        [
+            String(sql) + "\n;\nPRAGMA noop",   // 1
+            bindListLength,         // 2
+            bindByKey,              // 3
+            (                       // 4
+                responseType === "lastBlob"
+                ? SQLITE_RESPONSETYPE_LASTBLOB
+                : 0
+            ),
+            undefined, // 5
+            undefined, // 6
+            undefined, // 7
+            ...externalbufferList        // 8
+        ]
     );
     result = result[JSBATON_OFFSET_ARG0 + 0];
     switch (responseType) {
@@ -704,15 +714,17 @@ async function dbFileLoadAsync({
         typeof filename === "string" && filename,
         `invalid filename ${filename}`
     );
-    return await dbCallAsync(
+    dbData = await dbCallAsync(
         jsbatonCreate("_dbFileLoad"),
-        "_dbFileLoad",
         db,                     // 0. sqlite3 * pInMemory,
-        String(filename),       // 1. char *zFilename,
-        modeSave,               // 2. const int isSave
-        undefined,              // 3. undefined
-        dbData                  // 4. dbData
+        [
+            String(filename),       // 1. char *zFilename,
+            modeSave,               // 2. const int isSave
+            undefined,              // 3. undefined
+            dbData                  // 4. dbData
+        ]
     );
+    return dbData[JSBATON_OFFSET_ARG0 + 0];
 }
 
 async function dbFileSaveAsync({
@@ -723,7 +735,7 @@ async function dbFileSaveAsync({
 
 // This function will save <db> to <filename>.
 
-    await dbFileLoadAsync({
+    return await dbFileLoadAsync({
         db,
         dbData,
         filename,
@@ -735,7 +747,7 @@ async function dbNoopAsync(...argList) {
 
 // This function will do nothing except return <argList>.
 
-    return await cCallAsync(jsbatonCreate("_dbNoop"), "_dbNoop", ...argList);
+    return await cCallAsync(jsbatonCreate("_dbNoop"), argList);
 }
 
 async function dbOpenAsync({
@@ -764,9 +776,7 @@ async function dbOpenAsync({
     connPool = await Promise.all(Array.from(new Array(
         threadCount
     ), async function () {
-        let ptr = await cCallAsync(
-            jsbatonCreate("_dbOpen"),
-            "_dbOpen",
+        let ptr = await cCallAsync(jsbatonCreate("_dbOpen"), [
             // 0. const char *filename,   Database filename (UTF-8)
             filename,
             // 1. sqlite3 **ppDb,         OUT: SQLite db handle
@@ -779,7 +789,7 @@ async function dbOpenAsync({
             undefined,
             // 4. wasm-only - arraybuffer of raw sqlite-database to open in wasm
             dbData
-        );
+        ]);
         ptr = [ptr[0].getBigInt64(JSBATON_OFFSET_ARGV + 0, true)];
         dbFinalizationRegistry.register(db, {afterFinalization, ptr});
         return ptr;
@@ -1176,7 +1186,7 @@ async function sqlmathInit() {
 // This function will auto-close any open sqlite3-db-pointer,
 // after its js-wrapper has been garbage-collected.
 
-        cCallAsync(jsbatonCreate("_dbClose"), "_dbClose", ptr[0]);
+        cCallAsync(jsbatonCreate("_dbClose"), [ptr[0]]);
         if (afterFinalization) {
             afterFinalization();
         }
@@ -1279,7 +1289,7 @@ function sqlmathWebworkerInit({
             });
         };
         // test cCallAsync handling-behavior
-        cCallAsync(jsbatonCreate("testTimeElapsed"), "testTimeElapsed", true);
+        cCallAsync(jsbatonCreate("testTimeElapsed"), [true]);
         // test dbFileLoadAsync handling-behavior
         dbFileLoadAsync({
             db,
@@ -1296,7 +1306,6 @@ await sqlmathInit();
 sqlmathInit(); // coverage-hack
 
 export {
-    JSBATON_OFFSET_ARG0,
     SQLITE_OPEN_AUTOPROXY,
     SQLITE_OPEN_CREATE,
     SQLITE_OPEN_DELETEONCLOSE,

@@ -66,7 +66,6 @@ file sqlmath_h - start
 
 #define JSBATON_ARGC            16
 #define JSBATON_OFFSET_ALL      512
-#define JSBATON_OFFSET_ARG0     1
 #define JSBATON_OFFSET_ARGV     128
 #define JSBATON_OFFSET_BUFV     256
 #define JSBATON_OFFSET_ERRMSG   24
@@ -3166,21 +3165,19 @@ static void jspromiseResolve(
     } else {
         // Resolve promise with result.
         // export baton->argv and baton->bufv to baton->napi_argv
-        size_t ii = 0;
-        if (baton->bufv[ii]) {
-            // init argList[ii] = bufv[ii]
+        size_t argi = 0;
+        if (baton->bufv[argi]) {
+            // init argList[argi] = bufv[argi]
             errcode = napi_create_external_arraybuffer(env,     // napi_env env,
-                (void *) baton->bufv[ii],       // void* external_data,
-                (size_t) baton->argv[ii],       // size_t byte_length,
+                (void *) baton->bufv[argi],     // void* external_data,
+                (size_t) baton->argv[argi],     // size_t byte_length,
                 jsbatonBufferFinalize,  // napi_finalize finalize_cb,
                 NULL,           // void* finalize_hint,
                 &val);          // napi_value* result
             if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) {
                 return;
             }
-            errcode =
-                napi_set_element(env, baton->napi_argv,
-                JSBATON_OFFSET_ARG0 + ii, val);
+            errcode = napi_set_element(env, baton->napi_argv, argi, val);
             if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) {
                 return;
             }
@@ -3209,34 +3206,32 @@ static napi_value jspromiseCreate(
     // declare var
     Jsbaton *baton = NULL;
     int errcode = 0;
+    napi_value argv[2] = { 0 };
     napi_value promise = 0;
     napi_value val = NULL;
-    size_t ii = 0;
+    size_t argi = 0;
     // init argv
-    ii = 1;
-    errcode = napi_get_cb_info(env, info, &ii, &val, NULL, NULL);
+    argi = 2;
+    errcode = napi_get_cb_info(env, info, &argi, argv, NULL, NULL);
     NAPI_ASSERT_OK();
     // init baton
-    errcode = napi_get_element(env, val, 0, (napi_value *) & baton);
-    NAPI_ASSERT_OK();
+    baton = (Jsbaton *) argv[0];
     errcode =
         napi_get_dataview_info(env, (napi_value) baton, NULL,
         (void **) &baton, NULL, NULL);
     NAPI_ASSERT_OK();
     // init argv - external buffer
-    baton->napi_argv = val;
-    for (ii = 0; ii < JSBATON_ARGC; ii += 1) {
+    baton->napi_argv = argv[1];
+    for (argi = 0; argi < JSBATON_ARGC; argi += 1) {
         bool is_dataview = 0;
-        errcode =
-            napi_get_element(env, baton->napi_argv, JSBATON_OFFSET_ARG0 + ii,
-            &val);
+        errcode = napi_get_element(env, baton->napi_argv, argi, &val);
         NAPI_ASSERT_OK();
         errcode = napi_is_dataview(env, val, &is_dataview);
         NAPI_ASSERT_OK();
         if (is_dataview) {
             errcode =
                 napi_get_dataview_info(env, val, NULL,
-                (void **) (baton->argv + ii), NULL, NULL);
+                (void **) (baton->argv + argi), NULL, NULL);
             NAPI_ASSERT_OK();
         }
     }
@@ -3414,7 +3409,7 @@ static PyObject *pydbCall(
     }
     // init argv - external buffer
     for (ii = 0; ii < JSBATON_ARGC; ii += 1) {
-        val = PyList_GetItem(argv, JSBATON_OFFSET_ARG0 + ii);
+        val = PyList_GetItem(argv, ii);
         if (val == NULL) {
             return NULL;
         }
@@ -3444,7 +3439,7 @@ static PyObject *pydbCall(
     if (val == NULL) {
         return NULL;
     }
-    if (PyList_SetItem(argv, JSBATON_OFFSET_ARG0 + ii, val) == -1) {
+    if (PyList_SetItem(argv, ii, val) == -1) {
         return NULL;
     }
     Py_RETURN_NONE;

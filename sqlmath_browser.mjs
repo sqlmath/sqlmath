@@ -1,6 +1,5 @@
 /*jslint beta, bitwise, browser, devel, nomen*/
 import {
-    JSBATON_OFFSET_ARG0,
     assertOrThrow,
     dbCloseAsync,
     dbExecAsync,
@@ -40,12 +39,7 @@ let UI_PAGE_SIZE = 256;
 let UI_ROW_HEIGHT = 16;
 let UI_VIEW_SIZE = 20;
 
-noop({
-    UI_EDITOR,
-    assertOrThrow,
-    dbFileSaveAsync,
-    debugInline
-});
+noop(debugInline);
 
 async function dbFileAttachAsync({
     db,
@@ -1570,9 +1564,7 @@ async function init() {
         isDbmain: true
     }].map(async function (db) {
         db = Object.assign(noop(
-            await dbOpenAsync({
-                filename: db.filename
-            })
+            await dbOpenAsync({filename: db.filename})
         ), db);
         // save db
         DB_DICT.set(db.dbName, db);
@@ -2200,8 +2192,6 @@ RENAME TO
         return;
     case "dbExport":
         data = await dbFileSaveAsync({db: baton.db});
-        console.error(data);
-        data = data[JSBATON_OFFSET_ARG0 + 0];
         fileSave({
             buf: data,
             filename: `sqlite_database_${baton.dbName}.sqlite`
@@ -2209,7 +2199,6 @@ RENAME TO
         return;
     case "dbExportMain":
         data = await dbFileSaveAsync({db: DB_MAIN});
-        data = data[JSBATON_OFFSET_ARG0 + 0];
         fileSave({
             buf: data,
             filename: `sqlite_database_${DB_MAIN.dbName}.sqlite`
@@ -2273,9 +2262,8 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
             db: baton.db,
             sql: `SELECT rowid, * FROM ${baton.dbtableName};`
         });
-        data = JSON.stringify(data[0] || []);
         fileSave({
-            buf: data,
+            buf: JSON.stringify(data[0] || []),
             filename: `sqlite_table_${baton.dbtableName}.json`
         });
         return;
