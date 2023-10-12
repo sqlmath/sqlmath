@@ -28,6 +28,7 @@
 let JSBATON_ARGC = 16;
 let JSBATON_OFFSET_ALL = 768;
 let JSBATON_OFFSET_ARGV = 128;
+let JSBATON_OFFSET_BUFV = 256;
 let JSBATON_OFFSET_FUNCNAME = 8;
 let JS_MAX_SAFE_INTEGER = 0x1fffffffffffff;
 let JS_MIN_SAFE_INTEGER = -0x1fffffffffffff;
@@ -529,9 +530,8 @@ async function dbCallAsync(baton, argList, mode) {
         sqlWorker.postMessage(
             {
                 FILENAME_DBTMP,
-                JSBATON_ARGC,
                 JSBATON_OFFSET_ALL,
-                JSBATON_OFFSET_ARGV,
+                JSBATON_OFFSET_BUFV,
                 argList,
                 baton,
                 funcname,
@@ -628,7 +628,7 @@ async function dbExecAsync({
         }
         baton = jsbatonSetValue(baton, undefined, val, bufi);
     });
-    [baton] = await dbCallAsync(
+    [baton, ...result] = await dbCallAsync(
         baton,
         [
             db,                 // 0
@@ -643,7 +643,10 @@ async function dbExecAsync({
         ],
         "modeDb"
     );
-    result = cModule._jsbatonStealCbuffer(baton.buffer, 0);
+    result = result[0];
+    if (!IS_BROWSER) {
+        result = cModule._jsbatonStealCbuffer(baton.buffer, 0);
+    }
     switch (responseType) {
     case "arraybuffer":
     case "lastBlob":
@@ -1252,19 +1255,13 @@ function sqlmathWebworkerInit({
     if (modeTest) {
         sqlWorker.postMessage = function (data) {
             setTimeout(function () {
-                sqlWorker.onmessage({
-                    data
-                });
+                sqlWorker.onmessage({data});
             });
         };
         // test dbCallAsync handling-behavior
         dbCallAsync(jsbatonCreate("testTimeElapsed"), [true]);
         // test dbFileLoadAsync handling-behavior
-        dbFileLoadAsync({
-            db,
-            filename: "aa",
-            modeTest
-        });
+        dbFileLoadAsync({db, filename: "aa", modeTest});
         // revert IS_BROWSER
         IS_BROWSER = undefined;
     }

@@ -233,6 +233,7 @@ shCiBuildWasm() {(set -e
     OPTION2="$OPTION2,_dbCall"
     OPTION2="$OPTION2,_dbFileLoadOrSave"
     OPTION2="$OPTION2,_jsbatonGetErrmsg"
+    OPTION2="$OPTION2,_jsbatonGetInt64"
     OPTION2="$OPTION2,_jsbatonGetString"
     OPTION2="$OPTION2,_sqlite3_errmsg"
     OPTION2="$OPTION2,_sqlite3_free"

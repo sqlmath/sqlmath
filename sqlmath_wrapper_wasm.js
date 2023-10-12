@@ -28,6 +28,7 @@
     HEAPU8
     Module
     _dbCall
+    _jsbatonGetInt64
     _sqlite3_free
     _sqlite3_initialize
     _sqlite3_malloc
@@ -83,17 +84,14 @@ function noop(val) {
 
     function messageDispatch(data) {
         let FILENAME_DBTMP = data["FILENAME_DBTMP"];
-        let JSBATON_ARGC = data["JSBATON_ARGC"];
         let JSBATON_OFFSET_ALL = data["JSBATON_OFFSET_ALL"];
-        let JSBATON_OFFSET_ARGV = data["JSBATON_OFFSET_ARGV"];
+        let JSBATON_OFFSET_BUFV = data["JSBATON_OFFSET_BUFV"];
         let argList = data["argList"];
         let baton = new Uint8Array(data["baton"].buffer);
         let batonPtr = 0;
         let dbData = argList[4];
-        let dbPtr = 0;
         let errcode = 0;
         let errmsg = "";
-        let filename;
         let funcname = data["funcname"];
         let modeSave = argList[2];
         switch (funcname) {
@@ -102,58 +100,41 @@ function noop(val) {
         case "_dbFileLoad":
         case "_dbNoop":
         case "_dbOpen":
-            // copy baton to wasm
+            // copy baton to wasm-memory
             batonPtr = _sqlite3_malloc(baton.byteLength);
             data["batonPtr"] = batonPtr;
             HEAPU8.set(baton, batonPtr);
             switch (funcname) {
             case "_dbClose":
-                filename = jsbatonGetString(batonPtr, 1);
-                console.error(`_dbClose("${filename}")`);
+                console.error(`_dbClose("${jsbatonGetString(batonPtr, 1)}")`);
                 break;
             case "_dbFileLoad":
-                // import dbData
+                // load dbData
                 if (!modeSave) {
                     FS.writeFile(FILENAME_DBTMP, new Uint8Array(dbData));
                 }
                 break;
             case "_dbOpen":
-                filename = jsbatonGetString(batonPtr, 0);
-                console.error(`_dbOpen("${filename}")`);
+                console.error(`_dbOpen("${jsbatonGetString(batonPtr, 0)}")`);
                 break;
             }
             // call c-function
             _dbCall(batonPtr);
             // init errmsg
             errmsg = jsbatonGetErrmsg(batonPtr);
-            // update baton
+            // update baton from wasm-memory
             baton.set(HEAPU8.subarray(batonPtr, batonPtr + JSBATON_OFFSET_ALL));
-            baton = new BigInt64Array(baton.buffer, JSBATON_OFFSET_ARGV);
-            baton.subarray(
-                JSBATON_ARGC,
-                2 * JSBATON_ARGC
-            ).forEach(function (ptr, ii) {
-                // ignore ArrayBuffer
-                if (isExternalBuffer(argList[ii])) {
-                    return;
-                }
-                ptr = Number(ptr);
-                // init argList[ii] = argv[ii]
-                if (ptr === 0) {
-                    argList[ii] = baton[ii];
-                // init argList[ii] = bufv[ii]
-                } else {
-                    argList[ii] = new ArrayBuffer(Number(baton[ii]));
-                    new Uint8Array(argList[ii]).set(
-                        HEAPU8.subarray(ptr, ptr + argList[ii].byteLength)
-                    );
-                    // cleanup ptr
-                    _sqlite3_free(ptr);
-                }
-            });
             switch (!errmsg && funcname) {
+            case "_dbExec":
+                dbData = new BigInt64Array(baton.buffer, JSBATON_OFFSET_BUFV);
+                argList[0] = HEAPU8.slice(
+                    Number(dbData[0]),
+                    Number(dbData[0] + dbData[1])
+                ).buffer;
+                _sqlite3_free(Number(dbData[0]));
+                break;
             case "_dbFileLoad":
-                // export dbData
+                // save dbData
                 if (modeSave) {
                     dbData = FS.readFile(FILENAME_DBTMP);
                     argList[0] = dbData.buffer;
@@ -161,13 +142,13 @@ function noop(val) {
                 }
                 break;
             case "_dbOpen":
-                // import dbData
+                // open dbData
                 if (dbData) {
                     FS.writeFile(FILENAME_DBTMP, new Uint8Array(dbData));
-                    dbPtr = Number(argList[0]);
-                    errcode = dbFileLoadOrSave(dbPtr, FILENAME_DBTMP, 0);
+                    dbData = Number(_jsbatonGetInt64(batonPtr, 0));
+                    errcode = dbFileLoadOrSave(dbData, FILENAME_DBTMP, 0);
                     if (errcode) {
-                        errmsg = sqlite3_errmsg(dbPtr);
+                        errmsg = sqlite3_errmsg(dbData);
                     }
                     FS.unlink(FILENAME_DBTMP);
                 }

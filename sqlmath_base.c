@@ -213,10 +213,10 @@ typedef struct Jsbaton {
     char funcname[SIZEOF_FUNCNAME];     // offset 008-024
     char errmsg[SIZEOF_ERRMSG]; // offset 024-128
     int64_t argv[JSBATON_ARGC]; // offset 128-256
-    Jsbuffer bufv[JSBATON_ARGC];        // offset 256-384
-    void *napi_argv;            // offset 384-400
-    void *napi_deferred;        // offset 400-408
-    void *napi_work;            // offset 408-416
+    Jsbuffer bufv[JSBATON_ARGC];        // offset 256-512
+    void *napi_argv;            // offset 512-520
+    void *napi_deferred;        // offset 520-528
+    void *napi_work;            // offset 528-536
 } Jsbaton;
 SQLMATH_API void dbCall(
     Jsbaton * baton
