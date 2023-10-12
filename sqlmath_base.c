@@ -64,16 +64,16 @@ file sqlmath_h - start
 #endif
 
 
-#define JSBATON_ARGC            16
-#define JSBATON_OFFSET_ALL      768
+#define JSBATON_ARGC            8
+#define JSBATON_OFFSET_ALL      256
 #define JSBATON_OFFSET_ARGV     128
-#define JSBATON_OFFSET_BUFV     256
-#define JSBATON_OFFSET_ERRMSG   24
+#define JSBATON_OFFSET_BUFV     192
+#define JSBATON_OFFSET_ERRMSG   48
 #define JSBATON_OFFSET_FUNCNAME 8
 #define JS_MAX_SAFE_INTEGER     0x1fffffffffffff
 #define JS_MIN_SAFE_INTEGER     -0x1fffffffffffff
 #define SIZEOF_BLOB_MAX         1000000000
-#define SIZEOF_ERRMSG           104
+#define SIZEOF_ERRMSG           80
 #define SIZEOF_FUNCNAME         16
 #define SQLITE_DATATYPE_BLOB            0x04
 #define SQLITE_DATATYPE_EXTERNALBUFFER          0x71
@@ -211,12 +211,12 @@ typedef struct Jsbaton {
     int32_t nallc;              // offset 000-004
     int32_t nused;              // offset 004-008
     char funcname[SIZEOF_FUNCNAME];     // offset 008-024
-    char errmsg[SIZEOF_ERRMSG]; // offset 024-128
-    int64_t argv[JSBATON_ARGC]; // offset 128-256
-    Jsbuffer bufv[JSBATON_ARGC];        // offset 256-512
-    void *napi_argv;            // offset 512-520
-    void *napi_deferred;        // offset 520-528
-    void *napi_work;            // offset 528-536
+    int64_t napi_argv;          // offset 024-032
+    int64_t napi_deferred;      // offset 032-040
+    int64_t napi_work;          // offset 040-048
+    char errmsg[SIZEOF_ERRMSG]; // offset 048-128
+    int64_t argv[JSBATON_ARGC]; // offset 128-192
+    Jsbuffer bufv[JSBATON_ARGC];        // offset 192-256
 } Jsbaton;
 SQLMATH_API void dbCall(
     Jsbaton * baton
@@ -3204,7 +3204,7 @@ static void jspromiseResolve(
     // init baton
     Jsbaton *baton = (Jsbaton *) data;
     // declare var
-    napi_ref ref = baton->napi_argv;
+    napi_ref ref = (void *) baton->napi_argv;
     napi_value val = NULL;
     uint32_t refcount = 1;
     // dereference result to allow gc
@@ -3227,21 +3227,22 @@ static void jspromiseResolve(
         errcode = napi_create_error(env, NULL, val, &val);
         NAPI_ASSERT_FATAL(errcode == 0, "napi_create_error");
         // reject promise with error
-        errcode = napi_reject_deferred(env, baton->napi_deferred, val);
+        errcode =
+            napi_reject_deferred(env, (void *) baton->napi_deferred, val);
         NAPI_ASSERT_FATAL(errcode == 0, "napi_reject_deferred");
     } else {
         errcode =
-            napi_resolve_deferred(env, baton->napi_deferred,
-            baton->napi_argv);
+            napi_resolve_deferred(env, (void *) baton->napi_deferred,
+            (void *) baton->napi_argv);
         NAPI_ASSERT_FATAL(errcode == 0, "napi_resolve_deferred");
     }
     // Clean up the work item associated with this run.
-    errcode = napi_delete_async_work(env, baton->napi_work);
+    errcode = napi_delete_async_work(env, (void *) baton->napi_work);
     NAPI_ASSERT_FATAL(errcode == 0, "napi_delete_async_work");
     // Set both values to NULL so JavaScript can order a new run of the thread.
-    baton->napi_argv = NULL;
-    baton->napi_deferred = NULL;
-    baton->napi_work = NULL;
+    baton->napi_argv = 0;
+    baton->napi_deferred = 0;
+    baton->napi_work = 0;
 }
 
 static napi_value jspromiseCreate(
@@ -3264,17 +3265,17 @@ static napi_value jspromiseCreate(
         napi_get_arraybuffer_info(env, argv[0], (void **) &baton, &argc);
     NAPI_ASSERT_OK();
     // init napi_argv
-    baton->napi_argv = argv[1];
+    baton->napi_argv = (int64_t) argv[1];
     //
     // Create nodejs-promise.
     // reference result to prevent gc
     errcode = napi_create_reference(env,        // napi_env env
-        baton->napi_argv,       // napi_value value
+        (void *) baton->napi_argv,      // napi_value value
         1,                      // uint32_t initial_refcount
         (napi_ref *) & baton->napi_argv);       // napi_ref* result
     NAPI_ASSERT_OK();
     // Ensure that no work is currently in progress.
-    if (baton->napi_work != NULL) {
+    if (baton->napi_work) {
         napi_throw_error(env, NULL,
             "sqlmath._jspromiseCreate"
             " - Only one work item must exist at a time");
@@ -3300,7 +3301,7 @@ static napi_value jspromiseCreate(
         (napi_async_work *) & (baton->napi_work));
     NAPI_ASSERT_OK();
     // Queue the work item for execution.
-    errcode = napi_queue_async_work(env, baton->napi_work);
+    errcode = napi_queue_async_work(env, (void *) baton->napi_work);
     NAPI_ASSERT_OK();
     // This causes created `promise` to be returned to JavaScript.
     //
