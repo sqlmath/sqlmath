@@ -65,7 +65,7 @@ file sqlmath_h - start
 
 
 #define JSBATON_ARGC            16
-#define JSBATON_OFFSET_ALL      512
+#define JSBATON_OFFSET_ALL      768
 #define JSBATON_OFFSET_ARGV     128
 #define JSBATON_OFFSET_BUFV     256
 #define JSBATON_OFFSET_ERRMSG   24
@@ -76,12 +76,12 @@ file sqlmath_h - start
 #define SIZEOF_ERRMSG           104
 #define SIZEOF_FUNCNAME         16
 #define SQLITE_DATATYPE_BLOB            0x04
+#define SQLITE_DATATYPE_EXTERNALBUFFER          0x71
 #define SQLITE_DATATYPE_FLOAT           0x02
 #define SQLITE_DATATYPE_INTEGER         0x01
 #define SQLITE_DATATYPE_INTEGER_0       0x00
 #define SQLITE_DATATYPE_INTEGER_1       0x21
 #define SQLITE_DATATYPE_NULL            0x05
-#define SQLITE_DATATYPE_SHAREDARRAYBUFFER       0x71
 #define SQLITE_DATATYPE_TEXT            0x03
 #define SQLITE_DATATYPE_TEXT_0          0x13
 #define SQLITE_RESPONSETYPE_LASTBLOB    1
@@ -140,6 +140,9 @@ file sqlmath_h - start
     if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) { \
         return NULL; \
     }
+
+#define NAPI_CREATE_FUNCTION(func) \
+    {"_" #func, NULL, func, NULL, NULL, NULL, napi_default, NULL}
 
 #define SQLITE3_AGGREGATE_CONTEXT(type) \
     type *agg = (type *) sqlite3_aggregate_context(context, sizeof(*agg)); \
@@ -200,13 +203,17 @@ typedef uint8_t u8;
 
 
 // file sqlmath_h - db
+typedef struct Jsbuffer {
+    int64_t buf;
+    int64_t len;
+} Jsbuffer;
 typedef struct Jsbaton {
     int32_t nallc;              // offset 000-004
     int32_t nused;              // offset 004-008
     char funcname[SIZEOF_FUNCNAME];     // offset 008-024
     char errmsg[SIZEOF_ERRMSG]; // offset 024-128
     int64_t argv[JSBATON_ARGC]; // offset 128-256
-    int64_t bufv[JSBATON_ARGC]; // offset 256-384
+    Jsbuffer bufv[JSBATON_ARGC];        // offset 256-384
     void *napi_argv;            // offset 384-400
     void *napi_deferred;        // offset 400-408
     void *napi_work;            // offset 408-416
@@ -328,16 +335,16 @@ SQLMATH_API int doubleSign(
     const double aa
 );
 
+SQLMATH_API int doubleSortCompare(
+    const void *aa,
+    const void *bb
+);
+
 SQLMATH_API void doublearrayResult(
     sqlite3_context * context,
     const double *arr,
     const int nn,
     void (*xDel) (void *)       // NOLINT
-);
-
-SQLMATH_API int doubleSortCompare(
-    const void *aa,
-    const void *bb
 );
 
 SQLMATH_API int jsbatonAssertOk(
@@ -470,7 +477,6 @@ SQLMATH_API void dbExec(
     // declare var
     DbExecBindElem *bindElem = NULL;
     DbExecBindElem *bindList = NULL;
-    const char **pzShared = ((const char **) baton->argv) + 8;
     const char *zBind = (const char *) baton + JSBATON_OFFSET_ALL;
     const char *zSql = jsbatonGetString(baton, 1);
     const char *zTmp = NULL;
@@ -527,6 +533,12 @@ SQLMATH_API void dbExec(
             bindElem->buf = zBind + 4;
             zBind += 4 + bindElem->buflen;
             break;
+        case SQLITE_DATATYPE_EXTERNALBUFFER:
+            bindElem->buflen = baton->bufv[*(int32_t *) zBind].len;
+            bindElem->buf =
+                (const char *) baton->bufv[*(int32_t *) zBind].buf;
+            zBind += 4;
+            break;
         case SQLITE_DATATYPE_FLOAT:
         case SQLITE_DATATYPE_INTEGER:
             bindElem->buf = zBind;
@@ -536,12 +548,6 @@ SQLMATH_API void dbExec(
         case SQLITE_DATATYPE_INTEGER_1:
         case SQLITE_DATATYPE_NULL:
         case SQLITE_DATATYPE_TEXT_0:
-            break;
-        case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
-            bindElem->buflen = *(int32_t *) zBind;
-            bindElem->buf = *pzShared;
-            pzShared += 1;
-            zBind += 4;
             break;
         default:
             fprintf(stderr, "\nsqlmath.dbExec(ii=%d datatype=%d len=%d)\n",
@@ -583,6 +589,7 @@ SQLMATH_API void dbExec(
                 if (bindIdx > 0) {
                     switch (bindElem->datatype) {
                     case SQLITE_DATATYPE_BLOB:
+                    case SQLITE_DATATYPE_EXTERNALBUFFER:
                         errcode =
                             sqlite3_bind_blob(pStmt, bindIdx, bindElem->buf,
                             bindElem->buflen, SQLITE_STATIC);
@@ -605,11 +612,6 @@ SQLMATH_API void dbExec(
                         break;
                     case SQLITE_DATATYPE_NULL:
                         errcode = sqlite3_bind_null(pStmt, bindIdx);
-                        break;
-                    case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
-                        errcode =
-                            sqlite3_bind_blob(pStmt, bindIdx, bindElem->buf,
-                            bindElem->buflen, SQLITE_STATIC);
                         break;
                     case SQLITE_DATATYPE_TEXT_0:
                         errcode =
@@ -773,8 +775,8 @@ SQLMATH_API void dbExec(
     errcode = sqlite3_str_errcode(str99);
     JSBATON_ASSERT_OK();
     // copy str99 to baton
-    baton->argv[0] = sqlite3_str_length(str99);
-    baton->bufv[0] = (int64_t) str99->zText;
+    baton->bufv[0].buf = (int64_t) str99->zText;
+    baton->bufv[0].len = sqlite3_str_length(str99);
   catch_error:
     // cleanup pStmt
     sqlite3_finalize(pStmt);
@@ -1189,7 +1191,7 @@ SQLMATH_API char *jsbatonGetErrmsg(
     Jsbaton * baton
 ) {
 // This function will return <baton>->errmsg.
-    return (char *) baton + JSBATON_OFFSET_ERRMSG;
+    return baton->errmsg;
 }
 
 SQLMATH_API int64_t jsbatonGetInt64(
@@ -3106,16 +3108,81 @@ static int napiAssertOk(
 
 
 // file sqlmath_nodejs - promise
-static void jsbatonBufferFinalize(
+static void cbufferFinalize(
     napi_env env,
     void *finalize_data,
     void *finalize_hint
 ) {
-// This function will finalize <finalize_data>.
+// This function will sqlite3_free memory from sqlite3_malloc.
     UNUSED_PARAMETER(env);
     UNUSED_PARAMETER(finalize_hint);
-    // cleanup baton->bufv[ii]
     sqlite3_free(finalize_data);
+}
+
+static napi_value jsbatonSetArraybuffer(
+    napi_env env,
+    napi_callback_info info
+) {
+// This function will set arraybuffer to <baton> at <argi>.
+    // declare var
+    Jsbaton *baton = NULL;
+    Jsbuffer *buf = NULL;
+    int errcode = 0;
+    int32_t argi = 0;
+    napi_value argv[3] = { 0 };
+    size_t argc = 3;
+    // init argv, baton
+    errcode = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
+    NAPI_ASSERT_OK();
+    errcode =
+        napi_get_arraybuffer_info(env, argv[0], (void **) &baton, &argc);
+    NAPI_ASSERT_OK();
+    // init argi
+    napi_get_value_int32(env, argv[1], &argi);
+    NAPI_ASSERT_OK();
+    // set arraybuffer
+    buf = &(baton->bufv[(size_t) argi]);
+    errcode =
+        napi_get_arraybuffer_info(env, argv[2], (void **) &(buf->buf),
+        (size_t *) & (buf->len));
+    NAPI_ASSERT_OK();
+    return argv[0];
+}
+
+static napi_value jsbatonStealCbuffer(
+    napi_env env,
+    napi_callback_info info
+) {
+// This function will reference-steal c-buffer from <baton> at <argi>,
+// and be responsible for cleanup.
+    // declare var
+    Jsbaton *baton = NULL;
+    Jsbuffer *buf = NULL;
+    int errcode = 0;
+    int32_t argi = 0;
+    napi_value argv[2] = { 0 };
+    napi_value result = NULL;
+    size_t argc = 2;
+    // init argv, baton
+    errcode = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
+    NAPI_ASSERT_OK();
+    errcode =
+        napi_get_arraybuffer_info(env, argv[0], (void **) &baton, &argc);
+    NAPI_ASSERT_OK();
+    // init argi
+    napi_get_value_int32(env, argv[1], &argi);
+    NAPI_ASSERT_OK();
+    // create external-arraybuffer from sqlite-buffer
+    buf = &(baton->bufv[(size_t) argi]);
+    errcode = napi_create_external_arraybuffer( //
+        env,                    // napi_env env,
+        (void *) buf->buf,      // void* external_data,
+        (size_t) buf->len,      // size_t byte_length,
+        cbufferFinalize,        // napi_finalize finalize_cb,
+        NULL,                   // void* finalize_hint,
+        &result);               // napi_value* result
+    NAPI_ASSERT_OK();
+    return result;
 }
 
 static void jspromiseExecute(
@@ -3163,25 +3230,6 @@ static void jspromiseResolve(
         errcode = napi_reject_deferred(env, baton->napi_deferred, val);
         NAPI_ASSERT_FATAL(errcode == 0, "napi_reject_deferred");
     } else {
-        // Resolve promise with result.
-        // export baton->argv and baton->bufv to baton->napi_argv
-        size_t argi = 0;
-        if (baton->bufv[argi]) {
-            // init argList[argi] = bufv[argi]
-            errcode = napi_create_external_arraybuffer(env,     // napi_env env,
-                (void *) baton->bufv[argi],     // void* external_data,
-                (size_t) baton->argv[argi],     // size_t byte_length,
-                jsbatonBufferFinalize,  // napi_finalize finalize_cb,
-                NULL,           // void* finalize_hint,
-                &val);          // napi_value* result
-            if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) {
-                return;
-            }
-            errcode = napi_set_element(env, baton->napi_argv, argi, val);
-            if (0 != napiAssertOk(env, __func__, __FILE__, __LINE__, errcode)) {
-                return;
-            }
-        }
         errcode =
             napi_resolve_deferred(env, baton->napi_deferred,
             baton->napi_argv);
@@ -3202,41 +3250,23 @@ static napi_value jspromiseCreate(
 ) {
 // Create a deferred promise and an async queue work item.
     //
-    // Create a baton for passing data between nodejs <-> c.
+    // Create baton for passing data between nodejs <-> c.
     // declare var
     Jsbaton *baton = NULL;
     int errcode = 0;
-    napi_value argv[2] = { 0 };
-    napi_value promise = 0;
-    napi_value val = NULL;
-    size_t argi = 0;
-    // init argv
-    argi = 2;
-    errcode = napi_get_cb_info(env, info, &argi, argv, NULL, NULL);
+    napi_value argv[3] = { 0 };
+    napi_value promise = NULL;
+    size_t argc = 3;
+    // init argv, baton
+    errcode = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
     NAPI_ASSERT_OK();
-    // init baton
-    baton = (Jsbaton *) argv[0];
     errcode =
-        napi_get_dataview_info(env, (napi_value) baton, NULL,
-        (void **) &baton, NULL, NULL);
+        napi_get_arraybuffer_info(env, argv[0], (void **) &baton, &argc);
     NAPI_ASSERT_OK();
-    // init argv - external buffer
+    // init napi_argv
     baton->napi_argv = argv[1];
-    for (argi = 0; argi < JSBATON_ARGC; argi += 1) {
-        bool is_dataview = 0;
-        errcode = napi_get_element(env, baton->napi_argv, argi, &val);
-        NAPI_ASSERT_OK();
-        errcode = napi_is_dataview(env, val, &is_dataview);
-        NAPI_ASSERT_OK();
-        if (is_dataview) {
-            errcode =
-                napi_get_dataview_info(env, val, NULL,
-                (void **) (baton->argv + argi), NULL, NULL);
-            NAPI_ASSERT_OK();
-        }
-    }
     //
-    // Create a nodejs promise.
+    // Create nodejs-promise.
     // reference result to prevent gc
     errcode = napi_create_reference(env,        // napi_env env
         baton->napi_argv,       // napi_value value
@@ -3256,16 +3286,13 @@ static napi_value jspromiseCreate(
         napi_create_promise(env, (napi_deferred *) & (baton->napi_deferred),
         &promise);
     NAPI_ASSERT_OK();
-    // init async_resource_name
-    errcode =
-        napi_create_string_utf8(env,
-        "sqlmath._jspromiseCreate - napi_create_async_work()",
-        NAPI_AUTO_LENGTH, &val);
+    //
+    // Execute code inside nodejs-promise.
     // Create an async work item, passing in the addon data, which will give the
     // worker thread access to the above-created deferred promise.
     errcode = napi_create_async_work(env,       // napi_env env,
         NULL,                   // napi_value async_resource,
-        val,                    // napi_value async_resource_name,
+        argv[2],                // napi_value async_resource_name,
         jspromiseExecute,       // napi_async_execute_callback execute,
         jspromiseResolve,       // napi_async_complete_callback complete,
         baton,                  // void* data,
@@ -3276,6 +3303,8 @@ static napi_value jspromiseCreate(
     errcode = napi_queue_async_work(env, baton->napi_work);
     NAPI_ASSERT_OK();
     // This causes created `promise` to be returned to JavaScript.
+    //
+    // Return nodejs-promise.
     return promise;
 }
 
@@ -3303,8 +3332,9 @@ napi_value napi_module_sqlmath_init(
     // declare var
     int errcode = 0;
     const napi_property_descriptor propList[] = {
-        {"_jspromiseCreate", NULL, jspromiseCreate, NULL, NULL, NULL,
-            napi_default, NULL},
+        NAPI_CREATE_FUNCTION(jsbatonSetArraybuffer),
+        NAPI_CREATE_FUNCTION(jsbatonStealCbuffer),
+        NAPI_CREATE_FUNCTION(jspromiseCreate),
     };
     errcode = napi_define_properties(env, exports,
         sizeof(propList) / sizeof(napi_property_descriptor), propList);
@@ -3424,18 +3454,20 @@ static PyObject *pydbCall(
         PyErr_SetString(PyExc_RuntimeError, jsbatonGetErrmsg(baton));
         return NULL;
     }
-    //
-    // Return argv.
-    // export baton->argv and baton->bufv to argv
-    ii = 0;
-    if (baton->bufv[ii]) {
-        // init argList[ii] = bufv[ii]
-        Pysqlbuf *buf =
-            (Pysqlbuf *) (&Pysqlbuf_Type)->tp_alloc(&Pysqlbuf_Type, 0);
-        buf->buf = (void *) baton->bufv[ii];
-        buf->shape[0] = baton->argv[ii];
-        val = PyMemoryView_FromObject((PyObject *) buf);
-    }
+    /*
+       //
+       // Return argv.
+       // export baton->argv and baton->bufv to argv
+       ii = 0;
+       if (baton->bufv[ii]) {
+       // init argList[ii] = bufv[ii]
+       Pysqlbuf *buf =
+       (Pysqlbuf *) (&Pysqlbuf_Type)->tp_alloc(&Pysqlbuf_Type, 0);
+       buf->buf = (void *) baton->bufv[ii];
+       buf->shape[0] = baton->argv[ii];
+       val = PyMemoryView_FromObject((PyObject *) buf);
+       }
+     */
     if (val == NULL) {
         return NULL;
     }

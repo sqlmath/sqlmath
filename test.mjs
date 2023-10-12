@@ -201,13 +201,15 @@ jstestDescribe((
             [NaN, 0],
             // 5. object
             [[], "[]"],
+            [new ArrayBuffer(0), null],
+            [new ArrayBuffer(1), null],
             [new Date(0), "1970-01-01T00:00:00.000Z"],
             [new RegExp(), "{}"],
-            [new SharedArrayBuffer(0), null],
             [new TextEncoder().encode(""), null],
             [new TextEncoder().encode("\u0000"), null],
             [new TextEncoder().encode("\u0000\u{1f600}\u0000"), null],
             [new Uint8Array(0), null],
+            [new Uint8Array(1), null],
             [null, null],
             [{}, "{}"],
             // 6. string
@@ -259,15 +261,16 @@ jstestDescribe((
                     }
                     break;
                 case "object":
-                    if (ArrayBuffer.isView(valInput)) {
-                        bufExpected = new TextDecoder().decode(valInput);
+                    if (valInput === null) {
+                        bufExpected = "";
                         break;
                     }
                     if (
-                        valInput === null
-                        || valInput.constructor === SharedArrayBuffer
+                        valInput?.constructor === ArrayBuffer
+                        || ArrayBuffer.isView(valInput)
                     ) {
-                        bufExpected = "";
+                        bufExpected = new TextDecoder().decode(valInput);
+                        break;
                     }
                     break;
                 }
@@ -382,42 +385,64 @@ jstestDescribe((
     ), async function () {
         // test datatype handling-behavior
         await Promise.all([
-            ["", ""],
-            ["\u0000", ""],
-            ["aa", "aa"],
-            [-0, 0],
-            [-0.5, Error],
+            // 1. bigint
             [-0n, -0],
             [-0x8000000000000000n, -0x8000000000000000n],
             [-0x8000000000000001n, Error],
+            [-1n, -1],
+            [-2n, -2],
+            [0n, 0],
+            [0x7fffffffffffffffn, 0x7fffffffffffffffn],
+            [0x8000000000000000n, Error],
+            [1n, 1],
+            [2n, 2],
+            // 2. boolean
+            [false, 0],
+            [true, 1],
+            // 3. function
+            [noop, 0],
+            // 4. number
+            [-0, 0],
+            [-0.5, Error],
             [-1 / 0, Error],
             [-1e-999, 0],
             [-1e999, Error],
-            [-1n, -1],
             [-2, -2],
-            [-2n, -2],
             [-Infinity, Error],
             [-NaN, Error],
             [0, 0],
             [0.5, Error],
-            [0n, 0],
-            [0x7fffffffffffffffn, 0x7fffffffffffffffn],
-            [0x8000000000000000n, Error],
             [1 / 0, Error],
             [1e-999, 0],
             [1e999, Error],
-            [1n, 1],
             [2, 2],
-            [2n, 2],
             [Infinity, Error],
             [NaN, Error],
-            [Symbol(), 0],
-            [false, 0],
-            [noop, 0],
+            // 5. object
+            [[], 0],
+            [new ArrayBuffer(0), 0],
+            [new ArrayBuffer(1), 0],
+            [new Date(0), 0],
+            [new RegExp(), 0],
+            [new TextEncoder().encode(""), 0],
+            [new TextEncoder().encode("\u0000"), 0],
+            [new TextEncoder().encode("\u0000\u{1f600}\u0000"), 0],
+            [new Uint8Array(0), 0],
+            [new Uint8Array(1), 0],
             [null, 0],
-            [true, 1],
-            [undefined, 0],
-            [{}, 0]
+            [{}, 0],
+            // 6. string
+            ["", ""],
+            ["0", "0"],
+            ["1", "1"],
+            ["2", "2"],
+            ["\u0000", ""],
+            ["\u0000\u{1f600}\u0000", "\u0000\u{1f600}"],
+            ["a".repeat(9999), "a".repeat(9999)],
+            // 7. symbol
+            [Symbol(), 0],
+            // 8. undefined
+            [undefined, 0]
         ].map(async function ([
             valInput, valExpected
         ]) {

@@ -56,18 +56,9 @@ let debugInline = (function () {
 
 function isExternalBuffer(buf) {
 
-// This function will check if <buf> is ArrayBuffer or SharedArrayBuffer.
+// This function will check if <buf> is ArrayBuffer.
 
-    return (
-        buf
-        && (
-            buf.constructor === ArrayBuffer
-            || (
-                typeof SharedArrayBuffer === "function"
-                && buf.constructor === SharedArrayBuffer
-            )
-        )
-    );
+    return buf && buf.constructor === ArrayBuffer;
 }
 
 function noop(val) {

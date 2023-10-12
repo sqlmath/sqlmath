@@ -26,8 +26,7 @@
 "use strict";
 
 let JSBATON_ARGC = 16;
-let JSBATON_OFFSET_ALL = 512;
-let JSBATON_OFFSET_ARG0 = 1;
+let JSBATON_OFFSET_ALL = 768;
 let JSBATON_OFFSET_ARGV = 128;
 let JSBATON_OFFSET_FUNCNAME = 8;
 let JS_MAX_SAFE_INTEGER = 0x1fffffffffffff;
@@ -35,12 +34,12 @@ let JS_MIN_SAFE_INTEGER = -0x1fffffffffffff;
 let SIZEOF_BLOB_MAX = 1000000000;
 let SIZEOF_FUNCNAME = 16;
 let SQLITE_DATATYPE_BLOB = 0x04;
+let SQLITE_DATATYPE_EXTERNALBUFFER = 0x71;
 let SQLITE_DATATYPE_FLOAT = 0x02;
 let SQLITE_DATATYPE_INTEGER = 0x01;
 let SQLITE_DATATYPE_INTEGER_0 = 0x00;
 let SQLITE_DATATYPE_INTEGER_1 = 0x21;
 let SQLITE_DATATYPE_NULL = 0x05;
-let SQLITE_DATATYPE_SHAREDARRAYBUFFER = 0x71;
 let SQLITE_DATATYPE_TEXT = 0x03;
 let SQLITE_DATATYPE_TEXT_0 = 0x13;
 let SQLITE_RESPONSETYPE_LASTBLOB = 1;
@@ -428,7 +427,10 @@ async function dbCallAsync(baton, argList, mode) {
     if (mode === "modeDb") {
         // init db
         db = argList[0];
-        assertOrThrow(db?.busy >= 0, `invalid db.busy = ${db?.busy}`);
+        assertOrThrow(
+            db?.busy >= 0,
+            `dbCallAsync - invalid db.busy = ${db?.busy}`
+        );
         db.ii = (db.ii + 1) % db.connPool.length;
         db.ptr = db.connPool[db.ii][0];
         // increment db.busy
@@ -438,7 +440,10 @@ async function dbCallAsync(baton, argList, mode) {
         } finally {
             // decrement db.busy
             db.busy -= 1;
-            assertOrThrow(db?.busy >= 0, `invalid db.busy = ${db?.busy}`);
+            assertOrThrow(
+                db?.busy >= 0,
+                `dbCallAsync - invalid db.busy = ${db?.busy}`
+            );
         }
     }
     // copy argList to avoid side-effects
@@ -461,10 +466,11 @@ async function dbCallAsync(baton, argList, mode) {
             assertOrThrow(
                 (
                     (JS_MIN_SAFE_INTEGER <= val && val <= JS_MAX_SAFE_INTEGER)
-                    || typeof val !== "number"
+                    || typeof val === "bigint"
                 ),
                 (
-                    "non-bigint integer must be within inclusive-range"
+                    "dbCallAsync - "
+                    + "non-bigint-integer must be within inclusive-range"
                     + ` ${JS_MIN_SAFE_INTEGER} to ${JS_MAX_SAFE_INTEGER}`
                 )
             );
@@ -483,10 +489,13 @@ async function dbCallAsync(baton, argList, mode) {
             ));
             return;
         }
-        // normalize buffer to zero-byte-offset
-        if (ArrayBuffer.isView(val)) {
-            return new DataView(val.buffer, val.byteOffset, val.byteLength);
-        }
+        assertOrThrow(
+            !ArrayBuffer.isView(val) || val.byteOffset === 0,
+            (
+                "dbCallAsync - argList cannot contain arraybuffer-views"
+                + " with non-zero byteOffset"
+            )
+        );
         if (isExternalBuffer(val)) {
             return val;
         }
@@ -495,6 +504,10 @@ async function dbCallAsync(baton, argList, mode) {
     [baton, ...argList].forEach(function (arg) {
         assertOrThrow(!ArrayBuffer.isView(arg) || arg.byteOffset === 0, arg);
     });
+    // extract funcname
+    funcname = new TextDecoder().decode(
+        new DataView(baton.buffer, JSBATON_OFFSET_FUNCNAME, SIZEOF_FUNCNAME)
+    ).replace((/\u0000/g), "");
     // preserve stack-trace
     errStack = new Error().stack.replace((/.*$/m), "");
     try {
@@ -502,17 +515,13 @@ async function dbCallAsync(baton, argList, mode) {
 // Dispatch to nodejs-napi.
 
         if (!IS_BROWSER) {
-            await cModule._jspromiseCreate(baton, argList);
+            await cModule._jspromiseCreate(baton.buffer, argList, funcname);
             // prepend baton to argList
             return [baton, ...argList];
         }
 
 // Dispatch to web-worker.
 
-        // extract funcname
-        funcname = new TextDecoder().decode(
-            new DataView(baton.buffer, JSBATON_OFFSET_FUNCNAME, SIZEOF_FUNCNAME)
-        ).replace((/\u0000/g), "");
         // increment sqlMessageId
         sqlMessageId += 1;
         id = sqlMessageId;
@@ -603,42 +612,38 @@ async function dbExecAsync({
     let baton;
     let bindByKey;
     let bindListLength;
-    let externalbufferList;
+    let bufi;
     let result;
     baton = jsbatonCreate("_dbExec");
+    bufi = [0];
     bindByKey = !Array.isArray(bindList);
     bindListLength = (
         Array.isArray(bindList)
         ? bindList.length
         : Object.keys(bindList).length
     );
-    externalbufferList = [];
     Object.entries(bindList).forEach(function ([key, val]) {
         if (bindByKey) {
             baton = jsbatonSetValue(baton, undefined, `:${key}\u0000`);
         }
-        baton = jsbatonSetValue(baton, undefined, val, externalbufferList);
+        baton = jsbatonSetValue(baton, undefined, val, bufi);
     });
-    result = await dbCallAsync(
+    [baton] = await dbCallAsync(
         baton,
         [
-            db,                     // 0 - response
+            db,                 // 0
             String(sql) + "\n;\nPRAGMA noop",   // 1
-            bindListLength,         // 2
-            bindByKey,              // 3
-            (                       // 4
+            bindListLength,     // 2
+            bindByKey,          // 3
+            (                   // 4
                 responseType === "lastBlob"
                 ? SQLITE_RESPONSETYPE_LASTBLOB
                 : 0
-            ),
-            undefined, // 5
-            undefined, // 6
-            undefined, // 7
-            ...externalbufferList        // 8
+            )
         ],
         "modeDb"
     );
-    result = result[JSBATON_OFFSET_ARG0 + 0];
+    result = cModule._jsbatonStealCbuffer(baton.buffer, 0);
     switch (responseType) {
     case "arraybuffer":
     case "lastBlob":
@@ -691,7 +696,7 @@ async function dbFileLoadAsync({
         ],
         "modeDb"
     );
-    return dbData[JSBATON_OFFSET_ARG0 + 0];
+    return dbData[1 + 0];
 }
 
 async function dbFileSaveAsync({
@@ -743,7 +748,7 @@ async function dbOpenAsync({
     connPool = await Promise.all(Array.from(new Array(
         threadCount
     ), async function () {
-        let ptr = await dbCallAsync(
+        let [ptr] = await dbCallAsync(
             jsbatonCreate("_dbOpen"),
             [
                 // 0. const char *filename,   Database filename (UTF-8)
@@ -760,7 +765,7 @@ async function dbOpenAsync({
                 dbData
             ]
         );
-        ptr = [ptr[0].getBigInt64(JSBATON_OFFSET_ARGV + 0, true)];
+        ptr = [ptr.getBigInt64(JSBATON_OFFSET_ARGV + 0, true)];
         dbFinalizationRegistry.register(db, {afterFinalization, ptr});
         return ptr;
     }));
@@ -818,18 +823,9 @@ async function fsWriteFileUnlessTest(file, data, mode) {
 
 function isExternalBuffer(buf) {
 
-// This function will check if <buf> is ArrayBuffer or SharedArrayBuffer.
+// This function will check if <buf> is ArrayBuffer.
 
-    return (
-        buf
-        && (
-            buf.constructor === ArrayBuffer
-            || (
-                typeof SharedArrayBuffer === "function"
-                && buf.constructor === SharedArrayBuffer
-            )
-        )
-    );
+    return buf && buf.constructor === ArrayBuffer;
 }
 
 function jsbatonCreate(funcname) {
@@ -868,7 +864,7 @@ function jsbatonGetString(baton, argi) {
     ));
 }
 
-function jsbatonSetValue(baton, argi, val, externalbufferList) {
+function jsbatonSetValue(baton, argi, val, bufi) {
 
 // This function will set <val> to buffer <baton>.
 
@@ -879,12 +875,12 @@ function jsbatonSetValue(baton, argi, val, externalbufferList) {
     let vtype;
 /*
 #define SQLITE_DATATYPE_BLOB            0x04
+#define SQLITE_DATATYPE_EXTERNALBUFFER          0x71
 #define SQLITE_DATATYPE_FLOAT           0x02
 #define SQLITE_DATATYPE_INTEGER         0x01
 #define SQLITE_DATATYPE_INTEGER_0       0x00
 #define SQLITE_DATATYPE_INTEGER_1       0x21
 #define SQLITE_DATATYPE_NULL            0x05
-#define SQLITE_DATATYPE_SHAREDARRAYBUFFER       0x71
 #define SQLITE_DATATYPE_TEXT            0x03
 #define SQLITE_DATATYPE_TEXT_0          0x13
     //  1. 0.bigint
@@ -970,17 +966,12 @@ function jsbatonSetValue(baton, argi, val, externalbufferList) {
     // 13. 1.object
     default:
         // 18. 1.externalbuffer
-        if (isExternalBuffer(val)) {
+        if (val.constructor === ArrayBuffer) {
             assertOrThrow(
                 !IS_BROWSER,
                 "external ArrayBuffer cannot be passed directly to wasm"
             );
-            assertOrThrow(
-                externalbufferList.length <= 8,
-                "externalbufferList.length must be less than or equal to 8"
-            );
-            externalbufferList.push(new DataView(val));
-            vtype = SQLITE_DATATYPE_SHAREDARRAYBUFFER;
+            vtype = SQLITE_DATATYPE_EXTERNALBUFFER;
             vsize = 4;
             break;
         }
@@ -1023,7 +1014,7 @@ function jsbatonSetValue(baton, argi, val, externalbufferList) {
             new Uint8Array(tmp.buffer, tmp.byteOffset, nused)
         );
     }
-    // push vtype
+    // push vtype - 1-byte
     baton.setUint8(nused, vtype);
     // update nused
     baton.setInt32(4, nused + 1 + vsize, true);
@@ -1031,7 +1022,7 @@ function jsbatonSetValue(baton, argi, val, externalbufferList) {
     switch (vtype) {
     case SQLITE_DATATYPE_BLOB:
     case SQLITE_DATATYPE_TEXT:
-        // set argv[ii] to blob/text location
+        // set argv[ii] to blob/text location - 4-byte
         if (argi !== undefined) {
             baton.setInt32(JSBATON_OFFSET_ARGV + argi * 8, nused, true);
         }
@@ -1043,23 +1034,16 @@ function jsbatonSetValue(baton, argi, val, externalbufferList) {
                 + ` 0 to ${SIZEOF_BLOB_MAX}`
             )
         );
-        // push vsize
+        // push vsize - 4-byte
         baton.setInt32(nused + 1, vsize, true);
-        // copy val into baton
+        // copy val into baton - vsize-byte
         new Uint8Array(
             baton.buffer,
             baton.byteOffset + nused + 1 + 4,
             vsize
         ).set(new Uint8Array(val.buffer, val.byteOffset, vsize));
         break;
-    case SQLITE_DATATYPE_FLOAT:
-        baton.setFloat64(nused + 1, val, true);
-        break;
-    case SQLITE_DATATYPE_INTEGER:
-        assertInt64(val);
-        baton.setBigInt64(nused + 1, val, true);
-        break;
-    case SQLITE_DATATYPE_SHAREDARRAYBUFFER:
+    case SQLITE_DATATYPE_EXTERNALBUFFER:
         vsize = val.byteLength;
         assertOrThrow(
             0 <= vsize && vsize <= SIZEOF_BLOB_MAX,
@@ -1068,8 +1052,23 @@ function jsbatonSetValue(baton, argi, val, externalbufferList) {
                 + ` 0 to ${SIZEOF_BLOB_MAX}`
             )
         );
-        // push vsize
-        baton.setInt32(nused + 1, vsize, true);
+        assertOrThrow(
+            bufi[0] < JSBATON_ARGC,
+            "cannot pass more than ${JSBATON_ARGC} arraybuffers"
+        );
+        // push bufi - 4-byte
+        baton.setInt32(nused + 1, bufi[0], true);
+        // set buffer
+        cModule._jsbatonSetArraybuffer(baton.buffer, bufi[0], val);
+        // increment bufi
+        bufi[0] += 1;
+        break;
+    case SQLITE_DATATYPE_FLOAT:
+        baton.setFloat64(nused + 1, val, true);
+        break;
+    case SQLITE_DATATYPE_INTEGER:
+        assertInt64(val);
+        baton.setBigInt64(nused + 1, val, true);
         break;
     }
     return baton;
