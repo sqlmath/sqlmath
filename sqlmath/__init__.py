@@ -31,7 +31,7 @@ import struct
 import sys
 import weakref
 
-from ._sqlmath import _pybatonStealCbuffer, _pydbCall
+from ._sqlmath import _pybatonSetArraybuffer, _pybatonStealCbuffer, _pydbCall
 
 JSBATON_ARGC = 8
 JSBATON_OFFSET_ALL = 256
@@ -140,15 +140,10 @@ def assertorthrow(condition, message):
 def db_call(baton, arglist):
     """This function will call c-function dbXxx() with given <funcname>."""
     """and return [<baton>, ...arglist]."""
-    # copy argList to avoid side-effect
-    arglist = [*arglist]
     assertorthrow(
         len(arglist) <= JSBATON_ARGC,
         f"db_call - len(arglist) must be less than than {JSBATON_ARGC}",
     )
-    # pad arglist to length JSBATON_ARGC
-    while len(arglist) < JSBATON_ARGC:
-        arglist.append(0)
     # serialize js-value to c-value
     for argi, val in enumerate(arglist):
         if isinstance(val, (bool, float, int)):
@@ -177,9 +172,8 @@ def db_call(baton, arglist):
                 "db_call - memoryview-object must be contiguous",
             )
             continue
-    _pydbCall(baton, arglist)
-    # prepend baton, funcname to arglist
-    return [baton, *arglist]
+    _pydbCall(baton)
+    return [baton]
 
 
 def db_close(db):
@@ -534,7 +528,7 @@ def jsbaton_set_value(baton, argi, val, bufi):
         # push externalbuffer - 4-byte
         struct.pack_into("i", baton, nused + 1, bufi[0]) # ctype-i = int
         # set buffer
-        # !! cModule._jsbatonSetArraybuffer(baton.buffer, bufi[0], val)
+        _pybatonSetArraybuffer(baton, bufi[0], val)
         # increment bufi
         bufi[0] += 1
         return baton

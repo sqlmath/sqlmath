@@ -140,6 +140,27 @@ class TestCaseSqlmath(unittest.TestCase):
         # test null-case handling-behavior
         asserterrorthrown(lambda: sqlmath.db_open(None), "invalid filename")
 
+    def test_mybuffer(self):
+        """Test mybuffer handling-behavior."""
+        from sqlmath._sqlmath import _mybuffer_create
+        print("Create buffer")
+        view = memoryview(_mybuffer_create())
+        # !! print(bb, bytearray(bb), memoryview(bb))
+        debuginline({
+            "view": view,
+            "bytearray": bytearray(view),
+            "bytes": bytes(view),
+            #
+            "len": len(view),
+            "readonly": view.readonly,
+            "itemsize": view.itemsize,
+            "format": view.format,
+            "ndim": view.ndim,
+            "shape": view.shape,
+            "strides": view.strides,
+            "suboffsets": view.suboffsets,
+        })
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -160,18 +160,6 @@ file sqlmath_h - start
 #define NAPI_CREATE_FUNCTION(func) \
     {"_" #func, NULL, func, NULL, NULL, NULL, napi_default, NULL}
 
-#define PY_PARSE_ARGV() \
-    Jsbaton *baton = NULL; \
-    PyObject *argv = NULL; \
-    { \
-        Py_buffer pybuf = { 0 }; \
-        if (!PyArg_ParseTuple(args, "y*O!", &pybuf, &PyList_Type, &argv)) { \
-            return NULL; \
-        } \
-        baton = pybuf.buf; \
-        PyBuffer_Release(&pybuf); \
-    }
-
 #define SQLITE3_AGGREGATE_CONTEXT(type) \
     type *agg = (type *) sqlite3_aggregate_context(context, sizeof(*agg)); \
     if (agg == NULL) { \
@@ -3365,79 +3353,128 @@ file sqlmath_python - start
 #include <Python.h>
 
 
-typedef struct {
-    PyObject_HEAD void *buf;
-    Py_ssize_t shape[1];
-} Pysqlbuf;
+static PyObject *pybatonSetArraybuffer(
+    PyObject * self,
+    PyObject * args
+) {
+// This function will set arraybuffer to <baton> at <bufi>.
+    UNUSED_PARAMETER(self);
+    // init baton, bufi, pybuf
+    Jsbaton *baton = NULL;
+    Py_buffer pybuf[2] = { 0 };
+    long bufi = 0;              // NOLINT - python requires explicit long
+    if (!PyArg_ParseTuple(args, "y*ly*", &(pybuf[0]), &bufi, &(pybuf[1]))) {
+        return NULL;
+    }
+    baton = pybuf[0].buf;
+    // set arraybuffer
+    Jsbuffer *buf = &(baton->bufv[(size_t) bufi]);
+    buf->buf = pybuf[1].buf;
+    buf->len = pybuf[1].len;
+    // cleanup pybuf
+    PyBuffer_Release(&(pybuf[0]));
+    PyBuffer_Release(&(pybuf[1]));
+    Py_RETURN_NONE;
+}
 
-// https://stackoverflow.com/questions/37988849/safer-way-to-expose-a-c-allocated-memory-buffer-using-numpy-ctypes/38165448#38165448
-// https://docs.python.org/3/c-api/buffer.html
-static int Pysqlbuf_getbuf(
-    Pysqlbuf * self,
+
+// static PyObject *pybatonStealCbuffer - end
+typedef struct {
+    PyObject_HEAD char *buf;
+    Py_ssize_t len;
+} PycbufStruct;
+
+static void Pycbuf_dealloc(
+    PycbufStruct * self
+) {
+    sqlite3_free(self->buf);
+    self->buf = NULL;
+    self->len = 0;
+    Py_TYPE(self)->tp_free((PyObject *) self);
+}
+
+static int Pycbuf_getbuf(
+    PycbufStruct * self,
     Py_buffer * view,
     int flags
 ) {
-    UNUSED_PARAMETER(flags);
-    static Py_ssize_t strides[1] = { 1 };
+    view->obj = Py_XNewRef((PyObject *) self);
     view->buf = self->buf;
-    view->obj = (PyObject *) self;
-    view->len = self->shape[0];
+    view->len = self->len;
     view->readonly = 1;
     view->itemsize = 1;
     view->format = "B";
     view->ndim = 1;
-    view->shape = self->shape;
-    view->strides = strides;
+    view->shape = NULL;
+    view->strides = NULL;
     view->suboffsets = NULL;
     view->internal = NULL;
-    // We need to increase the reference count of our buffer object here, but
-    // Python will automatically decrease it when the view goes out of scope.
-    Py_INCREF(self);
-    // Done
     return 0;
 }
 
-static void Pysqlbuf_dealloc(
-    PyObject * self
-) {
-// Called when there are no more references to the object.
-    fprintf(stderr, "\nPysqlbuf_dealloc()\n");
-    sqlite3_free(((Pysqlbuf *) self)->buf);
-}
-
-static PyBufferProcs Pysqlbuf_as_buffer = {
-    .bf_getbuffer = (getbufferproc) Pysqlbuf_getbuf,
-    .bf_releasebuffer = (releasebufferproc) NULL,
+static PyBufferProcs Pycbuf_as_buffer = {
+    .bf_getbuffer = (getbufferproc) Pycbuf_getbuf,
 };
 
-static PyTypeObject Pysqlbuf_Type = {
+static PyTypeObject PycbufType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-        .tp_name = "sqlmath.Pysqlbuf",
-    .tp_basicsize = sizeof(Pysqlbuf),
-    .tp_dealloc = &Pysqlbuf_dealloc,
-    .tp_as_buffer = &Pysqlbuf_as_buffer,
+        .tp_name = "PycbufType",
+    .tp_basicsize = sizeof(PycbufStruct),
+    //
+    .tp_dealloc = (destructor) Pycbuf_dealloc,
+    .tp_as_buffer = &Pycbuf_as_buffer,
     .tp_flags = Py_TPFLAGS_DEFAULT,
-    .tp_doc = "External Sqlite Buffer",
 };
+
+//----------------------------------------------------------------------------
+// Define a Python function to put in the module which creates a new buffer
+//----------------------------------------------------------------------------
+
+static PyObject *mybuffer_create(
+    PyObject * self,
+    PyObject * args
+) {
+    PycbufStruct *buf =
+        (PycbufStruct *) (&PycbufType)->tp_alloc(&PycbufType, 0);
+    if (buf == NULL) {
+        return NULL;
+    }
+    buf->buf = sqlite3_malloc(8);
+    buf->len = 8;
+    return (PyObject *) buf;
+}
 
 static PyObject *pybatonStealCbuffer(
     PyObject * self,
     PyObject * args
 ) {
+// This function will reference-steal sqlite-buffer from <baton> at <bufi>,
+// and be responsible for cleanup.
     UNUSED_PARAMETER(self);
-    //
-    // Create baton for passing data between nodejs <-> c.
-    // init argv, baton
-    PY_PARSE_ARGV();
-    //
-    // Execute dbCall().
-    dbCall(baton);
-    if (jsbatonGetErrmsg(baton)[0] != '\x00') {
-        PyErr_SetString(PyExc_RuntimeError, jsbatonGetErrmsg(baton));
+    // init baton, bufi, pybuf
+    Jsbaton *baton = NULL;
+    Py_buffer pybuf = { 0 };
+    long bufi = 0;              // NOLINT - python requires explicit long
+    if (!PyArg_ParseTuple(args, "y*ly*", &pybuf, &bufi)) {
         return NULL;
     }
-    Py_RETURN_NONE;
+    baton = pybuf.buf;
+    // cleanup pybuf
+    PyBuffer_Release(&pybuf);
+    // reference-steal sqlite-buffer to python-buffer
+    Jsbuffer *sqlite_buf = &(baton->bufv[(size_t) bufi]);
+    PycbufStruct *python_buf =
+        (PycbufStruct *) (&PycbufType)->tp_alloc(&PycbufType, 0);
+    if (python_buf == NULL) {
+        return NULL;
+    }
+    python_buf->buf = sqlite_buf->buf;
+    python_buf->len = sqlite_buf->len;
+    return (PyObject *) python_buf;
 }
+
+// static PyObject *pybatonStealCbuffer - end
+
 
 static PyObject *pydbCall(
     PyObject * self,
@@ -3446,8 +3483,14 @@ static PyObject *pydbCall(
     UNUSED_PARAMETER(self);
     //
     // Create baton for passing data between nodejs <-> c.
-    // init argv, baton
-    PY_PARSE_ARGV();
+    // init baton
+    Jsbaton *baton = NULL;
+    Py_buffer pybuf = { 0 };
+    if (!PyArg_ParseTuple(args, "y*", &pybuf, &PyList_Type)) {
+        return NULL;
+    }
+    baton = pybuf.buf;
+    PyBuffer_Release(&pybuf);
     //
     // Execute dbCall().
     dbCall(baton);
@@ -3458,7 +3501,11 @@ static PyObject *pydbCall(
     Py_RETURN_NONE;
 }
 
+
+// file sqlmath_python - init
 static PyMethodDef SqlmathMethods[] = {
+    {"_mybuffer_create", mybuffer_create, METH_VARARGS, "Create a buffer"},
+    {"_pybatonSetArraybuffer", pybatonSetArraybuffer, METH_VARARGS, NULL},
     {"_pybatonStealCbuffer", pybatonStealCbuffer, METH_VARARGS, NULL},
     {"_pydbCall", pydbCall, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}       // sentinel
@@ -3483,6 +3530,9 @@ static struct PyModuleDef _sqlmathmodule = {
 PyMODINIT_FUNC PyInit__sqlmath(
     void
 ) {
+    if (PyType_Ready(&PycbufType) < 0) {
+        return NULL;
+    }
     int rc = sqlite3_initialize();
     if (rc != SQLITE_OK) {
         PyErr_SetString(PyExc_ImportError, sqlite3_errstr(rc));
