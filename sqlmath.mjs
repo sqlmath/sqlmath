@@ -30,9 +30,9 @@ let JSBATON_OFFSET_ALL = 256;
 let JSBATON_OFFSET_ARGV = 128;
 let JSBATON_OFFSET_BUFV = 192;
 let JSBATON_OFFSET_FUNCNAME = 8;
-let JS_MAX_SAFE_INTEGER = 0x1fffffffffffff;
-let JS_MIN_SAFE_INTEGER = -0x1fffffffffffff;
-let SIZEOF_BLOB_MAX = 1000000000;
+let JS_MAX_SAFE_INTEGER = 0x1f_ffff_ffff_ffff;
+let JS_MIN_SAFE_INTEGER = -0x1f_ffff_ffff_ffff;
+let SIZEOF_BLOB_MAX = 1_000_000_000;
 let SIZEOF_FUNCNAME = 16;
 let SQLITE_DATATYPE_BLOB = 0x04;
 let SQLITE_DATATYPE_EXTERNALBUFFER = 0x71;
@@ -422,15 +422,13 @@ async function dbCallAsync(baton, argList, mode) {
     let id;
     let result;
     let timeElapsed;
-
-// If argList contains <db>, then mark it as busy.
-
+    // If argList contains <db>, then mark it as busy.
     if (mode === "modeDb") {
         // init db
         db = argList[0];
         assertOrThrow(
-            db?.busy >= 0,
-            `dbCallAsync - invalid db.busy = ${db?.busy}`
+            db.busy >= 0,
+            `dbCallAsync - invalid db.busy = ${db.busy}`
         );
         db.ii = (db.ii + 1) % db.connPool.length;
         db.ptr = db.connPool[db.ii][0];
@@ -442,12 +440,12 @@ async function dbCallAsync(baton, argList, mode) {
             // decrement db.busy
             db.busy -= 1;
             assertOrThrow(
-                db?.busy >= 0,
-                `dbCallAsync - invalid db.busy = ${db?.busy}`
+                db.busy >= 0,
+                `dbCallAsync - invalid db.busy = ${db.busy}`
             );
         }
     }
-    // copy argList to avoid side-effects
+    // copy argList to avoid side-effect
     argList = [...argList];
     assertOrThrow(
         argList.length <= JSBATON_ARGC,
@@ -572,8 +570,8 @@ async function dbCloseAsync(db) {
 
     // prevent segfault - do not close db if actions are pending
     assertOrThrow(
-        db?.busy === 0,
-        `dbCloseAsync - cannot close db with ${db?.busy} actions pending`
+        db.busy === 0,
+        `dbCloseAsync - cannot close db with ${db.busy} actions pending`
     );
     // cleanup connPool
     await Promise.all(db.connPool.map(async function (ptr) {
@@ -595,7 +593,7 @@ function dbExecAndReturnLastBlobAsync({
     return dbExecAsync({
         bindList,
         db,
-        responseType: "lastBlob",
+        responseType: "lastblob",
         sql
     });
 }
@@ -611,32 +609,34 @@ async function dbExecAsync({
 
     let baton;
     let bindByKey;
-    let bindListLength;
     let bufi;
     let result;
     baton = jsbatonCreate("_dbExec");
     bufi = [0];
     bindByKey = !Array.isArray(bindList);
-    bindListLength = (
-        Array.isArray(bindList)
-        ? bindList.length
-        : Object.keys(bindList).length
-    );
-    Object.entries(bindList).forEach(function ([key, val]) {
-        if (bindByKey) {
+    if (bindByKey) {
+        Object.entries(bindList).forEach(function ([key, val]) {
             baton = jsbatonSetValue(baton, undefined, `:${key}\u0000`);
-        }
-        baton = jsbatonSetValue(baton, undefined, val, bufi);
-    });
+            baton = jsbatonSetValue(baton, undefined, val, bufi);
+        });
+    } else {
+        bindList.forEach(function (val) {
+            baton = jsbatonSetValue(baton, undefined, val, bufi);
+        });
+    }
     [baton, ...result] = await dbCallAsync(
         baton,
         [
             db,                 // 0
             String(sql) + "\n;\nPRAGMA noop",   // 1
-            bindListLength,     // 2
+            (                   // 2
+                bindByKey
+                ? Object.keys(bindList).length
+                : bindList.length
+            ),
             bindByKey,          // 3
             (                   // 4
-                responseType === "lastBlob"
+                responseType === "lastblob"
                 ? SQLITE_RESPONSETYPE_LASTBLOB
                 : 0
             )
@@ -649,15 +649,16 @@ async function dbExecAsync({
     }
     switch (responseType) {
     case "arraybuffer":
-    case "lastBlob":
+    case "lastblob":
         return result;
     case "list":
         return JSON.parse(new TextDecoder().decode(result));
     default:
-        result = JSON.parse(new TextDecoder().decode(result));
-        return result.map(function (rowList) {
-            let colList = rowList.shift();
-            return rowList.map(function (row) {
+        return JSON.parse(
+            new TextDecoder().decode(result)
+        ).map(function (table) {
+            let colList = table.shift();
+            return table.map(function (row) {
                 let dict = {};
                 colList.forEach(function (key, ii) {
                     dict[key] = row[ii];
@@ -1025,7 +1026,7 @@ function jsbatonSetValue(baton, argi, val, bufi) {
     switch (vtype) {
     case SQLITE_DATATYPE_BLOB:
     case SQLITE_DATATYPE_TEXT:
-        // set argv[ii] to blob/text location - 4-byte
+        // set argv[ii] to blob/text location
         if (argi !== undefined) {
             baton.setInt32(JSBATON_OFFSET_ARGV + argi * 8, nused, true);
         }
@@ -1039,7 +1040,7 @@ function jsbatonSetValue(baton, argi, val, bufi) {
         );
         // push vsize - 4-byte
         baton.setInt32(nused + 1, vsize, true);
-        // copy val into baton - vsize-byte
+        // push SQLITE-BLOB/TEXT - vsize-byte
         new Uint8Array(
             baton.buffer,
             baton.byteOffset + nused + 1 + 4,
@@ -1057,9 +1058,9 @@ function jsbatonSetValue(baton, argi, val, bufi) {
         );
         assertOrThrow(
             bufi[0] < JSBATON_ARGC,
-            "cannot pass more than ${JSBATON_ARGC} arraybuffers"
+            `cannot pass more than ${JSBATON_ARGC} arraybuffers`
         );
-        // push bufi - 4-byte
+        // push externalbuffer - 4-byte
         baton.setInt32(nused + 1, bufi[0], true);
         // set buffer
         cModule._jsbatonSetArraybuffer(baton.buffer, bufi[0], val);
@@ -1067,10 +1068,12 @@ function jsbatonSetValue(baton, argi, val, bufi) {
         bufi[0] += 1;
         break;
     case SQLITE_DATATYPE_FLOAT:
+        // push SQLITE-REAL - 8-byte
         baton.setFloat64(nused + 1, val, true);
         break;
     case SQLITE_DATATYPE_INTEGER:
         assertInt64(val);
+        // push SQLITE-INTEGER - 8-byte
         baton.setBigInt64(nused + 1, val, true);
         break;
     }

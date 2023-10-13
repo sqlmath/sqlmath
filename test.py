@@ -25,7 +25,6 @@ test.py.
 python test.py --verbose
 """
 
-import struct
 import unittest
 
 import sqlmath
@@ -34,7 +33,8 @@ from sqlmath import (
     assertjsonequal,
     assertorthrow,
     debuginline,
-    jsbaton_value_string,
+    jsbaton_get_int64,
+    jsbaton_get_string,
     noop,
 )
 
@@ -46,8 +46,16 @@ noop(assertorthrow, asserterrorthrown, assertjsonequal, debuginline)
 class TestCaseSqlmath(unittest.TestCase):
     """Custom TestCase."""
 
+    def test_db_bind(self):
+        """Test db_close handling-behavior."""
+        db = sqlmath.db_open(":memory:")
+        # test null-case handling-behavior
+        asserterrorthrown(lambda: sqlmath.db_close(None), "")
+        # test close handling-behavior
+        sqlmath.db_close(db)
+
     def test_db_close(self):
-        """Test db_close."""
+        """Test db_close handling-behavior."""
         db = sqlmath.db_open(":memory:")
         # test null-case handling-behavior
         asserterrorthrown(lambda: sqlmath.db_close(None), "")
@@ -55,7 +63,7 @@ class TestCaseSqlmath(unittest.TestCase):
         sqlmath.db_close(db)
 
     def test_db_noop(self):
-        """Test db_noop."""
+        """Test db_noop handling-behavior."""
         for val_input, val_expected in [
             # 1. none
             [None, 0],
@@ -117,9 +125,9 @@ class TestCaseSqlmath(unittest.TestCase):
                 continue
             baton = sqlmath.db_noop(None, val_input, None)[0]
             val_actual = (
-                jsbaton_value_string(baton, 1)
+                jsbaton_get_string(baton, 1)
                 if isinstance(val_input, str)
-                else str(struct.unpack_from("q", baton, 4 + 4 + 8)[0])
+                else str(jsbaton_get_int64(baton, 1))
             )
             assertjsonequal(val_actual, str(val_expected), {
                 "val_actual": val_actual,
@@ -128,11 +136,10 @@ class TestCaseSqlmath(unittest.TestCase):
             })
 
     def test_db_open(self):
-        """Test db_open."""
+        """Test db_open handling-behavior."""
         # test null-case handling-behavior
         asserterrorthrown(lambda: sqlmath.db_open(None), "invalid filename")
 
 
 if __name__ == "__main__":
-    # !! unittest.main()
-    pass
+    unittest.main()

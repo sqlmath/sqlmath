@@ -7,7 +7,7 @@
 # v2023.10.1-beta
 - sqlmath - Revamp how js-arraybuffers are passed to c-api without copying.
 - python - Revamp python-c-extension to support cp312.
-- python - Revamp python-c-extension to use nodejs-like-api dbClose, dbExec, dbLoadOrSave, dbNoop, dbOpen.
+- python - Revamp python-c-extension to use nodejs-like-api dbClose, dbExec, dbFileLoadOrSave, dbNoop, dbOpen.
 - sqlmath - Remove unused sql-function-prm in sinefit_extra(), stp.
 - sqlmath - Add sql-function-prm in sinefit_extra(), predict_cnr, predict_cos, predict_sin.
 

@@ -141,8 +141,36 @@ file sqlmath_h - start
         return NULL; \
     }
 
+#define NAPI_PARSE_ARGV(funcname, argc0) \
+    Jsbaton *baton = NULL; \
+    int errcode = 0; \
+    napi_value argv[argc0] = { 0 }; \
+    size_t argc = argc0; \
+    errcode = napi_get_cb_info(env, info, &argc, argv, NULL, NULL); \
+    NAPI_ASSERT_OK(); \
+    if (argc != argc0) { \
+        napi_throw_error(env, NULL, \
+            "sqlmath._" #funcname " - expected " #argc0 " arguments"); \
+        return NULL; \
+    } \
+    errcode = \
+        napi_get_arraybuffer_info(env, argv[0], (void **) &baton, &argc); \
+    NAPI_ASSERT_OK();
+
 #define NAPI_CREATE_FUNCTION(func) \
     {"_" #func, NULL, func, NULL, NULL, NULL, napi_default, NULL}
+
+#define PY_PARSE_ARGV() \
+    Jsbaton *baton = NULL; \
+    PyObject *argv = NULL; \
+    { \
+        Py_buffer pybuf = { 0 }; \
+        if (!PyArg_ParseTuple(args, "y*O!", &pybuf, &PyList_Type, &argv)) { \
+            return NULL; \
+        } \
+        baton = pybuf.buf; \
+        PyBuffer_Release(&pybuf); \
+    }
 
 #define SQLITE3_AGGREGATE_CONTEXT(type) \
     type *agg = (type *) sqlite3_aggregate_context(context, sizeof(*agg)); \
@@ -3123,25 +3151,17 @@ static napi_value jsbatonSetArraybuffer(
     napi_env env,
     napi_callback_info info
 ) {
-// This function will set arraybuffer to <baton> at <argi>.
+// This function will set arraybuffer to <baton> at <bufi>.
     // declare var
-    Jsbaton *baton = NULL;
     Jsbuffer *buf = NULL;
-    int errcode = 0;
-    int32_t argi = 0;
-    napi_value argv[3] = { 0 };
-    size_t argc = 3;
+    int32_t bufi = 0;
     // init argv, baton
-    errcode = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
-    NAPI_ASSERT_OK();
-    errcode =
-        napi_get_arraybuffer_info(env, argv[0], (void **) &baton, &argc);
-    NAPI_ASSERT_OK();
-    // init argi
-    napi_get_value_int32(env, argv[1], &argi);
+    NAPI_PARSE_ARGV(jsbatonSetArraybuffer, 3);
+    // init bufi
+    napi_get_value_int32(env, argv[1], &bufi);
     NAPI_ASSERT_OK();
     // set arraybuffer
-    buf = &(baton->bufv[(size_t) argi]);
+    buf = &(baton->bufv[(size_t) bufi]);
     errcode =
         napi_get_arraybuffer_info(env, argv[2], (void **) &(buf->buf),
         (size_t *) & (buf->len));
@@ -3153,27 +3173,19 @@ static napi_value jsbatonStealCbuffer(
     napi_env env,
     napi_callback_info info
 ) {
-// This function will reference-steal c-buffer from <baton> at <argi>,
+// This function will reference-steal c-buffer from <baton> at <bufi>,
 // and be responsible for cleanup.
     // declare var
-    Jsbaton *baton = NULL;
     Jsbuffer *buf = NULL;
-    int errcode = 0;
-    int32_t argi = 0;
-    napi_value argv[2] = { 0 };
+    int32_t bufi = 0;
     napi_value result = NULL;
-    size_t argc = 2;
     // init argv, baton
-    errcode = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
-    NAPI_ASSERT_OK();
-    errcode =
-        napi_get_arraybuffer_info(env, argv[0], (void **) &baton, &argc);
-    NAPI_ASSERT_OK();
-    // init argi
-    napi_get_value_int32(env, argv[1], &argi);
+    NAPI_PARSE_ARGV(jsbatonStealCbuffer, 2);
+    // init bufi
+    napi_get_value_int32(env, argv[1], &bufi);
     NAPI_ASSERT_OK();
     // create external-arraybuffer from sqlite-buffer
-    buf = &(baton->bufv[(size_t) argi]);
+    buf = &(baton->bufv[(size_t) bufi]);
     errcode = napi_create_external_arraybuffer( //
         env,                    // napi_env env,
         (void *) buf->buf,      // void* external_data,
@@ -3253,17 +3265,9 @@ static napi_value jspromiseCreate(
     //
     // Create baton for passing data between nodejs <-> c.
     // declare var
-    Jsbaton *baton = NULL;
-    int errcode = 0;
-    napi_value argv[3] = { 0 };
     napi_value promise = NULL;
-    size_t argc = 3;
     // init argv, baton
-    errcode = napi_get_cb_info(env, info, &argc, argv, NULL, NULL);
-    NAPI_ASSERT_OK();
-    errcode =
-        napi_get_arraybuffer_info(env, argv[0], (void **) &baton, &argc);
-    NAPI_ASSERT_OK();
+    NAPI_PARSE_ARGV(jspromiseCreate, 3);
     // init napi_argv
     baton->napi_argv = (int64_t) argv[1];
     //
@@ -3288,7 +3292,7 @@ static napi_value jspromiseCreate(
         &promise);
     NAPI_ASSERT_OK();
     //
-    // Execute code inside nodejs-promise.
+    // Execute dbCall() inside nodejs-promise.
     // Create an async work item, passing in the addon data, which will give the
     // worker thread access to the above-created deferred promise.
     errcode = napi_create_async_work(env,       // napi_env env,
@@ -3304,8 +3308,6 @@ static napi_value jspromiseCreate(
     errcode = napi_queue_async_work(env, (void *) baton->napi_work);
     NAPI_ASSERT_OK();
     // This causes created `promise` to be returned to JavaScript.
-    //
-    // Return nodejs-promise.
     return promise;
 }
 
@@ -3368,6 +3370,7 @@ typedef struct {
     Py_ssize_t shape[1];
 } Pysqlbuf;
 
+// https://stackoverflow.com/questions/37988849/safer-way-to-expose-a-c-allocated-memory-buffer-using-numpy-ctypes/38165448#38165448
 // https://docs.python.org/3/c-api/buffer.html
 static int Pysqlbuf_getbuf(
     Pysqlbuf * self,
@@ -3417,37 +3420,15 @@ static PyTypeObject Pysqlbuf_Type = {
     .tp_doc = "External Sqlite Buffer",
 };
 
-static PyObject *pydbCall(
+static PyObject *pybatonStealCbuffer(
     PyObject * self,
     PyObject * args
 ) {
     UNUSED_PARAMETER(self);
     //
-    // Create a baton for passing data between python <-> c.
-    // declare var
-    Jsbaton *baton = NULL;
-    PyObject *argv = NULL;
-    PyObject *val = NULL;
-    size_t ii = 0;
+    // Create baton for passing data between nodejs <-> c.
     // init argv, baton
-    {
-        Py_buffer pybuf = { 0 };
-        if (!PyArg_ParseTuple(args, "y*O!", &pybuf, &PyList_Type, &argv)) {
-            return NULL;
-        }
-        baton = pybuf.buf;
-        PyBuffer_Release(&pybuf);
-    }
-    // init argv - external buffer
-    for (ii = 0; ii < JSBATON_ARGC; ii += 1) {
-        val = PyList_GetItem(argv, ii);
-        if (val == NULL) {
-            return NULL;
-        }
-        if (PyMemoryView_Check(val)) {
-            baton->argv[ii] = (intptr_t) PyMemoryView_GET_BUFFER(val)->buf;
-        }
-    }
+    PY_PARSE_ARGV();
     //
     // Execute dbCall().
     dbCall(baton);
@@ -3455,30 +3436,30 @@ static PyObject *pydbCall(
         PyErr_SetString(PyExc_RuntimeError, jsbatonGetErrmsg(baton));
         return NULL;
     }
-    /*
-       //
-       // Return argv.
-       // export baton->argv and baton->bufv to argv
-       ii = 0;
-       if (baton->bufv[ii]) {
-       // init argList[ii] = bufv[ii]
-       Pysqlbuf *buf =
-       (Pysqlbuf *) (&Pysqlbuf_Type)->tp_alloc(&Pysqlbuf_Type, 0);
-       buf->buf = (void *) baton->bufv[ii];
-       buf->shape[0] = baton->argv[ii];
-       val = PyMemoryView_FromObject((PyObject *) buf);
-       }
-     */
-    if (val == NULL) {
-        return NULL;
-    }
-    if (PyList_SetItem(argv, ii, val) == -1) {
+    Py_RETURN_NONE;
+}
+
+static PyObject *pydbCall(
+    PyObject * self,
+    PyObject * args
+) {
+    UNUSED_PARAMETER(self);
+    //
+    // Create baton for passing data between nodejs <-> c.
+    // init argv, baton
+    PY_PARSE_ARGV();
+    //
+    // Execute dbCall().
+    dbCall(baton);
+    if (jsbatonGetErrmsg(baton)[0] != '\x00') {
+        PyErr_SetString(PyExc_RuntimeError, jsbatonGetErrmsg(baton));
         return NULL;
     }
     Py_RETURN_NONE;
 }
 
 static PyMethodDef SqlmathMethods[] = {
+    {"_pybatonStealCbuffer", pybatonStealCbuffer, METH_VARARGS, NULL},
     {"_pydbCall", pydbCall, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}       // sentinel
 };

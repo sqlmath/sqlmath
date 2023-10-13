@@ -31,20 +31,20 @@ import struct
 import sys
 import weakref
 
-from ._sqlmath import _pydbCall
+from ._sqlmath import _pybatonStealCbuffer, _pydbCall
 
-JSBATON_ARGC = 16
-JSBATON_OFFSET_ALL = 512
+JSBATON_ARGC = 8
+JSBATON_OFFSET_ALL = 256
 JSBATON_OFFSET_ARGV = 128
 JSBATON_OFFSET_FUNCNAME = 8
-SIZEOF_BLOB_MAX = 1000000000
+SIZEOF_BLOB_MAX = 1_000_000_000
 SQLITE_DATATYPE_BLOB = 0x04
+SQLITE_DATATYPE_EXTERNALBUFFER = 0x71
 SQLITE_DATATYPE_FLOAT = 0x02
 SQLITE_DATATYPE_INTEGER = 0x01
 SQLITE_DATATYPE_INTEGER_0 = 0x00
 SQLITE_DATATYPE_INTEGER_1 = 0x21
 SQLITE_DATATYPE_NULL = 0x05
-SQLITE_DATATYPE_SHAREDARRAYBUFFER = 0x71
 SQLITE_DATATYPE_TEXT = 0x03
 SQLITE_DATATYPE_TEXT_0 = 0x13
 SQLITE_RESPONSETYPE_LASTBLOB = 1
@@ -76,6 +76,7 @@ SQLITE_OPEN_WAL = 0x00080000           # VFS only
 class SqlmathDb:
     """Sqlmath database class."""
 
+    busy = 0
     closed = False
     filename = ""
     ptr = 0
@@ -96,6 +97,18 @@ def asserterrorthrown(func, regexp):
     assertorthrow(not regexp or re.match(regexp, str(err)), err)
 
 
+def assertint64(val):
+    """This function will assert <val> is within range."""
+    """of c99-signed-long-long."""
+    assertorthrow(
+        -9_223_372_036_854_775_808 <= val <= 9_223_372_036_854_775_807, # noqa: PLR2004
+        (
+            f"integer {val} outside signed-64-bit inclusive-range"
+            " -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
+        ),
+    )
+
+
 def assertjsonequal(aa, bb, message):
     """This function will assert."""
     """JSON.stringify(<aa>) === JSON.stringify(<bb>)."""
@@ -114,18 +127,6 @@ def assertjsonequal(aa, bb, message):
         )
 
 
-def assertint64(val):
-    """This function will assert <val> is within range."""
-    """of c99-signed-long-long."""
-    assertorthrow(
-        -9_223_372_036_854_775_808 <= val <= 9_223_372_036_854_775_807, # noqa: PLR2004
-        (
-            f"integer {val} outside signed-64-bit inclusive-range"
-            " -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
-        ),
-    )
-
-
 def assertorthrow(condition, message):
     """This function will throw <message> if <condition> is falsy."""
     if not condition:
@@ -136,65 +137,49 @@ def assertorthrow(condition, message):
         )
 
 
-def db_call(baton, funcname, *arglist):
-    """This function will serialize <arglist> to a c <baton>."""
-    """suitable for passing into napi."""
-
-    def arg_serialize(argi, val):
-        nonlocal baton
-        if isinstance(val, (bool, int)):
-            assertint64(val)
-            struct.pack_into("q", baton, JSBATON_OFFSET_ARGV + argi * 8, val)
-            return val
-        if isinstance(val, float):
-            assertorthrow(
-                int(val) == val,
-                f"db_call - float {val} is not an integer",
-            )
-            assertint64(val)
-            struct.pack_into(
-                "q",
-                baton,
-                JSBATON_OFFSET_ARGV + argi * 8,
-                int(val),
-            )
-            return val
+def db_call(baton, arglist):
+    """This function will call c-function dbXxx() with given <funcname>."""
+    """and return [<baton>, ...arglist]."""
+    # copy argList to avoid side-effect
+    arglist = [*arglist]
+    assertorthrow(
+        len(arglist) <= JSBATON_ARGC,
+        f"db_call - len(arglist) must be less than than {JSBATON_ARGC}",
+    )
+    # pad arglist to length JSBATON_ARGC
+    while len(arglist) < JSBATON_ARGC:
+        arglist.append(0)
+    # serialize js-value to c-value
+    for argi, val in enumerate(arglist):
+        if isinstance(val, (bool, float, int)):
+            val2 = val
+            if isinstance(val, float):
+                assertorthrow(
+                    int(val) == val,
+                    f"db_call - float {val} is not an integer",
+                )
+                val2 = int(val)
+            assertint64(val2)
+            # ctype-q = long-long
+            struct.pack_into("q", baton, JSBATON_OFFSET_ARGV + argi * 8, val2)
+            continue
         if isinstance(val, str):
-            baton = jsbaton_value_push(
+            baton = jsbaton_set_value(
                 baton,
                 argi,
                 val if val.endswith("\u0000") else val + "\u0000",
+                None,
             )
-            return None
+            continue
         if isinstance(val, memoryview):
             assertorthrow(
                 val.contiguous,
                 "db_call - memoryview-object must be contiguous",
             )
-            return val
-        return None
-    assertorthrow(
-        len(arglist) <= JSBATON_ARGC,
-        f"db_call - len(arglist) must be less than than {JSBATON_ARGC}",
-    )
-    # init baton
-    baton = memoryview(bytearray(1024))
-    # init nalloc, nused
-    struct.pack_into("i", baton, 4, JSBATON_OFFSET_ALL)
-    # serialize js-value to c-value
-    arglist = [arg_serialize(argi, val) for argi, val in enumerate(arglist)]
-    # pad argList to length JSBATON_ARGC
-    while len(arglist) < JSBATON_ARGC:
-        arglist.append(0)
-    # copy funcname into baton
-    baton[
-        JSBATON_OFFSET_FUNCNAME:
-        JSBATON_OFFSET_FUNCNAME + len(bytes(funcname, "utf-8"))
-    ] = bytes(funcname, "utf-8")
+            continue
+    _pydbCall(baton, arglist)
     # prepend baton, funcname to arglist
-    arglist = [baton, funcname, *arglist]
-    _pydbCall(baton, funcname, arglist)
-    return arglist
+    return [baton, *arglist]
 
 
 def db_close(db):
@@ -202,67 +187,63 @@ def db_close(db):
     # prevent segfault - do not close db if actions are pending
     if not db.closed:
         db.closed = True
-        db_call(None, "_dbClose", db.ptr, db.filename)
+        db_call(jsbaton_create("_dbClose"), [db.ptr, db.filename])
 
 
-# !! def db_exec(db, sql, bindList = []):
-    # !! """This function will exec <sql> in <db> and return <result>."""
-    # !! baton = jsbatonCreate()
-    # !! bindByKey = !Array.isArray(bindList)
-    # !! bindListLength = (
-        # !! Array.isArray(bindList)
-        # !! ? bindList.length
-        # !! : Object.keys(bindList).length
-    # !! )
-    # !! externalbufferList = []
-    # !! Object.entries(bindList).forEach(function ([key, val]) {
-        # !! if (bindByKey) {
-            # !! baton = jsbatonValuePush(baton, undefined, `:${key}\u0000`)
-        # !! }
-        # !! baton = jsbatonValuePush(baton, undefined, val,
-        # !! externalbufferList)
-    # !! })
-    # !! result = await dbCallAsync(
-        # !! baton,
-        # !! "_dbExec",
-        # !! db,                     // 0
-        # !! String(sql) + "\n\nPRAGMA noop",   // 1
-        # !! bindListLength,         // 2
-        # !! bindByKey,              // 3
-        # !! (                       // 4
-            # !! responseType === "lastBlob"
-            # !! ? SQLITE_RESPONSETYPE_LASTBLOB
-            # !! : 0
-        # !! ),
-        # !! undefined, // 5
-        # !! undefined, // 6
-        # !! undefined, // 7 - response
-        # !! ...externalbufferList        // 8
-    # !! )
-    # !! result = result[JSBATON_OFFSET_ARG0 + 0]
-    # !! switch (responseType) {
-    # !! case "arraybuffer":
-    # !! case "lastBlob":
-        # !! return result
-    # !! case "list":
-        # !! return JSON.parse(new TextDecoder().decode(result))
-    # !! default:
-        # !! result = JSON.parse(new TextDecoder().decode(result))
-        # !! return result.map(function (rowList) {
-            # !! colList = rowList.shift()
-            # !! return rowList.map(function (row) {
-                # !! dict = {}
-                # !! colList.forEach(function (key, ii) {
-                    # !! dict[key] = row[ii]
-                # !! })
-                # !! return dict
-            # !! })
-        # !! })
+def db_exec(
+    bind_list=None,
+    db=None,
+    response_type=None,
+    sql=None,
+):
+    """This function will exec <sql> in <db> and return <result>."""
+    if bind_list is None:
+        bind_list = []
+    baton = jsbaton_create("_dbExec")
+    bind_by_key = callable(getattr(bind_list, "items", None))
+    bufi = [0]
+    if bind_by_key:
+        for key, val in bind_list.items():
+            baton = jsbaton_set_value(baton, None, f":${key}\u0000")
+            baton = jsbaton_set_value(baton, None, val, bufi)
+    else:
+        for val in bind_list:
+            baton = jsbaton_set_value(baton, None, val, bufi)
+    db_call(
+        baton,
+        "_dbExec",
+        db,                     # 0
+        str(sql) + "\n\nPRAGMA noop",   # 1
+        len(bind_list),         # 2
+        bind_by_key,            # 3
+        (                       # 4
+            SQLITE_RESPONSETYPE_LASTBLOB
+            if response_type == "lastblob"
+            else 0
+        ),
+    )
+    result = _pybatonStealCbuffer(baton, 0)
+    match response_type:
+        case "arraybuffer":
+            return result
+        case "lastblob":
+            return result
+        case "list":
+            return json.loads(result)
+        case _:
+            table_list = []
+            for table in json.loads(result):
+                col_list = tuple(enumerate(table.pop(0)))
+                table_list.append([
+                    {key: row[ii] for ii, key in col_list}
+                    for row in table
+                ])
+            return table_list
 
 
 def db_noop(*arglist):
     """This function will do nothing except return <arglist>."""
-    return db_call(None, "_dbNoop", *arglist)
+    return db_call(jsbaton_create("_dbNoop"), arglist)
 
 
 def db_open(filename, flags=None):
@@ -278,19 +259,23 @@ def db_open(filename, flags=None):
     """
     assertorthrow(isinstance(filename, str), f"invalid filename {filename}")
     ptr = db_call(
-        None,
-        "_dbOpen",
-        # 0. const char *filename,   Database filename (UTF-8)
-        str(filename),
-        # 1. sqlite3 **ppDb,         OUT: SQLite db handle
-        None,
-        # 2. int flags,              Flags
-        flags or (
-            SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
-        ),
-        # 3. const char *zVfs        Name of VFS module to use
-        None,
+        jsbaton_create("_dbOpen"),
+        [
+            # 0. const char *filename,   Database filename (UTF-8)
+            filename,
+            # 1. sqlite3 **ppDb,         OUT: SQLite db handle
+            None,
+            # 2. int flags,              Flags
+            (
+                SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
+                if flags is None
+                else flags
+            ),
+            # 3. const char *zVfs        Name of VFS module to use
+            None,
+        ],
     )[0]
+    # ctype-q = long-long
     ptr = struct.unpack_from("q", ptr, JSBATON_OFFSET_ARGV + 0)[0]
     db = SqlmathDb()
     db.filename = filename
@@ -304,59 +289,117 @@ def debuginline(*argv):
     arg0 = argv[0] if argv else None
     print("\n\ndebuginline", file=sys.stderr)
     print(*argv, file=sys.stderr)
-    print("\n")
+    print("\n", file=sys.stderr)
     return arg0
 
 
-def jsbaton_value_push(baton, argi, val, externalbufferlist=None):
+def jsbaton_create(funcname):
+    """This function will create buffer <baton>."""
+    baton = memoryview(bytearray(1024))
+    # init nalloc, nused
+    struct.pack_into("i", baton, 4, JSBATON_OFFSET_ALL) # ctype-i = int
+    # copy funcname into baton
+    funcname = bytes(funcname, "utf-8")
+    baton[
+        JSBATON_OFFSET_FUNCNAME: JSBATON_OFFSET_FUNCNAME + len(funcname)
+    ] = funcname
+    return baton
+
+
+def jsbaton_get_int64(baton, argi):
+    """This function will return int64-value from <baton> at <argi>."""
+    # ctype-q = long-long
+    return struct.unpack_from("q", baton, JSBATON_OFFSET_ARGV + argi * 8)[0]
+
+
+def jsbaton_get_string(baton, argi):
+    """This function will return string-value from <baton> at <argi>."""
+    # ctype-q = long-long
+    offset = struct.unpack_from("q", baton, JSBATON_OFFSET_ARGV + argi * 8)[0]
+    return str(
+        baton[
+            offset + 1 + 4:
+            # remove null-terminator from string
+            # ctype-i = int
+            offset + 1 + 4 + struct.unpack_from("i", baton, offset + 1)[0] - 1
+        ],
+        "utf-8",
+    )
+
+
+def jsbaton_set_value(baton, argi, val, bufi):
     """
     This function will push <val> to buffer <baton>.
 
     #define SQLITE_DATATYPE_BLOB            0x04
+    #define SQLITE_DATATYPE_EXTERNALBUFFER          0x71
     #define SQLITE_DATATYPE_FLOAT           0x02
     #define SQLITE_DATATYPE_INTEGER         0x01
     #define SQLITE_DATATYPE_INTEGER_0       0x00
     #define SQLITE_DATATYPE_INTEGER_1       0x21
     #define SQLITE_DATATYPE_NULL            0x05
-    #define SQLITE_DATATYPE_SHAREDARRAYBUFFER       0x71
     #define SQLITE_DATATYPE_TEXT            0x03
     #define SQLITE_DATATYPE_TEXT_0          0x13
-        #  1. 0.NoneType
-        #  2. 0.bool
-        #  3. 0.bytearray
-        #  4. 0.bytes
-        #  5. 0.complex
-        #  6. 0.dict
-        #  7. 0.float
-        #  8. 0.frozenset
-        #  9. 0.int
-        # 10. 0.list
-        # 11. 0.memoryview
-        # 12. 0.range
-        # 13. 0.set
-        # 14. 0.str
-        # 15. 0.tuple
-        # 16. 1.NoneType
-        # 17. 1.bool
-        # 18. 1.bytearray
-        # 19. 1.bytes
-        # 20. 1.complex
-        # 21. 1.dict
-        # 22. 1.float
-        # 23. 1.frozenset
-        # 24. 1.int
-        # 25. 1.list
-        # 26. 1.memoryview
-        # 27. 1.range
-        # 28. 1.set
-        # 29. 1.str
-        # 20. 1.tuple
-        # 21. json
+
+    #  1. 0.NoneType
+    #  2. 0.bool
+    #  3. 0.bytearray
+    #  4. 0.bytes
+    #  5. 0.complex
+    #  6. 0.dict
+    #  7. 0.float
+    #  8. 0.frozenset
+    #  9. 0.int
+    # 10. 0.list
+    # 11. 0.memoryview
+    # 12. 0.range
+    # 13. 0.set
+    # 14. 0.str
+    # 15. 0.tuple
+    # 16. 1.NoneType
+    # 17. 1.bool
+    # 18. 1.bytearray
+    # 19. 1.bytes
+    # 20. 1.complex
+    # 21. 1.dict
+    # 22. 1.float
+    # 23. 1.frozenset
+    # 24. 1.int
+    # 25. 1.list
+    # 26. 1.memoryview
+    # 27. 1.range
+    # 28. 1.set
+    # 29. 1.str
+    # 20. 1.tuple
+    # 21. json
+
+    Format  C Type    Python type Standard size
+    x       pad       byte        no value
+    c       char      byte        1
+    b       signed    char        integer    1
+    B       unsigned  char        integer    1
+    ?       _Bool     bool        1
+    h       short     integer     2
+    H       unsigned  short       integer    2
+    i       int       integer     4
+    I       unsigned  int         integer    4
+    l       long      integer     4
+    L       unsigned  long        integer    4
+    q       long long integer     8
+    Q       unsigned  long long   integer    8
+    n       ssize_t   integer
+    N       size_t    integer
+    e       half      float       2
+    f       float     float       4
+    d       double    float       8
+    s       char[]    bytes
+    p       char[]    bytes
+    P       void*     integer
     """
     # 17. 1.bool
     if val == 1:
         val = True
-    match (("1." if val else "0.") + type(val).__name__):
+    match ("1." if val else "0.") + type(val).__name__:
         #  1. 0.NoneType
         case "0.NoneType":
             vtype = SQLITE_DATATYPE_NULL
@@ -420,12 +463,8 @@ def jsbaton_value_push(baton, argi, val, externalbufferlist=None):
             vsize = 8
         # 25. 1.list
         # 26. 1.memoryview
-            assertorthrow(
-                len(externalbufferlist) <= 8, # noqa: PLR2004
-                "len(externalbufferList) must be less than or equal to 8",
-            )
-            externalbufferlist.append(val)
-            vtype = SQLITE_DATATYPE_SHAREDARRAYBUFFER
+        case "1.memoryview":
+            vtype = SQLITE_DATATYPE_EXTERNALBUFFER
             vsize = 4
         # 27. 1.range
         # 28. 1.set
@@ -440,7 +479,7 @@ def jsbaton_value_push(baton, argi, val, externalbufferlist=None):
             val = bytes(json.dumps(val), "utf-8")
             vtype = SQLITE_DATATYPE_TEXT
             vsize = 4 + len(val)
-    nused = struct.unpack_from("i", baton, 4)[0]
+    nused = struct.unpack_from("i", baton, 4)[0] # ctype-i = int
     nn = nused + 1 + vsize
     assertorthrow(
         nn <= 0xffff_ffff, # noqa: PLR2004
@@ -453,17 +492,18 @@ def jsbaton_value_push(baton, argi, val, externalbufferlist=None):
             bytearray(min(2 ** math.ceil(math.log(nn, 2)), 0x7fff_ffff)),
         )
         # update nallc
-        struct.pack_into("i", baton, 0, len(baton))
+        struct.pack_into("i", baton, 0, len(baton)) # ctype-i = int
         # copy old-baton into new-baton
         baton[:len(tmp)] = tmp
-    # push vtype
-    struct.pack_into("b", baton, nused, vtype)
+    # push vtype - 1-byte
+    struct.pack_into("b", baton, nused, vtype) # ctype-b = signed-char
     # update nused
-    struct.pack_into("i", baton, 4, nused + 1 + vsize)
+    struct.pack_into("i", baton, 4, nused + 1 + vsize) # ctype-i = int
     # handle blob-value
     if vtype in (SQLITE_DATATYPE_BLOB, SQLITE_DATATYPE_TEXT):
         # set argv[ii] to blob/text location
         if argi is not None:
+            # ctype-i = int
             struct.pack_into("i", baton, JSBATON_OFFSET_ARGV + argi * 8, nused)
         vsize -= 4
         assertorthrow(
@@ -473,19 +513,12 @@ def jsbaton_value_push(baton, argi, val, externalbufferlist=None):
                 f" 0 to {SIZEOF_BLOB_MAX}"
             ),
         )
-        # push vsize
-        struct.pack_into("i", baton, nused + 1, vsize)
-        # copy val into baton
+        # push vsize - 4-byte
+        struct.pack_into("i", baton, nused + 1, vsize) # ctype-i = int
+        # push SQLITE-BLOB/TEXT - vsize-byte
         baton[nused + 1 + 4:nused + 1 + 4 + vsize] = val
         return baton
-    if vtype == SQLITE_DATATYPE_FLOAT:
-        struct.pack_into("d", baton, nused + 1, val)
-        return baton
-    if vtype == SQLITE_DATATYPE_INTEGER:
-        assertint64(val)
-        struct.pack_into("q", baton, nused + 1, val)
-        return baton
-    if vtype == SQLITE_DATATYPE_SHAREDARRAYBUFFER:
+    if vtype == SQLITE_DATATYPE_EXTERNALBUFFER:
         vsize = len(val)
         assertorthrow(
             0 <= vsize <= SIZEOF_BLOB_MAX,
@@ -494,24 +527,27 @@ def jsbaton_value_push(baton, argi, val, externalbufferlist=None):
                 f" 0 to {SIZEOF_BLOB_MAX}"
             ),
         )
-        # push vsize
-        struct.pack_into("i", baton, nused + 1, vsize)
+        assertorthrow(
+            bufi[0] < JSBATON_ARGC,
+            f"cannot pass more than {JSBATON_ARGC} arraybuffers",
+        )
+        # push externalbuffer - 4-byte
+        struct.pack_into("i", baton, nused + 1, bufi[0]) # ctype-i = int
+        # set buffer
+        # !! cModule._jsbatonSetArraybuffer(baton.buffer, bufi[0], val)
+        # increment bufi
+        bufi[0] += 1
+        return baton
+    if vtype == SQLITE_DATATYPE_FLOAT:
+        # push SQLITE-REAL - 8-byte
+        struct.pack_into("d", baton, nused + 1, val) # ctype-d = double
+        return baton
+    if vtype == SQLITE_DATATYPE_INTEGER:
+        assertint64(val)
+        # push SQLITE-INTEGER - 8-byte
+        struct.pack_into("q", baton, nused + 1, val) # ctype-q = long-long
         return baton
     return baton
-
-
-def jsbaton_value_string(baton, argi):
-    """This function will return string-value from <baton>."""
-    """at given <offset>."""
-    offset = struct.unpack_from("q", baton, JSBATON_OFFSET_ARGV + argi * 8)[0]
-    return str(
-        baton[
-            offset + 1 + 4:
-            # remove null-terminator from string
-            offset + 1 + 4 + struct.unpack_from("i", baton, offset + 1)[0] - 1
-        ],
-        "utf-8",
-    )
 
 
 def noop(val=None, *_, **__):

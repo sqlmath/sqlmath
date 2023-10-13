@@ -635,7 +635,7 @@ SELECT * FROM testDbExecAsync2;
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbOpenAsync({});
-        }, "invalid filename undefined");
+        }, "invalid filename");
     });
 });
 
