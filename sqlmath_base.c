@@ -470,8 +470,6 @@ SQLMATH_API void dbClose(
     JSBATON_ASSERT_OK();
     if (db != NULL) {
         dbCount -= 1;
-        // fprintf(stderr, "\nsqlmath.dbClose(argv0=%lld db=%lld dbCount=%d)\n",
-        //     baton->argv[0], (int64_t) db, dbCount);
     }
   catch_error:
     (void) 0;
@@ -511,8 +509,8 @@ SQLMATH_API void dbExec(
     static const char bindPrefix[] = "$:@";
     // str99 - init
     STR99_ALLOCA(str99);
-    // fprintf(stderr, "\nsqlmath.dbExec(db=%lld blen=%d sql=%s)\n",
-    //     (int64_t) db, bindListLength, zSql);
+    // fprintf(stderr, "\nsqlmath._dbExec(db=%p blen=%d sql=%s)\n",
+    //     db, bindListLength, zSql);
 #ifndef EMSCRIPTEN
     // mutex enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
@@ -566,7 +564,7 @@ SQLMATH_API void dbExec(
         case SQLITE_DATATYPE_TEXT_0:
             break;
         default:
-            fprintf(stderr, "\nsqlmath.dbExec(ii=%d datatype=%d len=%d)\n",
+            fprintf(stderr, "\nsqlmath._dbExec(ii=%d datatype=%d len=%d)\n",
                 ii, bindElem->datatype, bindElem->buflen);
             errcode = SQLITE_ERROR_DATATYPE_INVALID;
             JSBATON_ASSERT_OK();
@@ -641,7 +639,7 @@ SQLMATH_API void dbExec(
                         break;
                     default:
                         fprintf(stderr,
-                            "\nsqlmath.dbExec(ii=%d  datatype=%d  len=%d)\n",
+                            "\nsqlmath._dbExec(ii=%d  datatype=%d  len=%d)\n",
                             ii, bindElem->datatype, bindElem->buflen);
                         errcode = SQLITE_ERROR_DATATYPE_INVALID;
                     }
@@ -919,8 +917,6 @@ SQLMATH_API void dbOpen(
         NULL);
     JSBATON_ASSERT_OK();
     dbCount += 1;
-    // fprintf(stderr, "\nsqlmath.dbOpen(dbCount=%d ff=%s)\n", dbCount,
-    //     filename);
     // save db
     baton->argv[0] = (int64_t) db;
   catch_error:
@@ -3162,24 +3158,38 @@ static napi_value jsbatonStealCbuffer(
     napi_callback_info info
 ) {
 // This function will reference-steal c-buffer from <baton> at <bufi>,
-// and be responsible for cleanup.
-    // declare var
-    Jsbuffer *buf = NULL;
-    int32_t bufi = 0;
+// and assume cleanup responsibility.
     napi_value result = NULL;
     // init argv, baton
-    NAPI_PARSE_ARGV(jsbatonStealCbuffer, 2);
-    // init bufi
-    napi_get_value_int32(env, argv[1], &bufi);
+    NAPI_PARSE_ARGV(jsbatonStealCbuffer, 3);
+    // init bufi, modestr
+    int32_t bufi = 0;
+    int32_t modestr = 0;
+    errcode = napi_get_value_int32(env, argv[1], &bufi);
     NAPI_ASSERT_OK();
-    // create external-arraybuffer from sqlite-buffer
-    buf = &(baton->bufv[(size_t) bufi]);
+    errcode = napi_get_value_int32(env, argv[2], &modestr);
+    NAPI_ASSERT_OK();
+    // init sqlite-buffer
+    Jsbuffer *sqlite_buf = &(baton->bufv[(size_t) bufi]);
+    // reference-steal sqlite-buffer to nodejs-string
+    if (modestr) {
+        errcode = napi_create_string_utf8(env,  // napi_env env
+            (const char *) sqlite_buf->buf,     // const char* str
+            (size_t) sqlite_buf->len,   // size_t length
+            &result);           // napi_value* result
+        sqlite3_free((void *) sqlite_buf->buf);
+        sqlite_buf->buf = 0;
+        sqlite_buf->len = 0;
+        NAPI_ASSERT_OK();
+        return result;
+    }
+    // reference-steal sqlite-buffer to nodejs-arraybuffer
     errcode = napi_create_external_arraybuffer( //
-        env,                    // napi_env env,
-        (void *) buf->buf,      // void* external_data,
-        (size_t) buf->len,      // size_t byte_length,
-        cbufferFinalize,        // napi_finalize finalize_cb,
-        NULL,                   // void* finalize_hint,
+        env,                    // napi_env env
+        (void *) sqlite_buf->buf,       // void* external_data
+        (size_t) sqlite_buf->len,       // size_t byte_length
+        cbufferFinalize,        // napi_finalize finalize_cb
+        NULL,                   // void* finalize_hint
         &result);               // napi_value* result
     NAPI_ASSERT_OK();
     return result;
@@ -3353,23 +3363,23 @@ file sqlmath_python - start
 #include <Python.h>
 
 
-static PyObject *pybatonSetArraybuffer(
+static PyObject *pybatonSetMemoryview(
     PyObject * self,
     PyObject * args
 ) {
-// This function will set arraybuffer to <baton> at <bufi>.
+// This function will set memoryview to <baton> at <bufi>.
     UNUSED_PARAMETER(self);
     // init baton, bufi, pybuf
     Jsbaton *baton = NULL;
     Py_buffer pybuf[2] = { 0 };
-    long bufi = 0;              // NOLINT - python requires explicit long
+    int bufi = 0;
     if (!PyArg_ParseTuple(args, "y*ly*", &(pybuf[0]), &bufi, &(pybuf[1]))) {
         return NULL;
     }
     baton = pybuf[0].buf;
-    // set arraybuffer
+    // set memoryview
     Jsbuffer *buf = &(baton->bufv[(size_t) bufi]);
-    buf->buf = pybuf[1].buf;
+    buf->buf = (int64_t) pybuf[1].buf;
     buf->len = pybuf[1].len;
     // cleanup pybuf
     PyBuffer_Release(&(pybuf[0]));
@@ -3398,6 +3408,7 @@ static int Pycbuf_getbuf(
     Py_buffer * view,
     int flags
 ) {
+    UNUSED_PARAMETER(flags);
     view->obj = Py_XNewRef((PyObject *) self);
     view->buf = self->buf;
     view->len = self->len;
@@ -3426,49 +3437,48 @@ static PyTypeObject PycbufType = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
 };
 
-//----------------------------------------------------------------------------
-// Define a Python function to put in the module which creates a new buffer
-//----------------------------------------------------------------------------
-
-static PyObject *mybuffer_create(
-    PyObject * self,
-    PyObject * args
-) {
-    PycbufStruct *buf =
-        (PycbufStruct *) (&PycbufType)->tp_alloc(&PycbufType, 0);
-    if (buf == NULL) {
-        return NULL;
-    }
-    buf->buf = sqlite3_malloc(8);
-    buf->len = 8;
-    return (PyObject *) buf;
-}
-
 static PyObject *pybatonStealCbuffer(
     PyObject * self,
     PyObject * args
 ) {
 // This function will reference-steal sqlite-buffer from <baton> at <bufi>,
-// and be responsible for cleanup.
+// and assume cleanup responsibility.
     UNUSED_PARAMETER(self);
-    // init baton, bufi, pybuf
+    // init baton, bufi, pybuf, modestr
     Jsbaton *baton = NULL;
     Py_buffer pybuf = { 0 };
-    long bufi = 0;              // NOLINT - python requires explicit long
-    if (!PyArg_ParseTuple(args, "y*ly*", &pybuf, &bufi)) {
+    int bufi = 0;
+    int modestr = 0;
+    if (!PyArg_ParseTuple(args, "y*ii", &pybuf, &bufi, &modestr)) {
         return NULL;
     }
     baton = pybuf.buf;
     // cleanup pybuf
     PyBuffer_Release(&pybuf);
-    // reference-steal sqlite-buffer to python-buffer
+    // init sqlite-buffer
     Jsbuffer *sqlite_buf = &(baton->bufv[(size_t) bufi]);
+    // reference-steal sqlite-buffer to python-str
+    if (modestr) {
+        PyObject *python_str = PyUnicode_Decode(        //
+            (const char *) sqlite_buf->buf,     //
+            sqlite_buf->len,    //
+            "utf-8",            //
+            "surrogatepass");
+        sqlite3_free((void *) sqlite_buf->buf);
+        sqlite_buf->buf = 0;
+        sqlite_buf->len = 0;
+        return python_str;
+    }
+    // reference-steal sqlite-buffer to python-buffer
     PycbufStruct *python_buf =
         (PycbufStruct *) (&PycbufType)->tp_alloc(&PycbufType, 0);
     if (python_buf == NULL) {
+        sqlite3_free((void *) sqlite_buf->buf);
+        sqlite_buf->buf = 0;
+        sqlite_buf->len = 0;
         return NULL;
     }
-    python_buf->buf = sqlite_buf->buf;
+    python_buf->buf = (char *) sqlite_buf->buf;
     python_buf->len = sqlite_buf->len;
     return (PyObject *) python_buf;
 }
@@ -3483,13 +3493,14 @@ static PyObject *pydbCall(
     UNUSED_PARAMETER(self);
     //
     // Create baton for passing data between nodejs <-> c.
-    // init baton
+    // init baton, pybuf
     Jsbaton *baton = NULL;
     Py_buffer pybuf = { 0 };
     if (!PyArg_ParseTuple(args, "y*", &pybuf, &PyList_Type)) {
         return NULL;
     }
     baton = pybuf.buf;
+    // cleanup pybuf
     PyBuffer_Release(&pybuf);
     //
     // Execute dbCall().
@@ -3504,8 +3515,7 @@ static PyObject *pydbCall(
 
 // file sqlmath_python - init
 static PyMethodDef SqlmathMethods[] = {
-    {"_mybuffer_create", mybuffer_create, METH_VARARGS, "Create a buffer"},
-    {"_pybatonSetArraybuffer", pybatonSetArraybuffer, METH_VARARGS, NULL},
+    {"_pybatonSetMemoryview", pybatonSetMemoryview, METH_VARARGS, NULL},
     {"_pybatonStealCbuffer", pybatonStealCbuffer, METH_VARARGS, NULL},
     {"_pydbCall", pydbCall, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}       // sentinel

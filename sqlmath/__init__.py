@@ -31,7 +31,7 @@ import struct
 import sys
 import weakref
 
-from ._sqlmath import _pybatonSetArraybuffer, _pybatonStealCbuffer, _pydbCall
+from ._sqlmath import _pybatonSetMemoryview, _pybatonStealCbuffer, _pydbCall
 
 JSBATON_ARGC = 8
 JSBATON_OFFSET_ALL = 256
@@ -73,10 +73,13 @@ SQLITE_OPEN_URI = 0x00000040           # Ok for sqlite3_open_v2()
 SQLITE_OPEN_WAL = 0x00080000           # VFS only
 
 
+INFINITY = float("inf")
+NAN = float("nan")
+
+
 class SqlmathDb:
     """Sqlmath database class."""
 
-    busy = 0
     closed = False
     filename = ""
     ptr = 0
@@ -94,7 +97,7 @@ def asserterrorthrown(func, regexp):
     except Exception as err_caught: # noqa: BLE001
         err = err_caught
     assertorthrow(err, "No error thrown.")
-    assertorthrow(not regexp or re.match(regexp, str(err)), err)
+    assertorthrow(not regexp or re.search(regexp, str(err)), err)
 
 
 def assertint64(val):
@@ -109,7 +112,7 @@ def assertint64(val):
     )
 
 
-def assertjsonequal(aa, bb, message):
+def assertjsonequal(aa, bb, message=None):
     """This function will assert."""
     """JSON.stringify(<aa>) === JSON.stringify(<bb>)."""
     aa = json.dumps(objectdeepcopywithkeyssorted(aa), indent=1)
@@ -198,41 +201,58 @@ def db_exec(
     bufi = [0]
     if bind_by_key:
         for key, val in bind_list.items():
-            baton = jsbaton_set_value(baton, None, f":${key}\u0000")
+            baton = jsbaton_set_value(baton, None, f":{key}\u0000", None)
             baton = jsbaton_set_value(baton, None, val, bufi)
     else:
         for val in bind_list:
             baton = jsbaton_set_value(baton, None, val, bufi)
     db_call(
         baton,
-        "_dbExec",
-        db,                     # 0
-        str(sql) + "\n\nPRAGMA noop",   # 1
-        len(bind_list),         # 2
-        bind_by_key,            # 3
-        (                       # 4
-            SQLITE_RESPONSETYPE_LASTBLOB
-            if response_type == "lastblob"
-            else 0
-        ),
+        [
+            db.ptr,             # 0
+            str(sql) + "\n;\nPRAGMA noop",      # 1
+            len(bind_list),     # 2
+            bind_by_key,        # 3
+            (                   # 4
+                SQLITE_RESPONSETYPE_LASTBLOB
+                if response_type == "lastblob"
+                else 0
+            ),
+        ],
     )
-    result = _pybatonStealCbuffer(baton, 0)
+    # prevent gc of object <bind_list> before db_call
+    noop(bind_list)
     match response_type:
         case "arraybuffer":
-            return result
+            return memoryview(_pybatonStealCbuffer(baton, 0, 0))
         case "lastblob":
-            return result
+            return memoryview(_pybatonStealCbuffer(baton, 0, 0))
         case "list":
-            return json.loads(result)
+            return json.loads(_pybatonStealCbuffer(baton, 0, 1))
         case _:
             table_list = []
-            for table in json.loads(result):
+            for table in json.loads(_pybatonStealCbuffer(baton, 0, 1)):
                 col_list = tuple(enumerate(table.pop(0)))
                 table_list.append([
                     {key: row[ii] for ii, key in col_list}
                     for row in table
                 ])
             return table_list
+
+
+def db_exec_and_return_lastblob(
+    bind_list=None,
+    db=None,
+    sql=None,
+):
+    """This function will exec <sql> in <db> and return last value."""
+    """ retrieved. from execution as raw blob/buffer."""
+    return db_exec(
+        bind_list=bind_list,
+        db=db,
+        response_type="lastblob",
+        sql=sql,
+    )
 
 
 def db_noop(*arglist):
@@ -439,9 +459,11 @@ def jsbaton_set_value(baton, argi, val, bufi):
             vtype = SQLITE_DATATYPE_INTEGER_1
             vsize = 0
         # 18. 1.bytearray
+        case "1.bytearray":
             vtype = SQLITE_DATATYPE_BLOB
             vsize = 4 + len(val)
         # 19. 1.bytes
+        case "1.bytes":
             vtype = SQLITE_DATATYPE_BLOB
             vsize = 4 + len(val)
         # 20. 1.complex
@@ -528,7 +550,7 @@ def jsbaton_set_value(baton, argi, val, bufi):
         # push externalbuffer - 4-byte
         struct.pack_into("i", baton, nused + 1, bufi[0]) # ctype-i = int
         # set buffer
-        _pybatonSetArraybuffer(baton, bufi[0], val)
+        _pybatonSetMemoryview(baton, bufi[0], val)
         # increment bufi
         bufi[0] += 1
         return baton

@@ -645,18 +645,22 @@ async function dbExecAsync({
     );
     result = result[0];
     if (!IS_BROWSER) {
-        result = cModule._jsbatonStealCbuffer(baton.buffer, 0);
+        result = cModule._jsbatonStealCbuffer(
+            baton.buffer,
+            0,
+            Number(
+                responseType !== "arraybuffer" && responseType !== "lastblob"
+            )
+        );
     }
     switch (responseType) {
     case "arraybuffer":
     case "lastblob":
         return result;
     case "list":
-        return JSON.parse(new TextDecoder().decode(result));
+        return jsonParseArraybuffer(result);
     default:
-        return JSON.parse(
-            new TextDecoder().decode(result)
-        ).map(function (table) {
+        return jsonParseArraybuffer(result).map(function (table) {
             let colList = table.shift();
             return table.map(function (row) {
                 let dict = {};
@@ -1080,6 +1084,17 @@ function jsbatonSetValue(baton, argi, val, bufi) {
     return baton;
 }
 
+function jsonParseArraybuffer(buf) {
+
+// This function will JSON.parse arraybuffer <buf>.
+
+    return JSON.parse(
+        IS_BROWSER
+        ? new TextDecoder().decode(buf)
+        : buf
+    );
+}
+
 async function moduleFsInit() {
 
 // This function will import nodejs builtin-modules if they have not yet been
@@ -1265,6 +1280,8 @@ function sqlmathWebworkerInit({
         dbCallAsync(jsbatonCreate("testTimeElapsed"), [true]);
         // test dbFileLoadAsync handling-behavior
         dbFileLoadAsync({db, filename: "aa", modeTest});
+        // test jsonParseArraybuffer handling-behavior
+        jsonParseArraybuffer(new TextEncoder().encode("0"));
         // revert IS_BROWSER
         IS_BROWSER = undefined;
     }

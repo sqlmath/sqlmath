@@ -148,22 +148,15 @@ jstestDescribe((
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        async function test_dbExecAndReturnLastBlobAsync(val) {
-            return await dbExecAndReturnLastBlobAsync({
-                bindList: [
-                    val
-                ],
-                db,
-                sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
-            });
-        }
         // test bigint-error handling-behavior
-        noop([
-            -(2n ** 63n + 1n),
-            2n ** 63n
-        ]).forEach(function (val) {
+        noop([-(2n ** 63n + 1n), 2n ** 63n]).forEach(function (valInput) {
             assertErrorThrownAsync(
-                test_dbExecAndReturnLastBlobAsync.bind(undefined, val)
+                dbExecAndReturnLastBlobAsync.bind(undefined, {
+                    bindList: [valInput],
+                    db,
+                    sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
+                }),
+                "outside signed-64-bit inclusive-range"
             );
         });
         // test datatype handling-behavior
@@ -224,15 +217,15 @@ jstestDescribe((
             [Symbol(), null],
             // 8. undefined
             [undefined, null]
-        ].map(async function ([
-            valInput, valExpected
-        ], ii) {
+        ].map(async function ([valInput, valExpected], ii) {
             // test dbExecAndReturnLastBlobAsync's bind handling-behavior
-            await Promise.all([
-                valInput
-            ].map(async function (valInput) {
+            await Promise.all([valInput].map(async function (valInput) {
                 let bufActual = new TextDecoder().decode(
-                    await test_dbExecAndReturnLastBlobAsync(valInput)
+                    await dbExecAndReturnLastBlobAsync({
+                        bindList: [valInput],
+                        db,
+                        sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
+                    })
                 );
                 let bufExpected = String(valExpected);
                 switch (typeof(valInput)) {
@@ -345,33 +338,30 @@ jstestDescribe((
             ].map(async function ([
                 bindList, sql
             ]) {
-                let valActual = await dbExecAsync({
+                let bufActual = await dbExecAsync({
                     bindList,
                     db,
                     responseType: "list",
                     sql
                 });
-                assertJsonEqual(
+                let bufExpected = [
                     [
-                        [
-                            ["0"],
-                            [0]
-                        ],
-                        [
-                            ["c1", "c2", "c3", "c4"],
-                            [valExpected, valExpected, 0, undefined],
-                            [valExpected, valExpected, 0, undefined],
-                            [valExpected, valExpected, 0, undefined]
-                        ]
+                        ["0"],
+                        [0]
                     ],
-                    valActual,
-                    {
-                        ii,
-                        valActual,
-                        valExpected,
-                        valInput
-                    }
-                );
+                    [
+                        ["c1", "c2", "c3", "c4"],
+                        [valExpected, valExpected, 0, undefined],
+                        [valExpected, valExpected, 0, undefined],
+                        [valExpected, valExpected, 0, undefined]
+                    ]
+                ];
+                assertJsonEqual(bufActual, bufExpected, {
+                    bufActual,
+                    ii,
+                    valExpected,
+                    valInput
+                });
             }));
         }));
     });
@@ -451,7 +441,7 @@ jstestDescribe((
             if (valExpected === Error) {
                 assertErrorThrownAsync(function () {
                     return dbNoopAsync(undefined, valInput, undefined);
-                });
+                }, "");
                 return;
             }
             baton = await dbNoopAsync(undefined, valInput, undefined);
@@ -502,21 +492,20 @@ jstestDescribe((
                 db,
                 sql: undefined
             });
-        }, "near \"undefined\": syntax error");
+        }, "syntax error");
         // test race-condition handling-behavior
         Array.from(new Array(4)).forEach(async function () {
             let result;
             try {
-                result = JSON.stringify(
-                    await dbExecAsync({
-                        bindList: [
-                            new TextEncoder().encode("foob"),
-                            new TextEncoder().encode("fooba"),
-                            new TextEncoder().encode("foobar")
-                        ],
-                        db,
-                        responseType: "list",
-                        sql: (`
+                result = await dbExecAsync({
+                    bindList: [
+                        new TextEncoder().encode("foob"),
+                        new TextEncoder().encode("fooba"),
+                        new TextEncoder().encode("foobar")
+                    ],
+                    db,
+                    responseType: "list",
+                    sql: (`
 CREATE TABLE testDbExecAsync1 AS
 SELECT 101 AS c101, 102 AS c102
 --
@@ -540,26 +529,28 @@ VALUES
     );
 SELECT * FROM testDbExecAsync1;
 SELECT * FROM testDbExecAsync2;
-                        `)
-                    })
-                );
-                assertJsonEqual(result, JSON.stringify([
+                    `)
+                });
+                assertJsonEqual(
+                    result,
                     [
-                        ["c101", "c102"],
-                        [101, 102],
-                        [201, 202],
-                        [301, null]
-                    ],
-                    [
-                        ["c401", "c402", "c403"],
-                        [401, 402, 403],
-                        [501, 502.0123, 5030123456789],
-                        [601, "602", "603_\"\u0001\b\t\n\u000b\f\r\u000e"],
-                        [null, null, null],
-                        ["foob", "fooba", "foobar"],
-                        ["foob", "fooba", "foobar"]
+                        [
+                            ["c101", "c102"],
+                            [101, 102],
+                            [201, 202],
+                            [301, null]
+                        ],
+                        [
+                            ["c401", "c402", "c403"],
+                            [401, 402, 403],
+                            [501, 502.0123, 5030123456789],
+                            [601, "602", "603_\"\u0001\b\t\n\u000b\f\r\u000e"],
+                            [null, null, null],
+                            ["foob", "fooba", "foobar"],
+                            ["foob", "fooba", "foobar"]
+                        ]
                     ]
-                ]));
+                );
             } catch (err) {
                 assertOrThrow(
                     err.message.indexOf(
@@ -677,24 +668,24 @@ jstestDescribe((
         // test assertErrorThrownAsync error handling-behavior
         await assertErrorThrownAsync(function () {
             return assertErrorThrownAsync(noop);
-        });
+        }, "No error thrown");
         // test assertJsonEqual error handling-behavior
         await assertErrorThrownAsync(function () {
             assertJsonEqual(1, 2);
-        });
+        }, "!==");
         await assertErrorThrownAsync(function () {
             assertJsonEqual(1, 2, "undefined");
-        });
+        }, "undefined");
         await assertErrorThrownAsync(function () {
             assertJsonEqual(1, 2, {});
-        });
+        }, "");
         // test assertOrThrow error handling-behavior
         await assertErrorThrownAsync(function () {
             assertOrThrow(undefined, "undefined");
-        });
+        }, "undefined");
         await assertErrorThrownAsync(function () {
             assertOrThrow(undefined, new Error());
-        });
+        }, "");
     });
 });
 
