@@ -611,35 +611,50 @@ async function dbExecAsync({
 
 // This function will exec <sql> in <db> and return <result>.
 
-    let baton;
-    let bindByKey;
-    let bufi;
+    let baton = jsbatonCreate("_dbExec");
+    let bindByKey = !Array.isArray(bindList);
+    let bufi = [0];
+    let referenceList = [];
     let result;
-    baton = jsbatonCreate("_dbExec");
-    bufi = [0];
-    bindByKey = !Array.isArray(bindList);
     if (bindByKey) {
         Object.entries(bindList).forEach(function ([key, val]) {
             baton = jsbatonSetValue(baton, undefined, `:${key}\u0000`);
-            baton = jsbatonSetValue(baton, undefined, val, bufi);
+            baton = jsbatonSetValue(
+                baton,
+                undefined,
+                val,
+                bufi,
+                referenceList
+            );
         });
     } else {
         bindList.forEach(function (val) {
-            baton = jsbatonSetValue(baton, undefined, val, bufi);
+            baton = jsbatonSetValue(
+                baton,
+                undefined,
+                val,
+                bufi,
+                referenceList
+            );
         });
     }
     [baton, ...result] = await dbCallAsync(
         baton,
         [
-            db,                 // 0
-            String(sql) + "\n;\nPRAGMA noop",   // 1
-            (                   // 2
+            // 0. db
+            db,
+            // 1. sql
+            String(sql) + "\n;\nPRAGMA noop",
+            // 2. bindList.length
+            (
                 bindByKey
                 ? Object.keys(bindList).length
                 : bindList.length
             ),
-            bindByKey,          // 3
-            (                   // 4
+            // 3. bindByKey
+            bindByKey,
+            // 4. responseType
+            (
                 responseType === "lastblob"
                 ? SQLITE_RESPONSETYPE_LASTBLOB
                 : 0
@@ -700,11 +715,16 @@ async function dbFileLoadAsync({
     dbData = await dbCallAsync(
         jsbatonCreate("_dbFileLoad"),
         [
-            db,                 // 0. sqlite3 * pInMemory,
-            filename,           // 1. char *zFilename,
-            modeSave,           // 2. const int isSave
-            undefined,          // 3. undefined
-            dbData              // 4. dbData - same position as dbOpenAsync
+            // 0. sqlite3 * pInMemory
+            db,
+            // 1. char *zFilename
+            filename,
+            // 2. const int isSave
+            modeSave,
+            // 3. undefined
+            undefined,
+            // 4. dbData - same position as dbOpenAsync
+            dbData
         ],
         "modeDb"
     );
@@ -876,7 +896,7 @@ function jsbatonGetString(baton, argi) {
     ));
 }
 
-function jsbatonSetValue(baton, argi, val, bufi) {
+function jsbatonSetValue(baton, argi, val, bufi, referenceList) {
 
 // This function will set <val> to buffer <baton>.
 
@@ -1079,6 +1099,8 @@ function jsbatonSetValue(baton, argi, val, bufi) {
         cModule._jsbatonSetArraybuffer(baton.buffer, bufi[0], val);
         // increment bufi
         bufi[0] += 1;
+        // add buffer to reference_list to prevent gc during db_call.
+        referenceList.push(val);
         break;
     case SQLITE_DATATYPE_FLOAT:
         // push SQLITE-REAL - 8-byte

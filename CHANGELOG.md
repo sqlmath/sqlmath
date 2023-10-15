@@ -1,11 +1,11 @@
 # Changelog
 
 # Todo
-- sqlmath - Fix SIGSEGV error when binding memoryview.
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 
 # v2023.10.1-beta
+- sqlmath - Fix SIGSEGV error when binding external-buffer during db_exec.
 - sqlite - Update to sqlite v3.39.4.
 - python - Add python-functions db_file_load(), db_file_save().
 - sqlmath - Revamp how js-arraybuffers are passed to c-api without copying.

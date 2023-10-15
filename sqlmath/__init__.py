@@ -171,6 +171,7 @@ def db_call(baton, arglist):
                 argi,
                 val if val.endswith("\u0000") else val + "\u0000",
                 None,
+                None,
             )
             continue
         msg = f'db_call - invalid arg-type "{type(val)}"'
@@ -199,29 +200,45 @@ def db_exec(
     baton = jsbaton_create("_dbExec")
     bind_by_key = callable(getattr(bind_list, "items", None))
     bufi = [0]
+    externalbuffer_list = []
     if bind_by_key:
         for key, val in bind_list.items():
-            baton = jsbaton_set_value(baton, None, f":{key}\u0000", None)
-            baton = jsbaton_set_value(baton, None, val, bufi)
+            baton = jsbaton_set_value(baton, None, f":{key}\u0000", None, None)
+            baton = jsbaton_set_value(
+                baton,
+                None,
+                val,
+                bufi,
+                externalbuffer_list,
+            )
     else:
         for val in bind_list:
-            baton = jsbaton_set_value(baton, None, val, bufi)
+            baton = jsbaton_set_value(
+                baton,
+                None,
+                val,
+                bufi,
+                externalbuffer_list,
+            )
     db_call(
         baton,
         [
-            db.ptr,             # 0
-            str(sql) + "\n;\nPRAGMA noop",      # 1
-            len(bind_list),     # 2
-            bind_by_key,        # 3
-            (                   # 4
+            # 0. db
+            db.ptr,
+            # 1. sql
+            str(sql) + "\n;\nPRAGMA noop",
+            # 2. len(bind_list)
+            len(bind_list),
+            # 3. bind_by_key
+            bind_by_key,
+            # 4. response_type
+            (
                 SQLITE_RESPONSETYPE_LASTBLOB
                 if response_type == "lastblob"
                 else 0
             ),
         ],
     )
-    # prevent gc of object <bind_list> before db_call
-    noop(bind_list)
     match response_type:
         case "arraybuffer":
             return memoryview(_pybatonStealCbuffer(baton, 0, 0))
@@ -268,9 +285,12 @@ def db_file_load(
     db_call(
         jsbaton_create("_dbFileLoad"),
         [
-            db.ptr,             # 0. sqlite3 * pInMemory,
-            filename,           # 1. char *zFilename,
-            mode_save,          # 2. const int isSave
+            # 0. sqlite3 * pInMemory
+            db.ptr,
+            # 1. char *zFilename
+            filename,
+            # 2. const int isSave
+            mode_save,
         ],
     )
 
@@ -373,7 +393,7 @@ def jsbaton_get_string(baton, argi):
     )
 
 
-def jsbaton_set_value(baton, argi, val, bufi):
+def jsbaton_set_value(baton, argi, val, bufi, reference_list):
     """
     This function will push <val> to buffer <baton>.
 
@@ -589,6 +609,8 @@ def jsbaton_set_value(baton, argi, val, bufi):
         _pybatonSetMemoryview(baton, bufi[0], val)
         # increment bufi
         bufi[0] += 1
+        # add buffer to reference_list to prevent gc during db_call.
+        reference_list.append(val)
         return baton
     if vtype == SQLITE_DATATYPE_FLOAT:
         # push SQLITE-REAL - 8-byte

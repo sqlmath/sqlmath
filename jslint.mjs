@@ -278,7 +278,10 @@ async function assertErrorThrownAsync(asyncFunc, regexp) {
         err = errCaught;
     }
     assertOrThrow(err, "No error thrown.");
-    assertOrThrow(!regexp || new RegExp(regexp).test(err.message), err);
+    assertOrThrow(
+        !regexp || new RegExp(regexp).test(err.message),
+        err
+    );
 }
 
 function assertJsonEqual(aa, bb, message) {
