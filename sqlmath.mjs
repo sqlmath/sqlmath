@@ -700,11 +700,11 @@ async function dbFileLoadAsync({
     dbData = await dbCallAsync(
         jsbatonCreate("_dbFileLoad"),
         [
-            db,                     // 0. sqlite3 * pInMemory,
-            String(filename),       // 1. char *zFilename,
-            modeSave,               // 2. const int isSave
-            undefined,              // 3. undefined
-            dbData                  // 4. dbData
+            db,                 // 0. sqlite3 * pInMemory,
+            filename,           // 1. char *zFilename,
+            modeSave,           // 2. const int isSave
+            undefined,          // 3. undefined
+            dbData              // 4. dbData - same position as dbOpenAsync
         ],
         "modeDb"
     );

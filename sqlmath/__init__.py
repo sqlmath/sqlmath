@@ -89,21 +89,21 @@ class SqlmathError(Exception):
     """Sqlmath error."""
 
 
-def asserterrorthrown(func, regexp):
+def assert_error_thrown(func, regexp):
     """This function will assert calling <func> throws an error."""
     err = None
     try:
         func()
     except Exception as err_caught: # noqa: BLE001
         err = err_caught
-    assertorthrow(err, "No error thrown.")
-    assertorthrow(not regexp or re.search(regexp, str(err)), err)
+    assert_or_throw(err, "No error thrown.")
+    assert_or_throw(not regexp or re.search(regexp, str(err)), err)
 
 
-def assertint64(val):
+def assert_int64(val):
     """This function will assert <val> is within range."""
     """of c99-signed-long-long."""
-    assertorthrow(
+    assert_or_throw(
         -9_223_372_036_854_775_808 <= val <= 9_223_372_036_854_775_807, # noqa: PLR2004
         (
             f"integer {val} outside signed-64-bit inclusive-range"
@@ -112,7 +112,7 @@ def assertint64(val):
     )
 
 
-def assertjsonequal(aa, bb, message=None):
+def assert_json_equal(aa, bb, message=None):
     """This function will assert."""
     """JSON.stringify(<aa>) === JSON.stringify(<bb>)."""
     aa = json.dumps(objectdeepcopywithkeyssorted(aa), indent=1)
@@ -130,7 +130,7 @@ def assertjsonequal(aa, bb, message=None):
         )
 
 
-def assertorthrow(condition, message):
+def assert_or_throw(condition, message):
     """This function will throw <message> if <condition> is falsy."""
     if not condition:
         raise (
@@ -143,7 +143,7 @@ def assertorthrow(condition, message):
 def db_call(baton, arglist):
     """This function will call c-function dbXxx() with given <funcname>."""
     """and return [<baton>, ...arglist]."""
-    assertorthrow(
+    assert_or_throw(
         len(arglist) <= JSBATON_ARGC,
         f"db_call - len(arglist) must be less than than {JSBATON_ARGC}",
     )
@@ -156,12 +156,12 @@ def db_call(baton, arglist):
         if isinstance(val, (bool, float, int)):
             val2 = val
             if isinstance(val, float):
-                assertorthrow(
+                assert_or_throw(
                     int(val) == val,
                     f"db_call - float {val} is not an integer",
                 )
                 val2 = int(val)
-            assertint64(val2)
+            assert_int64(val2)
             # ctype-q = long-long
             struct.pack_into("q", baton, JSBATON_OFFSET_ARGV + argi * 8, val2)
             continue
@@ -255,6 +255,38 @@ def db_exec_and_return_lastblob(
     )
 
 
+def db_file_load(
+    db=None,
+    filename=None,
+    mode_save=0,
+):
+    """This function will load <filename> to <db>."""
+    assert_or_throw(
+        isinstance(filename, str) and filename,
+        f"invalid filename {filename}",
+    )
+    db_call(
+        jsbaton_create("_dbFileLoad"),
+        [
+            db.ptr,             # 0. sqlite3 * pInMemory,
+            filename,           # 1. char *zFilename,
+            mode_save,          # 2. const int isSave
+        ],
+    )
+
+
+def db_file_save(
+    db=None,
+    filename=None,
+):
+    """This function will save <db> to <filename>."""
+    return db_file_load(
+        db=db,
+        filename=filename,
+        mode_save=1,
+    )
+
+
 def db_noop(*arglist):
     """This function will do nothing except return <arglist>."""
     return db_call(jsbaton_create("_dbNoop"), arglist)
@@ -271,7 +303,7 @@ def db_open(filename, flags=None):
         const char *zVfs        /* Name of VFS module to use */
     )
     """
-    assertorthrow(isinstance(filename, str), f"invalid filename {filename}")
+    assert_or_throw(isinstance(filename, str), f"invalid filename {filename}")
     ptr = db_call(
         jsbaton_create("_dbOpen"),
         [
@@ -501,7 +533,7 @@ def jsbaton_set_value(baton, argi, val, bufi):
             vsize = 4 + len(val)
     nused = struct.unpack_from("i", baton, 4)[0] # ctype-i = int
     nn = nused + 1 + vsize
-    assertorthrow(
+    assert_or_throw(
         nn <= 0xffff_ffff, # noqa: PLR2004
         "jsbaton cannot exceed 0x7fff_ffff / 2,147,483,647 bytes",
     )
@@ -526,7 +558,7 @@ def jsbaton_set_value(baton, argi, val, bufi):
             # ctype-i = int
             struct.pack_into("i", baton, JSBATON_OFFSET_ARGV + argi * 8, nused)
         vsize -= 4
-        assertorthrow(
+        assert_or_throw(
             0 <= vsize <= SIZEOF_BLOB_MAX,
             (
                 "sqlite-blob byte-length must be within inclusive-range"
@@ -540,14 +572,14 @@ def jsbaton_set_value(baton, argi, val, bufi):
         return baton
     if vtype == SQLITE_DATATYPE_EXTERNALBUFFER:
         vsize = len(val)
-        assertorthrow(
+        assert_or_throw(
             0 <= vsize <= SIZEOF_BLOB_MAX,
             (
                 "sqlite-blob byte-length must be within inclusive-range"
                 f" 0 to {SIZEOF_BLOB_MAX}"
             ),
         )
-        assertorthrow(
+        assert_or_throw(
             bufi[0] < JSBATON_ARGC,
             f"cannot pass more than {JSBATON_ARGC} arraybuffers",
         )
@@ -563,7 +595,7 @@ def jsbaton_set_value(baton, argi, val, bufi):
         struct.pack_into("d", baton, nused + 1, val) # ctype-d = double
         return baton
     if vtype == SQLITE_DATATYPE_INTEGER:
-        assertint64(val)
+        assert_int64(val)
         # push SQLITE-INTEGER - 8-byte
         struct.pack_into("q", baton, nused + 1, val) # ctype-q = long-long
         return baton

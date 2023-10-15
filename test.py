@@ -35,9 +35,9 @@ import sqlmath
 from sqlmath import (
     INFINITY,
     NAN,
-    asserterrorthrown,
-    assertjsonequal,
-    assertorthrow,
+    assert_error_thrown,
+    assert_json_equal,
+    assert_or_throw,
     debuginline,
     jsbaton_get_int64,
     jsbaton_get_string,
@@ -52,11 +52,11 @@ class TestCaseSqlmath(unittest.TestCase):
 
     def test_db_bind(self): # noqa: C901
         """Test db_bind handling-behavior."""
-        def test_db_bind_exec(ii, val_in, val_expected):
+        def test_db_bind_exec(ii, val_in, val_expect):
             for bind_list, sql in [
                 [
                     [
-                        val_expected, val_expected, 0,
+                        val_expect, val_expect, 0,
                     ],
                     (
                         "SELECT 0;"
@@ -67,8 +67,8 @@ class TestCaseSqlmath(unittest.TestCase):
                 ],
                 [
                     {
-                        "k1": val_expected,
-                        "k2": val_expected,
+                        "k1": val_expect,
+                        "k2": val_expect,
                         "k3": 0,
                     },
                     (
@@ -80,8 +80,8 @@ class TestCaseSqlmath(unittest.TestCase):
                     ),
                 ],
             ]:
-                if val_expected is Exception:
-                    asserterrorthrown(
+                if val_expect is Exception:
+                    assert_error_thrown(
                         lambda bind_list=bind_list, sql=sql:
                             sqlmath.db_exec(
                                 bind_list=bind_list,
@@ -98,28 +98,28 @@ class TestCaseSqlmath(unittest.TestCase):
                     response_type="list",
                     sql=sql,
                 )
-                buf_expected = [
+                buf_expect = [
                     [
                         ["0"],
                         [0],
                     ],
                     [
                         ["c1", "c2", "c3", "c4"],
-                        [val_expected, val_expected, 0, None],
-                        [val_expected, val_expected, 0, None],
-                        [val_expected, val_expected, 0, None],
+                        [val_expect, val_expect, 0, None],
+                        [val_expect, val_expect, 0, None],
+                        [val_expect, val_expect, 0, None],
                     ],
                 ]
-                assertjsonequal(buf_actual, buf_expected, {
+                assert_json_equal(buf_actual, buf_expect, {
                     "buf_actual": buf_actual,
                     "ii": ii,
-                    "val_expected": val_expected,
+                    "val_expect": val_expect,
                     "val_in": str(val_in),
                 })
 
-        def test_db_bind_lastblob(ii, val_in, val_expected):
-            if val_expected is Exception:
-                asserterrorthrown(
+        def test_db_bind_lastblob(ii, val_in, val_expect):
+            if val_expect is Exception:
+                assert_error_thrown(
                     lambda:
                         sqlmath.db_exec_and_return_lastblob(
                             bind_list=[val_in],
@@ -136,40 +136,40 @@ class TestCaseSqlmath(unittest.TestCase):
                     sql="SELECT 1, 2, 3; SELECT 1, 2, ?;",
                 ),
             ).decode()
-            buf_expected = str(val_expected)
+            buf_expect = str(val_expect)
             #  1. 0.NoneType
             if val_in is None:
-                buf_expected = ""
+                buf_expect = ""
             #  3. 0.bytearray
             #  4. 0.bytes
             if isinstance(val_in, (bytearray, bytes)):
-                buf_expected = val_in.decode()
+                buf_expect = val_in.decode()
             if isinstance(val_in, memoryview):
-                buf_expected = val_in.obj.decode()
+                buf_expect = val_in.obj.decode()
             #  7. 0.float
             if isinstance(val_in, float):
                 if math.isnan(val_in):
-                    buf_expected = ""
+                    buf_expect = ""
                 elif val_in == -INFINITY:
-                    buf_expected = "-Inf"
+                    buf_expect = "-Inf"
                 elif val_in == INFINITY:
-                    buf_expected = "Inf"
-            assertjsonequal(buf_actual, buf_expected, {
+                    buf_expect = "Inf"
+            assert_json_equal(buf_actual, buf_expect, {
                 "buf_actual": buf_actual,
-                "buf_expected": buf_expected,
+                "buf_expect": buf_expect,
                 "ii": ii,
-                "val_expected": val_expected,
+                "val_expect": val_expect,
                 "val_in": str(val_in),
             })
 
-        def test_db_bind_response_type(ii, val_in, val_expected):
+        def test_db_bind_response_type(ii, val_in, val_expect):
             for response_type in [
                 "arraybuffer",
                 "list",
                 None,
             ]:
-                if val_expected is Exception:
-                    asserterrorthrown(
+                if val_expect is Exception:
+                    assert_error_thrown(
                         lambda response_type=response_type:
                             sqlmath.db_exec(
                                 bind_list=[val_in],
@@ -195,16 +195,16 @@ class TestCaseSqlmath(unittest.TestCase):
                         buf_actual = buf_actual[0][1][0]
                     case _:
                         buf_actual = buf_actual[0][0]["val"]
-                assertjsonequal(buf_actual, val_expected, {
+                assert_json_equal(buf_actual, val_expect, {
                     "buf_actual": buf_actual,
                     "ii": ii,
                     "response_type": response_type,
-                    "val_expected": val_expected,
+                    "val_expect": val_expect,
                     "val_in": str(val_in),
                 })
         db = sqlmath.db_open(":memory:")
         # test datatype handling-behavior
-        for ii, (val_in, val_expected) in enumerate([
+        for ii, (val_in, val_expect) in enumerate([
             #  1. 0.NoneType
             [None, None],
             #  2. 0.bool
@@ -281,21 +281,129 @@ class TestCaseSqlmath(unittest.TestCase):
             [noop, Exception],
             [re.compile(""), Exception],
         ]):
-            test_db_bind_exec(ii, val_in, val_expected)
-            test_db_bind_lastblob(ii, val_in, val_expected)
-            test_db_bind_response_type(ii, val_in, val_expected)
+            test_db_bind_exec(ii, val_in, val_expect)
+            test_db_bind_lastblob(ii, val_in, val_expect)
+            test_db_bind_response_type(ii, val_in, val_expect)
 
     def test_db_close(self):
         """Test db_close handling-behavior."""
         db = sqlmath.db_open(":memory:")
         # test null-case handling-behavior
-        asserterrorthrown(lambda: sqlmath.db_close(None), "NoneType")
+        assert_error_thrown(lambda: sqlmath.db_close(None), "NoneType")
         # test close handling-behavior
         sqlmath.db_close(db)
 
+    def test_db_exec(self):
+        """Test db_exec handling-behavior."""
+        db = sqlmath.db_open(":memory:")
+        # test null-case handling-behavior
+        assert_error_thrown(
+            lambda: sqlmath.db_exec(db=db),
+            "syntax error",
+        )
+        # test race-condition handling-behavior
+        for _ignore in range(4):
+            try:
+                result = sqlmath.db_exec(
+                    bind_list=[
+                        bytes("foob", "utf-8"),
+                        bytearray("fooba", "utf-8"),
+                        bytearray("foobar", "utf-8"),
+                    ],
+                    db=db,
+                    response_type="list",
+                    sql="""
+CREATE TABLE testDbExecAsync1 AS
+SELECT 101 AS c101, 102 AS c102
+--
+UNION ALL
+VALUES
+    (201, 202),
+    (301, NULL);
+CREATE TABLE testDbExecAsync2 AS
+SELECT 401 AS c401, 402 AS c402, 403 AS c403
+--
+UNION ALL
+VALUES
+    (501, 502.0123, 5030123456789),
+    (601, '602', '603_\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e'),
+    (?1, ?2, ?3),
+    (CAST(?1 AS TEXT), CAST(?2 AS TEXT), CAST(?3 AS TEXT)),
+    (
+        CAST(uncompress(compress(?1)) AS TEXT),
+        CAST(uncompress(compress(?2)) AS TEXT),
+        CAST(uncompress(compress(?3)) AS TEXT)
+    );
+SELECT * FROM testDbExecAsync1;
+SELECT * FROM testDbExecAsync2;
+                    """,
+                )
+                assert_json_equal(
+                    result,
+                    [
+                        [
+                            ["c101", "c102"],
+                            [101, 102],
+                            [201, 202],
+                            [301, None],
+                        ],
+                        [
+                            ["c401", "c402", "c403"],
+                            [401, 402, 403],
+                            [501, 502.0123, 5030123456789],
+                            [601, "602", '603_"\u0001\b\t\n\u000b\f\r\u000e'],
+                            [None, None, None],
+                            ["foob", "fooba", "foobar"],
+                            ["foob", "fooba", "foobar"],
+                        ],
+                    ],
+                )
+            except Exception as err: # noqa: BLE001, PERF203
+                assert_or_throw(
+                    "table testDbExecAsync1 already exists" in str(err),
+                    err,
+                )
+
+    def test_db_file_xxx(self):
+        """Test db_file_xxx handling-behavior."""
+        db = sqlmath.db_open(":memory:")
+        assert_error_thrown(
+            lambda: sqlmath.db_file_load(db=db),
+            "invalid filename None",
+        )
+        assert_error_thrown(
+            lambda: sqlmath.db_file_save(db=db),
+            "invalid filename None",
+        )
+        sqlmath.db_exec(
+            db=db,
+            sql="CREATE TABLE t01 AS SELECT 1 AS c01",
+        )
+        sqlmath.db_file_save(
+            db=db,
+            filename=".test_db_file_xxx.sqlite",
+        )
+        db = sqlmath.db_open(
+            filename=":memory:",
+        )
+        sqlmath.db_file_load(
+            db=db,
+            filename=".test_db_file_xxx.sqlite",
+        )
+        val_actual = sqlmath.db_exec(
+            db=db,
+            sql="SELECT * FROM t01",
+        )
+        val_expect = [
+            [
+                {"c01": 1},
+            ],
+        ]
+        assert_json_equal(val_actual, val_expect)
+
     def test_db_noop(self):
         """Test db_noop handling-behavior."""
-        for val_in, val_expected in [
+        for val_in, val_expect in [
             #  1. 0.NoneType
             [None, 0],
             #  2. 0.bool
@@ -374,8 +482,8 @@ class TestCaseSqlmath(unittest.TestCase):
             [noop, Exception],
             [re.compile(""), Exception],
         ]:
-            if val_expected is Exception:
-                asserterrorthrown(
+            if val_expect is Exception:
+                assert_error_thrown(
                     lambda val_in=val_in: sqlmath.db_noop(None, val_in, None),
                     "invalid arg|integer",
                 )
@@ -386,87 +494,16 @@ class TestCaseSqlmath(unittest.TestCase):
                 if isinstance(val_in, str)
                 else str(jsbaton_get_int64(baton, 1))
             )
-            assertjsonequal(val_actual, str(val_expected), {
+            assert_json_equal(val_actual, str(val_expect), {
                 "val_actual": val_actual,
-                "val_expected": val_expected,
+                "val_expect": val_expect,
                 "val_in": val_in,
             })
 
     def test_db_open(self):
         """Test db_open handling-behavior."""
         # test null-case handling-behavior
-        asserterrorthrown(lambda: sqlmath.db_open(None), "invalid filename")
-
-    def test_db_exec(self):
-        """Test db_exec handling-behavior."""
-        db = sqlmath.db_open(":memory:")
-        # test null-case handling-behavior
-        asserterrorthrown(
-            lambda: sqlmath.db_exec(db=db),
-            "syntax error",
-        )
-        # test race-condition handling-behavior
-        for _ignore in range(4):
-            try:
-                result = sqlmath.db_exec(
-                    bind_list=[
-                        bytes("foob", "utf-8"),
-                        bytearray("fooba", "utf-8"),
-                        bytearray("foobar", "utf-8"),
-                    ],
-                    db=db,
-                    response_type="list",
-                    sql="""
-CREATE TABLE testDbExecAsync1 AS
-SELECT 101 AS c101, 102 AS c102
---
-UNION ALL
-VALUES
-    (201, 202),
-    (301, NULL);
-CREATE TABLE testDbExecAsync2 AS
-SELECT 401 AS c401, 402 AS c402, 403 AS c403
---
-UNION ALL
-VALUES
-    (501, 502.0123, 5030123456789),
-    (601, '602', '603_\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e'),
-    (?1, ?2, ?3),
-    (CAST(?1 AS TEXT), CAST(?2 AS TEXT), CAST(?3 AS TEXT)),
-    (
-        CAST(uncompress(compress(?1)) AS TEXT),
-        CAST(uncompress(compress(?2)) AS TEXT),
-        CAST(uncompress(compress(?3)) AS TEXT)
-    );
-SELECT * FROM testDbExecAsync1;
-SELECT * FROM testDbExecAsync2;
-                    """,
-                )
-                assertjsonequal(
-                    result,
-                    [
-                        [
-                            ["c101", "c102"],
-                            [101, 102],
-                            [201, 202],
-                            [301, None],
-                        ],
-                        [
-                            ["c401", "c402", "c403"],
-                            [401, 402, 403],
-                            [501, 502.0123, 5030123456789],
-                            [601, "602", '603_"\u0001\b\t\n\u000b\f\r\u000e'],
-                            [None, None, None],
-                            ["foob", "fooba", "foobar"],
-                            ["foob", "fooba", "foobar"],
-                        ],
-                    ],
-                )
-            except Exception as err: # noqa: BLE001, PERF203
-                assertorthrow(
-                    "table testDbExecAsync1 already exists" in str(err),
-                    err,
-                )
+        assert_error_thrown(lambda: sqlmath.db_open(None), "invalid filename")
 
 
 if __name__ == "__main__":

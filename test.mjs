@@ -143,12 +143,184 @@ jstestDescribe((
     "test_dbBind"
 ), function test_dbBind() {
     jstestIt((
-        "test db-bind-value handling-behavior"
-    ), async function test_dbBindValue() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
-        // test datatype handling-behavior
+        "test db-bind handling-behavior"
+    ), async function test_dbBind() {
+        let db;
+        async function test_dbBind_exec(ii, valIn, valExpect) {
+            await Promise.all([
+                [
+                    [
+                        valExpect, valExpect, 0
+                    ],
+                    (
+                        "SELECT 0;"
+                        + " SELECT ? AS c1, ? AS c2, ? AS c3, ? AS c4"
+                        + " UNION ALL SELECT ?1, ?2, ?3, ?4"
+                        + " UNION ALL SELECT ?1, ?2, ?3, ?4"
+                    )
+                ],
+                [
+                    {
+                        k1: valExpect,
+                        k2: valExpect,
+                        k3: 0
+                    },
+                    (
+                        "SELECT 0;"
+                        + " SELECT $k1 AS c1, $k2 AS c2, $k3 AS c3, $k4 AS c4"
+                        + " UNION ALL SELECT :k1, :k2, :k3, :k4"
+                        + " UNION ALL SELECT @k1, @k2, @k3, @k4"
+                    )
+                ]
+            ].map(async function ([
+                bindList, sql
+            ]) {
+                let bufActual = await dbExecAsync({
+                    bindList,
+                    db,
+                    responseType: "list",
+                    sql
+                });
+                let bufExpect = [
+                    [
+                        ["0"],
+                        [0]
+                    ],
+                    [
+                        ["c1", "c2", "c3", "c4"],
+                        [valExpect, valExpect, 0, undefined],
+                        [valExpect, valExpect, 0, undefined],
+                        [valExpect, valExpect, 0, undefined]
+                    ]
+                ];
+                assertJsonEqual(bufActual, bufExpect, {
+                    bufActual,
+                    ii,
+                    valExpect,
+                    valIn
+                });
+            }));
+        }
+        async function test_dbBind_lastblob(ii, valIn, valExpect) {
+            let bufActual;
+            let bufExpect;
+            if (valExpect === Error) {
+                assertErrorThrownAsync(
+                    dbExecAndReturnLastBlobAsync.bind(undefined, {
+                        bindList: [valIn],
+                        db,
+                        sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
+                    }),
+                    "inclusive-range|not JSON serializable"
+                );
+                return;
+            }
+            bufActual = new TextDecoder().decode(
+                await dbExecAndReturnLastBlobAsync({
+                    bindList: [valIn],
+                    db,
+                    sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
+                })
+            );
+            bufExpect = String(valExpect);
+            switch (typeof(valIn)) {
+            case "bigint":
+                valIn = Number(valIn);
+                break;
+            case "function":
+            case "symbol":
+            case "undefined":
+                bufExpect = "";
+                break;
+            case "number":
+                switch (valIn) {
+                case -2:
+                    bufExpect = "-2.0";
+                    break;
+                case -Infinity:
+                    bufExpect = "-Inf";
+                    break;
+                case 2:
+                    bufExpect = "2.0";
+                    break;
+                case Infinity:
+                    bufExpect = "Inf";
+                    break;
+                default:
+                    if (Number.isNaN(valIn)) {
+                        bufExpect = "";
+                    }
+                }
+                break;
+            case "object":
+                if (valIn === null) {
+                    bufExpect = "";
+                    break;
+                }
+                if (
+                    valIn?.constructor === ArrayBuffer
+                    || ArrayBuffer.isView(valIn)
+                ) {
+                    bufExpect = new TextDecoder().decode(valIn);
+                    break;
+                }
+                break;
+            }
+            assertJsonEqual(bufActual, bufExpect, {
+                bufActual,
+                bufExpect,
+                ii,
+                valExpect,
+                valIn
+            });
+        }
+        async function test_dbBind_responseType(ii, valIn, valExpect) {
+            await Promise.all([
+                "arraybuffer",
+                "list",
+                undefined
+            ].map(async function (responseType) {
+                let bufActual;
+                if (valExpect === Error) {
+                    assertErrorThrownAsync(
+                        dbExecAsync.bind(undefined, {
+                            bindList: [valIn],
+                            db,
+                            responseType,
+                            sql: "SELECT ? AS val"
+                        }),
+                        "inclusive-range|not JSON serializable"
+                    );
+                    return;
+                }
+                bufActual = await dbExecAsync({
+                    bindList: [valIn],
+                    db,
+                    responseType,
+                    sql: "SELECT ? AS val"
+                });
+                switch (responseType) {
+                case "arraybuffer":
+                    bufActual = JSON.parse(
+                        new TextDecoder().decode(bufActual)
+                    )[0][1][0];
+                    break;
+                case "list":
+                    bufActual = bufActual[0][1][0];
+                    break;
+                default:
+                    bufActual = bufActual[0][0].val;
+                }
+                assertJsonEqual(bufActual, valExpect, {
+                    bufActual,
+                    ii,
+                    responseType,
+                    valExpect,
+                    valIn
+                });
+            }));
+        }
+        db = await dbOpenAsync({filename: ":memory:"});
         await Promise.all([
             // 1. bigint
             [-0n, -0],
@@ -212,180 +384,12 @@ jstestDescribe((
             [Symbol(), null],
             // 8. undefined
             [undefined, null]
-        ].map(async function ([valIn, valExpected], ii) {
-            // test dbExecAndReturnLastBlobAsync's bind handling-behavior
-            await Promise.all([valIn].map(async function (valIn) {
-                let bufActual;
-                let bufExpected;
-                if (valExpected === Error) {
-                    assertErrorThrownAsync(
-                        dbExecAndReturnLastBlobAsync.bind(undefined, {
-                            bindList: [valIn],
-                            db,
-                            sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
-                        }),
-                        "inclusive-range|not JSON serializable"
-                    );
-                    return;
-                }
-                bufActual = new TextDecoder().decode(
-                    await dbExecAndReturnLastBlobAsync({
-                        bindList: [valIn],
-                        db,
-                        sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
-                    })
-                );
-                bufExpected = String(valExpected);
-                switch (typeof(valIn)) {
-                case "bigint":
-                    valIn = Number(valIn);
-                    break;
-                case "function":
-                case "symbol":
-                case "undefined":
-                    bufExpected = "";
-                    break;
-                case "number":
-                    switch (valIn) {
-                    case -2:
-                        bufExpected = "-2.0";
-                        break;
-                    case -Infinity:
-                        bufExpected = "-Inf";
-                        break;
-                    case 2:
-                        bufExpected = "2.0";
-                        break;
-                    case Infinity:
-                        bufExpected = "Inf";
-                        break;
-                    default:
-                        if (Number.isNaN(valIn)) {
-                            bufExpected = "";
-                        }
-                    }
-                    break;
-                case "object":
-                    if (valIn === null) {
-                        bufExpected = "";
-                        break;
-                    }
-                    if (
-                        valIn?.constructor === ArrayBuffer
-                        || ArrayBuffer.isView(valIn)
-                    ) {
-                        bufExpected = new TextDecoder().decode(valIn);
-                        break;
-                    }
-                    break;
-                }
-                assertJsonEqual(bufActual, bufExpected, {
-                    bufActual,
-                    bufExpected,
-                    ii,
-                    valExpected,
-                    valIn
-                });
-            }));
-            // test dbExecAsync's responseType handling-behavior
+        ].map(async function ([valIn, valExpect], ii) {
             await Promise.all([
-                "arraybuffer",
-                "list",
-                undefined
-            ].map(async function (responseType) {
-                let bufActual;
-                if (valExpected === Error) {
-                    assertErrorThrownAsync(
-                        dbExecAsync.bind(undefined, {
-                            bindList: [valIn],
-                            db,
-                            responseType,
-                            sql: "SELECT ? AS val"
-                        }),
-                        "inclusive-range|not JSON serializable"
-                    );
-                    return;
-                }
-                bufActual = await dbExecAsync({
-                    bindList: [valIn],
-                    db,
-                    responseType,
-                    sql: "SELECT ? AS val"
-                });
-                switch (responseType) {
-                case "arraybuffer":
-                    bufActual = JSON.parse(
-                        new TextDecoder().decode(bufActual)
-                    )[0][1][0];
-                    break;
-                case "list":
-                    bufActual = bufActual[0][1][0];
-                    break;
-                default:
-                    bufActual = bufActual[0][0].val;
-                }
-                assertJsonEqual(bufActual, valExpected, {
-                    bufActual,
-                    ii,
-                    responseType,
-                    valExpected,
-                    valIn
-                });
-            }));
-            // test dbExecAsync's bind handling-behavior
-            await Promise.all([
-                [
-                    [
-                        valExpected, valExpected, 0
-                    ],
-                    (
-                        "SELECT 0;"
-                        + " SELECT ? AS c1, ? AS c2, ? AS c3, ? AS c4"
-                        + " UNION ALL SELECT ?1, ?2, ?3, ?4"
-                        + " UNION ALL SELECT ?1, ?2, ?3, ?4"
-                    )
-                ],
-                [
-                    {
-                        k1: valExpected,
-                        k2: valExpected,
-                        k3: 0
-                    },
-                    (
-                        "SELECT 0;"
-                        + " SELECT $k1 AS c1, $k2 AS c2, $k3 AS c3, $k4 AS c4"
-                        + " UNION ALL SELECT :k1, :k2, :k3, :k4"
-                        + " UNION ALL SELECT @k1, @k2, @k3, @k4"
-                    )
-                ]
-            ].map(async function ([
-                bindList, sql
-            ]) {
-                let bufActual = await dbExecAsync({
-                    bindList,
-                    db,
-                    responseType: "list",
-                    sql
-                });
-                let bufExpected = [
-                    [
-                        ["0"],
-                        [0]
-                    ],
-                    [
-                        ["c1", "c2", "c3", "c4"],
-                        [valExpected, valExpected, 0, undefined],
-                        [valExpected, valExpected, 0, undefined],
-                        [valExpected, valExpected, 0, undefined]
-                    ]
-                ];
-                assertJsonEqual(bufActual, bufExpected, {
-                    bufActual,
-                    ii,
-                    valExpected,
-                    valIn
-                });
-            }));
+                test_dbBind_exec(ii, valIn, valExpect),
+                test_dbBind_lastblob(ii, valIn, valExpect),
+                test_dbBind_responseType(ii, valIn, valExpect)
+            ]);
         }));
     });
 });
@@ -460,10 +464,10 @@ jstestDescribe((
             [Symbol(), Error],
             // 8. undefined
             [undefined, 0]
-        ].map(async function ([valIn, valExpected], ii) {
+        ].map(async function ([valIn, valExpect], ii) {
             let baton;
             let valActual;
-            if (valExpected === Error) {
+            if (valExpect === Error) {
                 assertErrorThrownAsync(function () {
                     return dbNoopAsync(undefined, valIn, undefined);
                 }, "invalid arg|integer");
@@ -476,14 +480,14 @@ jstestDescribe((
                 ? jsbatonGetString(baton, 1)
                 : String(jsbatonGetInt64(baton, 1))
             );
-            valExpected = String(valExpected);
+            valExpect = String(valExpect);
             if (typeof valIn === "bigint") {
                 valIn = String(valIn);
             }
-            assertJsonEqual(valActual, valExpected, {
+            assertJsonEqual(valActual, valExpect, {
                 ii,
                 valActual,
-                valExpected,
+                valExpect,
                 valIn
             });
         }));
@@ -608,7 +612,7 @@ SELECT * FROM testDbExecAsync2;
             });
         }, "invalid filename undefined");
         assertErrorThrownAsync(function () {
-            return dbFileLoadAsync({
+            return dbFileSaveAsync({
                 db
             });
         }, "invalid filename undefined");
@@ -805,7 +809,7 @@ jstestDescribe((
             [null, "error"],
             [undefined, "error"],
             [{}, "error"]
-        ].map(async function ([valIn, valExpected], ii) {
+        ].map(async function ([valIn, valExpect], ii) {
             let valActual;
             try {
                 valActual = noop(
@@ -820,18 +824,18 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                     })
                 )[0][0].result;
             } catch (ignore) {
-                assertOrThrow(valExpected === "error", JSON.stringify({
+                assertOrThrow(valExpect === "error", JSON.stringify({
                     ii,
                     valActual,
-                    valExpected,
+                    valExpect,
                     valIn
                 }, undefined, 4));
                 return;
             }
-            assertJsonEqual(valActual, valExpected, {
+            assertJsonEqual(valActual, valExpect, {
                 ii,
                 valActual,
-                valExpected,
+                valExpect,
                 valIn
             });
         }));
@@ -1056,7 +1060,7 @@ SELECT
             arg, funcDict
         ]) {
             Object.entries(funcDict).forEach(async function ([
-                func, valExpected
+                func, valExpect
             ]) {
                 let sql = `SELECT ${func}(${arg}) AS val`;
                 let valActual = noop(
@@ -1065,10 +1069,10 @@ SELECT
                         sql
                     })
                 )[0][0].val;
-                assertJsonEqual(valActual, valExpected, {
+                assertJsonEqual(valActual, valExpect, {
                     sql,
                     valActual,
-                    valExpected
+                    valExpect
                 });
             });
         });
@@ -1144,7 +1148,7 @@ SELECT
                 [[8], 1, 8],
                 [[], 0, 1]
             ].map(function ([
-                data, kk, valExpected
+                data, kk, valExpect
             ]) {
                 return [
                     data.concat([
@@ -1153,22 +1157,22 @@ SELECT
                         undefined
                     ]),
                     kk,
-                    valExpected
+                    valExpect
                 ];
             })
         ].flat().map(async function ([
-            data, kk, valExpected
+            data, kk, valExpect
         ]) {
             let avg = 0;
             let data2;
-            let valExpectedMdn;
-            let valExpectedStd = 0;
+            let valExpectMdn;
+            let valExpectStd = 0;
             data2 = data.map(function (elem) {
                 return Number(elem);
             }).filter(function (elem) {
                 return Number.isFinite(elem);
             }).sort();
-            valExpectedMdn = (
+            valExpectMdn = (
                 data2.length % 2 === 0
                 ? 0.5 * (
                     data2[0.5 * data2.length - 1] + data2[0.5 * data2.length]
@@ -1180,15 +1184,15 @@ SELECT
             });
             avg *= 1 / data2.length;
             data2.forEach(function (elem) {
-                valExpectedStd += (elem - avg) ** 2;
+                valExpectStd += (elem - avg) ** 2;
             });
-            valExpectedStd = (
+            valExpectStd = (
                 data2.length <= 0
                 ? null
                 // : data2.length === 1
                 // ? 0
                 : Number(Math.sqrt(
-                    valExpectedStd / (data2.length - 1)
+                    valExpectStd / (data2.length - 1)
                 ).toFixed(8))
             );
             await Promise.all([
@@ -1216,17 +1220,17 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
                 assertJsonEqual(
                     valActual,
                     {
-                        mdn: valExpectedMdn,
-                        qnt: valExpected ?? null,
-                        std: valExpectedStd
+                        mdn: valExpectMdn,
+                        qnt: valExpect ?? null,
+                        std: valExpectStd
                     },
                     {
                         data,
                         kk,
                         valActual,
-                        valExpected,
-                        valExpectedMdn,
-                        valExpectedStd
+                        valExpect,
+                        valExpectMdn,
+                        valExpectStd
                     }
                 );
             }));
@@ -1240,8 +1244,8 @@ SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
         async function test_win_emax_aggregate({
             aa,
             bb,
-            valExpected,
-            valExpected2
+            valExpect,
+            valExpect2
         }) {
             let alpha = 2 * 1.0 / (4 + 1);
             let sqlBetween = "";
@@ -1269,7 +1273,7 @@ SELECT
             valActual = valActual[0].map(function ({val}) {
                 return Number(val.toFixed(4));
             });
-            assertJsonEqual(valActual, valExpected);
+            assertJsonEqual(valActual, valExpect);
             // test win_ema2-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
@@ -1302,15 +1306,15 @@ SELECT
                 val = JSON.parse(val).map(function (elem, jj) {
                     elem = Number(elem.toFixed(4));
                     if (ii + (bb || 0) + 1 >= list.length && jj === 9) {
-                        assertJsonEqual(elem, valExpected2, valActual);
+                        assertJsonEqual(elem, valExpect2, valActual);
                     } else {
-                        assertJsonEqual(elem, valExpected[ii], valActual);
+                        assertJsonEqual(elem, valExpect[ii], valActual);
                     }
                     return elem;
                 });
                 return val[0];
             });
-            assertJsonEqual(valActual, valExpected);
+            assertJsonEqual(valActual, valExpect);
         }
         valIn = [
             [11, NaN],
@@ -1375,43 +1379,43 @@ SELECT doublearray_jsonto(win_ema2(1, 2, 3)) FROM __tmp1;
             }()),
             // test win_emax-aggregate-normal handling-behavior
             test_win_emax_aggregate({
-                valExpected: [
+                valExpect: [
                     0.0000, 0.4000, 1.0400, 1.8240,
                     2.6944, 3.2166, 4.3300, 5.3980,
                     6.4388, 7.4633, 8.4780, 9.0868
                 ],
-                valExpected2: 4.6868
+                valExpect2: 4.6868
             }),
             // test win_emax-aggregate-window handling-behavior
             test_win_emax_aggregate({
                 aa: 1,
                 bb: 3,
-                valExpected: [
+                valExpect: [
                     1.824, 2.824, 3.424, 4.584,
                     5.680, 6.608, 7.824, 8.824,
                     9.424, 9.424, 9.424, 9.424
                 ],
-                valExpected2: 5.024
+                valExpect2: 5.024
             }),
             test_win_emax_aggregate({
                 aa: 3,
                 bb: 1,
-                valExpected: [
+                valExpect: [
                     0.400, 1.040, 1.824, 2.824,
                     3.424, 4.584, 5.680, 6.608,
                     7.824, 8.824, 9.424, 9.424
                 ],
-                valExpected2: 5.024
+                valExpect2: 5.024
             }),
             test_win_emax_aggregate({
                 aa: 4,
                 bb: 0,
-                valExpected: [
+                valExpect: [
                     0.000, 0.400, 1.040, 1.824,
                     2.824, 3.424, 4.584, 5.680,
                     6.608, 7.824, 8.824, 9.424
                 ],
-                valExpected2: 5.024
+                valExpect2: 5.024
             })
         ]);
     });
@@ -1424,8 +1428,8 @@ SELECT doublearray_jsonto(win_ema2(1, 2, 3)) FROM __tmp1;
             aa,
             bb,
             quantile,
-            valExpected,
-            valExpected2
+            valExpect,
+            valExpect2
         }) {
             let sqlBetween = "";
             let valActual;
@@ -1452,7 +1456,7 @@ SELECT
             valActual = valActual[0].map(function ({val}) {
                 return Number(val.toFixed(4));
             });
-            assertJsonEqual(valActual, valExpected);
+            assertJsonEqual(valActual, valExpect);
             // test win_quantile2-aggregate handling-behavior
             valActual = await dbExecAsync({
                 bindList: {
@@ -1484,15 +1488,15 @@ SELECT
                 val = JSON.parse(val).map(function (elem, jj) {
                     elem = Number(elem.toFixed(4));
                     if (ii === 11 && jj === 9) {
-                        assertJsonEqual(elem, valExpected2, valActual);
+                        assertJsonEqual(elem, valExpect2, valActual);
                     } else {
-                        assertJsonEqual(elem, valExpected[ii], valActual);
+                        assertJsonEqual(elem, valExpect[ii], valActual);
                     }
                     return elem;
                 });
                 return val[0];
             });
-            assertJsonEqual(valActual, valExpected);
+            assertJsonEqual(valActual, valExpect);
         }
         valIn = [
             [1, undefined],
@@ -1558,144 +1562,144 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
             // test win_quantilex-aggregate-normal handling-behavior
             test_win_quantilex_aggregate({
                 quantile: 0,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.0000, 0.0000, 0.0000,
                     0.0000, 0.0000, 0.0000, 0.0000,
                     0.0000, 0.0000, 0.0000, 0.0000
                 ],
-                valExpected2: -1
+                valExpect2: -1
             }),
             test_win_quantilex_aggregate({
                 quantile: 0.25,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.2500, 0.5000, 0.7500,
                     1.0000, 0.2500, 0.5000, 0.7500,
                     1.0000, 1.2500, 1.5000, 1.7500
                 ],
-                valExpected2: 0.7500
+                valExpect2: 0.7500
             }),
             test_win_quantilex_aggregate({
                 quantile: 0.33333333,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.3333, 0.6667, 1.0000,
                     1.3333, 0.6667, 1.0000, 1.3333,
                     1.6667, 2.0000, 2.3333, 2.6667
                 ],
-                valExpected2: 1.6667
+                valExpect2: 1.6667
             }),
             test_win_quantilex_aggregate({
                 quantile: 0.5,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.5000, 1.0000, 1.5000,
                     2.0000, 1.5000, 2.0000, 2.5000,
                     3.0000, 3.5000, 4.0000, 5.0000
                 ],
-                valExpected2: 3.5000
+                valExpect2: 3.5000
             }),
             test_win_quantilex_aggregate({
                 quantile: 0.66666667,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.6667, 1.3333, 2.0000,
                     2.6667, 2.3333, 3.0000, 3.6667,
                     4.6667, 6.0000, 6.0000, 6.6667
                 ],
-                valExpected2: 6.0000
+                valExpect2: 6.0000
             }),
             test_win_quantilex_aggregate({
                 quantile: 0.75,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.7500, 1.5000, 2.2500,
                     3.0000, 2.7500, 3.5000, 4.5000,
                     6.0000, 6.0000, 7.0000, 8.2500
                 ],
-                valExpected2: 6.5000
+                valExpect2: 6.5000
             }),
             test_win_quantilex_aggregate({
                 quantile: 1,
-                valExpected: [
+                valExpect: [
                     0.0000, 1.0000, 2.0000, 3.0000,
                     4.0000, 4.0000, 6.0000, 6.0000,
                     8.0000, 9.0000, 10.0000, 11.0000
                 ],
-                valExpected2: 10.0000
+                valExpect2: 10.0000
             }),
             // test win_quantilex-aggregate-window handling-behavior
             test_win_quantilex_aggregate({
                 aa: 8,
                 bb: 0,
                 quantile: 0,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.0000, 0.0000, 0.0000,
                     0.0000, 0.0000, 0.0000, 0.0000,
                     0.0000, 0.0000, 0.0000, 0.0000
                 ],
-                valExpected2: -1
+                valExpect2: -1
             }),
             test_win_quantilex_aggregate({
                 aa: 8,
                 bb: 0,
                 quantile: 0.25,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.2500, 0.5000, 0.7500,
                     1.0000, 0.2500, 0.5000, 0.7500,
                     1.7500, 2.7500, 3.7500, 5.5000
                 ],
-                valExpected2: 3
+                valExpect2: 3
             }),
             test_win_quantilex_aggregate({
                 aa: 8,
                 bb: 0,
                 quantile: 0.33333333,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.3333, 0.6667, 1.0000,
                     1.3333, 0.6667, 1.0000, 1.3333,
                     2.3333, 3.3333, 4.6667, 6.0000
                 ],
-                valExpected2: 4.6667
+                valExpect2: 4.6667
             }),
             test_win_quantilex_aggregate({
                 aa: 8,
                 bb: 0,
                 quantile: 0.5000,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.5000, 1.0000, 1.5000,
                     2.0000, 1.5000, 2.0000, 2.5000,
                     3.5000, 5.0000, 6.0000, 7.0000
                 ],
-                valExpected2: 6.0000
+                valExpect2: 6.0000
             }),
             test_win_quantilex_aggregate({
                 aa: 8,
                 bb: 0,
                 quantile: 0.66666667,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.6667, 1.3333, 2.0000,
                     2.6667, 2.3333, 3.0000, 3.6667,
                     5.3333, 6.0000, 7.3333, 8.6667
                 ],
-                valExpected2: 7.3333
+                valExpect2: 7.3333
             }),
             test_win_quantilex_aggregate({
                 aa: 8,
                 bb: 0,
                 quantile: 0.75,
-                valExpected: [
+                valExpect: [
                     0.0000, 0.7500, 1.5000, 2.2500,
                     3.0000, 2.7500, 3.5000, 4.5000,
                     6.0000, 6.5000, 8.2500, 9.2500
                 ],
-                valExpected2: 8.2500
+                valExpect2: 8.2500
             }),
             test_win_quantilex_aggregate({
                 aa: 8,
                 bb: 0,
                 quantile: 1.0000,
-                valExpected: [
+                valExpect: [
                     0.0000, 1.0000, 2.0000, 3.0000,
                     4.0000, 4.0000, 6.0000, 6.0000,
                     8.0000, 9.0000, 10.0000, 11.0000
                 ],
-                valExpected2: 10.0000
+                valExpect2: 10.0000
             })
         ]);
     });
@@ -1703,7 +1707,7 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
         "test sqlite-extension-win_sinefit2 handling-behavior"
     ), async function test_sqlite_extension_win_sinefit2() {
         let db = await dbOpenAsync({filename: ":memory:"});
-        let valExpected0;
+        let valExpect0;
         let valIn;
         function sqlSinefitExtractLnr(wsf, ii, suffix) {
             return (`
@@ -1727,9 +1731,9 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
         async function test_win_sinefit2_aggregate({
             aa,
             bb,
-            valExpected,
-            valExpected2,
-            valExpected3
+            valExpect,
+            valExpect2,
+            valExpect3
         }) {
             let id2 = 25;
             let id3 = 28;
@@ -1922,11 +1926,11 @@ SELECT
                 switch (list.length - ii) {
                 case 1:
                     assertJsonEqual(obj2, obj1, valActual);
-                    assertJsonEqual(obj3, valExpected3, valActual);
+                    assertJsonEqual(obj3, valExpect3, valActual);
                     break;
                 case 2:
                     assertJsonEqual(obj2, obj1, valActual);
-                    assertJsonEqual(obj3, valExpected2, valActual);
+                    assertJsonEqual(obj3, valExpect2, valActual);
                     break;
                 default:
                     assertJsonEqual(obj2, obj1, valActual);
@@ -1934,9 +1938,9 @@ SELECT
                 }
                 return obj1;
             });
-            assertJsonEqual(valActual, valExpected);
+            assertJsonEqual(valActual, valExpect);
         }
-        valExpected0 = [
+        valExpect0 = [
             {
                 "id": 1,
                 "laa": null,
@@ -2191,8 +2195,8 @@ SELECT
             // test win_sinefit2-aggregate-window handling-behavior
             (async function () {
                 let valActual;
-                let valExpected;
-                valExpected = {
+                let valExpect;
+                valExpect = {
                     "gyy": -1.02062073,
                     "laa": -0.82025678,
                     "lbb": 0.14621969,
@@ -2230,14 +2234,14 @@ SELECT
                         `)
                     })
                 )[0][0];
-                assertJsonEqual(valActual, valExpected);
+                assertJsonEqual(valActual, valExpect);
             }()),
             // test win_sinefit2-aggregate-window handling-behavior
             test_win_sinefit2_aggregate({
                 aa: 8,
                 bb: 0,
-                valExpected: valExpected0,
-                valExpected2: {
+                valExpect: valExpect0,
+                valExpect2: {
                     "id": 25,
                     "laa": 5.25,
                     "lbb": -0.275,
@@ -2254,7 +2258,7 @@ SELECT
                     "xx1": 10,
                     "yy1": -1
                 },
-                valExpected3: {
+                valExpect3: {
                     "id": 28,
                     "laa": 7.25,
                     "lbb": -0.575,
@@ -2277,7 +2281,7 @@ SELECT
                 let testDataSpx;
                 let ttSinefit = 128;
                 let valActual;
-                let valExpected;
+                let valExpect;
                 testDataSpx = (`
 ##
 date close
@@ -2631,11 +2635,11 @@ SELECT
                     valActual,
                     String("1").replace(npm_config_mode_test_save, "force")
                 );
-                valExpected = await fsReadFileUnlessTest(
+                valExpect = await fsReadFileUnlessTest(
                     "test_data_sinefit.csv",
                     "force"
                 );
-                assertJsonEqual(valActual, valExpected);
+                assertJsonEqual(valActual, valExpect);
             }())
         ]);
     });

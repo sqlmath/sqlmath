@@ -6,6 +6,7 @@
 - none
 
 # v2023.10.1-beta
+- python - Add python-functions db_file_load(), db_file_save().
 - sqlmath - Revamp how js-arraybuffers are passed to c-api without copying.
 - python - Revamp python-c-extension to support cp312.
 - python - Revamp python-c-extension to use nodejs-like-api dbClose, dbExec, dbFileLoadOrSave, dbNoop, dbOpen.
