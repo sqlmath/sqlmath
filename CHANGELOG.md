@@ -1,6 +1,7 @@
 # Changelog
 
 # Todo
+- sqlmath - Fix SIGSEGV error when binding memoryview.
 - sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
 - none
 

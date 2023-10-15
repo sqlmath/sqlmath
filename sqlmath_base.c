@@ -160,6 +160,15 @@ file sqlmath_h - start
 #define NAPI_CREATE_FUNCTION(func) \
     {"_" #func, NULL, func, NULL, NULL, NULL, napi_default, NULL}
 
+#define PY_PARSE_ARGV(bufc, ...) \
+    Jsbaton *baton = NULL; \
+    Py_buffer pybuf[bufc] = { 0 }; \
+    if (!PyArg_ParseTuple(__VA_ARGS__)) { \
+        return NULL; \
+    } \
+    baton = pybuf[0].buf; \
+    PyBuffer_Release(&(pybuf[0]));
+
 #define SQLITE3_AGGREGATE_CONTEXT(type) \
     type *agg = (type *) sqlite3_aggregate_context(context, sizeof(*agg)); \
     if (agg == NULL) { \
@@ -3369,20 +3378,13 @@ static PyObject *pybatonSetMemoryview(
 ) {
 // This function will set memoryview to <baton> at <bufi>.
     UNUSED_PARAMETER(self);
-    // init baton, bufi, pybuf
-    Jsbaton *baton = NULL;
-    Py_buffer pybuf[2] = { 0 };
+    // init baton, bufi
     int bufi = 0;
-    if (!PyArg_ParseTuple(args, "y*ly*", &(pybuf[0]), &bufi, &(pybuf[1]))) {
-        return NULL;
-    }
-    baton = pybuf[0].buf;
+    PY_PARSE_ARGV(2, args, "y*ly*", &(pybuf[0]), &bufi, &(pybuf[1]));
     // set memoryview
     Jsbuffer *buf = &(baton->bufv[(size_t) bufi]);
     buf->buf = (int64_t) pybuf[1].buf;
     buf->len = pybuf[1].len;
-    // cleanup pybuf
-    PyBuffer_Release(&(pybuf[0]));
     PyBuffer_Release(&(pybuf[1]));
     Py_RETURN_NONE;
 }
@@ -3444,17 +3446,10 @@ static PyObject *pybatonStealCbuffer(
 // This function will reference-steal sqlite-buffer from <baton> at <bufi>,
 // and assume cleanup responsibility.
     UNUSED_PARAMETER(self);
-    // init baton, bufi, pybuf, modestr
-    Jsbaton *baton = NULL;
-    Py_buffer pybuf = { 0 };
+    // init baton, bufi, modestr
     int bufi = 0;
     int modestr = 0;
-    if (!PyArg_ParseTuple(args, "y*ii", &pybuf, &bufi, &modestr)) {
-        return NULL;
-    }
-    baton = pybuf.buf;
-    // cleanup pybuf
-    PyBuffer_Release(&pybuf);
+    PY_PARSE_ARGV(1, args, "y*ii", &(pybuf[0]), &bufi, &modestr);
     // init sqlite-buffer
     Jsbuffer *sqlite_buf = &(baton->bufv[(size_t) bufi]);
     // reference-steal sqlite-buffer to python-str
@@ -3493,15 +3488,8 @@ static PyObject *pydbCall(
     UNUSED_PARAMETER(self);
     //
     // Create baton for passing data between nodejs <-> c.
-    // init baton, pybuf
-    Jsbaton *baton = NULL;
-    Py_buffer pybuf = { 0 };
-    if (!PyArg_ParseTuple(args, "y*", &pybuf, &PyList_Type)) {
-        return NULL;
-    }
-    baton = pybuf.buf;
-    // cleanup pybuf
-    PyBuffer_Release(&pybuf);
+    // init baton
+    PY_PARSE_ARGV(1, args, "y*", &(pybuf[0]));
     //
     // Execute dbCall().
     dbCall(baton);

@@ -149,6 +149,10 @@ def db_call(baton, arglist):
     )
     # serialize js-value to c-value
     for argi, val in enumerate(arglist):
+        if val is None:
+            # ctype-q = long-long
+            struct.pack_into("q", baton, JSBATON_OFFSET_ARGV + argi * 8, 0)
+            continue
         if isinstance(val, (bool, float, int)):
             val2 = val
             if isinstance(val, float):
@@ -169,12 +173,8 @@ def db_call(baton, arglist):
                 None,
             )
             continue
-        if isinstance(val, memoryview):
-            assertorthrow(
-                val.contiguous,
-                "db_call - memoryview-object must be contiguous",
-            )
-            continue
+        msg = f'db_call - invalid arg-type "{type(val)}"'
+        raise SqlmathError(msg)
     _pydbCall(baton)
     return [baton]
 
@@ -470,8 +470,12 @@ def jsbaton_set_value(baton, argi, val, bufi):
         # 21. 1.dict
         # 22. 1.float
         case "1.float":
-            vtype = SQLITE_DATATYPE_FLOAT
-            vsize = 8
+            if math.isnan(val):
+                vtype = SQLITE_DATATYPE_NULL
+                vsize = 0
+            else:
+                vtype = SQLITE_DATATYPE_FLOAT
+                vsize = 8
         # 23. 1.frozenset
         # 24. 1.int
         case "1.int":

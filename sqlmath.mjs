@@ -457,6 +457,9 @@ async function dbCallAsync(baton, argList, mode) {
     }
     // serialize js-value to c-value
     argList = argList.map(function (val, argi) {
+        if (val === null || val === undefined) {
+            val = 0;
+        }
         switch (typeof val) {
         case "bigint":
         case "boolean":
@@ -498,6 +501,7 @@ async function dbCallAsync(baton, argList, mode) {
         if (isExternalBuffer(val)) {
             return val;
         }
+        throw new Error(`dbCallAsync - invalid arg-type "${typeof val}"`);
     });
     // assert byteOffset === 0
     [baton, ...argList].forEach(function (arg) {
@@ -925,6 +929,11 @@ function jsbatonSetValue(baton, argi, val, bufi) {
     case "0.boolean":
     //  4. 0.number
     case "0.number":
+        if (Number.isNaN(val)) {
+            vtype = SQLITE_DATATYPE_NULL;
+            vsize = 0;
+            break;
+        }
         vtype = SQLITE_DATATYPE_INTEGER_0;
         vsize = 0;
         break;
