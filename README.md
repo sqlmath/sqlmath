@@ -32,6 +32,7 @@
 
 8. [Devops Instruction](#devops-instruction)
     - [python pypi publish](#python-pypi-publish)
+    - [sqlite upgrade](#sqlite-upgrade)
 
 
 <br><br>
@@ -124,4 +125,20 @@ py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2023.10.1
 #
 twine upload dist/sqlmath-2023.10.1*
 pip install sqlmath==2023.10.1
+```
+
+
+<br><br>
+### sqlite upgrade
+- goto https://www.sqlite.org/changes.html
+```shell
+curl -L https://www.sqlite.org/2023/sqlite-autoconf-3420000.tar.gz | tar -xz
+git grep "3\.39\.4\|3390400"
+for FILE in .ci.sh sqlite_rollup.c
+do
+    sed -i -e "s|\<3\.39\.4\>|3.42.0|g" "$FILE"
+    sed -i -e "s|\<3390400\>|3420000|g" "$FILE"
+done
+git grep "3\.39\.4\|3390400"
+shRollupFetch sqlite_rollup.c
 ```

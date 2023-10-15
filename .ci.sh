@@ -4,11 +4,11 @@
 # sh jslint_ci.sh shCiBuildWasm
 # sh jslint_ci.sh shSqlmathUpdate
 
-# sqlite autoconf-3390400 version-3.39.4
-# curl -L https://www.sqlite.org/2022/sqlite-autoconf-3390400.tar.gz | tar -xz
-# https://www.sqlite.org/2022/sqlite-tools-linux-x86-3390400.zip
-# https://www.sqlite.org/2022/sqlite-tools-osx-x86-3390400.zip
-# https://www.sqlite.org/2022/sqlite-tools-win32-x86-3390400.zip
+# sqlite autoconf-3420000 version-3.42.0
+# curl -L https://www.sqlite.org/2022/sqlite-autoconf-3420000.tar.gz | tar -xz
+# https://www.sqlite.org/2022/sqlite-tools-linux-x86-3420000.zip
+# https://www.sqlite.org/2022/sqlite-tools-osx-x86-3420000.zip
+# https://www.sqlite.org/2022/sqlite-tools-win32-x86-3420000.zip
 
 shCiArtifactUploadCustom() {(set -e
 # this function will run custom-code to upload build-artifacts
@@ -497,14 +497,6 @@ shSqlmathUpdate() {(set -e
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
         shRollupFetch sqlite_rollup.c
-        git grep '3\.39\.[^4]' \
-            ":(exclude)CHANGELOG.md" \
-            ":(exclude)sqlite_rollup.c" \
-            || true
-        git grep 'autoconf-[0-9]' | grep -v CHANGELOG \
-            | grep -v '3390400' || true
-        git grep 'sqlite.*version-[0-9]' | grep -v CHANGELOG \
-            | grep -v '3\.39\.4' || true
         return
     fi
     if [ -d "$HOME/Documents/sqlmath/" ]
