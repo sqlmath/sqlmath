@@ -308,6 +308,7 @@ async function ciBuildExt1NodejsConfigure({
             {
                 "cflags": cflagsNowarning,
                 "sources": [
+                    "build/SRC_PCRE2_BASE.c",
                     "build/SRC_ZLIB_BASE.c",
                     "build/SRC_SQLITE_BASE.c",
                     "build/SQLMATH_BASE.c"

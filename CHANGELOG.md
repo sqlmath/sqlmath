@@ -1,10 +1,12 @@
 # Changelog
 
 # Todo
-- sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
+- sqlmath - Add sqlite-extension for lightgbm.
 - none
 
 # v2023.10.1-beta
+- sqlean - Add sqlean-extension regexp with regexp-replacement and pcre2 - increases wasm size to 1.1mb.
+- zlib - Update to zlib v1.3.
 - sqlmath - Fix SIGSEGV error when binding external-buffer during db_exec.
 - sqlite - Update to sqlite v3.39.4.
 - python - Add python-functions db_file_load(), db_file_save().

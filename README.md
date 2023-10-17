@@ -104,9 +104,11 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 
 <br><br>
 # License
-- SQLite is under [public domain](https://www.sqlite.org/copyright.html).
-- JSLint is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
-- [cpplint.py](cpplint.py) is under [BSD 3-clause license](https://github.com/cpplint/cpplint/blob/develop/LICENSE).
+- [sqlite](https://github.com/sqlite/sqlite) is under [public domain](https://www.sqlite.org/copyright.html).
+- [jslint](https://github.com/jslint-org/jslint) is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
+- [pcre2](https://github.com/PCRE2Project/pcre2) is under [3-Clause BSD License](https://github.com/PCRE2Project/pcre2/blob/pcre2-10.42/LICENCE)
+- [zlib](https://github.com/madler/zlib) is under [zlib License](https://github.com/madler/zlib/blob/v1.2.13/LICENSE).
+- [cpplint.py](cpplint.py) is under [3-Clause BSD License](https://github.com/cpplint/cpplint/blob/1.5.5/LICENSE).
 - [indent.exe](indent.exe) is under [GPLv3 License](https://www.gnu.org/licenses/gpl-3.0.txt).
 - Everything else is under MIT License.
 

@@ -885,6 +885,7 @@ COMMIT_LIMIT=$COMMIT_LIMIT MODE_SQUASH=$MODE_SQUASH\n"
 shGitGc() {(set -e
 # this function will gc unreachable .git objects
 # http://stackoverflow.com/questions/3797907/how-to-remove-unused-objects-from-a-git-repository
+    git remote prune origin
     git \
         -c gc.reflogExpire=0 \
         -c gc.reflogExpireUnreachable=0 \

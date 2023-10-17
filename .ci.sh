@@ -4,8 +4,14 @@
 # sh jslint_ci.sh shCiBuildWasm
 # sh jslint_ci.sh shSqlmathUpdate
 
-# sqlite autoconf-3420000 version-3.42.0
-# curl -L https://www.sqlite.org/2022/sqlite-autoconf-3420000.tar.gz | tar -xz
+# sqlean-0.21.8 - 0.21.8
+# curl -L https://github.com/nalgeon/sqlean/archive/refs/tags/0.21.8.tar.gz | tar -xz
+
+# zlib-1.3 - v1.3
+# curl -L https://github.com/madler/zlib/releases/download/v1.3/zlib-1.3.tar.gz | tar -xz
+
+# sqlite-autoconf-3420000 - version-3.42.0
+# curl -L https://www.sqlite.org/2023/sqlite-autoconf-3420000.tar.gz | tar -xz
 # https://www.sqlite.org/2022/sqlite-tools-linux-x86-3420000.zip
 # https://www.sqlite.org/2022/sqlite-tools-osx-x86-3420000.zip
 # https://www.sqlite.org/2022/sqlite-tools-win32-x86-3420000.zip
@@ -203,6 +209,7 @@ shCiBuildWasm() {(set -e
     # OPTION2="$OPTION2 -Oz"
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
+        pcre2_base.c \
         zlib_base.c \
         sqlite_rollup.c \
         sqlmath_base.c \
@@ -211,6 +218,10 @@ shCiBuildWasm() {(set -e
         OPTION2=""
         FILE2="build/$(basename "$FILE").wasm.o"
         case "$FILE" in
+        pcre2_base.c)
+            FILE=sqlite_rollup.c
+            OPTION2="$OPTION2 -DSRC_PCRE2_BASE_C2="
+            ;;
         zlib_base.c)
             FILE=sqlite_rollup.c
             OPTION2="$OPTION2 -DSRC_ZLIB_BASE_C2="
@@ -262,6 +273,7 @@ shCiBuildWasm() {(set -e
         -s SINGLE_FILE=0 \
         -s WASM=1 \
         -s WASM_BIGINT \
+        build/pcre2_base.c.wasm.o \
         build/zlib_base.c.wasm.o \
         build/sqlite_rollup.c.wasm.o \
         build/sqlmath_base.c.wasm.o \
@@ -440,29 +452,7 @@ ciBuildExt({process});
         PID_LIST="$PID_LIST $!"
         shPidListWait build_ext "$PID_LIST"
     fi;
-    # test zlib
     PID_LIST=""
-    (
-    printf "\ntest zlib\n"
-    if [ ! -f build/SRC_ZLIB_TEST_EXAMPLE.exe ]
-    then
-        printf "\n    *** zlib test SKIP ***\n"
-        exit
-    fi
-    if [ "Hello world!" = "$( \
-        printf "Hello world!\n" \
-            | ./build/SRC_ZLIB_TEST_MINIGZIP.exe \
-            | ./build/SRC_ZLIB_TEST_MINIGZIP.exe -d \
-        )" ] \
-        && ./build/SRC_ZLIB_TEST_EXAMPLE.exe ./build/zlib_test_file
-    then
-        printf "\n    *** zlib test OK ***\n"
-    else
-        printf "\n    *** zlib test FAILED ***\n"
-        exit 1
-    fi
-    ) &
-    PID_LIST="$PID_LIST $!"
     # test nodejs
     (
     rm -f *~ .test*.sqlite __data/.test*.sqlite

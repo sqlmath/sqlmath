@@ -207,55 +207,12 @@ async def build_ext_async(): # noqa: C901
         f"{sysconfig.get_config_var('prefix')}{os.sep}libs",
         sysconfig.get_config_var("prefix"),
     ]
-    platform_vcvarsall = {
-        "win-amd64": "x86_amd64",
-        "win-arm32": "x86_arm",
-        "win-arm64": "x86_arm64",
-        "win32": "x86",
-    }.get(sysconfig.get_platform())
     npm_config_mode_debug = os.getenv("npm_config_mode_debug") # noqa: SIM112
     #
     # build_ext - init env
     env = os.environ
     if is_win32:
-        env = await asyncio.create_subprocess_exec(
-            (
-                (
-                    os.getenv("PROGRAMFILES(X86)")
-                    or os.getenv("PROGRAMFILES")
-                )
-                + "\\Microsoft Visual Studio"
-                + "\\Installer"
-                + "\\vswhere.exe"
-            ),
-            "-latest", "-prerelease",
-            "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
-            "-property", "installationPath",
-            "-products", "*",
-            stdout=asyncio.subprocess.PIPE,
-        )
-        env = (
-            await env.stdout.readline()
-        ).decode("mbcs").strip()
-        env = await asyncio.create_subprocess_exec(
-            "cmd.exe",
-            "/u",
-            "/c",
-            f"{env}\\VC\\Auxiliary\\Build\\vcvarsall.bat",
-            platform_vcvarsall,
-            "&&",
-            "set",
-            stdout=asyncio.subprocess.PIPE,
-        )
-        env = (
-            await env.stdout.read()
-        ).decode("utf-16le")
-        env = {
-            key.lower(): val
-            for key, _, val in
-            (line.partition("=") for line in env.splitlines())
-            if key and val
-        }
+        env = env_vcvarsall()
         await_list = []
         for exe in ["cl.exe", "link.exe"]:
             await_list.append( # noqa: PERF401
@@ -284,9 +241,8 @@ async def build_ext_async(): # noqa: C901
     await asyncio.gather(*[
         build_ext_obj(cdefine)
         for cdefine in [
+            "SRC_PCRE2_BASE",
             "SRC_ZLIB_BASE",
-            "SRC_ZLIB_TEST_EXAMPLE",
-            "SRC_ZLIB_TEST_MINIGZIP",
             #
             "SRC_SQLITE_BASE",
             #
@@ -299,6 +255,7 @@ async def build_ext_async(): # noqa: C901
 # https://github.com/kaizhu256/sqlmath/actions/runs/4886979281/jobs/8723014944
     arg_list = []
     arg_list += [ # must be ordered first
+        "build/SRC_PCRE2_BASE.obj",
         "build/SRC_ZLIB_BASE.obj",
         #
         "build/SRC_SQLITE_BASE.obj",
@@ -357,9 +314,8 @@ def build_ext_init():
 (set -e
     mkdir -p build/
     for C_DEFINE in \\
+        SRC_PCRE2_BASE \\
         SRC_ZLIB_BASE \\
-        SRC_ZLIB_TEST_EXAMPLE \\
-        SRC_ZLIB_TEST_MINIGZIP \\
         \\
         SRC_SQLITE_BASE \\
         SRC_SQLITE_SHELL
@@ -533,6 +489,55 @@ def debuginline(*argv):
     return argv[0]
 
 
+def env_vcvarsall():
+    """This function will return vcvarsall <env>."""
+    env = subprocess.check_output(
+        [
+            (
+                (
+                    os.getenv("PROGRAMFILES(X86)")
+                    or os.getenv("PROGRAMFILES")
+                )
+                + "\\Microsoft Visual Studio"
+                + "\\Installer"
+                + "\\vswhere.exe"
+            ),
+            "-latest", "-prerelease",
+            "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+            "-property", "installationPath",
+            "-products", "*",
+        ],
+        stderr=subprocess.STDOUT,
+    ).decode(encoding="mbcs", errors="strict").strip()
+    env = subprocess.check_output(
+        'cmd /u /c "{}" {} && set'.format(
+            f"{env}\\VC\\Auxiliary\\Build\\vcvarsall.bat",
+            {
+                "win-amd64": "x86_amd64",
+                "win-arm32": "x86_arm",
+                "win-arm64": "x86_arm64",
+                "win32": "x86",
+            }.get(sysconfig.get_platform()),
+        ),
+        stderr=subprocess.STDOUT,
+    ).decode("utf-16le", errors="replace")
+    env = {
+        key.lower(): val
+        for key, _, val in
+        (line.partition("=") for line in env.splitlines())
+        if (
+            key and val
+            and not re.search("\\W", key)
+            and not re.search("[\"'\n\r]", val)
+        )
+    }
+    with pathlib.Path("build/vcvarsall.sh").open("w") as file1:
+        file1.write(
+            "".join(f"export {key}='{val}'\n" for key, val in env.items()),
+        )
+    return env
+
+
 def noop(*args, **kwargs): # noqa: ARG001
     """This function will do nothing."""
     return
@@ -560,6 +565,10 @@ if __name__ == "__main__":
             build_ext_init()
         case "build_pkg_info":
             build_pkg_info()
+        case "env_vcvarsall":
+            env_vcvarsall()
+            with pathlib.Path("build/vcvarsall.sh").open() as file1:
+                print(file1.read())
         case "sdist":
             build_sdist("dist")
         case "test":
