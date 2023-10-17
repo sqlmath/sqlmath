@@ -351,7 +351,7 @@ def db_open(filename, flags=None):
 
 
 def debuginline(*argv):
-    """This function will print <arg> to stderr and then return <arg0>."""
+    """This function will print <argv> to stderr and then return <argv>[0]."""
     arg0 = argv[0] if argv else None
     print("\n\ndebuginline", file=sys.stderr)
     print(*argv, file=sys.stderr)

@@ -26,19 +26,22 @@ npm_config_mode_debug2=1 python setup.py build_ext && python setup.py test
 python -m build
 """
 
+__version__ = "2023.10.1"
+__version_info__ = ("2023", "10", "1")
+
 import asyncio
+import base64
+import hashlib
 import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import sysconfig
 import tempfile
-
-import setuptools
-import setuptools.command.build_ext
-import setuptools.command.install_lib
+import zipfile
 
 
 def assert_or_throw(condition, message=None):
@@ -153,6 +156,7 @@ async def build_ext_async(): # noqa: C901
     for filename in [
         "README.md",
         "pyproject.toml",
+        "setup.py",
         "sqlmath/__init__.py",
     ]:
         with pathlib.Path(filename).open("r+", newline="\n") as file1:
@@ -194,7 +198,6 @@ async def build_ext_async(): # noqa: C901
         cc_compiler += " -ldl"
     cc_ldflags = sysconfig.get_config_var("LDFLAGS") or ""
     cc_ldshared = sysconfig.get_config_var("LDSHARED") or ""
-    dir_wheel = f"build/bdist.{sysconfig.get_platform()}/wheel/sqlmath"
     file_lib = f"_sqlmath{sysconfig.get_config_var('EXT_SUFFIX')}"
     is_win32 = sys.platform == "win32"
     path_include = [
@@ -291,19 +294,8 @@ async def build_ext_async(): # noqa: C901
         ]
     await create_subprocess_exec_and_check(*arg_list, env=env)
     #
-    # build_ext - copy c-extension to bdist
-    await create_subprocess_exec_and_check(
-        "sh",
-        "-c",
-        f"""
-(set -e
-    mkdir -p "{dir_wheel}/"
-    cp "build/{file_lib}" "sqlmath/{file_lib}"
-    cp "build/{file_lib}" "{dir_wheel}/{file_lib}"
-    cp sqlmath/*.py "{dir_wheel}/"
-)
-        """,
-    )
+    # build_ext - copy c-extension to sqlmath/
+    shutil.copyfile(f"build/{file_lib}", f"sqlmath/{file_lib}")
 
 
 def build_ext_init():
@@ -386,7 +378,11 @@ def build_pkg_info():
 
 
 def build_sdist(sdist_directory, config_settings=None):
-    """`build_sdist`: build an sdist in the folder and return the basename."""
+    """
+    `build_sdist`: build an sdist in the folder and return the basename.
+
+    https://peps.python.org/pep-0517/#build-sdist
+    """
     assert_or_throw(
         config_settings is None or config_settings == {},
         config_settings,
@@ -443,50 +439,76 @@ def build_wheel(
     config_settings=None,
     metadata_directory=None,
 ):
-    """`build_wheel`: build a wheel in the folder and return the basename."""
+    """
+    `build_wheel`: build a wheel in the folder and return the basename.
+
+    https://peps.python.org/pep-0517/#build-wheel
+    """
     assert_or_throw(
         config_settings is None or config_settings == {},
         config_settings,
     )
     noop(metadata_directory)
     wheel_directory = pathlib.Path(wheel_directory).resolve()
-    # Build in a temporary directory, then copy to the target.
-    pathlib.Path(wheel_directory).mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(
-        dir=wheel_directory.as_posix(),
-        prefix=".tmp-",
-    ) as dir_tmp:
-        sys.argv = [
-            *sys.argv[:1],
-            "bdist_wheel",
-            "--dist-dir",
-            dir_tmp,
-        ]
-        # override build_ext, install_lib
-        setuptools.command.build_ext.build_ext.run = noop
-        setuptools.command.install_lib.install_lib.install = noop
-        build_ext()
-        # _install_setup_requires - disable
-        setuptools._install_setup_requires = noop # noqa: SLF001
-        # run backend
-        setuptools.setup(
-            ext_modules=[setuptools.Extension("_sqlmath", [])],
-            script_args=sys.argv[1:],
-            script_name=pathlib.Path(sys.argv[0]).name,
-        )
-        for result_file in pathlib.Path(dir_tmp).iterdir():
-            if result_file.name.endswith(".whl"):
-                result_file.replace(wheel_directory / result_file.name)
-                return result_file.name
-        return None
+    #
+    # build c-extension
+    build_ext()
+    #
+    # init tag_xxx
+    # {dist}-{version}(-{build tag})?-{python tag}-{abitag}-{platform tag}.whl
+    # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/
+    # The version is py_version_nodot.
+    tag_python = f'cp{sysconfig.get_config_var("py_version_nodot")}'
+    tag_abi = tag_python
+    # The platform tag is simply sysconfig.get_platform()
+    # with all hyphens - and periods . replaced with underscore _.
+    tag_platform = re.sub("\\W", "_", sysconfig.get_platform())
+    #
+    # build file_wheel
+    file_wheel = pathlib.Path(wheel_directory) / (
+        f"sqlmath-{__version__}-{tag_python}-{tag_abi}-{tag_platform}.whl"
+    )
+    with zipfile.ZipFile(file_wheel, "w", zipfile.ZIP_DEFLATED) as file_zip:
+        dir_distinfo = f"sqlmath-{__version__}.dist-info"
+        file_lib = f"sqlmath/_sqlmath{sysconfig.get_config_var('EXT_SUFFIX')}"
+        data_record = ""
+        for bb, aa in (
+            ("sqlmath/__init__.py", "sqlmath/__init__.py"),
+            (file_lib, file_lib),
+            # Place .dist-info at the end of the archive.
+            (f"{dir_distinfo}/LICENSE", "LICENSE"),
+            (f"{dir_distinfo}/METADATA", "PKG-INFO"),
+            (f"{dir_distinfo}/WHEEL", ""),
+        ):
+            if bb == f"{dir_distinfo}/WHEEL":
+                data = bytes(
+                    f"""Wheel-Version: 1.0
+Generator: bdist_wheel 1.0
+Root-Is-Purelib: false
+Tag: {tag_python}-{tag_abi}-{tag_platform}
+""",
+                    "utf-8",
+                )
+            else:
+                with pathlib.Path(aa).open("rb") as file1:
+                    data = file1.read()
+            file_zip.writestr(bb, data)
+            digest = base64.urlsafe_b64encode(
+                hashlib.sha256(data).digest(),
+            ).rstrip(b"=").decode("ascii")
+            data_record += f"{bb},sha256={digest},{len(data)}\n"
+        data_record += f"{dir_distinfo}/RECORD,,"
+        file_zip.writestr(f"{dir_distinfo}/RECORD", data_record)
+    return file_wheel.name
 
 
 def debuginline(*argv):
     """This function will print <argv> to stderr and then return <argv>[0]."""
-    print("\n\ndebuginline")
-    print(*argv)
-    print("\n")
-    return argv[0]
+    arg0 = argv[0] if argv else None
+    print("\n\ndebuginline", file=sys.stderr)
+    print(*argv, file=sys.stderr)
+    print("\n", file=sys.stderr)
+    return arg0
 
 
 def env_vcvarsall():

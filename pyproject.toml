@@ -1,10 +1,7 @@
-# https://setuptools.pypa.io/en/latest/userguide/ext_modules.html
 [build-system]
 requires = [
     "pycodestyle == 2.11.0",
     "ruff >= 0.0.292",
-    "setuptools >= 68.2.2",
-    "wheel >= 0.41.2",
 ]
 build-backend = "setup"
 backend-path = ["."]
@@ -50,7 +47,6 @@ Changelog = "https://github.com/sqlmath/sqlmath/blob/master/CHANGELOG.md"
 # https://cibuildwheel.readthedocs.io/en/stable/options/
 [tool.cibuildwheel]
 archs = ["native"]
-before-test = ["pip install setuptools"]
 build = ["cp*-*"]
 build-verbosity = "1"
 manylinux-x86_64-image = "manylinux_2_28"
@@ -63,9 +59,6 @@ test-command = [
     "cp {project}/test.py .",
     "python test.py --verbose",
 ]
-
-[tool.setuptools]
-py-modules = ["sqlmath"]
 
 [tool.sqlmath]
 shCiPublishPypi = 1
