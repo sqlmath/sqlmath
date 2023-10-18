@@ -209,30 +209,27 @@ shCiBuildWasm() {(set -e
     # OPTION2="$OPTION2 -Oz"
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
-        pcre2_base.c \
-        zlib_base.c \
-        sqlite_rollup.c \
+        sqlmath_external_rollup_pcre2.c \
+        sqlmath_external_rollup_sqlite.c \
+        sqlmath_external_rollup_zlib.c \
         sqlmath_base.c \
         sqlmath_custom.c
     do
         OPTION2=""
         FILE2="build/$(basename "$FILE").wasm.o"
         case "$FILE" in
-        pcre2_base.c)
-            FILE=sqlite_rollup.c
-            OPTION2="$OPTION2 -DSRC_PCRE2_BASE_C2="
+        sqlmath_base.c)
             ;;
-        zlib_base.c)
-            FILE=sqlite_rollup.c
-            OPTION2="$OPTION2 -DSRC_ZLIB_BASE_C2="
+        sqlmath_custom.c)
             ;;
+        *)
+            # optimization - skip rebuild of rollup if possible
+            if [ "$FILE2" -nt "$FILE" ]
+            then
+                printf "shCiBuildWasm - skip $FILE\n" 1>&2
+                continue
+            fi
         esac
-        # optimization - skip rebuild of sqlite_rollup.c if possible
-        if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite_rollup.c ]
-        then
-            printf "shCiBuildWasm - skip $FILE\n" 1>&2
-            continue
-        fi
         OPTION2="$OPTION2 -DHAVE_UNISTD_H="
         OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
@@ -273,9 +270,9 @@ shCiBuildWasm() {(set -e
         -s SINGLE_FILE=0 \
         -s WASM=1 \
         -s WASM_BIGINT \
-        build/pcre2_base.c.wasm.o \
-        build/zlib_base.c.wasm.o \
-        build/sqlite_rollup.c.wasm.o \
+        build/sqlmath_external_rollup_pcre2.c.wasm.o \
+        build/sqlmath_external_rollup_sqlite.c.wasm.o \
+        build/sqlmath_external_rollup_zlib.c.wasm.o \
         build/sqlmath_base.c.wasm.o \
         build/sqlmath_custom.c.wasm.o \
         #
@@ -486,7 +483,7 @@ shSqlmathUpdate() {(set -e
     then
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
-        shRollupFetch sqlite_rollup.c
+        shRollupFetch sqlmath_external_rollup_sqlite.c
         return
     fi
     if [ -d "$HOME/Documents/sqlmath/" ]
@@ -497,11 +494,13 @@ shSqlmathUpdate() {(set -e
             indent.exe \
             index.html \
             setup.py \
-            sqlite_rollup.c \
             sqlmath.mjs \
             sqlmath/__init__.py \
             sqlmath_base.c \
             sqlmath_browser.mjs \
+            sqlmath_external_pcre2.js \
+            sqlmath_external_rollup_sqlite.c \
+            sqlmath_external_zlib.js \
             sqlmath_wrapper_wasm.js
         do
             ln -f "$HOME/Documents/sqlmath/$FILE" "$FILE"

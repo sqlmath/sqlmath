@@ -27,13 +27,15 @@ include libintl3.dll
 include package.json
 include pyproject.toml
 include setup.py
-include sqlite_rollup.c
 include sqlmath.mjs
 include sqlmath/__init__.py
 include sqlmath_base.c
 include sqlmath_browser.mjs
 include sqlmath_custom.c
 include sqlmath_custom.mjs
+include sqlmath_external_rollup_pcre2.c
+include sqlmath_external_rollup_sqlite.c
+include sqlmath_external_rollup_zlib.c
 include sqlmath_wrapper_wasm.js
 include test.mjs
 include test.py

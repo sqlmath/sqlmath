@@ -305,17 +305,26 @@ def build_ext_init():
     subprocess.run(["sh", "-c", """
 (set -e
     mkdir -p build/
+    #
     for C_DEFINE in \\
-        SRC_PCRE2_BASE \\
-        SRC_ZLIB_BASE \\
-        \\
+        PCRE2 \\
+        ZLIB
+    do
+        printf "
+#include \\"../sqlmath_external_rollup_$(
+    printf $C_DEFINE | tr \\"[:upper:]\\" \\"[:lower:]\\"
+).c\\"
+        " > "build/SRC_${C_DEFINE}_BASE.c"
+    done
+    #
+    for C_DEFINE in \\
         SRC_SQLITE_BASE \\
         SRC_SQLITE_SHELL
     do
         printf "
 #define SRC_SQLITE_BASE_C2
 #define ${C_DEFINE}_C2
-#include \\"../sqlite_rollup.c\\"
+#include \\"../sqlmath_external_rollup_sqlite.c\\"
     " > build/$C_DEFINE.c
     done
     #

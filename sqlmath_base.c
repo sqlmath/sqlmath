@@ -48,7 +48,7 @@ file sqlmath_h - start
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "sqlite_rollup.c"
+#include "sqlmath_external_rollup_sqlite.c"
 
 
 /*
