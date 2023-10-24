@@ -48,7 +48,7 @@ file sqlmath_h - start
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "sqlmath_external_rollup_sqlite.c"
+#include "sqlmath_external_sqlite.c"
 
 
 /*
@@ -194,6 +194,9 @@ file sqlmath_h - start
         sql3_##func##_step, sql3_##func##_final, \
         sql3_##func##_value, sql3_##func##_inverse, NULL); \
     if (errcode != SQLITE_OK) { return errcode; }
+
+#define SQLITE_OK_OR_RETURN_RC(rc) \
+    if (rc != SQLITE_OK) { return rc; }
 
 #define STR99_ALLOCA(str99) \
     sqlite3_str __##str99 = { 0 }; \
@@ -3009,6 +3012,22 @@ SQLMATH_FUNC static void sql3_win_quantile2_step(
 // SQLMATH_FUNC sql3_win_quantile2_func - end
 
 // file sqlmath_base - init
+int sqlite3_compress_init(
+    sqlite3 * db,
+    char **pzErrMsg,
+    const sqlite3_api_routines * pApi
+);
+
+int regexp_init(
+    sqlite3 * db
+);
+
+int sqlite3_sqlmath_custom_init(
+    sqlite3 *,
+    char **,
+    const sqlite3_api_routines *
+);
+
 int sqlite3_sqlmath_base_init(
     sqlite3 * db,
     char **pzErrMsg,
@@ -3017,6 +3036,14 @@ int sqlite3_sqlmath_base_init(
     UNUSED_PARAMETER(pApi);
     UNUSED_PARAMETER(pzErrMsg);
     int errcode = 0;
+    //
+    errcode = sqlite3_compress_init(db, pzErrMsg, pApi);
+    SQLITE_OK_OR_RETURN_RC(errcode);
+    errcode = regexp_init(db);
+    SQLITE_OK_OR_RETURN_RC(errcode);
+    errcode = sqlite3_sqlmath_custom_init(db, pzErrMsg, pApi);
+    SQLITE_OK_OR_RETURN_RC(errcode);
+    //
     SQLITE3_CREATE_FUNCTION1(castrealornull, 1);
     SQLITE3_CREATE_FUNCTION1(castrealorzero, 1);
     SQLITE3_CREATE_FUNCTION1(casttextorempty, 1);

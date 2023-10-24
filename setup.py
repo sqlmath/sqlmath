@@ -52,7 +52,6 @@ def assert_or_throw(condition, message=None):
 
 def build_ext():
     """This function will build c-extension."""
-    build_ext_init()
     subprocess.run(["python", "setup.py", "build_ext_async"], check=True)
 
 
@@ -60,21 +59,38 @@ async def build_ext_async(): # noqa: C901
     """This function will build c-extension."""
 
     async def build_ext_obj(cdefine):
-        file_obj = f"build/{cdefine}.obj"
+        file_obj = pathlib.Path(f"build/{cdefine}.obj")
+        match cdefine:
+            case "SQLMATH_BASE":
+                file_src = pathlib.Path("sqlmath_base.c")
+            case "SQLMATH_CUSTOM":
+                file_src = pathlib.Path("sqlmath_custom.c")
+            case "SRC_SQLITE_SHELL":
+                file_src = pathlib.Path("sqlmath_external_sqlite.c")
+            case "SRC_PCRE2_BASE":
+                file_src = pathlib.Path("sqlmath_external_pcre2.c")
+            case "SRC_SQLITE_BASE":
+                file_src = pathlib.Path("sqlmath_external_sqlite.c")
+            case "SRC_ZLIB_BASE":
+                file_src = pathlib.Path("sqlmath_external_zlib.c")
         match cdefine:
             case "SQLMATH_BASE":
                 pass
             case "SQLMATH_CUSTOM":
                 pass
+            case "SRC_SQLITE_SHELL":
+                pass
             case _:
-                if pathlib.Path(file_obj).exists():
+                if (
+                    file_obj.exists()
+                    and file_obj.stat().st_mtime > file_src.stat().st_mtime
+                ):
+                    print(f"build_ext - skip {file_src}")
                     return
-        file_src = f"build/{cdefine}.c"
         arg_list = [
             *[f"-I{path}" for path in path_include],
             #
             f"-D{cdefine}_C2=",
-            "-DSRC_SQLITE_BASE_C2=",
             "-D_REENTRANT=1",
             "-DSQLMATH_PYTHON_C2=" if cdefine == "SQLMATH_CUSTOM" else "",
         ]
@@ -126,12 +142,9 @@ async def build_ext_async(): # noqa: C901
                 *cc_ccshared.strip().split(" "),
                 *cc_cflags.strip().split(" "),
                 #
-                "-DHAVE_UNISTD_H=",
                 "-c", file_src,
                 "-o", file_obj,
             ]
-        if cdefine == "SQLMATH_CUSTOM":
-            arg_list = [arg for arg in arg_list if arg != "-DHAVE_UNISTD_H="]
         print(f"build_ext - compile {file_obj}")
         await create_subprocess_exec_and_check(
             *arg_list,
@@ -150,6 +163,7 @@ async def build_ext_async(): # noqa: C901
             raise subprocess.SubprocessError(msg)
     #
     # build_ext - update version
+    pathlib.Path("build").mkdir(parents=True, exist_ok=True)
     with pathlib.Path("package.json").open() as file1:
         package_json = json.load(file1)
         version = package_json["version"].split("-")[0]
@@ -245,9 +259,8 @@ async def build_ext_async(): # noqa: C901
         build_ext_obj(cdefine)
         for cdefine in [
             "SRC_PCRE2_BASE",
-            "SRC_ZLIB_BASE",
-            #
             "SRC_SQLITE_BASE",
+            "SRC_ZLIB_BASE",
             #
             "SQLMATH_BASE",
             "SQLMATH_CUSTOM",
@@ -259,9 +272,8 @@ async def build_ext_async(): # noqa: C901
     arg_list = []
     arg_list += [ # must be ordered first
         "build/SRC_PCRE2_BASE.obj",
-        "build/SRC_ZLIB_BASE.obj",
-        #
         "build/SRC_SQLITE_BASE.obj",
+        "build/SRC_ZLIB_BASE.obj",
         #
         "build/SQLMATH_BASE.obj",
         "build/SQLMATH_CUSTOM.obj",
@@ -296,50 +308,6 @@ async def build_ext_async(): # noqa: C901
     #
     # build_ext - copy c-extension to sqlmath/
     shutil.copyfile(f"build/{file_lib}", f"sqlmath/{file_lib}")
-
-
-def build_ext_init():
-    """This function will build c-extension."""
-    if pathlib.Path("build/SRC_SQLITE_BASE.c").exists():
-        return
-    subprocess.run(["sh", "-c", """
-(set -e
-    mkdir -p build/
-    #
-    for C_DEFINE in \\
-        PCRE2 \\
-        ZLIB
-    do
-        printf "
-#include \\"../sqlmath_external_rollup_$(
-    printf $C_DEFINE | tr \\"[:upper:]\\" \\"[:lower:]\\"
-).c\\"
-        " > "build/SRC_${C_DEFINE}_BASE.c"
-    done
-    #
-    for C_DEFINE in \\
-        SRC_SQLITE_BASE \\
-        SRC_SQLITE_SHELL
-    do
-        printf "
-#define SRC_SQLITE_BASE_C2
-#define ${C_DEFINE}_C2
-#include \\"../sqlmath_external_rollup_sqlite.c\\"
-    " > build/$C_DEFINE.c
-    done
-    #
-    for C_DEFINE in \\
-        SQLMATH_BASE \\
-        SQLMATH_CUSTOM
-    do
-        printf "
-#define SRC_SQLITE_BASE_C2
-#define ${C_DEFINE}_C2
-#include \\"../$(printf $C_DEFINE | tr \\"[:upper:]\\" \\"[:lower:]\\").c\\"
-        " > build/$C_DEFINE.c
-    done
-)
-    """], check=True)
 
 
 def build_pkg_info():
@@ -592,8 +560,6 @@ if __name__ == "__main__":
         case "build_ext_async":
             asyncio.set_event_loop(asyncio.new_event_loop())
             asyncio.get_event_loop().run_until_complete(build_ext_async())
-        case "build_ext_init":
-            build_ext_init()
         case "build_pkg_info":
             build_pkg_info()
         case "env_vcvarsall":

@@ -307,25 +307,33 @@ async function ciBuildExt1NodejsConfigure({
         "targets": [
             {
                 "cflags": cflagsNowarning,
+                "defines": [
+                    "SRC_SQLITE_BASE_C2"
+                ],
                 "sources": [
-                    "build/SRC_PCRE2_BASE.c",
-                    "build/SRC_ZLIB_BASE.c",
-                    "build/SRC_SQLITE_BASE.c",
-                    "build/SQLMATH_BASE.c"
+                    "sqlmath_base.c",
+                    "sqlmath_external_pcre2.c",
+                    "sqlmath_external_sqlite.c",
+                    "sqlmath_external_zlib.c"
                 ],
                 "target_name": "SRC_SQLITE_BASE",
                 "type": "static_library",
                 "xcode_settings": {"OTHER_CFLAGS": cflagsNowarning}
             },
             {
+                "defines": [
+                    "SQLMATH_CUSTOM"
+                ],
                 "sources": [
-                    "build/SQLMATH_CUSTOM.c"
+                    "sqlmath_custom.c"
                 ],
                 "target_name": "SQLMATH_CUSTOM",
                 "type": "static_library"
             },
             {
-                "defines": ["SQLMATH_NODEJS_C2"],
+                "defines": [
+                    "SQLMATH_NODEJS_C2"
+                ],
                 "dependencies": [
                     "SQLMATH_CUSTOM",
                     "SRC_SQLITE_BASE"
@@ -338,15 +346,14 @@ async function ciBuildExt1NodejsConfigure({
             {
                 "cflags": cflagsNowarning,
                 "defines": [
-                    "SQLITE3_SHELL_C2"
+                    "SRC_SQLITE_SHELL_C2"
                 ],
                 "dependencies": [
                     "SQLMATH_CUSTOM",
                     "SRC_SQLITE_BASE"
                 ],
                 "sources": [
-                    "sqlmath_base.c",
-                    "build/SRC_SQLITE_SHELL.c"
+                    "sqlmath_external_sqlite.c"
                 ],
                 "target_name": "shell",
                 "type": "executable",

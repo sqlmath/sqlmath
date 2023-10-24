@@ -4,17 +4,25 @@
 # sh jslint_ci.sh shCiBuildWasm
 # sh jslint_ci.sh shSqlmathUpdate
 
-# sqlean-0.21.8 - 0.21.8
-# curl -L https://github.com/nalgeon/sqlean/archive/refs/tags/0.21.8.tar.gz | tar -xz
-
-# zlib-1.3 - v1.3
-# curl -L https://github.com/madler/zlib/releases/download/v1.3/zlib-1.3.tar.gz | tar -xz
-
-# sqlite-autoconf-3420000 - version-3.42.0
-# curl -L https://www.sqlite.org/2023/sqlite-autoconf-3420000.tar.gz | tar -xz
-# https://www.sqlite.org/2022/sqlite-tools-linux-x86-3420000.zip
-# https://www.sqlite.org/2022/sqlite-tools-osx-x86-3420000.zip
-# https://www.sqlite.org/2022/sqlite-tools-win32-x86-3420000.zip
+: "
+    for URL in \
+        https://github.com/google/re2/archive/refs/tags/2023-03-01.tar.gz \
+        https://github.com/madler/zlib/releases/download/v1.3/zlib-1.3.tar.gz \
+        https://github.com/nalgeon/sqlean/archive/refs/tags/0.21.8.tar.gz \
+        https://www.sqlite.org/2023/sqlite-autoconf-3420000.tar.gz
+    do
+        curl -L "$URL" | tar -xz
+    done
+    for DIR in \
+        re2-2023-03-01 \
+        sqlean-0.21.8 \
+        sqlite-autoconf-3420000 \
+        zlib-1.3
+    do
+        rm -r ".$DIR"
+        mv "$DIR" ".$DIR"
+    done
+"
 
 shCiArtifactUploadCustom() {(set -e
 # this function will run custom-code to upload build-artifacts
@@ -59,7 +67,6 @@ shCiBaseCustom() {(set -e
     fi
     # cleanup
     rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
-    python setup.py build_ext_init
     PID_LIST=""
     #
     # python -m build --sdist
@@ -209,11 +216,11 @@ shCiBuildWasm() {(set -e
     # OPTION2="$OPTION2 -Oz"
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
-        sqlmath_external_rollup_pcre2.c \
-        sqlmath_external_rollup_sqlite.c \
-        sqlmath_external_rollup_zlib.c \
         sqlmath_base.c \
-        sqlmath_custom.c
+        sqlmath_custom.c \
+        sqlmath_external_pcre2.c \
+        sqlmath_external_sqlite.c \
+        sqlmath_external_zlib.c
     do
         OPTION2=""
         FILE2="build/$(basename "$FILE").wasm.o"
@@ -230,7 +237,6 @@ shCiBuildWasm() {(set -e
                 continue
             fi
         esac
-        OPTION2="$OPTION2 -DHAVE_UNISTD_H="
         OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
@@ -270,11 +276,11 @@ shCiBuildWasm() {(set -e
         -s SINGLE_FILE=0 \
         -s WASM=1 \
         -s WASM_BIGINT \
-        build/sqlmath_external_rollup_pcre2.c.wasm.o \
-        build/sqlmath_external_rollup_sqlite.c.wasm.o \
-        build/sqlmath_external_rollup_zlib.c.wasm.o \
         build/sqlmath_base.c.wasm.o \
         build/sqlmath_custom.c.wasm.o \
+        build/sqlmath_external_pcre2.c.wasm.o \
+        build/sqlmath_external_sqlite.c.wasm.o \
+        build/sqlmath_external_zlib.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
     printf "/*jslint-disable*/
@@ -432,8 +438,6 @@ shCiTestNodejs() {(set -e
         fi
         # create PKG-INFO
         python setup.py build_pkg_info
-        # init build/xxx.c
-        python setup.py build_ext_init
         # build nodejs c-addon
         PID_LIST=""
         (
@@ -483,7 +487,9 @@ shSqlmathUpdate() {(set -e
     then
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
-        shRollupFetch sqlmath_external_rollup_sqlite.c
+        shRollupFetch sqlmath_external_pcre2.c
+        shRollupFetch sqlmath_external_sqlite.c
+        shRollupFetch sqlmath_external_zlib.c
         return
     fi
     if [ -d "$HOME/Documents/sqlmath/" ]
@@ -498,9 +504,9 @@ shSqlmathUpdate() {(set -e
             sqlmath/__init__.py \
             sqlmath_base.c \
             sqlmath_browser.mjs \
-            sqlmath_external_pcre2.js \
-            sqlmath_external_rollup_sqlite.c \
-            sqlmath_external_zlib.js \
+            sqlmath_external_pcre2.c \
+            sqlmath_external_sqlite.c \
+            sqlmath_external_zlib.c \
             sqlmath_wrapper_wasm.js
         do
             ln -f "$HOME/Documents/sqlmath/$FILE" "$FILE"
