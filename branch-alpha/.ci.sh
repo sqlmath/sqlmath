@@ -155,6 +155,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     cp ../../.git/config .git/config
     # update dir branch-$GITHUB_BRANCH0
     mkdir -p "branch-$GITHUB_BRANCH0"
+    rm -f "branch-$GITHUB_BRANCH0/"*.tar.gz
     case "$(uname)" in
     Darwin*)
         rm -f "branch-$GITHUB_BRANCH0/"*darwin*
