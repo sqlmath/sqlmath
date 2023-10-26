@@ -3,7 +3,7 @@
         "email": "kaizhu256@gmail.com",
         "name": "kai zhu"
     },
-    "counter": 13,
+    "counter": 0,
     "cpu": [
         "x64"
     ],
@@ -38,5 +38,5 @@
     },
     "shCiArtifactUpload": 1,
     "shCiPublishNpm": 1,
-    "version": "2023.10.1-beta"
+    "version": "2023.10.25"
 }

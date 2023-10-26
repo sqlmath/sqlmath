@@ -2095,18 +2095,8 @@ static void winSinefitSnr(
     // calculate snr - saa
     saa = sqrt(2 * wsf->vyy * invn0     //
         * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
-    const double inva = 1.0 / saa;
-    // calculate snr - spp, sww - initial guess
-    if (0) {
-        spp = wsf->spp;         // phase
-        sww = wsf->sww;         // angular-freq
-        const double sww0 = 2 * MATH_PI / wtt0;
-        if (sww < 0.5000 * sww0 || 0.1250 * sww0 * sqrt(nnn) < sww) {
-            spp = 0;
-            sww = sww0;
-        }
-    } else {
-        // calculate snr - sww - using incremental-discrete-fourier-transform
+    // calculate snr - sww - using incremental-discrete-fourier-transform
+    {
         const double ibb = 2 * MATH_PI * (wbb / (ncol * WIN_SINEFIT_STEP));
         const double rr0 = isfinite(wsf->rr0) ? wsf->rr0 : 0;
         const double rr1 = isfinite(wsf->rr1) ? wsf->rr1 : 0;
@@ -2134,6 +2124,7 @@ static void winSinefitSnr(
         }
         sww *= 2 * MATH_PI / wtt0;
     }
+    const double inva = 1.0 / saa;
     if (inva <= 0 || !isfinite(inva) || !isnormal(sww)) {
         return;
     }

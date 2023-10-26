@@ -4,7 +4,8 @@
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
-# v2023.10.1-beta
+# v2023.10.25
+- jslint - Update jslint to v2023.10.24.
 - sqlmath - Split monolithic-file sqlite_rollup.c into separate files:
     - sqlmath_external_pcre2.c
     - sqlmath_external_sqlite.c

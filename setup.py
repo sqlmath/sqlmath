@@ -26,8 +26,8 @@ npm_config_mode_debug2=1 python setup.py build_ext && python setup.py test
 python -m build
 """
 
-__version__ = "2023.10.1"
-__version_info__ = ("2023", "10", "1")
+__version__ = "2023.10.25"
+__version_info__ = ("2023", "10", "25")
 
 import asyncio
 import base64
@@ -167,7 +167,10 @@ async def build_ext_async(): # noqa: C901
     with pathlib.Path("package.json").open() as file1:
         package_json = json.load(file1)
         version = package_json["version"].split("-")[0]
+    if package_json["name"] != "sqlmath":
+        version = __version__
     for filename in [
+        "PKG-INFO",
         "README.md",
         "pyproject.toml",
         "setup.py",
@@ -176,6 +179,12 @@ async def build_ext_async(): # noqa: C901
         with pathlib.Path(filename).open("r+", newline="\n") as file1:
             data0 = file1.read()
             data1 = data0
+            # update version - PKG-INFO
+            data1 = re.sub(
+                "\nVersion: .*",
+                f"\nVersion: {version}",
+                data1,
+            )
             # update version - README.md
             data1 = re.sub(
                 "(sqlmath(?:-|==))\\d\\d\\d\\d\\.\\d\\d?\\.\\d\\d?",
@@ -198,7 +207,13 @@ async def build_ext_async(): # noqa: C901
                 ),
                 data1,
             )
-            if package_json["name"] == "sqlmath" and data1 != data0:
+            if (
+                data1 != data0
+                and (
+                    package_json["name"] == "sqlmath"
+                    or filename in ("PKG-INFO", "pyproject.toml")
+                )
+            ):
                 print(f"build_ext - update file {file1.name}")
                 file1.seek(0)
                 file1.write(data1)

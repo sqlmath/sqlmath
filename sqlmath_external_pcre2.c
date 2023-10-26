@@ -6,8 +6,8 @@
 #include "sqlmath_external_sqlite.c"
 
 
-#define PCRE2_EXP_DECL static
-#define PCRE2_EXP_DEFN static
+#define PCRE2_EXP_DECL
+#define PCRE2_EXP_DEFN
 
 
 /*jslint-disable*/

@@ -10,7 +10,7 @@
 #define GZIP 2
 #define ZLIB_INTERNAL
 #define ZEXPORT
-#define ZEXTERN static
+#define ZEXTERN
 
 
 /*jslint-disable*/

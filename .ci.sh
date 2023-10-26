@@ -19,7 +19,7 @@
         sqlite-autoconf-3420000 \
         zlib-1.3
     do
-        rm -r ".$DIR"
+        rm -rf ".$DIR"
         mv "$DIR" ".$DIR"
     done
 "
@@ -162,6 +162,9 @@ shCiBaseCustomArtifactUpload() {(set -e
         ;;
     Linux*)
         rm -f "branch-$GITHUB_BRANCH0/"*linux*
+        # save sdist
+        rm -f "branch-$GITHUB_BRANCH0/"*.tar.gz
+        cp ../../dist/sqlmath-*.tar.gz "branch-$GITHUB_BRANCH0"
         ;;
     MINGW64_NT*)
         rm -f "branch-$GITHUB_BRANCH0/"*-win*
@@ -179,7 +182,6 @@ shCiBaseCustomArtifactUpload() {(set -e
         cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
     fi
     # save cibuildwheel
-    cp ../../dist/sqlmath-*.tar.gz "branch-$GITHUB_BRANCH0"
     cp ../../dist/sqlmath-*.whl "branch-$GITHUB_BRANCH0"
     # git commit
     git add .

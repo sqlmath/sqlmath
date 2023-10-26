@@ -104,7 +104,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2023.10.1-beta";
+let version = "v2023.10.25";
 
 function assertInt64(val) {
     // This function will assert <val> is within range of c99-signed-long-long.
@@ -289,11 +289,18 @@ async function ciBuildExt1NodejsConfigure({
     consoleError(`ciBuildExt1Nodejs - configure binding.gyp`);
     await fsWriteFileUnlessTest("binding.gyp", JSON.stringify({
         "target_defaults": {
-            "cflags": ["-Wextra", "-std=c11"],
+            "cflags": [
+                "-Wextra",
+                "-std=c11"
+            ],
             "conditions": [
                 [
-                    "OS == \u0027win\u0027",
-                    {"defines": ["WIN32"]}
+                    "OS == 'win'",
+                    {
+                        "defines": [
+                            "WIN32"
+                        ]
+                    }
                 ]
             ],
 // https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
@@ -302,7 +309,12 @@ async function ciBuildExt1NodejsConfigure({
                     "WarningLevel": 3
                 }
             },
-            "xcode_settings": {"OTHER_CFLAGS": ["-Wextra", "-std=c11"]}
+            "xcode_settings": {
+                "OTHER_CFLAGS": [
+                    "-Wextra",
+                    "-std=c11"
+                ]
+            }
         },
         "targets": [
             {
@@ -318,7 +330,9 @@ async function ciBuildExt1NodejsConfigure({
                 ],
                 "target_name": "SRC_SQLITE_BASE",
                 "type": "static_library",
-                "xcode_settings": {"OTHER_CFLAGS": cflagsNowarning}
+                "xcode_settings": {
+                    "OTHER_CFLAGS": cflagsNowarning
+                }
             },
             {
                 "defines": [
@@ -357,7 +371,9 @@ async function ciBuildExt1NodejsConfigure({
                 ],
                 "target_name": "shell",
                 "type": "executable",
-                "xcode_settings": {"OTHER_CFLAGS": cflagsNowarning}
+                "xcode_settings": {
+                    "OTHER_CFLAGS": cflagsNowarning
+                }
             }
         ]
     }, undefined, 4) + "\n");
