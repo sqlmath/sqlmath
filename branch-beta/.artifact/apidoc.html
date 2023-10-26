@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2023.9.25)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2023.10.25)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -79,35 +79,42 @@ body {
             <ul>
             <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertJsonEqual">1.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertInt64">1.
+function assertInt64<span class="apidocSignatureSpan">(val)</span>
+</a>
+
+</li>
+<li>
+
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertJsonEqual">2.
 function assertJsonEqual<span class="apidocSignatureSpan">(aa, bb, message)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertNumericalEqual">2.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertNumericalEqual">3.
 function assertNumericalEqual<span class="apidocSignatureSpan">(aa, bb, message)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertOrThrow">3.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertOrThrow">4.
 function assertOrThrow<span class="apidocSignatureSpan">(condition, message)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.childProcessSpawn2">4.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.childProcessSpawn2">5.
 function childProcessSpawn2<span class="apidocSignatureSpan">(command, args, option)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.ciBuildExt">5.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.ciBuildExt">6.
 function ciBuildExt<span class="apidocSignatureSpan">({
     modeSkip,
     process
@@ -117,16 +124,14 @@ function ciBuildExt<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync">6.
-function dbCloseAsync<span class="apidocSignatureSpan">({
-    db
-})</span>
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync">7.
+function dbCloseAsync<span class="apidocSignatureSpan">(db)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlobAsync">7.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlobAsync">8.
 function dbExecAndReturnLastBlobAsync<span class="apidocSignatureSpan">({
     bindList = [],
     db,
@@ -137,11 +142,10 @@ function dbExecAndReturnLastBlobAsync<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync">8.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync">9.
 function dbExecAsync<span class="apidocSignatureSpan">({
     bindList = [],
     db,
-    modeRetry,
     responseType,
     sql
 })</span>
@@ -150,21 +154,21 @@ function dbExecAsync<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileExportAsync">9.
-function dbFileExportAsync<span class="apidocSignatureSpan">({
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileLoadAsync">10.
+function dbFileLoadAsync<span class="apidocSignatureSpan">({
     db,
     dbData,
     filename,
-    modeExport = 1,
-    modeNoop
+    modeNoop,
+    modeSave = 0
 })</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileImportAsync">10.
-function dbFileImportAsync<span class="apidocSignatureSpan">({
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileSaveAsync">11.
+function dbFileSaveAsync<span class="apidocSignatureSpan">({
     db,
     dbData,
     filename
@@ -174,14 +178,14 @@ function dbFileImportAsync<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync">11.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync">12.
 function dbNoopAsync<span class="apidocSignatureSpan">(...argList)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync">12.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync">13.
 function dbOpenAsync<span class="apidocSignatureSpan">({
     afterFinalization,
     dbData,
@@ -194,66 +198,70 @@ function dbOpenAsync<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline">13.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline">14.
 function debugInline<span class="apidocSignatureSpan">(...argv)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest">14.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest">15.
 function fsCopyFileUnlessTest<span class="apidocSignatureSpan">(file1, file2, mode)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest">15.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest">16.
 function fsExistsUnlessTest<span class="apidocSignatureSpan">(file, mode)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest">16.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest">17.
 function fsReadFileUnlessTest<span class="apidocSignatureSpan">(file, mode, defaultData)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest">17.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest">18.
 function fsWriteFileUnlessTest<span class="apidocSignatureSpan">(file, data, mode)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonValueString">18.
-function jsbatonValueString<span class="apidocSignatureSpan">({
-    argi,
-    baton
-})</span>
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetInt64">19.
+function jsbatonGetInt64<span class="apidocSignatureSpan">(baton, argi)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.noop">19.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetString">20.
+function jsbatonGetString<span class="apidocSignatureSpan">(baton, argi)</span>
+</a>
+
+</li>
+<li>
+
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.noop">21.
 function noop<span class="apidocSignatureSpan">(val)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted">20.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted">22.
 function objectDeepCopyWithKeysSorted<span class="apidocSignatureSpan">(obj)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit">21.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit">23.
 function sqlmathWebworkerInit<span class="apidocSignatureSpan">({
     db,
     modeTest
@@ -263,161 +271,154 @@ function sqlmathWebworkerInit<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_MAX_LENGTH2">22.
-number SQLITE_MAX_LENGTH2
-</a>
-
-</li>
-<li>
-
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY">23.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY">24.
 number SQLITE_OPEN_AUTOPROXY
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE">24.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE">25.
 number SQLITE_OPEN_CREATE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE">25.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE">26.
 number SQLITE_OPEN_DELETEONCLOSE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE">26.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE">27.
 number SQLITE_OPEN_EXCLUSIVE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX">27.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX">28.
 number SQLITE_OPEN_FULLMUTEX
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB">28.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB">29.
 number SQLITE_OPEN_MAIN_DB
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL">29.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL">30.
 number SQLITE_OPEN_MAIN_JOURNAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY">30.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY">31.
 number SQLITE_OPEN_MEMORY
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW">31.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW">32.
 number SQLITE_OPEN_NOFOLLOW
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX">32.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX">33.
 number SQLITE_OPEN_NOMUTEX
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE">33.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE">34.
 number SQLITE_OPEN_PRIVATECACHE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY">34.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY">35.
 number SQLITE_OPEN_READONLY
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE">35.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE">36.
 number SQLITE_OPEN_READWRITE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE">36.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE">37.
 number SQLITE_OPEN_SHAREDCACHE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL">37.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL">38.
 number SQLITE_OPEN_SUBJOURNAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL">38.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL">39.
 number SQLITE_OPEN_SUPER_JOURNAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB">39.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB">40.
 number SQLITE_OPEN_TEMP_DB
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL">40.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL">41.
 number SQLITE_OPEN_TEMP_JOURNAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB">41.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB">42.
 number SQLITE_OPEN_TRANSIENT_DB
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI">42.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI">43.
 number SQLITE_OPEN_URI
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL">43.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL">44.
 number SQLITE_OPEN_WAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version">44.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version">45.
 string version
 </a>
 
@@ -435,7 +436,43 @@ string version
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertJsonEqual" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.assertJsonEqual">1.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertInt64" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.assertInt64">1.
+    function assertInt64<span class="apidocSignatureSpan">(val)</span>
+    </a>
+    </h2>
+</li>
+<li>Description and source-code:<pre class="apidocCodePre">function assertInt64(val) {
+    // This function will assert &lt;val&gt; is within range of c99-signed-long-long.
+    val = BigInt(val);
+    if (!(
+        -9_223_372_036_854_775_808n &lt;= val &amp;&amp; val &lt;= 9_223_372_036_854_775_807n
+    )) {
+        throw new Error(
+            `integer ${val} outside signed-64-bit inclusive-range`
+            + " -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
+        );
+    }
+}</pre></li>
+<li>Example usage:<pre class="apidocCodePre">...
+        referenceList.push(val);
+        break;
+    case SQLITE_DATATYPE_FLOAT:
+        // push SQLITE-REAL - 8-byte
+        baton.setFloat64(nused + 1, val, true);
+        break;
+    case SQLITE_DATATYPE_INTEGER:
+        <span class="apidocCodeKeywordSpan">assertInt64</span>(val);
+        // push SQLITE-INTEGER - 8-byte
+        baton.setBigInt64(nused + 1, val, true);
+        break;
+    }
+    return baton;
+}
+...</pre></li>
+
+<li>
+    <h2>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertJsonEqual" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.assertJsonEqual">2.
     function assertJsonEqual<span class="apidocSignatureSpan">(aa, bb, message)</span>
     </a>
     </h2>
@@ -463,11 +500,11 @@ string version
                 valActual,
                 String("1").replace(npm_config_mode_test_save, "force")
             );
-            valExpected = await fsReadFileUnlessTest(
+            valExpect = await fsReadFileUnlessTest(
                 "test_data_sinefit.csv",
                 "force"
             );
-            <span class="apidocCodeKeywordSpan">assertJsonEqual</span>(valActual, valExpected);
+            <span class="apidocCodeKeywordSpan">assertJsonEqual</span>(valActual, valExpect);
         }())
     ]);
 });
@@ -479,7 +516,7 @@ jstestDescribe((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertNumericalEqual" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.assertNumericalEqual">2.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertNumericalEqual" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.assertNumericalEqual">3.
     function assertNumericalEqual<span class="apidocSignatureSpan">(aa, bb, message)</span>
     </a>
     </h2>
@@ -519,7 +556,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertOrThrow" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.assertOrThrow">3.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.assertOrThrow" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.assertOrThrow">4.
     function assertOrThrow<span class="apidocSignatureSpan">(condition, message)</span>
     </a>
     </h2>
@@ -539,16 +576,16 @@ jstestIt((
 <li>Example usage:<pre class="apidocCodePre">...
             db,
             sql: (`
-SELECT doublearray_jsonto(doublearray_jsonfrom($valInput)) AS result;
+SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             `)
         })
     )[0][0].result;
 } catch (ignore) {
-    <span class="apidocCodeKeywordSpan">assertOrThrow</span>(valExpected === "error", JSON.stringify({
+    <span class="apidocCodeKeywordSpan">assertOrThrow</span>(valExpect === "error", JSON.stringify({
         ii,
         valActual,
-        valExpected,
-        valInput
+        valExpect,
+        valIn
     }, undefined, 4));
     return;
 }
@@ -556,7 +593,7 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valInput)) AS result;
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.childProcessSpawn2" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.childProcessSpawn2">4.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.childProcessSpawn2" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.childProcessSpawn2">5.
     function childProcessSpawn2<span class="apidocSignatureSpan">(command, args, option)</span>
     </a>
     </h2>
@@ -650,7 +687,7 @@ jstestDescribe((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.ciBuildExt" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.ciBuildExt">5.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.ciBuildExt" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.ciBuildExt">6.
     function ciBuildExt<span class="apidocSignatureSpan">({
     modeSkip,
     process
@@ -698,59 +735,48 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync">6.
-    function dbCloseAsync<span class="apidocSignatureSpan">({
-    db
-})</span>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync">7.
+    function dbCloseAsync<span class="apidocSignatureSpan">(db)</span>
     </a>
     </h2>
 </li>
-<li>Description and source-code:<pre class="apidocCodePre">async function dbCloseAsync({
-    db
-}) {
+<li>Description and source-code:<pre class="apidocCodePre">async function dbCloseAsync(db) {
 <span class="apidocCodeCommentSpan">
 // This function will close sqlite-database-connection &lt;db&gt;.
 
-</span>    let __db = dbDeref(db);
-    // prevent segfault - do not close db if actions are pending
+</span>    // prevent segfault - do not close db if actions are pending
     assertOrThrow(
-        __db.busy === 0,
-        "db cannot close with " + __db.busy + " actions pending"
+        db.busy === 0,
+        `dbCloseAsync - cannot close db with ${db.busy} actions pending`
     );
     // cleanup connPool
-    await Promise.all(__db.connPool.map(async function (ptr) {
+    await Promise.all(db.connPool.map(async function (ptr) {
         let val = ptr[0];
         ptr[0] = 0n;
-        await cCallAsync(
-            undefined,
-            "_dbClose",
-            val,
-            __db.filename
-        );
+        await dbCallAsync(jsbatonCreate("_dbClose"), [val, db.filename]);
     }));
-    dbDict.delete(db);
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-            ) &gt;= 0,
-            err
-        );
-    }
-});
-// test close-while-busy handling-behavior
-assertErrorThrownAsync(function () {
-    return <span class="apidocCodeKeywordSpan">dbCloseAsync</span>({
-        db
+                ) &gt;= 0,
+                err
+            );
+        }
     });
-}, (
-    /db cannot close with \d+? actions pending/
-));
-// test retry handling-behavior
-assertErrorThrownAsync(function () {
+    // test close-while-busy handling-behavior
+    assertErrorThrownAsync(function () {
+        return <span class="apidocCodeKeywordSpan">dbCloseAsync</span>(db);
+    }, "cannot close db");
+});
+jstestIt((
+    "test dbFileXxx handling-behavior"
+), async function test_dbFileXxx() {
+    let data;
+    let db = await dbOpenAsync({
 ...</pre></li>
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlobAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlobAsync">7.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlobAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlobAsync">8.
     function dbExecAndReturnLastBlobAsync<span class="apidocSignatureSpan">({
     bindList = [],
     db,
@@ -771,35 +797,34 @@ assertErrorThrownAsync(function () {
 </span>    return dbExecAsync({
         bindList,
         db,
-        responseType: "lastBlob",
+        responseType: "lastblob",
         sql
     });
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-jstestIt((
-    "test db-bind-value handling-behavior"
-), async function test_dbBindValue() {
-    let db = await dbOpenAsync({
-        filename: ":memory:"
-    });
-    async function test_dbExecAndReturnLastBlobAsync(val) {
-        return await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastBlobAsync</span>({
-            bindList: [
-                val
-            ],
-            db,
             sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
-        });
-    }
+        }),
+        "inclusive-range|not JSON serializable"
+    );
+    return;
+}
+bufActual = new TextDecoder().decode(
+    await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastBlobAsync</span>({
+        bindList: [valIn],
+        db,
+        sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
+    })
+);
+bufExpect = String(valExpect);
+switch (typeof(valIn)) {
 ...</pre></li>
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync">8.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync">9.
     function dbExecAsync<span class="apidocSignatureSpan">({
     bindList = [],
     db,
-    modeRetry,
     responseType,
     sql
 })</span>
@@ -809,81 +834,81 @@ jstestIt((
 <li>Description and source-code:<pre class="apidocCodePre">async function dbExecAsync({
     bindList = [],
     db,
-    modeRetry,
     responseType,
     sql
 }) {
 <span class="apidocCodeCommentSpan">
 // This function will exec &lt;sql&gt; in &lt;db&gt; and return &lt;result&gt;.
 
-</span>    let baton;
-    let bindByKey;
-    let bindListLength;
-    let externalbufferList;
+</span>    let baton = jsbatonCreate("_dbExec");
+    let bindByKey = !Array.isArray(bindList);
+    let bufi = [0];
+    let referenceList = [];
     let result;
-    while (modeRetry &gt; 0) {
-        try {
-            return await dbExecAsync({
-                bindList,
-                db,
-                responseType,
-                sql
-            });
-        } catch (err) {
-            assertOrThrow(modeRetry &gt; 0, err);
-            consoleError(err);
-            consoleError(
-                "dbExecAsync - retry failed sql-query with "
-                + modeRetry
-                + " remaining retries"
-            );
-            modeRetry -= 1;
-            await new Promise(function (resolve) {
-                setTimeout(resolve, 5_000 * !npm_config_mode_test);
-            });
-        }
-    }
-    baton = jsbatonCreate();
-    bindByKey = !Array.isArray(bindList);
-    bindListLength = (
-        Array.isArray(bindList)
-        ? bindList.length
-        : Object.keys(bindList).length
-    );
-    externalbufferList = [];
-    Object.entries(bindList).forEach(function ([
-        key, val
-    ]) {
-        if (bindByKey) {
-            baton = jsbatonValuePush({
+    if (bindByKey) {
+        Object.entries(bindList).forEach(function ([key, val]) {
+            baton = jsbatonSetValue(baton, undefined, `:${key}\u0000`);
+            baton = jsbatonSetValue(
                 baton,
-                value: ":" + key + "\u0000"
-            });
-        }
-        baton = jsbatonValuePush({
-            baton,
-            externalbufferList,
-            value: val
+                undefined,
+                val,
+                bufi,
+                referenceList
+            );
         });
-    });
-    result = await dbCallAsync(
+    } else {
+        bindList.forEach(function (val) {
+            baton = jsbatonSetValue(
+                baton,
+                undefined,
+                val,
+                bufi,
+                referenceList
+            );
+        });
+    }
+    [baton, ...result] = await dbCallAsync(
         baton,
-        "_dbExec",
-        db,                     // 0
-        String(sql) + "\n;\nPRAGMA noop",   // 1
-        bindListLength,         // 2
-        bindByKey,              // 3
-        (                       // 4
-            responseType === "lastBlob"
-            ? 1
-            : 0
-        ),
-        undefined, // 5
-        undefined, // 6
-        undefined, // 7 - response
-        ...externalbufferList        // 8
+        [
+            // 0. db
+            db,
+            // 1. sql
+            String(sql) + "\n;\nPRAGMA noop",
+            // 2. bindList.length
+            (
+                bindByKey
+                ? Object.keys(bindList).length
+                : bindList.length
+            ),
+            // 3. bindByKey
+            bindByKey,
+            // 4. responseType
+            (
+                responseType === "lastblob"
+                ? SQLITE_RESPONSETYPE_LASTBLOB
+                : 0
+            )
+        ],
+        "modeDb"
     );
-    ...
+    result = result[0];
+    if (!IS_BROWSER) {
+        result = cModule._jsbatonStealCbuffer(
+            baton.buffer,
+            0,
+            Number(
+                responseType !== "arraybuffer" &amp;&amp; responseType !== "lastblob"
+            )
+        );
+    }
+    switch (responseType) {
+    case "arraybuffer":
+    case "lastblob":
+        return result;
+    case "list":
+        return jsonParseArraybuffer(result);
+    default:
+        return jsonParseArraybuffer(result).map(...
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
@@ -906,26 +931,26 @@ CREATE TEMP TABLE __sinefit_csv AS
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileExportAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileExportAsync">9.
-    function dbFileExportAsync<span class="apidocSignatureSpan">({
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileLoadAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileLoadAsync">10.
+    function dbFileLoadAsync<span class="apidocSignatureSpan">({
     db,
     dbData,
     filename,
-    modeExport = 1,
-    modeNoop
+    modeNoop,
+    modeSave = 0
 })</span>
     </a>
     </h2>
 </li>
-<li>Description and source-code:<pre class="apidocCodePre">async function dbFileExportAsync({
+<li>Description and source-code:<pre class="apidocCodePre">async function dbFileLoadAsync({
     db,
     dbData,
     filename,
-    modeExport = 1,
-    modeNoop
+    modeNoop,
+    modeSave = 0
 }) {
 <span class="apidocCodeCommentSpan">
-// This function will export &lt;db&gt; to &lt;filename&gt;.
+// This function will load &lt;filename&gt; to &lt;db&gt;.
 
 </span>    if (modeNoop) {
         return;
@@ -937,69 +962,33 @@ CREATE TEMP TABLE __sinefit_csv AS
         typeof filename === "string" &amp;&amp; filename,
         `invalid filename ${filename}`
     );
-    return await dbCallAsync(
-        undefined,
-        "_dbFileImportOrExport",
-        db,                     // 0. sqlite3 * pInMemory,
-        String(filename),       // 1. char *zFilename,
-        modeExport,             // 2. const int isSave
-        undefined,              // 3. undefined
-        dbData                  // 4. dbData
+    dbData = await dbCallAsync(
+        jsbatonCreate("_dbFileLoad"),
+        [
+            // 0. sqlite3 * pInMemory
+            db,
+            // 1. char *zFilename
+            filename,
+            // 2. const int isSave
+            modeSave,
+            // 3. undefined
+            undefined,
+            // 4. dbData - same position as dbOpenAsync
+            dbData
+        ],
+        "modeDb"
     );
+    return dbData[1 + 0];
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-        db
-    });
-}, "invalid filename undefined");
-await dbExecAsync({
-    db,
-    sql: "CREATE TABLE t01 AS SELECT 1 AS c01"
-});
-await <span class="apidocCodeKeywordSpan">dbFileExportAsync</span>({
+await dbFileSaveAsync({
     db,
     filename: ".testDbFileXxx.sqlite"
 });
 db = await dbOpenAsync({
     filename: ":memory:"
 });
-await dbFileImportAsync({
-...</pre></li>
-
-<li>
-    <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileImportAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileImportAsync">10.
-    function dbFileImportAsync<span class="apidocSignatureSpan">({
-    db,
-    dbData,
-    filename
-})</span>
-    </a>
-    </h2>
-</li>
-<li>Description and source-code:<pre class="apidocCodePre">async function dbFileImportAsync({
-    db,
-    dbData,
-    filename
-}) {
-<span class="apidocCodeCommentSpan">
-// This function will import &lt;filename&gt; to &lt;db&gt;.
-
-</span>    await dbFileExportAsync({
-        db,
-        dbData,
-        filename,
-        modeExport: 0
-    });
-}</pre></li>
-<li>Example usage:<pre class="apidocCodePre">...
-await dbFileExportAsync({
-    db,
-    filename: ".testDbFileXxx.sqlite"
-});
-db = await dbOpenAsync({
-    filename: ":memory:"
-});
-await <span class="apidocCodeKeywordSpan">dbFileImportAsync</span>({
+await <span class="apidocCodeKeywordSpan">dbFileLoadAsync</span>({
     db,
     filename: ".testDbFileXxx.sqlite"
 });
@@ -1011,38 +1000,82 @@ data = await dbExecAsync({
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync">11.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileSaveAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileSaveAsync">11.
+    function dbFileSaveAsync<span class="apidocSignatureSpan">({
+    db,
+    dbData,
+    filename
+})</span>
+    </a>
+    </h2>
+</li>
+<li>Description and source-code:<pre class="apidocCodePre">async function dbFileSaveAsync({
+    db,
+    dbData,
+    filename
+}) {
+<span class="apidocCodeCommentSpan">
+// This function will save &lt;db&gt; to &lt;filename&gt;.
+
+</span>    return await dbFileLoadAsync({
+        db,
+        dbData,
+        filename,
+        modeSave: 1
+    });
+}</pre></li>
+<li>Example usage:<pre class="apidocCodePre">...
+});
+assertErrorThrownAsync(function () {
+    return dbFileLoadAsync({
+        db
+    });
+}, "invalid filename undefined");
+assertErrorThrownAsync(function () {
+    return <span class="apidocCodeKeywordSpan">dbFileSaveAsync</span>({
+        db
+    });
+}, "invalid filename undefined");
+await dbExecAsync({
+    db,
+    sql: "CREATE TABLE t01 AS SELECT 1 AS c01"
+});
+...</pre></li>
+
+<li>
+    <h2>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync">12.
     function dbNoopAsync<span class="apidocSignatureSpan">(...argList)</span>
     </a>
     </h2>
 </li>
 <li>Description and source-code:<pre class="apidocCodePre">async function dbNoopAsync(...argList) {
 <span class="apidocCodeCommentSpan">
-// This function will do nothing except return argList.
+// This function will do nothing except return &lt;argList&gt;.
 
-</span>    return await cCallAsync(undefined, "_dbNoop", ...argList);
+</span>    return await dbCallAsync(jsbatonCreate("_dbNoop"), argList);
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-].map(async function ([
-    valInput, valExpected
-]) {
+    // 8. undefined
+    [undefined, 0]
+].map(async function ([valIn, valExpect], ii) {
     let baton;
     let valActual;
-    if (valExpected === undefined) {
+    if (valExpect === Error) {
         assertErrorThrownAsync(function () {
-            return <span class="apidocCodeKeywordSpan">dbNoopAsync</span>(undefined, valInput, undefined);
-        });
+            return <span class="apidocCodeKeywordSpan">dbNoopAsync</span>(undefined, valIn, undefined);
+        }, "invalid arg|integer");
         return;
     }
-    baton = await dbNoopAsync(undefined, valInput, undefined);
+    baton = await dbNoopAsync(undefined, valIn, undefined);
     baton = baton[0];
     valActual = (
-        typeof valInput === "string"
+        typeof valIn === "string"
 ...</pre></li>
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync">12.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync">13.
     function dbOpenAsync<span class="apidocSignatureSpan">({
     afterFinalization,
     dbData,
@@ -1070,13 +1103,8 @@ data = await dbExecAsync({
 //   const char *zVfs        /* Name of VFS module to use */
 // );
     let connPool;
-    let db = {
-        filename
-    };
-    assertOrThrow(
-        typeof filename === "string",
-        `invalid filename ${filename}`
-    );
+    let db = {busy: 0, filename, ii: 0};
+    assertOrThrow(typeof filename === "string", `invalid filename ${filename}`);
     assertOrThrow(
         !dbData || isExternalBuffer(dbData),
         "dbData must be ArrayBuffer"
@@ -1084,37 +1112,28 @@ data = await dbExecAsync({
     connPool = await Promise.all(Array.from(new Array(
         threadCount
     ), async function () {
-        let ptr = await cCallAsync(
-            undefined,
-            "_dbOpen",
-            // 0. const char *filename,   Database filename (UTF-8)
-            String(filename),
-            // 1. sqlite3 **ppDb,         OUT: SQLite db handle
-            undefined,
-            // 2. int flags,              Flags
-            flags ?? (
-                SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
-            ),
-            // 3. const char *zVfs        Name of VFS module to use
-            undefined,
-            // 4. wasm-only - arraybuffer of raw sqlite-database to open in wasm
-            dbData
+        let [ptr] = await dbCallAsync(
+            jsbatonCreate("_dbOpen"),
+            [
+                // 0. const char *filename,   Database filename (UTF-8)
+                filename,
+                // 1. sqlite3 **ppDb,         OUT: SQLite db handle
+                undefined,
+                // 2. int flags,              Flags
+                flags ?? (
+                    SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_URI
+                ),
+                // 3. const char *zVfs        Name of VFS module to use
+                undefined,
+                // 4. wasm-only - arraybuffer of raw sqlite-database
+                dbData
+            ]
         );
-        ptr = [
-            ptr[0].getBigInt64(4 + 4, true)
-        ];
-        dbFinalizationRegistry.register(db, {
-            afterFinalization,
-            ptr
-        });
+        ptr = [ptr.getBigInt64(JSBATON_OFFSET_ARGV + 0, true)];
+        dbFinalizationRegistry.register(db, {afterFinalization, ptr});
         return ptr;
     }));
-    dbDict.set(db, {
-        busy: 0,
-        connPool,
-        filename,
-        ii: 0
-    });
+    db.connPool = connPool;
     return db;
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
@@ -1137,7 +1156,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline">13.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline">14.
     function debugInline<span class="apidocSignatureSpan">(...argv)</span>
     </a>
     </h2>
@@ -1155,7 +1174,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest">14.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest">15.
     function fsCopyFileUnlessTest<span class="apidocSignatureSpan">(file1, file2, mode)</span>
     </a>
     </h2>
@@ -1189,7 +1208,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest">15.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest">16.
     function fsExistsUnlessTest<span class="apidocSignatureSpan">(file, mode)</span>
     </a>
     </h2>
@@ -1228,7 +1247,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest">16.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest">17.
     function fsReadFileUnlessTest<span class="apidocSignatureSpan">(file, mode, defaultData)</span>
     </a>
     </h2>
@@ -1253,11 +1272,11 @@ jstestIt((
                 valActual,
                 String("1").replace(npm_config_mode_test_save, "force")
             );
-            valExpected = await <span class="apidocCodeKeywordSpan">fsReadFileUnlessTest</span>(
+            valExpect = await <span class="apidocCodeKeywordSpan">fsReadFileUnlessTest</span>(
                 "test_data_sinefit.csv",
                 "force"
             );
-            assertJsonEqual(valActual, valExpected);
+            assertJsonEqual(valActual, valExpect);
         }())
     ]);
 });
@@ -1265,7 +1284,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest">17.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest">18.
     function fsWriteFileUnlessTest<span class="apidocSignatureSpan">(file, data, mode)</span>
     </a>
     </h2>
@@ -1292,57 +1311,82 @@ await <span class="apidocCodeKeywordSpan">fsWriteFileUnlessTest</span>(
     valActual,
     String("1").replace(npm_config_mode_test_save, "force")
 );
-valExpected = await fsReadFileUnlessTest(
+valExpect = await fsReadFileUnlessTest(
     "test_data_sinefit.csv",
     "force"
 ...</pre></li>
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonValueString" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonValueString">18.
-    function jsbatonValueString<span class="apidocSignatureSpan">({
-    argi,
-    baton
-})</span>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetInt64" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetInt64">19.
+    function jsbatonGetInt64<span class="apidocSignatureSpan">(baton, argi)</span>
     </a>
     </h2>
 </li>
-<li>Description and source-code:<pre class="apidocCodePre">function jsbatonValueString({
-    argi,
-    baton
-}) {
+<li>Description and source-code:<pre class="apidocCodePre">function jsbatonGetInt64(baton, argi) {
 <span class="apidocCodeCommentSpan">
-// This function will return string-value from &lt;baton&gt; at given &lt;offset&gt;.
+// This function will return int64-value from &lt;baton&gt; at &lt;argi&gt;.
 
-</span>    let offset = baton.getInt32(4 + 4 + argi * 8, true);
+</span>    return baton.getBigInt64(JSBATON_OFFSET_ARGV + argi * 8, true);
+}</pre></li>
+<li>Example usage:<pre class="apidocCodePre">...
+    return;
+}
+baton = await dbNoopAsync(undefined, valIn, undefined);
+baton = baton[0];
+valActual = (
+    typeof valIn === "string"
+    ? jsbatonGetString(baton, 1)
+    : String(<span class="apidocCodeKeywordSpan">jsbatonGetInt64</span>(baton, 1))
+);
+valExpect = String(valExpect);
+if (typeof valIn === "bigint") {
+    valIn = String(valIn);
+}
+assertJsonEqual(valActual, valExpect, {
+    ii,
+...</pre></li>
+
+<li>
+    <h2>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetString" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetString">20.
+    function jsbatonGetString<span class="apidocSignatureSpan">(baton, argi)</span>
+    </a>
+    </h2>
+</li>
+<li>Description and source-code:<pre class="apidocCodePre">function jsbatonGetString(baton, argi) {
+<span class="apidocCodeCommentSpan">
+// This function will return string-value from &lt;baton&gt; at &lt;argi&gt;.
+
+</span>    let offset = baton.getInt32(JSBATON_OFFSET_ARGV + argi * 8, true);
     return new TextDecoder().decode(new Uint8Array(
         baton.buffer,
-        offset + 1 + 4,
+        baton.byteOffset + offset + 1 + 4,
         // remove null-terminator from string
         baton.getInt32(offset + 1, true) - 1
     ));
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-    });
+    }, "invalid arg|integer");
     return;
 }
-baton = await dbNoopAsync(undefined, valInput, undefined);
+baton = await dbNoopAsync(undefined, valIn, undefined);
 baton = baton[0];
 valActual = (
-    typeof valInput === "string"
-    ? <span class="apidocCodeKeywordSpan">jsbatonValueString</span>({
-        argi: 1,
-        baton
-    })
-    : String(baton.getBigInt64(4 + 4 + 8, true))
+    typeof valIn === "string"
+    ? <span class="apidocCodeKeywordSpan">jsbatonGetString</span>(baton, 1)
+    : String(jsbatonGetInt64(baton, 1))
 );
-valExpected = String(valExpected);
-if (typeof valInput === "bigint") {
+valExpect = String(valExpect);
+if (typeof valIn === "bigint") {
+    valIn = String(valIn);
+}
+assertJsonEqual(valActual, valExpect, {
 ...</pre></li>
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.noop" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.noop">19.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.noop" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.noop">21.
     function noop<span class="apidocSignatureSpan">(val)</span>
     </a>
     </h2>
@@ -1373,7 +1417,7 @@ DROP TABLE IF EXISTS __sinefit_csv;
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted">20.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted">22.
     function objectDeepCopyWithKeysSorted<span class="apidocSignatureSpan">(obj)</span>
     </a>
     </h2>
@@ -1414,14 +1458,14 @@ DROP TABLE IF EXISTS __sinefit_csv;
     return sorted;
 }
 
-async function sqlMessagePost(baton, cFuncName, ...argList) {
+async function sqlmathInit() {
 
-// This function will post msg to &lt;sqlWorker&gt; and return result.
+// This function will init sqlmath.
 ...</pre></li>
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit">21.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit">23.
     function sqlmathWebworkerInit<span class="apidocSignatureSpan">({
     db,
     modeTest
@@ -1454,19 +1498,15 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
     if (modeTest) {
         sqlWorker.postMessage = function (data) {
             setTimeout(function () {
-                sqlWorker.onmessage({
-                    data
-                });
+                sqlWorker.onmessage({data});
             });
         };
-        // test cCallAsync handling-behavior
-        cCallAsync(undefined, "testTimeElapsed", true);
-        // test dbFileExportAsync handling-behavior
-        dbFileExportAsync({
-            db,
-            filename: "aa",
-            modeTest
-        });
+        // test dbCallAsync handling-behavior
+        dbCallAsync(jsbatonCreate("testTimeElapsed"), [true]);
+        // test dbFileLoadAsync handling-behavior
+        dbFileLoadAsync({db, filename: "aa", modeTest});
+        // test jsonParseArraybuffer handling-behavior
+        jsonParseArraybuffer(new TextEncoder().encode("0"));
         // revert IS_BROWSER
         IS_BROWSER = undefined;
     }
@@ -1489,15 +1529,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_MAX_LENGTH2" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_MAX_LENGTH2">22.
-    number SQLITE_MAX_LENGTH2
-    </a>
-    </h2>
-</li>
-
-<li>
-    <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY">23.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY">24.
     number SQLITE_OPEN_AUTOPROXY
     </a>
     </h2>
@@ -1505,7 +1537,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE">24.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE">25.
     number SQLITE_OPEN_CREATE
     </a>
     </h2>
@@ -1513,7 +1545,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE">25.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE">26.
     number SQLITE_OPEN_DELETEONCLOSE
     </a>
     </h2>
@@ -1521,7 +1553,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE">26.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE">27.
     number SQLITE_OPEN_EXCLUSIVE
     </a>
     </h2>
@@ -1529,7 +1561,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX">27.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX">28.
     number SQLITE_OPEN_FULLMUTEX
     </a>
     </h2>
@@ -1537,7 +1569,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB">28.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB">29.
     number SQLITE_OPEN_MAIN_DB
     </a>
     </h2>
@@ -1545,7 +1577,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL">29.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL">30.
     number SQLITE_OPEN_MAIN_JOURNAL
     </a>
     </h2>
@@ -1553,7 +1585,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY">30.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY">31.
     number SQLITE_OPEN_MEMORY
     </a>
     </h2>
@@ -1561,7 +1593,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW">31.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW">32.
     number SQLITE_OPEN_NOFOLLOW
     </a>
     </h2>
@@ -1569,7 +1601,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX">32.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX">33.
     number SQLITE_OPEN_NOMUTEX
     </a>
     </h2>
@@ -1577,7 +1609,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE">33.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE">34.
     number SQLITE_OPEN_PRIVATECACHE
     </a>
     </h2>
@@ -1585,7 +1617,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY">34.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY">35.
     number SQLITE_OPEN_READONLY
     </a>
     </h2>
@@ -1593,7 +1625,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE">35.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE">36.
     number SQLITE_OPEN_READWRITE
     </a>
     </h2>
@@ -1601,7 +1633,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE">36.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE">37.
     number SQLITE_OPEN_SHAREDCACHE
     </a>
     </h2>
@@ -1609,7 +1641,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL">37.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL">38.
     number SQLITE_OPEN_SUBJOURNAL
     </a>
     </h2>
@@ -1617,7 +1649,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL">38.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL">39.
     number SQLITE_OPEN_SUPER_JOURNAL
     </a>
     </h2>
@@ -1625,7 +1657,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB">39.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB">40.
     number SQLITE_OPEN_TEMP_DB
     </a>
     </h2>
@@ -1633,7 +1665,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL">40.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL">41.
     number SQLITE_OPEN_TEMP_JOURNAL
     </a>
     </h2>
@@ -1641,7 +1673,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB">41.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB">42.
     number SQLITE_OPEN_TRANSIENT_DB
     </a>
     </h2>
@@ -1649,7 +1681,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI">42.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI">43.
     number SQLITE_OPEN_URI
     </a>
     </h2>
@@ -1657,7 +1689,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL">43.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL">44.
     number SQLITE_OPEN_WAL
     </a>
     </h2>
@@ -1665,7 +1697,7 @@ async function sqlMessagePost(baton, cFuncName, ...argList) {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.version">44.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.version">45.
     string version
     </a>
     </h2>

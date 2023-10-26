@@ -4,11 +4,25 @@
 # sh jslint_ci.sh shCiBuildWasm
 # sh jslint_ci.sh shSqlmathUpdate
 
-# sqlite autoconf-3390400 version-3.39.4
-# curl -L https://www.sqlite.org/2022/sqlite-autoconf-3390400.tar.gz | tar -xz
-# https://www.sqlite.org/2022/sqlite-tools-linux-x86-3390400.zip
-# https://www.sqlite.org/2022/sqlite-tools-osx-x86-3390400.zip
-# https://www.sqlite.org/2022/sqlite-tools-win32-x86-3390400.zip
+: "
+    for URL in \
+        https://github.com/google/re2/archive/refs/tags/2023-03-01.tar.gz \
+        https://github.com/madler/zlib/releases/download/v1.3/zlib-1.3.tar.gz \
+        https://github.com/nalgeon/sqlean/archive/refs/tags/0.21.8.tar.gz \
+        https://www.sqlite.org/2023/sqlite-autoconf-3420000.tar.gz
+    do
+        curl -L "$URL" | tar -xz
+    done
+    for DIR in \
+        re2-2023-03-01 \
+        sqlean-0.21.8 \
+        sqlite-autoconf-3420000 \
+        zlib-1.3
+    do
+        rm -rf ".$DIR"
+        mv "$DIR" ".$DIR"
+    done
+"
 
 shCiArtifactUploadCustom() {(set -e
 # this function will run custom-code to upload build-artifacts
@@ -53,7 +67,6 @@ shCiBaseCustom() {(set -e
     fi
     # cleanup
     rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
-    python setup.py build_ext_init
     PID_LIST=""
     #
     # python -m build --sdist
@@ -149,6 +162,9 @@ shCiBaseCustomArtifactUpload() {(set -e
         ;;
     Linux*)
         rm -f "branch-$GITHUB_BRANCH0/"*linux*
+        # save sdist
+        rm -f "branch-$GITHUB_BRANCH0/"*.tar.gz
+        cp ../../dist/sqlmath-*.tar.gz "branch-$GITHUB_BRANCH0"
         ;;
     MINGW64_NT*)
         rm -f "branch-$GITHUB_BRANCH0/"*-win*
@@ -166,7 +182,6 @@ shCiBaseCustomArtifactUpload() {(set -e
         cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
     fi
     # save cibuildwheel
-    cp ../../dist/sqlmath-*.tar.gz "branch-$GITHUB_BRANCH0"
     cp ../../dist/sqlmath-*.whl "branch-$GITHUB_BRANCH0"
     # git commit
     git add .
@@ -203,26 +218,27 @@ shCiBuildWasm() {(set -e
     # OPTION2="$OPTION2 -Oz"
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
-        zlib_base.c \
-        sqlite_rollup.c \
         sqlmath_base.c \
-        sqlmath_custom.c
+        sqlmath_custom.c \
+        sqlmath_external_pcre2.c \
+        sqlmath_external_sqlite.c \
+        sqlmath_external_zlib.c
     do
         OPTION2=""
         FILE2="build/$(basename "$FILE").wasm.o"
         case "$FILE" in
-        zlib_base.c)
-            FILE=sqlite_rollup.c
-            OPTION2="$OPTION2 -DSRC_ZLIB_BASE_C2="
+        sqlmath_base.c)
             ;;
+        sqlmath_custom.c)
+            ;;
+        *)
+            # optimization - skip rebuild of rollup if possible
+            if [ "$FILE2" -nt "$FILE" ]
+            then
+                printf "shCiBuildWasm - skip $FILE\n" 1>&2
+                continue
+            fi
         esac
-        # optimization - skip rebuild of sqlite_rollup.c if possible
-        if [ "$FILE2" -nt "$FILE" ] && [ "$FILE" = sqlite_rollup.c ]
-        then
-            printf "shCiBuildWasm - skip $FILE\n" 1>&2
-            continue
-        fi
-        OPTION2="$OPTION2 -DHAVE_UNISTD_H="
         OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
@@ -230,14 +246,11 @@ shCiBuildWasm() {(set -e
     OPTION2=""
     #
     OPTION2="$OPTION2 -s EXPORTED_FUNCTIONS=_sqlite3_initialize"
-    OPTION2="$OPTION2,___dbFileImportOrExport"
-    OPTION2="$OPTION2,_dbClose"
-    OPTION2="$OPTION2,_dbExec"
-    OPTION2="$OPTION2,_dbFileImportOrExport"
-    OPTION2="$OPTION2,_dbNoop"
-    OPTION2="$OPTION2,_dbOpen"
-    OPTION2="$OPTION2,_jsbatonValueErrmsg"
-    OPTION2="$OPTION2,_jsbatonValueStringArgi"
+    OPTION2="$OPTION2,_dbCall"
+    OPTION2="$OPTION2,_dbFileLoadOrSave"
+    OPTION2="$OPTION2,_jsbatonGetErrmsg"
+    OPTION2="$OPTION2,_jsbatonGetInt64"
+    OPTION2="$OPTION2,_jsbatonGetString"
     OPTION2="$OPTION2,_sqlite3_errmsg"
     OPTION2="$OPTION2,_sqlite3_free"
     OPTION2="$OPTION2,_sqlite3_malloc"
@@ -265,10 +278,11 @@ shCiBuildWasm() {(set -e
         -s SINGLE_FILE=0 \
         -s WASM=1 \
         -s WASM_BIGINT \
-        build/zlib_base.c.wasm.o \
-        build/sqlite_rollup.c.wasm.o \
         build/sqlmath_base.c.wasm.o \
         build/sqlmath_custom.c.wasm.o \
+        build/sqlmath_external_pcre2.c.wasm.o \
+        build/sqlmath_external_sqlite.c.wasm.o \
+        build/sqlmath_external_zlib.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
     printf "/*jslint-disable*/
@@ -375,7 +389,8 @@ shCiLintCustom() {(set -e
     fi
     shLintPython \
         setup.py \
-        sqlmath/__init__.py
+        sqlmath/__init__.py \
+        test.py
 )}
 
 shCiPublishNpmCustom() {(set -e
@@ -425,8 +440,6 @@ shCiTestNodejs() {(set -e
         fi
         # create PKG-INFO
         python setup.py build_pkg_info
-        # init build/xxx.c
-        python setup.py build_ext_init
         # build nodejs c-addon
         PID_LIST=""
         (
@@ -442,29 +455,7 @@ ciBuildExt({process});
         PID_LIST="$PID_LIST $!"
         shPidListWait build_ext "$PID_LIST"
     fi;
-    # test zlib
     PID_LIST=""
-    (
-    printf "\ntest zlib\n"
-    if [ ! -f build/SRC_ZLIB_TEST_EXAMPLE.exe ]
-    then
-        printf "\n    *** zlib test SKIP ***\n"
-        exit
-    fi
-    if [ "Hello world!" = "$( \
-        printf "Hello world!\n" \
-            | ./build/SRC_ZLIB_TEST_MINIGZIP.exe \
-            | ./build/SRC_ZLIB_TEST_MINIGZIP.exe -d \
-        )" ] \
-        && ./build/SRC_ZLIB_TEST_EXAMPLE.exe ./build/zlib_test_file
-    then
-        printf "\n    *** zlib test OK ***\n"
-    else
-        printf "\n    *** zlib test FAILED ***\n"
-        exit 1
-    fi
-    ) &
-    PID_LIST="$PID_LIST $!"
     # test nodejs
     (
     rm -f *~ .test*.sqlite __data/.test*.sqlite
@@ -498,16 +489,9 @@ shSqlmathUpdate() {(set -e
     then
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
-        shRollupFetch sqlite_rollup.c
-        shRollupFetch sqlmath/sqlmath_dbapi2.py
-        git grep '3\.39\.[^4]' \
-            ":(exclude)CHANGELOG.md" \
-            ":(exclude)sqlite_rollup.c" \
-            || true
-        git grep 'autoconf-[0-9]' | grep -v CHANGELOG \
-            | grep -v '3390400' || true
-        git grep 'sqlite.*version-[0-9]' | grep -v CHANGELOG \
-            | grep -v '3\.39\.4' || true
+        shRollupFetch sqlmath_external_pcre2.c
+        shRollupFetch sqlmath_external_sqlite.c
+        shRollupFetch sqlmath_external_zlib.c
         return
     fi
     if [ -d "$HOME/Documents/sqlmath/" ]
@@ -518,12 +502,13 @@ shSqlmathUpdate() {(set -e
             indent.exe \
             index.html \
             setup.py \
-            sqlite_rollup.c \
             sqlmath.mjs \
             sqlmath/__init__.py \
-            sqlmath/sqlmath_dbapi2.py \
             sqlmath_base.c \
             sqlmath_browser.mjs \
+            sqlmath_external_pcre2.c \
+            sqlmath_external_sqlite.c \
+            sqlmath_external_zlib.c \
             sqlmath_wrapper_wasm.js
         do
             ln -f "$HOME/Documents/sqlmath/$FILE" "$FILE"

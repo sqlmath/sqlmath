@@ -17,9 +17,9 @@ jobs:
           - x64
           # - x86
         node_version:
-          # - 16
-          - 18
-          # - 20
+          # - 18
+          - 20
+          # - 22
         os:
           # - macos-latest
           - ubuntu-latest
@@ -38,8 +38,8 @@ jobs:
 
       # Setup .npmrc file to publish to GitHub Packages
       - run: rm -f /home/runner/work/_temp/.npmrc
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node_version }}
           architecture: ${{ matrix.architecture }}
@@ -54,8 +54,8 @@ jobs:
 
       # Setup .npmrc file to publish to npm
       - run: rm -f /home/runner/work/_temp/.npmrc
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node_version }}
           architecture: ${{ matrix.architecture }}
@@ -78,10 +78,11 @@ jobs:
       id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
       # retrieve your distributions here
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-python@v4
         with:
           python-version: "3.10"
       - run: sh jslint_ci.sh shCiPublishPypi
+      # publish to pypi
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

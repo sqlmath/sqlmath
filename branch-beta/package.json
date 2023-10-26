@@ -3,7 +3,7 @@
         "email": "kaizhu256@gmail.com",
         "name": "kai zhu"
     },
-    "counter": 13,
+    "counter": 0,
     "cpu": [
         "x64"
     ],
@@ -11,7 +11,7 @@
     "engines": {
         "node": ">=14"
     },
-    "fileCount": 40,
+    "fileCount": 42,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",
@@ -38,5 +38,5 @@
     },
     "shCiArtifactUpload": 1,
     "shCiPublishNpm": 1,
-    "version": "2023.9.25"
+    "version": "2023.10.25"
 }

@@ -1,5 +1,5 @@
-<svg height="1306" width="800" xmlns="http://www.w3.org/2000/svg">
-<rect height="1306" fill="#222" width="800"></rect>
+<svg height="1240" width="800" xmlns="http://www.w3.org/2000/svg">
+<rect height="1240" fill="#222" width="800"></rect>
 <text
     fill="#7f7"
     font-family="consolas, menlo, monospace"
@@ -29,331 +29,313 @@
     textLength="768"
     x="10"
     y="98"
->- python - Revamp python-c-extension to support cp312.                                           </tspan>
+>- sqlmath - Add sqlite-extension for lightgbm.                                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="120"
->- sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nn\</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="142"
->  n-steps.                                                                                       </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="164"
 >- none                                                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
-    y="186"
+    y="142"
 >                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="164"
+># v2023.10.25                                                                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="186"
+>- jslint - Update jslint to v2023.10.24.                                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="208"
-># v2023.9.25                                                                                     </tspan>
+>- sqlmath - Split monolithic-file sqlite_rollup.c into separate files:                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="230"
->- sqlmath - Add sql-functions coinflip_extract(), normalizewithsqrt(), win_coinflip2().          </tspan>
+>    - sqlmath_external_pcre2.c                                                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="252"
->                                                                                                 </tspan>
+>    - sqlmath_external_sqlite.c                                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
-># v2023.9.19                                                                                     </tspan>
+>    - sqlmath_external_zlib.c                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->- ci - Update ci-workflow publish to auto-publish pypi-package.                                  </tspan>
+>- python - Remove setuptools dependency and implement standalone bdist_wheel() api.              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="318"
->- ci - Add ci-workflow publish_pypi_test.                                                        </tspan>
+>- sqlean - Add sqlean-extension regexp with regexp-replacement and pcre2 - increases wasm size t\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="340"
->- python - Remove setuptools dependency. - part1                                                 </tspan>
+>  o 1.1mb.                                                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
->- python - Update ci to build python-manylinux wheel.                                            </tspan>
+>- zlib - Update to zlib v1.3.                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
->- sqlmath - Add sql-function sqrtwithsign(), and remove redundant sql-function sign().           </tspan>
+>- sqlmath - Fix SIGSEGV error when binding external-buffer during db_exec.                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->- sqlmath - Update function win_quantile2() to accept different quantile-arg for each icol.      </tspan>
+>- sqlite - Update to sqlite v3.39.4.                                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->- sqlmath - Update function win_sinefit() to allow outputting gaussian-normalized y-value gyy.   </tspan>
+>- python - Add python-functions db_file_load(), db_file_save().                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->                                                                                                 </tspan>
+>- sqlmath - Revamp how js-arraybuffers are passed to c-api without copying.                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
-># v2023.8.20                                                                                     </tspan>
+>- python - Revamp python-c-extension to support cp312.                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
->- jslint - Update jslint to v2023.8.20.                                                          </tspan>
+>- python - Revamp python-c-extension to use nodejs-like-api dbClose, dbExec, dbFileLoadOrSave, d\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->- chart - Add technical-chart tradebot_technical_sinefit.                                        </tspan>
+>  bNoop, dbOpen.                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="538"
->- sqlmath - bugfix - Fix buffer-overflow in c-function sql3_win_sinefit2_step().                 </tspan>
+>- sqlmath - Remove unused sql-function-prm in sinefit_extra(), stp.                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
->- sqlmath - Rename c-struct Vector99 to Doublewin.                                               </tspan>
+>- sqlmath - Add sql-function-prm in sinefit_extra(), predict_cnr, predict_cos, predict_sin.      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="582"
->- sqlmath - Add sql-function fmod().                                                             </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="604"
->- sqlmath - Rename sql-functions xxx_cosfit_xxx() to xxx_sinefit_xxx().                          </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="626"
->- sqlmath - Revamp sql-function win_cosfit2() to 1) find frequency cww from dft, and then 2) fin\</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="648"
->  d phase cpp from linear equation y=b*cos(w*t)+c*sin(w*t).                                      </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="670"
->- sqlmath - Update sql-function win_cosfit2() to use sine() instead of cosine() for better phase\</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="692"
->  -continuity of initial guesses of phase at cpp=0.                                              </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="714"
->- sqlmath - Update sql-agg-function stdev() to aggregate over running-window.                    </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="736"
->- sqlmath - Update sql-function win_cosfit2_refitlast() to be able to update cosine-fit as well. </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="758"
->- sqlmath - Merge sql-functions win_cosfit2_predict(), win_cosfit2_extract() into sql-function c\</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="780"
->  osfit_extract().                                                                               </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="802"
->- sqlmath - Add c-helper-functions doubleAbs(), doubleMax(), doubleMin().                        </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="824"
->- sqlmath - merge c-struct WinCosfitInternal, WinCosfitResult into c-struct WinCosfit.           </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="846"
->- sqlmath - Update sql-functions win_cosfit2(), win_emax(), win_quantilex() to move variable-len\</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="868"
->  gth arguments to last position.                                                                </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="890"
->- sqlmath - Update sql-function win_cosfit2() with additional argument modeNoCsf.                </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="912"
->- sqlmath - Merge sql-functions win_slr2(), win_slrcos2() into sql-function win_cosfit2().       </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="934"
->- sqlmath - Streamline sql-function win_slr2_step() to only update last datapoint.               </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="956"
->- sqlmath - Update sql-function win_quantile2(), win_slr2() to input/output doublearray instead \</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="978"
->  of json for better performance.                                                                </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1000"
->- sqlmath - Add test-file test_data_cosfit.csv.                                                  </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1022"
->- sqlmath - Add sql-function win_slrcos2().                                                      </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1044"
->- sqlmath - Update sql-function win_slr2() to input/output doublearray instead of json for bette\</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1066"
->  r performance.                                                                                 </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1088"
->- sqlmath - Rename sql-functions jsonfromdoublearray() to doublearray_jsonto(), jsontodoublearra\</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1110"
->  y() to doublearray_jsonfrom().                                                                 </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1132"
->- sqlmath - Remove unused sql-functions:                                                         </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1154"
->    btobase64(), btotext()                                                                       </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1176"
->    jenks_blob(), jenks_concat(), jenks_json()                                                   </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1198"
->    vec_concat()                                                                                 </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1220"
->- betadog - Migrate sql-functions matrix2d_concat() from sqlmath to betadog.                     </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1242"
->- sqlmath - Add sql-function win_slr2_step() to incrementally step from last slr-state.          </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1264"
 >                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
-    y="1286"
-># v2023.7.21                                                                                     </tspan>
+    y="604"
+># v2023.9.25                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="626"
+>- sqlmath - Add sql-functions coinflip_extract(), normalizewithsqrt(), win_coinflip2().          </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="648"
+>                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="670"
+># v2023.9.19                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="692"
+>- ci - Update ci-workflow publish to auto-publish pypi-package.                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="714"
+>- ci - Add ci-workflow publish_pypi_test.                                                        </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="736"
+>- python - Remove setuptools dependency. - part1                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="758"
+>- python - Update ci to build python-manylinux wheel.                                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="780"
+>- sqlmath - Add sql-function sqrtwithsign(), and remove redundant sql-function sign().           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="802"
+>- sqlmath - Update function win_quantile2() to accept different quantile-arg for each icol.      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="824"
+>- sqlmath - Update function win_sinefit() to allow outputting gaussian-normalized y-value gyy.   </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="846"
+>                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="868"
+># v2023.8.20                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="890"
+>- jslint - Update jslint to v2023.8.20.                                                          </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="912"
+>- chart - Add technical-chart tradebot_technical_sinefit.                                        </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="934"
+>- sqlmath - bugfix - Fix buffer-overflow in c-function sql3_win_sinefit2_step().                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="956"
+>- sqlmath - Rename c-struct Vector99 to Doublewin.                                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="978"
+>- sqlmath - Add sql-function fmod().                                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1000"
+>- sqlmath - Rename sql-functions xxx_cosfit_xxx() to xxx_sinefit_xxx().                          </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1022"
+>- sqlmath - Revamp sql-function win_cosfit2() to 1) find frequency cww from dft, and then 2) fin\</tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1044"
+>  d phase cpp from linear equation y=b*cos(w*t)+c*sin(w*t).                                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1066"
+>- sqlmath - Update sql-function win_cosfit2() to use sine() instead of cosine() for better phase\</tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1088"
+>  -continuity of initial guesses of phase at cpp=0.                                              </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1110"
+>- sqlmath - Update sql-agg-function stdev() to aggregate over running-window.                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1132"
+>- sqlmath - Update sql-function win_cosfit2_refitlast() to be able to update cosine-fit as well. </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1154"
+>- sqlmath - Merge sql-functions win_cosfit2_predict(), win_cosfit2_extract() into sql-function c\</tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1176"
+>  osfit_extract().                                                                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1198"
+>- sqlmath - Add c-helper-functions doubleAbs(), doubleMax(), doubleMin().                        </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1220"
+>- sqlmath - merge c-struct WinCosfitInternal, WinCosfitResult into c-struct WinCosfit.           </tspan>
 
 </text>
 </svg>

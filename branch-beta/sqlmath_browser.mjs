@@ -3,8 +3,8 @@ import {
     assertOrThrow,
     dbCloseAsync,
     dbExecAsync,
-    dbFileExportAsync,
-    dbFileImportAsync,
+    dbFileSaveAsync,
+    dbFileLoadAsync,
     dbOpenAsync,
     debugInline,
     noop,
@@ -39,12 +39,7 @@ let UI_PAGE_SIZE = 256;
 let UI_ROW_HEIGHT = 16;
 let UI_VIEW_SIZE = 20;
 
-noop({
-    UI_EDITOR,
-    assertOrThrow,
-    dbFileExportAsync,
-    debugInline
-});
+noop(debugInline);
 
 async function dbFileAttachAsync({
     db,
@@ -391,7 +386,7 @@ async function demoTradebot() {
         return;
     }
     tmp = await tmp.arrayBuffer();
-    await dbFileImportAsync({
+    await dbFileLoadAsync({
         db: DB_MAIN,
         dbData: tmp
     });
@@ -1569,9 +1564,7 @@ async function init() {
         isDbmain: true
     }].map(async function (db) {
         db = Object.assign(noop(
-            await dbOpenAsync({
-                filename: db.filename
-            })
+            await dbOpenAsync({filename: db.filename})
         ), db);
         // save db
         DB_DICT.set(db.dbName, db);
@@ -1681,7 +1674,7 @@ async function init() {
             DB_INIT = new Promise(async function (resolve) {
                 val = await fetch(val);
                 val = await val.arrayBuffer();
-                await dbFileImportAsync({
+                await dbFileLoadAsync({
                     db: DB_MAIN,
                     dbData: val
                 });
@@ -2142,7 +2135,7 @@ RENAME TO
         if (target.files.length === 0) {
             return;
         }
-        await dbFileImportAsync({
+        await dbFileLoadAsync({
             db: DB_MAIN,
             dbData: (
                 await target.files[0].arrayBuffer()
@@ -2191,29 +2184,21 @@ RENAME TO
             db: DB_MAIN,
             sql: `DETACH ${baton.dbName};`
         });
-        await dbCloseAsync({
-            db: baton.db
-        });
+        await dbCloseAsync(baton.db);
         await uiRenderDb();
         return;
     case "dbExec":
         await onDbExec({});
         return;
     case "dbExport":
-        data = await dbFileExportAsync({
-            db: baton.db
-        });
-        data = data[6];
+        data = await dbFileSaveAsync({db: baton.db});
         fileSave({
             buf: data,
             filename: `sqlite_database_${baton.dbName}.sqlite`
         });
         return;
     case "dbExportMain":
-        data = await dbFileExportAsync({
-            db: DB_MAIN
-        });
-        data = data[6];
+        data = await dbFileSaveAsync({db: DB_MAIN});
         fileSave({
             buf: data,
             filename: `sqlite_database_${DB_MAIN.dbName}.sqlite`
@@ -2277,9 +2262,8 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
             db: baton.db,
             sql: `SELECT rowid, * FROM ${baton.dbtableName};`
         });
-        data = JSON.stringify(data[0] || []);
         fileSave({
-            buf: data,
+            buf: JSON.stringify(data[0] || []),
             filename: `sqlite_table_${baton.dbtableName}.json`
         });
         return;

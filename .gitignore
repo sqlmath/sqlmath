@@ -36,5 +36,5 @@ wheelhouse/
 # base - .gitignore - end
 
 binding.gyp
-sqlite-autoconf-*
+lib_lightgbm.*
 sqlmath_wasm.*

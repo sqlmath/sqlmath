@@ -27,6 +27,8 @@
     FS
     HEAPU8
     Module
+    _dbCall
+    _jsbatonGetInt64
     _sqlite3_free
     _sqlite3_initialize
     _sqlite3_malloc
@@ -53,6 +55,13 @@ let debugInline = (function () {
     return debug;
 }());
 
+function isExternalBuffer(buf) {
+
+// This function will check if <buf> is ArrayBuffer.
+
+    return buf && buf.constructor === ArrayBuffer;
+}
+
 function noop(val) {
 
 // This function will do nothing except return <val>.
@@ -61,110 +70,87 @@ function noop(val) {
 }
 
 (async function () {
-    let FILENAME_DBTMP = "/tmp/__dbtmp1";
-    let JSBATON_ARGC = 16;
-    let __dbFileImportOrExport;
-    let jsbatonValueErrmsg;
-    let jsbatonValueStringArgi;
-    let onModulePostRun;
-    let sqlite3_errmsg;
+    // cwrap string-based c-functions
+    let dbFileLoadOrSave = cwrap("dbFileLoadOrSave", "number", [
+        "number", "string", "number"
+    ]);
+    let jsbatonGetErrmsg = cwrap("jsbatonGetErrmsg", "string", ["number"]);
+    let jsbatonGetString = cwrap("jsbatonGetString", "string", [
+        "number", "number"
+    ]);
+    let sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", ["number"]);
+
+    let onModulePostRun; //jslint-ignore-line
 
     function messageDispatch(data) {
+        let FILENAME_DBTMP = data["FILENAME_DBTMP"];
+        let JSBATON_OFFSET_ALL = data["JSBATON_OFFSET_ALL"];
+        let JSBATON_OFFSET_BUFV = data["JSBATON_OFFSET_BUFV"];
         let argList = data["argList"];
-        let baton = new Uint8Array(data["baton"] && data["baton"].buffer);
+        let baton = new Uint8Array(data["baton"].buffer);
         let batonPtr = 0;
-        let cFuncName = data["cFuncName"];
         let dbData = argList[4];
-        let dbPtr = 0;
         let errcode = 0;
         let errmsg = "";
-        let filename;
-        let id = data.id;
-        let modeExport = argList[2];
-        switch (cFuncName) {
+        let funcname = data["funcname"];
+        let modeSave = argList[2];
+        switch (funcname) {
         case "_dbClose":
         case "_dbExec":
-        case "_dbFileImportOrExport":
+        case "_dbFileLoad":
         case "_dbNoop":
         case "_dbOpen":
-            // copy baton to wasm
+            // copy baton to wasm-memory
             batonPtr = _sqlite3_malloc(baton.byteLength);
             data["batonPtr"] = batonPtr;
             HEAPU8.set(baton, batonPtr);
-            switch (cFuncName) {
+            switch (funcname) {
             case "_dbClose":
-                filename = jsbatonValueStringArgi(batonPtr, 1);
-                console.error(`_dbClose("${filename}")`);
+                console.error(`_dbClose("${jsbatonGetString(batonPtr, 1)}")`);
                 break;
-            case "_dbFileImportOrExport":
-                // import dbData
-                if (!modeExport) {
+            case "_dbFileLoad":
+                // load dbData
+                if (!modeSave) {
                     FS.writeFile(FILENAME_DBTMP, new Uint8Array(dbData));
                 }
                 break;
             case "_dbOpen":
-                filename = jsbatonValueStringArgi(batonPtr, 0);
-                console.error(`_dbOpen("${filename}")`);
+                console.error(`_dbOpen("${jsbatonGetString(batonPtr, 0)}")`);
                 break;
             }
             // call c-function
-            Module[cFuncName](batonPtr);
+            _dbCall(batonPtr);
             // init errmsg
-            errmsg = jsbatonValueErrmsg(batonPtr);
-            // update baton
-            baton.set(new Uint8Array(
-                HEAPU8.buffer,
-                HEAPU8.byteOffset + batonPtr,
-                1024
-            ));
-            baton = new BigInt64Array(baton.buffer, 4 + 4);
-            baton.subarray(
-                JSBATON_ARGC,
-                2 * JSBATON_ARGC
-            ).forEach(function (ptr, ii) {
-                // ignore ArrayBuffer
-                if (argList[ii] && (
-                    argList[ii].constructor === ArrayBuffer
-                    || (
-                        typeof SharedArrayBuffer === "function"
-                        && argList[ii].constructor === SharedArrayBuffer
-                    )
-                )) {
-                    return;
-                }
-                ptr = Number(ptr);
-                // init argList[ii] = argv[ii]
-                if (ptr === 0) {
-                    argList[ii] = baton[ii];
-                // init argList[ii] = bufv[ii]
-                } else {
-                    argList[ii] = new ArrayBuffer(
-                        Number(baton[ii])
-                    );
-                    new Uint8Array(argList[ii]).set(
-                        HEAPU8.subarray(ptr, ptr + argList[ii].byteLength)
-                    );
-                    // cleanup ptr
-                    _sqlite3_free(ptr);
-                }
-            });
-            switch (!errmsg && cFuncName) {
-            case "_dbFileImportOrExport":
-                // export dbData
-                if (modeExport) {
+            errmsg = jsbatonGetErrmsg(batonPtr);
+            // update baton from wasm-memory
+            baton.set(HEAPU8.subarray(batonPtr, batonPtr + JSBATON_OFFSET_ALL));
+            switch (!errmsg && funcname) {
+            case "_dbExec":
+                dbData = new BigInt64Array(baton.buffer, JSBATON_OFFSET_BUFV);
+                argList[0] = HEAPU8.slice(
+                    Number(dbData[0]),
+                    Number(dbData[0] + dbData[1])
+                ).buffer;
+                _sqlite3_free(Number(dbData[0]));
+                break;
+            case "_dbFileLoad":
+                // save dbData
+                if (modeSave) {
                     dbData = FS.readFile(FILENAME_DBTMP);
-                    argList[4] = dbData.buffer;
+                    argList[0] = dbData.buffer;
+                    FS.unlink(FILENAME_DBTMP);
                 }
                 break;
             case "_dbOpen":
-                // import dbData
+                // open dbData
                 if (dbData) {
                     FS.writeFile(FILENAME_DBTMP, new Uint8Array(dbData));
-                    dbPtr = Number(argList[0]);
-                    errcode = __dbFileImportOrExport(dbPtr, FILENAME_DBTMP, 0);
+                    dbData = Number(_jsbatonGetInt64(batonPtr, 0));
+                    errcode = dbFileLoadOrSave(dbData, FILENAME_DBTMP, 0);
                     if (errcode) {
-                        errmsg = sqlite3_errmsg(dbPtr);
+                        errmsg = sqlite3_errmsg(dbData);
                     }
+                    FS.unlink(FILENAME_DBTMP);
                 }
                 break;
             }
@@ -172,41 +158,22 @@ function noop(val) {
                 {
                     "argList": argList,
                     "baton": new DataView(baton.buffer),
-                    "cFuncName": cFuncName,
                     "errmsg": errmsg,
-                    "id": id
+                    "funcname": funcname,
+                    "id": data["id"]
                 },
                 // transfer arraybuffer without copying
-                [
-                    baton.buffer,
-                    ...argList.filter(function (elem) {
-                        return elem && elem.constructor === ArrayBuffer;
-                    })
-                ]
+                [baton.buffer, ...argList.filter(isExternalBuffer)]
             );
             return;
         }
-        throw new Error(`invalid cFuncName "${cFuncName}"`);
+        throw new Error(`invalid funcname "${funcname}"`);
     }
 
     // init event-handling
     globalThis["onmessage"] = async function ({
         data
     }) {
-        let cFuncName = data["cFuncName"];
-        function cleanup() {
-            // cleanup batonPtr
-            _sqlite3_free(data["batonPtr"]);
-            // cleanup FILENAME_DBTMP
-            switch (cFuncName) {
-            case "_dbFileImportOrExport":
-            case "_dbOpen":
-                try {
-                    FS.unlink(FILENAME_DBTMP);
-                } catch (ignore) {}
-                break;
-            }
-        }
         await onModulePostRun;
         // reset batonPtr
         data["batonPtr"] = 0;
@@ -215,10 +182,11 @@ function noop(val) {
         } catch (err) {
             postMessage({
                 "errmsg": err.stack,
-                "id": data.id
+                "id": data["id"]
             });
         } finally {
-            cleanup();
+            // cleanup batonPtr
+            _sqlite3_free(data["batonPtr"]);
         }
     };
 
@@ -227,22 +195,6 @@ function noop(val) {
         Module["postRun"] = resolve;
     });
     await onModulePostRun;
-    __dbFileImportOrExport = cwrap(
-        "__dbFileImportOrExport",
-        "number",
-        [
-            "number", "string", "number"
-        ]
-    );
-    jsbatonValueErrmsg = cwrap("jsbatonValueErrmsg", "string", [
-        "number"
-    ]);
-    jsbatonValueStringArgi = cwrap("jsbatonValueStringArgi", "string", [
-        "number", "number"
-    ]);
-    sqlite3_errmsg = cwrap("sqlite3_errmsg", "string", [
-        "number"
-    ]);
 
     // init sqlite
     _sqlite3_initialize();

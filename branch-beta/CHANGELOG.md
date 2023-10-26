@@ -1,9 +1,26 @@
 # Changelog
 
 # Todo
-- python - Revamp python-c-extension to support cp312.
-- sqlmath - Optimize cosfit-calculation of amplitude-prm WinCosfit.caa to one-step instead of nnn-steps.
+- sqlmath - Add sqlite-extension for lightgbm.
 - none
+
+# v2023.10.25
+- jslint - Update jslint to v2023.10.24.
+- sqlmath - Split monolithic-file sqlite_rollup.c into separate files:
+    - sqlmath_external_pcre2.c
+    - sqlmath_external_sqlite.c
+    - sqlmath_external_zlib.c
+- python - Remove setuptools dependency and implement standalone bdist_wheel() api.
+- sqlean - Add sqlean-extension regexp with regexp-replacement and pcre2 - increases wasm size to 1.1mb.
+- zlib - Update to zlib v1.3.
+- sqlmath - Fix SIGSEGV error when binding external-buffer during db_exec.
+- sqlite - Update to sqlite v3.39.4.
+- python - Add python-functions db_file_load(), db_file_save().
+- sqlmath - Revamp how js-arraybuffers are passed to c-api without copying.
+- python - Revamp python-c-extension to support cp312.
+- python - Revamp python-c-extension to use nodejs-like-api dbClose, dbExec, dbFileLoadOrSave, dbNoop, dbOpen.
+- sqlmath - Remove unused sql-function-prm in sinefit_extra(), stp.
+- sqlmath - Add sql-function-prm in sinefit_extra(), predict_cnr, predict_cos, predict_sin.
 
 # v2023.9.25
 - sqlmath - Add sql-functions coinflip_extract(), normalizewithsqrt(), win_coinflip2().
