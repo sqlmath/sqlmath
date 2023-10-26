@@ -2,12 +2,12 @@
 
 
 # Status
-| Branch | [master<br>(v2023.9.25)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
+| Branch | [master<br>(v2023.10.25)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
 |--:|:--:|:--:|:--:|
 | CI | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Amaster) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=beta)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Abeta) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=alpha)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Aalpha) |
 | Coverage | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) |
-| Demo | [<img src="asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) | [<img src="asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) | [<img src="asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) |
-| Artifacts | [<img src="asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) | [<img src="asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) | [<img src="asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) |
+| Demo | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) |
+| Artifacts | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) |
 
 
 <br><br>
@@ -32,6 +32,7 @@
 
 8. [Devops Instruction](#devops-instruction)
     - [python pypi publish](#python-pypi-publish)
+    - [sqlite upgrade](#sqlite-upgrade)
 
 
 <br><br>
@@ -103,9 +104,11 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 
 <br><br>
 # License
-- SQLite is under [public domain](https://www.sqlite.org/copyright.html).
-- JSLint is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
-- [cpplint.py](cpplint.py) is under [BSD 3-clause license](https://github.com/cpplint/cpplint/blob/develop/LICENSE).
+- [sqlite](https://github.com/sqlite/sqlite) is under [public domain](https://www.sqlite.org/copyright.html).
+- [jslint](https://github.com/jslint-org/jslint) is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
+- [pcre2](https://github.com/PCRE2Project/pcre2) is under [3-Clause BSD License](https://github.com/PCRE2Project/pcre2/blob/pcre2-10.42/LICENCE)
+- [zlib](https://github.com/madler/zlib) is under [zlib License](https://github.com/madler/zlib/blob/v1.2.13/LICENSE).
+- [cpplint.py](cpplint.py) is under [3-Clause BSD License](https://github.com/cpplint/cpplint/blob/1.5.5/LICENSE).
 - [indent.exe](indent.exe) is under [GPLv3 License](https://www.gnu.org/licenses/gpl-3.0.txt).
 - Everything else is under MIT License.
 
@@ -119,9 +122,25 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 ```shell
 python -m build
 #
-twine upload --repository testpypi dist/sqlmath-2023.9.25*
-py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2023.9.25
+twine upload --repository testpypi dist/sqlmath-2023.10.25*
+py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2023.10.25
 #
-twine upload dist/sqlmath-2023.9.25*
-pip install sqlmath==2023.9.25
+twine upload dist/sqlmath-2023.10.25*
+pip install sqlmath==2023.10.25
+```
+
+
+<br><br>
+### sqlite upgrade
+- goto https://www.sqlite.org/changes.html
+```shell
+curl -L https://www.sqlite.org/2023/sqlite-autoconf-3420000.tar.gz | tar -xz
+git grep "3\.39\.4\|3390400"
+for FILE in .ci.sh sqlite_rollup.c
+do
+    sed -i -e "s|\<3\.39\.4\>|3.42.0|g" "$FILE"
+    sed -i -e "s|\<3390400\>|3420000|g" "$FILE"
+done
+git grep "3\.39\.4\|3390400"
+shRollupFetch sqlite_rollup.c
 ```

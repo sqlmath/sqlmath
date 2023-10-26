@@ -1,3 +1,24 @@
+# Copyright (c) 2021 Kai Zhu
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
 """
 setup.py.
 
@@ -5,20 +26,22 @@ npm_config_mode_debug2=1 python setup.py build_ext && python setup.py test
 python -m build
 """
 
+__version__ = "2023.10.25"
+__version_info__ = ("2023", "10", "25")
+
 import asyncio
-import distutils.dist
+import base64
+import hashlib
 import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import sysconfig
 import tempfile
-
-import setuptools
-import setuptools.command.build_ext
-import setuptools.command.install_lib
+import zipfile
 
 
 def assert_or_throw(condition, message=None):
@@ -29,7 +52,6 @@ def assert_or_throw(condition, message=None):
 
 def build_ext():
     """This function will build c-extension."""
-    build_ext_init()
     subprocess.run(["python", "setup.py", "build_ext_async"], check=True)
 
 
@@ -37,42 +59,52 @@ async def build_ext_async(): # noqa: C901
     """This function will build c-extension."""
 
     async def build_ext_obj(cdefine):
-        file_obj = f"build/{cdefine}.obj"
+        file_obj = pathlib.Path(f"build/{cdefine}.obj")
+        match cdefine:
+            case "SQLMATH_BASE":
+                file_src = pathlib.Path("sqlmath_base.c")
+            case "SQLMATH_CUSTOM":
+                file_src = pathlib.Path("sqlmath_custom.c")
+            case "SRC_SQLITE_SHELL":
+                file_src = pathlib.Path("sqlmath_external_sqlite.c")
+            case "SRC_PCRE2_BASE":
+                file_src = pathlib.Path("sqlmath_external_pcre2.c")
+            case "SRC_SQLITE_BASE":
+                file_src = pathlib.Path("sqlmath_external_sqlite.c")
+            case "SRC_ZLIB_BASE":
+                file_src = pathlib.Path("sqlmath_external_zlib.c")
         match cdefine:
             case "SQLMATH_BASE":
                 pass
-            case "SRC_SQLITE_PYTHON":
+            case "SQLMATH_CUSTOM":
+                pass
+            case "SRC_SQLITE_SHELL":
                 pass
             case _:
-                if pathlib.Path(file_obj).exists():
+                if (
+                    file_obj.exists()
+                    and file_obj.stat().st_mtime > file_src.stat().st_mtime
+                ):
+                    print(f"build_ext - skip {file_src}")
                     return
-        file_src = f"build/{cdefine}.c"
         arg_list = [
             *[f"-I{path}" for path in path_include],
             #
             f"-D{cdefine}_C2=",
-            "-DSRC_SQLITE_BASE_C2=",
             "-D_REENTRANT=1",
+            "-DSQLMATH_PYTHON_C2=" if cdefine == "SQLMATH_CUSTOM" else "",
         ]
         if npm_config_mode_debug and is_win32:
             arg_list += ["/W3"]
         elif npm_config_mode_debug:
             arg_list += ["-Wextra"]
         elif is_win32:
-            if cdefine == "SRC_SQLITE_PYTHON":
-                arg_list += [
-                    "/W1",
-                    "/wd4047",
-                    "/wd4244",
-                    "/wd4996",
-                ]
-            else:
-                arg_list += [
-                    "/W3",
-                    "/wd4047",
-                    "/wd4244",
-                    "/wd4996",
-                ]
+            arg_list += [
+                "/W3",
+                "/wd4047",
+                "/wd4244",
+                "/wd4996",
+            ]
         elif cdefine in [
             "SQLMATH_BASE",
             "SQLMATH_CUSTOM",
@@ -110,12 +142,9 @@ async def build_ext_async(): # noqa: C901
                 *cc_ccshared.strip().split(" "),
                 *cc_cflags.strip().split(" "),
                 #
-                "-DHAVE_UNISTD_H=",
                 "-c", file_src,
                 "-o", file_obj,
             ]
-        if cdefine == "SRC_SQLITE_PYTHON":
-            arg_list = [arg for arg in arg_list if arg != "-DHAVE_UNISTD_H="]
         print(f"build_ext - compile {file_obj}")
         await create_subprocess_exec_and_check(
             *arg_list,
@@ -134,17 +163,28 @@ async def build_ext_async(): # noqa: C901
             raise subprocess.SubprocessError(msg)
     #
     # build_ext - update version
+    pathlib.Path("build").mkdir(parents=True, exist_ok=True)
     with pathlib.Path("package.json").open() as file1:
         package_json = json.load(file1)
         version = package_json["version"].split("-")[0]
+    if package_json["name"] != "sqlmath":
+        version = __version__
     for filename in [
+        "PKG-INFO",
         "README.md",
         "pyproject.toml",
+        "setup.py",
         "sqlmath/__init__.py",
     ]:
         with pathlib.Path(filename).open("r+", newline="\n") as file1:
             data0 = file1.read()
             data1 = data0
+            # update version - PKG-INFO
+            data1 = re.sub(
+                "\nVersion: .*",
+                f"\nVersion: {version}",
+                data1,
+            )
             # update version - README.md
             data1 = re.sub(
                 "(sqlmath(?:-|==))\\d\\d\\d\\d\\.\\d\\d?\\.\\d\\d?",
@@ -167,7 +207,13 @@ async def build_ext_async(): # noqa: C901
                 ),
                 data1,
             )
-            if package_json["name"] == "sqlmath" and data1 != data0:
+            if (
+                data1 != data0
+                and (
+                    package_json["name"] == "sqlmath"
+                    or filename in ("PKG-INFO", "pyproject.toml")
+                )
+            ):
                 print(f"build_ext - update file {file1.name}")
                 file1.seek(0)
                 file1.write(data1)
@@ -181,7 +227,6 @@ async def build_ext_async(): # noqa: C901
         cc_compiler += " -ldl"
     cc_ldflags = sysconfig.get_config_var("LDFLAGS") or ""
     cc_ldshared = sysconfig.get_config_var("LDSHARED") or ""
-    dir_wheel = f"build/bdist.{sysconfig.get_platform()}/wheel/sqlmath"
     file_lib = f"_sqlmath{sysconfig.get_config_var('EXT_SUFFIX')}"
     is_win32 = sys.platform == "win32"
     path_include = [
@@ -194,55 +239,12 @@ async def build_ext_async(): # noqa: C901
         f"{sysconfig.get_config_var('prefix')}{os.sep}libs",
         sysconfig.get_config_var("prefix"),
     ]
-    platform_vcvarsall = {
-        "win-amd64": "x86_amd64",
-        "win-arm32": "x86_arm",
-        "win-arm64": "x86_arm64",
-        "win32": "x86",
-    }.get(sysconfig.get_platform())
     npm_config_mode_debug = os.getenv("npm_config_mode_debug") # noqa: SIM112
     #
     # build_ext - init env
     env = os.environ
     if is_win32:
-        env = await asyncio.create_subprocess_exec(
-            (
-                (
-                    os.getenv("PROGRAMFILES(X86)")
-                    or os.getenv("PROGRAMFILES")
-                )
-                + "\\Microsoft Visual Studio"
-                + "\\Installer"
-                + "\\vswhere.exe"
-            ),
-            "-latest", "-prerelease",
-            "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
-            "-property", "installationPath",
-            "-products", "*",
-            stdout=asyncio.subprocess.PIPE,
-        )
-        env = (
-            await env.stdout.readline()
-        ).decode("mbcs").strip()
-        env = await asyncio.create_subprocess_exec(
-            "cmd.exe",
-            "/u",
-            "/c",
-            f"{env}\\VC\\Auxiliary\\Build\\vcvarsall.bat",
-            platform_vcvarsall,
-            "&&",
-            "set",
-            stdout=asyncio.subprocess.PIPE,
-        )
-        env = (
-            await env.stdout.read()
-        ).decode("utf-16le")
-        env = {
-            key.lower(): val
-            for key, _, val in
-            (line.partition("=") for line in env.splitlines())
-            if key and val
-        }
+        env = env_vcvarsall()
         await_list = []
         for exe in ["cl.exe", "link.exe"]:
             await_list.append( # noqa: PERF401
@@ -271,12 +273,9 @@ async def build_ext_async(): # noqa: C901
     await asyncio.gather(*[
         build_ext_obj(cdefine)
         for cdefine in [
-            "SRC_ZLIB_BASE",
-            "SRC_ZLIB_TEST_EXAMPLE",
-            "SRC_ZLIB_TEST_MINIGZIP",
-            #
+            "SRC_PCRE2_BASE",
             "SRC_SQLITE_BASE",
-            "SRC_SQLITE_PYTHON",
+            "SRC_ZLIB_BASE",
             #
             "SQLMATH_BASE",
             "SQLMATH_CUSTOM",
@@ -287,10 +286,9 @@ async def build_ext_async(): # noqa: C901
 # https://github.com/kaizhu256/sqlmath/actions/runs/4886979281/jobs/8723014944
     arg_list = []
     arg_list += [ # must be ordered first
-        "build/SRC_ZLIB_BASE.obj",
-        #
+        "build/SRC_PCRE2_BASE.obj",
         "build/SRC_SQLITE_BASE.obj",
-        "build/SRC_SQLITE_PYTHON.obj",
+        "build/SRC_ZLIB_BASE.obj",
         #
         "build/SQLMATH_BASE.obj",
         "build/SQLMATH_CUSTOM.obj",
@@ -323,56 +321,8 @@ async def build_ext_async(): # noqa: C901
         ]
     await create_subprocess_exec_and_check(*arg_list, env=env)
     #
-    # build_ext - copy c-extension to bdist
-    await create_subprocess_exec_and_check(
-        "sh",
-        "-c",
-        f"""
-(set -e
-    mkdir -p "{dir_wheel}/"
-    cp "build/{file_lib}" "sqlmath/{file_lib}"
-    cp "build/{file_lib}" "{dir_wheel}/{file_lib}"
-    cp sqlmath/*.py "{dir_wheel}/"
-)
-        """,
-    )
-
-
-def build_ext_init():
-    """This function will build c-extension."""
-    if pathlib.Path("build/SRC_SQLITE_BASE.c").exists():
-        return
-    subprocess.run(["sh", "-c", """
-(set -e
-    mkdir -p build/
-    for C_DEFINE in \\
-        SRC_ZLIB_BASE \\
-        SRC_ZLIB_TEST_EXAMPLE \\
-        SRC_ZLIB_TEST_MINIGZIP \\
-        \\
-        SRC_SQLITE_BASE \\
-        SRC_SQLITE_PYTHON \\
-        SRC_SQLITE_SHELL
-    do
-        printf "
-#define SRC_SQLITE_BASE_C2
-#define ${C_DEFINE}_C2
-#include \\"../sqlite_rollup.c\\"
-    " > build/$C_DEFINE.c
-    done
-    #
-    for C_DEFINE in \\
-        SQLMATH_BASE \\
-        SQLMATH_CUSTOM
-    do
-        printf "
-#define SRC_SQLITE_BASE_C2
-#define ${C_DEFINE}_C2
-#include \\"../$(printf $C_DEFINE | tr \\"[:upper:]\\" \\"[:lower:]\\").c\\"
-        " > build/$C_DEFINE.c
-    done
-)
-    """], check=True)
+    # build_ext - copy c-extension to sqlmath/
+    shutil.copyfile(f"build/{file_lib}", f"sqlmath/{file_lib}")
 
 
 def build_pkg_info():
@@ -420,7 +370,11 @@ def build_pkg_info():
 
 
 def build_sdist(sdist_directory, config_settings=None):
-    """`build_sdist`: build an sdist in the folder and return the basename."""
+    """
+    `build_sdist`: build an sdist in the folder and return the basename.
+
+    https://peps.python.org/pep-0517/#build-sdist
+    """
     assert_or_throw(
         config_settings is None or config_settings == {},
         config_settings,
@@ -477,50 +431,125 @@ def build_wheel(
     config_settings=None,
     metadata_directory=None,
 ):
-    """`build_wheel`: build a wheel in the folder and return the basename."""
+    """
+    `build_wheel`: build a wheel in the folder and return the basename.
+
+    https://peps.python.org/pep-0517/#build-wheel
+    """
     assert_or_throw(
         config_settings is None or config_settings == {},
         config_settings,
     )
     noop(metadata_directory)
     wheel_directory = pathlib.Path(wheel_directory).resolve()
-    # Build in a temporary directory, then copy to the target.
-    pathlib.Path(wheel_directory).mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(
-        dir=wheel_directory.as_posix(),
-        prefix=".tmp-",
-    ) as dir_tmp:
-        sys.argv = [
-            *sys.argv[:1],
-            "bdist_wheel",
-            "--dist-dir",
-            dir_tmp,
-        ]
-        # override build_ext, install_lib
-        setuptools.command.build_ext.build_ext.run = noop
-        setuptools.command.install_lib.install_lib.install = noop
-        build_ext()
-        # _install_setup_requires - disable
-        setuptools._install_setup_requires = noop # noqa: SLF001
-        # run backend
-        setuptools.setup(
-            ext_modules=[setuptools.Extension("_sqlmath", [])],
-            script_args=sys.argv[1:],
-            script_name=pathlib.Path(sys.argv[0]).name,
-        )
-        for result_file in pathlib.Path(dir_tmp).iterdir():
-            if result_file.name.endswith(".whl"):
-                result_file.replace(wheel_directory / result_file.name)
-                return result_file.name
-        return None
+    #
+    # build c-extension
+    build_ext()
+    #
+    # init tag_xxx
+    # {dist}-{version}(-{build tag})?-{python tag}-{abitag}-{platform tag}.whl
+    # https://packaging.python.org/en/latest/specifications/platform-compatibility-tags/
+    # The version is py_version_nodot.
+    tag_python = f'cp{sysconfig.get_config_var("py_version_nodot")}'
+    tag_abi = tag_python
+    # The platform tag is simply sysconfig.get_platform()
+    # with all hyphens - and periods . replaced with underscore _.
+    tag_platform = re.sub("\\W", "_", sysconfig.get_platform())
+    #
+    # build file_wheel
+    file_wheel = pathlib.Path(wheel_directory) / (
+        f"sqlmath-{__version__}-{tag_python}-{tag_abi}-{tag_platform}.whl"
+    )
+    with zipfile.ZipFile(file_wheel, "w", zipfile.ZIP_DEFLATED) as file_zip:
+        dir_distinfo = f"sqlmath-{__version__}.dist-info"
+        file_lib = f"sqlmath/_sqlmath{sysconfig.get_config_var('EXT_SUFFIX')}"
+        data_record = ""
+        for bb, aa in (
+            ("sqlmath/__init__.py", "sqlmath/__init__.py"),
+            (file_lib, file_lib),
+            # Place .dist-info at the end of the archive.
+            (f"{dir_distinfo}/LICENSE", "LICENSE"),
+            (f"{dir_distinfo}/METADATA", "PKG-INFO"),
+            (f"{dir_distinfo}/WHEEL", ""),
+        ):
+            if bb == f"{dir_distinfo}/WHEEL":
+                data = bytes(
+                    f"""Wheel-Version: 1.0
+Generator: bdist_wheel 1.0
+Root-Is-Purelib: false
+Tag: {tag_python}-{tag_abi}-{tag_platform}
+""",
+                    "utf-8",
+                )
+            else:
+                with pathlib.Path(aa).open("rb") as file1:
+                    data = file1.read()
+            file_zip.writestr(bb, data)
+            digest = base64.urlsafe_b64encode(
+                hashlib.sha256(data).digest(),
+            ).rstrip(b"=").decode("ascii")
+            data_record += f"{bb},sha256={digest},{len(data)}\n"
+        data_record += f"{dir_distinfo}/RECORD,,"
+        file_zip.writestr(f"{dir_distinfo}/RECORD", data_record)
+    return file_wheel.name
 
 
 def debuginline(*argv):
     """This function will print <argv> to stderr and then return <argv>[0]."""
-    print("\n\ndebuginline")
-    print(*argv)
-    print("\n")
-    return argv[0]
+    arg0 = argv[0] if argv else None
+    print("\n\ndebuginline", file=sys.stderr)
+    print(*argv, file=sys.stderr)
+    print("\n", file=sys.stderr)
+    return arg0
+
+
+def env_vcvarsall():
+    """This function will return vcvarsall <env>."""
+    env = subprocess.check_output(
+        [
+            (
+                (
+                    os.getenv("PROGRAMFILES(X86)")
+                    or os.getenv("PROGRAMFILES")
+                )
+                + "\\Microsoft Visual Studio"
+                + "\\Installer"
+                + "\\vswhere.exe"
+            ),
+            "-latest", "-prerelease",
+            "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+            "-property", "installationPath",
+            "-products", "*",
+        ],
+        stderr=subprocess.STDOUT,
+    ).decode(encoding="mbcs", errors="strict").strip()
+    env = subprocess.check_output(
+        'cmd /u /c "{}" {} && set'.format(
+            f"{env}\\VC\\Auxiliary\\Build\\vcvarsall.bat",
+            {
+                "win-amd64": "x86_amd64",
+                "win-arm32": "x86_arm",
+                "win-arm64": "x86_arm64",
+                "win32": "x86",
+            }.get(sysconfig.get_platform()),
+        ),
+        stderr=subprocess.STDOUT,
+    ).decode("utf-16le", errors="replace")
+    env = {
+        key.lower(): val
+        for key, _, val in
+        (line.partition("=") for line in env.splitlines())
+        if (
+            key and val
+            and not re.search("\\W", key)
+            and not re.search("[\"'\n\r]", val)
+        )
+    }
+    with pathlib.Path("build/vcvarsall.sh").open("w") as file1:
+        file1.write(
+            "".join(f"export {key}='{val}'\n" for key, val in env.items()),
+        )
+    return env
 
 
 def noop(*args, **kwargs): # noqa: ARG001
@@ -531,10 +560,6 @@ def noop(*args, **kwargs): # noqa: ARG001
 def raise_setup_error(*args, **kwargs):
     """This function will raise SetupError."""
     raise SetupError({args, kwargs})
-
-
-class Distribution2(distutils.dist.Distribution):
-    """Custom build-distribution."""
 
 
 class SetupError(Exception):
@@ -550,14 +575,15 @@ if __name__ == "__main__":
         case "build_ext_async":
             asyncio.set_event_loop(asyncio.new_event_loop())
             asyncio.get_event_loop().run_until_complete(build_ext_async())
-        case "build_ext_init":
-            build_ext_init()
         case "build_pkg_info":
             build_pkg_info()
+        case "env_vcvarsall":
+            env_vcvarsall()
+            with pathlib.Path("build/vcvarsall.sh").open() as file1:
+                print(file1.read())
         case "sdist":
             build_sdist("dist")
         case "test":
-            import sqlmath
-            sqlmath.test_python_run()
+            subprocess.run(["python", "test.py", "--verbose"], check=True)
         case _:
             raise_setup_error(sys.argv)
