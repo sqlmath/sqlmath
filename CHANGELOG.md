@@ -4,7 +4,7 @@
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
-# v2023.11.1-beta
+# v2023.11.22
 - sqlmath - Add sql-functions normalizewithsquared(), squaredwithsign().
 
 # v2023.10.25
