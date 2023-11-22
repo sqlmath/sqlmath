@@ -1542,6 +1542,18 @@ SQLMATH_FUNC static void sql1_normalizewithsqrt_func(
         doubleMax(-1, doubleMin(1, xx < 0 ? -sqrt(-xx) : sqrt(xx))));
 }
 
+SQLMATH_FUNC static void sql1_normalizewithsquared_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will squared() and normalize <xx> to +/-1.
+    UNUSED_PARAMETER(argc);
+    double xx = sqlite3_value_double_or_nan(argv[0]);
+    sqlite3_result_double(context,      //
+        doubleMax(-1, doubleMin(1, xx < 0 ? -xx * xx : xx * xx)));
+}
+
 SQLMATH_FUNC static void sql1_random1_func(
     sqlite3_context * context,
     int argc,
@@ -1601,6 +1613,18 @@ SQLMATH_FUNC static void sql1_sqrtwithsign_func(
     UNUSED_PARAMETER(argc);
     const double xx = sqlite3_value_double_or_nan(argv[0]);
     sqlite3_result_double(context, xx < 0 ? -sqrt(-xx) : sqrt(xx));
+}
+
+SQLMATH_FUNC static void sql1_squaredwithsign_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return squared() of magnitude of value,
+// with sign preserved.
+    UNUSED_PARAMETER(argc);
+    const double xx = sqlite3_value_double_or_nan(argv[0]);
+    sqlite3_result_double(context, xx < 0 ? -xx * xx : xx * xx);
 }
 
 SQLMATH_FUNC static void sql1_squared_func(
@@ -3049,10 +3073,12 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(fmod, 2);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(normalizewithsqrt, 1);
+    SQLITE3_CREATE_FUNCTION1(normalizewithsquared, 1);
     SQLITE3_CREATE_FUNCTION1(roundorzero, 2);
     SQLITE3_CREATE_FUNCTION1(sinefit_extract, 4);
     SQLITE3_CREATE_FUNCTION1(sinefit_refitlast, -1);
     SQLITE3_CREATE_FUNCTION1(sqrtwithsign, 1);
+    SQLITE3_CREATE_FUNCTION1(squaredwithsign, 1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
