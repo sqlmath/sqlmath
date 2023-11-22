@@ -104,7 +104,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2023.10.25";
+let version = "v2023.11.22";
 
 function assertInt64(val) {
     // This function will assert <val> is within range of c99-signed-long-long.
