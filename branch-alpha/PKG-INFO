@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: sqlmath
-Version: 2023.11.22
+Version: 2023.12.1
 Summary: sqlite for datascience
 Author: Kai Zhu
 Requires-Python: >=3.10
@@ -147,11 +147,11 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 ```shell
 python -m build
 #
-twine upload --repository testpypi dist/sqlmath-2023.11.22*
-py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2023.11.22
+twine upload --repository testpypi dist/sqlmath-2023.12.1*
+py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2023.12.1
 #
-twine upload dist/sqlmath-2023.11.22*
-pip install sqlmath==2023.11.22
+twine upload dist/sqlmath-2023.12.1*
+pip install sqlmath==2023.12.1
 ```
 
 
