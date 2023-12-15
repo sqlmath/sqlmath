@@ -4,6 +4,9 @@
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
+# v2023.12.1-beta
+- betadog - bugfix - Remove over-complicated prm ttt from table y_historical.
+
 # v2023.11.22
 - sqlmath - Add sql-functions normalizewithsquared(), squaredwithsign().
 

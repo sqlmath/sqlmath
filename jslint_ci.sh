@@ -1113,8 +1113,8 @@ import modulePath from "path";
     }
     console.error(
         mode === "download"
-        ? `shGithubFileDownload - ${process.argv[1]}`
-        : `shGithubFileUpload - ${process.argv[1]}`
+        ? `shGithubFileDownload - ${process.argv[2]}`
+        : `shGithubFileUpload - ${process.argv[2]}`
     );
     path = path.split("/");
     repo = path.slice(0, 2).join("/");
