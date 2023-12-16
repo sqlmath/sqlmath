@@ -411,7 +411,6 @@ INSERT INTO tradebot_intraday_day
     SELECT
         sym,
         DATETIME(__ydate, '-1 MINUTE'),
-        0 AS ttt,
         price,
         0 AS ydate2
     FROM tradebot_historical
@@ -440,7 +439,6 @@ INSERT INTO tradebot_intraday_week
     SELECT
         sym,
         ydate || ' ' || hhmmss AS ydate,
-        0 AS ttt,
         price,
         0 AS ydate2
     FROM tradebot_historical

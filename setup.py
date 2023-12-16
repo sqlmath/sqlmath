@@ -26,8 +26,8 @@ npm_config_mode_debug2=1 python setup.py build_ext && python setup.py test
 python -m build
 """
 
-__version__ = "2023.11.22"
-__version_info__ = ("2023", "11", "22")
+__version__ = "2023.12.1"
+__version_info__ = ("2023", "12", "1")
 
 import asyncio
 import base64
