@@ -108,6 +108,12 @@ async function dbTableImportAsync({
             csv: textData
         });
         break;
+    case "tsv":
+        rowList = [];
+        textData.trimEnd().replace((/.+/g), function (line) {
+            rowList.push(line.split("\t"));
+        });
+        break;
     // case "json":
     default:
         rowList = JSON.parse(textData);
@@ -411,7 +417,6 @@ INSERT INTO tradebot_intraday_day
     SELECT
         sym,
         DATETIME(__ydate, '-1 MINUTE'),
-        0 AS ttt,
         price,
         0 AS ydate2
     FROM tradebot_historical
@@ -440,7 +445,6 @@ INSERT INTO tradebot_intraday_week
     SELECT
         sym,
         ydate || ' ' || hhmmss AS ydate,
-        0 AS ttt,
         price,
         0 AS ydate2
     FROM tradebot_historical
@@ -642,7 +646,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         JSON_OBJECT(
             'isDummy', is_dummy,
-            'isHidden', sym NOT in ('11_mybot', '.spx', 'dia', 'qqq')
+            'isHidden', sym NOT in ('11_mybot', '.spx', '.dji', '.ndx')
         ) AS options,
         rownum AS series_index,
         sym AS series_label
@@ -654,8 +658,8 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
                     sym = '11_mybot' DESC,
                     sym = '----' DESC,
                     sym = '.spx' DESC,
-                    sym = 'dia' DESC,
-                    sym = 'qqq' DESC,
+                    sym = '.dji' DESC,
+                    sym = '.ndx' DESC,
                     sym = '---- ' DESC,
                     sym
             ) AS rownum,
@@ -1974,6 +1978,7 @@ async function onDbAction(evt) {
     case "dbscriptOpen":
     case "dbtableImportCsv":
     case "dbtableImportJson":
+    case "dbtableImportTsv":
         UI_FILE_OPEN.dataset.action = action;
         UI_FILE_OPEN.value = "";
         UI_FILE_OPEN.click();
@@ -2151,6 +2156,7 @@ RENAME TO
         return;
     case "dbtableImportCsv":
     case "dbtableImportJson":
+    case "dbtableImportTsv":
         if (target.files.length === 0) {
             return;
         }
@@ -2159,6 +2165,8 @@ RENAME TO
             mode: (
                 action === "dbtableImportCsv"
                 ? "csv"
+                : action === "dbtableImportTsv"
+                ? "tsv"
                 : "json"
             ),
             tableName: dbNameNext(
