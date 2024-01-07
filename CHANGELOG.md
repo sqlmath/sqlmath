@@ -4,7 +4,8 @@
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
-# v2023.12.1-beta
+# v2023.12.20
+- chart - Improve ergonomics with import tsv.
 - betadog - bugfix - Remove over-complicated prm ttt from table y_historical.
 
 # v2023.11.22
