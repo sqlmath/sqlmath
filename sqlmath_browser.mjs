@@ -646,7 +646,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         JSON_OBJECT(
             'isDummy', is_dummy,
-            'isHidden', sym NOT in ('11_mybot', '.spx', '.dji', '.ndx')
+            'isHidden', sym NOT in ('11_mybot', '.spx', '.ndx', '.dji')
         ) AS options,
         rownum AS series_index,
         sym AS series_label
@@ -658,8 +658,8 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
                     sym = '11_mybot' DESC,
                     sym = '----' DESC,
                     sym = '.spx' DESC,
-                    sym = '.dji' DESC,
                     sym = '.ndx' DESC,
+                    sym = '.dji' DESC,
                     sym = '---- ' DESC,
                     sym
             ) AS rownum,

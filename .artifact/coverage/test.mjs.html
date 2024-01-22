@@ -186,31 +186,31 @@ body {
 <pre><span class="lineno"><a href="#line_28" id="line_28">   28.</a></span><span class="count        ">      1</span><span>/*jslint beta, node*/</span></pre>
 <pre><span class="lineno"><a href="#line_29" id="line_29">   29.</a></span><span class="count        ">      1</span><span>import jslint from "./jslint.mjs";</span></pre>
 <pre><span class="lineno"><a href="#line_30" id="line_30">   30.</a></span><span class="count        ">      1</span><span>import {</span></pre>
-<pre><span class="lineno"><a href="#line_31" id="line_31">   31.</a></span><span class="count        ">      1</span><span>    assertJsonEqual,</span></pre>
-<pre><span class="lineno"><a href="#line_32" id="line_32">   32.</a></span><span class="count        ">      1</span><span>    assertNumericalEqual,</span></pre>
-<pre><span class="lineno"><a href="#line_33" id="line_33">   33.</a></span><span class="count        ">      1</span><span>    assertOrThrow,</span></pre>
-<pre><span class="lineno"><a href="#line_34" id="line_34">   34.</a></span><span class="count        ">      1</span><span>    childProcessSpawn2,</span></pre>
-<pre><span class="lineno"><a href="#line_35" id="line_35">   35.</a></span><span class="count        ">      1</span><span>    ciBuildExt,</span></pre>
-<pre><span class="lineno"><a href="#line_36" id="line_36">   36.</a></span><span class="count        ">      1</span><span>    dbCloseAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_37" id="line_37">   37.</a></span><span class="count        ">      1</span><span>    dbExecAndReturnLastBlobAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_38" id="line_38">   38.</a></span><span class="count        ">      1</span><span>    dbExecAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_39" id="line_39">   39.</a></span><span class="count        ">      1</span><span>    dbFileLoadAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_40" id="line_40">   40.</a></span><span class="count        ">      1</span><span>    dbFileSaveAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_41" id="line_41">   41.</a></span><span class="count        ">      1</span><span>    dbNoopAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_42" id="line_42">   42.</a></span><span class="count        ">      1</span><span>    dbOpenAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_43" id="line_43">   43.</a></span><span class="count        ">      1</span><span>    debugInline,</span></pre>
-<pre><span class="lineno"><a href="#line_44" id="line_44">   44.</a></span><span class="count        ">      1</span><span>    fsCopyFileUnlessTest,</span></pre>
-<pre><span class="lineno"><a href="#line_45" id="line_45">   45.</a></span><span class="count        ">      1</span><span>    fsExistsUnlessTest,</span></pre>
-<pre><span class="lineno"><a href="#line_46" id="line_46">   46.</a></span><span class="count        ">      1</span><span>    fsReadFileUnlessTest,</span></pre>
-<pre><span class="lineno"><a href="#line_47" id="line_47">   47.</a></span><span class="count        ">      1</span><span>    fsWriteFileUnlessTest,</span></pre>
-<pre><span class="lineno"><a href="#line_48" id="line_48">   48.</a></span><span class="count        ">      1</span><span>    jsbatonGetInt64,</span></pre>
-<pre><span class="lineno"><a href="#line_49" id="line_49">   49.</a></span><span class="count        ">      1</span><span>    jsbatonGetString,</span></pre>
-<pre><span class="lineno"><a href="#line_50" id="line_50">   50.</a></span><span class="count        ">      1</span><span>    noop,</span></pre>
-<pre><span class="lineno"><a href="#line_51" id="line_51">   51.</a></span><span class="count        ">      1</span><span>    sqlmathWebworkerInit,</span></pre>
-<pre><span class="lineno"><a href="#line_52" id="line_52">   52.</a></span><span class="count        ">      1</span><span>    version</span></pre>
-<pre><span class="lineno"><a href="#line_53" id="line_53">   53.</a></span><span class="count        ">      1</span><span>} from "./sqlmath.mjs";</span></pre>
-<pre><span class="lineno"><a href="#line_54" id="line_54">   54.</a></span><span class="count        ">      1</span><span>let {</span></pre>
-<pre><span class="lineno"><a href="#line_55" id="line_55">   55.</a></span><span class="count        ">      1</span><span>    assertErrorThrownAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_31" id="line_31">   31.</a></span><span class="count        ">      1</span><span>    assertErrorThrownAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_32" id="line_32">   32.</a></span><span class="count        ">      1</span><span>    assertJsonEqual,</span></pre>
+<pre><span class="lineno"><a href="#line_33" id="line_33">   33.</a></span><span class="count        ">      1</span><span>    assertNumericalEqual,</span></pre>
+<pre><span class="lineno"><a href="#line_34" id="line_34">   34.</a></span><span class="count        ">      1</span><span>    assertOrThrow,</span></pre>
+<pre><span class="lineno"><a href="#line_35" id="line_35">   35.</a></span><span class="count        ">      1</span><span>    childProcessSpawn2,</span></pre>
+<pre><span class="lineno"><a href="#line_36" id="line_36">   36.</a></span><span class="count        ">      1</span><span>    ciBuildExt,</span></pre>
+<pre><span class="lineno"><a href="#line_37" id="line_37">   37.</a></span><span class="count        ">      1</span><span>    dbCloseAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_38" id="line_38">   38.</a></span><span class="count        ">      1</span><span>    dbExecAndReturnLastBlobAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_39" id="line_39">   39.</a></span><span class="count        ">      1</span><span>    dbExecAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_40" id="line_40">   40.</a></span><span class="count        ">      1</span><span>    dbFileLoadAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_41" id="line_41">   41.</a></span><span class="count        ">      1</span><span>    dbFileSaveAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_42" id="line_42">   42.</a></span><span class="count        ">      1</span><span>    dbNoopAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_43" id="line_43">   43.</a></span><span class="count        ">      1</span><span>    dbOpenAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_44" id="line_44">   44.</a></span><span class="count        ">      1</span><span>    debugInline,</span></pre>
+<pre><span class="lineno"><a href="#line_45" id="line_45">   45.</a></span><span class="count        ">      1</span><span>    fsCopyFileUnlessTest,</span></pre>
+<pre><span class="lineno"><a href="#line_46" id="line_46">   46.</a></span><span class="count        ">      1</span><span>    fsExistsUnlessTest,</span></pre>
+<pre><span class="lineno"><a href="#line_47" id="line_47">   47.</a></span><span class="count        ">      1</span><span>    fsReadFileUnlessTest,</span></pre>
+<pre><span class="lineno"><a href="#line_48" id="line_48">   48.</a></span><span class="count        ">      1</span><span>    fsWriteFileUnlessTest,</span></pre>
+<pre><span class="lineno"><a href="#line_49" id="line_49">   49.</a></span><span class="count        ">      1</span><span>    jsbatonGetInt64,</span></pre>
+<pre><span class="lineno"><a href="#line_50" id="line_50">   50.</a></span><span class="count        ">      1</span><span>    jsbatonGetString,</span></pre>
+<pre><span class="lineno"><a href="#line_51" id="line_51">   51.</a></span><span class="count        ">      1</span><span>    noop,</span></pre>
+<pre><span class="lineno"><a href="#line_52" id="line_52">   52.</a></span><span class="count        ">      1</span><span>    sqlmathWebworkerInit,</span></pre>
+<pre><span class="lineno"><a href="#line_53" id="line_53">   53.</a></span><span class="count        ">      1</span><span>    version</span></pre>
+<pre><span class="lineno"><a href="#line_54" id="line_54">   54.</a></span><span class="count        ">      1</span><span>} from "./sqlmath.mjs";</span></pre>
+<pre><span class="lineno"><a href="#line_55" id="line_55">   55.</a></span><span class="count        ">      1</span><span>let {</span></pre>
 <pre><span class="lineno"><a href="#line_56" id="line_56">   56.</a></span><span class="count        ">      1</span><span>    jstestDescribe,</span></pre>
 <pre><span class="lineno"><a href="#line_57" id="line_57">   57.</a></span><span class="count        ">      1</span><span>    jstestIt</span></pre>
 <pre><span class="lineno"><a href="#line_58" id="line_58">   58.</a></span><span class="count        ">      1</span><span>} = jslint;</span></pre>
