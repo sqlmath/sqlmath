@@ -104,7 +104,24 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2023.12.20";
+let version = "v2024.1.21";
+
+async function assertErrorThrownAsync(asyncFunc, regexp) {
+
+// This function will assert calling <asyncFunc> throws an error.
+
+    let err;
+    try {
+        await asyncFunc();
+    } catch (errCaught) {
+        err = errCaught;
+    }
+    assertOrThrow(err, "No error thrown.");
+    assertOrThrow(
+        !regexp || new RegExp(regexp).test(err.message),
+        err
+    );
+}
 
 function assertInt64(val) {
     // This function will assert <val> is within range of c99-signed-long-long.
@@ -1368,6 +1385,7 @@ export {
     SQLITE_OPEN_TRANSIENT_DB,
     SQLITE_OPEN_URI,
     SQLITE_OPEN_WAL,
+    assertErrorThrownAsync,
     assertInt64,
     assertJsonEqual,
     assertNumericalEqual,

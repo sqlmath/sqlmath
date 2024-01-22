@@ -28,6 +28,7 @@ npm_config_mode_test_save2=1 npm test
 /*jslint beta, node*/
 import jslint from "./jslint.mjs";
 import {
+    assertErrorThrownAsync,
     assertJsonEqual,
     assertNumericalEqual,
     assertOrThrow,
@@ -52,7 +53,6 @@ import {
     version
 } from "./sqlmath.mjs";
 let {
-    assertErrorThrownAsync,
     jstestDescribe,
     jstestIt
 } = jslint;
