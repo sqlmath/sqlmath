@@ -4,6 +4,9 @@
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
+# v2024.1.21
+- sqlmath - Add function assertErrorThrownAsync().
+
 # v2023.12.20
 - chart - Improve ergonomics with import tsv.
 - betadog - bugfix - Remove over-complicated prm ttt from table y_historical.
