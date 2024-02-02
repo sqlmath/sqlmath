@@ -467,7 +467,7 @@ require("assert")(require("./package.json").name !== "sqlmath");
         COVERAGE_EXCLUDE="$COVERAGE_EXCLUDE --exclude=sqlmath.mjs"
     fi
     # ugly-hack - github-action will flakily hang during test
-    if [ "$GITHUB_ACTION" ] && (timeout --version &>/dev/null)
+    if [ "$GITHUB_ACTION" ] && (timeout --version >/dev/null 2>&1)
     then
         timeout 120 sh jslint_ci.sh \
             shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs

@@ -4,6 +4,10 @@
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
+# v2024.2.1-beta
+- ci - Update github-ci for actions/cache, actions/setup-python from nodejs v16 to nodejs v20.
+- ci - Update shell-function shRollupFetch() to fix blank date-committed.
+
 # v2024.1.21
 - sqlmath - Add function assertErrorThrownAsync().
 
