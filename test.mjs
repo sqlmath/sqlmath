@@ -41,6 +41,7 @@ import {
     dbFileSaveAsync,
     dbNoopAsync,
     dbOpenAsync,
+    dbTableImportAsync,
     debugInline,
     fsCopyFileUnlessTest,
     fsExistsUnlessTest,
@@ -657,6 +658,54 @@ SELECT * FROM testDbExecAsync2;
         assertErrorThrownAsync(function () {
             return dbOpenAsync({});
         }, "invalid filename");
+    });
+    jstestIt((
+        "test dbTableXxx handling-behavior"
+    ), async function test_dbTableXxx() {
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        await Promise.all([
+            dbTableImportAsync({
+                db,
+                mode: "csv",
+                tableName: "__csv0",
+                textData: ""
+            }),
+            dbTableImportAsync({
+                db,
+                mode: "csv",
+                tableName: "__csv1",
+                textData: String(`
+duplicate_header,duplicate_header
+"aaa","b""bb","ccc"
+"aaa","b
+bb","ccc"
+zzz,yyy,xxx
+                `).trim()
+            }),
+            dbTableImportAsync({
+                db,
+                mode: "json",
+                tableName: "__json0",
+                textData: "null"
+            }),
+            dbTableImportAsync({
+                db,
+                mode: "json",
+                tableName: "__json1",
+                textData: JSON.stringify({
+                    aa: {aa: 1, bb: 2},
+                    bb: {aa: 3, bb: 4}
+                })
+            }),
+            dbTableImportAsync({
+                db,
+                mode: "tsv",
+                tableName: "__tsv1",
+                textData: "aa,bb\tcc,dd"
+            })
+        ]);
     });
 });
 

@@ -5,6 +5,8 @@
 - none
 
 # v2024.2.1-beta
+- migration - Rename prm ydate to xdate, ytime to xtime.
+- sqlmath - Move function dbTableImportAsync from file sqlmath_browser.mjs to sqlmath.mjs.
 - ci - Update github-ci for actions/cache, actions/setup-python from nodejs v16 to nodejs v20.
 - ci - Update shell-function shRollupFetch() to fix blank date-committed.
 
