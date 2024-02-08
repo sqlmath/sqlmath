@@ -26,8 +26,8 @@ npm_config_mode_debug2=1 python setup.py build_ext && python setup.py test
 python -m build
 """
 
-__version__ = "2024.1.21"
-__version_info__ = ("2024", "1", "21")
+__version__ = "2024.2.1"
+__version_info__ = ("2024", "2", "1")
 
 import asyncio
 import base64
@@ -164,7 +164,7 @@ async def build_ext_async(): # noqa: C901
     #
     # build_ext - update version
     pathlib.Path("build").mkdir(parents=True, exist_ok=True)
-    with pathlib.Path("package.json").open() as file1:
+    with pathlib.Path("package.json").open() as file1: # noqa: ASYNC101
         package_json = json.load(file1)
         version = package_json["version"].split("-")[0]
     if package_json["name"] != "sqlmath":
@@ -176,7 +176,7 @@ async def build_ext_async(): # noqa: C901
         "setup.py",
         "sqlmath/__init__.py",
     ]:
-        with pathlib.Path(filename).open("r+", newline="\n") as file1:
+        with pathlib.Path(filename).open("r+", newline="\n") as file1: # noqa: ASYNC101
             data0 = file1.read()
             data1 = data0
             # update version - PKG-INFO

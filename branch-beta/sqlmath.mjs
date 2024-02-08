@@ -104,7 +104,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2024.1.21";
+let version = "v2024.2.1-beta";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -846,6 +846,117 @@ async function dbOpenAsync({
     return db;
 }
 
+async function dbTableImportAsync({
+    db,
+    mode,
+    tableName,
+    textData
+}) {
+// this function will create table from imported csv/json <textData>
+    let colList;
+    let rowList;
+    let rowidList;
+    let tmp;
+    switch (mode) {
+    case "csv":
+        rowList = jsonRowListFromCsv({
+            csv: textData
+        });
+        break;
+    case "tsv":
+        rowList = [];
+        textData.trimEnd().replace((/.+/g), function (line) {
+            rowList.push(line.split("\t"));
+        });
+        break;
+    // case "json":
+    default:
+        rowList = JSON.parse(textData);
+    }
+    if (!(typeof rowList === "object" && rowList)) {
+        rowList = [];
+    }
+    // normalize rowList to list
+    if (!Array.isArray(rowList)) {
+        rowidList = [];
+        rowList = Object.entries(rowList).map(function ([
+            key, val
+        ]) {
+            rowidList.push(key);
+            return val;
+        });
+    }
+    // normalize rowList[ii] to list
+    if (rowList.length === 0) {
+        rowList.push([
+            "undefined"
+        ]);
+    }
+    if (!Array.isArray(rowList[0])) {
+        colList = Array.from(
+            new Set(
+                rowList.map(function (obj) {
+                    return Object.keys(obj);
+                }).flat()
+            )
+        );
+        rowList = rowList.map(function (obj) {
+            return colList.map(function (key) {
+                return obj[key];
+            });
+        });
+        rowList.unshift(colList);
+    }
+    // init colList
+    colList = rowList.shift();
+    // preserve rowid
+    if (rowidList) {
+        colList.unshift("rowid");
+        rowList.forEach(function (row, ii) {
+            row.unshift(rowidList[ii]);
+        });
+    }
+    // normalize colList
+    tmp = new Set();
+    colList = colList.map(function (colName) {
+        let colName2;
+        let duplicate = 0;
+        colName = "c_" + colName.toLowerCase().replace((
+            /\W/g
+        ), "_");
+        while (true) {
+            duplicate += 1;
+            colName2 = (
+                duplicate === 1
+                ? colName
+                : colName + "_" + duplicate
+            );
+            if (!tmp.has(colName2)) {
+                tmp.add(colName2);
+                return colName2;
+            }
+        }
+    });
+    // create dbtable from rowList
+    await dbExecAsync({
+        bindList: {
+            rowList: JSON.stringify(rowList)
+        },
+        db,
+        sql: (
+            rowList.length === 0
+            ? `CREATE TABLE ${tableName} (${colList.join(",")});`
+            : (
+                `CREATE TABLE ${tableName} AS SELECT `
+                + colList.map(function (colName, ii) {
+                    return "value->>" + ii + " AS " + colName;
+                }).join(",")
+                + " FROM JSON_EACH($rowList);"
+            )
+        )
+    });
+}
+
 async function fsCopyFileUnlessTest(file1, file2, mode) {
 
 // This function will copy <file1> to <file2> unless <npm_config_mode_test> = 1.
@@ -1167,6 +1278,157 @@ function jsonParseArraybuffer(buf) {
     );
 }
 
+function jsonRowListFromCsv({
+    csv
+}) {
+// this function will convert <csv>-text to json list-of-list
+//
+// https://tools.ietf.org/html/rfc4180#section-2
+// Definition of the CSV Format
+// While there are various specifications and implementations for the
+// CSV format (for ex. [4], [5], [6] and [7]), there is no formal
+// specification in existence, which allows for a wide variety of
+// interpretations of CSV files.  This section documents the format that
+// seems to be followed by most implementations:
+//
+// 1.  Each record is located on a separate line, delimited by a line
+//     break (CRLF).  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+//
+// 2.  The last record in the file may or may not have an ending line
+//     break.  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx
+//
+// 3.  There maybe an optional header line appearing as the first line
+//     of the file with the same format as normal record lines.  This
+//     header will contain names corresponding to the fields in the file
+//     and should contain the same number of fields as the records in
+//     the rest of the file (the presence or absence of the header line
+//     should be indicated via the optional "header" parameter of this
+//     MIME type).  For example:
+//     field_name,field_name,field_name CRLF
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+//
+// 4.  Within the header and each record, there may be one or more
+//     fields, separated by commas.  Each line should contain the same
+//     number of fields throughout the file.  Spaces are considered part
+//     of a field and should not be ignored.  The last field in the
+//     record must not be followed by a comma.  For example:
+//     aaa,bbb,ccc
+//
+// 5.  Each field may or may not be enclosed in double quotes (however
+//     some programs, such as Microsoft Excel, do not use double quotes
+//     at all).  If fields are not enclosed with double quotes, then
+//     double quotes may not appear inside the fields.  For example:
+//     "aaa","bbb","ccc" CRLF
+//     zzz,yyy,xxx
+//
+// 6.  Fields containing line breaks (CRLF), double quotes, and commas
+//     should be enclosed in double-quotes.  For example:
+//     "aaa","b CRLF
+//     bb","ccc" CRLF
+//     zzz,yyy,xxx
+//
+// 7.  If double-quotes are used to enclose fields, then a double-quote
+//     appearing inside a field must be escaped by preceding it with
+//     another double quote.  For example:
+//     "aaa","b""bb","ccc"
+    let match;
+    let quote;
+    let rgx;
+    let row;
+    let rowList;
+    let val;
+    // normalize "\r\n" to "\n"
+    csv = csv.trimEnd().replace((
+        /\r\n?/gu
+    ), "\n") + "\n";
+    rgx = (
+        /(.*?)(""|"|,|\n)/gu
+    );
+    rowList = [];
+    // reset row
+    row = [];
+    val = "";
+    while (true) {
+        match = rgx.exec(csv);
+        if (!match) {
+// 2.  The last record in the file may or may not have an ending line
+//     break.  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx
+            if (!row.length) {
+                break;
+            }
+            // // if eof missing crlf, then mock it
+            // rgx.lastIndex = csv.length;
+            // match = [
+            //     "\n", "", "\n"
+            // ];
+        }
+        // build val
+        val += match[1];
+        if (match[2] === "\"") {
+// 5.  Each field may or may not be enclosed in double quotes (however
+//     some programs, such as Microsoft Excel, do not use double quotes
+//     at all).  If fields are not enclosed with double quotes, then
+//     double quotes may not appear inside the fields.  For example:
+//     "aaa","bbb","ccc" CRLF
+//     zzz,yyy,xxx
+            quote = !quote;
+        } else if (quote) {
+// 7.  If double-quotes are used to enclose fields, then a double-quote
+//     appearing inside a field must be escaped by preceding it with
+//     another double quote.  For example:
+//     "aaa","b""bb","ccc"
+            if (match[2] === "\"\"") {
+                val += "\"";
+// 6.  Fields containing line breaks (CRLF), double quotes, and commas
+//     should be enclosed in double-quotes.  For example:
+//     "aaa","b CRLF
+//     bb","ccc" CRLF
+//     zzz,yyy,xxx
+            } else {
+                val += match[2];
+            }
+        } else if (match[2] === ",") {
+// 4.  Within the header and each record, there may be one or more
+//     fields, separated by commas.  Each line should contain the same
+//     number of fields throughout the file.  Spaces are considered part
+//     of a field and should not be ignored.  The last field in the
+//     record must not be followed by a comma.  For example:
+//     aaa,bbb,ccc
+            // delimit val
+            row.push(val);
+            val = "";
+        } else if (match[2] === "\n") {
+// 1.  Each record is located on a separate line, delimited by a line
+//     break (CRLF).  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+            // delimit val
+            row.push(val);
+            val = "";
+            // append row
+            rowList.push(row);
+            // reset row
+            row = [];
+        }
+    }
+    // // append val
+    // if (val) {
+    //     row.push(val);
+    // }
+    // // append row
+    // if (row.length) {
+    //     rowList.push(row);
+    // }
+    return rowList;
+}
+
 async function moduleFsInit() {
 
 // This function will import nodejs builtin-modules if they have not yet been
@@ -1399,6 +1661,7 @@ export {
     dbFileSaveAsync,
     dbNoopAsync,
     dbOpenAsync,
+    dbTableImportAsync,
     debugInline,
     fsCopyFileUnlessTest,
     fsExistsUnlessTest,
