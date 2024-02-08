@@ -6,6 +6,7 @@ import {
     dbFileSaveAsync,
     dbFileLoadAsync,
     dbOpenAsync,
+    dbTableImportAsync,
     debugInline,
     noop,
     sqlmathWebworkerInit
@@ -89,117 +90,6 @@ function dbNameNext(template, bag) {
             return name;
         }
     }
-}
-
-async function dbTableImportAsync({
-    db,
-    mode,
-    tableName,
-    textData
-}) {
-// this function will create table from imported csv/json <textData>
-    let colList;
-    let rowList;
-    let rowidList;
-    let tmp;
-    switch (mode) {
-    case "csv":
-        rowList = jsonRowListFromCsv({
-            csv: textData
-        });
-        break;
-    case "tsv":
-        rowList = [];
-        textData.trimEnd().replace((/.+/g), function (line) {
-            rowList.push(line.split("\t"));
-        });
-        break;
-    // case "json":
-    default:
-        rowList = JSON.parse(textData);
-    }
-    if (!(typeof rowList === "object" && rowList)) {
-        rowList = [];
-    }
-    // normalize rowList to list
-    if (!Array.isArray(rowList)) {
-        rowidList = [];
-        rowList = Object.entries(rowList).map(function ([
-            key, val
-        ]) {
-            rowidList.push(key);
-            return val;
-        });
-    }
-    // normalize rowList[ii] to list
-    if (rowList.length === 0) {
-        rowList.push([
-            "undefined"
-        ]);
-    }
-    if (!Array.isArray(rowList[0])) {
-        colList = Array.from(
-            new Set(
-                rowList.map(function (obj) {
-                    return Object.keys(obj);
-                }).flat()
-            )
-        );
-        rowList = rowList.map(function (obj) {
-            return colList.map(function (key) {
-                return obj[key];
-            });
-        });
-        rowList.unshift(colList);
-    }
-    // init colList
-    colList = rowList.shift();
-    // preserve rowid
-    if (rowidList) {
-        colList.unshift("rowid");
-        rowList.forEach(function (row, ii) {
-            row.unshift(rowidList[ii]);
-        });
-    }
-    // normalize colList
-    tmp = new Set();
-    colList = colList.map(function (colName) {
-        let colName2;
-        let duplicate = 0;
-        colName = "c_" + colName.toLowerCase().replace((
-            /\W/g
-        ), "_");
-        while (true) {
-            duplicate += 1;
-            colName2 = (
-                duplicate === 1
-                ? colName
-                : colName + "_" + duplicate
-            );
-            if (!tmp.has(colName2)) {
-                tmp.add(colName2);
-                return colName2;
-            }
-        }
-    });
-    // create dbtable from rowList
-    await dbExecAsync({
-        bindList: {
-            rowList: JSON.stringify(rowList)
-        },
-        db,
-        sql: (
-            rowList.length === 0
-            ? `CREATE TABLE ${tableName} (${colList.join(",")});`
-            : (
-                `CREATE TABLE ${tableName} AS SELECT `
-                + colList.map(function (colName, ii) {
-                    return "value->>" + ii + " AS " + colName;
-                }).join(",")
-                + " FROM JSON_EACH($rowList);"
-            )
-        )
-    });
 }
 
 function debounce(key, func, ...argList) {
@@ -412,24 +302,24 @@ CREATE TABLE tradebot_intraday_day AS
     FROM tradebot_intraday
     JOIN tradebot_state
     WHERE
-        DATE(ydate) >= datemkt0;
+        DATE(xdate) >= datemkt0;
 INSERT INTO tradebot_intraday_day
     SELECT
         sym,
-        DATETIME(__ydate, '-1 MINUTE'),
+        DATETIME(__xdate, '-1 MINUTE'),
         price,
-        0 AS ydate2
+        0 AS xdate2
     FROM tradebot_historical
-    JOIN (SELECT MIN(ydate) AS __ydate FROM tradebot_intraday_day)
+    JOIN (SELECT MIN(xdate) AS __xdate FROM tradebot_intraday_day)
     JOIN (
         SELECT
-            MAX(ydate) AS ydate
+            MAX(xdate) AS xdate
         FROM tradebot_historical
         JOIN tradebot_state
         WHERE
             sym = '.spx'
-            AND ydate < datemkt0
-    ) USING (ydate);
+            AND xdate < datemkt0
+    ) USING (xdate);
 
 -- table - tradebot_intraday_week - insert
 DROP TABLE IF EXISTS tradebot_intraday_week;
@@ -437,26 +327,26 @@ CREATE TABLE tradebot_intraday_week AS
     SELECT
         tradebot_intraday.*
     FROM tradebot_intraday
-    JOIN (SELECT DATE(datemkt0, '-6 DAY') AS ydate_week FROM tradebot_state)
+    JOIN (SELECT DATE(datemkt0, '-6 DAY') AS xdate_week FROM tradebot_state)
     WHERE
-        ydate = ydate2
-        AND ydate > ydate_week;
+        xdate = xdate2
+        AND xdate > xdate_week;
 INSERT INTO tradebot_intraday_week
     SELECT
         sym,
-        ydate || ' ' || hhmmss AS ydate,
+        xdate || ' ' || hhmmss AS xdate,
         price,
-        0 AS ydate2
+        0 AS xdate2
     FROM tradebot_historical
     JOIN (
         SELECT
-            MAX(ydate) AS ydate
+            MAX(xdate) AS xdate
         FROM tradebot_historical
         JOIN tradebot_state
         WHERE
-            ydate < DATE(datemkt0, '-6 DAY')
-    ) USING (ydate)
-    JOIN (SELECT TIME(MAX(ydate)) AS hhmmss FROM tradebot_intraday_week);
+            xdate < DATE(datemkt0, '-6 DAY')
+    ) USING (xdate)
+    JOIN (SELECT TIME(MAX(xdate)) AS hhmmss FROM tradebot_intraday_week);
 
 -- table - tradebot_technical_week - insert - lmt
 DROP TABLE IF EXISTS tradebot_technical_week;
@@ -500,49 +390,49 @@ INSERT INTO tradebot_technical_week
     --
     UNION ALL
     --
-    SELECT '1b_stk_lmt', ydate, stk_lmt FROM tradebot_intraday_lmt
+    SELECT '1b_stk_lmt', xdate, stk_lmt FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '1c_stk_pct', ydate, stk_pct FROM tradebot_intraday_lmt
+    SELECT '1c_stk_pct', xdate, stk_pct FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '1d_stk_lmb', ydate, stk_lmb FROM tradebot_intraday_lmt
+    SELECT '1d_stk_lmb', xdate, stk_lmb FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '1e_stk_lms', ydate, stk_lms FROM tradebot_intraday_lmt
+    SELECT '1e_stk_lms', xdate, stk_lms FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '1f_stk_pnl', ydate, stk_pnl FROM tradebot_intraday_lmt
+    SELECT '1f_stk_pnl', xdate, stk_pnl FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '2b_sqq_lmt', ydate, sqq_lmt FROM tradebot_intraday_lmt
+    SELECT '2b_sqq_lmt', xdate, sqq_lmt FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '2c_sqq_pct', ydate, sqq_pct FROM tradebot_intraday_lmt
+    SELECT '2c_sqq_pct', xdate, sqq_pct FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '2d_sqq_lmb', ydate, sqq_lmb FROM tradebot_intraday_lmt
+    SELECT '2d_sqq_lmb', xdate, sqq_lmb FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '2e_sqq_lms', ydate, sqq_lms FROM tradebot_intraday_lmt
+    SELECT '2e_sqq_lms', xdate, sqq_lms FROM tradebot_intraday_lmt
     --
     UNION ALL
     --
-    SELECT '2f_sqq_pnl', ydate, sqq_pnl FROM tradebot_intraday_lmt;
+    SELECT '2f_sqq_pnl', xdate, sqq_pnl FROM tradebot_intraday_lmt;
 
 -- table - tradebot_technical_week - insert - .spx
 INSERT INTO tradebot_technical_week
     SELECT
         '1a_spx' AS tname,
-        ydate AS tt,
+        xdate AS tt,
         price
     FROM tradebot_intraday_day
     WHERE
@@ -550,7 +440,7 @@ INSERT INTO tradebot_technical_week
 INSERT OR IGNORE INTO tradebot_technical_week
     SELECT
         '1a_spx' AS tname,
-        ydate AS tt,
+        xdate AS tt,
         price
     FROM tradebot_intraday_week
     WHERE
@@ -569,7 +459,7 @@ CREATE table tradebot_technical_day AS
 -- table - tradebot_technical_week - cleanup - date2
 DELETE FROM tradebot_technical_week
     WHERE
-        tt NOT IN (SELECT DISTINCT ydate2 FROM tradebot_intraday_week);
+        tt NOT IN (SELECT DISTINCT xdate2 FROM tradebot_intraday_week);
         `),
         [
             "1 day",
@@ -680,14 +570,14 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 AS
     SELECT
         *
-    FROM (SELECT DISTINCT ydate FROM ${tableData})
-    JOIN (SELECT MIN(ydate) AS aa, MAX(ydate) AS bb FROM ${tableData});
+    FROM (SELECT DISTINCT xdate FROM ${tableData})
+    JOIN (SELECT MIN(xdate) AS aa, MAX(xdate) AS bb FROM ${tableData});
 UPDATE __tmp1
     SET
         aa = aa2
     FROM (
         SELECT
-            ydate AS aa2
+            xdate AS aa2
         FROM __tmp1
         JOIN (
             SELECT
@@ -705,23 +595,23 @@ UPDATE __tmp1
             FROM (SELECT aa, bb FROM __tmp1 LIMIT 1)
         )
         WHERE
-            ydate <= aa2
+            xdate <= aa2
         ORDER BY
-            ydate DESC
+            xdate DESC
         LIMIT 1
     );
 INSERT INTO ${tableChart} (datatype, xx, xx_label)
     SELECT
         'xx_label' AS datatype,
         rownum AS xx,
-        ydate AS xx_label
+        xdate AS xx_label
     FROM (
         SELECT
-            ROW_NUMBER() OVER (ORDER BY ydate ASC) AS rownum,
-            ydate
+            ROW_NUMBER() OVER (ORDER BY xdate ASC) AS rownum,
+            xdate
         FROM __tmp1
         WHERE
-            aa <= ydate AND ydate <= bb
+            aa <= xdate AND xdate <= bb
     );
 INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
     SELECT
@@ -752,7 +642,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
                 datatype = 'xx_label'
         )
     )
-    LEFT JOIN ${tableData} ON sym = series_label AND ydate = xx_label;
+    LEFT JOIN ${tableData} ON sym = series_label AND xdate = xx_label;
 UPDATE ${tableChart}
     SET
             ${
@@ -1397,10 +1287,10 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
 INSERT INTO ${tableChart} (datatype, xx, xx_label)
     SELECT
         'xx_label' AS datatype,
-        JULIANDAY(ydate) AS xx,
-        ydate AS xx_label
+        JULIANDAY(xdate) AS xx,
+        xdate AS xx_label
     FROM (
-        SELECT DISTINCT ydate FROM tradebot_technical_sinefit ORDER BY ttt DESC
+        SELECT DISTINCT xdate FROM tradebot_technical_sinefit ORDER BY ttt DESC
     );
 INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
     SELECT
@@ -1412,7 +1302,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
     LEFT JOIN (
         SELECT
             1 AS series_index,
-            ydate,
+            xdate,
             price_actual AS yy
         FROM tradebot_technical_sinefit
         --
@@ -1420,7 +1310,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         --
         SELECT
             2 AS series_index,
-            ydate,
+            xdate,
             price_linear_02 AS yy
         FROM tradebot_technical_sinefit
         --
@@ -1428,7 +1318,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         --
         SELECT
             3 AS series_index,
-            ydate,
+            xdate,
             price_sine_02 + __offset AS yy
         FROM tradebot_technical_sinefit
         JOIN (
@@ -1443,7 +1333,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         --
         SELECT
             4 AS series_index,
-            ydate,
+            xdate,
             price_predicted_02 AS yy
         FROM tradebot_technical_sinefit
         --
@@ -1451,7 +1341,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         --
         SELECT
             5 AS series_index,
-            ydate,
+            xdate,
             price_linear_06 AS yy
         FROM tradebot_technical_sinefit
         --
@@ -1459,7 +1349,7 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         --
         SELECT
             6 AS series_index,
-            ydate,
+            xdate,
             price_sine_06 + __offset AS yy
         FROM tradebot_technical_sinefit
         JOIN (
@@ -1474,10 +1364,10 @@ INSERT INTO ${tableChart} (datatype, series_index, xx, yy)
         --
         SELECT
             7 AS series_index,
-            ydate,
+            xdate,
             price_predicted_06 AS yy
         FROM tradebot_technical_sinefit
-    ) ON ydate = xx_label;
+    ) ON xdate = xx_label;
 
 -- table - ${tableChart} - normalize - yy
 UPDATE ${tableChart}
@@ -1727,153 +1617,6 @@ function jsonHtmlSafe(obj) {
     ), "&lt;").replace((
         />/gu
     ), "&gt;"));
-}
-
-function jsonRowListFromCsv({
-    csv
-}) {
-// this function will convert <csv>-text to json list-of-list
-//
-// https://tools.ietf.org/html/rfc4180#section-2
-// Definition of the CSV Format
-// While there are various specifications and implementations for the
-// CSV format (for ex. [4], [5], [6] and [7]), there is no formal
-// specification in existence, which allows for a wide variety of
-// interpretations of CSV files.  This section documents the format that
-// seems to be followed by most implementations:
-//
-// 1.  Each record is located on a separate line, delimited by a line
-//     break (CRLF).  For example:
-//     aaa,bbb,ccc CRLF
-//     zzz,yyy,xxx CRLF
-//
-// 2.  The last record in the file may or may not have an ending line
-//     break.  For example:
-//     aaa,bbb,ccc CRLF
-//     zzz,yyy,xxx
-//
-// 3.  There maybe an optional header line appearing as the first line
-//     of the file with the same format as normal record lines.  This
-//     header will contain names corresponding to the fields in the file
-//     and should contain the same number of fields as the records in
-//     the rest of the file (the presence or absence of the header line
-//     should be indicated via the optional "header" parameter of this
-//     MIME type).  For example:
-//     field_name,field_name,field_name CRLF
-//     aaa,bbb,ccc CRLF
-//     zzz,yyy,xxx CRLF
-//
-// 4.  Within the header and each record, there may be one or more
-//     fields, separated by commas.  Each line should contain the same
-//     number of fields throughout the file.  Spaces are considered part
-//     of a field and should not be ignored.  The last field in the
-//     record must not be followed by a comma.  For example:
-//     aaa,bbb,ccc
-//
-// 5.  Each field may or may not be enclosed in double quotes (however
-//     some programs, such as Microsoft Excel, do not use double quotes
-//     at all).  If fields are not enclosed with double quotes, then
-//     double quotes may not appear inside the fields.  For example:
-//     "aaa","bbb","ccc" CRLF
-//     zzz,yyy,xxx
-//
-// 6.  Fields containing line breaks (CRLF), double quotes, and commas
-//     should be enclosed in double-quotes.  For example:
-//     "aaa","b CRLF
-//     bb","ccc" CRLF
-//     zzz,yyy,xxx
-//
-// 7.  If double-quotes are used to enclose fields, then a double-quote
-//     appearing inside a field must be escaped by preceding it with
-//     another double quote.  For example:
-//     "aaa","b""bb","ccc"
-    let match;
-    let quote;
-    let rgx;
-    let row;
-    let rowList;
-    let val;
-    // normalize "\r\n" to "\n"
-    csv = csv.replace((
-        /\r\n?/gu
-    ), "\n");
-    rgx = (
-        /(.*?)(""|"|,|\n)/gu
-    );
-    rowList = [];
-    // reset row
-    row = [];
-    val = "";
-    while (true) {
-        match = rgx.exec(csv);
-        if (!match) {
-// 2.  The last record in the file may or may not have an ending line
-//     break.  For example:
-//     aaa,bbb,ccc CRLF
-//     zzz,yyy,xxx
-            if (!row.length) {
-                break;
-            }
-            // if eof missing crlf, then mock it
-            rgx.lastIndex = csv.length;
-            match = [
-                "\n", "", "\n"
-            ];
-        }
-        // build val
-        val += match[1];
-        if (match[2] === "\"") {
-// 5.  Each field may or may not be enclosed in double quotes (however
-//     some programs, such as Microsoft Excel, do not use double quotes
-//     at all).  If fields are not enclosed with double quotes, then
-//     double quotes may not appear inside the fields.  For example:
-//     "aaa","bbb","ccc" CRLF
-//     zzz,yyy,xxx
-            quote = !quote;
-        } else if (quote) {
-// 7.  If double-quotes are used to enclose fields, then a double-quote
-//     appearing inside a field must be escaped by preceding it with
-//     another double quote.  For example:
-//     "aaa","b""bb","ccc"
-            if (match[2] === "\"\"") {
-                val += "\"";
-// 6.  Fields containing line breaks (CRLF), double quotes, and commas
-//     should be enclosed in double-quotes.  For example:
-//     "aaa","b CRLF
-//     bb","ccc" CRLF
-//     zzz,yyy,xxx
-            } else {
-                val += match[2];
-            }
-        } else if (match[2] === ",") {
-// 4.  Within the header and each record, there may be one or more
-//     fields, separated by commas.  Each line should contain the same
-//     number of fields throughout the file.  Spaces are considered part
-//     of a field and should not be ignored.  The last field in the
-//     record must not be followed by a comma.  For example:
-//     aaa,bbb,ccc
-            // delimit val
-            row.push(val);
-            val = "";
-        } else if (match[2] === "\n") {
-// 1.  Each record is located on a separate line, delimited by a line
-//     break (CRLF).  For example:
-//     aaa,bbb,ccc CRLF
-//     zzz,yyy,xxx CRLF
-            // delimit val
-            row.push(val);
-            val = "";
-            // append row
-            rowList.push(row);
-            // reset row
-            row = [];
-        }
-    }
-    // append row
-    if (row.length) {
-        rowList.push(row);
-    }
-    return rowList;
 }
 
 function onContextmenu(evt) {
