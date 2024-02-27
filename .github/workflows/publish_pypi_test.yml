@@ -1,0 +1,29 @@
+# https://github.com/pypa/gh-action-pypi-publish
+name: publish_pypi_test
+on:
+  # release:
+  #   types: [created]
+  workflow_dispatch:
+jobs:
+
+
+  publish_pypi:
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/sqlmath/
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      # retrieve your distributions here
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - run: sh jslint_ci.sh shCiPublishPypi
+      # publish to pypi
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
