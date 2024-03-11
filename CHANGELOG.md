@@ -4,7 +4,8 @@
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
-# v2024.2.1-beta
+# v2024.3.1-beta
+- ci - Fix tmpdir in shell-function shBrowserScreenshot().
 - webdemo - Update tables tradebot_intraday_xxx.
 - migration - Rename prm ydate to xdate, ytime to xtime.
 - sqlmath - Move function dbTableImportAsync from file sqlmath_browser.mjs to sqlmath.mjs.
