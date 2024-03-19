@@ -775,7 +775,8 @@ async function dbFileLoadAsync({
 async function dbFileSaveAsync({
     db,
     dbData,
-    filename
+    filename,
+    modeNoop
 }) {
 
 // This function will save <db> to <filename>.
@@ -784,6 +785,7 @@ async function dbFileSaveAsync({
         db,
         dbData,
         filename,
+        modeNoop,
         modeSave: 1
     });
 }
