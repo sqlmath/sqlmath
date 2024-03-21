@@ -5,6 +5,7 @@
 - none
 
 # v2024.3.1-beta
+- jslint-ci - Add shell-functions shGitPullrequestCleanup(), shGitPullrequest() to automatically cleanup or create-and-push github-pull-commit to origin/alpha.
 - ci - Fix tmpdir in shell-function shBrowserScreenshot().
 - webdemo - Update tables tradebot_intraday_xxx.
 - migration - Rename prm ydate to xdate, ytime to xtime.
