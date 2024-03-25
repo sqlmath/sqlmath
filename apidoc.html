@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2024.2.1-beta)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2024.3.25)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -178,7 +178,8 @@ function dbFileLoadAsync<span class="apidocSignatureSpan">({
 function dbFileSaveAsync<span class="apidocSignatureSpan">({
     db,
     dbData,
-    filename
+    filename,
+    modeNoop
 })</span>
 </a>
 
@@ -1064,7 +1065,8 @@ data = await dbExecAsync({
     function dbFileSaveAsync<span class="apidocSignatureSpan">({
     db,
     dbData,
-    filename
+    filename,
+    modeNoop
 })</span>
     </a>
     </h2>
@@ -1072,7 +1074,8 @@ data = await dbExecAsync({
 <li>Description and source-code:<pre class="apidocCodePre">async function dbFileSaveAsync({
     db,
     dbData,
-    filename
+    filename,
+    modeNoop
 }) {
 <span class="apidocCodeCommentSpan">
 // This function will save &lt;db&gt; to &lt;filename&gt;.
@@ -1081,6 +1084,7 @@ data = await dbExecAsync({
         db,
         dbData,
         filename,
+        modeNoop,
         modeSave: 1
     });
 }</pre></li>
