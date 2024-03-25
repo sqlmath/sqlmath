@@ -4,7 +4,10 @@
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
-# v2024.2.1-beta
+# v2024.3.25
+- jslint-ci - Add shell-functions shGitPullrequestCleanup(), shGitPullrequest() to automatically cleanup or create-and-push github-pull-commit to origin/alpha.
+- ci - Fix tmpdir in shell-function shBrowserScreenshot().
+- webdemo - Update tables tradebot_intraday_xxx.
 - migration - Rename prm ydate to xdate, ytime to xtime.
 - sqlmath - Move function dbTableImportAsync from file sqlmath_browser.mjs to sqlmath.mjs.
 - ci - Update github-ci for actions/cache, actions/setup-python from nodejs v16 to nodejs v20.

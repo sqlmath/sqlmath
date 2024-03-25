@@ -104,7 +104,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2024.2.1-beta";
+let version = "v2024.3.25";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -775,7 +775,8 @@ async function dbFileLoadAsync({
 async function dbFileSaveAsync({
     db,
     dbData,
-    filename
+    filename,
+    modeNoop
 }) {
 
 // This function will save <db> to <filename>.
@@ -784,6 +785,7 @@ async function dbFileSaveAsync({
         db,
         dbData,
         filename,
+        modeNoop,
         modeSave: 1
     });
 }

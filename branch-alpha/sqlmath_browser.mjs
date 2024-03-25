@@ -298,168 +298,179 @@ async function demoTradebot() {
 DROP TABLE IF EXISTS tradebot_intraday_day;
 CREATE TABLE tradebot_intraday_day AS
     SELECT
-        tradebot_intraday.*
-    FROM tradebot_intraday
-    JOIN tradebot_state
-    WHERE
-        DATE(xdate) >= datemkt0;
+        sym,
+        xdate,
+        price
+    FROM tradebot_intraday_all
+    WHERE xdate >= (SELECT datemkt0 FROM tradebot_state);
 INSERT INTO tradebot_intraday_day
     SELECT
         sym,
-        DATETIME(__xdate, '-1 MINUTE'),
-        price,
-        0 AS xdate2
+        DATETIME(datemkt_beg, '-1 MINUTE') AS xdate,
+        price
     FROM tradebot_historical
-    JOIN (SELECT MIN(xdate) AS __xdate FROM tradebot_intraday_day)
-    JOIN (
-        SELECT
-            MAX(xdate) AS xdate
-        FROM tradebot_historical
-        JOIN tradebot_state
-        WHERE
-            sym = '.spx'
-            AND xdate < datemkt0
-    ) USING (xdate);
+    JOIN tradebot_state
+    WHERE tradebot_historical.xdate = datemkt_lag;
 
 -- table - tradebot_intraday_week - insert
 DROP TABLE IF EXISTS tradebot_intraday_week;
 CREATE TABLE tradebot_intraday_week AS
     SELECT
-        tradebot_intraday.*
-    FROM tradebot_intraday
-    JOIN (SELECT DATE(datemkt0, '-6 DAY') AS xdate_week FROM tradebot_state)
-    WHERE
-        xdate = xdate2
-        AND xdate > xdate_week;
-INSERT INTO tradebot_intraday_week
-    SELECT
         sym,
-        xdate || ' ' || hhmmss AS xdate,
-        price,
-        0 AS xdate2
-    FROM tradebot_historical
-    JOIN (
+        xdate2 AS xdate,
+        price
+    FROM tradebot_intraday_all
+    WHERE xdate2;
+
+-- table - tradebot_technical_day - insert - lmt
+DROP TABLE IF EXISTS tradebot_technical_day;
+CREATE TABLE tradebot_technical_day(tname TEXT, tt REAL, tval REAL);
+INSERT INTO tradebot_technical_day
+    SELECT
+        *
+    FROM (
         SELECT
-            MAX(xdate) AS xdate
-        FROM tradebot_historical
-        JOIN tradebot_state
-        WHERE
-            xdate < DATE(datemkt0, '-6 DAY')
-    ) USING (xdate)
-    JOIN (SELECT TIME(MAX(xdate)) AS hhmmss FROM tradebot_intraday_week);
+            tname,
+            datemkt_beg AS tt,
+            IIF(tname LIKE '1%', stk_beg0, sqq_beg0) AS tval
+        FROM tradebot_state
+        JOIN (
+                      SELECT '1b_stk_lmt' AS tname
+            UNION ALL SELECT '1c_stk_pct'
+            UNION ALL SELECT '1d_stk_lmb'
+            UNION ALL SELECT '1e_stk_lms'
+            UNION ALL SELECT '1f_stk_pnl'
+            UNION ALL SELECT '2b_sqq_lmt'
+            UNION ALL SELECT '2c_sqq_pct'
+            UNION ALL SELECT '2d_sqq_lmb'
+            UNION ALL SELECT '2e_sqq_lms'
+            UNION ALL SELECT '2f_sqq_pnl'
+        )
+        --
+        UNION ALL
+        --
+        SELECT '1b_stk_lmt', xdate, stk_lmt FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '1c_stk_pct', xdate, stk_pct FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '1d_stk_lmb', xdate, stk_lmb FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '1e_stk_lms', xdate, stk_lms FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '1f_stk_pnl', xdate, stk_pnl FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2b_sqq_lmt', xdate, sqq_lmt FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2c_sqq_pct', xdate, sqq_pct FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2d_sqq_lmb', xdate, sqq_lmb FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2e_sqq_lms', xdate, sqq_lms FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2f_sqq_pnl', xdate, sqq_pnl FROM tradebot_technical_all
+    )
+    WHERE tt >= (SELECT datemkt0 FROM tradebot_state);
 
 -- table - tradebot_technical_week - insert - lmt
 DROP TABLE IF EXISTS tradebot_technical_week;
 CREATE TABLE tradebot_technical_week(tname TEXT, tt REAL, tval REAL);
 INSERT INTO tradebot_technical_week
     SELECT
-        tname,
-        datemkt_beg AS tt,
-        stk_beg0 AS tval
-    FROM tradebot_state
-    JOIN (
-                  SELECT '1b_stk_lmt' AS tname
-        UNION ALL SELECT '1c_stk_pct'
-        UNION ALL SELECT '1d_stk_lmb'
-        UNION ALL SELECT '1e_stk_lms'
-        UNION ALL SELECT '1f_stk_pnl'
-        UNION ALL SELECT '2b_sqq_lmt'
-        UNION ALL SELECT '2c_sqq_pct'
-        UNION ALL SELECT '2d_sqq_lmb'
-        UNION ALL SELECT '2e_sqq_lms'
-        UNION ALL SELECT '2f_sqq_pnl'
-    );
-INSERT INTO tradebot_technical_week
-    SELECT
-        tname,
-        datemkt_beg AS tt,
-        IIF(tname LIKE '1%', stk_beg0, sqq_beg0) AS tval
-    FROM tradebot_state
-    JOIN (
-                  SELECT '1b_stk_lmt' AS tname
-        UNION ALL SELECT '1c_stk_pct'
-        UNION ALL SELECT '1d_stk_lmb'
-        UNION ALL SELECT '1e_stk_lms'
-        UNION ALL SELECT '1f_stk_pnl'
-        UNION ALL SELECT '2b_sqq_lmt'
-        UNION ALL SELECT '2c_sqq_pct'
-        UNION ALL SELECT '2d_sqq_lmb'
-        UNION ALL SELECT '2e_sqq_lms'
-        UNION ALL SELECT '2f_sqq_pnl'
+        *
+    FROM (
+        SELECT
+            tname,
+            datemkt_beg AS tt,
+            IIF(tname LIKE '1%', stk_beg0, sqq_beg0) AS tval
+        FROM tradebot_state
+        JOIN (
+                      SELECT '1b_stk_lmt' AS tname
+            UNION ALL SELECT '1c_stk_pct'
+            UNION ALL SELECT '1d_stk_lmb'
+            UNION ALL SELECT '1e_stk_lms'
+            UNION ALL SELECT '1f_stk_pnl'
+            UNION ALL SELECT '2b_sqq_lmt'
+            UNION ALL SELECT '2c_sqq_pct'
+            UNION ALL SELECT '2d_sqq_lmb'
+            UNION ALL SELECT '2e_sqq_lms'
+            UNION ALL SELECT '2f_sqq_pnl'
+        )
+        --
+        UNION ALL
+        --
+        SELECT '1b_stk_lmt', xdate2, stk_lmt FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '1c_stk_pct', xdate2, stk_pct FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '1d_stk_lmb', xdate2, stk_lmb FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '1e_stk_lms', xdate2, stk_lms FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '1f_stk_pnl', xdate2, stk_pnl FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2b_sqq_lmt', xdate2, sqq_lmt FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2c_sqq_pct', xdate2, sqq_pct FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2d_sqq_lmb', xdate2, sqq_lmb FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2e_sqq_lms', xdate2, sqq_lms FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2f_sqq_pnl', xdate2, sqq_pnl FROM tradebot_technical_all
     )
-    --
-    UNION ALL
-    --
-    SELECT '1b_stk_lmt', xdate, stk_lmt FROM tradebot_intraday_lmt
-    --
-    UNION ALL
-    --
-    SELECT '1c_stk_pct', xdate, stk_pct FROM tradebot_intraday_lmt
-    --
-    UNION ALL
-    --
-    SELECT '1d_stk_lmb', xdate, stk_lmb FROM tradebot_intraday_lmt
-    --
-    UNION ALL
-    --
-    SELECT '1e_stk_lms', xdate, stk_lms FROM tradebot_intraday_lmt
-    --
-    UNION ALL
-    --
-    SELECT '1f_stk_pnl', xdate, stk_pnl FROM tradebot_intraday_lmt
-    --
-    UNION ALL
-    --
-    SELECT '2b_sqq_lmt', xdate, sqq_lmt FROM tradebot_intraday_lmt
-    --
-    UNION ALL
-    --
-    SELECT '2c_sqq_pct', xdate, sqq_pct FROM tradebot_intraday_lmt
-    --
-    UNION ALL
-    --
-    SELECT '2d_sqq_lmb', xdate, sqq_lmb FROM tradebot_intraday_lmt
-    --
-    UNION ALL
-    --
-    SELECT '2e_sqq_lms', xdate, sqq_lms FROM tradebot_intraday_lmt
-    --
-    UNION ALL
-    --
-    SELECT '2f_sqq_pnl', xdate, sqq_pnl FROM tradebot_intraday_lmt;
+    WHERE tt;
 
--- table - tradebot_technical_week - insert - .spx
-INSERT INTO tradebot_technical_week
+-- table - tradebot_technical_day, tradebot_technical_week - insert - .spx
+INSERT INTO tradebot_technical_day
     SELECT
         '1a_spx' AS tname,
         xdate AS tt,
         price
     FROM tradebot_intraday_day
-    WHERE
-        sym = '.spx';
-INSERT OR IGNORE INTO tradebot_technical_week
+    WHERE sym = '.spx';
+INSERT INTO tradebot_technical_week
     SELECT
         '1a_spx' AS tname,
         xdate AS tt,
         price
     FROM tradebot_intraday_week
-    WHERE
-        sym = '.spx';
-
--- table - tradebot_technical_day - insert
-DROP TABLE IF EXISTS tradebot_technical_day;
-CREATE table tradebot_technical_day AS
-    SELECT
-        tradebot_technical_week.*
-    FROM tradebot_state
-    JOIN tradebot_technical_week
-    WHERE
-        datemkt_beg <= tt;
-
--- table - tradebot_technical_week - cleanup - date2
-DELETE FROM tradebot_technical_week
-    WHERE
-        tt NOT IN (SELECT DISTINCT xdate2 FROM tradebot_intraday_week);
+    WHERE sym = '.spx';
         `),
         [
             "1 day",
