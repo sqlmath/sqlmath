@@ -4,6 +4,9 @@
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
+# v2024.4.1-beta
+- ci - bugfix - Fix package.json config-regression breaking ci.
+
 # v2024.3.25
 - jslint-ci - Add shell-functions shGitPullrequestCleanup(), shGitPullrequest() to automatically cleanup or create-and-push github-pull-commit to origin/alpha.
 - ci - Fix tmpdir in shell-function shBrowserScreenshot().
