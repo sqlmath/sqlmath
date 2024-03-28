@@ -5,6 +5,7 @@
 - none
 
 # v2024.4.1-beta
+- jslint - Update jslint to v2024.4.1-beta.
 - ci - bugfix - Fix package.json config-regression breaking ci.
 
 # v2024.3.25

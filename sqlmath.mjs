@@ -92,6 +92,7 @@ let debugInline = (function () {
 }());
 let moduleChildProcess;
 let moduleChildProcessSpawn;
+let moduleCrypto;
 let moduleFs;
 let moduleFsInitResolveList;
 let modulePath;
@@ -743,6 +744,25 @@ async function dbFileLoadAsync({
 
 // This function will load <filename> to <db>.
 
+    let filename2;
+    async function _dbFileLoad() {
+        dbData = await dbCallAsync(
+            jsbatonCreate("_dbFileLoad"),
+            [
+                // 0. sqlite3 * pInMemory
+                db,
+                // 1. char *zFilename
+                filename,
+                // 2. const int isSave
+                modeSave,
+                // 3. undefined
+                undefined,
+                // 4. dbData - same position as dbOpenAsync
+                dbData
+            ],
+            "modeDb"
+        );
+    }
     if (modeNoop) {
         return;
     }
@@ -753,22 +773,22 @@ async function dbFileLoadAsync({
         typeof filename === "string" && filename,
         `invalid filename ${filename}`
     );
-    dbData = await dbCallAsync(
-        jsbatonCreate("_dbFileLoad"),
-        [
-            // 0. sqlite3 * pInMemory
-            db,
-            // 1. char *zFilename
-            filename,
-            // 2. const int isSave
-            modeSave,
-            // 3. undefined
-            undefined,
-            // 4. dbData - same position as dbOpenAsync
-            dbData
-        ],
-        "modeDb"
-    );
+    // Save to tmpfile and then atomically-rename to actual-filename.
+    if (moduleFs && modeSave) {
+        filename2 = filename;
+        filename = modulePath.join(
+            modulePath.dirname(filename),
+            `.dbFileSaveAsync.${moduleCrypto.randomUUID()}`
+        );
+        try {
+            await _dbFileLoad();
+            await moduleFs.promises.rename(filename, filename2);
+        } finally {
+            await moduleFs.promises.unlink(filename).catch(noop);
+        }
+    } else {
+        await _dbFileLoad();
+    }
     return dbData[1 + 0];
 }
 
@@ -1455,11 +1475,13 @@ async function moduleFsInit() {
     moduleFsInitResolveList = [];
     [
         moduleChildProcess,
+        moduleCrypto,
         moduleFs,
         modulePath,
         moduleUrl
     ] = await Promise.all([
         import("child_process"),
+        import("crypto"),
         import("fs"),
         import("path"),
         import("url")
