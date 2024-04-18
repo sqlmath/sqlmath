@@ -627,14 +627,59 @@ async function dbCloseAsync(db) {
     }));
 }
 
+async function dbExecAndReturnFirstRow({
+    bindList = [],
+    db,
+    sql
+}) {
+
+// This function will exec <sql> in <db>,
+// and return first-row or empty-object.
+
+    return (
+        noop(
+            noop(
+                await dbExecAsync({
+                    bindList,
+                    db,
+                    sql
+                })
+            )[0]
+            || []
+        )[0]
+        || {}
+    );
+}
+
+async function dbExecAndReturnFirstTable({
+    bindList = [],
+    db,
+    sql
+}) {
+
+// This function will exec <sql> in <db>,
+// and return first-table or empty-list.
+
+    return (
+        noop(
+            await dbExecAsync({
+                bindList,
+                db,
+                sql
+            })
+        )[0]
+        || []
+    );
+}
+
 function dbExecAndReturnLastBlobAsync({
     bindList = [],
     db,
     sql
 }) {
 
-// This function will exec <sql> in <db> and return last value retrieved
-// from execution as raw blob/buffer.
+// This function will exec <sql> in <db>,
+// and return last-value retrieved from execution as raw blob/buffer.
 
     return dbExecAsync({
         bindList,
@@ -763,6 +808,9 @@ async function dbFileLoadAsync({
             "modeDb"
         );
     }
+    function rename() {
+        return moduleFs.promises.rename(filename, filename2);
+    }
     if (modeNoop) {
         return;
     }
@@ -780,12 +828,11 @@ async function dbFileLoadAsync({
             modulePath.dirname(filename),
             `.dbFileSaveAsync.${moduleCrypto.randomUUID()}`
         );
-        try {
-            await _dbFileLoad();
-            await moduleFs.promises.rename(filename, filename2);
-        } finally {
-            await moduleFs.promises.unlink(filename).catch(noop);
-        }
+        await _dbFileLoad();
+        // rename with retry
+        await rename().catch(rename).finally(function () {
+            moduleFs.promises.unlink(filename).catch(noop);
+        });
     } else {
         await _dbFileLoad();
     }
@@ -1451,6 +1498,13 @@ function jsonRowListFromCsv({
     return rowList;
 }
 
+function listOrEmptyList(list) {
+
+// This function will return <list> or empty-list if falsy.
+
+    return list || [];
+}
+
 async function moduleFsInit() {
 
 // This function will import nodejs builtin-modules if they have not yet been
@@ -1645,6 +1699,15 @@ function sqlmathWebworkerInit({
     }
 }
 
+function waitAsync(timeout) {
+
+// This function will wait <timeout> ms.
+
+    return new Promise(function (resolve) {
+        setTimeout(resolve, timeout * !npm_config_mode_test);
+    });
+}
+
 sqlmathInit(); // coverage-hack
 await sqlmathInit();
 sqlmathInit(); // coverage-hack
@@ -1679,6 +1742,8 @@ export {
     childProcessSpawn2,
     ciBuildExt,
     dbCloseAsync,
+    dbExecAndReturnFirstRow,
+    dbExecAndReturnFirstTable,
     dbExecAndReturnLastBlobAsync,
     dbExecAsync,
     dbFileLoadAsync,
@@ -1693,8 +1758,10 @@ export {
     fsWriteFileUnlessTest,
     jsbatonGetInt64,
     jsbatonGetString,
+    listOrEmptyList,
     noop,
     objectDeepCopyWithKeysSorted,
     sqlmathWebworkerInit,
-    version
+    version,
+    waitAsync
 };

@@ -547,7 +547,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         JSON_OBJECT(
             'isDummy', is_dummy,
-            'isHidden', sym NOT in ('11_mybot', '.spx', '.ndx', '.dji')
+            'isHidden', NOT sym IN ('11_mybot', '.spx', '.ndx', '.dji')
         ) AS options,
         rownum AS series_index,
         sym AS series_label
@@ -1164,7 +1164,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
         JSON_OBJECT(
-            'isHidden', tname NOT IN ('1a_spx', '1b_stk_lmt', '1c_stk_pct'),
+            'isHidden', NOT tname IN ('1a_spx', '1b_stk_lmt', '1c_stk_pct'),
             'seriesColor', (CASE
             WHEN (tname LIKE '%_lmb' OR tname LIKE '%_lms') THEN
                 '#999'

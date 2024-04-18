@@ -1,10 +1,13 @@
 # Changelog
 
 # Todo
+- sqlmath - Remove little-used sqlean-extensions.
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
 # v2024.4.1-beta
+- sqlmath - bugfix - Fix null-case handling-behavior for function dbExecAndReturnLastBlobAsync().
+- sqlmath - Add functions dbExecAndReturnFirstRow(), dbExecAndReturnFirstTable(), listOrEmptyList().
 - jslint - Update jslint to v2024.4.1-beta.
 - ci - bugfix - Fix package.json config-regression breaking ci.
 

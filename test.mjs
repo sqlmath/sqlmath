@@ -35,6 +35,8 @@ import {
     childProcessSpawn2,
     ciBuildExt,
     dbCloseAsync,
+    dbExecAndReturnFirstRow,
+    dbExecAndReturnFirstTable,
     dbExecAndReturnLastBlobAsync,
     dbExecAsync,
     dbFileLoadAsync,
@@ -49,9 +51,11 @@ import {
     fsWriteFileUnlessTest,
     jsbatonGetInt64,
     jsbatonGetString,
+    listOrEmptyList,
     noop,
     sqlmathWebworkerInit,
-    version
+    version,
+    waitAsync
 } from "./sqlmath.mjs";
 let {
     jstestDescribe,
@@ -512,6 +516,53 @@ jstestDescribe((
         dbCloseAsync(db);
     });
     jstestIt((
+        "test dbExecAndReturnXxx handling-behavior"
+    ), async function test_dbExecAndReturnXxx() {
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        // test dbExecAndReturnFirstRow null-case handling-behavior
+        assertJsonEqual(
+            noop(
+                await dbExecAndReturnFirstRow({
+                    db,
+                    sql: "SELECT 0 WHERE 0"
+                })
+            ),
+            {}
+        );
+        // test dbExecAndReturnFirstTable null-case handling-behavior
+        assertJsonEqual(
+            noop(
+                await dbExecAndReturnFirstTable({
+                    db,
+                    sql: "SELECT 0 WHERE 0"
+                })
+            ),
+            []
+        );
+        // test dbExecAndReturnLastBlobAsync null-case handling-behavior
+        assertJsonEqual(
+            new TextDecoder().decode(
+                await dbExecAndReturnLastBlobAsync({
+                    db,
+                    sql: "SELECT 0 WHERE 0"
+                })
+            ),
+            ""
+        );
+        // test dbExecAndReturnLastBlobAsync string handling-behavior
+        assertJsonEqual(
+            new TextDecoder().decode(
+                await dbExecAndReturnLastBlobAsync({
+                    db,
+                    sql: "SELECT 1234"
+                })
+            ),
+            "1234"
+        );
+    });
+    jstestIt((
         "test dbExecAsync handling-behavior"
     ), async function test_dbExecAsync() {
         let db = await dbOpenAsync({
@@ -765,6 +816,10 @@ jstestDescribe((
         await assertErrorThrownAsync(function () {
             assertOrThrow(undefined, new Error());
         }, "");
+        // test listOrEmptyList null-case handling-behavior
+        assertJsonEqual(listOrEmptyList(), []);
+        // test waitAsync null-case handling-behavior
+        await waitAsync();
     });
 });
 
@@ -780,11 +835,11 @@ jstestDescribe((
         assertJsonEqual(
             "not an error",
             noop(
-                await dbExecAsync({
+                await dbExecAndReturnFirstRow({
                     db,
                     sql: `SELECT throwerror(0) AS val`
                 })
-            )[0][0].val
+            ).val
         );
         await Promise.all([
             [1, "SQL logic error"],
@@ -862,7 +917,7 @@ jstestDescribe((
             let valActual;
             try {
                 valActual = noop(
-                    await dbExecAsync({
+                    await dbExecAndReturnFirstRow({
                         bindList: {
                             valIn
                         },
@@ -871,7 +926,7 @@ jstestDescribe((
 SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                         `)
                     })
-                )[0][0].result;
+                ).result;
             } catch (ignore) {
                 assertOrThrow(valExpect === "error", JSON.stringify({
                     ii,
@@ -1113,11 +1168,11 @@ SELECT
             ]) {
                 let sql = `SELECT ${func}(${arg}) AS val`;
                 let valActual = noop(
-                    await dbExecAsync({
+                    await dbExecAndReturnFirstRow({
                         db,
                         sql
                     })
-                )[0][0].val;
+                ).val;
                 assertJsonEqual(valActual, valExpect, {
                     sql,
                     valActual,
@@ -1133,10 +1188,9 @@ SELECT
             filename: ":memory:"
         });
         await (async function () {
-            let valActual = noop(
-                await dbExecAsync({
-                    db,
-                    sql: (`
+            let valActual = await dbExecAndReturnFirstTable({
+                db,
+                sql: (`
 -- test null-case handling-behavior
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
@@ -1146,9 +1200,8 @@ SELECT
         quantile(val, 0.5) AS qnt,
         stdev(val) AS std
     FROM __tmp1;
-                    `)
-                })
-            )[0];
+                `)
+            });
             assertJsonEqual(
                 valActual,
                 [{id: 1, mdn: null, qnt: null, std: null}]
@@ -1249,13 +1302,12 @@ SELECT
                 Array.from(data).reverse()
             ].map(async function (data) {
                 let valActual;
-                valActual = noop(
-                    await dbExecAsync({
-                        bindList: {
-                            tmp1: JSON.stringify(data)
-                        },
-                        db,
-                        sql: (`
+                valActual = await dbExecAndReturnFirstRow({
+                    bindList: {
+                        tmp1: JSON.stringify(data)
+                    },
+                    db,
+                    sql: (`
 SELECT
         median(value) AS mdn,
         quantile(value, ${kk}) AS qnt,
@@ -1263,9 +1315,8 @@ SELECT
     FROM JSON_EACH($tmp1);
 -- test null-case handling-behavior
 SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
-                        `)
-                    })
-                )[0][0];
+                    `)
+                });
                 assertJsonEqual(
                     valActual,
                     {
@@ -2203,13 +2254,12 @@ SELECT doublearray_jsonto(win_sinefit2(1, 2, 3, 4)) FROM __tmp1;
             // test win_sinefit2-aggregate-normal handling-behavior
             (async function () {
                 let valActual;
-                valActual = noop(
-                    await dbExecAsync({
-                        bindList: {
-                            valIn
-                        },
-                        db,
-                        sql: (`
+                valActual = await dbExecAndReturnFirstRow({
+                    bindList: {
+                        valIn
+                    },
+                    db,
+                    sql: (`
 SELECT
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM (
@@ -2217,9 +2267,8 @@ SELECT
             win_sinefit2(1, NULL, value->>0, value->>1) AS __wsf
         FROM JSON_EACH($valIn)
     );
-                        `)
-                    })
-                )[0][0];
+                    `)
+                });
                 assertJsonEqual(
                     valActual,
                     {
@@ -2262,10 +2311,9 @@ SELECT
                     "xx1": 51,
                     "yy1": 5
                 };
-                valActual = noop(
-                    await dbExecAsync({
-                        db,
-                        sql: (`
+                valActual = await dbExecAndReturnFirstRow({
+                    db,
+                    sql: (`
 SELECT
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM (
@@ -2280,9 +2328,8 @@ SELECT
             UNION ALL SELECT 51, 5
         )
     )
-                        `)
-                    })
-                )[0][0];
+                    `)
+                });
                 assertJsonEqual(valActual, valExpect);
             }()),
             // test win_sinefit2-aggregate-window handling-behavior
@@ -2599,13 +2646,12 @@ date close
                         priceClose: Number(elem[1])
                     };
                 });
-                valActual = noop(
-                    await dbExecAsync({
-                        bindList: {
-                            testDataSpx
-                        },
-                        db,
-                        sql: (`
+                valActual = await dbExecAndReturnFirstTable({
+                    bindList: {
+                        testDataSpx
+                    },
+                    db,
+                    sql: (`
 DROP TABLE IF EXISTS __sinefit_csv;
 CREATE TEMP TABLE __sinefit_csv AS
     SELECT
@@ -2646,9 +2692,8 @@ SELECT
             sinefit_extract(__wsf, 0, 'predict_snr', ii + 1) AS predict_snr
         FROM __sinefit_csv
     ) USING (ii);
-                        `)
-                    })
-                )[0];
+                    `)
+                });
                 valActual = (
                     "date saa sww spp stt"
                     + " rr0 rr1 ii yy linear sinefit sine\n"

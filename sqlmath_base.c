@@ -585,7 +585,12 @@ SQLMATH_API void dbExec(
         ii += 1;
     }
     // bracket database [
-    sqlite3_str_appendchar(str99, 1, '[');
+    switch (responseType) {
+    case SQLITE_RESPONSETYPE_LASTBLOB:
+        break;
+    default:
+        sqlite3_str_appendchar(str99, 1, '[');
+    }
     // loop over each table - start
     while (1) {
         // ignore whitespace
