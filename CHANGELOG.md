@@ -5,6 +5,7 @@
 - none
 
 # v2024.4.1-beta
+- sqlite - Update to sqlite v3.42.0.
 - sqlmath - Remove little-used sqlean-regexp-extension and file sqlmath_external_pcre2.c.
 - sqlmath - bugfix - Fix off-by-2 root-mean-square-deviation calculation of parameter lee in sql-function win_sinefit2().
 - sqlmath - bugfix - Fix null-case handling-behavior for function dbExecAndReturnLastBlobAsync().
@@ -41,7 +42,7 @@
 - sqlean - Add sqlean-extension regexp with regexp-replacement and pcre2 - increases wasm size to 1.1mb.
 - zlib - Update to zlib v1.3.
 - sqlmath - Fix SIGSEGV error when binding external-buffer during db_exec.
-- sqlite - Update to sqlite v3.39.4.
+- sqlite - Update to sqlite v3.42.0.
 - python - Add python-functions db_file_load(), db_file_save().
 - sqlmath - Revamp how js-arraybuffers are passed to c-api without copying.
 - python - Revamp python-c-extension to support cp312.

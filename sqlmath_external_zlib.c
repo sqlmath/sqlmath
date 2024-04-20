@@ -144,7 +144,7 @@ shRollupFetch
             "url": "https://github.com/madler/zlib/blob/v1.3/gzwrite.c"
         },
         {
-            "url": "https://github.com/sqlite/sqlite/blob/version-3.42.0/ext/misc/compress.c"
+            "url": "https://github.com/sqlite/sqlite/blob/version-3.44.2/ext/misc/compress.c"
         }
     ],
     "replaceList": [
@@ -22455,13 +22455,13 @@ int ZEXPORT gzclose_w(gzFile file) {
 
 
 /*
-repo https://github.com/sqlite/sqlite/tree/version-3.42.0
-committed 2023-05-16T12:36:15Z
+repo https://github.com/sqlite/sqlite/tree/version-3.44.2
+committed 2023-11-24T11:41:44Z
 */
 
 
 /*
-file https://github.com/sqlite/sqlite/blob/version-3.42.0/ext/misc/compress.c
+file https://github.com/sqlite/sqlite/blob/version-3.44.2/ext/misc/compress.c
 */
 /*
 ** 2014-06-13
