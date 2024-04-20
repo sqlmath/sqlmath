@@ -2573,7 +2573,7 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
         sqlite3_result_double_or_null(context, sqrt(    //
                 wsf->vyy        //
                 * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy))     //
-                / (wsf->nnn - 2)));
+                / wsf->nnn));
         return;
     }
     // linest pearson-correlation xy

@@ -6,6 +6,7 @@
 - none
 
 # v2024.4.1-beta
+- sqlmath - bugfix - Fix off-by-2 root-mean-square-deviation calculation of parameter lee in sql-function win_sinefit2().
 - sqlmath - bugfix - Fix null-case handling-behavior for function dbExecAndReturnLastBlobAsync().
 - sqlmath - Add functions dbExecAndReturnFirstRow(), dbExecAndReturnFirstTable(), listOrEmptyList().
 - jslint - Update jslint to v2024.4.1-beta.
