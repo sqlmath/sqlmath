@@ -342,7 +342,6 @@ async function ciBuildExt1NodejsConfigure({
                 ],
                 "sources": [
                     "sqlmath_base.c",
-                    "sqlmath_external_pcre2.c",
                     "sqlmath_external_sqlite.c",
                     "sqlmath_external_zlib.c"
                 ],

@@ -3038,10 +3038,6 @@ int sqlite3_compress_init(
     const sqlite3_api_routines * pApi
 );
 
-int regexp_init(
-    sqlite3 * db
-);
-
 int sqlite3_sqlmath_custom_init(
     sqlite3 *,
     char **,
@@ -3058,8 +3054,6 @@ int sqlite3_sqlmath_base_init(
     int errcode = 0;
     //
     errcode = sqlite3_compress_init(db, pzErrMsg, pApi);
-    SQLITE_OK_OR_RETURN_RC(errcode);
-    errcode = regexp_init(db);
     SQLITE_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_sqlmath_custom_init(db, pzErrMsg, pApi);
     SQLITE_OK_OR_RETURN_RC(errcode);

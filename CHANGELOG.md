@@ -1,11 +1,11 @@
 # Changelog
 
 # Todo
-- sqlmath - Remove little-used sqlean-extensions.
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
 # v2024.4.1-beta
+- sqlmath - Remove little-used sqlean-regexp-extension and file sqlmath_external_pcre2.c.
 - sqlmath - bugfix - Fix off-by-2 root-mean-square-deviation calculation of parameter lee in sql-function win_sinefit2().
 - sqlmath - bugfix - Fix null-case handling-behavior for function dbExecAndReturnLastBlobAsync().
 - sqlmath - Add functions dbExecAndReturnFirstRow(), dbExecAndReturnFirstTable(), listOrEmptyList().

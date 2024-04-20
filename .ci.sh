@@ -6,16 +6,12 @@
 
 : "
     for URL in \
-        https://github.com/google/re2/archive/refs/tags/2023-03-01.tar.gz \
         https://github.com/madler/zlib/releases/download/v1.3/zlib-1.3.tar.gz \
-        https://github.com/nalgeon/sqlean/archive/refs/tags/0.21.8.tar.gz \
         https://www.sqlite.org/2023/sqlite-autoconf-3420000.tar.gz
     do
         curl -L "$URL" | tar -xz
     done
     for DIR in \
-        re2-2023-03-01 \
-        sqlean-0.21.8 \
         sqlite-autoconf-3420000 \
         zlib-1.3
     do
@@ -220,7 +216,6 @@ shCiBuildWasm() {(set -e
     for FILE in \
         sqlmath_base.c \
         sqlmath_custom.c \
-        sqlmath_external_pcre2.c \
         sqlmath_external_sqlite.c \
         sqlmath_external_zlib.c
     do
@@ -280,7 +275,6 @@ shCiBuildWasm() {(set -e
         -s WASM_BIGINT \
         build/sqlmath_base.c.wasm.o \
         build/sqlmath_custom.c.wasm.o \
-        build/sqlmath_external_pcre2.c.wasm.o \
         build/sqlmath_external_sqlite.c.wasm.o \
         build/sqlmath_external_zlib.c.wasm.o \
         #
@@ -489,7 +483,6 @@ shSqlmathUpdate() {(set -e
     then
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
-        shRollupFetch sqlmath_external_pcre2.c
         shRollupFetch sqlmath_external_sqlite.c
         shRollupFetch sqlmath_external_zlib.c
         return
@@ -506,7 +499,6 @@ shSqlmathUpdate() {(set -e
             sqlmath/__init__.py \
             sqlmath_base.c \
             sqlmath_browser.mjs \
-            sqlmath_external_pcre2.c \
             sqlmath_external_sqlite.c \
             sqlmath_external_zlib.c \
             sqlmath_wrapper_wasm.js
