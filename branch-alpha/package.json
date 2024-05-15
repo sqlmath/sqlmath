@@ -11,7 +11,7 @@
     "engines": {
         "node": ">=14"
     },
-    "fileCount": 42,
+    "fileCount": 41,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",
@@ -29,7 +29,7 @@
     ],
     "repository": {
         "type": "git",
-        "url": "https://github.com/sqlmath/sqlmath.git"
+        "url": "git+https://github.com/sqlmath/sqlmath.git"
     },
     "scripts": {
         "build": "sh jslint_ci.sh shCiBuildNodejs",
@@ -38,5 +38,5 @@
     },
     "shCiArtifactUpload": 1,
     "shCiPublishNpm": 1,
-    "version": "2024.3.25"
+    "version": "2024.4.1-beta"
 }

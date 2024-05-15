@@ -1,5 +1,5 @@
-<svg height="1196" width="800" xmlns="http://www.w3.org/2000/svg">
-<rect height="1196" fill="#222" width="800"></rect>
+<svg height="1240" width="800" xmlns="http://www.w3.org/2000/svg">
+<rect height="1240" fill="#222" width="800"></rect>
 <text
     fill="#7f7"
     font-family="consolas, menlo, monospace"
@@ -47,283 +47,295 @@
     textLength="768"
     x="10"
     y="164"
-># v2024.3.25                                                                                     </tspan>
+># v2024.4.1-beta                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="186"
->- jslint-ci - Add shell-functions shGitPullrequestCleanup(), shGitPullrequest() to automatically\</tspan>
+>- webdemo - Replace market-indices .spx/.ndx/.dji with futures .es/.nq/.ym.                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="208"
->   cleanup or create-and-push github-pull-commit to origin/alpha.                                </tspan>
+>- sqlite - Decouple c-function str99JsonAppendText() from builtin-function jsonAppendString().   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="230"
->- ci - Fix tmpdir in shell-function shBrowserScreenshot().                                       </tspan>
+>- sqlite - Update to sqlite v3.42.0.                                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="252"
->- webdemo - Update tables tradebot_intraday_xxx.                                                 </tspan>
+>- sqlmath - Remove little-used sqlean-regexp-extension and file sqlmath_external_pcre2.c.        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
->- migration - Rename prm ydate to xdate, ytime to xtime.                                         </tspan>
+>- sqlmath - bugfix - Fix off-by-2 root-mean-square-deviation calculation of parameter lee in sql\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->- sqlmath - Move function dbTableImportAsync from file sqlmath_browser.mjs to sqlmath.mjs.       </tspan>
+>  -function win_sinefit2().                                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="318"
->- ci - Update github-ci for actions/cache, actions/setup-python from nodejs v16 to nodejs v20.   </tspan>
+>- sqlmath - bugfix - Fix null-case handling-behavior for function dbExecAndReturnLastBlobAsync()\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="340"
->- ci - Update shell-function shRollupFetch() to fix blank date-committed.                        </tspan>
+>  .                                                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
->                                                                                                 </tspan>
+>- sqlmath - Add functions dbExecAndReturnFirstRow(), dbExecAndReturnFirstTable(), listOrEmptyLis\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
-># v2024.1.21                                                                                     </tspan>
+>  t().                                                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->- sqlmath - Add function assertErrorThrownAsync().                                               </tspan>
+>- jslint - Update jslint to v2024.4.1-beta.                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->                                                                                                 </tspan>
+>- ci - bugfix - Fix package.json config-regression breaking ci.                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
-># v2023.12.20                                                                                    </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
->- chart - Improve ergonomics with import tsv.                                                    </tspan>
+># v2024.3.25                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
->- betadog - bugfix - Remove over-complicated prm ttt from table y_historical.                    </tspan>
+>- jslint-ci - Add shell-functions shGitPullrequestCleanup(), shGitPullrequest() to automatically\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->                                                                                                 </tspan>
+>   cleanup or create-and-push github-pull-commit to origin/alpha.                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="538"
-># v2023.11.22                                                                                    </tspan>
+>- ci - Fix tmpdir in shell-function shBrowserScreenshot().                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
->- sqlmath - Add sql-functions normalizewithsquared(), squaredwithsign().                         </tspan>
+>- webdemo - Update tables tradebot_intraday_xxx.                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="582"
->                                                                                                 </tspan>
+>- migration - Rename prm ydate to xdate, ytime to xtime.                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="604"
-># v2023.10.25                                                                                    </tspan>
+>- sqlmath - Move function dbTableImportAsync from file sqlmath_browser.mjs to sqlmath.mjs.       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="626"
->- jslint - Update jslint to v2023.10.24.                                                         </tspan>
+>- ci - Update github-ci for actions/cache, actions/setup-python from nodejs v16 to nodejs v20.   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->- sqlmath - Split monolithic-file sqlite_rollup.c into separate files:                           </tspan>
+>- ci - Update shell-function shRollupFetch() to fix blank date-committed.                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->    - sqlmath_external_pcre2.c                                                                   </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->    - sqlmath_external_sqlite.c                                                                  </tspan>
+># v2024.1.21                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->    - sqlmath_external_zlib.c                                                                    </tspan>
+>- sqlmath - Add function assertErrorThrownAsync().                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="736"
->- python - Remove setuptools dependency and implement standalone bdist_wheel() api.              </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="758"
->- sqlean - Add sqlean-extension regexp with regexp-replacement and pcre2 - increases wasm size t\</tspan>
+># v2023.12.20                                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="780"
->  o 1.1mb.                                                                                       </tspan>
+>- chart - Improve ergonomics with import tsv.                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="802"
->- zlib - Update to zlib v1.3.                                                                    </tspan>
+>- betadog - bugfix - Remove over-complicated prm ttt from table y_historical.                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="824"
->- sqlmath - Fix SIGSEGV error when binding external-buffer during db_exec.                       </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="846"
->- sqlite - Update to sqlite v3.39.4.                                                             </tspan>
+># v2023.11.22                                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="868"
->- python - Add python-functions db_file_load(), db_file_save().                                  </tspan>
+>- sqlmath - Add sql-functions normalizewithsquared(), squaredwithsign().                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="890"
->- sqlmath - Revamp how js-arraybuffers are passed to c-api without copying.                      </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="912"
->- python - Revamp python-c-extension to support cp312.                                           </tspan>
+># v2023.10.25                                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="934"
->- python - Revamp python-c-extension to use nodejs-like-api dbClose, dbExec, dbFileLoadOrSave, d\</tspan>
+>- jslint - Update jslint to v2023.10.24.                                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="956"
->  bNoop, dbOpen.                                                                                 </tspan>
+>- sqlmath - Split monolithic-file sqlite_rollup.c into separate files:                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="978"
->- sqlmath - Remove unused sql-function-prm in sinefit_extra(), stp.                              </tspan>
+>    - sqlmath_external_pcre2.c                                                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1000"
->- sqlmath - Add sql-function-prm in sinefit_extra(), predict_cnr, predict_cos, predict_sin.      </tspan>
+>    - sqlmath_external_sqlite.c                                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1022"
->                                                                                                 </tspan>
+>    - sqlmath_external_zlib.c                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1044"
-># v2023.9.25                                                                                     </tspan>
+>- python - Remove setuptools dependency and implement standalone bdist_wheel() api.              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1066"
->- sqlmath - Add sql-functions coinflip_extract(), normalizewithsqrt(), win_coinflip2().          </tspan>
+>- sqlean - Add sqlean-extension regexp with regexp-replacement and pcre2 - increases wasm size t\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1088"
->                                                                                                 </tspan>
+>  o 1.1mb.                                                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1110"
-># v2023.9.19                                                                                     </tspan>
+>- zlib - Update to zlib v1.3.                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1132"
->- ci - Update ci-workflow publish to auto-publish pypi-package.                                  </tspan>
+>- sqlmath - Fix SIGSEGV error when binding external-buffer during db_exec.                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1154"
->- ci - Add ci-workflow publish_pypi_test.                                                        </tspan>
+>- sqlite - Update to sqlite v3.42.0.                                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1176"
->- python - Remove setuptools dependency. - part1                                                 </tspan>
+>- python - Add python-functions db_file_load(), db_file_save().                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1198"
+>- sqlmath - Revamp how js-arraybuffers are passed to c-api without copying.                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1220"
+>- python - Revamp python-c-extension to support cp312.                                           </tspan>
 
 </text>
 </svg>

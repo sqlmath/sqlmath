@@ -33,7 +33,6 @@ include sqlmath_base.c
 include sqlmath_browser.mjs
 include sqlmath_custom.c
 include sqlmath_custom.mjs
-include sqlmath_external_pcre2.c
 include sqlmath_external_sqlite.c
 include sqlmath_external_zlib.c
 include sqlmath_wrapper_wasm.js

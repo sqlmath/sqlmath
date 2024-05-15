@@ -92,6 +92,7 @@ let debugInline = (function () {
 }());
 let moduleChildProcess;
 let moduleChildProcessSpawn;
+let moduleCrypto;
 let moduleFs;
 let moduleFsInitResolveList;
 let modulePath;
@@ -104,7 +105,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2024.3.25";
+let version = "v2024.4.1-beta";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -341,7 +342,6 @@ async function ciBuildExt1NodejsConfigure({
                 ],
                 "sources": [
                     "sqlmath_base.c",
-                    "sqlmath_external_pcre2.c",
                     "sqlmath_external_sqlite.c",
                     "sqlmath_external_zlib.c"
                 ],
@@ -626,14 +626,59 @@ async function dbCloseAsync(db) {
     }));
 }
 
+async function dbExecAndReturnFirstRow({
+    bindList = [],
+    db,
+    sql
+}) {
+
+// This function will exec <sql> in <db>,
+// and return first-row or empty-object.
+
+    return (
+        noop(
+            noop(
+                await dbExecAsync({
+                    bindList,
+                    db,
+                    sql
+                })
+            )[0]
+            || []
+        )[0]
+        || {}
+    );
+}
+
+async function dbExecAndReturnFirstTable({
+    bindList = [],
+    db,
+    sql
+}) {
+
+// This function will exec <sql> in <db>,
+// and return first-table or empty-list.
+
+    return (
+        noop(
+            await dbExecAsync({
+                bindList,
+                db,
+                sql
+            })
+        )[0]
+        || []
+    );
+}
+
 function dbExecAndReturnLastBlobAsync({
     bindList = [],
     db,
     sql
 }) {
 
-// This function will exec <sql> in <db> and return last value retrieved
-// from execution as raw blob/buffer.
+// This function will exec <sql> in <db>,
+// and return last-value retrieved from execution as raw blob/buffer.
 
     return dbExecAsync({
         bindList,
@@ -743,6 +788,25 @@ async function dbFileLoadAsync({
 
 // This function will load <filename> to <db>.
 
+    let filename2;
+    async function _dbFileLoad() {
+        dbData = await dbCallAsync(
+            jsbatonCreate("_dbFileLoad"),
+            [
+                // 0. sqlite3 * pInMemory
+                db,
+                // 1. char *zFilename
+                filename,
+                // 2. const int isSave
+                modeSave,
+                // 3. undefined
+                undefined,
+                // 4. dbData - same position as dbOpenAsync
+                dbData
+            ],
+            "modeDb"
+        );
+    }
     if (modeNoop) {
         return;
     }
@@ -753,22 +817,22 @@ async function dbFileLoadAsync({
         typeof filename === "string" && filename,
         `invalid filename ${filename}`
     );
-    dbData = await dbCallAsync(
-        jsbatonCreate("_dbFileLoad"),
-        [
-            // 0. sqlite3 * pInMemory
-            db,
-            // 1. char *zFilename
-            filename,
-            // 2. const int isSave
-            modeSave,
-            // 3. undefined
-            undefined,
-            // 4. dbData - same position as dbOpenAsync
-            dbData
-        ],
-        "modeDb"
-    );
+    // Save to tmpfile and then atomically-rename to actual-filename.
+    if (moduleFs && modeSave) {
+        filename2 = filename;
+        filename = modulePath.join(
+            modulePath.dirname(filename),
+            `.dbFileSaveAsync.${moduleCrypto.randomUUID()}`
+        );
+        try {
+            await _dbFileLoad();
+            await moduleFs.promises.rename(filename, filename2);
+        } finally {
+            await moduleFs.promises.unlink(filename).catch(noop);
+        }
+    } else {
+        await _dbFileLoad();
+    }
     return dbData[1 + 0];
 }
 
@@ -1431,6 +1495,13 @@ function jsonRowListFromCsv({
     return rowList;
 }
 
+function listOrEmptyList(list) {
+
+// This function will return <list> or empty-list if falsy.
+
+    return list || [];
+}
+
 async function moduleFsInit() {
 
 // This function will import nodejs builtin-modules if they have not yet been
@@ -1455,11 +1526,13 @@ async function moduleFsInit() {
     moduleFsInitResolveList = [];
     [
         moduleChildProcess,
+        moduleCrypto,
         moduleFs,
         modulePath,
         moduleUrl
     ] = await Promise.all([
         import("child_process"),
+        import("crypto"),
         import("fs"),
         import("path"),
         import("url")
@@ -1623,6 +1696,15 @@ function sqlmathWebworkerInit({
     }
 }
 
+function waitAsync(timeout) {
+
+// This function will wait <timeout> ms.
+
+    return new Promise(function (resolve) {
+        setTimeout(resolve, timeout * !npm_config_mode_test);
+    });
+}
+
 sqlmathInit(); // coverage-hack
 await sqlmathInit();
 sqlmathInit(); // coverage-hack
@@ -1657,6 +1739,8 @@ export {
     childProcessSpawn2,
     ciBuildExt,
     dbCloseAsync,
+    dbExecAndReturnFirstRow,
+    dbExecAndReturnFirstTable,
     dbExecAndReturnLastBlobAsync,
     dbExecAsync,
     dbFileLoadAsync,
@@ -1671,8 +1755,10 @@ export {
     fsWriteFileUnlessTest,
     jsbatonGetInt64,
     jsbatonGetString,
+    listOrEmptyList,
     noop,
     objectDeepCopyWithKeysSorted,
     sqlmathWebworkerInit,
-    version
+    version,
+    waitAsync
 };

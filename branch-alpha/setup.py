@@ -26,8 +26,8 @@ npm_config_mode_debug2=1 python setup.py build_ext && python setup.py test
 python -m build
 """
 
-__version__ = "2024.3.25"
-__version_info__ = ("2024", "3", "25")
+__version__ = "2024.4.1"
+__version_info__ = ("2024", "4", "1")
 
 import asyncio
 import base64
@@ -67,8 +67,6 @@ async def build_ext_async(): # noqa: C901
                 file_src = pathlib.Path("sqlmath_custom.c")
             case "SRC_SQLITE_SHELL":
                 file_src = pathlib.Path("sqlmath_external_sqlite.c")
-            case "SRC_PCRE2_BASE":
-                file_src = pathlib.Path("sqlmath_external_pcre2.c")
             case "SRC_SQLITE_BASE":
                 file_src = pathlib.Path("sqlmath_external_sqlite.c")
             case "SRC_ZLIB_BASE":
@@ -273,7 +271,6 @@ async def build_ext_async(): # noqa: C901
     await asyncio.gather(*[
         build_ext_obj(cdefine)
         for cdefine in [
-            "SRC_PCRE2_BASE",
             "SRC_SQLITE_BASE",
             "SRC_ZLIB_BASE",
             #
@@ -286,7 +283,6 @@ async def build_ext_async(): # noqa: C901
 # https://github.com/kaizhu256/sqlmath/actions/runs/4886979281/jobs/8723014944
     arg_list = []
     arg_list += [ # must be ordered first
-        "build/SRC_PCRE2_BASE.obj",
         "build/SRC_SQLITE_BASE.obj",
         "build/SRC_ZLIB_BASE.obj",
         #

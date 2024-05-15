@@ -106,7 +106,6 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 # License
 - [sqlite](https://github.com/sqlite/sqlite) is under [public domain](https://www.sqlite.org/copyright.html).
 - [jslint](https://github.com/jslint-org/jslint) is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
-- [pcre2](https://github.com/PCRE2Project/pcre2) is under [3-Clause BSD License](https://github.com/PCRE2Project/pcre2/blob/pcre2-10.42/LICENCE)
 - [zlib](https://github.com/madler/zlib) is under [zlib License](https://github.com/madler/zlib/blob/v1.2.13/LICENSE).
 - [cpplint.py](cpplint.py) is under [3-Clause BSD License](https://github.com/cpplint/cpplint/blob/1.5.5/LICENSE).
 - [indent.exe](indent.exe) is under [GPLv3 License](https://www.gnu.org/licenses/gpl-3.0.txt).
@@ -122,11 +121,11 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 ```shell
 python -m build
 #
-twine upload --repository testpypi dist/sqlmath-2024.3.25*
-py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2024.3.25
+twine upload --repository testpypi dist/sqlmath-2024.4.1*
+py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2024.4.1
 #
-twine upload dist/sqlmath-2024.3.25*
-pip install sqlmath==2024.3.25
+twine upload dist/sqlmath-2024.4.1*
+pip install sqlmath==2024.4.1
 ```
 
 
@@ -134,13 +133,16 @@ pip install sqlmath==2024.3.25
 ### sqlite upgrade
 - goto https://www.sqlite.org/changes.html
 ```shell
-curl -L https://www.sqlite.org/2023/sqlite-autoconf-3420000.tar.gz | tar -xz
-git grep "3\.39\.4\|3390400"
-for FILE in .ci.sh sqlite_rollup.c
+curl -L https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz | tar -xz
+mv sqlite-autoconf-3440200 .sqlite-autoconf-3440200
+git grep "3\.42\.0\|3420000"
+for FILE in .ci.sh sqlmath_external_sqlite.c sqlmath_external_zlib.c
 do
-    sed -i -e "s|\<3\.39\.4\>|3.42.0|g" "$FILE"
-    sed -i -e "s|\<3390400\>|3420000|g" "$FILE"
+    sed -i -e "s|\<3\.42\.0\>|3.44.2|g" "$FILE"
+    sed -i -e "s|\<3420000\>|3440200|g" "$FILE"
 done
-git grep "3\.39\.4\|3390400"
-shRollupFetch sqlite_rollup.c
+git grep "3\.42\.0\|3420000"
+shRollupFetch sqlmath_external_sqlite.c
+shRollupFetch sqlmath_external_zlib.c
+sh jslint_ci.sh shSqlmathUpdate
 ```

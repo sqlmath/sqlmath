@@ -585,7 +585,12 @@ SQLMATH_API void dbExec(
         ii += 1;
     }
     // bracket database [
-    sqlite3_str_appendchar(str99, 1, '[');
+    switch (responseType) {
+    case SQLITE_RESPONSETYPE_LASTBLOB:
+        break;
+    default:
+        sqlite3_str_appendchar(str99, 1, '[');
+    }
     // loop over each table - start
     while (1) {
         // ignore whitespace
@@ -2568,7 +2573,7 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
         sqlite3_result_double_or_null(context, sqrt(    //
                 wsf->vyy        //
                 * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy))     //
-                / (wsf->nnn - 2)));
+                / wsf->nnn));
         return;
     }
     // linest pearson-correlation xy
@@ -3033,10 +3038,6 @@ int sqlite3_compress_init(
     const sqlite3_api_routines * pApi
 );
 
-int regexp_init(
-    sqlite3 * db
-);
-
 int sqlite3_sqlmath_custom_init(
     sqlite3 *,
     char **,
@@ -3053,8 +3054,6 @@ int sqlite3_sqlmath_base_init(
     int errcode = 0;
     //
     errcode = sqlite3_compress_init(db, pzErrMsg, pApi);
-    SQLITE_OK_OR_RETURN_RC(errcode);
-    errcode = regexp_init(db);
     SQLITE_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_sqlmath_custom_init(db, pzErrMsg, pApi);
     SQLITE_OK_OR_RETURN_RC(errcode);
