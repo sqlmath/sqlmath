@@ -302,8 +302,10 @@ CREATE TABLE tradebot_intraday_day AS
         xdate,
         price
     FROM tradebot_intraday_all
-    WHERE xdate >= (SELECT datemkt0 FROM tradebot_state);
-INSERT INTO tradebot_intraday_day
+    WHERE xdate >= (SELECT datemkt_beg FROM tradebot_state)
+    --
+    UNION ALL
+    --
     SELECT
         sym,
         DATETIME(datemkt_beg, '-1 MINUTE') AS xdate,
@@ -317,10 +319,10 @@ DROP TABLE IF EXISTS tradebot_intraday_week;
 CREATE TABLE tradebot_intraday_week AS
     SELECT
         sym,
-        xdate2 AS xdate,
+        xdate,
         price
     FROM tradebot_intraday_all
-    WHERE xdate2;
+    WHERE xdate = xdate2;
 
 -- table - tradebot_technical_day - insert - lmt
 DROP TABLE IF EXISTS tradebot_technical_day;
@@ -456,21 +458,21 @@ INSERT INTO tradebot_technical_week
     )
     WHERE tt;
 
--- table - tradebot_technical_day, tradebot_technical_week - insert - .spx
+-- table - tradebot_technical_day, tradebot_technical_week - insert - .es
 INSERT INTO tradebot_technical_day
     SELECT
-        '1a_spx' AS tname,
+        '1a_es' AS tname,
         xdate AS tt,
         price
     FROM tradebot_intraday_day
-    WHERE sym = '.spx';
+    WHERE sym = '.es';
 INSERT INTO tradebot_technical_week
     SELECT
-        '1a_spx' AS tname,
+        '1a_es' AS tname,
         xdate AS tt,
         price
     FROM tradebot_intraday_week
-    WHERE sym = '.spx';
+    WHERE sym = '.es';
         `),
         [
             "1 day",
@@ -547,7 +549,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         JSON_OBJECT(
             'isDummy', is_dummy,
-            'isHidden', NOT sym IN ('11_mybot', '.spx', '.ndx', '.dji')
+            'isHidden', NOT sym IN ('11_mybot', '.es', '.nq', '.ym')
         ) AS options,
         rownum AS series_index,
         sym AS series_label
@@ -558,9 +560,9 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
                 ORDER BY
                     sym = '11_mybot' DESC,
                     sym = '----' DESC,
-                    sym = '.spx' DESC,
-                    sym = '.ndx' DESC,
-                    sym = '.dji' DESC,
+                    sym = '.es' DESC,
+                    sym = '.nq' DESC,
+                    sym = '.ym' DESC,
                     sym = '---- ' DESC,
                     sym
             ) AS rownum,
@@ -1103,8 +1105,8 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
 UPDATE ${tableData}
     SET
         tval = (CASE
-            WHEN (tname = '1a_spx') THEN
-                (lmt_eee * 1.0 / spx_eee) * (tval - spx_avg) + lmt_avg
+            WHEN (tname = '1a_es') THEN
+                (lmt_eee * 1.0 / es_eee) * (tval - es_avg) + lmt_avg
             WHEN (tname = '1f_stk_pnl') THEN
                 (lmt_eee * 1.0 / pnl_eee) * (tval - pnl_avg) + lmt_avg
         END)
@@ -1114,8 +1116,8 @@ UPDATE ${tableData}
         lmt_eee,
         pnl_avg,
         pnl_eee,
-        spx_avg,
-        spx_eee
+        es_avg,
+        es_eee
     FROM (SELECT 0)
     JOIN (SELECT
         MEDIAN(tval) AS lmt_avg,
@@ -1130,15 +1132,15 @@ UPDATE ${tableData}
         WHERE tname = '1f_stk_pnl'
     )
     JOIN (SELECT
-        MEDIAN(tval) AS spx_avg,
-        STDEV(tval) AS spx_eee
+        MEDIAN(tval) AS es_avg,
+        STDEV(tval) AS es_eee
         FROM ${tableData}
-        WHERE tname = '1a_spx'
+        WHERE tname = '1a_es'
     )
     --
     ) AS __join1
     WHERE
-        tname IN ('1a_spx', '1f_stk_pnl');
+        tname IN ('1a_es', '1f_stk_pnl');
 UPDATE ${tableData}
     SET
         tt = UNIXEPOCH(tt),
@@ -1164,7 +1166,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
         JSON_OBJECT(
-            'isHidden', NOT tname IN ('1a_spx', '1b_stk_lmt', '1c_stk_pct'),
+            'isHidden', NOT tname IN ('1a_es', '1b_stk_lmt', '1c_stk_pct'),
             'seriesColor', (CASE
             WHEN (tname LIKE '%_lmb' OR tname LIKE '%_lms') THEN
                 '#999'
@@ -1233,7 +1235,7 @@ DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
 UPDATE ${tableChart}
     SET
         series_label = (CASE
-            WHEN (series_label = '1a_spx') THEN '1a .spx change'
+            WHEN (series_label = '1a_es') THEN '1a .es change'
             WHEN (series_label = '1b_stk_lmt') THEN '1b stk holding ideal'
             WHEN (series_label = '1c_stk_pct') THEN '1c stk holding actual'
             WHEN (series_label = '1d_stk_lmb') THEN '1d stk holding bracket min'
@@ -1267,7 +1269,7 @@ INSERT INTO ${tableChart} (datatype, options)
     SELECT
         'options' AS datatype,
         '{
-            "title": "tradebot technical - sinusoidal fit of spx",
+            "title": "tradebot technical - sinusoidal fit of es",
             "xaxisTitle": "date",
             "xvalueConvert": "juliandayToDate",
             "yaxisTitle": "percent gain",
@@ -1280,19 +1282,19 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         value AS series_index,
         (CASE
             WHEN (value = 1) THEN
-                'spx'
+                'es'
             WHEN (value = 2) THEN
-                'spx predicted linear - 2 month window'
+                'es predicted linear - 2 month window'
             WHEN (value = 3) THEN
-                'spx predicted sine - 2 month window'
+                'es predicted sine - 2 month window'
             WHEN (value = 4) THEN
-                'spx predicted linear+sine - 2 month window'
+                'es predicted linear+sine - 2 month window'
             WHEN (value = 5) THEN
-                'spx predicted linear - 6 month window'
+                'es predicted linear - 6 month window'
             WHEN (value = 6) THEN
-                'spx predicted sine - 6 month window'
+                'es predicted sine - 6 month window'
             WHEN (value = 7) THEN
-                'spx predicted linear+sine - 6 month window'
+                'es predicted linear+sine - 6 month window'
         END) AS series_label
     FROM GENERATE_SERIES(1, 7);
 INSERT INTO ${tableChart} (datatype, xx, xx_label)

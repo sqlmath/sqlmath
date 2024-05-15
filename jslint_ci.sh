@@ -922,7 +922,7 @@ shGitInitBase() {(set -e
 
 shGitLsTree() {(set -e
 # this function will "git ls-tree" all files committed in HEAD
-# example use:
+# example usage:
 # shGitLsTree | sort -rk3 # sort by date
 # shGitLsTree | sort -rk4 # sort by size
     node --input-type=module --eval '
@@ -1171,7 +1171,7 @@ shGithubCheckoutRemote() {(set -e
 shGithubFileDownload() {(set -e
 # this function will download file $1 from github repo/branch
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
-# example use:
+# example usage:
 # shGithubFileDownload octocat/hello-world/master/hello.txt
     shGithubFileDownloadUpload download "$1" "$2"
 )}
@@ -1179,7 +1179,7 @@ shGithubFileDownload() {(set -e
 shGithubFileDownloadUpload() {(set -e
 # this function will upload file $2 to github repo/branch $1
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
-# example use:
+# example usage:
 # shGithubFileUpload octocat/hello-world/master/hello.txt hello.txt
     shGithubTokenExport
     node --input-type=module --eval '
@@ -1272,7 +1272,7 @@ import modulePath from "path";
 shGithubFileUpload() {(set -e
 # this function will upload file $2 to github repo/branch $1
 # https://docs.github.com/en/rest/reference/repos#create-or-update-file-contents
-# example use:
+# example usage:
 # shGithubFileUpload octocat/hello-world/master/hello.txt hello.txt
     shGithubFileDownloadUpload upload "$1" "$2"
 )}
@@ -1287,7 +1287,7 @@ shGithubTokenExport() {
 
 shGithubWorkflowDispatch() {(set -e
 # this function will trigger github-workflow on given $REPO and $BRANCH
-# example use:
+# example usage:
 # shGithubWorkflowDispatch octocat/hello-world master
     shGithubTokenExport
     REPO="$1"

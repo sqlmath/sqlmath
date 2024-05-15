@@ -807,9 +807,6 @@ async function dbFileLoadAsync({
             "modeDb"
         );
     }
-    function rename() {
-        return moduleFs.promises.rename(filename, filename2);
-    }
     if (modeNoop) {
         return;
     }
@@ -827,11 +824,12 @@ async function dbFileLoadAsync({
             modulePath.dirname(filename),
             `.dbFileSaveAsync.${moduleCrypto.randomUUID()}`
         );
-        await _dbFileLoad();
-        // rename with retry
-        await rename().catch(rename).finally(function () {
-            moduleFs.promises.unlink(filename).catch(noop);
-        });
+        try {
+            await _dbFileLoad();
+            await moduleFs.promises.rename(filename, filename2);
+        } finally {
+            await moduleFs.promises.unlink(filename).catch(noop);
+        }
     } else {
         await _dbFileLoad();
     }

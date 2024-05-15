@@ -5,6 +5,7 @@
 - none
 
 # v2024.4.1-beta
+- webdemo - Replace market-indices .spx/.ndx/.dji with futures .es/.nq/.ym.
 - sqlite - Decouple c-function str99JsonAppendText() from builtin-function jsonAppendString().
 - sqlite - Update to sqlite v3.42.0.
 - sqlmath - Remove little-used sqlean-regexp-extension and file sqlmath_external_pcre2.c.
