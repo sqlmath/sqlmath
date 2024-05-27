@@ -21,8 +21,8 @@
 
 """sqlmath.py."""
 
-__version__ = "2024.4.1"
-__version_info__ = ("2024", "4", "1")
+__version__ = "2024.5.26"
+__version_info__ = ("2024", "5", "26")
 
 import json
 import math

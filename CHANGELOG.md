@@ -4,7 +4,7 @@
 - sqlmath - Add sqlite-extension for lightgbm.
 - none
 
-# v2024.4.1-beta
+# v2024.5.26
 - webdemo - Replace market-indices .spx/.ndx/.dji with futures .es/.nq/.ym.
 - sqlite - Decouple c-function str99JsonAppendText() from builtin-function jsonAppendString().
 - sqlite - Update to sqlite v3.42.0.
