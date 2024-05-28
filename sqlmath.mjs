@@ -311,16 +311,6 @@ async function ciBuildExt1NodejsConfigure({
                 "-Wextra",
                 "-std=c11"
             ],
-            "conditions": [
-                [
-                    "OS == 'win'",
-                    {
-                        "defines": [
-                            "WIN32"
-                        ]
-                    }
-                ]
-            ],
 // https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
             "msvs_settings": {
                 "VCCLCompilerTool": {

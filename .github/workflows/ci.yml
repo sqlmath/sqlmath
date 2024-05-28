@@ -29,7 +29,7 @@ jobs:
           - "3.10"
         os:
           # - macos-latest
-          # - ubuntu-latest
+          - ubuntu-latest
           - windows-latest
 # base - .github/workflows/ci.yml - beg
     env:

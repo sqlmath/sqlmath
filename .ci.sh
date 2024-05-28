@@ -491,6 +491,7 @@ shSqlmathUpdate() {(set -e
     then
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
+        shRollupFetch sqlmath_base.h
         shRollupFetch sqlmath_external_sqlite.c
         shRollupFetch sqlmath_external_zlib.c
         return

@@ -123,7 +123,6 @@ async def build_ext_async(): # noqa: C901
                 exe_cl,
                 *arg_list,
                 #
-                "-DWIN32",
                 "/GL", # to link.exe /LTCG
                 "/MT", # multithreaded, statically-linked
                 "/O2",
@@ -145,7 +144,6 @@ async def build_ext_async(): # noqa: C901
                 "-o", file_obj,
             ]
         print(f"build_ext - compile {file_obj}")
-        # !! debuginline(arg_list)
         await create_subprocess_exec_and_check(
             *arg_list,
             env=env,
