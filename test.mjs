@@ -790,6 +790,48 @@ jstestDescribe((
 });
 
 jstestDescribe((
+    "test_lgbm"
+), function test_lgbm() {
+    jstestIt((
+        "test lgbm handling-behavior"
+    ), async function () {
+        let data;
+        let db = await dbOpenAsync({
+            filename: ":memory:"
+        });
+        await dbExecAsync({
+            db,
+            sql: "SELECT lgbm_init();"
+        });
+        data = await dbExecAndReturnFirstRow({
+            db,
+            sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 AS
+    SELECT
+        lgbm_datasetcreatefromfile(
+            'test_lgbm_binary.train',
+            'max_bin=15'
+        ) AS handle;
+SELECT
+        handle,
+        lgbm_datasetgetnumdata(handle) AS num_data,
+        lgbm_datasetgetnumfeature(handle) AS num_feature
+    FROM __tmp1;
+SELECT
+        lgbm_datasetdumptext(handle, '.tmp/test_lgbm_datasetdump.txt')
+    FROM __tmp1;
+            `)
+        });
+        debugInline(data);
+        await dbExecAsync({
+            db,
+            sql: `SELECT lgbm_datasetfree(${data.handle});`
+        });
+    });
+});
+
+jstestDescribe((
     "test_misc"
 ), function test_misc() {
     jstestIt((

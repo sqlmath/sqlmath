@@ -11,7 +11,7 @@
     "engines": {
         "node": ">=14"
     },
-    "fileCount": 41,
+    "fileCount": 48,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",
@@ -38,5 +38,5 @@
     },
     "shCiArtifactUpload": 1,
     "shCiPublishNpm": 1,
-    "version": "2024.5.26"
+    "version": "2024.6.1-beta"
 }

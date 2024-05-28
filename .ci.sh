@@ -18,6 +18,14 @@
         rm -rf ".$DIR"
         mv "$DIR" ".$DIR"
     done
+    for FILE in \
+        lib_lightgbm.dll \
+        lib_lightgbm.so
+    do
+        curl -L \
+https://github.com/microsoft/LightGBM/releases/download/v3.3.5/$FILE \
+            > $FILE
+    done
 "
 
 shCiArtifactUploadCustom() {(set -e

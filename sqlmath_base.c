@@ -39,6 +39,12 @@ file sqlmath_h - start
 #       define SQLMATH_BASE_C2
 #   endif
 #endif
+#ifdef WIN32
+#   include <windows.h>
+#endif
+#ifdef SQLMATH_BASE_C2
+#   include "sqlmath_base.h"
+#endif
 
 
 #include <assert.h>
@@ -128,6 +134,20 @@ file sqlmath_h - start
     if (jsbatonAssertOk(baton, db, errcode)) { \
         goto catch_error; \
     }
+
+#define LGBM_ASSERT_OK() \
+    if (errcode != 0) { \
+        sqlite3_result_error(context, LGBM_GetLastError(), -1); \
+        return; \
+    }
+
+#ifdef WIN32
+#define LGBM_IMPORT_FUNCTION(func) \
+        func = (func##_t) GetProcAddress(hModule, #func);
+#else
+#define LGBM_IMPORT_FUNCTION(func) \
+        func = (func##_t) dlsym(hModule, #func);
+#endif
 
 // This function will if <cond> is falsy, terminate process with <msg>.
 #define NAPI_ASSERT_FATAL(cond, msg) \
@@ -1521,6 +1541,222 @@ SQLMATH_FUNC static void sql1_fmod_func(
             sqlite3_value_double_or_nan(argv[0]),       //
             sqlite3_value_double_or_nan(argv[1])));
 }
+
+// SQLMATH_FUNC sql1_lgbm_xxx_func - start
+// https://lightgbm.readthedocs.io/en/latest/C-API.html
+static void *lgbm_library = NULL;
+
+SQLMATH_FUNC static void sql1_lgbm_init_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will init lgbm.
+    UNUSED_PARAMETER(argc);
+    UNUSED_PARAMETER(argv);
+    if (lgbm_library != NULL) {
+        sqlite3_result_null(context);
+        return;
+    }
+#ifdef WIN32
+    HMODULE hModule = LoadLibrary("lib_lightgbm.dll");
+    if (hModule == NULL) {
+        sqlite3_result_error(context,
+            "lgbm_init() - cannot load library lib_lightgbm.dll", -1);
+        return;
+    }
+#else
+    void *hModule = dlopen("./lib_lightgbm.so", RTLD_LAZY);
+    if (hModule == NULL) {
+        sqlite3_result_error(context,
+            "lgbm_init() - cannot load library lib_lightgbm.so", -1);
+        return;
+    }
+#endif
+    lgbm_library = (void *) hModule;
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterAddValidData);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterCalcNumPredict);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterCreate);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterCreateFromModelfile);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterDumpModel);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterFeatureImportance);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterFree);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterFreePredictSparse);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetCurrentIteration);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetEval);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetEvalCounts);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetEvalNames);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetFeatureNames);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetLeafValue);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetLinear);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetLowerBoundValue);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetNumClasses);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetNumFeature);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetNumPredict);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetPredict);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetUpperBoundValue);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterLoadModelFromString);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterMerge);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterNumModelPerIteration);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterNumberOfTotalModel);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForCSC);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForCSR);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForCSRSingleRow);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForCSRSingleRowFast);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForCSRSingleRowFastInit);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForFile);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForMat);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForMatSingleRow);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForMatSingleRowFast);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForMatSingleRowFastInit);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForMats);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictSparseOutput);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterRefit);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterResetParameter);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterResetTrainingData);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterRollbackOneIter);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterSaveModel);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterSaveModelToString);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterSetLeafValue);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterShuffleModels);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterUpdateOneIter);
+    LGBM_IMPORT_FUNCTION(LGBM_BoosterUpdateOneIterCustom);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetAddFeaturesFrom);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateByReference);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromCSC);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromCSR);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromCSRFunc);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromFile);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromMat);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromMats);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromSampledColumn);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetDumpText);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetFree);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetGetFeatureNames);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetGetField);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetGetNumData);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetGetNumFeature);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetGetSubset);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetPushRows);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetPushRowsByCSR);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetSaveBinary);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetSetFeatureNames);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetSetField);
+    LGBM_IMPORT_FUNCTION(LGBM_DatasetUpdateParamChecking);
+    LGBM_IMPORT_FUNCTION(LGBM_FastConfigFree);
+    LGBM_IMPORT_FUNCTION(LGBM_GetLastError);
+    LGBM_IMPORT_FUNCTION(LGBM_GetSampleCount);
+    LGBM_IMPORT_FUNCTION(LGBM_NetworkFree);
+    LGBM_IMPORT_FUNCTION(LGBM_NetworkInit);
+    LGBM_IMPORT_FUNCTION(LGBM_NetworkInitWithFunctions);
+    LGBM_IMPORT_FUNCTION(LGBM_RegisterLogCallback);
+    LGBM_IMPORT_FUNCTION(LGBM_SampleIndices);
+    sqlite3_result_null(context);
+}
+
+SQLMATH_FUNC static void sql1_lgbm_datasetcreatefromfile_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will load dataset <out> from file
+// (like LightGBM CLI version does).
+    UNUSED_PARAMETER(argc);
+    DatasetHandle out = NULL;
+    int errcode = 0;
+    errcode = LGBM_DatasetCreateFromFile(       //
+        sqlite3_value_text(argv[0]),    // const char *filename,
+        sqlite3_value_text(argv[1]),    // const char *parameters,
+        NULL,                   // const DatasetHandle reference,
+        &out);                  // DatasetHandle * out
+    LGBM_ASSERT_OK();
+    sqlite3_result_int64(context, (intptr_t) out);
+}
+
+SQLMATH_FUNC static void sql1_lgbm_datasetcreatefrommat_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will create dataset <out> from dense matrix <data>.
+    UNUSED_PARAMETER(argc);
+    DatasetHandle out = NULL;
+    int errcode = 0;
+    int result = 0;
+    errcode = LGBM_DatasetCreateFromMat(        //
+        sqlite3_value_blob(argv[0]),    // const void *data,
+        sqlite3_value_int(argv[1]),     // int data_type,
+        (int32_t) sqlite3_value_int(argv[2]),   // int32_t nrow,
+        (int32_t) sqlite3_value_int(argv[3]),   // int32_t ncol,
+        sqlite3_value_int(argv[4]),     // int is_row_major,
+        sqlite3_value_text(argv[5]),    // const char *parameters,
+        NULL,                   // const DatasetHandle reference,
+        &out);                  // DatasetHandle *out
+    LGBM_ASSERT_OK();
+    sqlite3_result_int64(context, (intptr_t) out);
+}
+
+SQLMATH_FUNC static void sql1_lgbm_datasetdumptext_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will save dataset <handle> to text file <filename>,
+// intended for debugging use only.
+    UNUSED_PARAMETER(argc);
+    int errcode = 0;
+    errcode = LGBM_DatasetDumpText(     //
+        (DatasetHandle) (intptr_t) sqlite3_value_int64(argv[0]),
+        sqlite3_value_text(argv[1]));
+    LGBM_ASSERT_OK();
+    sqlite3_result_null(context);
+}
+
+SQLMATH_FUNC static void sql1_lgbm_datasetfree_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will free space for dataset <handle>.
+    UNUSED_PARAMETER(argc);
+    int errcode = 0;
+    errcode = LGBM_DatasetFree( //
+        (DatasetHandle) (intptr_t) sqlite3_value_int64(argv[0]));
+    LGBM_ASSERT_OK();
+    sqlite3_result_null(context);
+}
+
+SQLMATH_FUNC static void sql1_lgbm_datasetgetnumdata_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will get number of datapoints from dataset <handle>.
+    UNUSED_PARAMETER(argc);
+    int errcode = 0;
+    int result = 0;
+    errcode = LGBM_DatasetGetNumData(   //
+        (DatasetHandle) (intptr_t) sqlite3_value_int64(argv[0]), &result);
+    LGBM_ASSERT_OK();
+    sqlite3_result_int(context, result);
+}
+
+SQLMATH_FUNC static void sql1_lgbm_datasetgetnumfeature_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will get number of features from dataset <handle>.
+    UNUSED_PARAMETER(argc);
+    int errcode = 0;
+    int result = 0;
+    errcode = LGBM_DatasetGetNumFeature(        //
+        (DatasetHandle) (intptr_t) sqlite3_value_int64(argv[0]), &result);
+    LGBM_ASSERT_OK();
+    sqlite3_result_int(context, result);
+}
+
+// SQLMATH_FUNC sql1_lgbm_xxx_func - end
 
 SQLMATH_FUNC static void sql1_marginoferror95_func(
     sqlite3_context * context,
@@ -3070,6 +3306,13 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(doublearray_jsonfrom, 1);
     SQLITE3_CREATE_FUNCTION1(doublearray_jsonto, 1);
     SQLITE3_CREATE_FUNCTION1(fmod, 2);
+    SQLITE3_CREATE_FUNCTION1(lgbm_datasetcreatefromfile, 2);
+    SQLITE3_CREATE_FUNCTION1(lgbm_datasetcreatefrommat, 6);
+    SQLITE3_CREATE_FUNCTION1(lgbm_datasetdumptext, 2);
+    SQLITE3_CREATE_FUNCTION1(lgbm_datasetfree, 1);
+    SQLITE3_CREATE_FUNCTION1(lgbm_datasetgetnumdata, 1);
+    SQLITE3_CREATE_FUNCTION1(lgbm_datasetgetnumfeature, 1);
+    SQLITE3_CREATE_FUNCTION1(lgbm_init, 0);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(normalizewithsqrt, 1);
     SQLITE3_CREATE_FUNCTION1(normalizewithsquared, 1);
@@ -3108,11 +3351,6 @@ file sqlmath_nodejs - start
 */
 #if defined(SQLMATH_NODEJS_C2) && !defined(SQLMATH_NODEJS_C3)
 #define SQLMATH_NODEJS_C3
-
-
-#ifdef WIN32
-#include <windows.h>
-#endif
 
 
 // file sqlmath_nodejs - assert
