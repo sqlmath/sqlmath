@@ -35,9 +35,9 @@ import {
     childProcessSpawn2,
     ciBuildExt,
     dbCloseAsync,
-    dbExecAndReturnFirstRow,
-    dbExecAndReturnFirstTable,
-    dbExecAndReturnLastBlobAsync,
+    dbExecAndReturnLastBlob,
+    dbExecAndReturnLastRow,
+    dbExecAndReturnLastTable,
     dbExecAsync,
     dbFileLoadAsync,
     dbFileSaveAsync,
@@ -206,12 +206,12 @@ jstestDescribe((
                 });
             }));
         }
-        async function test_dbBind_lastblob(ii, valIn, valExpect) {
+        async function test_dbBind_lastBlob(ii, valIn, valExpect) {
             let bufActual;
             let bufExpect;
             if (valExpect === Error) {
                 assertErrorThrownAsync(
-                    dbExecAndReturnLastBlobAsync.bind(undefined, {
+                    dbExecAndReturnLastBlob.bind(undefined, {
                         bindList: [valIn],
                         db,
                         sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
@@ -221,7 +221,7 @@ jstestDescribe((
                 return;
             }
             bufActual = new TextDecoder().decode(
-                await dbExecAndReturnLastBlobAsync({
+                await dbExecAndReturnLastBlob({
                     bindList: [valIn],
                     db,
                     sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
@@ -379,9 +379,11 @@ jstestDescribe((
             [{}, "{}"],
             // 6. string
             ["", ""],
+            ["'", "'"],
             ["0", "0"],
             ["1", "1"],
             ["2", "2"],
+            ["\"", "\""],
             ["\u0000", "\u0000"],
             ["\u0000\u{1f600}\u0000", "\u0000\u{1f600}\u0000"],
             ["a".repeat(9999), "a".repeat(9999)],
@@ -392,7 +394,7 @@ jstestDescribe((
         ].map(async function ([valIn, valExpect], ii) {
             await Promise.all([
                 test_dbBind_exec(ii, valIn, valExpect),
-                test_dbBind_lastblob(ii, valIn, valExpect),
+                test_dbBind_lastBlob(ii, valIn, valExpect),
                 test_dbBind_responseType(ii, valIn, valExpect)
             ]);
         }));
@@ -459,9 +461,11 @@ jstestDescribe((
             [{}, Error],
             // 6. string
             ["", ""],
+            ["'", "'"],
             ["0", "0"],
             ["1", "1"],
             ["2", "2"],
+            ["\"", "\""],
             ["\u0000", ""],
             ["\u0000\u{1f600}\u0000", "\u0000\u{1f600}"],
             ["a".repeat(9999), "a".repeat(9999)],
@@ -521,45 +525,45 @@ jstestDescribe((
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
-        // test dbExecAndReturnFirstRow null-case handling-behavior
+        // test dbExecAndReturnLastRow null-case handling-behavior
         assertJsonEqual(
             noop(
-                await dbExecAndReturnFirstRow({
+                await dbExecAndReturnLastRow({
                     db,
                     sql: "SELECT 0 WHERE 0"
                 })
             ),
             {}
         );
-        // test dbExecAndReturnFirstTable null-case handling-behavior
+        // test dbExecAndReturnLastTable null-case handling-behavior
         assertJsonEqual(
             noop(
-                await dbExecAndReturnFirstTable({
+                await dbExecAndReturnLastTable({
                     db,
                     sql: "SELECT 0 WHERE 0"
                 })
             ),
             []
         );
-        // test dbExecAndReturnLastBlobAsync null-case handling-behavior
+        // test dbExecAndReturnLastBlob null-case handling-behavior
         assertJsonEqual(
             new TextDecoder().decode(
-                await dbExecAndReturnLastBlobAsync({
+                await dbExecAndReturnLastBlob({
                     db,
                     sql: "SELECT 0 WHERE 0"
                 })
             ),
             ""
         );
-        // test dbExecAndReturnLastBlobAsync string handling-behavior
+        // test dbExecAndReturnLastBlob string handling-behavior
         assertJsonEqual(
             new TextDecoder().decode(
-                await dbExecAndReturnLastBlobAsync({
+                await dbExecAndReturnLastBlob({
                     db,
-                    sql: "SELECT 1234"
+                    sql: "SELECT 1, 2, 3"
                 })
             ),
-            "1234"
+            "3"
         );
     });
     jstestIt((
@@ -796,30 +800,33 @@ jstestDescribe((
         "test lgbm handling-behavior"
     ), async function () {
         let data;
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
-        await dbExecAsync({
-            db,
-            sql: "SELECT lgbm_init();"
-        });
-        data = await dbExecAndReturnFirstRow({
+        let db = await dbOpenAsync({filename: ":memory:"});
+        dbExecAsync({
             db,
             sql: (`
+SELECT lgbm_dlopen(NULL);
+
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 AS
     SELECT
         lgbm_datasetcreatefromfile(
             'test_lgbm_binary.train',
-            'max_bin=15'
+            'max_bin=15',
+            0
         ) AS handle;
+
+SELECT
+        lgbm_datasetdumptext(handle, '.tmp/test_lgbm_datasetdump.txt')
+    FROM __tmp1;
+            `)
+        });
+        data = await dbExecAndReturnLastRow({
+            db,
+            sql: (`
 SELECT
         handle,
         lgbm_datasetgetnumdata(handle) AS num_data,
         lgbm_datasetgetnumfeature(handle) AS num_feature
-    FROM __tmp1;
-SELECT
-        lgbm_datasetdumptext(handle, '.tmp/test_lgbm_datasetdump.txt')
     FROM __tmp1;
             `)
         });
@@ -877,7 +884,7 @@ jstestDescribe((
         assertJsonEqual(
             "not an error",
             noop(
-                await dbExecAndReturnFirstRow({
+                await dbExecAndReturnLastRow({
                     db,
                     sql: `SELECT throwerror(0) AS val`
                 })
@@ -959,7 +966,7 @@ jstestDescribe((
             let valActual;
             try {
                 valActual = noop(
-                    await dbExecAndReturnFirstRow({
+                    await dbExecAndReturnLastRow({
                         bindList: {
                             valIn
                         },
@@ -1210,7 +1217,7 @@ SELECT
             ]) {
                 let sql = `SELECT ${func}(${arg}) AS val`;
                 let valActual = noop(
-                    await dbExecAndReturnFirstRow({
+                    await dbExecAndReturnLastRow({
                         db,
                         sql
                     })
@@ -1230,7 +1237,7 @@ SELECT
             filename: ":memory:"
         });
         await (async function () {
-            let valActual = await dbExecAndReturnFirstTable({
+            let valActual = await dbExecAndReturnLastTable({
                 db,
                 sql: (`
 -- test null-case handling-behavior
@@ -1344,19 +1351,20 @@ SELECT
                 Array.from(data).reverse()
             ].map(async function (data) {
                 let valActual;
-                valActual = await dbExecAndReturnFirstRow({
+                valActual = await dbExecAndReturnLastRow({
                     bindList: {
                         tmp1: JSON.stringify(data)
                     },
                     db,
                     sql: (`
+-- test null-case handling-behavior
+SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
+-- test last-row handling-behavior
 SELECT
         median(value) AS mdn,
         quantile(value, ${kk}) AS qnt,
         ROUND(stdev(value), 8) AS std
     FROM JSON_EACH($tmp1);
--- test null-case handling-behavior
-SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
                     `)
                 });
                 assertJsonEqual(
@@ -2296,7 +2304,7 @@ SELECT doublearray_jsonto(win_sinefit2(1, 2, 3, 4)) FROM __tmp1;
             // test win_sinefit2-aggregate-normal handling-behavior
             (async function () {
                 let valActual;
-                valActual = await dbExecAndReturnFirstRow({
+                valActual = await dbExecAndReturnLastRow({
                     bindList: {
                         valIn
                     },
@@ -2353,7 +2361,7 @@ SELECT
                     "xx1": 51,
                     "yy1": 5
                 };
-                valActual = await dbExecAndReturnFirstRow({
+                valActual = await dbExecAndReturnLastRow({
                     db,
                     sql: (`
 SELECT
@@ -2688,7 +2696,7 @@ date close
                         priceClose: Number(elem[1])
                     };
                 });
-                valActual = await dbExecAndReturnFirstTable({
+                valActual = await dbExecAndReturnLastTable({
                     bindList: {
                         testDataSpx
                     },

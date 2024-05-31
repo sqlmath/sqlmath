@@ -20,6 +20,7 @@
     done
     for FILE in \
         lib_lightgbm.dll \
+        lib_lightgbm.dylib \
         lib_lightgbm.so
     do
         curl -L \

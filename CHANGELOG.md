@@ -5,6 +5,9 @@
 - none
 
 # v2024.6.1-beta
+- sqlmath - Replace functions:
+    dbExecAndReturnFirstRow() with dbExecAndReturnLastRow()
+    dbExecAndReturnFirstTable() with dbExecAndReturnLastTable()
 - sqlmath - Add sqlite-extension for lightgbm. - part1
 
 # v2024.5.26

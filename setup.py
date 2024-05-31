@@ -58,7 +58,7 @@ def build_ext():
 async def build_ext_async(): # noqa: C901
     """This function will build c-extension."""
 
-    async def build_ext_obj(cdefine):
+    async def build_ext_obj(cdefine): # noqa: C901 PLR0912
         file_obj = pathlib.Path(f"build/{cdefine}.obj")
         match cdefine:
             case "SQLMATH_BASE":

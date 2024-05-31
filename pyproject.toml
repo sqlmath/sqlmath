@@ -1,7 +1,7 @@
 [build-system]
 requires = [
-    "pycodestyle == 2.11.0",
-    "ruff >= 0.2.0",
+    "pycodestyle == 2.11.1",
+    "ruff >= 0.4.6",
 ]
 build-backend = "setup"
 backend-path = ["."]

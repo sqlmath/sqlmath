@@ -616,52 +616,7 @@ async function dbCloseAsync(db) {
     }));
 }
 
-async function dbExecAndReturnFirstRow({
-    bindList = [],
-    db,
-    sql
-}) {
-
-// This function will exec <sql> in <db>,
-// and return first-row or empty-object.
-
-    return (
-        noop(
-            noop(
-                await dbExecAsync({
-                    bindList,
-                    db,
-                    sql
-                })
-            )[0]
-            || []
-        )[0]
-        || {}
-    );
-}
-
-async function dbExecAndReturnFirstTable({
-    bindList = [],
-    db,
-    sql
-}) {
-
-// This function will exec <sql> in <db>,
-// and return first-table or empty-list.
-
-    return (
-        noop(
-            await dbExecAsync({
-                bindList,
-                db,
-                sql
-            })
-        )[0]
-        || []
-    );
-}
-
-function dbExecAndReturnLastBlobAsync({
+function dbExecAndReturnLastBlob({
     bindList = [],
     db,
     sql
@@ -676,6 +631,35 @@ function dbExecAndReturnLastBlobAsync({
         responseType: "lastblob",
         sql
     });
+}
+
+async function dbExecAndReturnLastRow({
+    bindList = [],
+    db,
+    sql
+}) {
+
+// This function will exec <sql> in <db>,
+// and return last-row or empty-object.
+
+    let result = await dbExecAsync({bindList, db, sql});
+    result = result[result.length - 1] || [];
+    result = result[result.length - 1] || {};
+    return result;
+}
+
+async function dbExecAndReturnLastTable({
+    bindList = [],
+    db,
+    sql
+}) {
+
+// This function will exec <sql> in <db>,
+// and return last-table or empty-list.
+
+    let result = await dbExecAsync({bindList, db, sql});
+    result = result[result.length - 1] || [];
+    return result;
 }
 
 async function dbExecAsync({
@@ -1729,9 +1713,9 @@ export {
     childProcessSpawn2,
     ciBuildExt,
     dbCloseAsync,
-    dbExecAndReturnFirstRow,
-    dbExecAndReturnFirstTable,
-    dbExecAndReturnLastBlobAsync,
+    dbExecAndReturnLastBlob,
+    dbExecAndReturnLastRow,
+    dbExecAndReturnLastTable,
     dbExecAsync,
     dbFileLoadAsync,
     dbFileSaveAsync,
