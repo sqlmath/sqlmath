@@ -44,6 +44,7 @@ let SQLITE_DATATYPE_NULL = 0x05;
 let SQLITE_DATATYPE_TEXT = 0x03;
 let SQLITE_DATATYPE_TEXT_0 = 0x13;
 let SQLITE_RESPONSETYPE_LASTBLOB = 1;
+let SQLITE_RESPONSETYPE_LASTVALUE = 2;
 
 let FILENAME_DBTMP = "/tmp/__dbtmp1"; //jslint-ignore-line
 let IS_BROWSER;
@@ -662,6 +663,23 @@ async function dbExecAndReturnLastTable({
     return result;
 }
 
+function dbExecAndReturnLastValue({
+    bindList = [],
+    db,
+    sql
+}) {
+
+// This function will exec <sql> in <db>,
+// and return last-json-value.
+
+    return dbExecAsync({
+        bindList,
+        db,
+        responseType: "lastvalue",
+        sql
+    });
+}
+
 async function dbExecAsync({
     bindList = [],
     db,
@@ -717,6 +735,8 @@ async function dbExecAsync({
             (
                 responseType === "lastblob"
                 ? SQLITE_RESPONSETYPE_LASTBLOB
+                : responseType === "lastvalue"
+                ? SQLITE_RESPONSETYPE_LASTVALUE
                 : 0
             )
         ],
@@ -736,6 +756,7 @@ async function dbExecAsync({
     case "arraybuffer":
     case "lastblob":
         return result;
+    case "lastvalue":
     case "list":
         return jsonParseArraybuffer(result);
     default:
@@ -1312,9 +1333,12 @@ function jsonParseArraybuffer(buf) {
 // This function will JSON.parse arraybuffer <buf>.
 
     return JSON.parse(
-        IS_BROWSER
-        ? new TextDecoder().decode(buf)
-        : buf
+        (
+            IS_BROWSER
+            ? new TextDecoder().decode(buf)
+            : buf
+        )
+        || "null"
     );
 }
 
@@ -1716,6 +1740,7 @@ export {
     dbExecAndReturnLastBlob,
     dbExecAndReturnLastRow,
     dbExecAndReturnLastTable,
+    dbExecAndReturnLastValue,
     dbExecAsync,
     dbFileLoadAsync,
     dbFileSaveAsync,

@@ -38,6 +38,7 @@ import {
     dbExecAndReturnLastBlob,
     dbExecAndReturnLastRow,
     dbExecAndReturnLastTable,
+    dbExecAndReturnLastValue,
     dbExecAsync,
     dbFileLoadAsync,
     dbFileSaveAsync,
@@ -200,6 +201,7 @@ jstestDescribe((
                 ];
                 assertJsonEqual(bufActual, bufExpect, {
                     bufActual,
+                    bufExpect,
                     ii,
                     valExpect,
                     valIn
@@ -279,13 +281,39 @@ jstestDescribe((
                 valIn
             });
         }
+        async function test_dbBind_lastValue(ii, valIn, valExpect) {
+            let valActual;
+            if (valExpect === Error) {
+                assertErrorThrownAsync(
+                    dbExecAndReturnLastValue.bind(undefined, {
+                        bindList: [valIn],
+                        db,
+                        sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
+                    }),
+                    "inclusive-range|not JSON serializable"
+                );
+                return;
+            }
+            valActual = await dbExecAndReturnLastValue({
+                bindList: [valIn],
+                db,
+                sql: "SELECT 1, 2, 3; SELECT 1, 2, ?"
+            });
+            assertJsonEqual(valActual, valExpect, {
+                ii,
+                valActual,
+                valExpect,
+                valIn
+            });
+        }
         async function test_dbBind_responseType(ii, valIn, valExpect) {
             await Promise.all([
                 "arraybuffer",
                 "list",
+                "lastvalue",
                 undefined
             ].map(async function (responseType) {
-                let bufActual;
+                let valActual;
                 if (valExpect === Error) {
                     assertErrorThrownAsync(
                         dbExecAsync.bind(undefined, {
@@ -298,7 +326,7 @@ jstestDescribe((
                     );
                     return;
                 }
-                bufActual = await dbExecAsync({
+                valActual = await dbExecAsync({
                     bindList: [valIn],
                     db,
                     responseType,
@@ -306,20 +334,22 @@ jstestDescribe((
                 });
                 switch (responseType) {
                 case "arraybuffer":
-                    bufActual = JSON.parse(
-                        new TextDecoder().decode(bufActual)
+                    valActual = JSON.parse(
+                        new TextDecoder().decode(valActual)
                     )[0][1][0];
                     break;
+                case "lastvalue":
+                    break;
                 case "list":
-                    bufActual = bufActual[0][1][0];
+                    valActual = valActual[0][1][0];
                     break;
                 default:
-                    bufActual = bufActual[0][0].val;
+                    valActual = valActual[0][0].val;
                 }
-                assertJsonEqual(bufActual, valExpect, {
-                    bufActual,
+                assertJsonEqual(valActual, valExpect, {
                     ii,
                     responseType,
+                    valActual,
                     valExpect,
                     valIn
                 });
@@ -395,6 +425,7 @@ jstestDescribe((
             await Promise.all([
                 test_dbBind_exec(ii, valIn, valExpect),
                 test_dbBind_lastBlob(ii, valIn, valExpect),
+                test_dbBind_lastValue(ii, valIn, valExpect),
                 test_dbBind_responseType(ii, valIn, valExpect)
             ]);
         }));
@@ -565,6 +596,26 @@ jstestDescribe((
             ),
             "3"
         );
+        // test dbExecAndReturnLastValue null-case handling-behavior
+        assertJsonEqual(
+            noop(
+                await dbExecAndReturnLastValue({
+                    db,
+                    sql: "SELECT 0 WHERE 0"
+                })
+            ),
+            null
+        );
+        // test dbExecAndReturnLastValue json handling-behavior
+        assertJsonEqual(
+            noop(
+                await dbExecAndReturnLastValue({
+                    db,
+                    sql: "SELECT 1, 2, 3"
+                })
+            ),
+            3
+        );
     });
     jstestIt((
         "test dbExecAsync handling-behavior"
@@ -691,13 +742,7 @@ SELECT * FROM testDbExecAsync2;
             db,
             sql: "SELECT * FROM t01"
         });
-        assertJsonEqual(data, [
-            [
-                {
-                    c01: 1
-                }
-            ]
-        ]);
+        assertJsonEqual(data, [[{c01: 1}]]);
     });
     jstestIt((
         "test dbOpenAsync handling-behavior"
@@ -1222,11 +1267,7 @@ SELECT
                         sql
                     })
                 ).val;
-                assertJsonEqual(valActual, valExpect, {
-                    sql,
-                    valActual,
-                    valExpect
-                });
+                assertJsonEqual(valActual, valExpect);
             });
         });
     });

@@ -93,6 +93,7 @@ file sqlmath_h - start
 #define SQLITE_DATATYPE_TEXT            0x03
 #define SQLITE_DATATYPE_TEXT_0          0x13
 #define SQLITE_RESPONSETYPE_LASTBLOB    1
+#define SQLITE_RESPONSETYPE_LASTVALUE   2
 
 
 #define SQLITE_ERROR_DATATYPE_INVALID   0x10003
@@ -659,6 +660,7 @@ SQLMATH_API void dbExec(
     // bracket database [
     switch (responseType) {
     case SQLITE_RESPONSETYPE_LASTBLOB:
+    case SQLITE_RESPONSETYPE_LASTVALUE:
         break;
     default:
         sqlite3_str_appendchar(str99, 1, '[');
@@ -772,6 +774,14 @@ SQLMATH_API void dbExec(
                     (char *) sqlite3_column_blob(pStmt, nCol - 1),
                     sqlite3_column_bytes(pStmt, nCol - 1));
                 break;
+            case SQLITE_RESPONSETYPE_LASTVALUE:
+                // export last-value as json-value
+                if (nCol == -1) {
+                    nCol = sqlite3_column_count(pStmt);
+                }
+                sqlite3_str_reset(str99);
+                dbExecStr99AppendValue(str99, pStmt, nCol - 1);
+                break;
             default:
                 // insert row of column-names
                 if (nCol == -1) {
@@ -821,6 +831,7 @@ SQLMATH_API void dbExec(
         // loop over each row - end
         switch (responseType) {
         case SQLITE_RESPONSETYPE_LASTBLOB:
+        case SQLITE_RESPONSETYPE_LASTVALUE:
             break;
         default:
             if (nCol != -1) {
@@ -833,6 +844,7 @@ SQLMATH_API void dbExec(
     // loop over each table - end
     switch (responseType) {
     case SQLITE_RESPONSETYPE_LASTBLOB:
+    case SQLITE_RESPONSETYPE_LASTVALUE:
         break;
     default:
         // bracket database ]

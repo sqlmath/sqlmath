@@ -5,6 +5,7 @@
 - none
 
 # v2024.6.1-beta
+- sqlmath - Add function dbExecAndReturnLastValue().
 - sqlmath - Replace functions:
     dbExecAndReturnFirstRow() with dbExecAndReturnLastRow()
     dbExecAndReturnFirstTable() with dbExecAndReturnLastTable()
