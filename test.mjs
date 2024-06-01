@@ -850,13 +850,22 @@ jstestDescribe((
             db,
             sql: "SELECT lgbm_dlopen(NULL);"
         });
-        await dbTableImportAsync({
-            db,
-            filename: "test_lgbm_binary.test",
-            headerMissing: true,
-            mode: "tsv",
-            tableName: "test_lgbm_binary_test"
-        });
+        await Promise.all([
+            dbTableImportAsync({
+                db,
+                filename: "test_lgbm_binary.test",
+                headerMissing: true,
+                mode: "tsv",
+                tableName: "test_lgbm_binary_test"
+            }),
+            dbTableImportAsync({
+                db,
+                filename: "test_lgbm_binary.train",
+                headerMissing: true,
+                mode: "tsv",
+                tableName: "test_lgbm_binary_train"
+            })
+        ]);
         await dbExecAsync({
             db,
             sql: (`
@@ -867,45 +876,46 @@ CREATE TABLE test_lgbm(
     --
     data_train_handle INTEGER,
     data_train_num_data REAL,
-    data_train_num_feature REAL
+    data_train_num_feature REAL,
+    --
+    model BLOB
 );
-INSERT INTO test_lgbm(data_test_handle, data_train_handle)
-    SELECT
-        (
-            SELECT
-                lgbm_datasetcreatefromtable(
-                    'max_bin=15',
-                    c_1,  c_2,  c_3,  c_4,
-                    c_5,  c_6,  c_7,  c_8,
-                    c_9,  c_10, c_11, c_12,
-                    c_13, c_14, c_15, c_16,
-                    c_17, c_18, c_19, c_20,
-                    c_21, c_22, c_23, c_24,
-                    c_25, c_26, c_27, c_28,
-                    c_29
-                )
-            FROM test_lgbm_binary_test
-        ) AS data_test_handle,
-        (
+INSERT INTO test_lgbm(rowid) SELECT 1;
+UPDATE test_lgbm
+    SET
+        data_train_handle = (
             SELECT
                 lgbm_datasetcreatefromfile(
                     'test_lgbm_binary.train',
                     'max_bin=15',
                     0
                 )
-        ) AS data_train_handle;
+        );
 UPDATE test_lgbm
     SET
-        data_test_num_data = lgbm_datasetgetnumdata(__data_test_handle),
-        data_test_num_feature = lgbm_datasetgetnumfeature(__data_test_handle),
-        data_train_num_data = lgbm_datasetgetnumdata(__data_train_handle),
-        data_train_num_feature = lgbm_datasetgetnumfeature(__data_train_handle)
-    FROM (
-        SELECT
-            data_test_handle AS __data_test_handle,
-            data_train_handle AS __data_train_handle
-        FROM test_lgbm
-    );
+        data_test_handle = (
+            SELECT
+                lgbm_datasetcreatefromfile(
+                    'test_lgbm_binary.test',
+                    'max_bin=15',
+                    data_train_handle
+                )
+        );
+UPDATE test_lgbm
+    SET
+        data_test_num_data = lgbm_datasetgetnumdata(data_test_handle),
+        data_test_num_feature = lgbm_datasetgetnumfeature(data_test_handle),
+        data_train_num_data = lgbm_datasetgetnumdata(data_train_handle),
+        data_train_num_feature = lgbm_datasetgetnumfeature(data_train_handle);
+UPDATE test_lgbm
+    SET
+        model = lgbm_train(
+            data_train_handle,
+            data_test_handle,
+            50, -- num_boost_round
+            10, -- eval_step
+            'app=binary metric=auc num_leaves=31 verbose=0'
+        );
             `)
         });
         data = await dbExecAndReturnLastTable({
