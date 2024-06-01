@@ -28,6 +28,7 @@ npm_config_mode_test_save2=1 npm test
 /*jslint beta, node*/
 import jslint from "./jslint.mjs";
 import {
+    LGBM_PREDICT_NORMAL,
     assertErrorThrownAsync,
     assertJsonEqual,
     assertNumericalEqual,
@@ -844,8 +845,10 @@ jstestDescribe((
     jstestIt((
         "test lgbm handling-behavior"
     ), async function () {
-        let data;
         let db = await dbOpenAsync({filename: ":memory:"});
+        let filePreb = "test_lgbm_preb.txt";
+        let fileTest = "test_lgbm_binary.test";
+        let fileTrain = "test_lgbm_binary.train";
         await dbExecAsync({
             db,
             sql: "SELECT lgbm_dlopen(NULL);"
@@ -853,17 +856,17 @@ jstestDescribe((
         await Promise.all([
             dbTableImportAsync({
                 db,
-                filename: "test_lgbm_binary.test",
+                filename: fileTest,
                 headerMissing: true,
                 mode: "tsv",
-                tableName: "test_lgbm_binary_test"
+                tableName: "test_file_test"
             }),
             dbTableImportAsync({
                 db,
-                filename: "test_lgbm_binary.train",
+                filename: fileTrain,
                 headerMissing: true,
                 mode: "tsv",
-                tableName: "test_lgbm_binary_train"
+                tableName: "test_file_train"
             })
         ]);
         await dbExecAsync({
@@ -886,7 +889,7 @@ UPDATE test_lgbm
         data_train_handle = (
             SELECT
                 lgbm_datasetcreatefromfile(
-                    'test_lgbm_binary.train',
+                    '${fileTrain}',
                     'max_bin=15',
                     0
                 )
@@ -896,7 +899,7 @@ UPDATE test_lgbm
         data_test_handle = (
             SELECT
                 lgbm_datasetcreatefromfile(
-                    'test_lgbm_binary.test',
+                    '${fileTest}',
                     'max_bin=15',
                     data_train_handle
                 )
@@ -916,15 +919,57 @@ UPDATE test_lgbm
             10, -- eval_step
             'app=binary metric=auc num_leaves=31 verbose=0'
         );
+SELECT
+        lgbm_modelpredictforfile(
+            model,                      -- model
+            '${fileTest}',              -- data_filename
+            0,                          -- data_has_header
+            ${LGBM_PREDICT_NORMAL},     -- predict_type
+            0,                          -- start_iteration
+            25,                         -- num_iteration
+            '',                         -- parameter
+            '.tmp/test_lgbm_preb.txt'   -- result_filename
+        )
+    FROM test_lgbm;
+SELECT
+        lgbm_modelpredictforfile(
+            model,                      -- model
+            '${fileTest}',              -- data_filename
+            0,                          -- data_has_header
+            ${LGBM_PREDICT_NORMAL},     -- predict_type
+            10,                         -- start_iteration
+            25,                         -- num_iteration
+            '',                         -- parameter
+            '.tmp/test_lgbm_preb.txt'   -- result_filename
+        )
+    FROM test_lgbm;
             `)
         });
-        data = await dbExecAndReturnLastTable({
-            db,
-            sql: (`
-SELECT * FROM test_lgbm;
-            `)
-        });
-        debugInline(data);
+        assertJsonEqual(
+            noop(
+                await dbExecAndReturnLastRow({
+                    db,
+                    sql: (`
+SELECT
+        data_test_num_data,
+        data_test_num_feature,
+        data_train_num_data,
+        data_train_num_feature
+    FROM test_lgbm;
+                    `)
+                })
+            ),
+            {
+                "data_test_num_data": 500,
+                "data_test_num_feature": 28,
+                "data_train_num_data": 7000,
+                "data_train_num_feature": 28
+            }
+        );
+        assertJsonEqual(
+            await fsReadFileUnlessTest(".tmp/test_lgbm_preb.txt", "force"),
+            await fsReadFileUnlessTest(filePreb, "force")
+        );
         // cleanup
         await dbExecAsync({
             db,

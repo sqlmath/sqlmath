@@ -25,50 +25,66 @@
 /*global FinalizationRegistry*/
 "use strict";
 
-let JSBATON_ARGC = 8;
-let JSBATON_OFFSET_ALL = 256;
-let JSBATON_OFFSET_ARGV = 128;
-let JSBATON_OFFSET_BUFV = 192;
-let JSBATON_OFFSET_FUNCNAME = 8;
-let JS_MAX_SAFE_INTEGER = 0x1f_ffff_ffff_ffff;
-let JS_MIN_SAFE_INTEGER = -0x1f_ffff_ffff_ffff;
-let SIZEOF_BLOB_MAX = 1_000_000_000;
-let SIZEOF_FUNCNAME = 16;
-let SQLITE_DATATYPE_BLOB = 0x04;
-let SQLITE_DATATYPE_EXTERNALBUFFER = 0x71;
-let SQLITE_DATATYPE_FLOAT = 0x02;
-let SQLITE_DATATYPE_INTEGER = 0x01;
-let SQLITE_DATATYPE_INTEGER_0 = 0x00;
-let SQLITE_DATATYPE_INTEGER_1 = 0x21;
-let SQLITE_DATATYPE_NULL = 0x05;
-let SQLITE_DATATYPE_TEXT = 0x03;
-let SQLITE_DATATYPE_TEXT_0 = 0x13;
-let SQLITE_RESPONSETYPE_LASTBLOB = 1;
-let SQLITE_RESPONSETYPE_LASTVALUE = 2;
+const JSBATON_ARGC = 8;
+const JSBATON_OFFSET_ALL = 256;
+const JSBATON_OFFSET_ARGV = 128;
+const JSBATON_OFFSET_BUFV = 192;
+// const JSBATON_OFFSET_ERRMSG = 48;
+const JSBATON_OFFSET_FUNCNAME = 8;
+const JS_MAX_SAFE_INTEGER = 0x1f_ffff_ffff_ffff;
+const JS_MIN_SAFE_INTEGER = -0x1f_ffff_ffff_ffff;
+const SIZEOF_BLOB_MAX = 1_000_000_000;
+// const SIZEOF_ERRMSG = 80;
+const SIZEOF_FUNCNAME = 16;
+const SQLITE_DATATYPE_BLOB = 0x04;
+const SQLITE_DATATYPE_EXTERNALBUFFER = 0x71;
+const SQLITE_DATATYPE_FLOAT = 0x02;
+const SQLITE_DATATYPE_INTEGER = 0x01;
+const SQLITE_DATATYPE_INTEGER_0 = 0x00;
+const SQLITE_DATATYPE_INTEGER_1 = 0x21;
+const SQLITE_DATATYPE_NULL = 0x05;
+const SQLITE_DATATYPE_TEXT = 0x03;
+const SQLITE_DATATYPE_TEXT_0 = 0x13;
+const SQLITE_RESPONSETYPE_LASTBLOB = 1;
+const SQLITE_RESPONSETYPE_LASTVALUE = 2;
 
-let FILENAME_DBTMP = "/tmp/__dbtmp1"; //jslint-ignore-line
+const FILENAME_DBTMP = "/tmp/__dbtmp1"; //jslint-ignore-line
+
+const LGBM_DTYPE_FLOAT32 = 0;   /* float32 (single precision float)*/
+const LGBM_DTYPE_FLOAT64 = 1;   /* float64 (double precision float)*/
+const LGBM_DTYPE_INT32 = 2;     /* int32*/
+const LGBM_DTYPE_INT64 = 3;     /* int64*/
+const LGBM_FEATURE_IMPORTANCE_GAIN = 1; /* Gain type of feature importance*/
+const LGBM_FEATURE_IMPORTANCE_SPLIT = 0;/* Split type of feature importance*/
+const LGBM_MATRIX_TYPE_CSC = 1; /* CSC sparse matrix type*/
+const LGBM_MATRIX_TYPE_CSR = 0; /* CSR sparse matrix type*/
+const LGBM_PREDICT_CONTRIB = 3; /* Predict feature contributions (SHAP values)*/
+const LGBM_PREDICT_LEAF_INDEX = 2;      /* Predict leaf index*/
+const LGBM_PREDICT_NORMAL = 0;  /* Normal prediction w/ transform (if needed)*/
+const LGBM_PREDICT_RAW_SCORE = 1;       /* Predict raw score*/
+const SQLITE_OPEN_AUTOPROXY = 0x00000020;       /* VFS only */
+const SQLITE_OPEN_CREATE = 0x00000004;          /* Ok for sqlite3_open_v2() */
+const SQLITE_OPEN_DELETEONCLOSE = 0x00000008;   /* VFS only */
+const SQLITE_OPEN_EXCLUSIVE = 0x00000010;       /* VFS only */
+const SQLITE_OPEN_FULLMUTEX = 0x00010000;       /* Ok for sqlite3_open_v2() */
+const SQLITE_OPEN_MAIN_DB = 0x00000100;         /* VFS only */
+const SQLITE_OPEN_MAIN_JOURNAL = 0x00000800;    /* VFS only */
+const SQLITE_OPEN_MEMORY = 0x00000080;          /* Ok for sqlite3_open_v2() */
+const SQLITE_OPEN_NOFOLLOW = 0x01000000;        /* Ok for sqlite3_open_v2() */
+const SQLITE_OPEN_NOMUTEX = 0x00008000;         /* Ok for sqlite3_open_v2() */
+const SQLITE_OPEN_PRIVATECACHE = 0x00040000;    /* Ok for sqlite3_open_v2() */
+const SQLITE_OPEN_READONLY = 0x00000001;        /* Ok for sqlite3_open_v2() */
+const SQLITE_OPEN_READWRITE = 0x00000002;       /* Ok for sqlite3_open_v2() */
+const SQLITE_OPEN_SHAREDCACHE = 0x00020000;     /* Ok for sqlite3_open_v2() */
+const SQLITE_OPEN_SUBJOURNAL = 0x00002000;      /* VFS only */
+const SQLITE_OPEN_SUPER_JOURNAL = 0x00004000;   /* VFS only */
+const SQLITE_OPEN_TEMP_DB = 0x00000200;         /* VFS only */
+const SQLITE_OPEN_TEMP_JOURNAL = 0x00001000;    /* VFS only */
+const SQLITE_OPEN_TRANSIENT_DB = 0x00000400;    /* VFS only */
+const SQLITE_OPEN_URI = 0x00000040;             /* Ok for sqlite3_open_v2() */
+const SQLITE_OPEN_WAL = 0x00080000;             /* VFS only */
+
 let IS_BROWSER;
-let SQLITE_OPEN_AUTOPROXY = 0x00000020;     /* VFS only */
-let SQLITE_OPEN_CREATE = 0x00000004;        /* Ok for sqlite3_open_v2() */
-let SQLITE_OPEN_DELETEONCLOSE = 0x00000008; /* VFS only */
-let SQLITE_OPEN_EXCLUSIVE = 0x00000010;     /* VFS only */
-let SQLITE_OPEN_FULLMUTEX = 0x00010000;     /* Ok for sqlite3_open_v2() */
-let SQLITE_OPEN_MAIN_DB = 0x00000100;       /* VFS only */
-let SQLITE_OPEN_MAIN_JOURNAL = 0x00000800;  /* VFS only */
-let SQLITE_OPEN_MEMORY = 0x00000080;        /* Ok for sqlite3_open_v2() */
-let SQLITE_OPEN_NOFOLLOW = 0x01000000;      /* Ok for sqlite3_open_v2() */
-let SQLITE_OPEN_NOMUTEX = 0x00008000;       /* Ok for sqlite3_open_v2() */
-let SQLITE_OPEN_PRIVATECACHE = 0x00040000;  /* Ok for sqlite3_open_v2() */
-let SQLITE_OPEN_READONLY = 0x00000001;      /* Ok for sqlite3_open_v2() */
-let SQLITE_OPEN_READWRITE = 0x00000002;     /* Ok for sqlite3_open_v2() */
-let SQLITE_OPEN_SHAREDCACHE = 0x00020000;   /* Ok for sqlite3_open_v2() */
-let SQLITE_OPEN_SUBJOURNAL = 0x00002000;    /* VFS only */
-let SQLITE_OPEN_SUPER_JOURNAL = 0x00004000; /* VFS only */
-let SQLITE_OPEN_TEMP_DB = 0x00000200;       /* VFS only */
-let SQLITE_OPEN_TEMP_JOURNAL = 0x00001000;  /* VFS only */
-let SQLITE_OPEN_TRANSIENT_DB = 0x00000400;  /* VFS only */
-let SQLITE_OPEN_URI = 0x00000040;           /* Ok for sqlite3_open_v2() */
-let SQLITE_OPEN_WAL = 0x00080000;           /* VFS only */
 let cModule;
 let cModulePath;
 let consoleError = console.error;
@@ -1719,6 +1735,18 @@ await sqlmathInit();
 sqlmathInit(); // coverage-hack
 
 export {
+    LGBM_DTYPE_FLOAT32,
+    LGBM_DTYPE_FLOAT64,
+    LGBM_DTYPE_INT32,
+    LGBM_DTYPE_INT64,
+    LGBM_FEATURE_IMPORTANCE_GAIN,
+    LGBM_FEATURE_IMPORTANCE_SPLIT,
+    LGBM_MATRIX_TYPE_CSC,
+    LGBM_MATRIX_TYPE_CSR,
+    LGBM_PREDICT_CONTRIB,
+    LGBM_PREDICT_LEAF_INDEX,
+    LGBM_PREDICT_NORMAL,
+    LGBM_PREDICT_RAW_SCORE,
     SQLITE_OPEN_AUTOPROXY,
     SQLITE_OPEN_CREATE,
     SQLITE_OPEN_DELETEONCLOSE,

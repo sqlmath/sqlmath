@@ -139,7 +139,7 @@ file sqlmath_h - start
     }
 
 #define LGBM_ASSERT_OK() \
-    if (errcode != 0) { \
+    if (errcode) { \
         sqlite3_result_error(context, LGBM_GetLastError(), -1); \
         goto catch_error; \
     }
@@ -206,20 +206,20 @@ file sqlmath_h - start
     errcode = sqlite3_create_function(db, #func, argc, \
         flag | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         sql1_##func##_func, NULL, NULL); \
-    if (errcode != SQLITE_OK) { return errcode; }
+    if (errcode) { return errcode; }
 
 #define SQL_CREATE_FUNC2(func, argc, flag) \
     errcode = sqlite3_create_function(db, #func, argc, \
         flag | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         NULL, sql2_##func##_step, sql2_##func##_final); \
-    if (errcode != SQLITE_OK) { return errcode; }
+    if (errcode) { return errcode; }
 
 #define SQL_CREATE_FUNC3(func, argc, flag) \
     errcode = sqlite3_create_window_function(db, #func, argc, \
         flag | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         sql3_##func##_step, sql3_##func##_final, \
         sql3_##func##_value, sql3_##func##_inverse, NULL); \
-    if (errcode != SQLITE_OK) { return errcode; }
+    if (errcode) { return errcode; }
 
 #define STR99_ALLOCA(str99) \
     sqlite3_str __##str99 = { 0 }; \
@@ -674,7 +674,7 @@ SQLMATH_API void dbExec(
         }
         errcode = sqlite3_prepare_v2(db, zSql, -1, &pStmt, &zTmp);
         JSBATON_ASSERT_OK();
-        if (errcode != 0 || *zSql == '\x00') {
+        if (errcode || *zSql == '\x00') {
             break;
         }
         zSql = zTmp;
@@ -862,7 +862,7 @@ SQLMATH_API void dbExec(
     // cleanup bindList
     sqlite3_free(bindList);
     // cleanup str99
-    if (errcode != SQLITE_OK && str99->zText) {
+    if (errcode && str99->zText) {
         sqlite3_free(str99->zText);
     }
 #ifndef EMSCRIPTEN
@@ -1918,6 +1918,38 @@ SQLMATH_FUNC static void sql1_lgbm_datasetsavebinary_func(
     (void) 0;
 }
 
+SQLMATH_FUNC static void sql1_lgbm_modelpredictforfile_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will make prediction for file from <model>.
+    UNUSED_PARAMETER(argc);
+    BoosterHandle booster = NULL;
+    int errcode = 0;
+    int out_num_iterations = 0;
+    errcode = LGBM_BoosterLoadModelFromString(  //
+        (char *) sqlite3_value_text(argv[0]),   // const char *model_str,
+        &out_num_iterations,    // int *out_num_iterations,
+        &booster);              // BoosterHandle *out
+    LGBM_ASSERT_OK();
+    // fprintf(stderr, "lgbm_modelpredictforfile - out_num_iterations=%d\n",
+    //     out_num_iterations);
+    errcode = LGBM_BoosterPredictForFile(       //
+        booster,                // BoosterHandle handle,
+        (char *) sqlite3_value_text(argv[1]),   // const char *data_filename,
+        sqlite3_value_int(argv[2]),     // int data_has_header,
+        sqlite3_value_int(argv[3]),     // int predict_type,
+        sqlite3_value_int(argv[4]),     // int start_iteration,
+        sqlite3_value_int(argv[5]),     // int num_iteration,
+        (char *) sqlite3_value_text(argv[6]),   // const char *parameter,
+        (char *) sqlite3_value_text(argv[7]));  // const char *result_filename
+    LGBM_ASSERT_OK();
+    sqlite3_result_null(context);
+  catch_error:
+    LGBM_BoosterFree(booster);
+}
+
 SQLMATH_FUNC static void sql1_lgbm_train_func(
     sqlite3_context * context,
     int argc,
@@ -1934,6 +1966,7 @@ SQLMATH_FUNC static void sql1_lgbm_train_func(
     const int eval_step = sqlite3_value_int(argv[3]);
     const char *parameters = (char *) sqlite3_value_text(argv[4]);
     BoosterHandle booster = NULL;
+    char *model = NULL;
     int errcode = 0;
     errcode = LGBM_BoosterCreate(       //
         train_data,             // const DatasetHandle train_data,
@@ -1987,7 +2020,6 @@ SQLMATH_FUNC static void sql1_lgbm_train_func(
         }
     }
     // booster - save
-    char *model = NULL;
     int64_t model_len = 0;
     errcode = LGBM_BoosterSaveModelToString(    //
         booster,                // BoosterHandle handle,
@@ -2017,6 +2049,9 @@ SQLMATH_FUNC static void sql1_lgbm_train_func(
     sqlite3_result_blob(context, model, model_len, sqlite3_free);
   catch_error:
     LGBM_BoosterFree(booster);
+    if (errcode) {
+        sqlite3_free(model);
+    }
 }
 
 // SQLMATH_FUNC sql1_lgbm_xxx_func - end
@@ -3575,6 +3610,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(lgbm_datasetgetnumfeature, 1, 0);
     SQL_CREATE_FUNC1(lgbm_datasetsavebinary, 1, 0);
     SQL_CREATE_FUNC1(lgbm_dlopen, 1, 0);
+    SQL_CREATE_FUNC1(lgbm_modelpredictforfile, 8, 0);
     SQL_CREATE_FUNC1(lgbm_train, 5, 0);
     SQL_CREATE_FUNC1(marginoferror95, 2, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(normalizewithsqrt, 1, SQLITE_DETERMINISTIC);
