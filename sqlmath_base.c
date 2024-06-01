@@ -141,7 +141,7 @@ file sqlmath_h - start
 #define LGBM_ASSERT_OK() \
     if (errcode != 0) { \
         sqlite3_result_error(context, LGBM_GetLastError(), -1); \
-        return; \
+        goto catch_error; \
     }
 
 #ifdef _WIN32
@@ -1722,7 +1722,9 @@ SQLMATH_FUNC static void sql1_lgbm_datasetcreatefromfile_func(
         (DatasetHandle) (intptr_t) sqlite3_value_int64(argv[2]),        //
         &out);                  // DatasetHandle * out
     LGBM_ASSERT_OK();
-    sqlite3_result_int64(context, (intptr_t) out);
+    sqlite3_result_int64(context, (int64_t) (intptr_t) out);
+  catch_error:
+    (void) 0;
 }
 
 SQLMATH_FUNC static void sql1_lgbm_datasetcreatefrommat_func(
@@ -1745,7 +1747,90 @@ SQLMATH_FUNC static void sql1_lgbm_datasetcreatefrommat_func(
         (DatasetHandle) (intptr_t) sqlite3_value_int64(argv[6]),        //
         &out);                  // DatasetHandle *out
     LGBM_ASSERT_OK();
-    sqlite3_result_int64(context, (intptr_t) out);
+    sqlite3_result_int64(context, (int64_t) (intptr_t) out);
+  catch_error:
+    (void) 0;
+}
+
+SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final(
+    sqlite3_context * context
+) {
+// This function will aggregate sql-table into lgbm-dataset.
+    float *label = NULL;
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - null-case
+    if (dblwin->nbody == 0) {
+        sqlite3_result_null(context);
+        goto catch_error;
+    }
+    // init label
+    DatasetHandle out = NULL;
+    const int ncol = (int) dblwin->ncol;
+    const int nrow = (int) dblwin->nbody / dblwin->ncol;
+    int errcode = 0;
+    label = sqlite3_malloc(nrow * sizeof(float));
+    if (label == NULL) {
+        sqlite3_result_error_nomem(context);
+        goto catch_error;
+    }
+    int kk = 0;
+    int ll = 0;
+    for (int ii = 0; ii < nrow; ii += 1) {
+        label[ii] = (float) dblwin_body[kk];
+        kk += 1;
+        for (int jj = 1; jj < ncol; jj += 1) {
+            dblwin_body[ll] = dblwin_body[kk];
+            kk += 1;
+            ll += 1;
+        }
+    }
+    errcode = LGBM_DatasetCreateFromMat(        //
+        dblwin_body,            // const void *data,
+        C_API_DTYPE_FLOAT64,    // int data_type,
+        (int32_t) nrow,         // int32_t nrow,
+        (int32_t) ncol - 1,     // int32_t ncol,
+        1,                      // int is_row_major,
+        (char *) dblwin_head,   // const char *parameters,
+        NULL,                   // const DatasetHandle reference,
+        &out);                  // DatasetHandle *out
+    LGBM_ASSERT_OK();
+    errcode = LGBM_DatasetSetField(     //
+        out,                    // DatasetHandle handle,
+        "label\x00",            // const char *field_name,
+        label,                  // const void *field_data,
+        nrow,                   // int num_element,
+        C_API_DTYPE_FLOAT32);   // int type
+    LGBM_ASSERT_OK();
+    sqlite3_result_int64(context, (int64_t) (intptr_t) out);
+  catch_error:
+    doublewinAggfree(dblwinAgg);
+    sqlite3_free(label);
+}
+
+SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will aggregate sql-table into lgbm-dataset.
+    // dblwin - init
+    const int ncol = argc - 1;
+    const int bytesParam = sqlite3_value_bytes(argv[0]);
+    DOUBLEWIN_AGGREGATE_CONTEXT((bytesParam / 8) + 1);
+    if (dblwin->nbody == 0) {
+        // dbwin - init ncol
+        dblwin->ncol = ncol;
+        // dbwin - init parameters
+        if (bytesParam > 0) {
+            memcpy(dblwin_head, sqlite3_value_text(argv[0]), bytesParam);
+        }
+        ((char *) dblwin_head)[bytesParam] = 0;
+    }
+    // dblwin - push xx
+    for (int ii = 0; ii < ncol; ii += 1) {
+        DOUBLEWIN_AGGREGATE_PUSH(sqlite3_value_double_or_nan(argv[ii + 1]));
+    }
 }
 
 SQLMATH_FUNC static void sql1_lgbm_datasetdumptext_func(
@@ -1762,6 +1847,8 @@ SQLMATH_FUNC static void sql1_lgbm_datasetdumptext_func(
         (char *) sqlite3_value_text(argv[1]));
     LGBM_ASSERT_OK();
     sqlite3_result_null(context);
+  catch_error:
+    (void) 0;
 }
 
 SQLMATH_FUNC static void sql1_lgbm_datasetfree_func(
@@ -1776,6 +1863,8 @@ SQLMATH_FUNC static void sql1_lgbm_datasetfree_func(
         (DatasetHandle) (intptr_t) sqlite3_value_int64(argv[0]));
     LGBM_ASSERT_OK();
     sqlite3_result_null(context);
+  catch_error:
+    (void) 0;
 }
 
 SQLMATH_FUNC static void sql1_lgbm_datasetgetnumdata_func(
@@ -1791,6 +1880,8 @@ SQLMATH_FUNC static void sql1_lgbm_datasetgetnumdata_func(
         (DatasetHandle) (intptr_t) sqlite3_value_int64(argv[0]), &result);
     LGBM_ASSERT_OK();
     sqlite3_result_int(context, result);
+  catch_error:
+    (void) 0;
 }
 
 SQLMATH_FUNC static void sql1_lgbm_datasetgetnumfeature_func(
@@ -1806,6 +1897,25 @@ SQLMATH_FUNC static void sql1_lgbm_datasetgetnumfeature_func(
         (DatasetHandle) (intptr_t) sqlite3_value_int64(argv[0]), &result);
     LGBM_ASSERT_OK();
     sqlite3_result_int(context, result);
+  catch_error:
+    (void) 0;
+}
+
+SQLMATH_FUNC static void sql1_lgbm_datasetsavebinary_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will save dataset <handle> to binary file <filename>.
+    UNUSED_PARAMETER(argc);
+    int errcode = 0;
+    errcode = LGBM_DatasetSaveBinary(   //
+        (DatasetHandle) (intptr_t) sqlite3_value_int64(argv[0]),
+        (char *) sqlite3_value_text(argv[1]));
+    LGBM_ASSERT_OK();
+    sqlite3_result_null(context);
+  catch_error:
+    (void) 0;
 }
 
 // SQLMATH_FUNC sql1_lgbm_xxx_func - end
@@ -3186,7 +3296,6 @@ SQLMATH_FUNC static void sql3_win_quantile1_inverse(
     sqlite3_value ** argv
 ) {
 // This function will calculate running quantile.
-    UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
@@ -3364,6 +3473,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(lgbm_datasetfree, 1);
     SQLITE3_CREATE_FUNCTION1(lgbm_datasetgetnumdata, 1);
     SQLITE3_CREATE_FUNCTION1(lgbm_datasetgetnumfeature, 1);
+    SQLITE3_CREATE_FUNCTION1(lgbm_datasetsavebinary, 1);
     SQLITE3_CREATE_FUNCTION1(lgbm_dlopen, 1);
     SQLITE3_CREATE_FUNCTION1(marginoferror95, 2);
     SQLITE3_CREATE_FUNCTION1(normalizewithsqrt, 1);
@@ -3375,6 +3485,7 @@ int sqlite3_sqlmath_base_init(
     SQLITE3_CREATE_FUNCTION1(squaredwithsign, 1);
     SQLITE3_CREATE_FUNCTION1(squared, 1);
     SQLITE3_CREATE_FUNCTION1(throwerror, 1);
+    SQLITE3_CREATE_FUNCTION2(lgbm_datasetcreatefromtable, -1);
     SQLITE3_CREATE_FUNCTION2(median, 1);
     SQLITE3_CREATE_FUNCTION2(quantile, 2);
     SQLITE3_CREATE_FUNCTION3(stdev, 1);

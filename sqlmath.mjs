@@ -909,6 +909,8 @@ async function dbOpenAsync({
 
 async function dbTableImportAsync({
     db,
+    filename,
+    headerMissing,
     mode,
     tableName,
     textData
@@ -918,6 +920,9 @@ async function dbTableImportAsync({
     let rowList;
     let rowidList;
     let tmp;
+    if (filename) {
+        textData = await moduleFs.promises.readFile(filename, "utf8");
+    }
     switch (mode) {
     case "csv":
         rowList = jsonRowListFromCsv({
@@ -946,6 +951,12 @@ async function dbTableImportAsync({
             rowidList.push(key);
             return val;
         });
+    }
+    // headerMissing
+    if (headerMissing && (rowList.length > 0 && Array.isArray(rowList[0]))) {
+        rowList.unshift(Array.from(rowList[0]).map(function (ignore, ii) {
+            return String(ii + 1);
+        }));
     }
     // normalize rowList[ii] to list
     if (rowList.length === 0) {
