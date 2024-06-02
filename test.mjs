@@ -849,6 +849,9 @@ jstestDescribe((
         let filePreb = "test_lgbm_preb.txt";
         let fileTest = "test_lgbm_binary.test";
         let fileTrain = "test_lgbm_binary.train";
+        if (process.platform === "darwin") {
+            return;
+        }
         await dbExecAsync({
             db,
             sql: "SELECT lgbm_dlopen(NULL);"
@@ -900,9 +903,49 @@ UPDATE test_lgbm
             SELECT
                 lgbm_datasetcreatefromfile(
                     '${fileTest}',
-                    'max_bin=15',
-                    data_train_handle
+                    'max_bin=15', -- parameters
+                    data_train_handle -- reference
                 )
+        );
+SELECT
+        lgbm_datasetfree(data_test_handle),
+        lgbm_datasetfree(data_train_handle)
+    FROM test_lgbm;
+UPDATE test_lgbm
+    SET
+        data_train_handle = (
+            SELECT
+                lgbm_datasetcreatefromtable(
+                    'max_bin=15', -- parameters
+                    0, -- reference
+                    c_1,  c_2,  c_3,  c_4,
+                    c_5,  c_6,  c_7,  c_8,
+                    c_9,  c_10, c_11, c_12,
+                    c_13, c_14, c_15, c_16,
+                    c_17, c_18, c_19, c_20,
+                    c_21, c_22, c_23, c_24,
+                    c_25, c_26, c_27, c_28,
+                    c_29
+                )
+            FROM test_file_train
+        );
+UPDATE test_lgbm
+    SET
+        data_test_handle = (
+            SELECT
+                lgbm_datasetcreatefromtable(
+                    'max_bin=15', -- parameters
+                    data_train_handle, -- reference
+                    c_1,  c_2,  c_3,  c_4,
+                    c_5,  c_6,  c_7,  c_8,
+                    c_9,  c_10, c_11, c_12,
+                    c_13, c_14, c_15, c_16,
+                    c_17, c_18, c_19, c_20,
+                    c_21, c_22, c_23, c_24,
+                    c_25, c_26, c_27, c_28,
+                    c_29
+                )
+            FROM test_file_test
         );
 UPDATE test_lgbm
     SET

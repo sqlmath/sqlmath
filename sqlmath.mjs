@@ -318,8 +318,11 @@ async function ciBuildExt1NodejsConfigure({
         "-Wno-all",
         "-Wno-extra",
         "-Wno-implicit-fallthrough",
+        "-Wno-incompatible-pointer-types",
         "-Wno-int-conversion",
+        "-Wno-unreachable-code",
         "-Wno-unused-parameter"
+        // "-wno-unused-const-variable"
     ];
     consoleError(`ciBuildExt1Nodejs - configure binding.gyp`);
     await fsWriteFileUnlessTest("binding.gyp", JSON.stringify({
