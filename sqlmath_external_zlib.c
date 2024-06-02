@@ -20,23 +20,23 @@ shRollupFetch
     "fetchList": [
         {
             "comment": true,
-            "sh": "cat .zlib-1.3/LICENSE",
+            "sh": "cat .zlib-1.3.1/LICENSE",
             "url": "https://github.com/madler/zlib/blob/v1.3/LICENSE"
         },
         {
-            "sh": "cat .zlib-1.3/zconf.h",
+            "sh": "cat .zlib-1.3.1/zconf.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/zconf.h"
         },
         {
-            "sh": "cat .zlib-1.3/zlib.h",
+            "sh": "cat .zlib-1.3.1/zlib.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/zlib.h"
         },
         {
-            "sh": "cat .zlib-1.3/zutil.h",
+            "sh": "cat .zlib-1.3.1/zutil.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/zutil.h"
         },
         {
-            "sh": "cat .zlib-1.3/adler32.c",
+            "sh": "cat .zlib-1.3.1/adler32.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/adler32.c"
         },
         {
@@ -52,7 +52,7 @@ shRollupFetch
             "url2": "https://raw.githubusercontent.com/madler/zlib/v1.3/crc32.c"
         },
         {
-            "sh": "cat .zlib-1.3/crc32.h",
+            "sh": "cat .zlib-1.3.1/crc32.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/crc32.h"
         },
         {
@@ -68,79 +68,79 @@ shRollupFetch
             "url2": "https://raw.githubusercontent.com/madler/zlib/v1.3/crc32.c"
         },
         {
-            "sh": "cat .zlib-1.3/deflate.h",
+            "sh": "cat .zlib-1.3.1/deflate.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/deflate.h"
         },
         {
-            "sh": "cat .zlib-1.3/deflate.c",
+            "sh": "cat .zlib-1.3.1/deflate.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/deflate.c"
         },
         {
-            "sh": "cat .zlib-1.3/inftrees.h",
+            "sh": "cat .zlib-1.3.1/inftrees.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/inftrees.h"
         },
         {
-            "sh": "cat .zlib-1.3/inflate.h",
+            "sh": "cat .zlib-1.3.1/inflate.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/inflate.h"
         },
         {
-            "sh": "cat .zlib-1.3/inffast.h",
+            "sh": "cat .zlib-1.3.1/inffast.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/inffast.h"
         },
         {
-            "sh": "cat .zlib-1.3/inffixed.h",
+            "sh": "cat .zlib-1.3.1/inffixed.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/inffixed.h"
         },
         {
-            "sh": "cat .zlib-1.3/inffast.c",
+            "sh": "cat .zlib-1.3.1/inffast.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/inffast.c"
         },
         {
-            "sh": "cat .zlib-1.3/inflate.c",
+            "sh": "cat .zlib-1.3.1/inflate.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/inflate.c"
         },
         {
-            "sh": "cat .zlib-1.3/inftrees.c",
+            "sh": "cat .zlib-1.3.1/inftrees.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/inftrees.c"
         },
         {
-            "sh": "cat .zlib-1.3/trees.h",
+            "sh": "cat .zlib-1.3.1/trees.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/trees.h"
         },
         {
-            "sh": "cat .zlib-1.3/trees.c",
+            "sh": "cat .zlib-1.3.1/trees.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/trees.c"
         },
         {
-            "sh": "cat .zlib-1.3/gzguts.h",
+            "sh": "cat .zlib-1.3.1/gzguts.h",
             "url": "https://github.com/madler/zlib/blob/v1.3/gzguts.h"
         },
         {
-            "sh": "cat .zlib-1.3/zutil.c",
+            "sh": "cat .zlib-1.3.1/zutil.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/zutil.c"
         },
         {
-            "sh": "cat .zlib-1.3/compress.c",
+            "sh": "cat .zlib-1.3.1/compress.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/compress.c"
         },
         {
-            "sh": "cat .zlib-1.3/uncompr.c",
+            "sh": "cat .zlib-1.3.1/uncompr.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/uncompr.c"
         },
         {
-            "sh": "cat .zlib-1.3/gzclose.c",
+            "sh": "cat .zlib-1.3.1/gzclose.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/gzclose.c"
         },
         {
-            "sh": "cat .zlib-1.3/gzlib.c",
+            "sh": "cat .zlib-1.3.1/gzlib.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/gzlib.c"
         },
         {
-            "sh": "cat .zlib-1.3/gzread.c",
+            "sh": "cat .zlib-1.3.1/gzread.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/gzread.c"
         },
         {
-            "sh": "cat .zlib-1.3/gzwrite.c",
+            "sh": "cat .zlib-1.3.1/gzwrite.c",
             "url": "https://github.com/madler/zlib/blob/v1.3/gzwrite.c"
         },
         {
@@ -242,7 +242,7 @@ Copyright notice:
 file https://github.com/madler/zlib/blob/v1.3/zconf.h
 */
 /* zconf.h -- configuration of the zlib compression library
- * Copyright (C) 1995-2016 Jean-loup Gailly, Mark Adler
+ * Copyright (C) 1995-2024 Jean-loup Gailly, Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -543,14 +543,6 @@ file https://github.com/madler/zlib/blob/v1.3/zconf.h
 #  endif
 #endif
 
-#ifndef Z_ARG /* function prototypes for stdarg */
-#  if defined(STDC) || defined(Z_HAVE_STDARG_H)
-#    define Z_ARG(args)  args
-#  else
-#    define Z_ARG(args)  ()
-#  endif
-#endif
-
 /* The following definitions for FAR are needed only for MSDOS mixed
  * model programming (small or medium model with some far allocations).
  * This was tested only with MSC; for other MSDOS compilers you may have
@@ -798,9 +790,9 @@ typedef uLong FAR uLongf;
 file https://github.com/madler/zlib/blob/v1.3/zlib.h
 */
 /* zlib.h -- interface of the 'zlib' general purpose compression library
-  version 1.3, August 18th, 2023
+  version 1.3.1, January 22nd, 2024
 
-  Copyright (C) 1995-2023 Jean-loup Gailly and Mark Adler
+  Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -837,11 +829,11 @@ file https://github.com/madler/zlib/blob/v1.3/zlib.h
 extern "C" {
 #endif
 
-#define ZLIB_VERSION "1.3"
-#define ZLIB_VERNUM 0x1300
+#define ZLIB_VERSION "1.3.1"
+#define ZLIB_VERNUM 0x1310
 #define ZLIB_VER_MAJOR 1
 #define ZLIB_VER_MINOR 3
-#define ZLIB_VER_REVISION 0
+#define ZLIB_VER_REVISION 1
 #define ZLIB_VER_SUBREVISION 0
 
 /*
@@ -1736,10 +1728,10 @@ ZEXTERN int ZEXPORT inflateSync(z_streamp strm);
      inflateSync returns Z_OK if a possible full flush point has been found,
    Z_BUF_ERROR if no more input was provided, Z_DATA_ERROR if no flush point
    has been found, or Z_STREAM_ERROR if the stream structure was inconsistent.
-   In the success case, the application may save the current current value of
-   total_in which indicates where valid compressed data was found.  In the
-   error case, the application may repeatedly call inflateSync, providing more
-   input each time, until success or end of the input data.
+   In the success case, the application may save the current value of total_in
+   which indicates where valid compressed data was found.  In the error case,
+   the application may repeatedly call inflateSync, providing more input each
+   time, until success or end of the input data.
 */
 
 ZEXTERN int ZEXPORT inflateCopy(z_streamp dest,
@@ -2558,14 +2550,14 @@ ZEXTERN uLong ZEXPORT crc32_combine(uLong crc1, uLong crc2, z_off_t len2);
    seq1 and seq2 with lengths len1 and len2, CRC-32 check values were
    calculated for each, crc1 and crc2.  crc32_combine() returns the CRC-32
    check value of seq1 and seq2 concatenated, requiring only crc1, crc2, and
-   len2.
+   len2. len2 must be non-negative.
 */
 
 /*
 ZEXTERN uLong ZEXPORT crc32_combine_gen(z_off_t len2);
 
      Return the operator corresponding to length len2, to be used with
-   crc32_combine_op().
+   crc32_combine_op(). len2 must be non-negative.
 */
 
 ZEXTERN uLong ZEXPORT crc32_combine_op(uLong crc1, uLong crc2, uLong op);
@@ -2742,7 +2734,7 @@ ZEXTERN int            ZEXPORTVA gzvprintf(gzFile file,
 file https://github.com/madler/zlib/blob/v1.3/zutil.h
 */
 /* zutil.h -- internal interface and configuration of the compression library
- * Copyright (C) 1995-2022 Jean-loup Gailly, Mark Adler
+ * Copyright (C) 1995-2024 Jean-loup Gailly, Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -2800,7 +2792,7 @@ typedef unsigned long  ulg;
 extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 /* (size given to avoid silly warnings with Visual C++) */
 
-#define ERR_MSG(err) z_errmsg[Z_NEED_DICT-(err)]
+#define ERR_MSG(err) z_errmsg[(err) < -6 || (err) > 2 ? 9 : 2 - (err)]
 
 #define ERR_RETURN(strm,err) \
   return (strm->msg = ERR_MSG(err), (err))
@@ -2881,17 +2873,8 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 #  endif
 #endif
 
-#if defined(MACOS) || defined(TARGET_OS_MAC)
+#if defined(MACOS)
 #  define OS_CODE  7
-#  ifndef Z_SOLO
-#    if defined(__MWERKS__) && __dest_os != __be_os && __dest_os != __win32_os
-#      include <unix.h> /* for fdopen */
-#    else
-#      ifndef fdopen
-#        define fdopen(fd,mode) NULL /* No fdopen() */
-#      endif
-#    endif
-#  endif
 #endif
 
 #ifdef __acorn
@@ -2912,18 +2895,6 @@ extern z_const char * const z_errmsg[10]; /* indexed by 2-zlib_error */
 
 #ifdef __APPLE__
 #  define OS_CODE 19
-#endif
-
-#if defined(_BEOS_) || defined(RISCOS)
-#  define fdopen(fd,mode) NULL /* No fdopen() */
-#endif
-
-#if (defined(_MSC_VER) && (_MSC_VER > 600)) && !defined __INTERIX
-#  if defined(_WIN32_WCE)
-#    define fdopen(fd,mode) NULL /* No fdopen() */
-#  else
-#    define fdopen(fd,type)  _fdopen(fd,type)
-#  endif
 #endif
 
 #if defined(__BORLANDC__) && !defined(MSDOS)
@@ -13705,7 +13676,7 @@ uLong ZEXPORT crc32_combine_op(uLong crc1, uLong crc2, uLong op) {
 file https://github.com/madler/zlib/blob/v1.3/deflate.h
 */
 /* deflate.h -- internal compression state
- * Copyright (C) 1995-2018 Jean-loup Gailly
+ * Copyright (C) 1995-2024 Jean-loup Gailly
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -13730,6 +13701,10 @@ file https://github.com/madler/zlib/blob/v1.3/deflate.h
 // hack-zlib - fix warning
 // #  define GZIP
 #endif
+
+/* define LIT_MEM to slightly increase the speed of deflate (order 1% to 2%) at
+   the cost of a larger memory footprint */
+/* #define LIT_MEM */
 
 /* ===========================================================================
  * Internal compression state.
@@ -13925,7 +13900,14 @@ typedef struct internal_state {
     /* Depth of each subtree used as tie breaker for trees of equal frequency
      */
 
+#ifdef LIT_MEM
+#   define LIT_BUFS 5
+    ushf *d_buf;          /* buffer for distances */
+    uchf *l_buf;          /* buffer for literals/lengths */
+#else
+#   define LIT_BUFS 4
     uchf *sym_buf;        /* buffer for distances and literals/lengths */
+#endif
 
     uInt  lit_bufsize;
     /* Size of match buffer for literals/lengths.  There are 4 reasons for
@@ -13947,7 +13929,7 @@ typedef struct internal_state {
      *   - I can't count above 4
      */
 
-    uInt sym_next;      /* running index in sym_buf */
+    uInt sym_next;      /* running index in symbol buffer */
     uInt sym_end;       /* symbol table full when sym_next reaches this */
 
     ulg opt_len;        /* bit length of current block with optimal trees */
@@ -14025,6 +14007,25 @@ void ZLIB_INTERNAL _tr_stored_block(deflate_state *s, charf *buf,
   extern const uch ZLIB_INTERNAL _dist_code[];
 #endif
 
+#ifdef LIT_MEM
+# define _tr_tally_lit(s, c, flush) \
+  { uch cc = (c); \
+    s->d_buf[s->sym_next] = 0; \
+    s->l_buf[s->sym_next++] = cc; \
+    s->dyn_ltree[cc].Freq++; \
+    flush = (s->sym_next == s->sym_end); \
+   }
+# define _tr_tally_dist(s, distance, length, flush) \
+  { uch len = (uch)(length); \
+    ush dist = (ush)(distance); \
+    s->d_buf[s->sym_next] = dist; \
+    s->l_buf[s->sym_next++] = len; \
+    dist--; \
+    s->dyn_ltree[_length_code[len]+LITERALS+1].Freq++; \
+    s->dyn_dtree[d_code(dist)].Freq++; \
+    flush = (s->sym_next == s->sym_end); \
+  }
+#else
 # define _tr_tally_lit(s, c, flush) \
   { uch cc = (c); \
     s->sym_buf[s->sym_next++] = 0; \
@@ -14044,6 +14045,7 @@ void ZLIB_INTERNAL _tr_stored_block(deflate_state *s, charf *buf,
     s->dyn_dtree[d_code(dist)].Freq++; \
     flush = (s->sym_next == s->sym_end); \
   }
+#endif
 #else
 # define _tr_tally_lit(s, c, flush) flush = _tr_tally(s, 0, c)
 # define _tr_tally_dist(s, distance, length, flush) \
@@ -14057,7 +14059,7 @@ void ZLIB_INTERNAL _tr_stored_block(deflate_state *s, charf *buf,
 file https://github.com/madler/zlib/blob/v1.3/deflate.c
 */
 /* deflate.c -- compress data using the deflation algorithm
- * Copyright (C) 1995-2023 Jean-loup Gailly and Mark Adler
+ * Copyright (C) 1995-2024 Jean-loup Gailly and Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -14111,7 +14113,7 @@ file https://github.com/madler/zlib/blob/v1.3/deflate.c
 // #include "deflate.h"
 
 const char deflate_copyright[] =
-   " deflate 1.3 Copyright 1995-2023 Jean-loup Gailly and Mark Adler ";
+   " deflate 1.3.1 Copyright 1995-2024 Jean-loup Gailly and Mark Adler ";
 /*
   If you use the zlib library in a product, an acknowledgment is welcome
   in the documentation of your product. If for some reason you cannot
@@ -14550,7 +14552,7 @@ int ZEXPORT deflateInit2_(z_streamp strm, int level, int method,
      * symbols from which it is being constructed.
      */
 
-    s->pending_buf = (uchf *) ZALLOC(strm, s->lit_bufsize, 4);
+    s->pending_buf = (uchf *) ZALLOC(strm, s->lit_bufsize, LIT_BUFS);
     s->pending_buf_size = (ulg)s->lit_bufsize * 4;
 
     if (s->window == Z_NULL || s->prev == Z_NULL || s->head == Z_NULL ||
@@ -14560,8 +14562,14 @@ int ZEXPORT deflateInit2_(z_streamp strm, int level, int method,
         deflateEnd (strm);
         return Z_MEM_ERROR;
     }
+#ifdef LIT_MEM
+    s->d_buf = (ushf *)(s->pending_buf + (s->lit_bufsize << 1));
+    s->l_buf = s->pending_buf + (s->lit_bufsize << 2);
+    s->sym_end = s->lit_bufsize - 1;
+#else
     s->sym_buf = s->pending_buf + s->lit_bufsize;
     s->sym_end = (s->lit_bufsize - 1) * 3;
+#endif
     /* We avoid equality with lit_bufsize*3 because of wraparound at 64K
      * on 16 bit machines and because stored blocks are restricted to
      * 64K-1 bytes.
@@ -14777,9 +14785,15 @@ int ZEXPORT deflatePrime(z_streamp strm, int bits, int value) {
 
     if (deflateStateCheck(strm)) return Z_STREAM_ERROR;
     s = strm->state;
+#ifdef LIT_MEM
+    if (bits < 0 || bits > 16 ||
+        (uchf *)s->d_buf < s->pending_out + ((Buf_size + 7) >> 3))
+        return Z_BUF_ERROR;
+#else
     if (bits < 0 || bits > 16 ||
         s->sym_buf < s->pending_out + ((Buf_size + 7) >> 3))
         return Z_BUF_ERROR;
+#endif
     do {
         put = Buf_size - s->bi_valid;
         if (put > bits)
@@ -15351,7 +15365,7 @@ int ZEXPORT deflateCopy(z_streamp dest, z_streamp source) {
     ds->window = (Bytef *) ZALLOC(dest, ds->w_size, 2*sizeof(Byte));
     ds->prev   = (Posf *)  ZALLOC(dest, ds->w_size, sizeof(Pos));
     ds->head   = (Posf *)  ZALLOC(dest, ds->hash_size, sizeof(Pos));
-    ds->pending_buf = (uchf *) ZALLOC(dest, ds->lit_bufsize, 4);
+    ds->pending_buf = (uchf *) ZALLOC(dest, ds->lit_bufsize, LIT_BUFS);
 
     if (ds->window == Z_NULL || ds->prev == Z_NULL || ds->head == Z_NULL ||
         ds->pending_buf == Z_NULL) {
@@ -15362,10 +15376,15 @@ int ZEXPORT deflateCopy(z_streamp dest, z_streamp source) {
     zmemcpy(ds->window, ss->window, ds->w_size * 2 * sizeof(Byte));
     zmemcpy((voidpf)ds->prev, (voidpf)ss->prev, ds->w_size * sizeof(Pos));
     zmemcpy((voidpf)ds->head, (voidpf)ss->head, ds->hash_size * sizeof(Pos));
-    zmemcpy(ds->pending_buf, ss->pending_buf, (uInt)ds->pending_buf_size);
+    zmemcpy(ds->pending_buf, ss->pending_buf, ds->lit_bufsize * LIT_BUFS);
 
     ds->pending_out = ds->pending_buf + (ss->pending_out - ss->pending_buf);
+#ifdef LIT_MEM
+    ds->d_buf = (ushf *)(ds->pending_buf + (ds->lit_bufsize << 1));
+    ds->l_buf = ds->pending_buf + (ds->lit_bufsize << 2);
+#else
     ds->sym_buf = ds->pending_buf + ds->lit_bufsize;
+#endif
 
     ds->l_desc.dyn_tree = ds->dyn_ltree;
     ds->d_desc.dyn_tree = ds->dyn_dtree;
@@ -15596,13 +15615,21 @@ local uInt longest_match(deflate_state *s, IPos cur_match) {
  */
 local void check_match(deflate_state *s, IPos start, IPos match, int length) {
     /* check that the match is indeed a match */
-    if (zmemcmp(s->window + match,
-                s->window + start, length) != EQUAL) {
-        fprintf(stderr, " start %u, match %u, length %d\n",
-                start, match, length);
+    Bytef *back = s->window + (int)match, *here = s->window + start;
+    IPos len = length;
+    if (match == (IPos)-1) {
+        /* match starts one byte before the current window -- just compare the
+           subsequent length-1 bytes */
+        back++;
+        here++;
+        len--;
+    }
+    if (zmemcmp(back, here, len) != EQUAL) {
+        fprintf(stderr, " start %u, match %d, length %d\n",
+                start, (int)match, length);
         do {
-            fprintf(stderr, "%c%c", s->window[match++], s->window[start++]);
-        } while (--length != 0);
+            fprintf(stderr, "(%02x %02x)", *back++, *here++);
+        } while (--len != 0);
         z_error("invalid match");
     }
     if (z_verbose > 1) {
@@ -16216,8 +16243,8 @@ typedef struct {
    examples/enough.c found in the zlib distribution.  The arguments to that
    program are the number of symbols, the initial root table size, and the
    maximum bit length of a code.  "enough 286 9 15" for literal/length codes
-   returns returns 852, and "enough 30 6 15" for distance codes returns 592.
-   The initial root table size (9 or 6) is found in the fifth argument of the
+   returns 852, and "enough 30 6 15" for distance codes returns 592. The
+   initial root table size (9 or 6) is found in the fifth argument of the
    inflate_table() calls in inflate.c and infback.c.  If the root table size is
    changed, then these maximum sizes would be need to be recalculated and
    updated. */
@@ -18209,7 +18236,7 @@ int ZEXPORT inflateSync(z_streamp strm) {
     /* if first time, start search in bit buffer */
     if (state->mode != SYNC) {
         state->mode = SYNC;
-        state->hold <<= state->bits & 7;
+        state->hold >>= state->bits & 7;
         state->bits -= state->bits & 7;
         len = 0;
         while (state->bits >= 8) {
@@ -18352,7 +18379,7 @@ unsigned long ZEXPORT inflateCodesUsed(z_streamp strm) {
 file https://github.com/madler/zlib/blob/v1.3/inftrees.c
 */
 /* inftrees.c -- generate Huffman trees for efficient decoding
- * Copyright (C) 1995-2023 Mark Adler
+ * Copyright (C) 1995-2024 Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -18364,7 +18391,7 @@ file https://github.com/madler/zlib/blob/v1.3/inftrees.c
 #define MAXBITS 15
 
 const char inflate_copyright[] =
-   " inflate 1.3 Copyright 1995-2023 Mark Adler ";
+   " inflate 1.3.1 Copyright 1995-2024 Mark Adler ";
 /*
   If you use the zlib library in a product, an acknowledgment is welcome
   in the documentation of your product. If for some reason you cannot
@@ -18412,7 +18439,7 @@ int ZLIB_INTERNAL inflate_table(codetype type, unsigned short FAR *lens,
         35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0};
     static const unsigned short lext[31] = { /* Length codes 257..285 extra */
         16, 16, 16, 16, 16, 16, 16, 16, 17, 17, 17, 17, 18, 18, 18, 18,
-        19, 19, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 16, 198, 203};
+        19, 19, 19, 19, 20, 20, 20, 20, 21, 21, 21, 21, 16, 203, 77};
     static const unsigned short dbase[32] = { /* Distance codes 0..29 base */
         1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
         257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145,
@@ -18790,7 +18817,7 @@ local const int base_dist[D_CODES] = {
 file https://github.com/madler/zlib/blob/v1.3/trees.c
 */
 /* trees.c -- output deflated data using Huffman coding
- * Copyright (C) 1995-2021 Jean-loup Gailly
+ * Copyright (C) 1995-2024 Jean-loup Gailly
  * detect_data_type() function provided freely by Cosmin Truta, 2006
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
@@ -19688,14 +19715,19 @@ local void compress_block(deflate_state *s, const ct_data *ltree,
                           const ct_data *dtree) {
     unsigned dist;      /* distance of matched string */
     int lc;             /* match length or unmatched char (if dist == 0) */
-    unsigned sx = 0;    /* running index in sym_buf */
+    unsigned sx = 0;    /* running index in symbol buffers */
     unsigned code;      /* the code to send */
     int extra;          /* number of extra bits to send */
 
     if (s->sym_next != 0) do {
+#ifdef LIT_MEM
+        dist = s->d_buf[sx];
+        lc = s->l_buf[sx++];
+#else
         dist = s->sym_buf[sx++] & 0xff;
         dist += (unsigned)(s->sym_buf[sx++] & 0xff) << 8;
         lc = s->sym_buf[sx++];
+#endif
         if (dist == 0) {
             send_code(s, lc, ltree); /* send a literal byte */
             Tracecv(isgraph(lc), (stderr," '%c' ", lc));
@@ -19720,8 +19752,12 @@ local void compress_block(deflate_state *s, const ct_data *ltree,
             }
         } /* literal or match pair ? */
 
-        /* Check that the overlay between pending_buf and sym_buf is ok: */
+        /* Check for no overlay of pending_buf on needed symbols */
+#ifdef LIT_MEM
+        Assert(s->pending < 2 * (s->lit_bufsize + sx), "pendingBuf overflow");
+#else
         Assert(s->pending < s->lit_bufsize + sx, "pendingBuf overflow");
+#endif
     } while (sx < s->sym_next);
 
     send_code(s, END_BLOCK, ltree);
@@ -19868,9 +19904,14 @@ void ZLIB_INTERNAL _tr_flush_block(deflate_state *s, charf *buf,
  * the current block must be flushed.
  */
 int ZLIB_INTERNAL _tr_tally(deflate_state *s, unsigned dist, unsigned lc) {
+#ifdef LIT_MEM
+    s->d_buf[s->sym_next] = (ush)dist;
+    s->l_buf[s->sym_next++] = (uch)lc;
+#else
     s->sym_buf[s->sym_next++] = (uch)dist;
     s->sym_buf[s->sym_next++] = (uch)(dist >> 8);
     s->sym_buf[s->sym_next++] = (uch)lc;
+#endif
     if (dist == 0) {
         /* lc is the unmatched char */
         s->dyn_ltree[lc].Freq++;
@@ -19893,7 +19934,7 @@ int ZLIB_INTERNAL _tr_tally(deflate_state *s, unsigned dist, unsigned lc) {
 file https://github.com/madler/zlib/blob/v1.3/gzguts.h
 */
 /* gzguts.h -- zlib internal header definitions for gz* operations
- * Copyright (C) 2004-2019 Mark Adler
+ * Copyright (C) 2004-2024 Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -20106,12 +20147,8 @@ char ZLIB_INTERNAL *gz_strwinerror(DWORD error);
 /* GT_OFF(x), where x is an unsigned value, is true if x > maximum z_off64_t
    value -- needed when comparing unsigned to z_off64_t, which is signed
    (possible z_off64_t types off_t, off64_t, and long are all signed) */
-#ifdef INT_MAX
-#  define GT_OFF(x) (sizeof(int) == sizeof(z_off64_t) && (x) > INT_MAX)
-#else
 unsigned ZLIB_INTERNAL gz_intmax(void);
-#  define GT_OFF(x) (sizeof(int) == sizeof(z_off64_t) && (x) > gz_intmax())
-#endif
+#define GT_OFF(x) (sizeof(int) == sizeof(z_off64_t) && (x) > gz_intmax())
 
 
 /*
@@ -20625,7 +20662,7 @@ int ZEXPORT gzclose(gzFile file) {
 file https://github.com/madler/zlib/blob/v1.3/gzlib.c
 */
 /* gzlib.c -- zlib functions common to reading and writing gzip files
- * Copyright (C) 2004-2019 Mark Adler
+ * Copyright (C) 2004-2024 Mark Adler
  * For conditions of distribution and use, see copyright notice in zlib.h
  */
 
@@ -21190,23 +21227,23 @@ void ZLIB_INTERNAL gz_error(gz_statep state, int err, const char *msg) {
 #endif
 }
 
-#ifndef INT_MAX
 /* portably return maximum value for an int (when limits.h presumed not
    available) -- we need to do this to cover cases where 2's complement not
    used, since C standard permits 1's complement and sign-bit representations,
    otherwise we could just use ((unsigned)-1) >> 1 */
 unsigned ZLIB_INTERNAL gz_intmax(void) {
-    unsigned p, q;
-
-    p = 1;
+#ifdef INT_MAX
+    return INT_MAX;
+#else
+    unsigned p = 1, q;
     do {
         q = p;
         p <<= 1;
         p++;
     } while (p > q);
     return q >> 1;
-}
 #endif
+}
 
 
 /*
