@@ -20,7 +20,6 @@
     done
     for FILE in \
         lib_lightgbm.dll \
-        lib_lightgbm.dylib \
         lib_lightgbm.so
     do
         curl -L \
@@ -65,6 +64,15 @@ import moduleChildProcess from "child_process";
 shCiBaseCustom() {(set -e
 # this function will run custom-code for base-ci
     shCiEmsdkExport
+    # bugfix - Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib
+    case "$(uname)" in
+    Darwin*)
+        if [ ! -f /opt/homebrew/lib/lib_lightgbm.dylib ]
+        then
+            brew install lightgbm
+        fi
+        ;;
+    esac
     # .github_cache - restore
     if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
     then

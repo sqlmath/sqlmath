@@ -849,9 +849,6 @@ jstestDescribe((
         let filePreb = "test_lgbm_preb.txt";
         let fileTest = "test_lgbm_binary.test";
         let fileTrain = "test_lgbm_binary.train";
-        if (process.platform === "darwin") {
-            return;
-        }
         await dbExecAsync({
             db,
             sql: "SELECT lgbm_dlopen(NULL);"

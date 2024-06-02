@@ -1611,14 +1611,15 @@ SQLMATH_FUNC static void sql1_lgbm_dlopen_func(
     }
 #else
     if (filename == NULL) {
-#ifdef __APPLE__
-        filename = "./lib_lightgbm.dylib";
-#else
+#   ifdef __APPLE__
+        filename = "/opt/homebrew/lib/lib_lightgbm.dylib";
+#   else
         filename = "./lib_lightgbm.so";
 #endif
     }
     void *hModule = dlopen(filename, RTLD_LAZY);
     if (hModule == NULL) {
+        // fprintf(stderr, "%s", dlerror());
         sqlite3_result_error2(context, "lgbm_dlopen - %s", dlerror());
         return;
     }
