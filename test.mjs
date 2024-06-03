@@ -661,9 +661,9 @@ VALUES
     (?1, ?2, ?3),
     (CAST(?1 AS TEXT), CAST(?2 AS TEXT), CAST(?3 AS TEXT)),
     (
-        CAST(uncompress(compress(?1)) AS TEXT),
-        CAST(uncompress(compress(?2)) AS TEXT),
-        CAST(uncompress(compress(?3)) AS TEXT)
+        CAST(zlib_uncompress(zlib_compress(?1)) AS TEXT),
+        CAST(zlib_uncompress(zlib_compress(?2)) AS TEXT),
+        CAST(zlib_uncompress(zlib_compress(?3)) AS TEXT)
     );
 SELECT * FROM testDbExecAsync1;
 SELECT * FROM testDbExecAsync2;

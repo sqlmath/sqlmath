@@ -37,16 +37,17 @@ file sqlmath_h - start
 #   undef SRC_SQLITE_BASE_C2
 #   ifndef SQLMATH_BASE_C2
 #       define SQLMATH_BASE_C2
-#   endif
-#endif
+#   endif                       // SQLMATH_BASE_C2
+#endif                          // SRC_SQLITE_BASE_C2
 #ifdef _WIN32
 #   include <windows.h>
 #else
 #   include <dlfcn.h>
-#endif
+#   include <unistd.h>
+#endif                          // _WIN32
 #ifdef SQLMATH_BASE_C2
 #   include "sqlmath_base.h"
-#endif
+#endif                          // SQLMATH_BASE_C2
 
 
 #include <assert.h>
@@ -69,7 +70,7 @@ file sqlmath_h - start
 #  define SQLITE_NOINLINE  __declspec(noinline)
 #else
 #  define SQLITE_NOINLINE
-#endif
+#endif                          // defined(__GNUC__)
 
 
 #define JSBATON_ARGC            8
@@ -146,11 +147,11 @@ file sqlmath_h - start
 
 #ifdef _WIN32
 #define LGBM_IMPORT_FUNCTION(func) \
-        func = (func##_t) GetProcAddress(hModule, #func);
+        func = (func##_t) GetProcAddress((HMODULE) lgbm_library, #func);
 #else
 #define LGBM_IMPORT_FUNCTION(func) \
-        func = (func##_t) dlsym(hModule, #func);
-#endif
+        func = (func##_t) dlsym(lgbm_library, #func);
+#endif                          // _WIN32
 
 // This function will if <cond> is falsy, terminate process with <msg>.
 #define NAPI_ASSERT_FATAL(cond, msg) \
@@ -241,7 +242,6 @@ file sqlmath_h - start
     } \
     if (sqlite3_str_length(str99) <= 0) { \
         sqlite3_str_reset(str99); \
-        sqlite3_result_null(context); \
         goto catch_error; \
     }
 
@@ -275,6 +275,11 @@ SQLMATH_API void dbCall(
 SQLMATH_API void dbClose(
     Jsbaton * baton
 );
+SQLMATH_API int dbDlopen(
+    sqlite3_context * context,
+    const char *filename,
+    void **library
+);
 SQLMATH_API void dbExec(
     Jsbaton * baton
 );
@@ -283,7 +288,7 @@ SQLMATH_API void dbFileLoad(
 );
 SQLMATH_API int dbFileLoadOrSave(
     sqlite3 * pInMemory,
-    char *zFilename,
+    const char *zFilename,
     const int isSave
 );
 SQLMATH_API void dbNoop(
@@ -313,7 +318,7 @@ SQLMATH_API int doublewinAggmalloc(
 );
 SQLMATH_API int doublewinAggpush(
     Doublewin ** dblwinAgg,
-    double xx
+    const double xx
 );
 SQLMATH_API double *doublewinBody(
     const Doublewin * dblwin
@@ -515,6 +520,50 @@ SQLMATH_API void dbClose(
     (void) 0;
 }
 
+SQLMATH_API int dbDlopen(
+    sqlite3_context * context,
+    const char *filename,
+    void **library
+) {
+// This function will set <library> = dlopen(<filename>).
+    static const intptr_t isBusy = 1;
+    for (int ii = 0; *library == (void *) isBusy && ii < 100; ii += 1) {
+#ifdef _WIN32
+        Sleep(100);
+#else
+        sleep(100);
+#endif                          // _WIN32
+    }
+    if (*library == (void *) isBusy) {
+        *library = (void *) 0;
+        sqlite3_result_error2(context, "dbDlopen - dlopen(\"%s\") timeout",
+            filename);
+        return SQLITE_BUSY;
+    }
+    if (*library > (void *) isBusy) {
+        return 0;
+    }
+    *library = (void *) isBusy;
+#ifdef _WIN32
+    *library = (void *) LoadLibrary(filename);
+    if (*library == NULL) {
+        sqlite3_result_error2(context,
+            "dbDlopen - LoadLibrary(\"%s\") failed with code=%lu", filename,
+            GetLastError());
+        return SQLITE_ERROR;
+    }
+#else
+    *library = dlopen(filename, RTLD_NOW | RTLD_GLOBAL);
+    if (*library == NULL) {
+        // fprintf(stderr, "%s", dlerror());
+        sqlite3_result_error2(context, "dbDlopen - dlopen(\"%s\") - %s",
+            filename, dlerror());
+        return SQLITE_ERROR;
+    }
+#endif                          // _WIN32
+    return 0;
+}
+
 // SQLMATH_API dbExec - start
 typedef struct DbExecBindElem {
     const char *buf;
@@ -596,10 +645,10 @@ SQLMATH_API void dbExec(
     STR99_ALLOCA(str99);
     // fprintf(stderr, "\nsqlmath._dbExec(db=%p blen=%d sql=%s)\n",
     //     db, bindListLength, zSql);
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     // mutex enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
-#endif                          // EMSCRIPTEN
+#endif                          // __EMSCRIPTEN__
     if (zSql == NULL) {
         errcode = SQLITE_ERROR_ZSQL_NULL;
         JSBATON_ASSERT_OK();
@@ -864,10 +913,10 @@ SQLMATH_API void dbExec(
     if (errcode && str99->zText) {
         sqlite3_free(str99->zText);
     }
-#ifndef EMSCRIPTEN
+#ifndef __EMSCRIPTEN__
     // mutex leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
-#endif                          // EMSCRIPTEN
+#endif                          // __EMSCRIPTEN__
 }
 
 // SQLMATH_API dbExec - end
@@ -888,7 +937,7 @@ SQLMATH_API void dbFileLoad(
 
 SQLMATH_API int dbFileLoadOrSave(
     sqlite3 * pInMemory,
-    char *zFilename,
+    const char *zFilename,
     const int isSave
 ) {
     // fprintf(stderr, "\nsqlmath._dbFileLoadOrSave(pp=%p ff=%s ss=%d)\n",
@@ -1028,7 +1077,7 @@ SQLMATH_API int doublewinAggmalloc(
 
 SQLMATH_API int doublewinAggpush(
     Doublewin ** dblwinAgg,
-    double xx
+    const double xx
 ) {
     if (dblwinAgg == NULL || *dblwinAgg == NULL) {
         return SQLITE_NOMEM;
@@ -1344,7 +1393,6 @@ SQLMATH_API void jsonResultDoublearray(
     }
     if (sqlite3_str_length(str99) <= 0) {
         sqlite3_str_reset(str99);
-        sqlite3_result_null(context);
         return;
     }
     str99ResultText(str99, context);
@@ -1461,6 +1509,129 @@ SQLMATH_FUNC static void sql1_casttextorempty_func(
         SQLITE_TRANSIENT);
 }
 
+// SQLMATH_FUNC sql1_zlib_xxx_func - start
+typedef unsigned long z_ulong;  // NOLINT
+
+int compress(
+    unsigned char *,
+    z_ulong *,
+    const unsigned char *,
+    z_ulong
+);
+
+int uncompress(
+    unsigned char *,
+    z_ulong *,
+    const unsigned char *,
+    z_ulong *
+);
+
+SQLMATH_FUNC static void sql1_zlib_compress_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+/*
+** Implementation of the "compress(X)" SQL function.  The input X is
+** compressed using zLib and the output is returned.
+**
+** The output is a BLOB that begins with a variable-length integer that
+** is the input size in bytes (the size of X before compression).  The
+** variable-length integer is implemented as 1 to 5 bytes.  There are
+** seven bits per integer stored in the lower seven bits of each byte.
+** More significant bits occur first.  The most significant bit (0x80)
+** is a flag to indicate the end of the integer.
+**
+** This function, SQLAR, and ZIP all use the same "deflate" compression
+** algorithm, but each is subtly different:
+**
+**   *  ZIP uses raw deflate.
+**
+**   *  SQLAR uses the "zlib format" which is raw deflate with a two-byte
+**      algorithm-identification header and a four-byte checksum at the end.
+**
+**   *  This utility uses the "zlib format" like SQLAR, but adds the variable-
+**      length integer uncompressed size value at the beginning.
+**
+** This function might be extended in the future to support compression
+** formats other than deflate, by providing a different algorithm-id
+** mark following the variable-length integer size parameter.
+*/
+    UNUSED_PARAMETER(argc);
+    const unsigned char *pIn = NULL;
+    int ii = 0;
+    int jj = 0;
+    int nIn = 0;
+    int rc = 0;
+    unsigned char *pOut = NULL;
+    unsigned char x[8] = { 0 };
+    z_ulong nOut = 0;
+    pIn = sqlite3_value_blob(argv[0]);
+    if (pIn == NULL) {
+        sqlite3_result_error(context, "Cannot compress() NULL blob", -1);
+        return;
+    }
+    nIn = sqlite3_value_bytes(argv[0]);
+    nOut = 13 + nIn + (nIn + 999) / 1000;
+    pOut = sqlite3_malloc(nOut + 5);
+    for (ii = 4; ii >= 0; ii--) {
+        x[ii] = (nIn >> (7 * (4 - ii))) & 0x7f;
+    }
+    for (ii = 0; ii < 4 && x[ii] == 0; ii += 1) {
+    }
+    for (jj = 0; ii <= 4; ii += 1, jj += 1)
+        pOut[jj] = x[ii];
+    pOut[jj - 1] |= 0x80;
+    rc = compress(&pOut[jj], &nOut, pIn, nIn);
+    if (rc) {
+        sqlite3_free(pOut);
+        return;
+    }
+    sqlite3_result_blob(context, pOut, nOut + jj, sqlite3_free);
+}
+
+SQLMATH_FUNC static void sql1_zlib_uncompress_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+/*
+** Implementation of the "uncompress(X)" SQL function.  The argument X
+** is a blob which was obtained from compress(Y).  The output will be
+** the value Y.
+*/
+    UNUSED_PARAMETER(argc);
+    const unsigned char *pIn = NULL;
+    int ii = 0;
+    int nIn = 0;
+    int rc = 0;
+    unsigned char *pOut = NULL;
+    z_ulong nOut = 0;
+    pIn = sqlite3_value_blob(argv[0]);
+    if (pIn == NULL) {
+        sqlite3_result_error(context, "Cannot uncompress() NULL blob", -1);
+        return;
+    }
+    nIn = sqlite3_value_bytes(argv[0]);
+    nOut = 0;
+    for (ii = 0; ii < nIn && ii < 5; ii += 1) {
+        nOut = (nOut << 7) | (pIn[ii] & 0x7f);
+        if ((pIn[ii] & 0x80) != 0) {
+            ii += 1;
+            break;
+        }
+    }
+    pOut = sqlite3_malloc(nOut + 1);
+    rc = uncompress(pOut, &nOut, &pIn[ii], (z_ulong *) (intptr_t) (nIn - ii));
+    if (rc) {
+        sqlite3_free(pOut);
+        return;
+    }
+    sqlite3_result_blob(context, pOut, nOut, sqlite3_free);
+}
+
+// SQLMATH_FUNC sql1_zlib_xxx_func - end
+
 SQLMATH_FUNC static void sql1_copyblob_func(
     sqlite3_context * context,
     int argc,
@@ -1500,7 +1671,6 @@ SQLMATH_FUNC static void sql1_doublearray_array_func(
 ) {
 // This function will return binary-double-array from <argv>.
     if (argc <= 0) {
-        sqlite3_result_null(context);
         return;
     }
     double *arr = sqlite3_malloc(argc * sizeof(double));
@@ -1533,7 +1703,6 @@ SQLMATH_FUNC static void sql1_doublearray_extract_func(
             return;
         }
     }
-    sqlite3_result_null(context);
 }
 
 SQLMATH_FUNC static void sql1_doublearray_jsonfrom_func(
@@ -1593,38 +1762,21 @@ SQLMATH_FUNC static void sql1_lgbm_dlopen_func(
 ) {
 // This function will init lgbm.
     UNUSED_PARAMETER(argc);
-    UNUSED_PARAMETER(argv);
-    if (lgbm_library != NULL) {
-        sqlite3_result_null(context);
-        return;
-    }
     const char *filename = (char *) sqlite3_value_text(argv[0]);
-#ifdef _WIN32
+    int errcode = 0;
     if (filename == NULL) {
+#if defined(_WIN32)
         filename = "./lib_lightgbm.dll";
-    }
-    HMODULE hModule = LoadLibrary(filename);
-    if (hModule == NULL) {
-        sqlite3_result_error2(context, "lgbm_dlopen - failed with error=%lu",
-            GetLastError());
-        return;
-    }
-#else
-    if (filename == NULL) {
-#   ifdef __APPLE__
+#elif defined(__APPLE__)
         filename = "/opt/homebrew/lib/lib_lightgbm.dylib";
-#   else
+#else
         filename = "./lib_lightgbm.so";
-#endif
+#endif                          // defined(_WIN32)
     }
-    void *hModule = dlopen(filename, RTLD_LAZY);
-    if (hModule == NULL) {
-        // fprintf(stderr, "%s", dlerror());
-        sqlite3_result_error2(context, "lgbm_dlopen - %s", dlerror());
+    errcode = dbDlopen(context, filename, (void **) &lgbm_library);
+    if (errcode) {
         return;
     }
-#endif
-    lgbm_library = (void *) hModule;
     LGBM_IMPORT_FUNCTION(LGBM_BoosterAddValidData);
     LGBM_IMPORT_FUNCTION(LGBM_BoosterCalcNumPredict);
     LGBM_IMPORT_FUNCTION(LGBM_BoosterCreate);
@@ -1702,7 +1854,6 @@ SQLMATH_FUNC static void sql1_lgbm_dlopen_func(
     LGBM_IMPORT_FUNCTION(LGBM_NetworkInitWithFunctions);
     LGBM_IMPORT_FUNCTION(LGBM_RegisterLogCallback);
     LGBM_IMPORT_FUNCTION(LGBM_SampleIndices);
-    sqlite3_result_null(context);
 }
 
 SQLMATH_FUNC static void sql1_lgbm_datasetcreatefromfile_func(
@@ -1722,7 +1873,7 @@ SQLMATH_FUNC static void sql1_lgbm_datasetcreatefromfile_func(
         (DatasetHandle) sqlite3_value_int64(argv[2]),   //
         &out);                  // DatasetHandle * out
     LGBM_ASSERT_OK();
-    sqlite3_result_int64(context, (int64_t) (intptr_t) out);
+    sqlite3_result_int64(context, (int64_t) out);
   catch_error:
     (void) 0;
 }
@@ -1747,7 +1898,7 @@ SQLMATH_FUNC static void sql1_lgbm_datasetcreatefrommat_func(
         (DatasetHandle) sqlite3_value_int64(argv[6]),   //
         &out);                  // DatasetHandle *out
     LGBM_ASSERT_OK();
-    sqlite3_result_int64(context, (int64_t) (intptr_t) out);
+    sqlite3_result_int64(context, (int64_t) out);
   catch_error:
     (void) 0;
 }
@@ -1765,7 +1916,6 @@ SQLMATH_FUNC static void sql1_lgbm_datasetdumptext_func(
         (DatasetHandle) sqlite3_value_int64(argv[0]),
         (char *) sqlite3_value_text(argv[1]));
     LGBM_ASSERT_OK();
-    sqlite3_result_null(context);
   catch_error:
     (void) 0;
 }
@@ -1781,7 +1931,6 @@ SQLMATH_FUNC static void sql1_lgbm_datasetfree_func(
     errcode = LGBM_DatasetFree( //
         (DatasetHandle) sqlite3_value_int64(argv[0]));
     LGBM_ASSERT_OK();
-    sqlite3_result_null(context);
   catch_error:
     (void) 0;
 }
@@ -1832,7 +1981,6 @@ SQLMATH_FUNC static void sql1_lgbm_datasetsavebinary_func(
         (DatasetHandle) sqlite3_value_int64(argv[0]),
         (char *) sqlite3_value_text(argv[1]));
     LGBM_ASSERT_OK();
-    sqlite3_result_null(context);
   catch_error:
     (void) 0;
 }
@@ -1864,7 +2012,6 @@ SQLMATH_FUNC static void sql1_lgbm_modelpredictforfile_func(
         (char *) sqlite3_value_text(argv[6]),   // const char *parameter,
         (char *) sqlite3_value_text(argv[7]));  // const char *result_filename
     LGBM_ASSERT_OK();
-    sqlite3_result_null(context);
   catch_error:
     LGBM_BoosterFree(booster);
 }
@@ -2138,7 +2285,6 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final(
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - null-case
     if (dblwin->nbody == 0) {
-        sqlite3_result_null(context);
         goto catch_error;
     }
     LgbmDataset *dataset = (LgbmDataset *) dblwin_head;
@@ -2180,7 +2326,7 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final(
         nrow,                   // int num_element,
         C_API_DTYPE_FLOAT32);   // int type
     LGBM_ASSERT_OK();
-    sqlite3_result_int64(context, (int64_t) (intptr_t) out);
+    sqlite3_result_int64(context, (int64_t) out);
   catch_error:
     doublewinAggfree(dblwinAgg);
     sqlite3_free(label);
@@ -2317,7 +2463,6 @@ SQLMATH_FUNC static void sql2_quantile_final(
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - null-case
     if (dblwin->nbody == 0) {
-        sqlite3_result_null(context);
         goto catch_error;
     }
     sqlite3_result_double(context, quantile(dblwin_body, dblwin->nbody,
@@ -2389,7 +2534,6 @@ SQLMATH_FUNC static void sql3_stdev_value(
     SQLITE3_AGGREGATE_CONTEXT(AggStdev);
     // agg - null-case
     if (agg->nnn <= 0) {
-        sqlite3_result_null(context);
         return;
     }
     sqlite3_result_double(context,
@@ -3378,7 +3522,7 @@ SQLMATH_FUNC static void sql3_win_ema2_value(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     if (!dblwin->ncol) {
-        sqlite3_result_null(context);
+        return;
     }
     // dblwin - result
     doublearrayResult(context, dblwin_body + (int) dblwin->waa,
@@ -3538,7 +3682,7 @@ SQLMATH_FUNC static void sql3_win_quantile2_value(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     if (!dblwin->ncol) {
-        sqlite3_result_null(context);
+        return;
     }
     // dblwin - result
     doublearrayResult(context, dblwin_head + (int) dblwin->ncol,
@@ -3599,8 +3743,6 @@ int sqlite3_sqlmath_base_init(
     UNUSED_PARAMETER(pzErrMsg);
     int errcode = 0;
     //
-    errcode = sqlite3_compress_init(db, pzErrMsg, pApi);
-    SQLITE_OK_OR_RETURN_RC(errcode);
     errcode = sqlite3_sqlmath_custom_init(db, pzErrMsg, pApi);
     SQLITE_OK_OR_RETURN_RC(errcode);
     //
@@ -3637,6 +3779,8 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(squared, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(squaredwithsign, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(throwerror, 1, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(zlib_compress, 1, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(zlib_uncompress, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC2(lgbm_datasetcreatefromtable, -1, 0);
     SQL_CREATE_FUNC2(median, 1, 0);
     SQL_CREATE_FUNC2(quantile, 2, 0);
@@ -3688,15 +3832,8 @@ static int napiAssertOk(
     napi_value val = NULL;
     // We must retrieve the last error info before doing anything else, because
     // doing anything else will replace the last error info.
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 26812)
-#endif
     errcode = napi_get_last_error_info(env, &info);
     NAPI_ASSERT_FATAL(errcode == 0, "napi_get_last_error_info");
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
     errcode = napi_is_exception_pending(env, &is_exception_pending);
     NAPI_ASSERT_FATAL(errcode == 0, "napi_is_exception_pending");
     // A pending exception takes precedence over any internal error status.
