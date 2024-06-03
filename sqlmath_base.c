@@ -45,9 +45,6 @@ file sqlmath_h - start
 #   include <dlfcn.h>
 #   include <unistd.h>
 #endif                          // _WIN32
-#ifdef SQLMATH_BASE_C2
-#   include "sqlmath_base.h"
-#endif                          // SQLMATH_BASE_C2
 
 
 #include <assert.h>
@@ -58,6 +55,7 @@ file sqlmath_h - start
 #include <stdlib.h>
 #include <string.h>
 #include "sqlmath_external_sqlite.c"
+#include "./sqlmath_base.h"
 
 
 /*
