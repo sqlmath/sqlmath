@@ -1179,34 +1179,6 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
         }));
     });
     jstestIt((
-        "test sqlite-extension-fill_forward handling-behavior"
-    ), async function test_sqlite_extension_fill_forward() {
-        let db = await dbOpenAsync({filename: ":memory:"});
-        let result = await dbExecAsync({
-            db,
-            sql: (`
-SELECT
-    fill_forward(val) OVER (ORDER BY id ASC) AS val
-    FROM (
-        SELECT 10 AS id, NULL AS val
-        UNION ALL SELECT 9 AS id, 9 AS val
-        UNION ALL SELECT 8 AS id, 8 AS val
-        UNION ALL SELECT 7 AS id, NULL AS val
-        UNION ALL SELECT 6 AS id, 6 AS val
-        UNION ALL SELECT 5 AS id, 5 AS val
-        UNION ALL SELECT 4 AS id, NULL AS val
-        UNION ALL SELECT 3 AS id, 3 AS val
-        UNION ALL SELECT 2 AS id, NULL AS val
-        UNION ALL SELECT 1 AS id, NULL AS val
-    );
-            `)
-        });
-        result = result[0].map(function ({val}) {
-            return val;
-        });
-        assertJsonEqual(result, [null, null, 3, 3, 5, 6, 6, 8, 9, 9]);
-    });
-    jstestIt((
         "test sqlite-extension-math handling-behavior"
     ), async function test_sqlite_extension_math() {
         let db = await dbOpenAsync({

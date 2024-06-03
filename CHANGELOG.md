@@ -5,6 +5,8 @@
 - none
 
 # v2024.6.1-beta
+- sqlmath - Remove little-used sql-function fill_forward().
+- zlib - Update to zlib v1.3.1.
 - sqlmath - Add function dbExecAndReturnLastValue().
 - sqlmath - Replace functions:
     dbExecAndReturnFirstRow() with dbExecAndReturnLastRow()
