@@ -1779,7 +1779,7 @@ SELECT
             ${quantile}, value->>1,
             ${quantile}, value->>1,
             ${quantile}, value->>1,
-            ${quantile}, IIF(id = 34, -1, value->>1)
+            ${quantile}, IIF(id = 1, -1, value->>1)
         ) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
@@ -1787,10 +1787,10 @@ SELECT
     FROM JSON_EAcH($valIn);
                 `)
             });
-            valActual = valActual[0].map(function ({val}, ii) {
+            valActual = valActual[0].map(function ({val}, ii, list) {
                 val = JSON.parse(val).map(function (elem, jj) {
                     elem = Number(elem.toFixed(4));
-                    if (ii === 11 && jj === 9) {
+                    if (ii + (bb || 0) + 1 >= list.length && jj === 9) {
                         assertJsonEqual(elem, valExpect2, valActual);
                     } else {
                         assertJsonEqual(elem, valExpect[ii], valActual);
@@ -1802,18 +1802,18 @@ SELECT
             assertJsonEqual(valActual, valExpect);
         }
         valIn = [
-            [1, undefined],
-            [2, "1"],
-            [3, "2"],
-            [4, 3],
-            [5, 4],
-            [6, "abcd"],
-            [7, 6],
-            [8, NaN],
-            [9, 8],
-            [10, 9],
+            [12, 11],
             [11, 10],
-            [12, 11]
+            [10, 9],
+            [9, 8],
+            [8, NaN],
+            [7, 6],
+            [6, "abcd"],
+            [5, 4],
+            [4, 3],
+            [3, "2"],
+            [2, "1"],
+            [1, undefined]
         ];
         await Promise.all([
             (async function () {
@@ -2938,6 +2938,179 @@ SELECT
                 );
                 assertJsonEqual(valActual, valExpect);
             }())
+        ]);
+    });
+    jstestIt((
+        "test sqlite-extension-win_sumx handling-behavior"
+    ), async function test_sqlite_extension_win_sumx() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let valIn;
+        async function test_win_sumx_aggregate({
+            aa,
+            bb,
+            valExpect,
+            valExpect2
+        }) {
+            let sqlBetween = "";
+            let valActual;
+            if (aa !== undefined) {
+                sqlBetween = (
+                    `ROWS BETWEEN ${aa - 1} PRECEDING AND ${bb} FOLLOWING`
+                );
+            }
+            // test win_sum1-aggregate handling-behavior
+            valActual = await dbExecAsync({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        win_sum1(value->>1) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        ) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual[0].map(function ({val}) {
+                return Number(val.toFixed(4));
+            });
+            assertJsonEqual(valActual, valExpect);
+            // test win_sum2-aggregate handling-behavior
+            valActual = await dbExecAndReturnLastTable({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        id,
+        doublearray_jsonto(win_sum2(
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            IIF(id = 1, -1, value->>1)
+        ) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        )) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual.map(function ({val}, ii, list) {
+                val = JSON.parse(val).map(function (elem, jj) {
+                    elem = Number(elem.toFixed(4));
+                    if (ii + (bb || 0) + 1 >= list.length && jj === 9) {
+                        assertJsonEqual(elem, valExpect2, valActual);
+                    } else {
+                        assertJsonEqual(elem, valExpect[ii], valActual);
+                    }
+                    return elem;
+                });
+                return val[0];
+            });
+            assertJsonEqual(valActual, valExpect);
+        }
+        valIn = [
+            [11, NaN],
+            [10, "10"],
+            [9, 9],
+            [8, "8"],
+            [7, 7],
+            [6, 6],
+            [5, Infinity],
+            [4, "4"],
+            [3, 3],
+            [2, 2],
+            [1, "1"],
+            [0, undefined]
+        ];
+        await Promise.all([
+            (async function () {
+                let valActual;
+                // test win_sum2-error handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_sum2() FROM (SELECT 1);
+                        `)
+                    });
+                }, "wrong number of arguments");
+                // test win_sum1-null-case handling-behavior
+                valActual = await dbExecAsync({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_sum1(1, 2) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+                // test win_sum2-null-case handling-behavior
+                valActual = await dbExecAsync({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT doublearray_jsonto(win_sum2(1, 2, 3)) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual[0].map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+            }()),
+            // test win_sum2-aggregate-normal handling-behavior
+            test_win_sumx_aggregate({
+                valExpect: [
+                    0, 1, 3, 6,
+                    10, 14, 20, 27,
+                    35, 44, 54, 64
+                ],
+                valExpect2: 53
+            }),
+            // test win_sum2-aggregate-window handling-behavior
+            test_win_sumx_aggregate({
+                aa: 1,
+                bb: 3,
+                valExpect: [
+                    6, 10, 13, 17,
+                    21, 25, 30, 34,
+                    37, 37, 37, 37
+                ],
+                valExpect2: 26
+            }),
+            test_win_sumx_aggregate({
+                aa: 3,
+                bb: 1,
+                valExpect: [
+                    1, 3, 6, 10,
+                    13, 17, 21, 25,
+                    30, 34, 37, 37
+                ],
+                valExpect2: 26
+            }),
+            test_win_sumx_aggregate({
+                aa: 4,
+                bb: 0,
+                valExpect: [
+                    0, 1, 3, 6,
+                    10, 13, 17, 21,
+                    25, 30, 34, 37
+                ],
+                valExpect2: 26
+            })
         ]);
     });
 });

@@ -2343,7 +2343,7 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_step(
         (sizeof(LgbmDataset) + param_bytes) / 8 //
         + 1);
     if (dblwin->nbody == 0) {
-        // dbwin - init ncol
+        // dblwin - init ncol
         dblwin->ncol = ncol;
         // dataset - init
         LgbmDataset *dataset = (LgbmDataset *) dblwin_head;
@@ -2761,6 +2761,302 @@ SQLMATH_FUNC static void sql1_coinflip_extract_func(
 
 // SQLMATH_FUNC sql3_win_coinflip2_func - end
 
+// SQLMATH_FUNC sql3_win_ema1_func - start
+SQLMATH_FUNC static void sql3_win_ema1_value(
+    sqlite3_context * context
+) {
+// This function will calculate running exponential-moving-average.
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    sqlite3_result_double(context, dblwin_body[(int) dblwin->waa]);
+}
+
+SQLMATH_FUNC static void sql3_win_ema1_final(
+    sqlite3_context * context
+) {
+// This function will calculate running exponential-moving-average.
+    // dblwin - value
+    sql3_win_ema1_value(context);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - cleanup
+    doublewinAggfree(dblwinAgg);
+}
+
+SQLMATH_FUNC static void sql3_win_ema1_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running exponential-moving-average.
+    UNUSED_PARAMETER(argc);
+    UNUSED_PARAMETER(argv);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    if (!dblwin->wnn) {
+        dblwin->wnn = dblwin->nbody;
+    }
+}
+
+SQLMATH_FUNC static void sql3_win_ema1_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running exponential-moving-average.
+    if (argc < 2) {
+        sqlite3_result_error(context, "win_ema2 - wrong number of arguments",
+            -1);
+        return;
+    }
+    // dblwin - init
+    const int ncol = argc - 1;
+    double arg_alpha = NAN;
+    DOUBLEWIN_AGGREGATE_CONTEXT(argc);
+    if (dblwin->nbody == 0) {
+        // dblwin - init ncol
+        dblwin->ncol = ncol;
+        // arg_alpha
+        arg_alpha = sqlite3_value_double_or_nan(argv[0]);
+        if (isnan(arg_alpha)) {
+            sqlite3_result_error(context,
+                "win_emax - invalid argument 'alpha'", -1);
+            return;
+        }
+        dblwin_head[ncol + 0] = arg_alpha;
+    }
+    // dblwin - calculate ema
+    arg_alpha = dblwin_head[ncol + 0];
+    const int nrow = dblwin->nbody / ncol;
+    argv += 1;
+    for (int ii = 0; ii < ncol; ii += 1) {
+        sqlite3_value_double_or_prev(argv[0], &dblwin_head[ii]);
+        double *row = dblwin_body + ii;
+        // debug
+        // fprintf(stderr,         //
+        //     "win_ema2 - nbody=%.0f xx0=%f xx=%f arg_alpha=%f\n",        //
+        //     dblwin->nbody, *row, dblwin_head[0], arg_alpha);
+        for (int jj = 0; jj < nrow; jj += 1) {
+            *row = arg_alpha * dblwin_head[ii] + (1 - arg_alpha) * *row;
+            row += ncol;
+        }
+        argv += 1;
+    }
+    // dblwin - push xx
+    for (int ii = 0; ii < ncol; ii += 1) {
+        DOUBLEWIN_AGGREGATE_PUSH(dblwin_head[ii]);
+    }
+}
+
+// SQLMATH_FUNC sql3_win_ema1_func - end
+
+// SQLMATH_FUNC sql3_win_ema2_func - start
+SQLMATH_FUNC static void sql3_win_ema2_value(
+    sqlite3_context * context
+) {
+// This function will calculate running exponential-moving-average.
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    if (!dblwin->ncol) {
+        return;
+    }
+    // dblwin - result
+    doublearrayResult(context, dblwin_body + (int) dblwin->waa,
+        (int) dblwin->ncol, SQLITE_TRANSIENT);
+}
+
+SQLMATH_FUNC static void sql3_win_ema2_final(
+    sqlite3_context * context
+) {
+// This function will calculate running exponential-moving-average.
+    // dblwin - value
+    sql3_win_ema2_value(context);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - cleanup
+    doublewinAggfree(dblwinAgg);
+}
+
+SQLMATH_FUNC static void sql3_win_ema2_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running exponential-moving-average.
+    sql3_win_ema1_inverse(context, argc, argv);
+}
+
+SQLMATH_FUNC static void sql3_win_ema2_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running exponential-moving-average.
+    sql3_win_ema1_step(context, argc, argv);
+}
+
+// SQLMATH_FUNC sql3_win_ema2_func - end
+
+// SQLMATH_FUNC sql3_win_quantile1_func - start
+SQLMATH_FUNC static void sql3_win_quantile1_value(
+    sqlite3_context * context
+) {
+// This function will calculate running quantile.
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    sqlite3_result_double(context, dblwin_head[(int) dblwin->ncol]);
+}
+
+SQLMATH_FUNC static void sql3_win_quantile1_final(
+    sqlite3_context * context
+) {
+// This function will calculate running quantile.
+    // dblwin - value
+    sql3_win_quantile1_value(context);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - cleanup
+    doublewinAggfree(dblwinAgg);
+}
+
+SQLMATH_FUNC static void sql3_win_quantile1_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running quantile.
+    UNUSED_PARAMETER(argv);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    if (!dblwin->wnn) {
+        dblwin->wnn = dblwin->nbody;
+    }
+    // dblwin - inverse
+    const int ncol = argc / 2;
+    const int nstep = ncol * 2;
+    const int nn = dblwin->nbody - nstep;
+    double *arr = dblwin_body + 1;
+    double *xx0 = dblwin_body + 0 + (int) dblwin->waa;
+    for (int ii = 0; ii < ncol; ii += 1) {
+        const double xx = *xx0;
+        int jj = 0;
+        for (; jj < nn && arr[jj] < xx; jj += nstep) {
+        }
+        for (; jj < nn; jj += nstep) {
+            arr[jj] = arr[jj + nstep];
+        }
+        arr[jj] = INFINITY;
+        arr += 2;
+        xx0 += 2;
+    }
+}
+
+SQLMATH_FUNC static void sql3_win_quantile1_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running quantile.
+    if (argc < 2 || argc % 2) {
+        sqlite3_result_error(context,
+            "win_quantile2 - wrong number of arguments", -1);
+        return;
+    }
+    // dblwin - init
+    const int ncol = argc / 2;
+    DOUBLEWIN_AGGREGATE_CONTEXT(2 * ncol);
+    if (dblwin->nbody == 0) {
+        // dblwin - init ncol
+        dblwin->ncol = ncol;
+    }
+    // dblwin - push xx
+    for (int ii = 0; ii < ncol; ii += 1) {
+        sqlite3_value_double_or_prev(argv[ii * 2 + 1], &dblwin_head[ii]);
+        DOUBLEWIN_AGGREGATE_PUSH(dblwin_head[ii]);
+        DOUBLEWIN_AGGREGATE_PUSH(       //
+            dblwin->wnn ? dblwin_body[(int) dblwin->waa] : INFINITY);
+    }
+    // dblwin - calculate quantile
+    const int nstep = ncol * 2;
+    const int nn = dblwin->nbody / nstep;
+    double *arr = dblwin_body + 1;
+    for (int ii = 0; ii < ncol; ii += 1) {
+        // init argQuantile
+        double argQuantile = sqlite3_value_double_or_nan(argv[2 * ii + 0]);
+        if (!(0 <= argQuantile && argQuantile <= 1)) {
+            sqlite3_result_error(context,
+                "win_quantilex"
+                " - argument 'quantile' must be between 0 and 1 inclusive",
+                -1);
+            return;
+        }
+        argQuantile *= (nn - 1);
+        const int kk1 = floor(argQuantile) * nstep;
+        const int kk2 = kk1 + nstep;
+        argQuantile = fmod(argQuantile, 1);
+        // calculate quantile
+        const double xx = dblwin_head[ii];
+        int jj = (nn - 2) * nstep;
+        for (; jj >= 0 && arr[jj] > xx; jj -= nstep) {
+            arr[jj + nstep] = arr[jj];
+        }
+        arr[jj + nstep] = xx;
+        dblwin_head[ncol + ii] = argQuantile == 0       //
+            ? arr[kk1]          //
+            : (1 - argQuantile) * arr[kk1] + argQuantile * arr[kk2];
+        arr += 2;
+    }
+}
+
+// SQLMATH_FUNC sql3_win_quantile1_func - end
+
+// SQLMATH_FUNC sql3_win_quantile2_func - start
+SQLMATH_FUNC static void sql3_win_quantile2_value(
+    sqlite3_context * context
+) {
+// This function will calculate running quantile.
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    if (!dblwin->ncol) {
+        return;
+    }
+    // dblwin - result
+    doublearrayResult(context, dblwin_head + (int) dblwin->ncol,
+        (int) dblwin->ncol, SQLITE_TRANSIENT);
+}
+
+SQLMATH_FUNC static void sql3_win_quantile2_final(
+    sqlite3_context * context
+) {
+// This function will calculate running quantile.
+    // dblwin - value
+    sql3_win_quantile2_value(context);
+    // dblwin - init
+    DOUBLEWIN_AGGREGATE_CONTEXT(0);
+    // dblwin - cleanup
+    doublewinAggfree(dblwinAgg);
+}
+
+SQLMATH_FUNC static void sql3_win_quantile2_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running quantile.
+    sql3_win_quantile1_inverse(context, argc, argv);
+}
+
+SQLMATH_FUNC static void sql3_win_quantile2_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate running quantile.
+    sql3_win_quantile1_step(context, argc, argv);
+}
+
+// SQLMATH_FUNC sql3_win_quantile2_func - end
+
 // SQLMATH_FUNC sql3_win_sinefit2_func - start
 typedef struct WinSinefit {
     double laa;                 // linest y-intercept
@@ -3137,7 +3433,7 @@ static void sql3_win_sinefit2_step(
     const int ncol = (argc - argc0) / 2;
     DOUBLEWIN_AGGREGATE_CONTEXT(ncol * WIN_SINEFIT_N);
     if (dblwin->nbody == 0) {
-        // dbwin - init ncol
+        // dblwin - init ncol
         dblwin->ncol = ncol;
     }
     // dblwin - init argv
@@ -3423,34 +3719,34 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
 
 // SQLMATH_FUNC sql3_win_sinefit2_func - end
 
-// SQLMATH_FUNC sql3_win_ema1_func - start
-SQLMATH_FUNC static void sql3_win_ema1_value(
+// SQLMATH_FUNC sql3_win_sum1_func - start
+SQLMATH_FUNC static void sql3_win_sum1_value(
     sqlite3_context * context
 ) {
-// This function will calculate running exponential-moving-average.
+// This function will calculate running-sum.
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    sqlite3_result_double(context, dblwin_body[(int) dblwin->waa]);
+    sqlite3_result_double(context, dblwin_head[(int) dblwin->ncol]);
 }
 
-SQLMATH_FUNC static void sql3_win_ema1_final(
+SQLMATH_FUNC static void sql3_win_sum1_final(
     sqlite3_context * context
 ) {
-// This function will calculate running exponential-moving-average.
+// This function will calculate running-sum.
     // dblwin - value
-    sql3_win_ema1_value(context);
+    sql3_win_sum1_value(context);
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - cleanup
     doublewinAggfree(dblwinAgg);
 }
 
-SQLMATH_FUNC static void sql3_win_ema1_inverse(
+SQLMATH_FUNC static void sql3_win_sum1_inverse(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will calculate running exponential-moving-average.
+// This function will calculate running-sum.
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
     // dblwin - init
@@ -3460,264 +3756,91 @@ SQLMATH_FUNC static void sql3_win_ema1_inverse(
     }
 }
 
-SQLMATH_FUNC static void sql3_win_ema1_step(
+SQLMATH_FUNC static void sql3_win_sum1_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will calculate running exponential-moving-average.
-    if (argc < 2) {
-        sqlite3_result_error(context, "win_ema2 - wrong number of arguments",
-            -1);
-        return;
-    }
-    // dblwin - init
-    const int ncol = argc - 1;
-    double arg_alpha = NAN;
-    DOUBLEWIN_AGGREGATE_CONTEXT(argc);
-    if (dblwin->nbody == 0) {
-        // dbwin - init ncol
-        dblwin->ncol = ncol;
-        // arg_alpha
-        arg_alpha = sqlite3_value_double_or_nan(argv[0]);
-        if (isnan(arg_alpha)) {
-            sqlite3_result_error(context,
-                "win_emax - invalid argument 'alpha'", -1);
-            return;
-        }
-        dblwin_head[ncol + 0] = arg_alpha;
-    }
-    // dblwin - calculate ema
-    arg_alpha = dblwin_head[ncol + 0];
-    const int nrow = dblwin->nbody / ncol;
-    argv += 1;
-    for (int ii = 0; ii < ncol; ii += 1) {
-        sqlite3_value_double_or_prev(argv[0], &dblwin_head[ii]);
-        double *row = dblwin_body + ii;
-        // debug
-        // fprintf(stderr,         //
-        //     "win_ema2 - nbody=%.0f xx0=%f xx=%f arg_alpha=%f\n",        //
-        //     dblwin->nbody, *row, dblwin_head[0], arg_alpha);
-        for (int jj = 0; jj < nrow; jj += 1) {
-            *row = arg_alpha * dblwin_head[ii] + (1 - arg_alpha) * *row;
-            row += ncol;
-        }
-        argv += 1;
-    }
-    // dblwin - push xx
-    for (int ii = 0; ii < ncol; ii += 1) {
-        DOUBLEWIN_AGGREGATE_PUSH(dblwin_head[ii]);
-    }
-}
-
-// SQLMATH_FUNC sql3_win_ema1_func - end
-
-// SQLMATH_FUNC sql3_win_ema2_func - start
-SQLMATH_FUNC static void sql3_win_ema2_value(
-    sqlite3_context * context
-) {
-// This function will calculate running exponential-moving-average.
-    // dblwin - init
-    DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    if (!dblwin->ncol) {
-        return;
-    }
-    // dblwin - result
-    doublearrayResult(context, dblwin_body + (int) dblwin->waa,
-        (int) dblwin->ncol, SQLITE_TRANSIENT);
-}
-
-SQLMATH_FUNC static void sql3_win_ema2_final(
-    sqlite3_context * context
-) {
-// This function will calculate running exponential-moving-average.
-    // dblwin - value
-    sql3_win_ema2_value(context);
-    // dblwin - init
-    DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    // dblwin - cleanup
-    doublewinAggfree(dblwinAgg);
-}
-
-SQLMATH_FUNC static void sql3_win_ema2_inverse(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running exponential-moving-average.
-    sql3_win_ema1_inverse(context, argc, argv);
-}
-
-SQLMATH_FUNC static void sql3_win_ema2_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running exponential-moving-average.
-    sql3_win_ema1_step(context, argc, argv);
-}
-
-// SQLMATH_FUNC sql3_win_ema2_func - end
-
-// SQLMATH_FUNC sql3_win_quantile1_func - start
-SQLMATH_FUNC static void sql3_win_quantile1_value(
-    sqlite3_context * context
-) {
-// This function will calculate running quantile.
-    // dblwin - init
-    DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    sqlite3_result_double(context, dblwin_head[(int) dblwin->ncol]);
-}
-
-SQLMATH_FUNC static void sql3_win_quantile1_final(
-    sqlite3_context * context
-) {
-// This function will calculate running quantile.
-    // dblwin - value
-    sql3_win_quantile1_value(context);
-    // dblwin - init
-    DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    // dblwin - cleanup
-    doublewinAggfree(dblwinAgg);
-}
-
-SQLMATH_FUNC static void sql3_win_quantile1_inverse(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running quantile.
-    UNUSED_PARAMETER(argv);
-    // dblwin - init
-    DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    if (!dblwin->wnn) {
-        dblwin->wnn = dblwin->nbody;
-    }
-    // dblwin - invert
-    const int ncol = argc / 2;
-    const int nstep = ncol * 2;
-    const int nn = dblwin->nbody - nstep;
-    double *arr = dblwin_body + 1;
-    double *xx0 = dblwin_body + 0 + (int) dblwin->waa;
-    for (int ii = 0; ii < ncol; ii += 1) {
-        const double xx = *xx0;
-        int jj = 0;
-        for (; jj < nn && arr[jj] < xx; jj += nstep) {
-        }
-        for (; jj < nn; jj += nstep) {
-            arr[jj] = arr[jj + nstep];
-        }
-        arr[jj] = INFINITY;
-        arr += 2;
-        xx0 += 2;
-    }
-}
-
-SQLMATH_FUNC static void sql3_win_quantile1_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will calculate running quantile.
-    if (argc < 2 || argc % 2) {
+// This function will calculate running-sum.
+    if (argc < 1) {
         sqlite3_result_error(context,
-            "win_quantile2 - wrong number of arguments", -1);
+            "win_sum2 - wrong number of arguments", -1);
         return;
     }
     // dblwin - init
-    const int ncol = argc / 2;
+    const int ncol = argc;
     DOUBLEWIN_AGGREGATE_CONTEXT(2 * ncol);
     if (dblwin->nbody == 0) {
-        // dbwin - init ncol
+        // dblwin - init ncol
         dblwin->ncol = ncol;
+    }
+    // dblwin - calculate sum
+    for (int ii = 0; ii < ncol; ii += 1) {
+        sqlite3_value_double_or_prev(argv[ii], &dblwin_head[ii]);
+        dblwin_head[ncol + ii] += dblwin_head[ii];
+        // fprintf(stderr, "sqlmath.win_sum2 - stp %d - xx=%f sum=%f\n", ii,
+        //     dblwin_head[ii], dblwin_head[ncol + ii]);
+        if (dblwin->wnn) {
+            dblwin_head[ncol + ii] -= dblwin_body[(int) dblwin->waa + ii];
+            // fprintf(stderr, "                   inv %d - xx=%f sum=%f\n",
+            //     ii,
+            //     dblwin_body[(int) dblwin->waa + ii], dblwin_head[ncol + ii]);
+        }
     }
     // dblwin - push xx
     for (int ii = 0; ii < ncol; ii += 1) {
-        sqlite3_value_double_or_prev(argv[ii * 2 + 1], &dblwin_head[ii]);
         DOUBLEWIN_AGGREGATE_PUSH(dblwin_head[ii]);
-        DOUBLEWIN_AGGREGATE_PUSH(       //
-            dblwin->wnn ? dblwin_body[(int) dblwin->waa] : INFINITY);
-    }
-    // dblwin - calculate quantile
-    const int nstep = ncol * 2;
-    const int nn = dblwin->nbody / nstep;
-    double *arr = dblwin_body + 1;
-    for (int ii = 0; ii < ncol; ii += 1) {
-        // init argQuantile
-        double argQuantile = sqlite3_value_double_or_nan(argv[2 * ii + 0]);
-        if (!(0 <= argQuantile && argQuantile <= 1)) {
-            sqlite3_result_error(context,
-                "win_quantilex"
-                " - argument 'quantile' must be between 0 and 1 inclusive",
-                -1);
-            return;
-        }
-        argQuantile *= (nn - 1);
-        const int kk1 = floor(argQuantile) * nstep;
-        const int kk2 = kk1 + nstep;
-        argQuantile = fmod(argQuantile, 1);
-        // calculate quantile
-        const double xx = dblwin_head[ii];
-        int jj = (nn - 2) * nstep;
-        for (; jj >= 0 && arr[jj] > xx; jj -= nstep) {
-            arr[jj + nstep] = arr[jj];
-        }
-        arr[jj + nstep] = xx;
-        dblwin_head[ncol + ii] = argQuantile == 0       //
-            ? arr[kk1]          //
-            : (1 - argQuantile) * arr[kk1] + argQuantile * arr[kk2];
-        arr += 2;
     }
 }
 
-// SQLMATH_FUNC sql3_win_quantile1_func - end
+// SQLMATH_FUNC sql3_win_sum1_func - end
 
-// SQLMATH_FUNC sql3_win_quantile2_func - start
-SQLMATH_FUNC static void sql3_win_quantile2_value(
+// SQLMATH_FUNC sql3_win_sum2_func - start
+SQLMATH_FUNC static void sql3_win_sum2_value(
     sqlite3_context * context
 ) {
-// This function will calculate running quantile.
+// This function will calculate running-sum.
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     if (!dblwin->ncol) {
         return;
     }
     // dblwin - result
-    doublearrayResult(context, dblwin_head + (int) dblwin->ncol,
-        (int) dblwin->ncol, SQLITE_TRANSIENT);
+    doublearrayResult(context, dblwin_head + (int) dblwin->ncol, dblwin->ncol,
+        SQLITE_TRANSIENT);
 }
 
-SQLMATH_FUNC static void sql3_win_quantile2_final(
+SQLMATH_FUNC static void sql3_win_sum2_final(
     sqlite3_context * context
 ) {
-// This function will calculate running quantile.
+// This function will calculate running-sum.
     // dblwin - value
-    sql3_win_quantile2_value(context);
+    sql3_win_sum2_value(context);
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - cleanup
     doublewinAggfree(dblwinAgg);
 }
 
-SQLMATH_FUNC static void sql3_win_quantile2_inverse(
+SQLMATH_FUNC static void sql3_win_sum2_inverse(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will calculate running quantile.
-    sql3_win_quantile1_inverse(context, argc, argv);
+// This function will calculate running-sum.
+    sql3_win_sum1_inverse(context, argc, argv);
 }
 
-SQLMATH_FUNC static void sql3_win_quantile2_step(
+SQLMATH_FUNC static void sql3_win_sum2_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will calculate running quantile.
-    sql3_win_quantile1_step(context, argc, argv);
+// This function will calculate running-sum.
+    sql3_win_sum1_step(context, argc, argv);
 }
 
-// SQLMATH_FUNC sql3_win_quantile2_func - end
+// SQLMATH_FUNC sql3_win_sum2_func - end
 
 // file sqlmath_base - init
 int sqlite3_compress_init(
@@ -3789,6 +3912,8 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC3(win_quantile1, 2, 0);
     SQL_CREATE_FUNC3(win_quantile2, -1, 0);
     SQL_CREATE_FUNC3(win_sinefit2, -1, 0);
+    SQL_CREATE_FUNC3(win_sum1, -1, 0);
+    SQL_CREATE_FUNC3(win_sum2, -1, 0);
     return 0;
 }
 #endif                          // SQLMATH_BASE_C3
