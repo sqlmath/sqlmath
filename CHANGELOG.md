@@ -1,22 +1,34 @@
 # Changelog
 
 # Todo
-- sqlmath - Add sqlite-extension for lightgbm.
 - none
 
 # v2024.6.1-beta
+- lgbm - Add sqlite-extension for lightgbm.
+- lgbm - Add sql-functions:
+    lgbm_datasetcreatefromfile()
+    lgbm_datasetcreatefrommat()
+    lgbm_datasetdumptext()
+    lgbm_datasetfree()
+    lgbm_datasetgetnumdata()
+    lgbm_datasetgetnumfeature()
+    lgbm_datasetsavebinary()
+    lgbm_dlopen()
+    lgbm_modelpredictforfile()
+    lgbm_train()
+    lgbm_datasetcreatefromtable()
+    lgbm_predictfortable()
 - sqlmath - Remove little-used sql-function fill_forward().
 - zlib - Update to zlib v1.3.1.
 - sqlmath - Add function dbExecAndReturnLastValue().
 - sqlmath - Replace functions:
     dbExecAndReturnFirstRow() with dbExecAndReturnLastRow()
     dbExecAndReturnFirstTable() with dbExecAndReturnLastTable()
-- sqlmath - Add sqlite-extension for lightgbm. - part1
 
 # v2024.5.26
 - webdemo - Replace market-indices .spx/.ndx/.dji with futures .es/.nq/.ym.
 - sqlite - Decouple c-function str99JsonAppendText() from builtin-function jsonAppendString().
-- sqlite - Update to sqlite v3.42.0.
+- sqlite - Update to sqlite v3.44.2.
 - sqlmath - Remove little-used sqlean-regexp-extension and file sqlmath_external_pcre2.c.
 - sqlmath - bugfix - Fix off-by-2 root-mean-square-deviation calculation of parameter lee in sql-function win_sinefit2().
 - sqlmath - bugfix - Fix null-case handling-behavior for function dbExecAndReturnLastBlobAsync().

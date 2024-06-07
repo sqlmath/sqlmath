@@ -108,6 +108,11 @@ file sqlmath_h - start
 #define UNUSED_PARAMETER(x) ((void)(x))
 
 
+#ifndef SQLITE_MAX_FUNCTION_ARG
+#define SQLITE_MAX_FUNCTION_ARG 127
+#endif                          // SQLITE_MAX_FUNCTION_ARG
+
+
 #define DOUBLEWIN_AGGREGATE_CONTEXT(nhead) \
     Doublewin **dblwinAgg = (Doublewin **) \
         sqlite3_aggregate_context(context, sizeof(*dblwinAgg)); \
@@ -2515,6 +2520,115 @@ SQLMATH_FUNC static void sql2_median_step(
 
 // SQLMATH_FUNC sql2_quantile_func - end
 
+// SQLMATH_FUNC sql3_lgbm_predictfortable_func - start
+typedef struct AggLgbm {
+    BoosterHandle booster;      // booster
+    int num_iterations;         // [out] Number of iterations of this booster
+    int ncol;                   // Number of columns
+    //
+    FastConfigHandle fastConfig;        // [out] FastConfig object
+    int64_t nnn;                // number of elements
+    double result;              // [out] Pointer to array with predictions
+} AggLgbm;
+
+SQLMATH_FUNC static void sql3_lgbm_predictfortable_value(
+    sqlite3_context * context
+) {
+// This function will make prediction for sql-table from <model>.
+    // agg - init
+    SQLITE3_AGGREGATE_CONTEXT(AggLgbm);
+    // agg - null-case
+    if (agg->nnn <= 0) {
+        return;
+    }
+    sqlite3_result_double(context, agg->result);
+}
+
+SQLMATH_FUNC static void sql3_lgbm_predictfortable_final(
+    sqlite3_context * context
+) {
+// This function will make prediction for sql-table from <model>.
+    int errcode = 0;
+    // agg - value
+    sql3_lgbm_predictfortable_value(context);
+    // agg - init
+    SQLITE3_AGGREGATE_CONTEXT(AggLgbm);
+    // agg - cleanup
+    errcode = LGBM_BoosterFree(agg->booster);
+    LGBM_ASSERT_OK();
+    errcode = LGBM_FastConfigFree(agg->fastConfig);
+    LGBM_ASSERT_OK();
+  catch_error:
+    (void) 0;
+}
+
+SQLMATH_FUNC static void sql3_lgbm_predictfortable_inverse(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will make prediction for sql-table from <model>.
+    UNUSED_PARAMETER(argc);
+    UNUSED_PARAMETER(argv);
+    UNUSED_PARAMETER(context);
+}
+
+static void sql3_lgbm_predictfortable_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will make prediction for sql-table from <model>.
+    static int argc0 = 5;
+    const int ncol = argc - argc0;
+    int errcode = 0;
+    if (ncol < 1) {
+        sqlite3_result_error(context,
+            "win_sinefit2 - wrong number of arguments", -1);
+        return;
+    }
+    // agg - init
+    SQLITE3_AGGREGATE_CONTEXT(AggLgbm);
+    if (agg->nnn == 0) {
+        errcode = LGBM_BoosterLoadModelFromString(      //
+            // const char *model_str,
+            (char *) sqlite3_value_text(argv[0]),       //
+            &agg->num_iterations,       // int *out_num_iterations,
+            &agg->booster);     // BoosterHandle *out
+        LGBM_ASSERT_OK();
+        errcode = LGBM_BoosterPredictForMatSingleRowFastInit(   //
+            agg->booster,       // BoosterHandle handle,
+            sqlite3_value_int(argv[1]), // const int predict_type,
+            sqlite3_value_int(argv[2]), // const int start_iteration,
+            sqlite3_value_int(argv[3]), // const int num_iteration,
+            C_API_DTYPE_FLOAT64,        // const int data_type,
+            ncol,               // const int32_t ncol,
+            // const char *parameter,
+            (char *) sqlite3_value_text(argv[4]),       //
+            &agg->fastConfig);  // FastConfigHandle *out_fastConfig
+        LGBM_ASSERT_OK();
+    }
+    int64_t out_len = 0;
+    double data[SQLITE_MAX_FUNCTION_ARG] = { 0 };
+    // fprintf(stderr, "\nlgbm_modelpredictfortable - out_num_iterations=%d",
+    //     sqlite3_value_int(argv[3]));
+    for (int ii = 0; ii < ncol; ii += 1) {
+        data[ii] = sqlite3_value_double_or_nan(argv[argc0 + ii]);
+        // fprintf(stderr, " %0.3f", data[ii]);
+    }
+    errcode = LGBM_BoosterPredictForMatSingleRowFast(   //
+        agg->fastConfig,        // FastConfigHandle fastConfig_handle,
+        data,                   // const void *data,
+        &out_len,               // int64_t *out_len,
+        &agg->result);          // double *out_result
+    LGBM_ASSERT_OK();
+    agg->nnn = out_len;
+  catch_error:
+    (void) 0;
+}
+
+// SQLMATH_FUNC sql3_lgbm_predictfortable_func - end
+
 // SQLMATH_FUNC sql3_stdev_func - start
 typedef struct AggStdev {
     double mxx;                 // x-average
@@ -3905,6 +4019,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC2(lgbm_datasetcreatefromtable, -1, 0);
     SQL_CREATE_FUNC2(median, 1, 0);
     SQL_CREATE_FUNC2(quantile, 2, 0);
+    SQL_CREATE_FUNC3(lgbm_predictfortable, -1, 0);
     SQL_CREATE_FUNC3(stdev, 1, 0);
     SQL_CREATE_FUNC3(win_coinflip2, -1, 0);
     SQL_CREATE_FUNC3(win_ema1, 2, 0);

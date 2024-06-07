@@ -845,46 +845,83 @@ jstestDescribe((
     jstestIt((
         "test lgbm handling-behavior"
     ), async function () {
-        let db = await dbOpenAsync({filename: ":memory:"});
         let filePreb = "test_lgbm_preb.txt";
         let fileTest = "test_lgbm_binary.test";
         let fileTrain = "test_lgbm_binary.train";
-        await dbExecAsync({
-            db,
-            sql: "SELECT lgbm_dlopen(NULL);"
-        });
-        await Promise.all([
-            dbTableImportAsync({
-                db,
-                filename: fileTest,
-                headerMissing: true,
-                mode: "tsv",
-                tableName: "test_file_test"
-            }),
-            dbTableImportAsync({
-                db,
-                filename: fileTrain,
-                headerMissing: true,
-                mode: "tsv",
-                tableName: "test_file_train"
-            })
-        ]);
-        await dbExecAsync({
-            db,
-            sql: (`
-CREATE TABLE test_lgbm(
-    data_test_handle INTEGER,
-    data_test_num_data REAL,
-    data_test_num_feature REAL,
-    --
-    data_train_handle INTEGER,
-    data_train_num_data REAL,
-    data_train_num_feature REAL,
-    --
-    model BLOB
-);
-INSERT INTO test_lgbm(rowid) SELECT 1;
-UPDATE test_lgbm
+        let sqlPredictFile = (`
+SELECT
+        lgbm_modelpredictforfile(
+            model,                      -- model
+            '${fileTest}',              -- data_filename
+            0,                          -- data_has_header
+            ${LGBM_PREDICT_NORMAL},     -- predict_type
+            0,                          -- start_iteration
+            25,                         -- num_iteration
+            '',                         -- parameter
+            'fileActual'                -- result_filename
+        )
+    FROM __lgbm_state;
+SELECT
+        lgbm_modelpredictforfile(
+            model,                      -- model
+            '${fileTest}',              -- data_filename
+            0,                          -- data_has_header
+            ${LGBM_PREDICT_NORMAL},     -- predict_type
+            10,                         -- start_iteration
+            25,                         -- num_iteration
+            '',                         -- parameter
+            'fileActual'                -- result_filename
+        )
+    FROM __lgbm_state;
+        `);
+        let sqlPredictTable = (`
+DROP TABLE IF EXISTS __lgbm_table_preb;
+CREATE TABLE __lgbm_table_preb AS
+    SELECT
+        lgbm_predictfortable(
+            (SELECT model FROM __lgbm_state),    -- model
+            ${LGBM_PREDICT_NORMAL},     -- predict_type
+            0,                          -- start_iteration
+            25,                         -- num_iteration
+            '',                         -- parameter
+            c_2,  c_3,  c_4,
+            c_5,  c_6,  c_7,  c_8,
+            c_9,  c_10, c_11, c_12,
+            c_13, c_14, c_15, c_16,
+            c_17, c_18, c_19, c_20,
+            c_21, c_22, c_23, c_24,
+            c_25, c_26, c_27, c_28,
+            c_29
+        ) OVER (
+            ORDER BY rowid ASC
+            ROWS BETWEEN 0 PRECEDING AND 0 FOLLOWING
+        ) AS prediction
+    FROM __lgbm_file_test;
+DROP TABLE IF EXISTS __lgbm_table_preb;
+CREATE TABLE __lgbm_table_preb AS
+    SELECT
+        lgbm_predictfortable(
+            (SELECT model FROM __lgbm_state),    -- model
+            ${LGBM_PREDICT_NORMAL},     -- predict_type
+            10,                         -- start_iteration
+            25,                         -- num_iteration
+            '',                         -- parameter
+            c_2,  c_3,  c_4,
+            c_5,  c_6,  c_7,  c_8,
+            c_9,  c_10, c_11, c_12,
+            c_13, c_14, c_15, c_16,
+            c_17, c_18, c_19, c_20,
+            c_21, c_22, c_23, c_24,
+            c_25, c_26, c_27, c_28,
+            c_29
+        ) OVER (
+            ORDER BY rowid ASC
+            ROWS BETWEEN 0 PRECEDING AND 0 FOLLOWING
+        ) AS c_1
+    FROM __lgbm_file_test;
+        `);
+        let sqlTrainFile = (`
+UPDATE __lgbm_state
     SET
         data_train_handle = (
             SELECT
@@ -894,7 +931,7 @@ UPDATE test_lgbm
                     0
                 )
         );
-UPDATE test_lgbm
+UPDATE __lgbm_state
     SET
         data_test_handle = (
             SELECT
@@ -904,11 +941,9 @@ UPDATE test_lgbm
                     data_train_handle -- reference
                 )
         );
-SELECT
-        lgbm_datasetfree(data_test_handle),
-        lgbm_datasetfree(data_train_handle)
-    FROM test_lgbm;
-UPDATE test_lgbm
+        `);
+        let sqlTrainTable = (`
+UPDATE __lgbm_state
     SET
         data_train_handle = (
             SELECT
@@ -924,9 +959,9 @@ UPDATE test_lgbm
                     c_25, c_26, c_27, c_28,
                     c_29
                 )
-            FROM test_file_train
+            FROM __lgbm_file_train
         );
-UPDATE test_lgbm
+UPDATE __lgbm_state
     SET
         data_test_handle = (
             SELECT
@@ -942,15 +977,62 @@ UPDATE test_lgbm
                     c_25, c_26, c_27, c_28,
                     c_29
                 )
-            FROM test_file_test
+            FROM __lgbm_file_test
         );
-UPDATE test_lgbm
+        `);
+        async function testLgbm(sqlIi, sqlTrainXxx, sqlPredictXxx) {
+            let db = await dbOpenAsync({filename: ":memory:"});
+            let fileActual = `.tmp/test_lgbm_preb_${sqlIi}.txt`;
+            await Promise.all([
+                dbTableImportAsync({
+                    db,
+                    filename: filePreb,
+                    headerMissing: true,
+                    mode: "tsv",
+                    tableName: "__lgbm_file_preb"
+                }),
+                dbTableImportAsync({
+                    db,
+                    filename: fileTest,
+                    headerMissing: true,
+                    mode: "tsv",
+                    tableName: "__lgbm_file_test"
+                }),
+                dbTableImportAsync({
+                    db,
+                    filename: fileTrain,
+                    headerMissing: true,
+                    mode: "tsv",
+                    tableName: "__lgbm_file_train"
+                })
+            ]);
+            await dbExecAsync({
+                db,
+                sql: (`
+-- lgbm - init
+SELECT lgbm_dlopen(NULL);
+CREATE TABLE __lgbm_state(
+    data_test_handle INTEGER,
+    data_test_num_data REAL,
+    data_test_num_feature REAL,
+    --
+    data_train_handle INTEGER,
+    data_train_num_data REAL,
+    data_train_num_feature REAL,
+    --
+    model BLOB
+);
+INSERT INTO __lgbm_state(rowid) SELECT 1;
+
+-- lgbm - train
+${sqlTrainXxx};
+UPDATE __lgbm_state
     SET
         data_test_num_data = lgbm_datasetgetnumdata(data_test_handle),
         data_test_num_feature = lgbm_datasetgetnumfeature(data_test_handle),
         data_train_num_data = lgbm_datasetgetnumdata(data_train_handle),
         data_train_num_feature = lgbm_datasetgetnumfeature(data_train_handle);
-UPDATE test_lgbm
+UPDATE __lgbm_state
     SET
         model = lgbm_train(
             data_train_handle,
@@ -959,67 +1041,82 @@ UPDATE test_lgbm
             10, -- eval_step
             'app=binary metric=auc num_leaves=31 verbose=0'
         );
+
+-- lgbm - predict
+${sqlPredictXxx.replace(/fileActual/g, fileActual)};
+
+-- lgbm - cleanup
 SELECT
-        lgbm_modelpredictforfile(
-            model,                      -- model
-            '${fileTest}',              -- data_filename
-            0,                          -- data_has_header
-            ${LGBM_PREDICT_NORMAL},     -- predict_type
-            0,                          -- start_iteration
-            25,                         -- num_iteration
-            '',                         -- parameter
-            '.tmp/test_lgbm_preb.txt'   -- result_filename
-        )
-    FROM test_lgbm;
-SELECT
-        lgbm_modelpredictforfile(
-            model,                      -- model
-            '${fileTest}',              -- data_filename
-            0,                          -- data_has_header
-            ${LGBM_PREDICT_NORMAL},     -- predict_type
-            10,                         -- start_iteration
-            25,                         -- num_iteration
-            '',                         -- parameter
-            '.tmp/test_lgbm_preb.txt'   -- result_filename
-        )
-    FROM test_lgbm;
-            `)
-        });
-        assertJsonEqual(
-            noop(
-                await dbExecAndReturnLastRow({
+        lgbm_datasetfree(data_test_handle),
+        lgbm_datasetfree(data_train_handle)
+    FROM __lgbm_state;
+                `)
+            });
+            if (sqlPredictXxx === sqlPredictFile) {
+                dbTableImportAsync({
                     db,
-                    sql: (`
+                    filename: fileActual,
+                    headerMissing: true,
+                    mode: "tsv",
+                    tableName: "__lgbm_table_preb"
+                });
+            }
+            await dbFileSaveAsync({
+                db,
+                filename: `.tmp/test_lgbm_${sqlIi}.sqlite`
+            });
+            assertJsonEqual(
+                noop(
+                    await dbExecAndReturnLastRow({
+                        db,
+                        sql: (`
 SELECT
         data_test_num_data,
         data_test_num_feature,
         data_train_num_data,
         data_train_num_feature
-    FROM test_lgbm;
-                    `)
-                })
-            ),
-            {
-                "data_test_num_data": 500,
-                "data_test_num_feature": 28,
-                "data_train_num_data": 7000,
-                "data_train_num_feature": 28
+    FROM __lgbm_state;
+                        `)
+                    })
+                ),
+                {
+                    "data_test_num_data": 500,
+                    "data_test_num_feature": 28,
+                    "data_train_num_data": 7000,
+                    "data_train_num_feature": 28
+                }
+            );
+            if (sqlPredictXxx === sqlPredictFile) {
+                assertJsonEqual(
+                    await fsReadFileUnlessTest(fileActual, "force"),
+                    await fsReadFileUnlessTest(filePreb, "force")
+                );
             }
-        );
-        assertJsonEqual(
-            await fsReadFileUnlessTest(".tmp/test_lgbm_preb.txt", "force"),
-            await fsReadFileUnlessTest(filePreb, "force")
-        );
-        // cleanup
-        await dbExecAsync({
-            db,
-            sql: (`
-SELECT
-        lgbm_datasetfree(data_test_handle),
-        lgbm_datasetfree(data_train_handle)
-    FROM test_lgbm;
-            `)
-        });
+            assertJsonEqual(
+                noop(
+                    await dbExecAndReturnLastTable({
+                        db,
+                        sql: (`
+SELECT ROUND(c_1, 8) AS c_1 FROM __lgbm_table_preb;
+                        `)
+                    })
+                ),
+                noop(
+                    await dbExecAndReturnLastTable({
+                        db,
+                        sql: (`
+SELECT ROUND(c_1, 8) AS c_1 FROM __lgbm_file_preb;
+                        `)
+                    })
+                )
+            );
+        }
+        await Promise.all([
+            testLgbm(1, sqlTrainFile, sqlPredictFile),
+            testLgbm(2, sqlTrainTable, sqlPredictFile),
+            testLgbm(3, sqlTrainFile, sqlPredictTable),
+            testLgbm(4, sqlTrainTable, sqlPredictTable)
+        ]);
     });
 });
 
