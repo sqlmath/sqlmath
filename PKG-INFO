@@ -163,7 +163,7 @@ mv sqlite-autoconf-3440200 .sqlite-autoconf-3440200
 git grep "3\.42\.0\|3420000"
 for FILE in .ci.sh sqlmath_external_sqlite.c sqlmath_external_zlib.c
 do
-    sed -i -e "s|\<3\.42\.0\>|3.44.2|g" "$FILE"
+    sed -i -e "s|\<3\.42\.0\>|3\.44\.2|g" "$FILE"
     sed -i -e "s|\<3420000\>|3440200|g" "$FILE"
 done
 git grep "3\.42\.0\|3420000"

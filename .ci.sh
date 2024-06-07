@@ -5,6 +5,7 @@
 # sh jslint_ci.sh shSqlmathUpdate
 
 : "
+    (set -ex
     for URL in \
 https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
 https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz
@@ -26,6 +27,7 @@ https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz
 https://github.com/microsoft/LightGBM/releases/download/v3.3.5/$FILE \
             > $FILE
     done
+    )
 "
 
 shCiArtifactUploadCustom() {(set -e

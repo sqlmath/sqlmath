@@ -1570,7 +1570,12 @@ SELECT
             ORDER BY value->>0 ASC
             ${sqlBetween}
         ) AS val
-    FROM JSON_EAcH($valIn);
+    FROM (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(ORDER BY id ASC) AS id2
+        FROM JSON_EAcH($valIn)
+    );
                 `)
             });
             valActual = valActual[0].map(function ({val}) {
@@ -1585,7 +1590,7 @@ SELECT
                 db,
                 sql: (`
 SELECT
-        id,
+        id2,
         doublearray_jsonto(win_ema2(
             ${alpha},
             value->>1,
@@ -1597,12 +1602,17 @@ SELECT
             value->>1,
             value->>1,
             value->>1,
-            IIF(id = 1, -1, value->>1)
+            IIF(id2 = 1, -1, value->>1)
         ) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
         )) AS val
-    FROM JSON_EAcH($valIn);
+    FROM (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(ORDER BY id ASC) AS id2
+        FROM JSON_EAcH($valIn)
+    );
                 `)
             });
             valActual = valActual[0].map(function ({val}, ii, list) {
@@ -1753,7 +1763,12 @@ SELECT
             ORDER BY value->>0 ASC
             ${sqlBetween}
         ) AS val
-    FROM JSON_EAcH($valIn);
+    FROM (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(ORDER BY id ASC) AS id2
+        FROM JSON_EAcH($valIn)
+    );
                 `)
             });
             valActual = valActual[0].map(function ({val}) {
@@ -1761,14 +1776,14 @@ SELECT
             });
             assertJsonEqual(valActual, valExpect);
             // test win_quantile2-aggregate handling-behavior
-            valActual = await dbExecAsync({
+            valActual = await dbExecAndReturnLastTable({
                 bindList: {
                     valIn: JSON.stringify(valIn)
                 },
                 db,
                 sql: (`
 SELECT
-        id,
+        id2,
         doublearray_jsonto(win_quantile2(
             ${quantile}, value->>1,
             ${quantile}, value->>1,
@@ -1779,15 +1794,20 @@ SELECT
             ${quantile}, value->>1,
             ${quantile}, value->>1,
             ${quantile}, value->>1,
-            ${quantile}, IIF(id = 1, -1, value->>1)
+            ${quantile}, IIF(id2 = 1, -1, value->>1)
         ) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
         )) AS val
-    FROM JSON_EAcH($valIn);
+    FROM (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(ORDER BY id ASC) AS id2
+        FROM JSON_EAcH($valIn)
+    );
                 `)
             });
-            valActual = valActual[0].map(function ({val}, ii, list) {
+            valActual = valActual.map(function ({val}, ii, list) {
                 val = JSON.parse(val).map(function (elem, jj) {
                     elem = Number(elem.toFixed(4));
                     if (ii + (bb || 0) + 1 >= list.length && jj === 9) {
@@ -1836,7 +1856,7 @@ SELECT win_quantile2(NULL, 1) FROM (SELECT 1);
                     });
                 }, "argument 'quantile'");
                 // test win_quantile1-null-case handling-behavior
-                valActual = await dbExecAsync({
+                valActual = await dbExecAndReturnLastTable({
                     db,
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
@@ -1844,12 +1864,12 @@ CREATE TEMP TABLE __tmp1 (val REAL);
 SELECT win_quantile1(1, 2) FROM __tmp1;
                     `)
                 });
-                valActual = valActual[0].map(function ({val}) {
+                valActual = valActual.map(function ({val}) {
                     return val;
                 });
                 assertJsonEqual(valActual, [null]);
                 // test win_quantile2-null-case handling-behavior
-                valActual = await dbExecAsync({
+                valActual = await dbExecAndReturnLastTable({
                     db,
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
@@ -1857,7 +1877,7 @@ CREATE TEMP TABLE __tmp1 (val REAL);
 SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
                     `)
                 });
-                valActual = valActual[0].map(function ({val}) {
+                valActual = valActual.map(function ({val}) {
                     return val;
                 });
                 assertJsonEqual(valActual, [null]);
@@ -2010,6 +2030,8 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
         "test sqlite-extension-win_sinefit2 handling-behavior"
     ), async function test_sqlite_extension_win_sinefit2() {
         let db = await dbOpenAsync({filename: ":memory:"});
+        let id3 = 9;
+        let id4 = 10;
         let valExpect0;
         let valIn;
         function sqlSinefitExtractLnr(wsf, ii, suffix) {
@@ -2038,8 +2060,6 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
             valExpect2,
             valExpect3
         }) {
-            let id2 = 25;
-            let id3 = 28;
             let sqlBetween = "";
             let valActual;
             let xx2 = 2;
@@ -2049,7 +2069,7 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
                 );
             }
             // test win_sinefit2-aggregate handling-behavior
-            valActual = await dbExecAsync({
+            valActual = await dbExecAndReturnLastTable({
                 bindList: {
                     valIn
                 },
@@ -2058,7 +2078,7 @@ SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
 DROP TABLE IF EXISTS __sinefit_win;
 CREATE TEMP TABLE __sinefit_win AS
     SELECT
-        id,
+        id2,
         __wsf,
         sinefit_extract(__wsf, 0, 'xx1', 0) AS xx11,
         sinefit_extract(__wsf, 0, 'yy1', 0) AS yy11,
@@ -2068,7 +2088,7 @@ CREATE TEMP TABLE __sinefit_win AS
         sinefit_extract(__wsf, 9, 'yy1', 0) AS yy13
     FROM (
         SELECT
-            id,
+            id2,
             win_sinefit2(
                 1, ${xx2},
                 value->>0, value->>1,
@@ -2080,12 +2100,17 @@ CREATE TEMP TABLE __sinefit_win AS
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
-                value->>0, IIF(id = ${id2}, -1, value->>1)
+                value->>0, IIF(id2 = ${id3}, -1, value->>1)
             ) OVER (
                 ORDER BY NULL ASC
                 ${sqlBetween}
             ) AS __wsf
-        FROM JSON_EAcH($valIn)
+        FROM (
+            SELECT
+                *,
+                ROW_NUMBER() OVER(ORDER BY id ASC) AS id2
+            FROM JSON_EAcH($valIn)
+        )
     );
 UPDATE __sinefit_win
     SET
@@ -2102,7 +2127,7 @@ UPDATE __sinefit_win
             0, 0,
             0, 0
         )
-    WHERE id = 28;
+    WHERE id2 = ${id4};
 UPDATE __sinefit_win
     SET
         __wsf = sinefit_refitlast(
@@ -2118,17 +2143,17 @@ UPDATE __sinefit_win
             xx12, yy12,
             xx13, yy13
         )
-    WHERE id = ${id3};
+    WHERE id2 = ${id4};
 SELECT
-        id,
+        id2,
         ${sqlSinefitExtractLnr("__wsf", 0, "1")},
         ${sqlSinefitExtractLnr("__wsf", 8, "2")},
         ${sqlSinefitExtractLnr("__wsf", 9, "3")}
     FROM __sinefit_win;
                 `)
             });
-            valActual = valActual[0].map(function ({
-                id,
+            valActual = valActual.map(function ({
+                id2,
                 laa1,
                 laa2,
                 laa3,
@@ -2176,55 +2201,55 @@ SELECT
                 let obj2;
                 let obj3;
                 obj1 = {
-                    id,
-                    laa: laa1,
-                    lbb: lbb1,
-                    lee: lee1,
-                    lxy: lxy1,
-                    lyy: lyy1,
-                    mee: mee1,
-                    mxe: mxe1,
-                    mxx: mxx1,
-                    myy: myy1,
-                    nnn: nnn1,
-                    rr0: rr01,
-                    rr1: rr11,
-                    xx1: xx11,
-                    yy1: yy11
+                    id2,
+                    "laa": laa1,
+                    "lbb": lbb1,
+                    "lee": lee1,
+                    "lxy": lxy1,
+                    "lyy": lyy1,
+                    "mee": mee1,
+                    "mxe": mxe1,
+                    "mxx": mxx1,
+                    "myy": myy1,
+                    "nnn": nnn1,
+                    "rr0": rr01,
+                    "rr1": rr11,
+                    "xx1": xx11,
+                    "yy1": yy11
                 };
                 obj2 = {
-                    id,
-                    laa: laa2,
-                    lbb: lbb2,
-                    lee: lee2,
-                    lxy: lxy2,
-                    lyy: lyy2,
-                    mee: mee2,
-                    mxe: mxe2,
-                    mxx: mxx2,
-                    myy: myy2,
-                    nnn: nnn2,
-                    rr0: rr02,
-                    rr1: rr12,
-                    xx1: xx12,
-                    yy1: yy12
+                    id2,
+                    "laa": laa2,
+                    "lbb": lbb2,
+                    "lee": lee2,
+                    "lxy": lxy2,
+                    "lyy": lyy2,
+                    "mee": mee2,
+                    "mxe": mxe2,
+                    "mxx": mxx2,
+                    "myy": myy2,
+                    "nnn": nnn2,
+                    "rr0": rr02,
+                    "rr1": rr12,
+                    "xx1": xx12,
+                    "yy1": yy12
                 };
                 obj3 = {
-                    id,
-                    laa: laa3,
-                    lbb: lbb3,
-                    lee: lee3,
-                    lxy: lxy3,
-                    lyy: lyy3,
-                    mee: mee3,
-                    mxe: mxe3,
-                    mxx: mxx3,
-                    myy: myy3,
-                    nnn: nnn3,
-                    rr0: rr03,
-                    rr1: rr13,
-                    xx1: xx13,
-                    yy1: yy13
+                    id2,
+                    "laa": laa3,
+                    "lbb": lbb3,
+                    "lee": lee3,
+                    "lxy": lxy3,
+                    "lyy": lyy3,
+                    "mee": mee3,
+                    "mxe": mxe3,
+                    "mxx": mxx3,
+                    "myy": myy3,
+                    "nnn": nnn3,
+                    "rr0": rr03,
+                    "rr1": rr13,
+                    "xx1": xx13,
+                    "yy1": yy13
                 };
                 switch (list.length - ii) {
                 case 1:
@@ -2245,7 +2270,7 @@ SELECT
         }
         valExpect0 = [
             {
-                "id": 1,
+                "id2": 1,
                 "laa": null,
                 "lbb": null,
                 "lee": null,
@@ -2262,7 +2287,7 @@ SELECT
                 "yy1": 0
             },
             {
-                "id": 4,
+                "id2": 2,
                 "laa": null,
                 "lbb": null,
                 "lee": null,
@@ -2279,7 +2304,7 @@ SELECT
                 "yy1": 1
             },
             {
-                "id": 7,
+                "id2": 3,
                 "laa": -4.5,
                 "lbb": 2.5,
                 "lee": 0.40824829,
@@ -2296,7 +2321,7 @@ SELECT
                 "yy1": 3
             },
             {
-                "id": 10,
+                "id2": 4,
                 "laa": -3,
                 "lbb": 1.81818182,
                 "lee": 0.47673129,
@@ -2313,7 +2338,7 @@ SELECT
                 "yy1": 4
             },
             {
-                "id": 13,
+                "id2": 5,
                 "laa": -2.29411765,
                 "lbb": 1.52941176,
                 "lee": 0.50874702,
@@ -2330,7 +2355,7 @@ SELECT
                 "yy1": 5
             },
             {
-                "id": 16,
+                "id2": 6,
                 "laa": -2.54385965,
                 "lbb": 1.63157895,
                 "lee": 0.50725727,
@@ -2347,7 +2372,7 @@ SELECT
                 "yy1": 6
             },
             {
-                "id": 19,
+                "id2": 7,
                 "laa": -2.65,
                 "lbb": 1.675,
                 "lee": 0.48550416,
@@ -2364,7 +2389,7 @@ SELECT
                 "yy1": 6
             },
             {
-                "id": 22,
+                "id2": 8,
                 "laa": -2.5,
                 "lbb": 1.625,
                 "lee": 0.46770717,
@@ -2381,7 +2406,7 @@ SELECT
                 "yy1": 7
             },
             {
-                "id": 25,
+                "id2": 9,
                 "laa": 0.75,
                 "lbb": 0.85,
                 "lee": 0.94207218,
@@ -2398,7 +2423,7 @@ SELECT
                 "yy1": 8
             },
             {
-                "id": 28,
+                "id2": 10,
                 "laa": 2.75,
                 "lbb": 0.55,
                 "lee": 0.8587782,
@@ -2441,7 +2466,7 @@ SELECT win_sinefit2(1, 2, 3) FROM (SELECT 1);
                     });
                 }, "wrong number of arguments");
                 // test win_sinefit2-null-case handling-behavior
-                valActual = await dbExecAsync({
+                valActual = await dbExecAndReturnLastTable({
                     db,
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
@@ -2449,7 +2474,7 @@ CREATE TEMP TABLE __tmp1 (val REAL);
 SELECT doublearray_jsonto(win_sinefit2(1, 2, 3, 4)) FROM __tmp1;
                     `)
                 });
-                valActual = valActual[0].map(function ({val}) {
+                valActual = valActual.map(function ({val}) {
                     return val;
                 });
                 assertJsonEqual(valActual, [null]);
@@ -2468,7 +2493,12 @@ SELECT
     FROM (
         SELECT
             win_sinefit2(1, NULL, value->>0, value->>1) AS __wsf
-        FROM JSON_EACH($valIn)
+        FROM (
+            SELECT
+                *,
+                ROW_NUMBER() OVER(ORDER BY id ASC) AS id2
+            FROM JSON_EAcH($valIn)
+        )
     );
                     `)
                 });
@@ -2541,7 +2571,7 @@ SELECT
                 bb: 0,
                 valExpect: valExpect0,
                 valExpect2: {
-                    "id": 25,
+                    "id2": id3,
                     "laa": 5.25,
                     "lbb": -0.275,
                     "lee": 2.49624718,
@@ -2558,7 +2588,7 @@ SELECT
                     "yy1": -1
                 },
                 valExpect3: {
-                    "id": 28,
+                    "id2": id4,
                     "laa": 7.25,
                     "lbb": -0.575,
                     "lee": 1.95735791,
@@ -2959,7 +2989,7 @@ SELECT
                 );
             }
             // test win_sum1-aggregate handling-behavior
-            valActual = await dbExecAsync({
+            valActual = await dbExecAndReturnLastTable({
                 bindList: {
                     valIn: JSON.stringify(valIn)
                 },
@@ -2973,7 +3003,7 @@ SELECT
     FROM JSON_EAcH($valIn);
                 `)
             });
-            valActual = valActual[0].map(function ({val}) {
+            valActual = valActual.map(function ({val}) {
                 return Number(val.toFixed(4));
             });
             assertJsonEqual(valActual, valExpect);
@@ -2985,7 +3015,7 @@ SELECT
                 db,
                 sql: (`
 SELECT
-        id,
+        id2,
         doublearray_jsonto(win_sum2(
             value->>1,
             value->>1,
@@ -2996,12 +3026,17 @@ SELECT
             value->>1,
             value->>1,
             value->>1,
-            IIF(id = 1, -1, value->>1)
+            IIF(id2 = 1, -1, value->>1)
         ) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
         )) AS val
-    FROM JSON_EAcH($valIn);
+    FROM (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(ORDER BY id ASC) AS id2
+        FROM JSON_EAcH($valIn)
+    );
                 `)
             });
             valActual = valActual.map(function ({val}, ii, list) {
@@ -3045,7 +3080,7 @@ SELECT win_sum2() FROM (SELECT 1);
                     });
                 }, "wrong number of arguments");
                 // test win_sum1-null-case handling-behavior
-                valActual = await dbExecAsync({
+                valActual = await dbExecAndReturnLastTable({
                     db,
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
@@ -3053,12 +3088,12 @@ CREATE TEMP TABLE __tmp1 (val REAL);
 SELECT win_sum1(1, 2) FROM __tmp1;
                     `)
                 });
-                valActual = valActual[0].map(function ({val}) {
+                valActual = valActual.map(function ({val}) {
                     return val;
                 });
                 assertJsonEqual(valActual, [null]);
                 // test win_sum2-null-case handling-behavior
-                valActual = await dbExecAsync({
+                valActual = await dbExecAndReturnLastTable({
                     db,
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
@@ -3066,7 +3101,7 @@ CREATE TEMP TABLE __tmp1 (val REAL);
 SELECT doublearray_jsonto(win_sum2(1, 2, 3)) FROM __tmp1;
                     `)
                 });
-                valActual = valActual[0].map(function ({val}) {
+                valActual = valActual.map(function ({val}) {
                     return val;
                 });
                 assertJsonEqual(valActual, [null]);
