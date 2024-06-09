@@ -866,7 +866,7 @@ UPDATE __lgbm_state
             SELECT
                 lgbm_datasetcreatefromfile(
                     '${fileTest}',
-                    'max_bin=15', -- parameters
+                    'max_bin=15', -- param_data
                     data_train_handle -- reference
                 )
         );
@@ -877,7 +877,7 @@ UPDATE __lgbm_state
         data_train_handle = (
             SELECT
                 lgbm_datasetcreatefromtable(
-                    'max_bin=15', -- parameters
+                    'max_bin=15', -- param_data
                     0, -- reference
                     --
                     c_1,  c_2,  c_3,  c_4,
@@ -896,7 +896,7 @@ UPDATE __lgbm_state
         data_test_handle = (
             SELECT
                 lgbm_datasetcreatefromtable(
-                    'max_bin=15', -- parameters
+                    'max_bin=15', -- param_data
                     data_train_handle, -- reference
                     --
                     c_1,  c_2,  c_3,  c_4,
@@ -991,11 +991,25 @@ UPDATE __lgbm_state
     SET
         model = lgbm_trainfromdataset(
             data_train_handle, -- train_data
-            'app=binary metric=auc num_leaves=31 verbose=0', -- parameters
+            --
+            'app=binary metric=auc num_leaves=31 verbose=0', -- param_train
             50, -- num_boost_round
             10, -- eval_step
             --
             data_test_handle -- test_data
+        );
+        `);
+        let sqlTrainFile = (`
+UPDATE __lgbm_state
+    SET
+        model = lgbm_trainfromfile(
+            '${fileTrain}', -- file_train
+            'max_bin=15', -- param_data
+            '${fileTest}', -- file_test
+            --
+            'app=binary metric=auc num_leaves=31 verbose=0', -- param_train
+            50, -- num_boost_round
+            10 -- eval_step
         );
         `);
         let sqlTrainTable = (`
@@ -1004,7 +1018,7 @@ UPDATE __lgbm_state
         model = (
             SELECT
                 lgbm_trainfromtable(
-                    'max_bin=15', -- parameters
+                    'max_bin=15', -- param_data
                     0, -- reference
                     --
                     -- param_train
@@ -1157,7 +1171,7 @@ SELECT ROUND(c_1, 8) AS c_1 FROM __lgbm_file_preb;
             sqlDataFile, sqlDataTable
         ].forEach(function (sqlDataXxx) {
             [
-                sqlTrainData, sqlTrainTable
+                sqlTrainData, sqlTrainFile, sqlTrainTable
             ].forEach(function (sqlTrainXxx) {
                 [
                     sqlPredictFile, sqlPredictTable
