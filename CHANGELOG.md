@@ -8,16 +8,17 @@
 - lgbm - Add sql-functions:
     lgbm_datasetcreatefromfile()
     lgbm_datasetcreatefrommat()
+    lgbm_datasetcreatefromtable()
     lgbm_datasetdumptext()
     lgbm_datasetfree()
     lgbm_datasetgetnumdata()
     lgbm_datasetgetnumfeature()
     lgbm_datasetsavebinary()
     lgbm_dlopen()
-    lgbm_modelpredictforfile()
-    lgbm_train()
-    lgbm_datasetcreatefromtable()
+    lgbm_predictforfile()
     lgbm_predictfortable()
+    lgbm_trainfromdataset()
+    lgbm_trainfromtable()
 - sqlmath - Remove little-used sql-function fill_forward().
 - zlib - Update to zlib v1.3.1.
 - sqlmath - Add function dbExecAndReturnLastValue().

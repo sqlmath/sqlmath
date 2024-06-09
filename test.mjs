@@ -848,9 +848,73 @@ jstestDescribe((
         let filePreb = "test_lgbm_preb.txt";
         let fileTest = "test_lgbm_binary.test";
         let fileTrain = "test_lgbm_binary.train";
+        let promiseList = [];
+        let sqlDataFile = (`
+UPDATE __lgbm_state
+    SET
+        data_train_handle = (
+            SELECT
+                lgbm_datasetcreatefromfile(
+                    '${fileTrain}',
+                    'max_bin=15',
+                    0
+                )
+        );
+UPDATE __lgbm_state
+    SET
+        data_test_handle = (
+            SELECT
+                lgbm_datasetcreatefromfile(
+                    '${fileTest}',
+                    'max_bin=15', -- parameters
+                    data_train_handle -- reference
+                )
+        );
+        `);
+        let sqlDataTable = (`
+UPDATE __lgbm_state
+    SET
+        data_train_handle = (
+            SELECT
+                lgbm_datasetcreatefromtable(
+                    'max_bin=15', -- parameters
+                    0, -- reference
+                    --
+                    c_1,  c_2,  c_3,  c_4,
+                    c_5,  c_6,  c_7,  c_8,
+                    c_9,  c_10, c_11, c_12,
+                    c_13, c_14, c_15, c_16,
+                    c_17, c_18, c_19, c_20,
+                    c_21, c_22, c_23, c_24,
+                    c_25, c_26, c_27, c_28,
+                    c_29
+                )
+            FROM __lgbm_file_train
+        );
+UPDATE __lgbm_state
+    SET
+        data_test_handle = (
+            SELECT
+                lgbm_datasetcreatefromtable(
+                    'max_bin=15', -- parameters
+                    data_train_handle, -- reference
+                    --
+                    c_1,  c_2,  c_3,  c_4,
+                    c_5,  c_6,  c_7,  c_8,
+                    c_9,  c_10, c_11, c_12,
+                    c_13, c_14, c_15, c_16,
+                    c_17, c_18, c_19, c_20,
+                    c_21, c_22, c_23, c_24,
+                    c_25, c_26, c_27, c_28,
+                    c_29
+                )
+            FROM __lgbm_file_test
+        );
+        `);
+        let sqlIi = 0;
         let sqlPredictFile = (`
 SELECT
-        lgbm_modelpredictforfile(
+        lgbm_predictforfile(
             model,                      -- model
             '${fileTest}',              -- data_filename
             0,                          -- data_has_header
@@ -862,7 +926,7 @@ SELECT
         )
     FROM __lgbm_state;
 SELECT
-        lgbm_modelpredictforfile(
+        lgbm_predictforfile(
             model,                      -- model
             '${fileTest}',              -- data_filename
             0,                          -- data_has_header
@@ -884,6 +948,7 @@ CREATE TABLE __lgbm_table_preb AS
             0,                          -- start_iteration
             25,                         -- num_iteration
             '',                         -- parameter
+            --
             c_2,  c_3,  c_4,
             c_5,  c_6,  c_7,  c_8,
             c_9,  c_10, c_11, c_12,
@@ -906,6 +971,7 @@ CREATE TABLE __lgbm_table_preb AS
             10,                         -- start_iteration
             25,                         -- num_iteration
             '',                         -- parameter
+            --
             c_2,  c_3,  c_4,
             c_5,  c_6,  c_7,  c_8,
             c_9,  c_10, c_11, c_12,
@@ -920,36 +986,32 @@ CREATE TABLE __lgbm_table_preb AS
         ) AS c_1
     FROM __lgbm_file_test;
         `);
-        let sqlTrainFile = (`
+        let sqlTrainData = (`
 UPDATE __lgbm_state
     SET
-        data_train_handle = (
-            SELECT
-                lgbm_datasetcreatefromfile(
-                    '${fileTrain}',
-                    'max_bin=15',
-                    0
-                )
-        );
-UPDATE __lgbm_state
-    SET
-        data_test_handle = (
-            SELECT
-                lgbm_datasetcreatefromfile(
-                    '${fileTest}',
-                    'max_bin=15', -- parameters
-                    data_train_handle -- reference
-                )
+        model = lgbm_trainfromdataset(
+            data_train_handle, -- train_data
+            'app=binary metric=auc num_leaves=31 verbose=0', -- parameters
+            50, -- num_boost_round
+            10, -- eval_step
+            --
+            data_test_handle -- test_data
         );
         `);
         let sqlTrainTable = (`
 UPDATE __lgbm_state
     SET
-        data_train_handle = (
+        model = (
             SELECT
-                lgbm_datasetcreatefromtable(
+                lgbm_trainfromtable(
                     'max_bin=15', -- parameters
                     0, -- reference
+                    --
+                    -- param_train
+                    'app=binary metric=auc num_leaves=31 verbose=0',
+                    50, -- num_boost_round
+                    10, -- eval_step
+                    --
                     c_1,  c_2,  c_3,  c_4,
                     c_5,  c_6,  c_7,  c_8,
                     c_9,  c_10, c_11, c_12,
@@ -961,26 +1023,8 @@ UPDATE __lgbm_state
                 )
             FROM __lgbm_file_train
         );
-UPDATE __lgbm_state
-    SET
-        data_test_handle = (
-            SELECT
-                lgbm_datasetcreatefromtable(
-                    'max_bin=15', -- parameters
-                    data_train_handle, -- reference
-                    c_1,  c_2,  c_3,  c_4,
-                    c_5,  c_6,  c_7,  c_8,
-                    c_9,  c_10, c_11, c_12,
-                    c_13, c_14, c_15, c_16,
-                    c_17, c_18, c_19, c_20,
-                    c_21, c_22, c_23, c_24,
-                    c_25, c_26, c_27, c_28,
-                    c_29
-                )
-            FROM __lgbm_file_test
-        );
         `);
-        async function testLgbm(sqlIi, sqlTrainXxx, sqlPredictXxx) {
+        async function testLgbm(sqlDataXxx, sqlTrainXxx, sqlPredictXxx, sqlIi) {
             let db = await dbOpenAsync({filename: ":memory:"});
             let fileActual = `.tmp/test_lgbm_preb_${sqlIi}.txt`;
             await Promise.all([
@@ -1024,24 +1068,22 @@ CREATE TABLE __lgbm_state(
 );
 INSERT INTO __lgbm_state(rowid) SELECT 1;
 
--- lgbm - train
-${sqlTrainXxx};
+-- lgbm - data
+${sqlDataXxx};
 UPDATE __lgbm_state
     SET
         data_test_num_data = lgbm_datasetgetnumdata(data_test_handle),
         data_test_num_feature = lgbm_datasetgetnumfeature(data_test_handle),
         data_train_num_data = lgbm_datasetgetnumdata(data_train_handle),
         data_train_num_feature = lgbm_datasetgetnumfeature(data_train_handle);
-UPDATE __lgbm_state
-    SET
-        model = lgbm_train(
-            data_train_handle,
-            data_test_handle,
-            50, -- num_boost_round
-            10, -- eval_step
-            'app=binary metric=auc num_leaves=31 verbose=0'
-        );
 
+-- lgbm - train
+${sqlTrainXxx};
+                `)
+            });
+            await dbExecAsync({
+                db,
+                sql: (`
 -- lgbm - predict
 ${sqlPredictXxx.replace(/fileActual/g, fileActual)};
 
@@ -1111,12 +1153,23 @@ SELECT ROUND(c_1, 8) AS c_1 FROM __lgbm_file_preb;
                 )
             );
         }
-        await Promise.all([
-            testLgbm(1, sqlTrainFile, sqlPredictFile),
-            testLgbm(2, sqlTrainTable, sqlPredictFile),
-            testLgbm(3, sqlTrainFile, sqlPredictTable),
-            testLgbm(4, sqlTrainTable, sqlPredictTable)
-        ]);
+        [
+            sqlDataFile, sqlDataTable
+        ].forEach(function (sqlDataXxx) {
+            [
+                sqlTrainData, sqlTrainTable
+            ].forEach(function (sqlTrainXxx) {
+                [
+                    sqlPredictFile, sqlPredictTable
+                ].forEach(function (sqlPredictXxx) {
+                    sqlIi += 1;
+                    promiseList.push(
+                        testLgbm(sqlDataXxx, sqlTrainXxx, sqlPredictXxx, sqlIi)
+                    );
+                });
+            });
+        });
+        await Promise.all(promiseList);
     });
 });
 

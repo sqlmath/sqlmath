@@ -95,13 +95,16 @@ file sqlmath_h - start
 #define SQLITE_RESPONSETYPE_LASTVALUE   2
 
 
+#define LGBM_EVAL_BUF_LEN_MAX 16
+#define LGBM_EVAL_OUT_LEN_MAX 8
+#define LGBM_PARAM_BUF_LEN_MAX 1024
 #define MATH_MAX(aa, bb) (((aa) < (bb)) ? (bb) : (aa))
 #define MATH_MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
 #define MATH_PI 3.141592653589793238463
 #define MATH_SIGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
 #define MATH_SWAP(aa, bb, tmp) tmp = (aa); (aa) = (bb); (bb) = tmp
 #define SQLITE_ERROR_DATATYPE_INVALID   0x10003
-#define SQLITE_ERROR_JSON_ARRAY_INVALID         0x71
+#define SQLITE_ERROR_JSON_ARRAY_INVALID 0x71
 #define SQLITE_ERROR_ZSQL_NULL          0x10004
 #define SQLMATH_API
 #define SQLMATH_FUNC
@@ -109,7 +112,7 @@ file sqlmath_h - start
 
 
 #ifndef SQLITE_MAX_FUNCTION_ARG
-#define SQLITE_MAX_FUNCTION_ARG 127
+#   define SQLITE_MAX_FUNCTION_ARG 127
 #endif                          // SQLITE_MAX_FUNCTION_ARG
 
 
@@ -1887,11 +1890,17 @@ SQLMATH_FUNC static void sql1_lgbm_datasetcreatefrommat_func(
     sqlite3_value ** argv
 ) {
 // This function will create dataset <out> from dense matrix <data>.
+    const void *data = sqlite3_value_blob(argv[0]);
+    if (data == NULL) {
+        sqlite3_result_error(context,
+            "lgbm_datasetcreatefrommat - data cannot be NULL", -1);
+        return;
+    }
     UNUSED_PARAMETER(argc);
     DatasetHandle out = NULL;
     int errcode = 0;
     errcode = LGBM_DatasetCreateFromMat(        //
-        sqlite3_value_blob(argv[0]),    // const void *data,
+        data,                   // const void *data,
         sqlite3_value_int(argv[1]),     // int data_type,
         (int32_t) sqlite3_value_int(argv[2]),   // int32_t nrow,
         (int32_t) sqlite3_value_int(argv[3]),   // int32_t ncol,
@@ -1988,22 +1997,28 @@ SQLMATH_FUNC static void sql1_lgbm_datasetsavebinary_func(
     (void) 0;
 }
 
-SQLMATH_FUNC static void sql1_lgbm_modelpredictforfile_func(
+SQLMATH_FUNC static void sql1_lgbm_predictforfile_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will make prediction for file from <model>.
+// This function will make prediction for file from <model_str>.
+    const char *model_str = (char *) sqlite3_value_text(argv[0]);
+    if (model_str == NULL) {
+        sqlite3_result_error(context,
+            "lgbm_predictforfile - model_str cannot be NULL", -1);
+        return;
+    }
     UNUSED_PARAMETER(argc);
     BoosterHandle booster = NULL;
     int errcode = 0;
     int out_num_iterations = 0;
     errcode = LGBM_BoosterLoadModelFromString(  //
-        (char *) sqlite3_value_text(argv[0]),   // const char *model_str,
+        model_str,              // const char *model_str,
         &out_num_iterations,    // int *out_num_iterations,
         &booster);              // BoosterHandle *out
     LGBM_ASSERT_OK();
-    // fprintf(stderr, "lgbm_modelpredictforfile - out_num_iterations=%d\n",
+    // fprintf(stderr, "lgbm_predictforfile - out_num_iterations=%d\n",
     //     out_num_iterations);
     errcode = LGBM_BoosterPredictForFile(       //
         booster,                // BoosterHandle handle,
@@ -2019,33 +2034,39 @@ SQLMATH_FUNC static void sql1_lgbm_modelpredictforfile_func(
     LGBM_BoosterFree(booster);
 }
 
-SQLMATH_FUNC static void sql1_lgbm_train_func(
+SQLMATH_FUNC static void sql1_lgbm_trainfromdataset_func0(
     sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
+    const DatasetHandle train_data,
+    const char *parameters,
+    const int num_boost_round,
+    const int eval_step,
+    //
+    const DatasetHandle test_data
 ) {
-// This function will create-and-train <model> from training data.
-    UNUSED_PARAMETER(argc);
+// This function will create-and-train <model_str> from training data.
+    // fprintf(stderr,             //
+    //     "\n\nlgbm_trainfromdataset"     //
+    //     " - train=%p param=%s round=%d step=%d test=%p\n\n",    //
+    //     train_data, parameters, num_boost_round, eval_step, test_data);
+    if (train_data == NULL) {
+        sqlite3_result_error(context,
+            "lgbm_trainfromdataset - train_data cannot be NULL", -1);
+        return;
+    }
     // booster - init
-    const DatasetHandle train_data =
-        (DatasetHandle) sqlite3_value_int64(argv[0]);
-    const DatasetHandle test_data =
-        (DatasetHandle) sqlite3_value_int64(argv[1]);
-    const int num_boost_round = sqlite3_value_int(argv[2]);
-    const int eval_step = sqlite3_value_int(argv[3]);
-    const char *parameters = (char *) sqlite3_value_text(argv[4]);
     BoosterHandle booster = NULL;
-    char *model = NULL;
+    char *model_str = NULL;
     int errcode = 0;
     errcode = LGBM_BoosterCreate(       //
         train_data,             // const DatasetHandle train_data,
         parameters,             // const char *parameters,
         &booster);              // BoosterHandle *out
-    LGBM_BoosterAddValidData(booster, test_data);
     LGBM_ASSERT_OK();
+    if (test_data != NULL) {
+        LGBM_BoosterAddValidData(booster, test_data);
+        LGBM_ASSERT_OK();
+    }
     // booster - train
-#define LGBM_EVAL_BUF_LEN_MAX 16
-#define LGBM_EVAL_OUT_LEN_MAX 8
     char *eval_names[LGBM_EVAL_OUT_LEN_MAX] = { 0 };
     char eval_buf[LGBM_EVAL_OUT_LEN_MAX * LGBM_EVAL_BUF_LEN_MAX] = { 0 };
     double eval_results[LGBM_EVAL_OUT_LEN_MAX] = { 0 };
@@ -2059,7 +2080,7 @@ SQLMATH_FUNC static void sql1_lgbm_train_func(
     LGBM_ASSERT_OK();
     if (eval_len > LGBM_EVAL_OUT_LEN_MAX) {
         sqlite3_result_error2(context,
-            "lgbm_train - number-of-metrics must be <= %d",
+            "lgbm_trainfromdataset - number-of-metrics must be <= %d",
             LGBM_EVAL_OUT_LEN_MAX);
         goto catch_error;
     }
@@ -2081,7 +2102,7 @@ SQLMATH_FUNC static void sql1_lgbm_train_func(
             eval_results);      // double *out_results
         LGBM_ASSERT_OK();
         if ((ii + 1) % eval_step == 0) {
-            fprintf(stderr, "    lgbm_train - round %d -", ii);
+            fprintf(stderr, "    lgbm_trainfromdataset - round %d -", ii);
             for (int jj = 0; jj < eval_len; jj += 1) {
                 fprintf(stderr, " %s=%.6f", eval_names[jj], eval_results[jj]);
             }
@@ -2098,10 +2119,10 @@ SQLMATH_FUNC static void sql1_lgbm_train_func(
         // C_API_FEATURE_IMPORTANCE_GAIN,  // int feature_importance_type,
         0,                      // int64_t buffer_len,
         &model_len,             // int64_t *out_len,
-        model);                 // char *out_str
+        model_str);             // char *out_str
     LGBM_ASSERT_OK();
-    model = sqlite3_malloc((int) model_len);
-    if (model == NULL) {
+    model_str = sqlite3_malloc((int) model_len);
+    if (model_str == NULL) {
         sqlite3_result_error_nomem(context);
         goto catch_error;
     }
@@ -2113,14 +2134,30 @@ SQLMATH_FUNC static void sql1_lgbm_train_func(
         // C_API_FEATURE_IMPORTANCE_GAIN,  // int feature_importance_type,
         model_len,              // int64_t buffer_len,
         &model_len,             // int64_t *out_len,
-        model);                 // char *out_str
+        model_str);             // char *out_str
     LGBM_ASSERT_OK();
-    sqlite3_result_blob(context, model, model_len, sqlite3_free);
+    sqlite3_result_blob(context, model_str, model_len, sqlite3_free);
   catch_error:
     LGBM_BoosterFree(booster);
     if (errcode) {
-        sqlite3_free(model);
+        sqlite3_free(model_str);
     }
+}
+
+SQLMATH_FUNC static void sql1_lgbm_trainfromdataset_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will create-and-train <model_str> from training data.
+    UNUSED_PARAMETER(argc);
+    sql1_lgbm_trainfromdataset_func0(context,   //
+        (DatasetHandle) sqlite3_value_int64(argv[0]),   // train_data
+        (char *) sqlite3_value_text(argv[1]),   // parameters
+        sqlite3_value_int(argv[2]),     // num_boost_round
+        sqlite3_value_int(argv[3]),     // eval_step
+        //
+        (DatasetHandle) sqlite3_value_int64(argv[4]));  // test_data
 }
 
 // SQLMATH_FUNC sql1_lgbm_xxx_func - end
@@ -2273,14 +2310,19 @@ SQLMATH_FUNC static void sql1_throwerror_func(
     sqlite3_result_error_code(context, SQLITE_INTERNAL);
 }
 
-// SQLMATH_FUNC lgbm_datasetcreatefromtable - start
-typedef struct LgbmDataset {
+// SQLMATH_FUNC sql2_lgbm_datasetcreatefromtable_func - start
+typedef struct AggLgbmDataset {
+    char param[LGBM_PARAM_BUF_LEN_MAX];
     DatasetHandle ref;
-    char param;
-} LgbmDataset;
+    //
+    char param_train[LGBM_PARAM_BUF_LEN_MAX];
+    int num_boost_round;
+    int eval_step;
+} AggLgbmDataset;
 
-SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final(
-    sqlite3_context * context
+SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final0(
+    sqlite3_context * context,
+    const int modeTrain
 ) {
 // This function will aggregate sql-table into lgbm-dataset.
     float *label = NULL;
@@ -2290,8 +2332,8 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final(
     if (dblwin->nbody == 0) {
         goto catch_error;
     }
-    LgbmDataset *dataset = (LgbmDataset *) dblwin_head;
-    // init label
+    AggLgbmDataset *agg = (AggLgbmDataset *) dblwin_head;
+    // label - init
     DatasetHandle out = NULL;
     const int ncol = (int) dblwin->ncol;
     const int nrow = (int) dblwin->nbody / dblwin->ncol;
@@ -2312,14 +2354,15 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final(
             ll += 1;
         }
     }
+    // dataset - create
     errcode = LGBM_DatasetCreateFromMat(        //
         dblwin_body,            // const void *data,
         C_API_DTYPE_FLOAT64,    // int data_type,
         (int32_t) nrow,         // int32_t nrow,
         (int32_t) ncol - 1,     // int32_t ncol,
         1,                      // int is_row_major,
-        &dataset->param,        // const char *parameters,
-        dataset->ref,           // const DatasetHandle reference,
+        agg->param,             // const char *parameters,
+        agg->ref,               // const DatasetHandle reference,
         &out);                  // DatasetHandle *out
     LGBM_ASSERT_OK();
     errcode = LGBM_DatasetSetField(     //
@@ -2329,33 +2372,80 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final(
         nrow,                   // int num_element,
         C_API_DTYPE_FLOAT32);   // int type
     LGBM_ASSERT_OK();
+    // agg - train
+    if (modeTrain) {
+        sql1_lgbm_trainfromdataset_func0(context,       //
+            out,                // train_data
+            agg->param_train,   // parameters
+            agg->num_boost_round,       // num_boost_round
+            agg->eval_step,     // eval_step
+            //
+            NULL);              // test_data
+        LGBM_DatasetFree(out);
+        goto catch_error;
+    }
     sqlite3_result_int64(context, (int64_t) out);
   catch_error:
     doublewinAggfree(dblwinAgg);
     sqlite3_free(label);
 }
 
-SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_step(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
+SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final(
+    sqlite3_context * context
 ) {
 // This function will aggregate sql-table into lgbm-dataset.
-    static int argc0 = 2;
-    int param_bytes = sqlite3_value_bytes(argv[0]);
+    sql2_lgbm_datasetcreatefromtable_final0(context, 0);
+}
+
+SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_step0(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv,
+    const int modeTrain
+) {
+// This function will aggregate sql-table into lgbm-dataset.
+    const int argc0 = modeTrain ? 2 + 3 : 2;
     const int ncol = argc - argc0;
-    DOUBLEWIN_AGGREGATE_CONTEXT(        //
-        (sizeof(LgbmDataset) + param_bytes) / 8 //
-        + 1);
+    if (ncol < 1) {
+        sqlite3_result_error(context,
+            "lgbm_datasetcreatefromtable - wrong number of arguments", -1);
+        return;
+    }
+    DOUBLEWIN_AGGREGATE_CONTEXT(sizeof(AggLgbmDataset) / sizeof(double) + 1);
     if (dblwin->nbody == 0) {
         // dblwin - init ncol
         dblwin->ncol = ncol;
-        // dataset - init
-        LgbmDataset *dataset = (LgbmDataset *) dblwin_head;
-        dataset->ref = (DatasetHandle) sqlite3_value_int64(argv[1]);
+        // agg - init
+        AggLgbmDataset *agg = (AggLgbmDataset *) dblwin_head;
+        int param_bytes = sqlite3_value_bytes(argv[0]);
+        if (param_bytes >= LGBM_PARAM_BUF_LEN_MAX) {
+            sqlite3_result_error2(context,
+                "lgbm_datasetcreatefromtable"
+                " - parameters-string must be < %d bytes",
+                LGBM_PARAM_BUF_LEN_MAX);
+            return;
+        }
         if (param_bytes > 0) {
-            memcpy(&dataset->param, sqlite3_value_text(argv[0]), param_bytes);
-            (&dataset->param)[param_bytes] = 0;
+            memcpy(agg->param, sqlite3_value_text(argv[0]), param_bytes);
+            agg->param[param_bytes] = 0;
+        }
+        agg->ref = (DatasetHandle) sqlite3_value_int64(argv[1]);
+        if (modeTrain) {
+            param_bytes = sqlite3_value_bytes(argv[2]);
+            if (param_bytes >= LGBM_PARAM_BUF_LEN_MAX) {
+                sqlite3_result_error2(context,
+                    "lgbm_datasetcreatefromtable"
+                    " - parameters-string must be < %d bytes",
+                    LGBM_PARAM_BUF_LEN_MAX);
+                return;
+            }
+            if (param_bytes > 0) {
+                memcpy(agg->param_train, sqlite3_value_text(argv[2]),
+                    param_bytes);
+                agg->param_train[param_bytes] = 0;
+            }
+            agg->num_boost_round = sqlite3_value_int(argv[3]);
+            agg->eval_step = sqlite3_value_int(argv[4]);
         }
     }
     // dblwin - push xx
@@ -2365,7 +2455,45 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_step(
     }
 }
 
-// SQLMATH_FUNC lgbm_datasetcreatefromtable - end
+SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will aggregate sql-table into lgbm-dataset.
+    sql2_lgbm_datasetcreatefromtable_step0(context, argc, argv, 0);
+}
+
+// SQLMATH_FUNC sql2_lgbm_datasetcreatefromtable_func - end
+
+// SQLMATH_FUNC sql2_lgbm_trainfromtable_func - start
+typedef struct AggLgbmTrain {
+    BoosterHandle booster;      // booster
+    int num_iterations;         // [out] Number of iterations of this booster
+    int ncol;                   // Number of columns
+    //
+    FastConfigHandle fastConfig;        // [out] FastConfig object
+    int64_t nnn;                // number of elements
+    double result;              // [out] Pointer to array with predictions
+} AggLgbmTrain;
+
+SQLMATH_FUNC static void sql2_lgbm_trainfromtable_final(
+    sqlite3_context * context
+) {
+// This function will create-and-train <model_str> from sql-table.
+    sql2_lgbm_datasetcreatefromtable_final0(context, 1);
+}
+
+static void sql2_lgbm_trainfromtable_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will create-and-train <model_str> from sql-table.
+    sql2_lgbm_datasetcreatefromtable_step0(context, argc, argv, 1);
+}
+
+// SQLMATH_FUNC sql2_lgbm_trainfromtable_func - end
 
 // SQLMATH_FUNC sql2_quantile_func - start
 static double quickselect(
@@ -2521,7 +2649,7 @@ SQLMATH_FUNC static void sql2_median_step(
 // SQLMATH_FUNC sql2_quantile_func - end
 
 // SQLMATH_FUNC sql3_lgbm_predictfortable_func - start
-typedef struct AggLgbm {
+typedef struct AggLgbmPredict {
     BoosterHandle booster;      // booster
     int num_iterations;         // [out] Number of iterations of this booster
     int ncol;                   // Number of columns
@@ -2529,14 +2657,14 @@ typedef struct AggLgbm {
     FastConfigHandle fastConfig;        // [out] FastConfig object
     int64_t nnn;                // number of elements
     double result;              // [out] Pointer to array with predictions
-} AggLgbm;
+} AggLgbmPredict;
 
 SQLMATH_FUNC static void sql3_lgbm_predictfortable_value(
     sqlite3_context * context
 ) {
-// This function will make prediction for sql-table from <model>.
+// This function will make prediction for sql-table from <model_str>.
     // agg - init
-    SQLITE3_AGGREGATE_CONTEXT(AggLgbm);
+    SQLITE3_AGGREGATE_CONTEXT(AggLgbmPredict);
     // agg - null-case
     if (agg->nnn <= 0) {
         return;
@@ -2547,12 +2675,12 @@ SQLMATH_FUNC static void sql3_lgbm_predictfortable_value(
 SQLMATH_FUNC static void sql3_lgbm_predictfortable_final(
     sqlite3_context * context
 ) {
-// This function will make prediction for sql-table from <model>.
+// This function will make prediction for sql-table from <model_str>.
     int errcode = 0;
     // agg - value
     sql3_lgbm_predictfortable_value(context);
     // agg - init
-    SQLITE3_AGGREGATE_CONTEXT(AggLgbm);
+    SQLITE3_AGGREGATE_CONTEXT(AggLgbmPredict);
     // agg - cleanup
     errcode = LGBM_BoosterFree(agg->booster);
     LGBM_ASSERT_OK();
@@ -2567,7 +2695,7 @@ SQLMATH_FUNC static void sql3_lgbm_predictfortable_inverse(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will make prediction for sql-table from <model>.
+// This function will make prediction for sql-table from <model_str>.
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
     UNUSED_PARAMETER(context);
@@ -2578,7 +2706,7 @@ static void sql3_lgbm_predictfortable_step(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will make prediction for sql-table from <model>.
+// This function will make prediction for sql-table from <model_str>.
     static int argc0 = 5;
     const int ncol = argc - argc0;
     int errcode = 0;
@@ -2588,8 +2716,14 @@ static void sql3_lgbm_predictfortable_step(
         return;
     }
     // agg - init
-    SQLITE3_AGGREGATE_CONTEXT(AggLgbm);
+    SQLITE3_AGGREGATE_CONTEXT(AggLgbmPredict);
     if (agg->nnn == 0) {
+        const char *model_str = (char *) sqlite3_value_text(argv[0]);
+        if (model_str == NULL) {
+            sqlite3_result_error(context,
+                "lgbm_predictfortable - model_str cannot be NULL", -1);
+            return;
+        }
         errcode = LGBM_BoosterLoadModelFromString(      //
             // const char *model_str,
             (char *) sqlite3_value_text(argv[0]),       //
@@ -2610,7 +2744,7 @@ static void sql3_lgbm_predictfortable_step(
     }
     int64_t out_len = 0;
     double data[SQLITE_MAX_FUNCTION_ARG] = { 0 };
-    // fprintf(stderr, "\nlgbm_modelpredictfortable - out_num_iterations=%d",
+    // fprintf(stderr, "\nlgbm_predictfortable - out_num_iterations=%d",
     //     sqlite3_value_int(argv[3]));
     for (int ii = 0; ii < ncol; ii += 1) {
         data[ii] = sqlite3_value_double_or_nan(argv[argc0 + ii]);
@@ -4001,8 +4135,8 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(lgbm_datasetgetnumfeature, 1, 0);
     SQL_CREATE_FUNC1(lgbm_datasetsavebinary, 1, 0);
     SQL_CREATE_FUNC1(lgbm_dlopen, 1, 0);
-    SQL_CREATE_FUNC1(lgbm_modelpredictforfile, 8, 0);
-    SQL_CREATE_FUNC1(lgbm_train, 5, 0);
+    SQL_CREATE_FUNC1(lgbm_predictforfile, 8, 0);
+    SQL_CREATE_FUNC1(lgbm_trainfromdataset, 5, 0);
     SQL_CREATE_FUNC1(marginoferror95, 2, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(normalizewithsqrt, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(normalizewithsquared, 1, SQLITE_DETERMINISTIC);
@@ -4017,6 +4151,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(zlib_compress, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(zlib_uncompress, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC2(lgbm_datasetcreatefromtable, -1, 0);
+    SQL_CREATE_FUNC2(lgbm_trainfromtable, -1, 0);
     SQL_CREATE_FUNC2(median, 1, 0);
     SQL_CREATE_FUNC2(quantile, 2, 0);
     SQL_CREATE_FUNC3(lgbm_predictfortable, -1, 0);
