@@ -855,9 +855,9 @@ UPDATE __lgbm_state
         data_train_handle = (
             SELECT
                 lgbm_datasetcreatefromfile(
-                    '${fileTrain}',
-                    'max_bin=15',
-                    0
+                    '${fileTrain}', -- filename
+                    'max_bin=15', -- param_data
+                    NULL -- reference
                 )
         );
 UPDATE __lgbm_state
@@ -865,7 +865,7 @@ UPDATE __lgbm_state
         data_test_handle = (
             SELECT
                 lgbm_datasetcreatefromfile(
-                    '${fileTest}',
+                    '${fileTest}', -- filename
                     'max_bin=15', -- param_data
                     data_train_handle -- reference
                 )
@@ -878,7 +878,7 @@ UPDATE __lgbm_state
             SELECT
                 lgbm_datasetcreatefromtable(
                     'max_bin=15', -- param_data
-                    0, -- reference
+                    NULL, -- reference
                     --
                     c_1,  c_2,  c_3,  c_4,
                     c_5,  c_6,  c_7,  c_8,
@@ -916,24 +916,26 @@ UPDATE __lgbm_state
 SELECT
         lgbm_predictforfile(
             model,                      -- model
-            '${fileTest}',              -- data_filename
-            0,                          -- data_has_header
             ${LGBM_PREDICT_NORMAL},     -- predict_type
             0,                          -- start_iteration
             25,                         -- num_iteration
-            '',                         -- parameter
+            '',                         -- param_pred
+            --
+            '${fileTest}',              -- data_filename
+            0,                          -- data_has_header
             'fileActual'                -- result_filename
         )
     FROM __lgbm_state;
 SELECT
         lgbm_predictforfile(
             model,                      -- model
-            '${fileTest}',              -- data_filename
-            0,                          -- data_has_header
             ${LGBM_PREDICT_NORMAL},     -- predict_type
             10,                         -- start_iteration
             25,                         -- num_iteration
-            '',                         -- parameter
+            '',                         -- param_pred
+            --
+            '${fileTest}',              -- data_filename
+            0,                          -- data_has_header
             'fileActual'                -- result_filename
         )
     FROM __lgbm_state;
@@ -943,11 +945,11 @@ DROP TABLE IF EXISTS __lgbm_table_preb;
 CREATE TABLE __lgbm_table_preb AS
     SELECT
         lgbm_predictfortable(
-            (SELECT model FROM __lgbm_state),    -- model
+            (SELECT model FROM __lgbm_state),   -- model
             ${LGBM_PREDICT_NORMAL},     -- predict_type
             0,                          -- start_iteration
             25,                         -- num_iteration
-            '',                         -- parameter
+            '',                         -- param_pred
             --
             c_2,  c_3,  c_4,
             c_5,  c_6,  c_7,  c_8,
@@ -966,11 +968,11 @@ DROP TABLE IF EXISTS __lgbm_table_preb;
 CREATE TABLE __lgbm_table_preb AS
     SELECT
         lgbm_predictfortable(
-            (SELECT model FROM __lgbm_state),    -- model
+            (SELECT model FROM __lgbm_state),   -- model
             ${LGBM_PREDICT_NORMAL},     -- predict_type
             10,                         -- start_iteration
             25,                         -- num_iteration
-            '',                         -- parameter
+            '',                         -- param_pred
             --
             c_2,  c_3,  c_4,
             c_5,  c_6,  c_7,  c_8,
@@ -990,12 +992,11 @@ CREATE TABLE __lgbm_table_preb AS
 UPDATE __lgbm_state
     SET
         model = lgbm_trainfromdataset(
-            data_train_handle, -- train_data
-            --
             'app=binary metric=auc num_leaves=31 verbose=0', -- param_train
             50, -- num_boost_round
             10, -- eval_step
             --
+            data_train_handle, -- train_data
             data_test_handle -- test_data
         );
         `);
@@ -1003,13 +1004,13 @@ UPDATE __lgbm_state
 UPDATE __lgbm_state
     SET
         model = lgbm_trainfromfile(
-            '${fileTrain}', -- file_train
-            'max_bin=15', -- param_data
-            '${fileTest}', -- file_test
-            --
             'app=binary metric=auc num_leaves=31 verbose=0', -- param_train
             50, -- num_boost_round
-            10 -- eval_step
+            10, -- eval_step
+            --
+            '${fileTrain}', -- file_train
+            'max_bin=15', -- param_data
+            '${fileTest}' -- file_test
         );
         `);
         let sqlTrainTable = (`
@@ -1018,13 +1019,13 @@ UPDATE __lgbm_state
         model = (
             SELECT
                 lgbm_trainfromtable(
-                    'max_bin=15', -- param_data
-                    0, -- reference
-                    --
                     -- param_train
                     'app=binary metric=auc num_leaves=31 verbose=0',
                     50, -- num_boost_round
                     10, -- eval_step
+                    --
+                    'max_bin=15', -- param_data
+                    NULL, -- reference
                     --
                     c_1,  c_2,  c_3,  c_4,
                     c_5,  c_6,  c_7,  c_8,
