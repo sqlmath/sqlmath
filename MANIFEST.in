@@ -22,8 +22,6 @@ include indent.exe
 include index.html
 include jslint.mjs
 include jslint_ci.sh
-include lib_lightgbm.dll
-include lib_lightgbm.so
 include libiconv2.dll
 include libintl3.dll
 include package.json

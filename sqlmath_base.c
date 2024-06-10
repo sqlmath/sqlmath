@@ -1775,7 +1775,8 @@ SQLMATH_FUNC static void sql1_lgbm_dlopen_func(
 #if defined(_WIN32)
         filename = "./lib_lightgbm.dll";
 #elif defined(__APPLE__)
-        filename = "/opt/homebrew/lib/lib_lightgbm.dylib";
+        filename = "./lib_lightgbm.dylib";
+        // filename = "/opt/homebrew/lib/lib_lightgbm.dylib";
 #else
         filename = "./lib_lightgbm.so";
 #endif                          // defined(_WIN32)
@@ -2014,10 +2015,10 @@ SQLMATH_FUNC static void sql1_lgbm_predictforfile_func(
     int errcode = 0;
     // booster - init
     BoosterHandle booster = NULL;
-    int out_num_iterations = 0;
+    int out_num_iteration = 0;
     errcode = LGBM_BoosterLoadModelFromString(  //
         model_str,              // const char *model_str,
-        &out_num_iterations,    // int *out_num_iterations,
+        &out_num_iteration,     // int *out_num_iteration,
         &booster);              // BoosterHandle *out
     LGBM_ASSERT_OK();
     // booster - predict
@@ -2042,7 +2043,7 @@ SQLMATH_FUNC static void sql1_lgbm_trainfromdataset_func0(
     sqlite3_context * context,
     // argv - train
     const char *param_train,
-    const int num_boost_round,
+    const int num_iteration,
     const int eval_step,
     // argv - data
     const DatasetHandle train_data,
@@ -2093,7 +2094,7 @@ SQLMATH_FUNC static void sql1_lgbm_trainfromdataset_func0(
         &eval_name_len,         // size_t *out_buffer_len,
         (char **) eval_names);  // char **out_strs
     LGBM_ASSERT_OK();
-    for (int ii = 0; ii < num_boost_round; ii += 1) {
+    for (int ii = 0; ii < num_iteration; ii += 1) {
         errcode = LGBM_BoosterUpdateOneIter(booster, &is_finished);
         LGBM_ASSERT_OK();
         errcode = LGBM_BoosterGetEval(  //
@@ -2155,7 +2156,7 @@ SQLMATH_FUNC static void sql1_lgbm_trainfromdataset_func(
     sql1_lgbm_trainfromdataset_func0(context,   //
         // argv - train
         (char *) sqlite3_value_text(argv[0]),   // param_train
-        sqlite3_value_int(argv[1]),     // num_boost_round
+        sqlite3_value_int(argv[1]),     // num_iteration
         sqlite3_value_int(argv[2]),     // eval_step
         // argv - data
         (DatasetHandle) sqlite3_value_int64(argv[3]),   // train_data
@@ -2195,7 +2196,7 @@ SQLMATH_FUNC static void sql1_lgbm_trainfromfile_func(
     sql1_lgbm_trainfromdataset_func0(context,   //
         // argv - train
         (char *) sqlite3_value_text(argv[0]),   // param_train
-        sqlite3_value_int(argv[1]),     // num_boost_round
+        sqlite3_value_int(argv[1]),     // num_iteration
         sqlite3_value_int(argv[2]),     // eval_step
         // argv - data
         train_data,             // train_data
@@ -2361,7 +2362,7 @@ typedef struct AggLgbmDataset {
     DatasetHandle ref;
     //
     char param_train[LGBM_PARAM_BUF_LEN_MAX];
-    int num_boost_round;
+    int num_iteration;
     int eval_step;
 } AggLgbmDataset;
 
@@ -2422,7 +2423,7 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final0(
         sql1_lgbm_trainfromdataset_func0(context,       //
             // argv - train
             agg->param_train,   // param_train
-            agg->num_boost_round,       // num_boost_round
+            agg->num_iteration, // num_iteration
             agg->eval_step,     // eval_step
             // argv - data
             out,                // train_data
@@ -2492,7 +2493,7 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_step0(
                     param_bytes);
                 agg->param_train[param_bytes] = 0;
             }
-            agg->num_boost_round = sqlite3_value_int(argv[1]);
+            agg->num_iteration = sqlite3_value_int(argv[1]);
             agg->eval_step = sqlite3_value_int(argv[2]);
         }
     }
@@ -2517,7 +2518,7 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_step(
 // SQLMATH_FUNC sql2_lgbm_trainfromtable_func - start
 typedef struct AggLgbmTrain {
     BoosterHandle booster;      // booster
-    int num_iterations;         // [out] Number of iterations of this booster
+    int num_iteration;          // [out] Number of iterations of this booster
     int ncol;                   // Number of columns
     //
     FastConfigHandle fastConfig;        // [out] FastConfig object
@@ -2700,7 +2701,7 @@ SQLMATH_FUNC static void sql2_median_step(
 // SQLMATH_FUNC sql3_lgbm_predictfortable_func - start
 typedef struct AggLgbmPredict {
     BoosterHandle booster;      // booster
-    int num_iterations;         // [out] Number of iterations of this booster
+    int num_iteration;          // [out] Number of iterations of this booster
     int ncol;                   // Number of columns
     //
     FastConfigHandle fastConfig;        // [out] FastConfig object
@@ -2776,7 +2777,7 @@ static void sql3_lgbm_predictfortable_step(
         errcode = LGBM_BoosterLoadModelFromString(      //
             // const char *model_str,
             (char *) sqlite3_value_text(argv[0]),       //
-            &agg->num_iterations,       // int *out_num_iterations,
+            &agg->num_iteration,        // int *out_num_iteration,
             &agg->booster);     // BoosterHandle *out
         LGBM_ASSERT_OK();
         errcode = LGBM_BoosterPredictForMatSingleRowFastInit(   //
@@ -4186,7 +4187,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(marginoferror95, 2, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(normalizewithsqrt, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(normalizewithsquared, 1, SQLITE_DETERMINISTIC);
-    SQL_CREATE_FUNC1(random1, 1, 0);
+    SQL_CREATE_FUNC1(random1, 0, 0);
     SQL_CREATE_FUNC1(roundorzero, 2, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(sinefit_extract, 4, 0);
     SQL_CREATE_FUNC1(sinefit_refitlast, -1, 0);

@@ -328,6 +328,7 @@ async def build_ext_async(): # noqa: C901
             FILE_LIB_SQLMATH,
         ]
     ])
+    shutil.copyfile(FILE_LIB_LGBM, f"sqlmath/{FILE_LIB_LGBM}")
 
 
 def build_pkg_info():
@@ -470,6 +471,7 @@ def build_wheel(
         data_record = ""
         for bb, aa in (
             ("sqlmath/__init__.py", "sqlmath/__init__.py"),
+            (f"sqlmath/{FILE_LIB_LGBM}", f"sqlmath/{FILE_LIB_LGBM}"),
             (f"sqlmath/{FILE_LIB_SQLMATH}", f"sqlmath/{FILE_LIB_SQLMATH}"),
             # Place .dist-info at the end of the archive.
             (f"{dir_distinfo}/LICENSE", "LICENSE"),
@@ -485,6 +487,8 @@ Tag: {tag_python}-{tag_abi}-{tag_platform}
 """,
                     "utf-8",
                 )
+            elif bb == f"sqlmath/{FILE_LIB_LGBM}" and sys.platform == "darwin":
+                continue
             else:
                 with pathlib.Path(aa).open("rb") as file1:
                     data = file1.read()
@@ -570,6 +574,11 @@ class SetupError(Exception):
     """Setup error."""
 
 
+FILE_LIB_LGBM = (
+    "lib_lightgbm.dylib" if sys.platform == "darwin"
+    else "lib_lightgbm.dll" if sys.platform == "win32"
+    else "lib_lightgbm.so"
+)
 FILE_LIB_SQLMATH = f"_sqlmath{sysconfig.get_config_var('EXT_SUFFIX')}"
 
 

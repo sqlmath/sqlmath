@@ -19,14 +19,6 @@ https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz
         rm -rf ".$DIR"
         mv "$DIR" ".$DIR"
     done
-    for FILE in \
-        lib_lightgbm.dll \
-        lib_lightgbm.so
-    do
-        curl -L \
-https://github.com/microsoft/LightGBM/releases/download/v3.3.5/$FILE \
-            > $FILE
-    done
     )
 "
 
@@ -66,15 +58,29 @@ import moduleChildProcess from "child_process";
 shCiBaseCustom() {(set -e
 # this function will run custom-code for base-ci
     shCiEmsdkExport
+    FILE="$(node --input-type=module -e '
+process.stdout.write(
+    process.platform === "darwin"
+    ? "lib_lightgbm.dylib"
+    : process.platform === "win32"
+    ? "lib_lightgbm.dll"
+    : "lib_lightgbm.so"
+);
+' "$@")" # '
     # bugfix - Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib
-    case "$(uname)" in
-    Darwin*)
-        if [ ! -f /opt/homebrew/lib/lib_lightgbm.dylib ]
-        then
+    if [ ! -f "$FILE" ]
+    then
+        case "$(uname)" in
+        Darwin*)
             brew install lightgbm
-        fi
-        ;;
-    esac
+            cp -L "/opt/homebrew/lib/$FILE" .
+            ;;
+        *)
+            curl -LO \
+"https://github.com/microsoft/LightGBM/releases/download/v4.3.0/$FILE"
+            ;;
+        esac
+    fi
     # .github_cache - restore
     if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
     then
@@ -187,6 +193,7 @@ shCiBaseCustomArtifactUpload() {(set -e
         ;;
     esac
     cp ../../_sqlmath* "branch-$GITHUB_BRANCH0"
+    cp ../../lib_lightgbm.* "branch-$GITHUB_BRANCH0"
     cp ../../sqlmath/_sqlmath* "branch-$GITHUB_BRANCH0"
     if [ -f ../../sqlmath_wasm.wasm ]
     then

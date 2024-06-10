@@ -993,7 +993,7 @@ UPDATE __lgbm_state
     SET
         model = lgbm_trainfromdataset(
             'app=binary metric=auc num_leaves=31 verbose=0', -- param_train
-            50, -- num_boost_round
+            50, -- num_iteration
             10, -- eval_step
             --
             data_train_handle, -- train_data
@@ -1005,7 +1005,7 @@ UPDATE __lgbm_state
     SET
         model = lgbm_trainfromfile(
             'app=binary metric=auc num_leaves=31 verbose=0', -- param_train
-            50, -- num_boost_round
+            50, -- num_iteration
             10, -- eval_step
             --
             '${fileTrain}', -- file_train
@@ -1021,7 +1021,7 @@ UPDATE __lgbm_state
                 lgbm_trainfromtable(
                     -- param_train
                     'app=binary metric=auc num_leaves=31 verbose=0',
-                    50, -- num_boost_round
+                    50, -- num_iteration
                     10, -- eval_step
                     --
                     'max_bin=15', -- param_data
