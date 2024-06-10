@@ -72,8 +72,29 @@ process.stdout.write(
     then
         case "$(uname)" in
         Darwin*)
-            brew install lightgbm
-            cp -L "/opt/homebrew/lib/$FILE" .
+            INSTALLED=""
+            for FILE2 in \
+                "/opt/homebrew/lib/$FILE" \
+                "/usr/local/lib/$FILE"
+            do
+                if [ -f "$FILE2" ]
+                then
+                    INSTALLED=1
+                fi
+            done
+            if [ ! "$INSTALLED" ]
+            then
+                brew install lightgbm
+                for FILE2 in \
+                    "/opt/homebrew/lib/$FILE" \
+                    "/usr/local/lib/$FILE"
+                do
+                    if [ -f "$FILE2" ]
+                    then
+                        cp -L "$FILE2" .
+                    fi
+                done
+            fi
             ;;
         *)
             curl -LO \

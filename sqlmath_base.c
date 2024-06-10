@@ -1773,10 +1773,12 @@ SQLMATH_FUNC static void sql1_lgbm_dlopen_func(
     int errcode = 0;
     if (filename == NULL) {
 #if defined(_WIN32)
-        filename = "./lib_lightgbm.dll";
+        filename = "lib_lightgbm.dll";
+#elif defined(__aarch64__)
+        filename = "/opt/homebrew/lib/lib_lightgbm.dylib";
 #elif defined(__APPLE__)
-        filename = "./lib_lightgbm.dylib";
-        // filename = "/opt/homebrew/lib/lib_lightgbm.dylib";
+        filename = "lib_lightgbm.dylib";
+        // filename = "/usr/local/lib/lib_lightgbm.dylib";
 #else
         filename = "./lib_lightgbm.so";
 #endif                          // defined(_WIN32)
