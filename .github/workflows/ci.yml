@@ -28,8 +28,7 @@ jobs:
         python_version:
           - "3.10"
         os:
-          # - macos-13 # x64
-          - macos-latest # arm64
+          - macos-latest
           - ubuntu-latest
           - windows-latest
 # base - .github/workflows/ci.yml - beg

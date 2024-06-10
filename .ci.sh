@@ -72,29 +72,9 @@ process.stdout.write(
     then
         case "$(uname)" in
         Darwin*)
-            INSTALLED=""
-            for FILE2 in \
-                "/opt/homebrew/lib/$FILE" \
-                "/usr/local/lib/$FILE"
-            do
-                if [ -f "$FILE2" ]
-                then
-                    INSTALLED=1
-                fi
-            done
-            if [ ! "$INSTALLED" ]
-            then
-                brew install lightgbm
-                for FILE2 in \
-                    "/opt/homebrew/lib/$FILE" \
-                    "/usr/local/lib/$FILE"
-                do
-                    if [ -f "$FILE2" ]
-                    then
-                        cp -L "$FILE2" .
-                    fi
-                done
-            fi
+            brew install lightgbm
+            cp -L "/opt/homebrew/lib/$FILE" .
+            cp -L /opt/homebrew/opt/libomp/lib/libomp.dylib .
             ;;
         *)
             curl -LO \
@@ -214,7 +194,6 @@ shCiBaseCustomArtifactUpload() {(set -e
         ;;
     esac
     cp ../../_sqlmath* "branch-$GITHUB_BRANCH0"
-    cp ../../lib_lightgbm.* "branch-$GITHUB_BRANCH0"
     cp ../../sqlmath/_sqlmath* "branch-$GITHUB_BRANCH0"
     if [ -f ../../sqlmath_wasm.wasm ]
     then
@@ -224,6 +203,17 @@ shCiBaseCustomArtifactUpload() {(set -e
     then
         cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
     fi
+    for FILE in \
+        ../../lib_lightgbm.dll \
+        ../../lib_lightgbm.dylib \
+        ../../lib_lightgbm.so \
+        ../../libomp.dylib
+    do
+        if [ -f "$FILE" ]
+        then
+            cp "$FILE" "branch-$GITHUB_BRANCH0"
+        fi
+    done
     # save cibuildwheel
     cp ../../dist/sqlmath-*.whl "branch-$GITHUB_BRANCH0"
     # git commit
