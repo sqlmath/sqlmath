@@ -821,7 +821,8 @@ DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
 SELECT
         IIF(category LIKE 'short%', 1, grouping_index) AS series_color,
         category LIKE '-%' AS is_dummy,
-        grouping IN ('account', 'exchange') AS is_hidden,
+        0 AS is_hidden,
+        -- grouping IN ('account', 'exchange') AS is_hidden,
         printf(
             '%05.4f%% - %s - %s',
             ${columnData},

@@ -152,14 +152,6 @@ file sqlmath_h - start
         goto catch_error; \
     }
 
-#ifdef _WIN32
-#define LGBM_IMPORT_FUNCTION(func) \
-        func = (func##_t) GetProcAddress((HMODULE) lgbm_library, #func);
-#else
-#define LGBM_IMPORT_FUNCTION(func) \
-        func = (func##_t) dlsym(lgbm_library, #func);
-#endif                          // _WIN32
-
 // This function will if <cond> is falsy, terminate process with <msg>.
 #define NAPI_ASSERT_FATAL(cond, msg) \
     if (!(cond)) { \
@@ -1760,8 +1752,6 @@ SQLMATH_FUNC static void sql1_fmod_func(
 
 // SQLMATH_FUNC sql1_lgbm_xxx_func - start
 // https://lightgbm.readthedocs.io/en/latest/C-API.html
-static void *lgbm_library = NULL;
-
 SQLMATH_FUNC static void sql1_lgbm_dlopen_func(
     sqlite3_context * context,
     int argc,
@@ -1787,83 +1777,7 @@ SQLMATH_FUNC static void sql1_lgbm_dlopen_func(
     if (errcode) {
         return;
     }
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterAddValidData);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterCalcNumPredict);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterCreate);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterCreateFromModelfile);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterDumpModel);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterFeatureImportance);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterFree);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterFreePredictSparse);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetCurrentIteration);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetEval);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetEvalCounts);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetEvalNames);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetFeatureNames);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetLeafValue);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetLinear);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetLowerBoundValue);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetNumClasses);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetNumFeature);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetNumPredict);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetPredict);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterGetUpperBoundValue);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterLoadModelFromString);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterMerge);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterNumModelPerIteration);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterNumberOfTotalModel);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForCSC);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForCSR);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForCSRSingleRow);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForCSRSingleRowFast);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForCSRSingleRowFastInit);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForFile);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForMat);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForMatSingleRow);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForMatSingleRowFast);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForMatSingleRowFastInit);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictForMats);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterPredictSparseOutput);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterRefit);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterResetParameter);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterResetTrainingData);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterRollbackOneIter);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterSaveModel);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterSaveModelToString);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterSetLeafValue);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterShuffleModels);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterUpdateOneIter);
-    LGBM_IMPORT_FUNCTION(LGBM_BoosterUpdateOneIterCustom);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetAddFeaturesFrom);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateByReference);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromCSC);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromCSR);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromCSRFunc);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromFile);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromMat);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromMats);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetCreateFromSampledColumn);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetDumpText);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetFree);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetGetFeatureNames);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetGetField);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetGetNumData);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetGetNumFeature);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetGetSubset);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetPushRows);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetPushRowsByCSR);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetSaveBinary);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetSetFeatureNames);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetSetField);
-    LGBM_IMPORT_FUNCTION(LGBM_DatasetUpdateParamChecking);
-    LGBM_IMPORT_FUNCTION(LGBM_FastConfigFree);
-    LGBM_IMPORT_FUNCTION(LGBM_GetLastError);
-    LGBM_IMPORT_FUNCTION(LGBM_GetSampleCount);
-    LGBM_IMPORT_FUNCTION(LGBM_NetworkFree);
-    LGBM_IMPORT_FUNCTION(LGBM_NetworkInit);
-    LGBM_IMPORT_FUNCTION(LGBM_NetworkInitWithFunctions);
-    LGBM_IMPORT_FUNCTION(LGBM_RegisterLogCallback);
-    LGBM_IMPORT_FUNCTION(LGBM_SampleIndices);
+    LGBM_dlsym();
 }
 
 SQLMATH_FUNC static void sql1_lgbm_datasetcreatefromfile_func(
@@ -2105,7 +2019,7 @@ SQLMATH_FUNC static void sql1_lgbm_trainfromdataset_func0(
             &eval_len,          // int *out_len,
             eval_results);      // double *out_results
         LGBM_ASSERT_OK();
-        if ((ii + 1) % eval_step == 0) {
+        if (eval_step > 0 && (ii + 1) % eval_step == 0) {
             fprintf(stderr, "    lgbm_trainfromdataset - round %d -", ii);
             for (int jj = 0; jj < eval_len; jj += 1) {
                 fprintf(stderr, " %s=%.6f", eval_names[jj], eval_results[jj]);
@@ -2518,16 +2432,6 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_step(
 // SQLMATH_FUNC sql2_lgbm_datasetcreatefromtable_func - end
 
 // SQLMATH_FUNC sql2_lgbm_trainfromtable_func - start
-typedef struct AggLgbmTrain {
-    BoosterHandle booster;      // booster
-    int num_iteration;          // [out] Number of iterations of this booster
-    int ncol;                   // Number of columns
-    //
-    FastConfigHandle fastConfig;        // [out] FastConfig object
-    int64_t nnn;                // number of elements
-    double result;              // [out] Pointer to array with predictions
-} AggLgbmTrain;
-
 SQLMATH_FUNC static void sql2_lgbm_trainfromtable_final(
     sqlite3_context * context
 ) {

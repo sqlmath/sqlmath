@@ -4,6 +4,7 @@
 - none
 
 # v2024.6.1-beta
+- lgbm - Update lgbm-header to v4.3.0.
 - lgbm - Include lib_lightgbm.xxx in npm/python package.
 - lgbm - Add sqlite-extension for lightgbm.
 - lgbm - Add sql-functions:
