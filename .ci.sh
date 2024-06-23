@@ -23,7 +23,7 @@ https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz
 "
 
 shCiArtifactUploadCustom() {(set -e
-# this function will run custom-code to upload build-artifacts
+# This function will run custom-code to upload build-artifacts.
     git fetch origin artifact
     git checkout origin/artifact "branch-$GITHUB_BRANCH0"
     mv "branch-$GITHUB_BRANCH0"/* .
@@ -56,7 +56,7 @@ import moduleChildProcess from "child_process";
 )}
 
 shCiBaseCustom() {(set -e
-# this function will run custom-code for base-ci
+# This function will run custom-code for base-ci.
     shCiEmsdkExport
     FILE="$(node --input-type=module -e '
 process.stdout.write(
@@ -157,7 +157,7 @@ import moduleChildProcess from "child_process";
 )}
 
 shCiBaseCustomArtifactUpload() {(set -e
-# this function will upload build-artifacts to branch-gh-pages
+# This function will upload build-artifacts to branch-gh-pages.
     COMMIT_MESSAGE="- upload artifact
 - retry$GITHUB_UPLOAD_RETRY
 - $GITHUB_BRANCH0
@@ -235,7 +235,7 @@ shCiBaseCustomArtifactUpload() {(set -e
 )}
 
 shCiBuildWasm() {(set -e
-# this function will build binaries in wasm
+# This function will build binaries in wasm.
     shCiEmsdkExport
     # install emsdk
     shCiEmsdkInstall
@@ -333,7 +333,7 @@ shCiBuildWasm() {(set -e
 )}
 
 shCiEmsdkExport() {
-# this function will export emsdk env
+# This function will export emsdk env.
     export EMSCRIPTEN_VERSION=3.1.3
     export EMSDK="$PWD/_emsdk"
     # https://github.com/sql-js/sql.js/blob/v1.6.2/.devcontainer/Dockerfile
@@ -345,7 +345,7 @@ shCiEmsdkExport() {
 }
 
 shCiEmsdkInstall() {(set -e
-# this function will install emsdk
+# This function will install emsdk.
     shCiEmsdkExport
     if [ -d "$EMSDK" ]
     then
@@ -394,7 +394,7 @@ shCiEmsdkInstall() {(set -e
 )}
 
 shIndentC() {(set -e
-# this function will indent/prettify c file
+# This function will indent/prettify c file.
     if (uname | grep -q "MING\|MSYS")
     then
         ./indent.exe \
@@ -413,7 +413,7 @@ shIndentC() {(set -e
 )}
 
 shCiLintCustom() {(set -e
-# this function will run custom-code to lint files
+# This function will run custom-code to lint files.
     if [ "$GITHUB_ACTION" ]
     then
         pip install pycodestyle ruff
@@ -425,7 +425,7 @@ shCiLintCustom() {(set -e
 )}
 
 shCiPublishNpmCustom() {(set -e
-# this function will run custom-code to npm-publish package
+# This function will run custom-code to npm-publish package.
     # fetch artifact
     git fetch origin artifact --depth=1
     git checkout origin/artifact \
@@ -438,7 +438,7 @@ shCiPublishNpmCustom() {(set -e
 )}
 
 shCiPublishPypiCustom() {(set -e
-# this function will run custom-code to npm-publish package
+# This function will run custom-code to npm-publish package.
     # fetch artifact
     git fetch origin artifact --depth=1
     git checkout origin/artifact branch-alpha/
@@ -449,7 +449,7 @@ shCiPublishPypiCustom() {(set -e
 )}
 
 shCiTestNodejs() {(set -e
-# this function will run test in nodejs
+# This function will run test in nodejs.
     # init .tmp
     mkdir -p .tmp
     # rebuild c-module
@@ -490,21 +490,15 @@ ciBuildExt({process});
     # test nodejs
     (
     rm -f *~ .test*.sqlite __data/.test*.sqlite
-    COVERAGE_EXCLUDE="--exclude=jslint.mjs"
+    COVERAGE_EXCLUDE="$COVERAGE_EXCLUDE --exclude=jslint.mjs"
     if (node --eval '
 require("assert")(require("./package.json").name !== "sqlmath");
 ' >/dev/null 2>&1)
     then
         COVERAGE_EXCLUDE="$COVERAGE_EXCLUDE --exclude=sqlmath.mjs"
     fi
-    # ugly-hack - github-action will flakily hang during test
-    if [ "$GITHUB_ACTION" ] && (timeout --version >/dev/null 2>&1)
-    then
-        timeout 120 sh jslint_ci.sh \
-            shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
-    else
-        shRunWithCoverage $COVERAGE_EXCLUDE node test.mjs
-    fi
+    NODE_TEST_OPTION="$NODE_TEST_OPTION --trace-uncaught --trace-warnings"
+    shRunWithCoverage $COVERAGE_EXCLUDE node $NODE_TEST_OPTION test.mjs
     ) &
     PID_LIST="$PID_LIST $!"
     # test python
@@ -514,7 +508,7 @@ require("assert")(require("./package.json").name !== "sqlmath");
 )}
 
 shSqlmathUpdate() {(set -e
-# this function will update files with ~/Documents/sqlmath/
+# This function will update files with ~/Documents/sqlmath/.
     . "$HOME/myci2.sh" : && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
@@ -553,6 +547,10 @@ shSqlmathUpdate() {(set -e
         do
             ln -f "$HOME/Documents/sqlmath/$FILE" "$FILE"
         done
+    fi
+    if (command -v shSqlmathUpdate2 >/dev/null)
+    then
+        shSqlmathUpdate2
     fi
     git --no-pager diff
 )}

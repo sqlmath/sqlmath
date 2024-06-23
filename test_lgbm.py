@@ -6,6 +6,7 @@ python test_lgbm.py
 
 import ctypes
 import filecmp
+import pathlib
 from platform import system
 
 import numpy as np
@@ -169,6 +170,7 @@ def test_dataset():
     free_dataset(test)
     test = load_from_csc(FILE_BINARY_TEST, train)
     free_dataset(test)
+    pathlib.Path(".tmp/test_lgbm_train.binary.bin").unlink()
     save_to_binary(train, ".tmp/test_lgbm_train.binary.bin")
     free_dataset(train)
     train = load_from_file(".tmp/test_lgbm_train.binary.bin", None)

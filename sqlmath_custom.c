@@ -32,16 +32,25 @@
 /*
 file sqlmath_custom - start
 */
+// file sqlmath_custom - header
+
+
+// file sqlmath_custom - helper
+
+
+// file sqlmath_custom - SQLMATH_FUNC
+
+
+// file sqlmath_custom - init
 int sqlite3_sqlmath_custom_init(
     sqlite3 * db,
     char **pzErrMsg,
     const sqlite3_api_routines * pApi
 ) {
-    // coverage-hack
-    noop();
     UNUSED_PARAMETER(db);
     UNUSED_PARAMETER(pApi);
     UNUSED_PARAMETER(pzErrMsg);
+    // int errcode = 0;
     return 0;
 }
 

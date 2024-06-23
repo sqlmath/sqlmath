@@ -4149,7 +4149,7 @@ SELECT
         return xtransOffset + xtransWidth * (xval - xaxisMin);
     }
     function xpixelToPointDictCreate(pointList) {
-    // this function create dict mapping <xpixel> to nearest point in
+    // this function will create dict mapping <xpixel> to nearest point in
     // <pointList> along xaxis
         let dict = [];
         let ii = 0;
