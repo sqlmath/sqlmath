@@ -4,6 +4,7 @@
 - none
 
 # v2024.6.1-beta
+- jslint - Remove unnecessary shell-function shCurlExe().
 - lgbm - Upgrade to lightgbm-v4.4.0.
 - jslint - Upgrade to jslint-v2024.6.1-beta.
 - lgbm - Include lib_lightgbm.xxx in npm/python package.
