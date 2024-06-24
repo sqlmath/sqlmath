@@ -133,18 +133,20 @@ pip install sqlmath==2024.6.1
 ### sqlite upgrade
 - goto https://www.sqlite.org/changes.html
 ```shell
-    (set -ex
-    curl -L https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz | tar -xz
-    mv sqlite-autoconf-3440200 .sqlite-autoconf-3440200
-    git grep "3\.42\.0\|3420000"
-    for FILE in .ci.sh sqlmath_external_sqlite.c sqlmath_external_zlib.c
-    do
-        sed -i -e "s|\<3\.42\.0\>|3\.44\.2|g" "$FILE"
-        sed -i -e "s|\<3420000\>|3440200|g" "$FILE"
-    done
-    git grep "3\.42\.0\|3420000"
-    shRollupFetch sqlmath_external_sqlite.c
-    shRollupFetch sqlmath_external_zlib.c
+    (set -e
+    #
+    # lgbm
+    sh jslint_ci.sh shRollupUpgrade "v4.3.0" "v4.4.0" ".ci.sh sqlmath_base.h"
+    #
+    # sqlite
+    sh jslint_ci.sh shRollupUpgrade "3.42.0" "3.44.2" ".ci.sh sqlmath_external_sqlite.c"
+    sh jslint_ci.sh shRollupUpgrade "3420000" "3440200" ".ci.sh sqlmath_external_sqlite.c"
+    #
+    # zlib
+    sh jslint_ci.sh shRollupUpgrade "1.3" "1.3.1" ".ci.sh sqlmath_external_zlib.c"
+    #
+    # shSqlmathUpdate
+    read -p "Press Enter to shSqlmathUpdate:"
     sh jslint_ci.sh shSqlmathUpdate
     )
 ```

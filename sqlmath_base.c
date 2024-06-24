@@ -1761,18 +1761,6 @@ SQLMATH_FUNC static void sql1_lgbm_dlopen_func(
     UNUSED_PARAMETER(argc);
     const char *filename = (char *) sqlite3_value_text(argv[0]);
     int errcode = 0;
-    if (filename == NULL) {
-#if defined(_WIN32)
-        filename = "lib_lightgbm.dll";
-#elif defined(__aarch64__)
-        filename = "/opt/homebrew/lib/lib_lightgbm.dylib";
-#elif defined(__APPLE__)
-        filename = "lib_lightgbm.dylib";
-        // filename = "/usr/local/lib/lib_lightgbm.dylib";
-#else
-        filename = "./lib_lightgbm.so";
-#endif                          // defined(_WIN32)
-    }
     errcode = dbDlopen(context, filename, (void **) &lgbm_library);
     if (errcode) {
         return;

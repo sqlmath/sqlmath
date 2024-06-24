@@ -893,6 +893,7 @@ async function dbOpenAsync({
 // );
     let connPool;
     let db = {busy: 0, filename, ii: 0};
+    let fileLgbm;
     assertOrThrow(typeof filename === "string", `invalid filename ${filename}`);
     assertOrThrow(
         !dbData || isExternalBuffer(dbData),
@@ -923,6 +924,18 @@ async function dbOpenAsync({
         return ptr;
     }));
     db.connPool = connPool;
+    // init lightgbm
+    if (!IS_BROWSER) {
+        fileLgbm = process.platform;
+        fileLgbm = fileLgbm.replace("darwin", "lib_lightgbm.dylib");
+        fileLgbm = fileLgbm.replace("win32", "lib_lightgbm.dll");
+        fileLgbm = fileLgbm.replace(process.platform, "lib_lightgbm.so");
+        fileLgbm = `${import.meta.dirname}/sqlmath/${fileLgbm}`;
+        await dbExecAsync({
+            db,
+            sql: `SELECT lgbm_dlopen('${fileLgbm}');`
+        });
+    }
     return db;
 }
 

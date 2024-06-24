@@ -1069,7 +1069,6 @@ UPDATE __lgbm_state
                 db,
                 sql: (`
 -- lgbm - init
-SELECT lgbm_dlopen(NULL);
 CREATE TABLE __lgbm_state(
     data_test_handle INTEGER,
     data_test_num_data REAL,

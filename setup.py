@@ -23,7 +23,7 @@
 setup.py.
 
 npm_config_mode_debug2=1 python setup.py build_ext && python setup.py test
-python -m build
+python setup.py bdist_wheel
 """
 
 __version__ = "2024.6.1"
@@ -328,7 +328,6 @@ async def build_ext_async(): # noqa: C901
             FILE_LIB_SQLMATH,
         ]
     ])
-    shutil.copyfile(FILE_LIB_LGBM, f"sqlmath/{FILE_LIB_LGBM}")
 
 
 def build_pkg_info():

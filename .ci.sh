@@ -4,24 +4,6 @@
 # sh jslint_ci.sh shCiBuildWasm
 # sh jslint_ci.sh shSqlmathUpdate
 
-: "
-    (set -ex
-    for URL in \
-https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
-https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz
-    do
-        curl -L "$URL" | tar -xz
-    done
-    for DIR in \
-        sqlite-autoconf-3440200 \
-        zlib-1.3.1
-    do
-        rm -rf ".$DIR"
-        mv "$DIR" ".$DIR"
-    done
-    )
-"
-
 shCiArtifactUploadCustom() {(set -e
 # This function will run custom-code to upload build-artifacts.
     git fetch origin artifact
@@ -68,17 +50,22 @@ process.stdout.write(
 );
 ' "$@")" # '
     # bugfix - Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib
-    if [ ! -f "$FILE" ]
+    if [ ! -f "sqlmath/$FILE" ]
     then
         case "$(uname)" in
         Darwin*)
-            brew install lightgbm
-            cp -L "/opt/homebrew/lib/$FILE" .
-            cp -L /opt/homebrew/opt/libomp/lib/libomp.dylib .
+            brew install libomp
+            cp -L /opt/homebrew/opt/libomp/lib/libomp.dylib sqlmath/
+            pip install lightgbm=="$(printf "v4.4.0" | sed "s|v||")"
+            cp "$(
+                find "$(
+                    pip show ruff | grep Location | sed "s|Location: ||"
+                )/lightgbm" | grep "$FILE"
+            )" "sqlmath/$FILE"
             ;;
         *)
-            curl -LO \
-"https://github.com/microsoft/LightGBM/releases/download/v4.3.0/$FILE"
+            curl -L -o "sqlmath/$FILE" \
+"https://github.com/microsoft/LightGBM/releases/download/v4.4.0/$FILE"
             ;;
         esac
     fi
@@ -204,10 +191,10 @@ shCiBaseCustomArtifactUpload() {(set -e
         cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
     fi
     for FILE in \
-        ../../lib_lightgbm.dll \
-        ../../lib_lightgbm.dylib \
-        ../../lib_lightgbm.so \
-        ../../libomp.dylib
+        ../../sqlmath/lib_lightgbm.dll \
+        ../../sqlmath/lib_lightgbm.dylib \
+        ../../sqlmath/lib_lightgbm.so \
+        ../../sqlmath/libomp.dylib
     do
         if [ -f "$FILE" ]
         then
@@ -513,6 +500,22 @@ shSqlmathUpdate() {(set -e
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         # shRollupFetch
+        if [ ! -d .sqlite-autoconf-3440200 ]
+        then
+            for URL in \
+https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
+https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz
+            do
+                curl -L "$URL" | tar -xz
+            done
+            for DIR in \
+                sqlite-autoconf-3440200 \
+                zlib-1.3.1
+            do
+                rm -rf ".$DIR"
+                mv "$DIR" ".$DIR"
+            done
+        fi
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
         shRollupFetch sqlmath_base.h
