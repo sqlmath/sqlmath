@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2024.7.1-beta
+- python - Upgrade to ruff-v0.5.0.
+
 # v2024.6.25
 - jslint - Remove unnecessary shell-function shCurlExe().
 - lgbm - Upgrade to lightgbm-v4.4.0.

@@ -21,8 +21,8 @@
 
 """sqlmath.py."""
 
-__version__ = "2024.6.25"
-__version_info__ = ("2024", "6", "25")
+__version__ = "2024.7.1"
+__version_info__ = ("2024", "7", "1")
 
 import json
 import math
@@ -561,7 +561,7 @@ def jsbaton_set_value(baton, argi, val, bufi, reference_list): # noqa: C901 PLR0
     if len(baton) < nn:
         tmp = baton
         baton = memoryview(
-            bytearray(min(2 ** math.ceil(math.log(nn, 2)), 0x7fff_ffff)),
+            bytearray(min(2 ** math.ceil(math.log2(nn)), 0x7fff_ffff)),
         )
         # update nallc
         struct.pack_into("i", baton, 0, len(baton)) # ctype-i = int

@@ -26,8 +26,8 @@ npm_config_mode_debug2=1 python setup.py build_ext && python setup.py test
 python setup.py bdist_wheel
 """
 
-__version__ = "2024.6.25"
-__version_info__ = ("2024", "6", "25")
+__version__ = "2024.7.1"
+__version_info__ = ("2024", "7", "1")
 
 import asyncio
 import base64
@@ -87,7 +87,7 @@ async def build_ext_async(): # noqa: C901
                     return
         arg_list = [
             *[f"-I{path}" for path in path_include],
-            #
+            # ,
             f"-D{cdefine}_C2=",
             "-D_REENTRANT=1",
             "-DSQLMATH_PYTHON_C2=" if cdefine == "SQLMATH_CUSTOM" else "",
@@ -124,11 +124,11 @@ async def build_ext_async(): # noqa: C901
             arg_list = [
                 exe_cl,
                 *arg_list,
-                #
+                # ,
                 "/GL", # to link.exe /LTCG
                 "/MT", # multithreaded, statically-linked
                 "/O2",
-                #
+                # ,
                 "/c", f"/Tc{file_src}",
                 f"/Fo{file_obj}",
                 "/nologo",
@@ -138,10 +138,10 @@ async def build_ext_async(): # noqa: C901
                 # bugfix - fix multi-word cc_compiler="gcc -pthread"
                 *cc_compiler.split(" "),
                 *arg_list,
-                #
+                # ,
                 *cc_ccshared.strip().split(" "),
                 *cc_cflags.strip().split(" "),
-                #
+                # ,
                 "-c", file_src,
                 "-o", file_obj,
             ]
@@ -168,7 +168,7 @@ async def build_ext_async(): # noqa: C901
             # must be ordered first
             "build/SRC_SQLITE_BASE.obj",
             "build/SRC_ZLIB_BASE.obj",
-            #
+            # ,
             "build/SQLMATH_BASE.obj",
             "build/SQLMATH_CUSTOM.obj",
         ]
@@ -178,15 +178,15 @@ async def build_ext_async(): # noqa: C901
                 exe_link,
                 *[f"/LIBPATH:{path}" for path in path_library],
                 *arg_list,
-                #
+                # ,
                 "/INCREMENTAL:NO", # optimization - reduce filesize
                 "/LTCG", # from cl.exe /GL
                 "/MANIFEST:EMBED",
                 "/MANIFESTUAC:NO",
-                #
+                # ,
                 "/DLL",
                 f"/EXPORT:{export}",
-                #
+                # ,
                 f"/OUT:build/{file_lib}",
                 "/nologo",
             ]
@@ -194,9 +194,9 @@ async def build_ext_async(): # noqa: C901
             arg_list = [
                 *cc_ldshared.strip().split(" "),
                 *arg_list,
-                #
+                # ,
                 *cc_ldflags.strip().split(" "),
-                #
+                # ,
                 "-o", f"build/{file_lib}",
             ]
         await create_subprocess_exec_and_check(*arg_list, env=env)
@@ -204,7 +204,7 @@ async def build_ext_async(): # noqa: C901
     #
     # build_ext - update version
     pathlib.Path("build").mkdir(parents=True, exist_ok=True)
-    with pathlib.Path("package.json").open() as file1: # noqa: ASYNC101
+    with pathlib.Path("package.json").open() as file1: # noqa: ASYNC230
         package_json = json.load(file1)
         version = package_json["version"].split("-")[0]
     if package_json["name"] != "sqlmath":
@@ -216,7 +216,7 @@ async def build_ext_async(): # noqa: C901
         "setup.py",
         "sqlmath/__init__.py",
     ]:
-        with pathlib.Path(filename).open("r+", newline="\n") as file1: # noqa: ASYNC101
+        with pathlib.Path(filename).open("r+", newline="\n") as file1: # noqa: ASYNC230
             data0 = file1.read()
             data1 = data0
             # update version - PKG-INFO
@@ -314,7 +314,7 @@ async def build_ext_async(): # noqa: C901
         for cdefine in [
             "SRC_SQLITE_BASE",
             "SRC_ZLIB_BASE",
-            #
+            # ,
             "SQLMATH_BASE",
             "SQLMATH_CUSTOM",
         ]
