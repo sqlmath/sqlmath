@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>sqlchart editor</title>
+<link rel="stylesheet" href="assets.bootstrap-v3.4.1.datatables-v1.10.21.chartjs-v2.9.4.codemirror-5.58.3.rollup.css">
+<style>
+/* jslint utility2:true */
+/*csslint
+    box-model: false,
+    ids: false,
+    important: false,
+    overqualified-elements: false,
+    qualified-headings: false,
+*/
+a,
+a:focus,
+a:hover {
+    cursor: pointer;
+    display: inline-block;
+    text-decoration: none;
+}
+body,
+code,
+pre,
+textarea,
+#datatables_buttons_info table tbody tr td:nth-child(1),
+#panelContent1 .CodeMirror {
+    font-family: consolas, menlo, monospace;
+    font-size: 11px;
+}
+button,
+button:focus,
+button:hover,
+.button,
+.button:focus,
+.button:hover {
+    border-radius: 2px;
+    height: 20px;
+    min-width: 50px;
+}
+table {
+    border-collapse: collapse !important;
+    width: 100%;
+}
+table tbody tr td,
+.dataTable tbody tr td,
+.dataTable thead tr th {
+    overflow: hidden;
+    padding: 2px 2px 0 2px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+table tbody tr td button,
+table tbody tr td input,
+table tbody tr td select,
+table tbody tr td span {
+    display: inline-block;
+    height: 20px;
+    text-align: left;
+    width: 100%;
+}
+#contextmenu1 {
+    position: fixed;
+    z-index: 99;
+}
+#contextmenu1 table tbody tr td,
+#contextmenu1 table thead tr th {
+    padding: 2px 5px 0 5px;
+    white-space: nowrap;
+}
+#contextmenu1 table tbody tr td:nth-child(1) {
+    padding-right: 0;
+    white-space: nowrap;
+}
+#contextmenu1 table tbody tr[data-crud] {
+    cursor: pointer;
+}
+#contextmenu1 table thead tr th,
+#panelContent1 .title,
+#panelSidebar1 table tbody tr td:nth-child(1),
+#panelSidebar1 > div {
+    text-align: center;
+}
+#datatables_buttons_info table tbody tr {
+    display: none;
+}
+#datatables_buttons_info table tbody tr td {
+    padding: 5px 0;
+}
+#datatables_buttons_info table tbody tr td span {
+    padding: 2px 2px 0 2px;
+}
+#datatables_buttons_info textarea {
+    height: 150px;
+    padding: 5px;
+    width: 100%;
+}
+#datatables_buttons_info .loader {
+    animation: loaderSpin 2s linear infinite;
+    border-radius: 50% !important;
+    height: 50px;
+    left: 50%;
+    top: 50%;
+    width: 50px;
+    z-index: 9999;
+}
+#datatables_buttons_info > div {
+    padding: 10px;
+}
+#datatables_buttons_info > div > div {
+    margin: 10px 0 0 0;
+}
+#datatables_buttons_info > div > div:nth-child(1) {
+    margin: auto;
+}
+#datatables_buttons_info > h2 {
+    font-size: 20px;
+    padding: 5px;
+}
+#editor1 textarea {
+    display: block;
+    width: 100%;
+}
+#panelContent1 {
+    padding: 0 30px 10px 230px;
+}
+#panelContent1 canvas {
+    max-height: 300px;
+    min-height: 300px;
+    width: 100%;
+}
+#panelContent1 .CodeMirror {
+    height: 400px;
+    margin-bottom: 5px;
+}
+#panelContent1 .CodeMirror-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+#panelContent1 .chartResetZoom {
+    left: 3px;
+    top: -23px;
+}
+#panelContent1 .dataTable {
+    margin: 0;
+}
+#panelContent1 .dataTable tbody tr td,
+#panelContent1 .dataTable thead tr th {
+    max-width: 400px;
+    padding-right: 15px;
+}
+#panelContent1 .dataTables_info {
+    padding-top: 2px;
+}
+#panelContent1 .header {
+    font-size: medium;
+    font-weight: bold;
+    margin: 10px;
+    text-align: center;
+}
+#panelContent1 .header:nth-child(1) {
+    margin-top: 0;
+}
+#panelContent1 .sqlResultChart .chartContainer {
+    display: block !important;
+}
+#panelContent1 .sqlResultChart .dataTables_wrapper {
+    display: none !important;
+}
+#panelContent1 .sqlResultData {
+    margin-top: 30px;
+}
+#panelContent1 .sqlResultData .chartContainer {
+    display: none;
+    position: relative;
+}
+#panelContent1 .sqlResultData .chartContainer .chartResetZoom {
+    position: absolute;
+}
+#panelContent1 .sqlResultData:nth-child(1) {
+    margin-top: 0;
+}
+#panelContent1 .sqlResultData[data-t_type=index] {
+    height: 0;
+    margin: 0;
+    padding: 0;
+    width: 0;
+}
+#panelContent1 .sqlResultData[data-t_type=index] .title {
+    display: none;
+}
+#panelContent1 .title {
+    margin: 0;
+    padding: 5px;
+    width: 100%;
+}
+#panelSidebar1 {
+    height: 100%;
+    overflow-x: hidden;
+    position: fixed;
+    width: 200px;
+}
+#panelSidebar1 table {
+    table-layout: fixed;
+    width: 100%;
+}
+#panelSidebar1 table a,
+#panelSidebar1 table a:focus,
+#panelSidebar1 table a:hover {
+    width: 100%;
+}
+#panelSidebar1 table tbody tr td:nth-child(1) {
+    width: 15px;
+}
+#panelSidebar1 table tbody tr td:nth-child(2) {
+    padding-left: 4px;
+}
+#panelSidebar1 table tbody tr[data-hashtag] {
+    cursor: pointer;
+    font-weight: normal;
+}
+#panelSidebar1 table tbody .trInput td {
+    padding: 0;
+}
+#panelSidebar1 table tbody .trInput td button {
+    padding-left: 4px;
+}
+#panelSidebar1 table tbody .trInput td:nth-child(2) {
+    padding-left: 0;
+}
+#panelSidebar1 .header {
+    font-weight: bold;
+}
+@keyframes loaderSpin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+/* validateLineSortedReset */
+a,
+a:focus,
+a:hover,
+#panelSidebar1 table tbody tr[data-hashtag] {
+    color: #37f;
+}
+button,
+button:focus,
+button:hover,
+.button,
+.button:focus,
+.button:hover {
+    background: #eee;
+    border: 1px solid #999;
+}
+button:hover,
+.button:hover,
+#contextmenu1 tbody tr[data-crud]:hover,
+#panelContent1 .dataTable tbody tr:hover,
+#panelContent1 .title:hover,
+#panelSidebar1 tbody tr[data-hashtag]:hover {
+    background: #cce !important;
+}
+#contextmenu1 {
+    background: #fff;
+    border: 1px solid #999;
+}
+#contextmenu1 table tbody tr,
+#contextmenu1 table thead tr th,
+#panelContent1 .title,
+#panelSidebar1 table tbody tr,
+#panelSidebar1 table tbody tr td:nth-child(1),
+#panelSidebar1 > div {
+    border-bottom: 1px solid #bbb;
+}
+#datatables_buttons_info {
+    border: 1px solid #999;
+}
+#datatables_buttons_info table tbody tr td span {
+    background: #cce;
+    border-right: 10px solid #fff;
+}
+#datatables_buttons_info .loader {
+    border: 10px solid #cce;
+    border-top: 10px solid #37f;
+}
+#panelContent1 canvas,
+#panelContent1 .CodeMirror {
+    border: 1px solid #bbb;
+    border-top: 0 solid #000;
+}
+#panelContent1 canvas {
+    background: #eee;
+}
+#panelContent1 .dataTable tbody {
+    color: #037;
+}
+#panelContent1 .dataTable tbody tr {
+    background: transparent;
+}
+#panelContent1 .dataTable tbody tr td,
+#panelContent1 .dataTable thead tr th {
+    border: 0 solid #000;
+}
+#panelContent1 .dataTable thead tr th {
+    border-right: 1px solid #bbb;
+}
+#panelContent1 .dataTables_info {
+    color: #999;
+}
+#panelContent1 .dataTables_scrollBody {
+    background: #eee;
+    border: 1px solid #bbb;
+}
+#panelContent1 .dataTables_scrollHead {
+    border-left: 1px solid #bbb !important;
+    border-right: 1px solid #bbb !important;
+}
+#panelContent1 .title {
+    background: #cce;
+    border: 1px solid #bbb;
+}
+#panelSidebar1 {
+    border-right: 1px solid #999;
+}
+#panelSidebar1 table {
+    border-bottom: 1px solid #bbb;
+}
+#panelSidebar1 table tbody tr td:nth-child(1) {
+    background: #cce;
+}
+#panelSidebar1 table tbody tr[data-t_type=index] td:nth-child(1) {
+    background: #eef;
+}
+#panelSidebar1 table tbody .trInput {
+    background: #bbb;
+    border: 0 solid #000;
+}
+#panelSidebar1 table tbody .trInput td button {
+    border-right: 0 solid #000;
+}
+</style>
+</head>
+<body>
+<div id="bannerFork1"
+style="
+    height: 100px;
+    margin: 0;
+    overflow: hidden;
+    padding: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 100px;
+    z-index: 99;
+">
+    <div
+style="
+    background: #37f;
+    overflow: visible;
+    position: absolute;
+    right: -60px;
+    text-align: center;
+    top: 30px;
+    transform: rotate(45deg);
+    width: 200%;
+">
+    <a
+        href="https://github.com/sqlchart/sqlchart"
+        style="color: #fff;"
+        target="_blank"
+    >
+    fork on github
+    </a>
+    </div>
+</div>
+<div style="display: none;">
+    <input id="fileOpenCsv2" type="file">
+    <input id="fileOpenDb2" type="file">
+    <input id="fileOpenScript2" type="file">
+    <table id="uiLoader1"><thead><tr><th></th></tr></thead></table>
+</div>
+<div id="contextmenu1" style="display: none;">
+    <table>
+    <thead><tr><th colspan="2">crud action</th></tr></thead>
+    <tbody>
+    <tr data-t_type="editor" data-crud="none">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="index" data-crud="rename">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="index"><td colspan="2">&nbsp;</td></tr>
+    <tr data-t_type="index" data-crud="drop">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="result" data-crud="save to csv">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="row" data-crud="insert">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="row" data-crud="update">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="row"><td colspan="2">&nbsp;</td></tr>
+    <tr data-t_type="row" data-crud="delete">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="table" data-crud="rename">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="table" data-crud="clone data">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="table" data-crud="clone data, schema, index">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="table" data-crud="save to csv">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="table"><td colspan="2">&nbsp;</td></tr>
+    <tr data-t_type="table" data-crud="rename column">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="table" data-crud="add column">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="table" data-crud="add index">
+        <td></td><td></td>
+    </tr>
+    <tr data-t_type="table"><td colspan="2">&nbsp;</td></tr>
+    <tr data-t_type="table" data-crud="drop">
+        <td></td><td></td>
+    </tr>
+    </tbody>
+    </table>
+</div> <!-- #contextmenu1 -->
+<div id="panelSidebar1">
+    <div class="header">sqlite database</div>
+    <table>
+    <tbody>
+    <tr class="trInput">
+        <td>D</td>
+        <td>
+        <button class="button" id="dbRefresh1">database - refresh</button>
+        </td>
+    </tr>
+    <tr class="trInput">
+        <td>D</td>
+        <td>
+        <button class="button" id="fileOpenDb1">database - open</button>
+        </td>
+    </tr>
+    <tr class="trInput">
+        <td>D</td>
+        <td>
+        <button class="button" id="dbSave1">database - save</button>
+        </td>
+    </tr>
+    <tr class="trInput">
+        <td>C</td>
+        <td>
+        <button class="button" id="fileOpenCsv1">csv - open</button>
+        </td>
+    </tr>
+    <tr class="trInput">
+        <td>T</td>
+        <td>
+        <button class="button" id="dbTableCreate1">table - create</button>
+        </td>
+    </tr>
+    </tbody>
+    </table>
+    <div class="header">sqlite script</div>
+    <table>
+    <tbody>
+    <tr class="trInput">
+        <td>S</td>
+        <td>
+        <button class="button" id="fileOpenScript1">script - open</button>
+        </td>
+    </tr>
+    <tr class="trInput">
+        <td>S</td>
+        <td>
+        <button class="button" id="scriptSave1">script - save</button>
+        </td>
+    </tr>
+    <tr class="trInput">
+        <td>S</td>
+        <td>
+        <button class="button" id="dbExec1">script - execute</button>
+        </td>
+    </tr>
+    <tr
+        data-hashtag="editor1"
+        data-t_type="editor"
+        title="{ &quot;description&quot;: &quot;editor&quot; }">
+        <td>E</td>
+        <td>editor</td>
+    </tr>
+    </tbody>
+    </table>
+    <div class="header">sqlite query results</div>
+    <table id="sqlResultMeta1"><tbody></tbody></table>
+    <div class="header">sqlite tables and indices</div>
+    <table id="sqlResultMeta2"><tbody></tbody></table>
+</div> <!-- #panelSidebar1 -->
+<div id="panelContent1">
+    <div class="header">sqlite script</div>
+    <div id="editor1">
+    <div class="title">editor</div>
+    <textarea>
+-- visualize stock-data
+DROP TABLE IF EXISTS stock_historical;
+CREATE TABLE stock_historical(ticker TEXT, date TEXT, price FLOAT);
+INSERT INTO stock_historical (ticker, date, price) VALUES
+    ('aapl', '2020-01-01', 77.37),  ('aapl', '2020-02-01', 68.33),
+    ('aapl', '2020-03-01', 63.57),  ('aapl', '2020-04-01', 73.44),
+    ('aapl', '2020-05-01', 79.48),  ('aapl', '2020-06-01', 91.19),
+    ('aapl', '2020-07-01', 106.26),  ('aapl', '2020-08-01', 129.03),
+    ('aapl', '2020-09-01', 115.80),  ('aapl', '2020-10-01', 108.86),
+    ('aapl', '2020-11-01', 119.05),  ('aapl', '2020-12-01', 132.69),
+    ('googl', '2020-01-01', 1432.78),  ('googl', '2020-02-01', 1339.25),
+    ('googl', '2020-03-01', 1161.94),  ('googl', '2020-04-01', 1346.69),
+    ('googl', '2020-05-01', 1433.52),  ('googl', '2020-06-01', 1418.05),
+    ('googl', '2020-07-01', 1487.94),  ('googl', '2020-08-01', 1629.53),
+    ('googl', '2020-09-01', 1465.59),  ('googl', '2020-10-01', 1616.10),
+    ('googl', '2020-11-01', 1754.40),  ('googl', '2020-12-01', 1752.64);
+CREATE UNIQUE INDEX idx_stock_historical_ticker_date
+    ON stock_historical(ticker, date);
+UPDATE stock_historical
+    SET price = price / 77.37
+    WHERE ticker = 'aapl';
+UPDATE stock_historical
+    SET price = price / 1432.78
+    WHERE ticker = 'googl';
+SELECT * FROM (VALUES
+    ('#!sqlchart','{
+        "chartTitle":"price vs. date comparison of multiple stocks",
+        "chartType":"line",
+        "xType":"time"
+    }'),
+    (NULL, NULL),
+    ('xy', '
+    SELECT ticker, date, price
+        FROM stock_historical
+        ORDER BY ticker, date
+    ')
+    );
+SELECT * FROM stock_historical;
+
+-- visualize enron-dataset
+DROP TABLE IF EXISTS enron_email_fts;
+CREATE VIRTUAL TABLE enron_email_fts USING fts4(date, sender, subject, body);
+INSERT INTO enron_email_fts (date, sender, subject, body) VALUES
+(   '2001-11-05 14:14:54',
+    'jae.black@enron.com',
+    'FW: Implied Volatility Curves (Please Distribute to East Power Desk)',
+    ' -----Original Message-----From:  Gualy, Jaime  Sent: Monday, November 05, 2001 3:54 PMTo: Black, Tamara JaeSubject: Implied Volatility Curves (Please Distribute to East Power Desk)Implied volatility curves have been added to the East Power Fundamentals website.  To access, click the Power Volatility Charts link under the Options heading in the Daily Information module.'),
+(   '2001-11-05 06:45:12',
+    'amy.hood@us.brann.com',
+    'RE: Introducing Miss Lauren Michele',
+    'Well, of course we have our get together with my family on Thanksgiving Daybut that s about it.So, maybe we can go to dinner that Friday or Saturday.  Would that work foryou?  Let s just finalize things closer to time.  Have a good day!-Amy-----Original Message-----From: Clint.Dean@enron.com [mailto:Clint.Dean@enron.com]Sent: Monday, November 05, 2001 7:20 AMTo: amy.hood@us.brann.comSubject: RE: Introducing Miss Lauren MicheleThanks for the pics.  I hope they are doing well.  I will be up there forThanksgiving.  I don t know how much y all have going on that weekend, butI would like to get together if possible.  Just let me know what you arethinking.**********************************************************************This e-mail is the property of Enron Corp. and/or its relevant affiliate andmay contain confidential and privileged material for the sole use of theintended recipient (s). Any review, use, distribution or disclosure byothers is strictly prohibited. If you are not the intended recipient (orauthorized to receive for the recipient), please contact the sender or replyto Enron Corp. at enron.messaging.administration@enron.com and delete allcopies of the message. This e-mail (and any attachments hereto) are notintended to be an offer (or an acceptance) and do not create or evidence abinding and enforceable contract between Enron Corp. (or any of itsaffiliates) and the intended recipient or any other party, and may not berelied on by anyone as the basis of a contract by estoppel or otherwise.Thank you.**********************************************************************'),
+(   '2001-10-12 13:15:09',
+    'michael.tully@enron.com',
+    'FW: TJ Butler on vacation next week',
+    'FYI...anyone that deals with CAPS please read the message below. You can reach me after hours via cell phone: 503-807-7862Michael S. TullyTrade Floor Support, Portland(503)464-7790 Desk(503)807-7862 Cellmichael.tully@enron.comHe who runs behind car, often get exhausted. -----Original Message-----From:  Butler, TJ  Sent: Friday, October 12, 2001 1:04 PMTo: Tully, MIchaelSubject: TJ Butler on vacation next weekMike: I am out of the office next week.  Could you see to it to get my name off of the list to call if the users have a problem?Thank you sir!tnxtjbCell: 281-686-7546Pager: 713-768-8444'),
+(   '2001-10-11 16:02:32',
+    'stanley.cocke@enron.com',
+    'RE: Morrow Power',
+    'Just a heads up, we are planning to run Morrow HE12-20 (the same as we did on Thursday) on both Friday and Saturday.  I will be here on Friday to help coordinate the sale, but on Saturday you guys will be on your own.  Please consult the Services Book for the forecasted schedule.Thanks,Stan  -----Original Message-----From:  Rawson, Lester  Sent: Thursday, October 11, 2001 9:10 AMTo: DL-Portland Real Time ShiftCc: Cocke Jr., Stanley; Fuller, DaveSubject: FW: Morrow PowerAdditional information. Morrow s energy will be selling firm in the hourly market. Also, PNGC (the marketer for Umitilla Electric whose service territory Morrow is located) would like Enron to give their RT group a courtesy call when starting the unit. They can be reached at 503-287-1205.Stan will be able to answer any questions.Les  -----Original Message-----From:  Rawson, Lester  Sent: Thursday, October 11, 2001 7:16 AMTo: DL-Portland Real Time ShiftSubject: Morrow PowerReal Time Traders,Morrow Power wants to take their unit to the market to get some run time before they begin selling Firm energy. So I d like the Real Time group to sell the unit at the best price in the hourly market. I ve already bought gas for Friday and Saturday operations. I expect Sunday to be weak to not run the unit on Sunday. I would expect to be back in the market on  Monday. To sell the unit buy a BPA wheel using the accounts on the scheduling sheet. The variable price at the bottom is actual breakeven price. To start the unit call PGE at the control room number and give them an hour to get the unit online before you sell. It takes 46 minutes to get the unit from cold start to full load and online.Also, I ve bought reserves from BPA to make these schedules firm for the hour. I ll be out this afternoon and tomorrow and Stan will be standing in for me. I ll be available on my cell phone for any questions.Les'),
+(   '2001-10-11 10:21:41',
+    'kate.symes@enron.com',
+    'FW: STSW Parking - 10/13',
+    'STSW day-ahead deal number is 815078.  -----Original Message-----From:  Symes, Kate  Sent: Thursday, October 11, 2001 10:15 AMTo: DL-Portland Real Time ShiftSubject: STSW Parking - 10/13For Saturday -STSW will be 13 mw long, HE 13-20, at West Wing-500KV. Day ahead purchase (made under STSW book) is from PNM. Price is $22.Please enter an inter-desk purchase (under STWHOURLY book) from STSW for these hours. Make sure this purchase price covers any transmission costs the West Hourly book incurs to sell off this power. Enter all transmission deals and respective sales under the STWHOURLY book. Again, please refer to Bill s inter-desk swap detail if you run into problems. Note about Transmission: EPMI owns transmission from Pinnacle Peak to Mead-230 that can be re-directed from West Wing to Mead if necessary. Deal number is 426856. Oasis numbers is 26034. Please see the 2001_Available_Transmission worksheet for more information.Kate SymesReal Time Trading SupportOffice/503-464-7744Cell/503-819-2181Fax/503-464-7996'),
+(   '2001-10-11 09:10:23',
+    'lester.rawson@enron.com',
+    'FW: Morrow Power',
+    'Additional information. Morrow s energy will be selling firm in the hourly market. Also, PNGC (the marketer for Umitilla Electric whose service territory Morrow is located) would like Enron to give their RT group a courtesy call when starting the unit. They can be reached at 503-287-1205.Stan will be able to answer any questions.Les  -----Original Message-----From:  Rawson, Lester  Sent: Thursday, October 11, 2001 7:16 AMTo: DL-Portland Real Time ShiftSubject: Morrow PowerReal Time Traders,Morrow Power wants to take their unit to the market to get some run time before they begin selling Firm energy. So I d like the Real Time group to sell the unit at the best price in the hourly market. I ve already bought gas for Friday and Saturday operations. I expect Sunday to be weak to not run the unit on Sunday. I would expect to be back in the market on  Monday. To sell the unit buy a BPA wheel using the accounts on the scheduling sheet. The variable price at the bottom is actual breakeven price. To start the unit call PGE at the control room number and give them an hour to get the unit online before you sell. It takes 46 minutes to get the unit from cold start to full load and online.Also, I ve bought reserves from BPA to make these schedules firm for the hour. I ll be out this afternoon and tomorrow and Stan will be standing in for me. I ll be available on my cell phone for any questions.Les'),
+(   '2001-10-05 12:04:13',
+    'grace.rodriguez@enron.com',
+    'INFORMATION SESSION GOING ON NOW: URM Opening',
+    'FYI. -----Original Message-----From:  Rodriguez, Grace  Sent: Thursday, October 04, 2001 10:11 AMTo: DL-Portland World Trade CenterSubject: 10/5 INFORMATION SESSION REMINDER/UPDATE: URM OpeningHowdy all!Just a reminder that Steve Swain and Gordon Savage will be hosting a Brown Bag Information Session for the URM Specialist, Sr. Specialist or Analyst level opening(s). If you are interested in the position or would like more information, please stop by! See below for details (note room change):Utility Risk Management Information SessionSpecialist, Sr. Specialist, or Analyst opening(s)Date: Friday, October 5thTime: 12:00pm - 1:00pmNEW Location: Mt. BachelorIf you have any questions, please see me or Julie.Thanks,Gracex8321 -----Original Message-----From:  Kearney, Julie  Sent: Monday, October 01, 2001 4:40 PMTo: DL-Portland World Trade CenterSubject: URM OpeningWe currently have an opening(s) in the Utility Risk Management (URM) group reporting to Steve Swain.  Based upon the candidate skill level, the opening(s) will be at the Specialist, Sr. Specialist or Analyst level.Responsibilities will include:Building and maintaining forward price curves for a number of utility tariff rates across the WSCC.Tracking and analyzing URM s portfolio of retail positions.Preparing daily reports for management that analyze various factors contributing to changes in positions, P/L, hedges, etc.Performing research and analysis on legislative and regulatory changes that could impact our price cuves and/or positions.Working closely with the Retail Gen desk to coordinate activities involved in managing EWS s overall retail position.Research to support the development of effective hedging strategies for the various risk exposures inherent to the URM book.The ideal candidate(s) will possess sound Excel modeling skills (including at least superficial knowledge of Visual Basic), some familiarity with database systems and/or experience collecting and analyzing large amounts of data, excellent organizational skills, and a solid understanding of financial statements.  While some experience with regulated tariffs and utility cost of service modeling would be helpful, it is not necessary.For those interested in learning more about the position, or about URM in general, Steve Swain and Gordon Savage will be hosting a Brown Bag Info  Session on Friday, 10/5 from 12-1 PM in Mt. Hood. If you are interested in this opportunity, please let Julie Kearney know by close of business on Friday 10/5.'),
+(   '2001-10-04 10:10:51',
+    'grace.rodriguez@enron.com',
+    '10/5 INFORMATION SESSION REMINDER/UPDATE: URM Opening',
+    'Howdy all!Just a reminder that Steve Swain and Gordon Savage will be hosting a Brown Bag Information Session for the URM Specialist, Sr. Specialist or Analyst level opening(s). If you are interested in the position or would like more information, please stop by! See below for details (note room change):Utility Risk Management Information SessionSpecialist, Sr. Specialist, or Analyst opening(s)Date: Friday, October 5thTime: 12:00pm - 1:00pmNEW Location: Mt. BachelorIf you have any questions, please see me or Julie.Thanks,Gracex8321 -----Original Message-----From:  Kearney, Julie  Sent: Monday, October 01, 2001 4:40 PMTo: DL-Portland World Trade CenterSubject: URM OpeningWe currently have an opening(s) in the Utility Risk Management (URM) group reporting to Steve Swain.  Based upon the candidate skill level, the opening(s) will be at the Specialist, Sr. Specialist or Analyst level.Responsibilities will include:Building and maintaining forward price curves for a number of utility tariff rates across the WSCC.Tracking and analyzing URM s portfolio of retail positions.Preparing daily reports for management that analyze various factors contributing to changes in positions, P/L, hedges, etc.Performing research and analysis on legislative and regulatory changes that could impact our price cuves and/or positions.Working closely with the Retail Gen desk to coordinate activities involved in managing EWS s overall retail position.Research to support the development of effective hedging strategies for the various risk exposures inherent to the URM book.The ideal candidate(s) will possess sound Excel modeling skills (including at least superficial knowledge of Visual Basic), some familiarity with database systems and/or experience collecting and analyzing large amounts of data, excellent organizational skills, and a solid understanding of financial statements.  While some experience with regulated tariffs and utility cost of service modeling would be helpful, it is not necessary.For those interested in learning more about the position, or about URM in general, Steve Swain and Gordon Savage will be hosting a Brown Bag Info  Session on Friday, 10/5 from 12-1 PM in Mt. Hood. If you are interested in this opportunity, please let Julie Kearney know by close of business on Friday 10/5.'),
+(   '2001-10-04 07:11:30',
+    'bert.meyers@enron.com',
+    'FW: EOL Upload',
+    ' -----Original Message-----From:  Symes, Kate  Sent: Wednesday, October 03, 2001 8:15 AMTo: Williams III, Bill; Slinger, Ryan; Meyers, BertSubject: EOL UploadWhy don t you guys test this out and let me know if you have any suggestions or modifications to make.... Kate SymesReal Time Trading SupportOffice/503-464-7744Cell/503-819-2181Fax/503-464-7996'),
+(   '2001-10-03 08:40:40',
+    'heather.dunton@enron.com',
+    'Lunch Today @ 11:30',
+    'Bike Teams Please join us in Mt Hood 11:30 - 12:30 for Lunch and Awards. -----Original Message-----From:  Dunton, Heather  Sent: Saturday, September 29, 2001 6:55 PMTo: DL-Portland World Trade CenterSubject: BIKE COMMUTE CHALLENGECONGRATULATIONS ALL WHO PARTICIPATED IN THE SEPTEMBER BIKE COMMUTE CHALLENGE!!!We had a very successful month - Thanks to all who participated!TEAMS 1-6 please join us for lunch in MT HOOD 11:30 -12:30 Wednesday October 3rd for our Awards Ceremony.The Best team will receive Lunch @ Mothers Bistro (by the end of October)The following Individual Awards will be presented w/ a $25 Gift Certificate:* Most Trips* Most Miles* Best Dressed - (teams vote @ lunch)* Best StoryRepresent Enron @ the Bicycle Hubbub Awards Ceremony:If you participated in the Bike Commute Challenge - either as an individual or through your workplace - come on down and celebrate our collective accomplishments! More than 185 businesses have registered - we ll have the final results at the HUBBUB on Thursday, October 11th, from 6-8 PM at the Bridgeport Brew Pub, 1313 NW Marshall, Portland. Join other BCC participants for subsidized pizza and see if your workplace won the coveted Second Wind Chimes from Sellwood Cycle Repair for the most bike commutes in September! Children welcome.** Thanks to Mike Tully and Bob Anderson for the Bike Commute Website!!!!'),
+(   '2001-10-01 07:21:12',
+    'bill.williams@enron.com',
+    'FW: Announcement: Allegheny Energy Supply SCID Changing',
+    'ALLEGHENY ENERGY SUPPLY Scheduling Coordinator ID--*****New ID is APX5******-----Original Message-----From: Cristiana Gallegos [mailto:cgallegos@apx.com]Sent: Thursday, September 27, 2001 1:59 PMSubject: Announcement: Allegheny Energy Supply SCID Changing> NOTICE TO MARKET PARTICIPANTS> Allegheny Energy Supply is changing their SCID> > Effective Trade Date Monday, October 1, 2001 Allegheny Energy Supply> (currently using APX1) will begin scheduling energy trades and bids under> the new SCID; APX5.  Their OLD SCID  APX1  WILL NO LONGER BE VALID.> All of Allegheny Energy Supply s scheduling transactions will use the new> SCID beginning with submission of Day Ahead schedules for Trade Date,> Monday, October 1, 2001. > Any advance schedules that may have already been submitted using the old> SCID,  APX1 , must be removed (deleted) and rescheduled using the new> SCID,> APX5.> If you have any questions regarding the scheduling of transactions with> Allegheny Energy Supply, please contact: > * APX5 Scheduling D/A, 408-562-9112> * APX5 Scheduling H/A, Real Time desk 408-562-9112> * Other Issues / Questions, Erik Lopez 626-281-9475> * Allegheny Energy Supply 212-224-8850> > Distributed on behalf of Allegheny Energy Supply to facilitate the> transition to their new SCID.> > > ----> Devon Walton> Automated Power Exchange, Inc.> Manager, Market Operations> 5201 Great America Parkway Suite 522> Santa Clara, CA 95054> Phone: (408)517-2131   Fax: (408)517-2985> Email: dwalton@apx.com> Web: www.apx.com>'),
+(   '2001-09-27 13:47:11',
+    'kate.symes@enron.com',
+    'FW: EPE Lending for 9/28',
+    'REVISION:PLEASE CHANGE THE PRICE ON DAY-AHEAD EL PASO PURCHASE (794022) TO $2.25 - THIS WILL COVER OUR LENDING SERVICE FEE AS WELL AS OUR NEGOTIATED SCHEDULING FEE WITH EL PASO.THANK YOU. -----Original Message-----From:  Symes, Kate  Sent: Thursday, September 27, 2001 12:33 PMTo: DL-Portland Real Time ShiftCc: Gang, Lisa; Salisbury, HoldenSubject: EPE Lending for 9/28We re lending again.....The STSW desk will be 20 mw short per the El Paso lending agreement, on peak @ 4C-345kv. The day-ahead sale price is $27.05. Please purchase to cover this position under the STWHOURLY desk and complete an inter-desk sale to STSW to tie out our positions. PLEASE NOTE: INTER-DESK SWAPS ARE NOT THE SAME AS ANNUITIES. YOU CANNOT NET THE DAY S VOLUME AND SWAP OUT AT ONLY ONE HOUR. YOU MUST BUY AND SELL THE SAME AMOUNT EACH HOUR TO REMAIN AT ZERO EACH HOUR.It s been awhile since we ve done this, so here s a reminder of the procedure. Once you ve purchased to cover this short in the real time market, you must sell back to El Paso @ $0 to keep our position net zero. Then reduce the day-ahead purchase price from El Paso (794022) to $2 to cover the lending service fee.Please, please, please ask me if you have ANY questions about how to do this.Kate SymesReal Time Trading SupportOffice/503-464-7744Cell/503-819-2181Fax/503-464-7996'),
+(   '2001-09-26 09:10:39',
+    'jill.chatterton@enron.com',
+    'Bike Challenge',
+    'For the bike challenge  - If you have been out at all this month or plan on being out for any time for the rest of this week PLEASE let me know today.  I need to letKathy know as this will effect the percentage.  I think I have most of the absences from the office for the beginning of this month, but if you can again forward me this information.Thank you,Jill -----Original Message-----From:  Axford, Kathy  Sent: Wednesday, September 26, 2001 8:25 AMTo: King, Jan M.; Gustafson, Mollie; Burry, Jessica; Sheppard, Kathryn; Chatterton, JillSubject: people outI need to know if you have anyone out this week.'),
+(   '2001-09-25 11:01:30',
+    'kate.symes@enron.com',
+    'Short Position for Wed./APS Line Loss Payback',
+    'On Peak on Wednesday -STWBOM will be 50 mw short @ NP15. Day-ahead price is $23.67. Please purchase to cover this under STWHOURLY (make all subsequent wheels and transmission deals under STWHOURLY as well), and make an inter-desk swap between the two books. Off Peak, sometime between Tuesday night and Wednesday morning -We need to pay APS for transmission line losses - 3 mw off peak @ PV. Again, please purchase to cover this under the STWHOURLY book and sell @ $0 to Arizona Public Service Co. THIS NEEDS TO BE TAGGED. PLEASE PUT NOTES IN BOTH DEALS AND THE TAG TO INDICATE POWER IS BEING USED TO PAY BACK LINE LOSSES.As always, please let me know if you have questions.Thanks,Kate -----Original Message-----From:  Alport, Kysa  Sent: Tuesday, September 25, 2001 10:18 AMTo: Williams III, Bill; Symes, KateSubject: CA Imbalance Deal and priceST CA buys 50 MW from ST W. BOM, deal number 789548 $23.67Kysa M. AlportEnron North America(O) 503-464-7486(C) 503-706-5308'),
+(   '2001-09-25 10:14:51',
+    'mark.guzman@enron.com',
+    'RE: Vocabulary Lesson',
+    'Very impressive young Kate, we are all astounded and impressed by your superluous use of your extensive vocabulary in our emails -----Original Message-----From:  Symes, Kate  Sent: Tuesday, September 25, 2001 10:10 AMTo: DL-Portland Real Time ShiftSubject: Vocabulary LessonMain Entry: su?per?flu?i?ty Function: nounInflected Form(s): plural -tiesEtymology: Middle English superfluitee, from Middle French superfluit?, from Late Latin superfluitat-, superfluitas, from Latin superfluusDate: 14th century1 a : EXCESS , OVERSUPPLY b : something unnecessary or superfluous2 : immoderate and especially luxurious living, habits, or desires Bottom of Form 0Kate SymesReal Time Trading SupportOffice/503-464-7744Cell/503-819-2181Fax/503-464-7996'),
+(   '2001-09-20 14:39:24',
+    'bill.williams@enron.com',
+    'FW: Coverage of Alberta Realtime desk',
+    'Group,Here is some more inforation regarding taking care of Canada this weekend.Bill -----Original Message-----From:  Taylor, Michael J.  Sent: Thursday, September 20, 2001 2:38 PMTo: Williams III, BillSubject: Coverage of Alberta Realtime deskBill, Attached is a memo outlining dispatch instructions for when your guys are covering our desk this weekend.  I thought with all your new guys they might need a little help.  We have it set up so there will only be a minimal amount of work.Also, if there are any problems, you can reach me on my cell, as I will be on-call on Friday and Sunday.  The number is (403) 620-5083.Have a good weekend,Mike Taylor'),
+(   '2001-09-20 12:10:12',
+    'donald.robinson@enron.com',
+    'Update: Short at Portland System for 9/20-22',
+    'Friday s PGE system deal # is 783528.1Saturday s is #783646.1Thanks, Donald. -----Original Message-----From:  Robinson, Donald  Sent: Thursday, September 20, 2001 9:22 AMTo: DL-Portland Real Time ShiftCc: Semperger, Cara; Scholtes, Diana; Crandall, SeanSubject: Short at Portland System for 9/20-22We are short at PGE system for 9/21/01 and 9/22/01.  HE15-20pdt, we are 25mw short.  This is due to a lending deal done by the NW Cash desk.  Please supply Portland at their system in the most cost effective manner possible.  The sale deal number has not yet been input to the system, but I will send another note when it has.Also, I failed to send a note for TODAY, 09/20/01.  We are short at Portland System for 8mw HE1-6, 23-34 and 25mw for HE15-20.  I was able to call RT in time for them to cover this morning.  LLH deal number is 781575.1 and Super peak number is 781576.1.  Sorry about the lapse for this one.Thanks, Donald Robinson, NW preschedule desk'),
+(   '2001-09-19 06:22:22',
+    'bill.williams@enron.com',
+    'ENRON CANADA COVERAGE-FW: September 21 & 23',
+    'Group,We will be covering for Enron Canada Corp as stated below. All submissions will have to be faxed to the Power Pool as we do not have a working digital certificate. Call me with any questions. Thanks,Bill -----Original Message-----From:  Greenizan, Bill  Sent: Monday, September 17, 2001 1:43 PMTo: Williams III, BillSubject: September 21 & 23Bill,We are looking for EPMI West real time to provide coverage for Enron Canada Corp. on Friday, September 21 and Sunday, September 23 from 7 AM to 7 PM (MPT). ECC will be looking for EPMI to dispatch the plant if necessary and to inform the Power Pool of Alberta of a change in availability. ECC will forward the real-time number to Portland and will also provide a cell phone number if you have any questions. Let me know if you have any questions,Thanks in advance,Bill'),
+(   '2001-09-18 09:53:01',
+    'mollie.gustafson@enron.com',
+    'RE: Happy Hour Farewell',
+    'Reminder.  Farewell gathering this evening for Amy and Tracy. Mollie -----Original Message-----From: Gustafson, Mollie Sent: Thursday, September 13, 2001 3:21 PMTo: DL-Portland World Trade CenterSubject: Happy Hour Farewell   AutoShape: Please join us to wish Amy FitzPatrick and Tracy Ngo a fond farewell.Fernando s Hideaway, 824 SW First AvenueTuesday, September 18, 20014:30 PM - 7:30 PM'),
+(   '2001-10-28 18:39:44',
+    'ryan.slinger@enron.com',
+    'FW: websites',
+    ' -----Original Message-----From:  Slinger, Ryan  Sent: Sunday, October 28, 2001 6:00 AMTo: Meyers, BertSubject: FW: websites -----Original Message-----From:  Slinger, Ryan  Sent: Saturday, October 27, 2001 5:45 PMTo: Mier, MichaelSubject: websiteshttp&colon;//oasis.caiso.com/http&colon;//dotect.ect.enron.com/genstat/epe/status/https&colon;//iso_si/iso/http&colon;//www.ets.oatiinc.com/file:///W|/ISO_SI/ISOLOCATION.HTMLhttp&colon;//www.tsin.com/nodes/wscc.html'),
+(   '2001-10-26 13:25:28',
+    'ryan.slinger@enron.com',
+    'FW: El paso parking for Monday 10/29 at 4C',
+    ' -----Original Message-----From:  Gang, Lisa  Sent: Friday, October 26, 2001 12:24 PMTo: Slinger, RyanSubject: FW: El paso parking for Monday 10/29 at 4C -----Original Message-----From:  Salisbury, Holden  Sent: Friday, October 26, 2001 10:45 AMTo: Williams III, Bill; Alport, Kysa; Symes, Kate; Gang, LisaSubject: El paso parking for Monday 10/29 at 4CWe have parked 45 mws with EPE for Monday.  The deal number on the purchase from EPE is 842560.  This power is at Four Corners and the price is $33.00.  Please contact me with any questions.Thank You,Holden'),
+(   '2001-10-25 07:29:18',
+    'grace.rodriguez@enron.com',
+    'BROWN BAG REMINDER: Open Enrollment for Benefits (10.26.01)',
+    'Just a reminder about the brown bag meeting for Open Enrollment for Benefits 2002: When: Friday, October 26th, 2001 Time:  11:30am Where: Mt. Hood Conference RoomIf you have any questions about Open Enrollment, please plan on attending. Open Enrollment begins on  Monday, October 29th (8:00am Central) and ends  Monday, November 12th (5:00pm Central). -----Original Message-----From:  Kearney, Julie  Sent: Wednesday, October 24, 2001 10:55 AMTo: DL-Portland World Trade CenterSubject: Open Enrollment for BenefitsImportance: High   Open Enrollment for your 2002 Health Benefits begins Monday, October 29, 2001!  Q.  WHAT DOES THIS MEAN?A.  If you plan to make changes to your existing benefit coverage, you will need to make changes during Open Enrollment which begins  Monday, October 29, 2001 at 8:00 AM (Central) and ends on November 12, 2001 at 5:00 PM (Central)  To facilitate these changes, you received an Open Enrollment Benefit Packet at your home address.  This packet contains a personalized  worksheet and the Enron Instruction Guide to help you make your selections.   (If you have not received your Info Packet, please let us know ASAP! ) Q. WHAT DO I NEED TO DO? 1.  If you are satisfied with your current elections and do not need to make changes, do nothing.  Your current choices will automatically roll  over to 2002.  2.  If you plan to make changes to your coverage, you will need to either access the Intranet website at work:  benefits.enron.com     or at home at  www.Enron.BenefitsNow.com   or call the Phone Enrollment Line at (800) 332-7979, Option 5.Q.  I HAVE MORE QUESTIONS.  I NEED MORE INFORMATION. A. If you have more questions or need more information, you may attend our Open Enrollment "Brown Bag" Info Session being held on Friday,  October 26 @ 11:30 PM in the Mt Hood Conference Room.  See you then!EWS Portland HR OfficeJulie Kearney x7404Grace Rodriguez x8321'),
+(   '2001-10-24 08:56:04',
+    'v..porter@enron.com',
+    'RE: Monitor Sale',
+    'Hello Paul,Could you please put me on the list for a 19" or 21" unit (preferably 19").Thanks,David Porter. -----Original Message-----From:  Kane, Paul  Sent: Wednesday, October 24, 2001 8:32 AMTo: DL-Portland World Trade CenterSubject: Monitor SaleAll,We will be offering monitors for sale again in the Portland Office.  We have a variety of monitors for you to choose from. Older 17  units - $10Newer Compaq 17  units - $20Older 21  units - $25Newer Compaq 19  units - $35Please respond to this email with the type of monitor you would like to purchase.  Will have a lottery type drawing on Friday Morning. By Friday afternoon, you will be notified that you can come by and pick out your monitor. We need to have all monitors picked up and removed my Friday the 2nd. After that, all remaining monitors will be donated to charity.Regards,Paul KanePortland IT'),
+(   '2001-10-24 08:16:25',
+    'v..porter@enron.com',
+    'RE: David Porter',
+    'Hey Guys,As you know I ve moved over to URM, but I have some fond memories from real-time.  It s been a pleasure working with everyone. I m on the next row, so if you need anything give me a shout.Good luck and stay crazy,David. -----Original Message-----From:  Williams III, Bill  Sent: Wednesday, October 17, 2001 2:49 PMTo: Anderson, John; Bland, Todd; Dean, Craig; Guzman, Mark; Harasin, Leaf; Linder, Eric; Merriss, Steven; Meyers, Bert; Mier, Michael; Porter, David V.; Presto, Darin; Slinger, Ryan; Solberg, Geir; Symes, Kate; Williams III, BillSubject: David PorterGroup,David Porter will be moving to the Utility Risk Management group with Enron Energy Services beginning Tuesday October 23. Please join me in thanking David for his effort in the real-time group over the past year (especially the 24-hour long shift), and wishing him good luck in his new position.Stay tuned for a "going away" party for Dave in the near future.Bill'),
+(   '2001-10-23 15:46:04',
+    'kate.symes@enron.com',
+    'STNW position clarification',
+    'On Monday, the day-ahead market traded for 3 days out, so these positions will remain in effect for Wednesday and Thursday. PLEASE NOTE: STNW HAS NEGOTIATED A LENDING DEAL WITH PGE. DEAL 831616 IS IN ENPOWER @ MID-C; HOWEVER, PGE MAY REQUEST TO HAVE THE POWER DELIVERED AT THEIR SYSTEM INSTEAD. PLEASE COMMUNICATE WITH PGE REAL TIME AND ACCOMMODATE THEIR NEEDS WHETHER THEY BE AT MID-C OR PGE SYSTEM. -----Original Message-----From:  Symes, Kate  Sent: Monday, October 22, 2001 5:25 PMTo: DL-Portland Real Time ShiftSubject: Positions for TuesdayIn California -STWBOM is 50 mw short on peak @ SP15. Day-ahead price is $27.60. Purchase to cover the short under the STWHOURLY book. Complete an inter-desk sale from STWHOURLY to STWBOM and enter a sale to the Cal-Imbalance under STWBOM to complete the deal.STCALI is 48 mw long off peak @ SP15. Day-ahead price is $21.54. Purchase from the Cal-Imbalance under STCALI. Enter an inter-desk purchase from STCALI under the STWHOURLY book.In the Northwest -STNW is 22 mw short on peak @ Mid-C. Please purchase to fill this short at either Mid-C or PGE System, per PGE s request, under the STWHOURLY book and enter an inter-desk sale to STNW. This lending deal is in through Thursday.Please let me know if you have any questions.Kate SymesReal Time Trading SupportOffice/503-464-7744Cell/503-819-2181Fax/503-464-7996'),
+(   '2001-10-22 16:26:03',
+    'debra.davidson@enron.com',
+    'TUESDAY 8 a.m. - Houston-based All-Employee Meeting Offered by Videoconference in Mt. Hood and Mt. Adams',
+    'Our IT group has made arrangements for us to see Ken Lay s All-Employee Meeting in Houston via videoconference in Mt. Hood and Mt. Adams on Tuesday at 8 a.m.  You should still be able to view it on your computers if you prefer.   -----Original Message-----From:  Enron Announcements/Corp/Enron@ENRON   On Behalf Of Ken Lay@ENRONSent: Monday, October 22, 2001 4:29 AMTo: All Enron Worldwide@ENRONSubject: All-Employee MeetingI want to remind you about our All-Employee Meeting this Tuesday, Oct. 23, at 10 a.m. Houston time at the Hyatt Regency.  We obviously have a lot to talk about.  Last week we reported third quarter earnings.  We have also been the subject of media reports discussing transactions with LJM, a related party previously managed by our chief financial officer.  Today, we announced that we received a request for information from the Securities and Exchange Commission regarding related party transactions.I know you will have a number of questions about these issues and events, which I will address.   As usual, I will be as candid as I can.  I will do my best to provide answers and talk about where we go from here.  I encourage each of you to attend or tune in tomorrow.'),
+(   '2001-10-19 08:54:44',
+    'bill.williams@enron.com',
+    'FW: DISPLACING GAS-FIRED GENERATION',
+    'Group,Here is some input from Tony at EPE regarding running their system. I think the EPE system was run very well on October 18th, but aside from that, this email shows how closely they are watching our performance and what they expect. Let s do our best to continue to provide them with good service.Thanks,Bill-----Original Message-----From: tsoto/EPEC@epelectric.com [mailto:tsoto/EPEC@epelectric.com]Sent: Friday, October 19, 2001 8:43 AMTo: Williams III, BillCc: hpuente/EPEC@epelectric.com; PowerMarketingFolks@epelectric.com;kpeterso@epelectric.comSubject: DISPLACING GAS-FIRED GENERATION Bill,  thanks for the visit we enjoyed it.  It is always helpful to talkface to face and have some frank discussion regarding   our currentbusiness relationship.  Hopefully, we ll be able to reciprocate with avisit in the near future.On a different matter, I was going over some recent historical data andhave come across some instances where I believe we have room to displacegas-fired generation with inexpensive purchased power.  In order to dothis, we need to tighten up our real-time operations.  By this, I mean tostart putting all our gas-fired generation down to their minimums andreplacing it with purchased power (this would apply to the early morninghours only, since we have some take or pay gas we still have to burn somebase gas but this can be done during the day when prices are higher and ourloss will be less).For example,  Thursday October 18, the unit commitment called for purchasesof around 330 MW during the early hours (see attached unit commitment foramounts and times).  We only purchased 130 MW net during this time frame.So we ended up generating around 200 mwh at around $44/mwh when purchasepower  was available for $19/mwh.  Furthermore, there was a sale for HE06:00 to ENRON/CAISO for $22/mwh.  When we enter this sale into our costingmodel, the sale will result in a loss of approximately $1,000 for EPE PowerMarketing since the model will use marginal cost (gas-fired generation) tocost this sale.Please look into this matter and  call me if you have any questions or wishto discuss it further.(See attached file: dispatch.xls)Tony SotoPower Marketing543-4181'),
+(   '2001-10-18 15:10:12',
+    'no.address@enron.com',
+    'UPDATE - Supported Internet Email Addresses',
+    'Earlier this week, Enron Global Technology announced the plan to decommission the use of all non-standard Internet Email address formats. As mentioned in the previous communication, this was the first of several communications to be sent by the Enron Global Technology group and we will continue to provide more details in the coming weeks regarding this significant but necessary change to our Email environment. We are working toward a cut-off date of January 14, 2002, at which time we will no longer support Email addresses that do not follow the standard format of firstname.lastname@enron.com (or firstname.middleinitial.lastname@enron.com if your name in Lotus Notes or Outlook has a middle initial in it). We understand that it will take time to make the necessary arrangements to begin using the standard Email address format, but it is important to begin making the change now. If you have questions, please send an Email to Enron.Messaging.Administration@enron.com. Thank you for your support. Enron Global Technology   -----Original Message----- From: Enron Announcements/Corp/Enron@ENRON on behalf of Enron Messaging Administration Sent: Mon 10/15/2001 9:15 PM To: All Enron Worldwide@ENRON Cc: Subject: Supported Internet Email AddressesEnron Global Technology is in the process of decommissioning the support for all non-standard Internet Email address formats. The only Internet Email address format that will be supported, once this effort is completed, is firstname.lastname@enron.com. We will no longer support Internet Email address formats such as name@enron.com, name@ect.enron.com, name@ei.enron.com  (where "name" is an abbreviation, acronym or alternative to an employees firstname and/or lastname). Every Enron employee has an Internet Email address of firstname.lastname@enron.com and must begin making the necessary arrangements to start using this Internet address format if they are not using it already.Any new/existing application systems or business cards that reference a non-supported Internet Email address will need to be changed to reference the only supported firstname.lastname@enron.com Internet address format. It is important to remember to also notify any external contacts who are currently sending Internet email to any non-supported Internet Email addresses.To determine what your supported Internet Email address is, take your name as it appears in Outlook or Lotus Notes and replace any "spaces" that appear in your name with periods and append @enron.com. For example in Outlook, Alan Smith, Robert (firstname = Robert, Lastname = Alan Smith) will have a supported Internet Email address of robert.alan.smith@enron.com.IMPORTANT : If you need to update your business card(s) to reflect your supported Internet Email address, please ensure you test & confirm the delivery of Internet email to your supported email address prior to updating your business cards. If you experience any issues with delivery of Internet email to your supported Internet email address, please contact the Resolution Center.We will communicate further details, including the cut-off date, in the coming weeks. Meanwhile, it is imperative that you begin making the necessary arrangements to change over to using the firstname.lastname@enron.com Internet Email address format. If you have questions regarding this email, send an Email to enron.messaging.administration@enron.com.Thank you for participation, cooperation and support. Enron Messaging Administration'),
+(   '2001-10-18 14:01:41',
+    'debra.davidson@enron.com',
+    'Opportunity to Attend Blazers Practice Thursday, October 18!',
+    'FYI-- Sorry for the late notice, but our office has been invited to attend a private Blazers Practice today.  The doors to the Rose Garden open at 5 p.m. and the practice is from 6 to 7 p.m. Tickets for entry are not necessary.  If you would like to attend go to the gate, mention you are with Enron North America and that Tina Tate (our Blazers Sales Rep) told us we could attend without tickets.  There is no reserved seating for this event.  The announcement below says there will be complimentary food and beverage coupons available as well as complimentary on-site parking.   Let me know if you have any questions. Debra Davidson  -----Original Message-----From: Portland Trail Blazers [mailto:Blazers@Ripcity.com]Sent: Wednesday, October 17, 2001 1:29 PMTo: Davidson, DebraSubject: Reminder--Blazers Practice Tomorrow!  <http&colon;//www.rosequarter.com/x.asp?x=1&MID=377471&ID=168> Blazers News <http&colon;//www.rosequarter.com/images/headers/blazersheader.gif> <http&colon;//www.rosequarter.com/clicks.asp?a=168&b=120084&c=101720011&d=377471&ID=29>   <http&colon;//www.rosequarter.com/media/enn/space.gif> Private Blazers Practice Reminder!   Anticipation <http&colon;//www.rosequarter.com/images/blazers_anticipation.jpg> Don t forget to attend the exclusive Team Practice with Coach Cheeks and the entire Blazers roster. The Blazers want to remind you about this great opportunity to watch the team practice. You and your guests are invited to attend this exclusive practice on Thursday, October 18th from 6:00 pm - 7:30 pm. Recently, you have received tickets to this first-ever private practice. Upon arriving at the Rose Garden, you will receive food and beverage coupons. Complimentary on-site parking will be available. Rose Garden doors open at 5:00 pm Private Practice 6:00 pm - 7:30 pm Please bring the tickets you received in the mailThe Blazers organization is looking forward to having our valued Season Ticket Holders be part of this exclusive team practice. For complete Blazers coverage visit Blazers.com <http&colon;//www.blazers.com> Top-notch entertainment is just a click away at RoseQuarter.com <http&colon;//www.rosequarter.com>'),
+(   '2001-10-18 12:46:32',
+    'tim.belden@enron.com',
+    'Portland Enron WTC Guidelines for Handling Suspicious Mail',
+    'FYI--The information below is an excellent overview of the procedures our administrative personnel will be using when handling and distributing your mail into mail folders.  However, all administrative personnel in the Portland Enron WTC offices have received a hard copy of the guidelines and procedures issued by Oregon Department Administrative Services.  This four-page document has detailed guidelines and instructions for mail/parcel handling.  If you would like to get a copy of these guidelines, ask your administrative assistant or you can contact Debra Davidson to get a copy.  The World Trade Center Mailroom has informed Debra that they are also screening mail for lumps, powdery substances, unusual written comments on envelopes, etc.  If they detect a suspicious piece of mail or package addressed to our office, they will notify us as well as the proper authorities.If you have any questions or concerns, please see me or Debra Davidson. -----Original Message-----From:  Enron Announcements/Corp/Enron@ENRON   On Behalf Of John Brindle, Business Controls@ENRONSent: Wednesday, October 17, 2001 7:42 PMTo: Enron Employees ---- Domestic@ENRONSubject: Anthrax and other Biological Agent ThreatsWe understand that the recent cases of Anthrax contamination and the possibility that biological agents such as Anthrax may be used in a terrorist attack are raising great concerns among Enron employees.  Many government and commercial facilities in the United States have already received Anthrax threat letters containing powdery substances.  Most of these have, however, been determined to be false alarms.  We have no reason to believe that Enron has been or will be the target of an Anthrax attack, but we want to provide all employees with background information on Anthrax and up-to-date guidance for handling any possible Anthrax exposures.If you have additional questions or concerns, please contact Corporate Security in Houston at (713) 345-2804 or via email at CorporateSecurity@enron.com.The most important thing to remember is:  Do not panic.  To infect someone, the Anthrax organism must be rubbed into abraded skin, swallowed, or inhaled as a fine, aerosolized mist.  Infection can be prevented after exposure to Anthrax by early treatment with the appropriate antibiotics.  Anthrax cannot be spread from one person to another.Following are guidelines for identifying and dealing with suspicious letters or packages:What constitutes a suspicious letter or parcel?  (Remember, these are only guidelines.  Use your best judgment when determining if a letter or package is suspicious.)--  It is marked with the word "Anthrax."--  It has a non-identifiable powdery substance on the outside.--  It is unexpected or from someone unfamiliar to you.--  Is addressed to someone no longer with your organization or is otherwise outdated.--  Has no return address, or has one that cannot be verified as legitimate.--  Is of unusual weight, given its size, or is lopsided or oddly shaped.--  Has an unusual amount of tape on it.--  Is marked with restrictive endorsements such as "personal" or "confidential".--  Has a strange odor or stain.--  Shows a city or country in the postmark that does not match the return address.What do I do if I receive such a letter or package that I believe contains Anthrax?--  Do not shake or empty the contents of any suspicious envelope or package.--  Place the envelope or package in a plastic bag or some other type of container to prevent leakage of contents.--  If you do not have any container, then cover the envelope or package with anything (e.g., clothing, paper, trash can, etc.) and do not remove this cover.--  Leave the room and close the door, or section off the area to prevent others from entering (i.e., keep others away). -- Wash your hands with soap and water to prevent spreading any powder to your face.--  Notify your local building security official or an available supervisor.  Have them call 911 to alert the local police authorities.--  List all people who were in the room or area when this suspicious letter or package was recognized. Give this list to both the local public health authorities and law enforcement officials for follow-up investigations and advice.  If you open an envelope or package and a suspicious powder spills out:--  Do not try to clean up the powder.  Cover the spilled contents immediately with anything (e.g., clothing, paper, trash can, etc.) and do not remove this cover! --  Leave the room and close the door, or section off the area to prevent others from entering (i.e., keep others away).--  Wash your hands with soap and water to prevent spreading any powder to your face.  Report the incident to your local building security official or an available supervisor.  Have them call 911 to alert the local police authorities. --  Remove heavily contaminated clothing as soon as possible and place in a plastic bag, or some other container that can be sealed.  This clothing bag should be given to the emergency responders for proper handling. --  Shower with soap and water as soon as possible.  Do not use bleach or other disinfectant on your skin. --  If possible, list all people who were in the room or area, especially those who had actual contact with the powder. Give this list to both the local public health authorities so that proper instructions can be given for medical follow-up, and to law enforcement officials for further investigation.'),
+(   '2001-10-17 16:33:02',
+    'michael.mier@enron.com',
+    'FW: New BPA Contract #',
+    ' -----Original Message-----From:  Mier, Michael  Sent: Wednesday, October 17, 2001 12:44 PMTo: Realtime,Subject: New BPA Contract #Our old BPA contract # was 96104 our new BPA Contract # is 10728. Just wanted to give the group a heads up.Mike'),
+(   '2001-10-16 17:00:39',
+    'bill.williams@enron.com',
+    'Parking and Lending with ST-NW',
+    'Group,Going forward we will be delivering parking or taking lending energy at one point per schedule with Portland General. We will either deliver or take energy from them at Portland General System. OR we will deliver or take energy from them at Mid-C. PGE real-time has had difficulty with scheduling the energy in real-time to or from a point other than originally prescheduled. Therefore ONLY schedule the energy to or from the originally prescheduled delivery point. In the case below we would deliver the energy to Portland General System--NOT the MID-C.We should continue to be flexible at PGE s request. Please see me with any questions.Thanks,Bill -----Original Message-----From:  Robinson, Donald  Sent: Tuesday, October 16, 2001 11:41 AMTo: DL-Portland Real Time ShiftCc: Scholtes, Diana; Crandall, SeanSubject: Short due to lending at PGE System for Wednesday, 10/17.We are short at PGE system for Wednesday, 10/17/01.  HE1-6, 23-24pdt, we are 13mw short (total of 104mw).  This is due to a lending deal done by the NW Cash desk.  Please supply Portland at their system in the most cost effective manner possible.  Deal #821995.1Thanks, Donald Robinson, NW preschedule desk'),
+(   '2001-10-15 08:23:18',
+    'dale.rasmussen@enron.com',
+    'RE: Bike Commute Challenge',
+    'I guess all the threats of instigating a full audit paid off, huh?Good job, all. -----Original Message-----From:  Tully, MIchael  Sent: Monday, October 15, 2001 5:55 AMTo: DL-Portland World Trade CenterSubject: Bike Commute ChallengeFor those that are interested, I just got an Email from the Bicycle Transportation Alliance and due to a calculation error, Team Enron did in fact take FIRST PLACE! Congratulations to all who participated! It was a lot of work, but it (finally) paid off!!!Michael S. TullyTrade Floor Support, Portland(503)464-7790 Desk(503)807-7862 Cellmichael.tully@enron.comHe who runs behind car, often get exhausted.'),
+(   '2001-10-29 05:05:18',
+    'jae.black@enron.com',
+    'FW: options market update',
+    ' -----Original Message-----From:  Chen, Hai  Sent: Friday, October 26, 2001 3:48 PMTo: Black, Tamara JaeSubject: options market updateImportance: HighT. J.,Please forward attached Option Market Update to all traders and mid marketers in Monday morning.  Thanks!'),
+(   '2001-10-26 02:41:07',
+    'jenniferp@acespower.com',
+    'RE:',
+    'Hey there!  Nice to hear from you!  Yeah, we went out the second night,but it was a little slower (thank goodness).  I think a lot of peoplehad early flights out the next morning.This is my last of four nights and I am ready for a break!  Or at leastsome sleep.What was the name of that band you were playing in your car?  I doubt Ican find it up here, but it s worth a try.Have a great weekend!Jen-----Original Message-----From: Dean, ClintSent: Thu 10/25/2001 2:25 PMTo: Jennifer PerrenotCc:Subject: Jennifer, I enjoyed meeting you last week.  Too bad we didn t get to meetup the second night.  I definitely had a good time.  Did you go outagain on Wednesday?  I tried to call you at your hotel, but I guess Imissed you. Talk to you soon. Clint********************************************************************** This e-mail is the property of Enron Corp. and/or its relevantaffiliate and may contain confidential and privileged material for thesole use of the intended recipient (s). Any review, use, distribution ordisclosure by others is strictly prohibited. If you are not the intendedrecipient (or authorized to receive for the recipient), please contactthe sender or reply to Enron Corp. atenron.messaging.administration@enron.com and delete all copies of themessage. This e-mail (and any attachments hereto) are not intended to bean offer (or an acceptance) and do not create or evidence a binding andenforceable contract between Enron Corp. (or any of its affiliates) andthe intended recipient or any other party, and may not be relied on byanyone as the basis of a contract by estoppel or otherwise. Thank you.********************************************************************** - winmail.dat'),
+(   '2001-10-25 13:29:31',
+    'lance.cunningham@enron.com',
+    'ERCOT 2002 zonal map',
+    'To All:Attached is the 2002 zone map that the ERCOT board approved.Doug,  This one can replace the three zone map that you have on the "white board" on the floor.  I m not sure of the new traders that have been added, so if you could please forward it to them.David, I have forwarded this so that you know ERCOT is the original source.Lance -----Original Message-----From:  Donohoo, Ken [mailto:KDonohoo@ercot.com] Sent: Thursday, October 25, 2001 2:22 PMTo: Cunningham, LanceSubject: mapImportance: High'),
+(   '2001-10-25 13:06:31',
+    'doug.gilbert-smith@enron.com',
+    'RE: LAR and BUL registration form',
+    'can you summarize this and include it in your analysis please. -----Original Message-----From:  Dean, Clint  Sent: Thursday, October 25, 2001 2:28 PMTo: Gilbert-smith, DougSubject: LAR and BUL registration formhttp&colon;//www.ercot.com/mkt_part_apps/LaaRRegistrationForm.xls'),
+(   '2001-10-25 11:37:52',
+    'llmaser@degeurinrealty.com',
+    'RE:',
+    'Catwoman--I think.---- Clint.Dean@enron.com wrote:> Not sure, but I think so.  My only issue is that Iwon t know anyone there.> What are you going to be?>>  -----Original Message-----> From:     Lesley Maser<llmaser@degeurinrealty.com>@ENRON> Sent:     Thursday, October 25, 2001 11:35 AM> To:       Dean, Clint> Subject:  RE:>> Hopefully none if I am lucky!>> What about you?  You up for this??>> ---- Clint.Dean@enron.com wrote:> > Which award are you going for?  the Skankiest Ass> Bitch, and Classiest Ho!> >> >> >> >> >> >  -----Original Message-----> > From:     Lesley Maser> <llmaser@degeurinrealty.com>@ENRON> > Sent:     Thursday, October 25, 2001 11:25 AM> > To:       Dean, Clint> > Subject:  RE:> >> > Of course---I was just testing you!> >> > Goto www.clubmonkey.com and click on Pimp and> > Prostitute Ball for Houston.  All the details are> > there!> >> > ---- Clint.Dean@enron.com wrote:> > > the party invite, remember> > >> > >  -----Original Message-----> > > From:     Lesley Maser> > <llmaser@degeurinrealty.com>@ENRON> > > Sent:     Thursday, October 25, 2001 11:20 AM> > > To:       Dean, Clint> > > Subject:  Re:> > >> > > email you what???> > >> > > ---- "Dean, Clint" <Clint.Dean@ENRON.com> wrote:> > > > email me, please> > > >> > > >> > > >> > >> >>******************************************************> > > ****************> > > > This e-mail is the property of Enron Corp.> and/or> > > its relevant affiliate and may contain> confidential> > > and privileged material for the sole use of the> > > intended recipient (s). Any review, use,> > distribution> > > or disclosure by others is strictly prohibited.If> > > you are not the intended recipient (orauthorized> to> > > receive for the recipient), please contact the> > sender> > > or reply to Enron Corp. at> > > enron.messaging.administration@enron.com and> delete> > > all copies of the message. This e-mail (and any> > > attachments hereto) are not intended to be an> offer> > > (or an acceptance) and do not create orevidence a> > > binding and enforceable contract between Enron> Corp.> > > (or any of its affiliates) and the intended> > recipient> > > or any other party, and may not be relied on by> > > anyone as the basis of a contract by estoppel or> > > otherwise. Thank you.> > > >> > >> >>******************************************************> > > ****************> > > >> > > >> > >> > >> > >> >> >> >>>>'),
+(   '2001-10-25 09:00:44',
+    'valerie.ramsower@enron.com',
+    'FW: Texas Monthly November 2001: How Enron Blew It',
+    ' -----Original Message-----From: Patel, Tania Sent: Thursday, October 25, 2001 10:42 AMTo: Davies, Neil; Worrell, Perrin; Salas, Vangie; Magee, Molly; Broadfoot, Mark; Vasut, Tony; Berry, Lara; Buckley, Karen; Parker, Courtnie; Peng, Terry; Solis, Felicia; Chun, Andy; Hemani, Karim; Mehta, Rishi; Muller, Nathaniel; Ramsower, Valerie; Sims, RyanSubject: FW: Texas Monthly November 2001: How Enron Blew It    <http&colon;//images.clickability.com/eti/spacer.gif>   <http&colon;//images.clickability.com/eti/spacer.gif>    Texas Monthly <http&colon;//www.texasmonthly.com>    <http&colon;//images.clickability.com/logos/cc0000/emailthis-logo.gif>         <http&colon;//images.clickability.com/eti/spacer.gif>                   <http&colon;//images.clickability.com/eti/spacer.gif>         Click the following to access the sent link:           <http&colon;//images.clickability.com/partners/989/etIcon.gif>Texas Monthly November 2001: How Enron Blew It <http&colon;//texasmonthly.emailthis.clickability.com/et/emailThis?clickMap=viewThis&etMailToID=1882864300>             SAVE THIS link <http&colon;//texasmonthly.savethis.clickability.com/st/saveThisPopupApp?clickMap=saveFromET&partnerID=989&etMailToID=1882864300>  FORWARD THIS link <http&colon;//texasmonthly.emailthis.clickability.com/et/emailThis?clickMap=forward&etMailToID=1882864300&partnerID=989>   Please note, the sender s email address has not been verified.      Get your EMAIL THIS Browser Button and use it to email information from any Web site.   <http&colon;//texasmonthly.emailthis.clickability.com/et/emailThis?clickMap=browserButtons>         <http&colon;//images.clickability.com/eti/spacer.gif>'),
+(   '2001-10-24 07:56:26',
+    'terrell.benke@enron.com',
+    'FW: list of charges',
+    ' -----Original Message-----From:  Benke, Terrell  Sent: Wednesday, October 17, 2001 9:59 AMTo: Curry, MikeCc: Jester, Larry; Duffy, MatthewSubject: RE: list of chargesHere are the invoices for TXU, Reliant and CP&L.  When you use the files, refer to the READ ME worksheet first.  Choose the invoice that matches your customer s characteristics.    These aren t necessarily the final rates or the final rules for implementing them.  The PUCT is expected to issue updated rates within the next couple of weeks.  Furthermore, there is the risk of legal challenges to the rates. It is not a straightforward exercise to calculate these rates on a $/MWh basis.  Ken Farrar in the tariff group created a T&D estimator model to do just this.  He intends to update it to include any changes to the rates and to reflect interruptibility tariffs.  I can show you how to use the file.  I have saved all of these documents in:  m:/Electric/ERCOT Orig/Ahn Folder/T&D/Terrell -----Original Message-----From:  Curry, Mike  Sent: Friday, October 12, 2001 10:51 AMTo: Benke, TerrellCc: Jester, Larry; Duffy, MatthewSubject: list of chargesTerrell, Could you please get Larry, Matthew and I a summary of the charges listed on the sample invoice I gave you before for large industrials in TXU, Reliant, and CPL on a $/MWh basis.  When we talk to customers I would like a reference sheet that we can refer to to know things like T&D is approx. $x/MWh etc.Thanks, - Mike'),
+(   '2001-10-22 11:51:26',
+    'doug.gilbert-smith@enron.com',
+    'FW: ERCOT Update',
+    ' -----Original Message-----From: =09Twiggs, Thane =20Sent:=09Wednesday, October 17, 2001 12:13 PMTo:=09Gilbert-smith, Doug; Jester, Larry; Curry, Mike; Wagner, Joseph; Port=z, David; Ochsner, Preston; Forney, John M.; Day, Smith L.; Herndon, Rogers=; Benke, TerrellCc:=09Nicolay, Christi L.; Ryall, Jean; Steffes, James D.Subject:=09ERCOT UpdateThe ERCOT Board approved the congestion zones for next year, 2001. The ERCO=T Board accepted the 3 CSC 4 CM Zone model for use in commercial congestion= management for 2002.  Effective date is January 1, 2002.  The three CSC s =are Graham-Parker 345 kV DCKT, Sandow-Temple 345 kV DCKT and STP-DOW 345 kV= DCKT.  The four CM Zones are West02, North02, South02 and Houston02.  A po=wer point presentation along with a map is available at ftp://ftp.ercot.com=/CSCDATA/csc.htm. =20Current Congestion Cost and Outlook.  The congestion charges that have been= incurred are 55.6 million or 137 million depending on the methodology used= to calculate the charge. If you look purely at the scheduled MWs then it i=s 137 MM based upon the ERCOT protocols. The actual cost to redispatch and =clear congestion as of Sept. 22, 2001 was 55.6 MM. Both obviously are very =high considering it is for one month of operation.=20When the 20 MM trigger was hit August 14, 2001, ERCOT has 6 month by Protoc=ol and reaffirmed in the commission order to implement the full zonal model=. This means that there will no longer be an uplift of interzonal congestio=n, rather a direct assignment of the charge. The charge may be partially of=fset by the TCR that will be auctioned. The PUCT has indicated an interest =to move to direct assignment prior to the development and implementation of= a TCR instrument as a hedge.  I am chairing the congestion management work=ing group that is deciding the TCR issue and will be dealing with the local= congestion issues when that trigger has been hit.  I will attach a copy of= the current draft of the TCR white paper.  In short, the TCR is a financia=l option that can be purchased as hedge against zonal congestion.  There is= no physical requirement for the TCR in that you do not have to physically =schedule to receive the benefit of the TCR.  There will be an auction on or= about the 4th of February, 2002 and the full zonal implementation will tak=e place February 15, 2002.  The tentative schedule is as follows:?=0910/5/01 - Distribute draft TCR White Paper?=0910/22/01 - Review and edit draft TCR White Paper?=0910/30/01 - Distribute TCR White Paper to WMS?=0911/1/01 - WMS Meeting; vote on PRR?=0911/8/01 - TAC Meeting?=0911/19/01 - Board Meeting?=0912/4/01 - ERCOT issues notice of TCR Auction?=092/15/02 - First effective date of TCRs and direct assignment of CSC Con=gestion Costs=20Capacity Auction.  The capacity auction workshops have begun to rework that= capacity rule and problems experienced with the last round.  There was an =initial discussion on the problems that were experienced with credit and ho=w the standard was one-way and the buyers of capacity were left without rec=ourse.  There was a subsequent conference call with the credit professional=s to discuss the issues ( I did not participate) and there will be an addit=ional meeting on the 19th.  The purpose of the short-term meeting are to re=ctify issues such as credit and documents prior to the March and July 2002 =auctions.  Substantive issues such as the actual products, zone determinati=on and the auction process will be part of a rulemaking prior to the Septem=ber 2002 auction which includes annual products.=20Protocol Implementation.  ERCOT is in the process of determining what shoul=d be included in the Phase II design which will begin January 2001.  There =is a priority list that is currently under review by ERCOT vendors to deter=mine lead times of Phase II items in an attempt to deliver Phase II items A=SAP.  Parviz Adib from MOD stressed that there are certain issues that the =PUCT expects to be addressed in Phase II.  Issues that do not require major= system changes might still be doable in Phase II if the PRR Process is sta=rted immediately.  There is a placeholder in the Protocols related to BULs =and loads acting as resources.Mechanism for Simultaneous Procurement of Ancillary Services.   The PUCT ha=s expressed concern that there could be price reversals associated with the= ancillary services market (if it is assumed that the various ancillary ser=vices have different levels of value to the market).  The Board had approve=d a contingency plan to allow price modifications in the early markets, how=ever the plan has not been implemented.  The WMS discussed, at length, the =issue of simultaneously clearing all three markets - non-spinning, regulati=on, and responsive reserve.  A task force was formed to initially identify =the principles for developing a mechanism for simultaneous procurement of a=ncillary services issue.  It was suggested that a consultant be hired to de=velop Protocol language once the principles are identified.  The first task= force meeting was cancelled and has not been rescheduled. =20Demand-Side Task Force.  Jay Zarnikau reported on activities of the Demand-=Side Task Force that is addressing Balancing Up Load (BUL) Market Issues an=d other demand-side issues.  The PUCT expects the full functionality to be =in place on January 1, 2002.  The DSTF met last on October 1st (third meeti=ng).  The DSTF completed a draft status report on Demand-Side Resources and= Demand Responsiveness.  It was noted that the work of the DSTF is not comp=lete and has not been approved by any ERCOT Committee or the Board.  Howeve=r, ERCOT was required to file a report on these issues in the STF Report.  =The report reviews the policy considerations that have prompted interest in= the demand side of ERCOT s market, reviews the PUCT s directive, reviews t=he role of demand-side resources in ERCOT s markets, and identifies the iss=ues and impediments that the DSTF is presently addressing.  It also summari=zes the options discussed by the DSTF to date.  The PUCT staff has suggeste=d that ERCOT hire a consultant, such as Eric Hirsch, to provide more resour=ces for this effort.  The group expects to wrap up BUL issues and address d=irect load control issues at its next meeting.Unit Specific Deployments.  At the next WMS meeting October 24, 2001, there= will be a discussion regarding unit specific deployments and ERCOT will di=scuss the issues and the difficult that participants are having to meet the= ramp rates of the deployments.  The WMS will develop a list of issues and =case studies for ERCOT to discuss.  The WMS also briefly discussed PRR 282 =related to defining OOME as an Instructed Deviation.'),
+(   '2001-10-17 14:40:13',
+    'jae.black@enron.com',
+    'FW: Enron s FERC filing opposing icap',
+    '-----Original Message-----From: Nicolay, Christi L. Sent: Wednesday, October 17, 2001 4:29 PMTo: Steffes, James D.; Kingerski, Harry; Novosel, Sarah; Fromer, Howard;Landwehr, Susan M.; Guerrero, Janel; Allegretti, Daniel; Roan, Michael;Hoatson, Tom; Shapiro, Richard; Kean, Steven J.; Presto, Kevin M.;Belden, Tim; Herndon, Rogers; Black, Don; Misra, Narsimha; Brown, Jeff;Aucoin, Berney C. ; Maurer, Luiz; Twiggs, Thane; Lavorato, John;Kitchen, Louise; Dietrich, Janet; Delainey, David; Duran, W. David;Calger, Christopher F.; Nord, SueSubject: Enron s FERC filing opposing icapToday at FERC, Enron filed a pleading requesting the complete elimination of "icap" as a product (including any "reserve type" products) based on the fact that the real time spot markets of the RTOS can effectively price this in the cost of energy.  The pleading also includes a proposed interim approach (with a two year sunset date).  This pleading was made in response to FERC s request for comments on "Ensuring Sufficient Capacity Reserves In Today s Energy Markets."The pleading and affidavit of Larry Ruff, PhD are attached.'),
+(   '2001-10-17 09:58:11',
+    'greg.trefz@enron.com',
+    'FW:',
+    ' -----Original Message-----From:  Gilbert-smith, Doug  Sent: Wednesday, October 17, 2001 9:06 AMTo: Trefz, GregSubject: RE: this is exactly right. we need to basically create a distribution that does not get influenced by temps -----Original Message-----From:  Trefz, Greg  Sent: Wednesday, October 17, 2001 9:03 AMTo: Seksaria, RahulCc: Gilbert-smith, DougSubject: Rahul, Per our conversation, please follow up with research and ake the following changes to the current model.    1). We want the model to use the desks hourly scalars. We also want to be able to differentiate the scalars for each year.  The current historical data the   model uses is not applicable to the ERCOT market.  2). We want to able to control the number of jump hours and days, and control the range of prices for those jumps for positive and negative pricing. We also   would like to control this and change it for each individual year.  3). Model must be capable of positive and negative pricing. Please get a timeline on when this can be completed.Doug, if you have anything more that you want to be able to control in the model please let me know and I will make sure it gets done.Regards,Greg'),
+(   '2001-10-12 12:44:40',
+    'jae.black@enron.com',
+    'FW: Options Market Update',
+    ' -----Original Message-----From:  Chen, Hai  Sent: Friday, October 12, 2001 2:35 PMTo: Black, Tamara JaeSubject: Options Market UpdateImportance: HighT Jae,Could you forward the followings to all traders and mid-marketers.  Thanks!  - HaiWe plan to provide all traders and mid-marketers a weekly update on selected products and activities in options market.  Attached sheet is our first issue, and your comments are much welcome.  We make markets for much more products than the listed.  If you or your customers are interested in any products not available in this sheet, please feel free to contact us directly.  If you don t want to receive this update in the future, please also advise us.  Thanks.Hai'),
+(   '2001-10-03 12:31:45',
+    'l..day@enron.com',
+    'FW: TDSP Service Agreement',
+    ' -----Original Message-----From:  Day, Smith L.  Sent: Wednesday, October 03, 2001 1:54 PMTo:  jill_l_roffmann@reliantenergy.com Cc: Gilbert-smith, Doug; Will, LloydSubject: TDSP Service AgreementDear Ms. Roffmann:I am with Enron Power Marketing Inc. and have been working on our effort to test as an LSE in flight 1001.  I have a couple of questions regarding transmission services and hope that you can answer them or direct me to the person who can.We need to speak with someone who can assist us in getting a service agreement set up for the Reliant control area in order for us to operate as a Load Serving Entity.  If someone can explain or provide information regarding the basic service package or other available packages that would be extremely helpful. Any help you can offer would be greatly appreciated.Regards,Smith L. DayEnron Power Marketing, Inc.Ph. 713-853-4201Fax: 713-646-8272Pager: 877-306-9429'),
+(   '2001-11-01 12:02:36',
+    'tim.belden@enron.com',
+    'Portland Document Preservation Policy',
+    'X-FileName: Enron s General Counsel sent out an e-mail this morning defining data and document retention policies relating to SEC Investigations and Shareholder Class Action lawsuits.  The e-mail, which appears below, goes on to explain that we should otherwise return to "our normal electronic document retention policy."I want to remind everybody that the new document retention requirements are in addition to this office s current document retention policy.  Specifically, the policies that we have agreed to with the California Attorney General remain in effect.  As a reminder, I have included our policy below.  Each person in the Portland office needs to be aware of and continue to comply with our data retention policies. If you have any questions or concerns please let me know.The purpose of this message is to update employees on thestatus of the California Attorney General s order regarding the preservationof business information.  Please NOTE THE IMPORTANT POLICIES DESCRIBEDBELOW.Please continue to ahdere to the following business information retention policies:(1) PERSONAL EMAIL: can be kept, discarded,etc. at will.(2) BUSINESS EMAIL: do not delete anybusiness email sent or received for 24 hours.  This 24 hour delay will allowthe network to save a backup copy of the email.  After 24 hours, BUSINESSEMAIL may be kept, discarded, etc. at will.(3) WORD PROCESSING FILES OR FILE FRAGMENTS:do not delete any SAVED FILE or any FILE FRAGMENT.  This policy covers anyFILE or FILE FRAGMENT that you have saved on your hard disk or the network.(4) DATABASES: do not delete any informationin DATABASES.(5) EXCEL SPREADSHEETS: do not delete anyinformation in EXCEL SPREADSHEETS.(6) CALENDARS OR SCHEDULING PROGRAMS: do notdelete any information.(7) OTHER ELECTRONIC DATA: do not delete anyOTHER ELECTRONIC DATA.(8) HARD DRIVE CAPACITY: in the event thatyou run out of disk space on your personal computer, you may copy files tothe network (where they will be backed up), then delete the files from yourpersonal computer to create the work space you need.  DO NOT DELETE ANY FILEBEFORE YOU HAVE COPIED IT TO THE NETWORK. -----Original Message-----From:  Enron Announcements/Corp/Enron@ENRON   On Behalf Of Jim Derrick.@ENRONSent: Wednesday, October 31, 2001 5:36 PMTo: All Enron Worldwide@ENRONSubject: Important Announcement Regarding Document Preservation        I want to thank you for your cooperation in responding to my previous notice regarding the suspension of our document retention policy.        Through the excellent work of our  IT group, we have now secured our electronic media as needed for litigation purposes.  Accordingly, except as noted below, we will now return to our normal electronic document retention policy.        In order that we may capture all possible electronic information related to the litigation, please do the following:        1.      If you have any voice mails that relate in any way to the LJM Deal or Chewco Investments L.P., including any accounting issues related to these transactions, please forward the voice mails to  x3-6800.        2.      If you have any voice mails that relate in any way to Enron s public statements regarding EBS, Azurix, New Power Co., or any voice mail regarding financial transactions involving these matters, including accounting issues related to these matters, please forward the voice mails to  x3-6801.        3.      If you have any e-mails that relate in any way to the LJM Deal or Chewco Investments L.P., including any accounting issues related to these transactions, please forward the e-mails to  LJM.Litigation@enron.com.        4.      If you have any e-mails that relate in any way to Enron s public statements regarding EBS, Azurix, New Power Co., or any  e-mail regarding financial transactions involving these matters, including accounting issues related to these matters, please forward the e-mails to ClassAction.Litigation@enron.com.        "LJM Deal" includes LJM Cayman L.P., LJM Co-Investment L.P., TNPC1, Margaux1, Cortez (TNPC), Osprey1, Avici, Catalytica, Fishtail (Pulp & Paper), Backbone, ENA CLO (Merlin), Nowa Sarzyna (Poland), Bob West, MEGS, Yosemite, EECC Turbines (Blue Dog), Raptor 1, Raptor 1a, Raptor 2, Raptor 2a, Raptor 3, Raptor 4, Rawhide, LJM2/WW Loan Agrmt, Osprey 2 LLC1, Rythms, Osprey, Cuiaba,  and LJM Cayco Investments.Also, please forward all future e-mails and voice mails that relate to the above-referenced subjects to the appropriate e-mail address or voice mail box.  These procedures will ensure that our electronic documents and voice mails are properly preserved.        Over the next month, our lawyers will be collecting our traditional files, i.e., written documents, for possible production in litigation.  In the meantime, please retain all of your hard-copy files that in any way relate to:        1.      The LJM Deal         2.      Azurix         3.      New Power Co.         4.      EBS         5.      Chewco Investments L.P.        6.      Accounting for any Enron investments         7.      Any Enron public statement made to the investment public         8.      Any Enron public filing with the SEC or other regulatory bodies         Please err on the side of retention of documents.         If you have any questions, please call Andrew Edison at x5-7105.'),
+(   '2001-11-14 15:34:17',
+    'steve.c.hall@enron.com',
+    'CAISO to stop spoonfeeding price info to CDWR',
+    'X-FileName: It will be interesting to judge CERS s trading acumen going forward now that it doesn t have inside information from the CAISO. -----Original Message-----From:  Blair, Kit  Sent: Wednesday, November 14, 2001 9:24 AMTo: Comnes, Alan; Hall, Steve C. (Legal)Subject: FW: article -----Original Message-----From:  Nelson, Kourtney  Sent: Wednesday, November 14, 2001 9:22 AMTo: Blair, KitSubject: articleLawmakers examine relationship between state s grid and tradersBy JENNIFER COLEMAN11/13/2001 Associated Press Newswires Copyright 2001. The Associated Press. All Rights Reserved. SACRAMENTO, Calif. (AP) - California grid officials said Tuesday they will stop providing state power buyers with aggregate price information that s not available to other participants in the state s energy market . Following a five-hour hearing of the Senate Select Committee to Investigate Price Manipulation of the Wholesale Energy Market , officials with the California Independent System Operator said they would cut off that information as of midnight. The committee was examining the trading practices of the state power grid, which generators complained gave preferential treatment to the state s energy buyers with the California Department of Water Resources. Generators said the ISO, a state-created independent agency that was intended to ensure the smooth operation of the deregulated market , abandoned its independence when it agreed to give DWR additional market information. DWR has been buying power for three utilities since January when high wholesale prices brought the companies to the brink of bankruptcy. The ISO can only buy power to balance the grid if a "creditworthy" buyer backs the purchase. DWR stepped in to back those purchases. ISO officials said they gave DWR traders some information not otherwise available, but DWR requirements forced them to do it. In order to buy the cheapest energy for consumers, DWR required that ISO let it know how much energy will be needed in the next hour and approximate prices, so it could shop outside the grid for the best price, said Pete Garris, acting deputy director of DWR s trading arm. But that violated the ISO s tariffs and the Federal Power Act that require grid managers to treat all parties equally, said Robert Hayes of Mirant Inc. Though FERC has jurisdiction over the generators  complaint, Sen. Joe Dunn, D-Santa Ana, said he called the committee hearing on the same subject "to get a full understanding of what exactly has occurred." It s not the generator s only beef with the state s energy traders. Hayes said the ISO has also been bypassing bids for available power in order to buy out-of- market energy at higher prices. "There is substantial evidence that, at times, the ISO and DWR bypassed lower-cost power available in the real-time market in favor of higher, out-of- market power ," Hayes said. A majority of those out-of- market purchases were from the Canadian firm Power -Ex, which is the marketing arm of British Columbia Hydro, said Larry Drivon, an attorney for the committee. Last week, FERC intervened in another battle between generators and the state, ordering California to pay power suppliers $1.2 billion for energy sales to California since January. FERC said it would lift a key component of the commission s effort to stabilize California  s power market if the state does not quickly settle its bill with power generators. At issue is the "must-offer" requirement that prohibits generators from withholding power from the wholesale electricity market in a bid to drive up prices. FERC imposed it in April after months of soaring power prices and rolling blackouts in California  s deregulated electricity market . FERC said generators no longer will be required to do business with the ISO manager of much of the state s electric grid, if ISO does not arrange for prompt payment of past power sales. "The must-offer requirement assumes a matching must-pay requirement," commissioners said in their order. ISO has said it will comply with the order, under which the agency has 15 days to bill the DWR. California and federal energy officials said the "must-offer" requirement has played a big role in calming the state s previously unsettled energy market . "I give the must-offer requirement a lot of the credit for the current lower prices," FERC commissioner William Massey said in his dissent from parts of last week s order. But Massey agreed with the three other commissioners that something must be done to compel payment or risk a return to a "dysfunctional" market in California . ISO spokesman Greg Fishman said up to 13,000 megawatts of power a day have been out of service for maintenance in recent weeks, without any blackouts. Last spring, before FERC required generators to sell all their available power , similar outages resulted in blackouts, he said. "Today, because of the must-offer requirement, we ve been able to meet the demand," Fishman said.'),
+(   '2002-01-24 16:32:57',
+    'julie.kearney@enron.com',
+    'FW: UBS HR Meeting - REQUIRED',
+    'X-FileName: Gabrielle,Would you mind connecting w/ Craig regarding his req d paperwork.  Craig can be reached by calling 503/ 312-2086.  Julie KearneyENA Human Resources503) 464-7404 julie.kearney@enron.com -----Original Message-----From:  Dean, Craig  Sent: Thursday, January 24, 2002 5:21 AMTo: Kearney, JulieSubject: RE: UBS HR Meeting - REQUIREDJulie,As I am getting off night shift today, I will be unable to attend the HR presentation.  I believe I filled out all of the necessary paperwork (W-4, direct deposit, and employment application) to get started and I dropped the beneficiary and benefits paperwork on your desk this morning.  Please write me if there is anything else that you need from me.Craig Dean -----Original Message-----From:  Kearney, Julie  Sent: Wednesday, January 23, 2002 3:34 PMTo: Alonso, Tom; Amador, Susan; Anderson, John; Bulbes, Victor; Chang, Fran; Chatterton, Jill; Comnes, Alan; Crandall, Sean; Cutsforth, Diane; Davidson, Debra; Dean, Craig; Driscoll, Michael M.; Dunton, Heather; Gilbert, Scotty; Gustafson, Mollie; Hall, Steve C. (Legal); Kandaswamy, Bala; Lackey, Chris; Lee, EugeneCc: Rodriguez, Grace;  gabriele.hagele@ubsw.com Subject: UBS HR Meeting - REQUIREDImportance: HighPlease plan to attend the local UBS HR Presentation given by Gabrielle Hagele and Chris Lue tomorrow, Thursday, 1/24/02 at 9:00 AM in the Mt. Hood Conference Room.  The presentation will detail UBS Benefits and UBS HR Policies.  Time is also set aside for Question and Answers.  Several UBS HR required forms will be distributed during this meeting.  These forms are required to process payroll and enroll in the benefit plans.  If you are unable to attend this meeting, please contact me or one of the UBS HR personnel.   See you then!'),
+(   '2002-02-05 10:32:08',
+    'amy.fitzpatrick@enron.com',
+    'RE: UBSW Trading Position',
+    'X-FileName: Thanks Craig....Amy -----Original Message-----From:  Dean, Craig  Sent: Tuesday, February 05, 2002 6:14 AMTo: Fitzpatrick, AmySubject: UBSW Trading PositionAmy, I am writing in regards to myself, Craig Dean as well as Geir Solberg (out of office) in response to Tim Belden s E-mail on  2/4.  I would appreciate the consideration for the position of Assistant Trader, Cash or Term,  with UBSW Energy and will be available for interview upon request.  You are welcome to reach me at the number listed below or via e-mail.Regards,Craig Dean   (503) 880.5303Geir Solberg (503) 772.0515'),
+(   '2002-02-06 10:32:09',
+    'amy.fitzpatrick@enron.com',
+    'RE: Drug Test for UBS',
+    'X-FileName: Great Craig - thanks....do you happen to know the location?Amy -----Original Message-----From:  Dean, Craig  Sent: Tuesday, February 05, 2002 7:34 PMTo: Fitzpatrick, AmySubject: RE: Drug Test for UBSThanks Amy-Monday Feb 4thCraig -----Original Message-----From:  Fitzpatrick, Amy  Sent: Tuesday, February 05, 2002 3:14 PMTo: Dean, CraigCc: Williams III, BillSubject: Drug Test for UBSCraig -Our records indicate that you have not taken your pre-employment drug test for UBS.  Can you please do so ASAP, or if you have already completed, can you please let me know the date that you went so that we can update our records.Thanks!Amy');
+
+DROP TABLE IF EXISTS enron_date;
+CREATE TABLE enron_date(date TEXT);
+INSERT INTO enron_date (date)
+    SELECT DISTINCT DATE(date) FROM enron_email_fts ORDER BY date;
+DROP TABLE IF EXISTS enron_match;
+CREATE TABLE enron_match (phrase TEXT, date TEXT);
+INSERT INTO enron_match
+    SELECT 'enron corp' AS phras, DATE(date)
+    FROM enron_email_fts WHERE body MATCH 'enron corp';
+INSERT INTO enron_match
+    SELECT 'options market' AS phras, DATE(date)
+    FROM enron_email_fts WHERE body MATCH 'options market';
+INSERT INTO enron_match
+    SELECT 'real time' AS phrase, DATE(date)
+    FROM enron_email_fts WHERE body MATCH 'real time';
+SELECT * FROM (VALUES
+    ('#!sqlchart','{
+        "chartTitle":"count vs. date (of emails containing fts-phrase from enron-dataset)",
+        "chartType":"bar",
+        "xType":"time"
+    }'),
+    (NULL, NULL),
+    ('x', 'SELECT date from enron_date ORDER BY date'),
+    ('y', '
+    SELECT
+        ''"'' || tmp1.phrase || ''"'' AS phrase,
+        COALESCE(tmp2.cnt, 0) AS number_of_emails_with_fts_phrase
+        FROM (SELECT DISTINCT phrase FROM enron_match) AS tmp1
+        CROSS JOIN enron_date
+        LEFT JOIN (
+            SELECT phrase, date, COUNT(1) AS cnt
+            FROM enron_match
+            GROUP BY phrase, date
+        ) AS tmp2 ON tmp2.phrase = tmp1.phrase AND tmp2.date = enron_date.date
+        ORDER BY tmp1.phrase, enron_date.date;
+    ')
+    );
+SELECT * FROM enron_email_fts;
+</textarea>
+    <button class="button" id="dbExec2">script - execute</button>
+    </div> <!-- #editor1 -->
+    <div class="header">sqlite query results</div>
+    <div id="sqlResultData1"></div>
+    <div class="header">sqlite tables and indices</div>
+    <div id="sqlResultData2"></div>
+</div> <!-- #panelContent1 -->
+<script src="assets.bootstrap-v3.4.1.datatables-v1.10.21.chartjs-v2.9.4.codemirror-5.58.3.rollup.js"></script>
+<script src="spa.sqlchart.js"></script>
+</body>
+</html>
