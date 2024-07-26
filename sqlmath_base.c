@@ -77,8 +77,8 @@ file sqlmath_h - start
 #define JSBATON_OFFSET_BUFV     192
 #define JSBATON_OFFSET_ERRMSG   48
 #define JSBATON_OFFSET_FUNCNAME 8
-#define JS_MAX_SAFE_INTEGER     0x1fffffffffffff
-#define JS_MIN_SAFE_INTEGER     -0x1fffffffffffff
+#define JS_MAX_SAFE_INTEGER     0x1fffffffffffffLL
+#define JS_MIN_SAFE_INTEGER     -0x1fffffffffffffLL
 #define SIZEOF_BLOB_MAX         1000000000
 #define SIZEOF_ERRMSG           80
 #define SIZEOF_FUNCNAME         16
@@ -104,6 +104,8 @@ file sqlmath_h - start
 #define MATH_PI 3.141592653589793238463
 #define MATH_SIGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
 #define MATH_SWAP(aa, bb, tmp) tmp = (aa); (aa) = (bb); (bb) = tmp
+#define SQLITE_COLUMNTYPE_INTEGER_BIG   11
+#define SQLITE_COLUMNTYPE_TEXT_BIG      13
 #define SQLITE_ERROR_DATATYPE_INVALID   0x10003
 #define SQLITE_ERROR_JSON_ARRAY_INVALID 0x71
 #define SQLITE_ERROR_ZSQL_NULL          0x10004
@@ -2297,6 +2299,72 @@ SQLMATH_FUNC static void sql1_zlib_uncompress_func(
 
 // SQLMATH_FUNC sql1_zlib_xxx_func - end
 
+// SQLMATH_FUNC sql2_columntype_func - start
+typedef struct AggColumntype {
+    int columntype;
+} AggColumntype;
+
+SQLMATH_FUNC static void sql2_columntype_final(
+    sqlite3_context * context
+) {
+// This function will return columntype for given <column>.
+    // agg - init
+    SQLITE3_AGGREGATE_CONTEXT(AggColumntype);
+    // agg - null-case
+    if (agg->columntype == 0) {
+        agg->columntype = SQLITE_INTEGER;
+    }
+    sqlite3_result_int(context, agg->columntype);
+}
+
+SQLMATH_FUNC static void sql2_columntype_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return columntype for given <column>.
+    UNUSED_PARAMETER(argc);
+    // agg - init
+    SQLITE3_AGGREGATE_CONTEXT(AggColumntype);
+    // agg - null-case
+    if (agg->columntype == 0) {
+        agg->columntype = SQLITE_INTEGER;
+    }
+    switch (sqlite3_value_type(argv[0])) {
+    case SQLITE_BLOB:
+        agg->columntype = SQLITE_BLOB;
+        break;
+    case SQLITE_FLOAT:
+        if (agg->columntype == SQLITE_INTEGER
+            || agg->columntype == SQLITE_COLUMNTYPE_INTEGER_BIG) {
+            agg->columntype = SQLITE_FLOAT;
+        }
+        break;
+    case SQLITE_INTEGER:
+        {
+            const int64_t val = sqlite3_value_int64(argv[0]);
+            if (!(-0x80000000LL <= val && val <= 0x7fffffffLL)) {
+                agg->columntype = SQLITE_COLUMNTYPE_INTEGER_BIG;
+            }
+        }
+        break;
+        // case SQLITE_NULL:
+    case SQLITE_TEXT:
+        if (agg->columntype == SQLITE_INTEGER
+            || agg->columntype == SQLITE_COLUMNTYPE_INTEGER_BIG
+            || agg->columntype == SQLITE_FLOAT) {
+            agg->columntype = SQLITE_TEXT;
+        }
+        if (agg->columntype == SQLITE_TEXT
+            && sqlite3_value_bytes(argv[0]) > 255) {
+            agg->columntype = SQLITE_COLUMNTYPE_TEXT_BIG;
+        }
+        break;
+    }
+}
+
+// SQLMATH_FUNC sql2_columntype_func - end
+
 // SQLMATH_FUNC sql2_lgbm_datasetcreatefromtable_func - start
 typedef struct AggLgbmDataset {
     char param_data[LGBM_PARAM_BUF_LEN_MAX];
@@ -3859,9 +3927,9 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
     }
     // sine y-estimate
     if (strcmp(key, "syy") == 0) {
-        sqlite3_result_double_or_null(context,
-            wsf->yy1 - wsf->rr1 +
-            wsf->saa * sin(fmod(wsf->sww * wsf->xx1,
+        sqlite3_result_double_or_null(context, 0        //
+            + wsf->yy1 - wsf->rr1       //
+            + wsf->saa * sin(fmod(wsf->sww * wsf->xx1,
                     2 * MATH_PI) + wsf->spp));
         return;
     }
@@ -4130,6 +4198,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(throwerror, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(zlib_compress, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(zlib_uncompress, 1, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC2(columntype, 1, 0);
     SQL_CREATE_FUNC2(lgbm_datasetcreatefromtable, -1, 0);
     SQL_CREATE_FUNC2(lgbm_trainfromtable, -1, 0);
     SQL_CREATE_FUNC2(median, 1, 0);
