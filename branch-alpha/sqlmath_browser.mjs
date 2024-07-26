@@ -2054,8 +2054,13 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
         data = data[0] || [];
         data.shift();
         data = (
-            `-- DROP TABLE __sqlite_table_01;\n`
-            + `CREATE TABLE __sqlite_table_01 (\n`
+            String(`
+-- DROP TABLE __sqlite_table_01;
+-- SELECT * FROM __sqlite_table_01;
+-- ALTER TABLE __sqlite_table_01 RENAME TO __sqlite_table_02;
+-- EXEC sp_rename '__sqlite_table_01', '__sqlite_table_02';
+            `).trim()
+            + `\nCREATE TABLE __sqlite_table_01 (\n`
             + baton.colList.map(function (col, ii) {
                 col = col.replace((/\W/g), "_");
                 col = col.replace((/^\d/), "_$&");
@@ -2068,18 +2073,18 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
                 // #define SQLITE_NULL     5
                 switch (columntypeList[ii]) {
                 case 2: // SQLITE_FLOAT
-                    return `${col} FLOAT(53)`;
+                    return `    ${col} FLOAT(53)`;
                 case 3: // SQLITE_TEXT
-                    return `${col} VARCHAR(255)`;
+                    return `    ${col} VARCHAR(255)`;
                 case 11: // SQLITE_COLUMNTYPE_INTEGER_BIG
-                    return `${col} BIGINT`;
+                    return `    ${col} BIGINT`;
                 case 13: // SQLITE_COLUMNTYPE_TEXT_BIG
-                    return `${col} TEXT`;
+                    return `    ${col} TEXT`;
                 default:
-                    return `${col} INTEGER`;
+                    return `    ${col} INTEGER`;
                 }
             }).join(",\n")
-            + `);\n`
+            + `\n);\n`
             + data.map(function (rowList) {
                 return (
                     `INSERT INTO __sqlite_table_01 VALUES (`
@@ -2101,8 +2106,6 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
                     + `);\n`
                 );
             }).join("")
-            + `-- SELECT * FROM __sqlite_table_01;\n`
-            + `-- ALTER TABLE __sqlite_table_01 RENAME TO __sqlite_table_02;\n`
         );
         fileSave({
             buf: data,
