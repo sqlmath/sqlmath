@@ -77,8 +77,8 @@ file sqlmath_h - start
 #define JSBATON_OFFSET_BUFV     192
 #define JSBATON_OFFSET_ERRMSG   48
 #define JSBATON_OFFSET_FUNCNAME 8
-#define JS_MAX_SAFE_INTEGER     0x1fffffffffffff
-#define JS_MIN_SAFE_INTEGER     -0x1fffffffffffff
+#define JS_MAX_SAFE_INTEGER     0x1fffffffffffffLL
+#define JS_MIN_SAFE_INTEGER     -0x1fffffffffffffLL
 #define SIZEOF_BLOB_MAX         1000000000
 #define SIZEOF_ERRMSG           80
 #define SIZEOF_FUNCNAME         16
@@ -104,6 +104,8 @@ file sqlmath_h - start
 #define MATH_PI 3.141592653589793238463
 #define MATH_SIGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
 #define MATH_SWAP(aa, bb, tmp) tmp = (aa); (aa) = (bb); (bb) = tmp
+#define SQLITE_COLUMNTYPE_INTEGER_BIG   11
+#define SQLITE_COLUMNTYPE_TEXT_BIG      13
 #define SQLITE_ERROR_DATATYPE_INVALID   0x10003
 #define SQLITE_ERROR_JSON_ARRAY_INVALID 0x71
 #define SQLITE_ERROR_ZSQL_NULL          0x10004
@@ -1508,129 +1510,6 @@ SQLMATH_FUNC static void sql1_casttextorempty_func(
         SQLITE_TRANSIENT);
 }
 
-// SQLMATH_FUNC sql1_zlib_xxx_func - start
-typedef unsigned long z_ulong;  // NOLINT
-
-int compress(
-    unsigned char *,
-    z_ulong *,
-    const unsigned char *,
-    z_ulong
-);
-
-int uncompress(
-    unsigned char *,
-    z_ulong *,
-    const unsigned char *,
-    z_ulong *
-);
-
-SQLMATH_FUNC static void sql1_zlib_compress_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-/*
-** Implementation of the "compress(X)" SQL function.  The input X is
-** compressed using zLib and the output is returned.
-**
-** The output is a BLOB that begins with a variable-length integer that
-** is the input size in bytes (the size of X before compression).  The
-** variable-length integer is implemented as 1 to 5 bytes.  There are
-** seven bits per integer stored in the lower seven bits of each byte.
-** More significant bits occur first.  The most significant bit (0x80)
-** is a flag to indicate the end of the integer.
-**
-** This function, SQLAR, and ZIP all use the same "deflate" compression
-** algorithm, but each is subtly different:
-**
-**   *  ZIP uses raw deflate.
-**
-**   *  SQLAR uses the "zlib format" which is raw deflate with a two-byte
-**      algorithm-identification header and a four-byte checksum at the end.
-**
-**   *  This utility uses the "zlib format" like SQLAR, but adds the variable-
-**      length integer uncompressed size value at the beginning.
-**
-** This function might be extended in the future to support compression
-** formats other than deflate, by providing a different algorithm-id
-** mark following the variable-length integer size parameter.
-*/
-    UNUSED_PARAMETER(argc);
-    const unsigned char *pIn = NULL;
-    int ii = 0;
-    int jj = 0;
-    int nIn = 0;
-    int rc = 0;
-    unsigned char *pOut = NULL;
-    unsigned char x[8] = { 0 };
-    z_ulong nOut = 0;
-    pIn = sqlite3_value_blob(argv[0]);
-    if (pIn == NULL) {
-        sqlite3_result_error(context, "Cannot compress() NULL blob", -1);
-        return;
-    }
-    nIn = sqlite3_value_bytes(argv[0]);
-    nOut = 13 + nIn + (nIn + 999) / 1000;
-    pOut = sqlite3_malloc(nOut + 5);
-    for (ii = 4; ii >= 0; ii--) {
-        x[ii] = (nIn >> (7 * (4 - ii))) & 0x7f;
-    }
-    for (ii = 0; ii < 4 && x[ii] == 0; ii += 1) {
-    }
-    for (jj = 0; ii <= 4; ii += 1, jj += 1)
-        pOut[jj] = x[ii];
-    pOut[jj - 1] |= 0x80;
-    rc = compress(&pOut[jj], &nOut, pIn, nIn);
-    if (rc) {
-        sqlite3_free(pOut);
-        return;
-    }
-    sqlite3_result_blob(context, pOut, nOut + jj, sqlite3_free);
-}
-
-SQLMATH_FUNC static void sql1_zlib_uncompress_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-/*
-** Implementation of the "uncompress(X)" SQL function.  The argument X
-** is a blob which was obtained from compress(Y).  The output will be
-** the value Y.
-*/
-    UNUSED_PARAMETER(argc);
-    const unsigned char *pIn = NULL;
-    int ii = 0;
-    int nIn = 0;
-    int rc = 0;
-    unsigned char *pOut = NULL;
-    z_ulong nOut = 0;
-    pIn = sqlite3_value_blob(argv[0]);
-    if (pIn == NULL) {
-        sqlite3_result_error(context, "Cannot uncompress() NULL blob", -1);
-        return;
-    }
-    nIn = sqlite3_value_bytes(argv[0]);
-    nOut = 0;
-    for (ii = 0; ii < nIn && ii < 5; ii += 1) {
-        nOut = (nOut << 7) | (pIn[ii] & 0x7f);
-        if ((pIn[ii] & 0x80) != 0) {
-            ii += 1;
-            break;
-        }
-    }
-    pOut = sqlite3_malloc(nOut + 1);
-    rc = uncompress(pOut, &nOut, &pIn[ii], (z_ulong *) (intptr_t) (nIn - ii));
-    if (rc) {
-        sqlite3_free(pOut);
-        return;
-    }
-    sqlite3_result_blob(context, pOut, nOut, sqlite3_free);
-}
-
-// SQLMATH_FUNC sql1_zlib_xxx_func - end
-
 SQLMATH_FUNC static void sql1_copyblob_func(
     sqlite3_context * context,
     int argc,
@@ -1748,6 +1627,43 @@ SQLMATH_FUNC static void sql1_fmod_func(
     sqlite3_result_double_or_null(context, fmod(        //
             sqlite3_value_double_or_nan(argv[0]),       //
             sqlite3_value_double_or_nan(argv[1])));
+}
+
+SQLMATH_FUNC static void sql1_idatefromtext_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return integer-yyymmdd from date-string.
+    UNUSED_PARAMETER(argc);
+    char *zBuf = (char *) sqlite3_value_text(argv[0]);
+    if (zBuf == NULL) {
+        return;
+    }
+    int ii = strtol(zBuf, NULL, 10) * 10000     //
+        + strtol(zBuf + 5, NULL, 10) * 100      //
+        + strtol(zBuf + 8, NULL, 10);
+    if (!(10000101 <= ii && ii <= 99991231)) {
+        return;
+    }
+    sqlite3_result_int(context, ii);
+}
+
+SQLMATH_FUNC static void sql1_idatetotext_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return date-string from integer-yyymmdd.
+    UNUSED_PARAMETER(argc);
+    int ii = sqlite3_value_int(argv[0]);
+    char zBuf[10 + 1] = { 0 };
+    sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d", ii / 10000,
+        (ii % 10000) / 100, (ii % 100));
+    if (!(10000101 <= ii && ii <= 99991231)) {
+        return;
+    }
+    sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
 }
 
 // SQLMATH_FUNC sql1_lgbm_xxx_func - start
@@ -2210,18 +2126,6 @@ SQLMATH_FUNC static void sql1_sqrtwithsign_func(
     sqlite3_result_double(context, xx < 0 ? -sqrt(-xx) : sqrt(xx));
 }
 
-SQLMATH_FUNC static void sql1_squaredwithsign_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will return squared() of magnitude of value,
-// with sign preserved.
-    UNUSED_PARAMETER(argc);
-    const double xx = sqlite3_value_double_or_nan(argv[0]);
-    sqlite3_result_double(context, xx < 0 ? -xx * xx : xx * xx);
-}
-
 SQLMATH_FUNC static void sql1_squared_func(
     sqlite3_context * context,
     int argc,
@@ -2244,6 +2148,18 @@ SQLMATH_FUNC static void sql1_squared_func(
     }
 }
 
+SQLMATH_FUNC static void sql1_squaredwithsign_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return squared() of magnitude of value,
+// with sign preserved.
+    UNUSED_PARAMETER(argc);
+    const double xx = sqlite3_value_double_or_nan(argv[0]);
+    sqlite3_result_double(context, xx < 0 ? -xx * xx : xx * xx);
+}
+
 SQLMATH_FUNC static void sql1_throwerror_func(
     sqlite3_context * context,
     int argc,
@@ -2259,6 +2175,195 @@ SQLMATH_FUNC static void sql1_throwerror_func(
     }
     sqlite3_result_error_code(context, SQLITE_INTERNAL);
 }
+
+// SQLMATH_FUNC sql1_zlib_xxx_func - start
+typedef unsigned long z_ulong;  // NOLINT
+
+int compress(
+    unsigned char *,
+    z_ulong *,
+    const unsigned char *,
+    z_ulong
+);
+
+int uncompress(
+    unsigned char *,
+    z_ulong *,
+    const unsigned char *,
+    z_ulong *
+);
+
+SQLMATH_FUNC static void sql1_zlib_compress_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+/*
+** Implementation of the "compress(X)" SQL function.  The input X is
+** compressed using zLib and the output is returned.
+**
+** The output is a BLOB that begins with a variable-length integer that
+** is the input size in bytes (the size of X before compression).  The
+** variable-length integer is implemented as 1 to 5 bytes.  There are
+** seven bits per integer stored in the lower seven bits of each byte.
+** More significant bits occur first.  The most significant bit (0x80)
+** is a flag to indicate the end of the integer.
+**
+** This function, SQLAR, and ZIP all use the same "deflate" compression
+** algorithm, but each is subtly different:
+**
+**   *  ZIP uses raw deflate.
+**
+**   *  SQLAR uses the "zlib format" which is raw deflate with a two-byte
+**      algorithm-identification header and a four-byte checksum at the end.
+**
+**   *  This utility uses the "zlib format" like SQLAR, but adds the variable-
+**      length integer uncompressed size value at the beginning.
+**
+** This function might be extended in the future to support compression
+** formats other than deflate, by providing a different algorithm-id
+** mark following the variable-length integer size parameter.
+*/
+    UNUSED_PARAMETER(argc);
+    const unsigned char *pIn = NULL;
+    int ii = 0;
+    int jj = 0;
+    int nIn = 0;
+    int rc = 0;
+    unsigned char *pOut = NULL;
+    unsigned char x[8] = { 0 };
+    z_ulong nOut = 0;
+    pIn = sqlite3_value_blob(argv[0]);
+    if (pIn == NULL) {
+        sqlite3_result_error(context, "Cannot compress() NULL blob", -1);
+        return;
+    }
+    nIn = sqlite3_value_bytes(argv[0]);
+    nOut = 13 + nIn + (nIn + 999) / 1000;
+    pOut = sqlite3_malloc(nOut + 5);
+    for (ii = 4; ii >= 0; ii--) {
+        x[ii] = (nIn >> (7 * (4 - ii))) & 0x7f;
+    }
+    for (ii = 0; ii < 4 && x[ii] == 0; ii += 1) {
+    }
+    for (jj = 0; ii <= 4; ii += 1, jj += 1)
+        pOut[jj] = x[ii];
+    pOut[jj - 1] |= 0x80;
+    rc = compress(&pOut[jj], &nOut, pIn, nIn);
+    if (rc) {
+        sqlite3_free(pOut);
+        return;
+    }
+    sqlite3_result_blob(context, pOut, nOut + jj, sqlite3_free);
+}
+
+SQLMATH_FUNC static void sql1_zlib_uncompress_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+/*
+** Implementation of the "uncompress(X)" SQL function.  The argument X
+** is a blob which was obtained from compress(Y).  The output will be
+** the value Y.
+*/
+    UNUSED_PARAMETER(argc);
+    const unsigned char *pIn = NULL;
+    int ii = 0;
+    int nIn = 0;
+    int rc = 0;
+    unsigned char *pOut = NULL;
+    z_ulong nOut = 0;
+    pIn = sqlite3_value_blob(argv[0]);
+    if (pIn == NULL) {
+        sqlite3_result_error(context, "Cannot uncompress() NULL blob", -1);
+        return;
+    }
+    nIn = sqlite3_value_bytes(argv[0]);
+    nOut = 0;
+    for (ii = 0; ii < nIn && ii < 5; ii += 1) {
+        nOut = (nOut << 7) | (pIn[ii] & 0x7f);
+        if ((pIn[ii] & 0x80) != 0) {
+            ii += 1;
+            break;
+        }
+    }
+    pOut = sqlite3_malloc(nOut + 1);
+    rc = uncompress(pOut, &nOut, &pIn[ii], (z_ulong *) (intptr_t) (nIn - ii));
+    if (rc) {
+        sqlite3_free(pOut);
+        return;
+    }
+    sqlite3_result_blob(context, pOut, nOut, sqlite3_free);
+}
+
+// SQLMATH_FUNC sql1_zlib_xxx_func - end
+
+// SQLMATH_FUNC sql2_columntype_func - start
+typedef struct AggColumntype {
+    int columntype;
+} AggColumntype;
+
+SQLMATH_FUNC static void sql2_columntype_final(
+    sqlite3_context * context
+) {
+// This function will return columntype for given <column>.
+    // agg - init
+    SQLITE3_AGGREGATE_CONTEXT(AggColumntype);
+    // agg - null-case
+    if (agg->columntype == 0) {
+        agg->columntype = SQLITE_INTEGER;
+    }
+    sqlite3_result_int(context, agg->columntype);
+}
+
+SQLMATH_FUNC static void sql2_columntype_step(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return columntype for given <column>.
+    UNUSED_PARAMETER(argc);
+    // agg - init
+    SQLITE3_AGGREGATE_CONTEXT(AggColumntype);
+    // agg - null-case
+    if (agg->columntype == 0) {
+        agg->columntype = SQLITE_INTEGER;
+    }
+    switch (sqlite3_value_type(argv[0])) {
+    case SQLITE_BLOB:
+        agg->columntype = SQLITE_BLOB;
+        break;
+    case SQLITE_FLOAT:
+        if (agg->columntype == SQLITE_INTEGER
+            || agg->columntype == SQLITE_COLUMNTYPE_INTEGER_BIG) {
+            agg->columntype = SQLITE_FLOAT;
+        }
+        break;
+    case SQLITE_INTEGER:
+        {
+            const int64_t val = sqlite3_value_int64(argv[0]);
+            if (!(-0x80000000LL <= val && val <= 0x7fffffffLL)) {
+                agg->columntype = SQLITE_COLUMNTYPE_INTEGER_BIG;
+            }
+        }
+        break;
+        // case SQLITE_NULL:
+    case SQLITE_TEXT:
+        if (agg->columntype == SQLITE_INTEGER
+            || agg->columntype == SQLITE_COLUMNTYPE_INTEGER_BIG
+            || agg->columntype == SQLITE_FLOAT) {
+            agg->columntype = SQLITE_TEXT;
+        }
+        if (agg->columntype == SQLITE_TEXT
+            && sqlite3_value_bytes(argv[0]) > 255) {
+            agg->columntype = SQLITE_COLUMNTYPE_TEXT_BIG;
+        }
+        break;
+    }
+}
+
+// SQLMATH_FUNC sql2_columntype_func - end
 
 // SQLMATH_FUNC sql2_lgbm_datasetcreatefromtable_func - start
 typedef struct AggLgbmDataset {
@@ -3822,9 +3927,9 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
     }
     // sine y-estimate
     if (strcmp(key, "syy") == 0) {
-        sqlite3_result_double_or_null(context,
-            wsf->yy1 - wsf->rr1 +
-            wsf->saa * sin(fmod(wsf->sww * wsf->xx1,
+        sqlite3_result_double_or_null(context, 0        //
+            + wsf->yy1 - wsf->rr1       //
+            + wsf->saa * sin(fmod(wsf->sww * wsf->xx1,
                     2 * MATH_PI) + wsf->spp));
         return;
     }
@@ -4067,6 +4172,8 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(doublearray_jsonfrom, 1, 0);
     SQL_CREATE_FUNC1(doublearray_jsonto, 1, 0);
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(idatefromtext, 1, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(idatetotext, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefrommat, 7, 0);
     SQL_CREATE_FUNC1(lgbm_datasetdumptext, 2, 0);
@@ -4091,6 +4198,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(throwerror, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(zlib_compress, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(zlib_uncompress, 1, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC2(columntype, 1, 0);
     SQL_CREATE_FUNC2(lgbm_datasetcreatefromtable, -1, 0);
     SQL_CREATE_FUNC2(lgbm_trainfromtable, -1, 0);
     SQL_CREATE_FUNC2(median, 1, 0);

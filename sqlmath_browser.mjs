@@ -1720,6 +1720,7 @@ async function onDbAction(evt) {
 // this function will open db from file
     let action;
     let baton = UI_CONTEXTMENU_BATON;
+    let columntypeList;
     let data;
     let target;
     let title;
@@ -2030,6 +2031,85 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
         fileSave({
             buf: JSON.stringify(data[0] || []),
             filename: `sqlite_table_${baton.dbtableName}.json`
+        });
+        return;
+    case "dbtableSaveSql":
+        columntypeList = await dbExecAsync({
+            db: baton.db,
+            responseType: "list",
+            sql: (
+                `SELECT `
+                + baton.colList.map(function (col) {
+                    return `COLUMNTYPE(${col}) AS ${col}`;
+                }).join(",")
+                + ` FROM ${baton.dbtableName};`
+            )
+        });
+        columntypeList = columntypeList[0][1];
+        data = await dbExecAsync({
+            db: baton.db,
+            responseType: "list",
+            sql: `SELECT rowid, * FROM ${baton.dbtableName};`
+        });
+        data = data[0] || [];
+        data.shift();
+        data = (
+            String(`
+-- DROP TABLE __sqlite_table_01;
+-- SELECT * FROM __sqlite_table_01;
+-- ALTER TABLE __sqlite_table_01 RENAME TO __sqlite_table_02;
+-- EXEC sp_rename '__sqlite_table_01', '__sqlite_table_02';
+            `).trim()
+            + `\nCREATE TABLE __sqlite_table_01 (\n`
+            + baton.colList.map(function (col, ii) {
+                col = col.replace((/\W/g), "_");
+                col = col.replace((/^\d/), "_$&");
+                // #define SQLITE_INTEGER  1
+                // #define SQLITE_COLUMNTYPE_INTEGER_BIG   11
+                // #define SQLITE_FLOAT    2
+                // #define SQLITE_TEXT     3
+                // #define SQLITE_COLUMNTYPE_TEXT_BIG      13
+                // #define SQLITE_BLOB     4
+                // #define SQLITE_NULL     5
+                switch (columntypeList[ii]) {
+                case 2: // SQLITE_FLOAT
+                    return `    ${col} FLOAT(53)`;
+                case 3: // SQLITE_TEXT
+                    return `    ${col} VARCHAR(255)`;
+                case 11: // SQLITE_COLUMNTYPE_INTEGER_BIG
+                    return `    ${col} BIGINT`;
+                case 13: // SQLITE_COLUMNTYPE_TEXT_BIG
+                    return `    ${col} TEXT`;
+                default:
+                    return `    ${col} INTEGER`;
+                }
+            }).join(",\n")
+            + `\n);\n`
+            + data.map(function (rowList) {
+                return (
+                    `INSERT INTO __sqlite_table_01 VALUES (`
+                    + rowList.map(function (val, ii) {
+                        switch (val !== null && columntypeList[ii]) {
+                        case 1: // SQLITE_INTEGER
+                        case 2: // SQLITE_FLOAT
+                        case 11: // SQLITE_COLUMNTYPE_INTEGER_BIG
+                            return val;
+                        case 3: // SQLITE_TEXT
+                        case 13: // SQLITE_COLUMNTYPE_TEXT_BIG
+                            return "'" + val.replace((/'/g), "''") + "'";
+                        // case 4: // SQLITE_BLOB
+                        // case 5: // SQLITE_NULL
+                        default:
+                            return "NULL";
+                        }
+                    }).join(",")
+                    + `);\n`
+                );
+            }).join("")
+        );
+        fileSave({
+            buf: data,
+            filename: `sqlite_table_${baton.dbtableName}.sql`
         });
         return;
     }

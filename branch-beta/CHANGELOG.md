@@ -4,6 +4,8 @@
 - none
 
 # v2024.7.1-beta
+- sqlmath - Add sql-aggregate-function COLUMNTYPE() and allow exporting sql-table as sql-statement.
+- sqlmath - Add sql-functions IDATEFROMTEXT(), IDATETOTEXT().
 - python - Upgrade to ruff-v0.5.0.
 
 # v2024.6.25
