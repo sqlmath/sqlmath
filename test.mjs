@@ -944,55 +944,73 @@ SELECT
 DROP TABLE IF EXISTS __lgbm_table_preb;
 CREATE TABLE __lgbm_table_preb AS
     SELECT
-        lgbm_predictfortable(
-            (SELECT model FROM __lgbm_state),   -- model
-            ${LGBM_PREDICT_NORMAL},     -- predict_type
-            0,                          -- start_iteration
-            25,                         -- num_iteration
-            '',                         -- param_pred
-            --
-            c_2,  c_3,  c_4,
-            c_5,  c_6,  c_7,  c_8,
-            c_9,  c_10, c_11, c_12,
-            c_13, c_14, c_15, c_16,
-            c_17, c_18, c_19, c_20,
-            c_21, c_22, c_23, c_24,
-            c_25, c_26, c_27, c_28,
-            c_29
-        ) OVER (
-            ORDER BY rowid ASC
-            ROWS BETWEEN 0 PRECEDING AND 0 FOLLOWING
-        ) AS prediction
-    FROM __lgbm_file_test;
+        doublearray_extract(__lgp, 0) AS prediction
+    FROM (
+        SELECT
+            lgbm_predictfortable(
+                (SELECT model FROM __lgbm_state),   -- model
+                ${LGBM_PREDICT_NORMAL},     -- predict_type
+                0,                          -- start_iteration
+                25,                         -- num_iteration
+                '',                         -- param_pred
+                --
+                c_2,  c_3,  c_4,
+                c_5,  c_6,  c_7,  c_8,
+                c_9,  c_10, c_11, c_12,
+                c_13, c_14, c_15, c_16,
+                c_17, c_18, c_19, c_20,
+                c_21, c_22, c_23, c_24,
+                c_25, c_26, c_27, c_28,
+                c_29
+            ) OVER (
+                ORDER BY rowid ASC
+                ROWS BETWEEN 0 PRECEDING AND 0 FOLLOWING
+            ) AS __lgp
+        FROM __lgbm_file_test
+    );
 DROP TABLE IF EXISTS __lgbm_table_preb;
 CREATE TABLE __lgbm_table_preb AS
     SELECT
-        lgbm_predictfortable(
-            (SELECT model FROM __lgbm_state),   -- model
-            ${LGBM_PREDICT_NORMAL},     -- predict_type
-            10,                         -- start_iteration
-            25,                         -- num_iteration
-            '',                         -- param_pred
-            --
-            c_2,  c_3,  c_4,
-            c_5,  c_6,  c_7,  c_8,
-            c_9,  c_10, c_11, c_12,
-            c_13, c_14, c_15, c_16,
-            c_17, c_18, c_19, c_20,
-            c_21, c_22, c_23, c_24,
-            c_25, c_26, c_27, c_28,
-            c_29
-        ) OVER (
-            ORDER BY rowid ASC
-            ROWS BETWEEN 0 PRECEDING AND 0 FOLLOWING
-        ) AS c_1
-    FROM __lgbm_file_test;
+        doublearray_extract(__lgp, 0) AS c_1
+    FROM (
+        SELECT
+            lgbm_predictfortable(
+                (SELECT model FROM __lgbm_state),   -- model
+                ${LGBM_PREDICT_NORMAL},     -- predict_type
+                10,                         -- start_iteration
+                25,                         -- num_iteration
+                '',                         -- param_pred
+                --
+                c_2,  c_3,  c_4,
+                c_5,  c_6,  c_7,  c_8,
+                c_9,  c_10, c_11, c_12,
+                c_13, c_14, c_15, c_16,
+                c_17, c_18, c_19, c_20,
+                c_21, c_22, c_23, c_24,
+                c_25, c_26, c_27, c_28,
+                c_29
+            ) OVER (
+                ORDER BY rowid ASC
+                ROWS BETWEEN 0 PRECEDING AND 0 FOLLOWING
+            ) AS __lgp
+        FROM __lgbm_file_test
+    );
         `);
         let sqlTrainData = (`
 UPDATE __lgbm_state
     SET
         model = lgbm_trainfromdataset(
-            'app=binary metric=auc num_leaves=31 verbose=0', -- param_train
+            -- param_train
+            (
+                'objective=binary'
+                || ' learning_rate=0.1' -- default=0.1
+                || ' max_depth=-1' -- default=-1
+                || ' metric=auc' -- default=""
+                || ' min_data_in_leaf=20' -- default=20
+                || ' num_class=1' -- default=1
+                || ' num_leaves=31' -- default=31
+                || ' verbosity=0' -- default=1
+            ),
             50, -- num_iteration
             10, -- eval_step
             --
@@ -1004,7 +1022,17 @@ UPDATE __lgbm_state
 UPDATE __lgbm_state
     SET
         model = lgbm_trainfromfile(
-            'app=binary metric=auc num_leaves=31 verbose=0', -- param_train
+            -- param_train
+            (
+                'objective=binary'
+                || ' learning_rate=0.1' -- default=0.1
+                || ' max_depth=-1' -- default=-1
+                || ' metric=auc' -- default=""
+                || ' min_data_in_leaf=20' -- default=20
+                || ' num_class=1' -- default=1
+                || ' num_leaves=31' -- default=31
+                || ' verbosity=0' -- default=1
+            ),
             50, -- num_iteration
             10, -- eval_step
             --
@@ -1020,7 +1048,16 @@ UPDATE __lgbm_state
             SELECT
                 lgbm_trainfromtable(
                     -- param_train
-                    'app=binary metric=auc num_leaves=31 verbose=0',
+                    (
+                        'objective=binary'
+                        || ' learning_rate=0.1' -- default=0.1
+                        || ' max_depth=-1' -- default=-1
+                        || ' metric=auc' -- default=""
+                        || ' min_data_in_leaf=20' -- default=20
+                        || ' num_class=1' -- default=1
+                        || ' num_leaves=31' -- default=31
+                        || ' verbosity=0' -- default=1
+                    ),
                     50, -- num_iteration
                     10, -- eval_step
                     --

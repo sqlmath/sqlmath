@@ -9,6 +9,7 @@
 - python - Upgrade to ruff-v0.5.0.
 
 # v2024.6.25
+- sqlmath - Update sql-function LGBM_PREDICTFORTABLE() to allow multiclass.
 - jslint - Remove unnecessary shell-function shCurlExe().
 - lgbm - Upgrade to lightgbm-v4.4.0.
 - jslint - Upgrade to jslint-v2024.6.1-beta.
