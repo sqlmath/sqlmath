@@ -4,6 +4,7 @@
 - none
 
 # v2024.7.1-beta
+- sqlmath - Add sql-functions IDATEFROMTEXT(), IDATETOTEXT().
 - python - Upgrade to ruff-v0.5.0.
 
 # v2024.6.25
