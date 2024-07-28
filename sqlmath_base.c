@@ -2705,7 +2705,7 @@ typedef struct AggLgbmPredict {
     //
     FastConfigHandle fastConfig;        // [out] FastConfig object
     int64_t nnn;                // number of elements
-    double result;              // [out] Pointer to array with predictions
+    double result[256];         // [out] Pointer to array with predictions
 } AggLgbmPredict;
 
 SQLMATH_FUNC static void sql3_lgbm_predictfortable_value(
@@ -2718,7 +2718,8 @@ SQLMATH_FUNC static void sql3_lgbm_predictfortable_value(
     if (agg->nnn <= 0) {
         return;
     }
-    sqlite3_result_double(context, agg->result);
+    sqlite3_result_blob(context, (char *) agg->result,
+        (int) agg->nnn * sizeof(double), SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_lgbm_predictfortable_final(
@@ -2791,7 +2792,6 @@ static void sql3_lgbm_predictfortable_step(
             &agg->fastConfig);  // FastConfigHandle *out_fastConfig
         LGBM_ASSERT_OK();
     }
-    int64_t out_len = 0;
     double data[SQLITE_MAX_FUNCTION_ARG] = { 0 };
     for (int ii = 0; ii < ncol; ii += 1) {
         data[ii] = sqlite3_value_double_or_nan(argv[argc0 + ii]);
@@ -2799,10 +2799,10 @@ static void sql3_lgbm_predictfortable_step(
     errcode = LGBM_BoosterPredictForMatSingleRowFast(   //
         agg->fastConfig,        // FastConfigHandle fastConfig_handle,
         data,                   // const void *data,
-        &out_len,               // int64_t *out_len,
-        &agg->result);          // double *out_result
+        &agg->nnn,              // int64_t *out_len,
+        agg->result);           // double *out_result
     LGBM_ASSERT_OK();
-    agg->nnn = out_len;
+    // fprintf(stderr, "    lgbm_predictfortable - out_len=%I64d\n", agg->nnn);
   catch_error:
     (void) 0;
 }
