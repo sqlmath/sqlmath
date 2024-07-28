@@ -458,21 +458,21 @@ INSERT INTO tradebot_technical_week
     )
     WHERE tt;
 
--- table - tradebot_technical_day, tradebot_technical_week - insert - .es
+-- table - tradebot_technical_day, tradebot_technical_week - insert - spy
 INSERT INTO tradebot_technical_day
     SELECT
-        '1a_es' AS tname,
+        '1a_spy' AS tname,
         xdate AS tt,
         price
     FROM tradebot_intraday_day
-    WHERE sym = '.es';
+    WHERE sym = 'spy';
 INSERT INTO tradebot_technical_week
     SELECT
-        '1a_es' AS tname,
+        '1a_spy' AS tname,
         xdate AS tt,
         price
     FROM tradebot_intraday_week
-    WHERE sym = '.es';
+    WHERE sym = 'spy';
         `),
         [
             "1 day",
@@ -549,7 +549,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         JSON_OBJECT(
             'isDummy', is_dummy,
-            'isHidden', NOT sym IN ('11_mybot', '.es', '.nq', '.ym')
+            'isHidden', NOT sym IN ('11_mybot', 'spy', 'qqq', 'dia')
         ) AS options,
         rownum AS series_index,
         sym AS series_label
@@ -560,9 +560,9 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
                 ORDER BY
                     sym = '11_mybot' DESC,
                     sym = '----' DESC,
-                    sym = '.es' DESC,
-                    sym = '.nq' DESC,
-                    sym = '.ym' DESC,
+                    sym = 'spy' DESC,
+                    sym = 'qqq' DESC,
+                    sym = 'dia' DESC,
                     sym = '---- ' DESC,
                     sym
             ) AS rownum,
@@ -1106,7 +1106,7 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
 UPDATE ${tableData}
     SET
         tval = (CASE
-            WHEN (tname = '1a_es') THEN
+            WHEN (tname = '1a_spy') THEN
                 (lmt_eee * 1.0 / es_eee) * (tval - es_avg) + lmt_avg
             WHEN (tname = '1f_stk_pnl') THEN
                 (lmt_eee * 1.0 / pnl_eee) * (tval - pnl_avg) + lmt_avg
@@ -1136,12 +1136,12 @@ UPDATE ${tableData}
         MEDIAN(tval) AS es_avg,
         STDEV(tval) AS es_eee
         FROM ${tableData}
-        WHERE tname = '1a_es'
+        WHERE tname = '1a_spy'
     )
     --
     ) AS __join1
     WHERE
-        tname IN ('1a_es', '1f_stk_pnl');
+        tname IN ('1a_spy', '1f_stk_pnl');
 UPDATE ${tableData}
     SET
         tt = UNIXEPOCH(tt),
@@ -1167,7 +1167,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
         JSON_OBJECT(
-            'isHidden', NOT tname IN ('1a_es', '1b_stk_lmt', '1c_stk_pct'),
+            'isHidden', NOT tname IN ('1a_spy', '1b_stk_lmt', '1c_stk_pct'),
             'seriesColor', (CASE
             WHEN (tname LIKE '%_lmb' OR tname LIKE '%_lms') THEN
                 '#999'
@@ -1236,7 +1236,7 @@ DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
 UPDATE ${tableChart}
     SET
         series_label = (CASE
-            WHEN (series_label = '1a_es') THEN '1a .es change'
+            WHEN (series_label = '1a_spy') THEN '1a spy change'
             WHEN (series_label = '1b_stk_lmt') THEN '1b stk holding ideal'
             WHEN (series_label = '1c_stk_pct') THEN '1c stk holding actual'
             WHEN (series_label = '1d_stk_lmb') THEN '1d stk holding bracket min'
@@ -1720,6 +1720,7 @@ async function onDbAction(evt) {
 // this function will open db from file
     let action;
     let baton = UI_CONTEXTMENU_BATON;
+    let columntypeList;
     let data;
     let target;
     let title;
@@ -2030,6 +2031,85 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
         fileSave({
             buf: JSON.stringify(data[0] || []),
             filename: `sqlite_table_${baton.dbtableName}.json`
+        });
+        return;
+    case "dbtableSaveSql":
+        columntypeList = await dbExecAsync({
+            db: baton.db,
+            responseType: "list",
+            sql: (
+                `SELECT `
+                + baton.colList.map(function (col) {
+                    return `COLUMNTYPE(${col}) AS ${col}`;
+                }).join(",")
+                + ` FROM ${baton.dbtableName};`
+            )
+        });
+        columntypeList = columntypeList[0][1];
+        data = await dbExecAsync({
+            db: baton.db,
+            responseType: "list",
+            sql: `SELECT rowid, * FROM ${baton.dbtableName};`
+        });
+        data = data[0] || [];
+        data.shift();
+        data = (
+            String(`
+-- DROP TABLE __sqlite_table_01;
+-- SELECT * FROM __sqlite_table_01;
+-- ALTER TABLE __sqlite_table_01 RENAME TO __sqlite_table_02;
+-- EXEC sp_rename '__sqlite_table_01', '__sqlite_table_02';
+            `).trim()
+            + `\nCREATE TABLE __sqlite_table_01 (\n`
+            + baton.colList.map(function (col, ii) {
+                col = col.replace((/\W/g), "_");
+                col = col.replace((/^\d/), "_$&");
+                // #define SQLITE_INTEGER  1
+                // #define SQLITE_COLUMNTYPE_INTEGER_BIG   11
+                // #define SQLITE_FLOAT    2
+                // #define SQLITE_TEXT     3
+                // #define SQLITE_COLUMNTYPE_TEXT_BIG      13
+                // #define SQLITE_BLOB     4
+                // #define SQLITE_NULL     5
+                switch (columntypeList[ii]) {
+                case 2: // SQLITE_FLOAT
+                    return `    ${col} FLOAT(53)`;
+                case 3: // SQLITE_TEXT
+                    return `    ${col} VARCHAR(255)`;
+                case 11: // SQLITE_COLUMNTYPE_INTEGER_BIG
+                    return `    ${col} BIGINT`;
+                case 13: // SQLITE_COLUMNTYPE_TEXT_BIG
+                    return `    ${col} TEXT`;
+                default:
+                    return `    ${col} INTEGER`;
+                }
+            }).join(",\n")
+            + `\n);\n`
+            + data.map(function (rowList) {
+                return (
+                    `INSERT INTO __sqlite_table_01 VALUES (`
+                    + rowList.map(function (val, ii) {
+                        switch (val !== null && columntypeList[ii]) {
+                        case 1: // SQLITE_INTEGER
+                        case 2: // SQLITE_FLOAT
+                        case 11: // SQLITE_COLUMNTYPE_INTEGER_BIG
+                            return val;
+                        case 3: // SQLITE_TEXT
+                        case 13: // SQLITE_COLUMNTYPE_TEXT_BIG
+                            return "'" + val.replace((/'/g), "''") + "'";
+                        // case 4: // SQLITE_BLOB
+                        // case 5: // SQLITE_NULL
+                        default:
+                            return "NULL";
+                        }
+                    }).join(",")
+                    + `);\n`
+                );
+            }).join("")
+        );
+        fileSave({
+            buf: data,
+            filename: `sqlite_table_${baton.dbtableName}.sql`
         });
         return;
     }

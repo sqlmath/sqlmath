@@ -56,7 +56,7 @@ process.stdout.write(
         Darwin*)
             brew install libomp
             cp -L /opt/homebrew/opt/libomp/lib/libomp.dylib sqlmath/
-            pip install lightgbm=="$(printf "v4.4.0" | sed "s|v||")"
+            pip install lightgbm=="$(printf "v4.5.0" | sed "s|v||")"
             cp "$(
                 find "$(
                     pip show ruff | grep Location | sed "s|Location: ||"
@@ -65,7 +65,7 @@ process.stdout.write(
             ;;
         *)
             curl -L -o "sqlmath/$FILE" \
-"https://github.com/microsoft/LightGBM/releases/download/v4.4.0/$FILE"
+"https://github.com/microsoft/LightGBM/releases/download/v4.5.0/$FILE"
             ;;
         esac
     fi
@@ -500,16 +500,16 @@ shSqlmathUpdate() {(set -e
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         # shRollupFetch
-        if [ ! -d .sqlite-autoconf-3440200 ]
+        if [ ! -d .sqlite-autoconf-3460000 ]
         then
             for URL in \
 https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
-https://www.sqlite.org/2023/sqlite-autoconf-3440200.tar.gz
+https://www.sqlite.org/2024/sqlite-autoconf-3460000.tar.gz
             do
                 curl -L "$URL" | tar -xz
             done
             for DIR in \
-                sqlite-autoconf-3440200 \
+                sqlite-autoconf-3460000 \
                 zlib-1.3.1
             do
                 rm -rf ".$DIR"
