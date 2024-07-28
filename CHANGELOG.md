@@ -3,7 +3,8 @@
 # Todo
 - none
 
-# v2024.7.1-beta
+# v2024.7.28
+- sqlmath - Update sql-function LGBM_PREDICTFORTABLE() to allow multiclass.
 - lgbm - Upgrade to lightgbm-v4.5.0.
 - sqlite - Upgrade to sqlite-v3.46.0.
 - sqlmath - Add sql-aggregate-function COLUMNTYPE() and allow exporting sql-table as sql-statement.
