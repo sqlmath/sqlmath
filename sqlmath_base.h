@@ -36,7 +36,7 @@
 #define LGBM_DLSYM(func) \
     func = (func##_t) dlsym(lgbm_library, #func);
 #endif                          // _WIN32
-// https://github.com/microsoft/LightGBM/blob/v4.4.0/include/LightGBM/arrow.h
+// https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/arrow.h
 typedef struct ArrowSchema {
     // Array type description
     const char *format;
@@ -96,7 +96,7 @@ shRollupFetch
                     "substr": ""
                 }
             ],
-            "url": "https://github.com/microsoft/LightGBM/blob/v4.4.0/include/LightGBM/c_api.h"
+            "url": "https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/c_api.h"
         },
         {
             "footer": "\n}\n#endif // SQLMATH_BASE_H4\n",
@@ -121,7 +121,7 @@ shRollupFetch
                     "substr": ""
                 }
             ],
-            "url": "https://github.com/microsoft/LightGBM/blob/v4.4.0/include/LightGBM/c_api.h"
+            "url": "https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/c_api.h"
         },
         {
             "comment": true,
@@ -159,13 +159,13 @@ shRollupFetch
 
 
 /*
-repo https://github.com/microsoft/LightGBM/tree/v4.4.0
-committed 2024-06-14T21:14:06Z
+repo https://github.com/microsoft/LightGBM/tree/v4.5.0
+committed 2024-07-25T14:51:01Z
 */
 
 
 /*
-file https://github.com/microsoft/LightGBM/blob/v4.4.0/include/LightGBM/c_api.h
+file https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/c_api.h
 */
 
 #if defined(SQLMATH_BASE_C2) && !defined(SQLMATH_BASE_H4)
@@ -1928,7 +1928,7 @@ INLINE_FUNCTION void LGBM_SetLastError(const char* msg) {
 
 
 /*
-file https://github.com/microsoft/LightGBM/blob/v4.4.0/include/LightGBM/c_api.h
+file https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/c_api.h
 */
 static void LGBM_dlsym() {
 LGBM_DLSYM(LGBM_GetLastError);
