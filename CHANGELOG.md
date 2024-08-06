@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2024.8.1-beta
+- lgbm - Make loading of lightgbm-library optional, only loading if file exists.
+
 # v2024.7.28
 - sqlmath - Update sql-function LGBM_PREDICTFORTABLE() to allow multiclass.
 - lgbm - Upgrade to lightgbm-v4.5.0.
