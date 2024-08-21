@@ -821,8 +821,8 @@ DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
 SELECT
         IIF(category LIKE 'short%', 1, grouping_index) AS series_color,
         category LIKE '-%' AS is_dummy,
-        0 AS is_hidden,
-        -- grouping IN ('account', 'exchange') AS is_hidden,
+        -- 0 AS is_hidden,
+        grouping IN ('account', 'exchange') AS is_hidden,
         printf(
             '%05.4f%% - %s - %s',
             ${columnData},
@@ -1107,7 +1107,7 @@ UPDATE ${tableData}
     SET
         tval = (CASE
             WHEN (tname = '1a_spy') THEN
-                (lmt_eee * 1.0 / es_eee) * (tval - es_avg) + lmt_avg
+                (lmt_eee * 1.0 / spy_eee) * (tval - spy_avg) + lmt_avg
             WHEN (tname = '1f_stk_pnl') THEN
                 (lmt_eee * 1.0 / pnl_eee) * (tval - pnl_avg) + lmt_avg
         END)
@@ -1117,8 +1117,8 @@ UPDATE ${tableData}
         lmt_eee,
         pnl_avg,
         pnl_eee,
-        es_avg,
-        es_eee
+        spy_avg,
+        spy_eee
     FROM (SELECT 0)
     JOIN (SELECT
         MEDIAN(tval) AS lmt_avg,
@@ -1133,8 +1133,8 @@ UPDATE ${tableData}
         WHERE tname = '1f_stk_pnl'
     )
     JOIN (SELECT
-        MEDIAN(tval) AS es_avg,
-        STDEV(tval) AS es_eee
+        MEDIAN(tval) AS spy_avg,
+        STDEV(tval) AS spy_eee
         FROM ${tableData}
         WHERE tname = '1a_spy'
     )
@@ -1270,7 +1270,7 @@ INSERT INTO ${tableChart} (datatype, options)
     SELECT
         'options' AS datatype,
         '{
-            "title": "tradebot technical - sinusoidal fit of es",
+            "title": "tradebot technical - sinusoidal fit of spy",
             "xaxisTitle": "date",
             "xvalueConvert": "juliandayToDate",
             "yaxisTitle": "percent gain",
@@ -1283,19 +1283,19 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         value AS series_index,
         (CASE
             WHEN (value = 1) THEN
-                'es'
+                'spy'
             WHEN (value = 2) THEN
-                'es predicted linear - 2 month window'
+                'spy predicted linear - 2 month window'
             WHEN (value = 3) THEN
-                'es predicted sine - 2 month window'
+                'spy predicted sine - 2 month window'
             WHEN (value = 4) THEN
-                'es predicted linear+sine - 2 month window'
+                'spy predicted linear+sine - 2 month window'
             WHEN (value = 5) THEN
-                'es predicted linear - 6 month window'
+                'spy predicted linear - 6 month window'
             WHEN (value = 6) THEN
-                'es predicted sine - 6 month window'
+                'spy predicted sine - 6 month window'
             WHEN (value = 7) THEN
-                'es predicted linear+sine - 6 month window'
+                'spy predicted linear+sine - 6 month window'
         END) AS series_label
     FROM GENERATE_SERIES(1, 7);
 INSERT INTO ${tableChart} (datatype, xx, xx_label)

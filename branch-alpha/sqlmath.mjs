@@ -122,7 +122,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2024.7.28";
+let version = "v2024.8.1-beta";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -931,10 +931,12 @@ async function dbOpenAsync({
         fileLgbm = fileLgbm.replace("win32", "lib_lightgbm.dll");
         fileLgbm = fileLgbm.replace(process.platform, "lib_lightgbm.so");
         fileLgbm = `${import.meta.dirname}/sqlmath/${fileLgbm}`;
-        await dbExecAsync({
-            db,
-            sql: `SELECT lgbm_dlopen('${fileLgbm}');`
-        });
+        await moduleFs.promises.access(fileLgbm).then(async function () {
+            await dbExecAsync({
+                db,
+                sql: `SELECT lgbm_dlopen('${fileLgbm}');`
+            });
+        }).catch(noop);
     }
     return db;
 }
