@@ -4,6 +4,7 @@
 - none
 
 # v2024.8.1-beta
+- betadog - Re-introduce trading of sp500 stocks.
 - lgbm - Make loading of lightgbm-library optional, only loading if file exists.
 
 # v2024.7.28
