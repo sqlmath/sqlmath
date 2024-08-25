@@ -340,13 +340,11 @@ INSERT INTO tradebot_technical_day
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
-            UNION ALL SELECT '1e_stk_lms'
-            UNION ALL SELECT '1f_stk_pnl'
+            UNION ALL SELECT '1e_stk_pnl'
             UNION ALL SELECT '2b_sqq_lmt'
             UNION ALL SELECT '2c_sqq_pct'
             UNION ALL SELECT '2d_sqq_lmb'
-            UNION ALL SELECT '2e_sqq_lms'
-            UNION ALL SELECT '2f_sqq_pnl'
+            UNION ALL SELECT '2e_sqq_pnl'
         )
         --
         UNION ALL
@@ -363,11 +361,7 @@ INSERT INTO tradebot_technical_day
         --
         UNION ALL
         --
-        SELECT '1e_stk_lms', xdate, stk_lms FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '1f_stk_pnl', xdate, stk_pnl FROM tradebot_technical_all
+        SELECT '1e_stk_pnl', xdate, stk_pnl FROM tradebot_technical_all
         --
         UNION ALL
         --
@@ -383,11 +377,7 @@ INSERT INTO tradebot_technical_day
         --
         UNION ALL
         --
-        SELECT '2e_sqq_lms', xdate, sqq_lms FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '2f_sqq_pnl', xdate, sqq_pnl FROM tradebot_technical_all
+        SELECT '2e_sqq_pnl', xdate, sqq_pnl FROM tradebot_technical_all
     )
     WHERE tt >= (SELECT datemkt0 FROM tradebot_state);
 
@@ -407,13 +397,11 @@ INSERT INTO tradebot_technical_week
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
-            UNION ALL SELECT '1e_stk_lms'
-            UNION ALL SELECT '1f_stk_pnl'
+            UNION ALL SELECT '1e_stk_pnl'
             UNION ALL SELECT '2b_sqq_lmt'
             UNION ALL SELECT '2c_sqq_pct'
             UNION ALL SELECT '2d_sqq_lmb'
-            UNION ALL SELECT '2e_sqq_lms'
-            UNION ALL SELECT '2f_sqq_pnl'
+            UNION ALL SELECT '2e_sqq_pnl'
         )
         --
         UNION ALL
@@ -430,11 +418,7 @@ INSERT INTO tradebot_technical_week
         --
         UNION ALL
         --
-        SELECT '1e_stk_lms', xdate2, stk_lms FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '1f_stk_pnl', xdate2, stk_pnl FROM tradebot_technical_all
+        SELECT '1e_stk_pnl', xdate2, stk_pnl FROM tradebot_technical_all
         --
         UNION ALL
         --
@@ -450,11 +434,7 @@ INSERT INTO tradebot_technical_week
         --
         UNION ALL
         --
-        SELECT '2e_sqq_lms', xdate2, sqq_lms FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '2f_sqq_pnl', xdate2, sqq_pnl FROM tradebot_technical_all
+        SELECT '2e_sqq_pnl', xdate2, sqq_pnl FROM tradebot_technical_all
     )
     WHERE tt;
 
@@ -1108,7 +1088,7 @@ UPDATE ${tableData}
         tval = (CASE
             WHEN (tname = '1a_spy') THEN
                 (lmt_eee * 1.0 / spy_eee) * (tval - spy_avg) + lmt_avg
-            WHEN (tname = '1f_stk_pnl') THEN
+            WHEN (tname = '1e_stk_pnl') THEN
                 (lmt_eee * 1.0 / pnl_eee) * (tval - pnl_avg) + lmt_avg
         END)
     FROM (SELECT
@@ -1130,7 +1110,7 @@ UPDATE ${tableData}
         MEDIAN(tval) AS pnl_avg,
         STDEV(tval) AS pnl_eee
         FROM ${tableData}
-        WHERE tname = '1f_stk_pnl'
+        WHERE tname = '1e_stk_pnl'
     )
     JOIN (SELECT
         MEDIAN(tval) AS spy_avg,
@@ -1141,7 +1121,7 @@ UPDATE ${tableData}
     --
     ) AS __join1
     WHERE
-        tname IN ('1a_spy', '1f_stk_pnl');
+        tname IN ('1a_spy', '1e_stk_pnl');
 UPDATE ${tableData}
     SET
         tt = UNIXEPOCH(tt),
@@ -1169,7 +1149,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         JSON_OBJECT(
             'isHidden', NOT tname IN ('1a_spy', '1b_stk_lmt', '1c_stk_pct'),
             'seriesColor', (CASE
-            WHEN (tname LIKE '%_lmb' OR tname LIKE '%_lms') THEN
+            WHEN (tname LIKE '%_lmb') THEN
                 '#999'
             ELSE
                 NULL
@@ -1240,13 +1220,11 @@ UPDATE ${tableChart}
             WHEN (series_label = '1b_stk_lmt') THEN '1b stk holding ideal'
             WHEN (series_label = '1c_stk_pct') THEN '1c stk holding actual'
             WHEN (series_label = '1d_stk_lmb') THEN '1d stk holding bracket min'
-            WHEN (series_label = '1e_stk_lms') THEN '1e stk holding bracket max'
-            WHEN (series_label = '1f_stk_pnl') THEN '1f stk gain'
+            WHEN (series_label = '1e_stk_pnl') THEN '1e stk gain'
             WHEN (series_label = '2b_sqq_lmt') THEN '2b sqq holding ideal'
             WHEN (series_label = '2c_sqq_pct') THEN '2c sqq holding actual'
             WHEN (series_label = '2d_sqq_lmb') THEN '2d sqq holding bracket min'
-            WHEN (series_label = '2e_sqq_lms') THEN '2e sqq holding bracket max'
-            WHEN (series_label = '2f_sqq_pnl') THEN '2f sqq gain'
+            WHEN (series_label = '2e_sqq_pnl') THEN '2e sqq gain'
         END)
     WHERE
         datatype = 'series_label';
