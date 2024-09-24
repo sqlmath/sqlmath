@@ -4251,7 +4251,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC3(win_quantile1, 2, 0);
     SQL_CREATE_FUNC3(win_quantile2, -1, 0);
     SQL_CREATE_FUNC3(win_sinefit2, -1, 0);
-    SQL_CREATE_FUNC3(win_sum1, -1, 0);
+    SQL_CREATE_FUNC3(win_sum1, 1, 0);
     SQL_CREATE_FUNC3(win_sum2, -1, 0);
     return 0;
 }
