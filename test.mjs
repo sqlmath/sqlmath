@@ -1879,42 +1879,42 @@ SELECT doublearray_jsonto(win_avg2(1, 2, 3)) FROM __tmp1;
             // test win_avg2-aggregate-normal handling-behavior
             test_win_avgx_aggregate({
                 valExpect: [
-                    0, 1, 3, 6,
-                    10, 14, 20, 27,
-                    35, 44, 54, 64
+                    0, 0.5, 1, 1.5,
+                    2, 2.3333, 2.8571, 3.375,
+                    3.8889, 4.4, 4.9091, 5.3333
                 ],
-                valExpect2: 53
+                valExpect2: 4.4167
             }),
             // test win_avg2-aggregate-window handling-behavior
             test_win_avgx_aggregate({
                 aa: 1,
                 bb: 3,
                 valExpect: [
-                    6, 10, 13, 17,
-                    21, 25, 30, 34,
-                    37, 37, 37, 37
+                    1.5, 2.5, 3.25, 4.25,
+                    5.25, 6.25, 7.5, 8.5,
+                    9.25, 9.25, 9.25, 9.25
                 ],
-                valExpect2: 26
+                valExpect2: 6.5
             }),
             test_win_avgx_aggregate({
                 aa: 3,
                 bb: 1,
                 valExpect: [
-                    1, 3, 6, 10,
-                    13, 17, 21, 25,
-                    30, 34, 37, 37
+                    0.5, 1, 1.5, 2.5,
+                    3.25, 4.25, 5.25, 6.25,
+                    7.5, 8.5, 9.25, 9.25
                 ],
-                valExpect2: 26
+                valExpect2: 6.5
             }),
             test_win_avgx_aggregate({
                 aa: 4,
                 bb: 0,
                 valExpect: [
-                    0, 1, 3, 6,
-                    10, 13, 17, 21,
-                    25, 30, 34, 37
+                    0, 0.5, 1, 1.5,
+                    2.5, 3.25, 4.25, 5.25,
+                    6.25, 7.5, 8.5, 9.25
                 ],
-                valExpect2: 26
+                valExpect2: 6.5
             })
         ]);
     });

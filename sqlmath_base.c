@@ -2787,7 +2787,7 @@ SQLMATH_FUNC static void sql3_win_avg1_step(
     }
     // dblwin - init
     const int ncol = argc;
-    DOUBLEWIN_AGGREGATE_CONTEXT(2 * ncol);
+    DOUBLEWIN_AGGREGATE_CONTEXT(3 * ncol);
     if (dblwin->nbody == 0) {
         // dblwin - init ncol
         dblwin->ncol = ncol;
@@ -2820,16 +2820,17 @@ SQLMATH_FUNC static void sql3_win_avg2_value(
 // This function will calculate running-avg.
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    double inv = dblwin->ncol / dblwin->nbody;
-    int ncol = dblwin->ncol;
+    const int ncol = dblwin->ncol;
     if (!ncol) {
         return;
     }
     // dblwin - result
+    const double inv = dblwin->ncol / dblwin->nbody;
     for (int ii = 0; ii < ncol; ii += 1) {
-        dblwin_head[ii] = dblwin_head[ncol + ii] * inv;
+        dblwin_head[2 * ncol + ii] = dblwin_head[ncol + ii] * inv;
     }
-    doublearrayResult(context, dblwin_head, dblwin->ncol, SQLITE_TRANSIENT);
+    doublearrayResult(context, dblwin_head + 2 * ncol, ncol,
+        SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_avg2_final(
