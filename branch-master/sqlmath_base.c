@@ -1819,6 +1819,45 @@ SQLMATH_FUNC static void sql1_lgbm_datasetsavebinary_func(
     (void) 0;
 }
 
+SQLMATH_FUNC static void sql1_lgbm_extract_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will extract <val> from lgbm-pred-object, with given <key>.
+    UNUSED_PARAMETER(argc);
+    const int nn = sqlite3_value_bytes(argv[0]) / sizeof(double);
+    // validate argv
+    if (nn == 0) {
+        sqlite3_result_error(context,
+            "lgbm_extract - 1st argument must be double-array with length >= 0",
+            -1);
+        return;
+    }
+    const double *arr = (double *) sqlite3_value_blob(argv[0]);
+    const char *key = (char *) sqlite3_value_text(argv[1]);
+    double argmax = 0;
+    double probability = arr[0];
+    for (int ii = 1; ii < nn; ii += 1) {
+        if (arr[ii] > probability) {
+            argmax = ii;
+            probability = arr[ii];
+        }
+    }
+    // predicted-class using argmax
+    if (strcmp(key, "argmax") == 0) {
+        sqlite3_result_int(context, argmax);
+        return;
+    }
+    // predicted-probability
+    if (strcmp(key, "probability") == 0) {
+        sqlite3_result_double_or_null(context, probability);
+        return;
+    }
+    sqlite3_result_error(context,
+        "lgbm_extract - 2nd argument is invalid key", -1);
+}
+
 SQLMATH_FUNC static void sql1_lgbm_predictforfile_func(
     sqlite3_context * context,
     int argc,
@@ -2762,7 +2801,7 @@ static void sql3_lgbm_predictfortable_step(
     int errcode = 0;
     if (ncol < 1) {
         sqlite3_result_error(context,
-            "win_sinefit2 - wrong number of arguments", -1);
+            "lgbm_predictfortable - wrong number of arguments", -1);
         return;
     }
     // agg - init
@@ -4181,6 +4220,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(lgbm_datasetgetnumdata, 1, 0);
     SQL_CREATE_FUNC1(lgbm_datasetgetnumfeature, 1, 0);
     SQL_CREATE_FUNC1(lgbm_datasetsavebinary, 1, 0);
+    SQL_CREATE_FUNC1(lgbm_extract, 2, 0);
     SQL_CREATE_FUNC1(lgbm_dlopen, 1, 0);
     SQL_CREATE_FUNC1(lgbm_predictforfile, 8, 0);
     SQL_CREATE_FUNC1(lgbm_trainfromdataset, 5, 0);
@@ -4211,7 +4251,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC3(win_quantile1, 2, 0);
     SQL_CREATE_FUNC3(win_quantile2, -1, 0);
     SQL_CREATE_FUNC3(win_sinefit2, -1, 0);
-    SQL_CREATE_FUNC3(win_sum1, -1, 0);
+    SQL_CREATE_FUNC3(win_sum1, 1, 0);
     SQL_CREATE_FUNC3(win_sum2, -1, 0);
     return 0;
 }
