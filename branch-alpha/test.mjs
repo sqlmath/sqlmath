@@ -3286,7 +3286,7 @@ SELECT win_sum2() FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_sum1(1, 2) FROM __tmp1;
+SELECT win_sum1(1) FROM __tmp1;
                     `)
                 });
                 valActual = valActual.map(function ({val}) {
