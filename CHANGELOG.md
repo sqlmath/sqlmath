@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2024.9.1-beta
+- sqlmath - Add sql-function WIN_AVG1(), WIN_AVG2().
+
 # v2024.8.30
 - betadog - Re-introduce trading of sp500 stocks.
 - lgbm - Make loading of lightgbm-library optional, only loading if file exists.
