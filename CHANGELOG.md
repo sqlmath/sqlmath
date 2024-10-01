@@ -3,7 +3,7 @@
 # Todo
 - none
 
-# v2024.9.1-beta
+# v2024.9.30
 - lgbm - Replace Microsoft-release-version with PyPi-version of lgbm-binary, because it includes gpu-extension.
 - sqlmath - Add sql-function WIN_AVG1(), WIN_AVG2().
 
