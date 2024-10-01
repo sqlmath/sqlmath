@@ -1741,6 +1741,184 @@ SELECT
         }));
     });
     jstestIt((
+        "test sqlite-extension-win_avgx handling-behavior"
+    ), async function test_sqlite_extension_win_avgx() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let valIn;
+        async function test_win_avgx_aggregate({
+            aa,
+            bb,
+            valExpect,
+            valExpect2
+        }) {
+            let sqlBetween = "";
+            let valActual;
+            if (aa !== undefined) {
+                sqlBetween = (
+                    `ROWS BETWEEN ${aa - 1} PRECEDING AND ${bb} FOLLOWING`
+                );
+            }
+            // test win_avg1-aggregate handling-behavior
+            valActual = await dbExecAndReturnLastTable({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        win_avg1(value->>1) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        ) AS val
+    FROM JSON_EAcH($valIn);
+                `)
+            });
+            valActual = valActual.map(function ({val}) {
+                return Number(val.toFixed(4));
+            });
+            assertJsonEqual(valActual, valExpect);
+            // test win_avg2-aggregate handling-behavior
+            valActual = await dbExecAndReturnLastTable({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        id2,
+        doublearray_jsonto(win_avg2(
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            value->>1,
+            IIF(id2 = 1, -1, value->>1)
+        ) OVER (
+            ORDER BY value->>0 ASC
+            ${sqlBetween}
+        )) AS val
+    FROM (
+        SELECT
+            *,
+            ROW_NUMBER() OVER(ORDER BY id ASC) AS id2
+        FROM JSON_EAcH($valIn)
+    );
+                `)
+            });
+            valActual = valActual.map(function ({val}, ii, list) {
+                val = JSON.parse(val).map(function (elem, jj) {
+                    elem = Number(elem.toFixed(4));
+                    if (ii + (bb || 0) + 1 >= list.length && jj === 9) {
+                        assertJsonEqual(elem, valExpect2, valActual);
+                    } else {
+                        assertJsonEqual(elem, valExpect[ii], valActual);
+                    }
+                    return elem;
+                });
+                return val[0];
+            });
+            assertJsonEqual(valActual, valExpect);
+        }
+        valIn = [
+            [11, NaN],
+            [10, "10"],
+            [9, 9],
+            [8, "8"],
+            [7, 7],
+            [6, 6],
+            [5, Infinity],
+            [4, "4"],
+            [3, 3],
+            [2, 2],
+            [1, "1"],
+            [0, undefined]
+        ];
+        await Promise.all([
+            (async function () {
+                let valActual;
+                // test win_avg2-error handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT win_avg2() FROM (SELECT 1);
+                        `)
+                    });
+                }, "wrong number of arguments");
+                // test win_avg1-null-case handling-behavior
+                valActual = await dbExecAndReturnLastTable({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT win_avg1(1) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual.map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+                // test win_avg2-null-case handling-behavior
+                valActual = await dbExecAndReturnLastTable({
+                    db,
+                    sql: (`
+DROP TABLE IF EXISTS __tmp1;
+CREATE TEMP TABLE __tmp1 (val REAL);
+SELECT doublearray_jsonto(win_avg2(1, 2, 3)) FROM __tmp1;
+                    `)
+                });
+                valActual = valActual.map(function ({val}) {
+                    return val;
+                });
+                assertJsonEqual(valActual, [null]);
+            }()),
+            // test win_avg2-aggregate-normal handling-behavior
+            test_win_avgx_aggregate({
+                valExpect: [
+                    0, 0.5, 1, 1.5,
+                    2, 2.3333, 2.8571, 3.375,
+                    3.8889, 4.4, 4.9091, 5.3333
+                ],
+                valExpect2: 4.4167
+            }),
+            // test win_avg2-aggregate-window handling-behavior
+            test_win_avgx_aggregate({
+                aa: 1,
+                bb: 3,
+                valExpect: [
+                    1.5, 2.5, 3.25, 4.25,
+                    5.25, 6.25, 7.5, 8.5,
+                    9.25, 9.25, 9.25, 9.25
+                ],
+                valExpect2: 6.5
+            }),
+            test_win_avgx_aggregate({
+                aa: 3,
+                bb: 1,
+                valExpect: [
+                    0.5, 1, 1.5, 2.5,
+                    3.25, 4.25, 5.25, 6.25,
+                    7.5, 8.5, 9.25, 9.25
+                ],
+                valExpect2: 6.5
+            }),
+            test_win_avgx_aggregate({
+                aa: 4,
+                bb: 0,
+                valExpect: [
+                    0, 0.5, 1, 1.5,
+                    2.5, 3.25, 4.25, 5.25,
+                    6.25, 7.5, 8.5, 9.25
+                ],
+                valExpect2: 6.5
+            })
+        ]);
+    });
+    jstestIt((
         "test sqlite-extension-win_emax handling-behavior"
     ), async function test_sqlite_extension_win_emax() {
         let db = await dbOpenAsync({filename: ":memory:"});

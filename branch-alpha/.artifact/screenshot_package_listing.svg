@@ -11,13 +11,13 @@
     textLength="768"
     x="10"
     y="32"
-> 0.  755  2024-09-24T16:38:42Z  15852 KB  .                                                      </tspan>
+> 0.  755  2024-10-01T05:17:26Z  15860 KB  .                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="54"
-> 1.  644  2024-07-28T11:49:51Z     16 KB  .ci.sh                                                 </tspan>
+> 1.  644  2024-10-01T05:12:01Z     16 KB  .ci.sh                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -59,7 +59,7 @@
     textLength="768"
     x="10"
     y="208"
-> 8.  644  2024-09-24T16:38:42Z     30 KB  CHANGELOG.md                                           </tspan>
+> 8.  644  2024-10-01T05:17:26Z     30 KB  CHANGELOG.md                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -77,13 +77,13 @@
     textLength="768"
     x="10"
     y="274"
->11.  644  2024-09-24T16:38:42Z      7 KB  PKG-INFO                                               </tspan>
+>11.  644  2024-10-01T05:17:26Z      7 KB  PKG-INFO                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->12.  644  2024-09-24T16:38:42Z      6 KB  README.md                                              </tspan>
+>12.  644  2024-10-01T05:17:26Z      6 KB  README.md                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -173,37 +173,37 @@
     textLength="768"
     x="10"
     y="626"
->27.  644  2024-09-24T16:38:42Z      1 KB  package.json                                           </tspan>
+>27.  644  2024-10-01T05:17:26Z      1 KB  package.json                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->28.  644  2024-09-24T16:38:42Z      2 KB  pyproject.toml                                         </tspan>
+>28.  644  2024-10-01T05:17:26Z      2 KB  pyproject.toml                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->29.  644  2024-09-24T16:38:42Z     20 KB  setup.py                                               </tspan>
+>29.  644  2024-10-01T05:17:26Z     20 KB  setup.py                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->30.  644  2024-09-24T16:38:42Z     51 KB  sqlmath.mjs                                            </tspan>
+>30.  644  2024-10-01T05:17:26Z     51 KB  sqlmath.mjs                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->31.  644  2024-09-24T16:38:42Z     20 KB  sqlmath/__init__.py                                    </tspan>
+>31.  644  2024-10-01T05:17:26Z     20 KB  sqlmath/__init__.py                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="736"
->32.  644  2024-09-24T16:38:42Z    147 KB  sqlmath_base.c                                         </tspan>
+>32.  644  2024-09-24T18:43:05Z    149 KB  sqlmath_base.c                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -251,7 +251,7 @@
     textLength="768"
     x="10"
     y="912"
->40.  644  2024-09-24T16:38:42Z    117 KB  test.mjs                                               </tspan>
+>40.  644  2024-09-24T18:43:05Z    122 KB  test.mjs                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
