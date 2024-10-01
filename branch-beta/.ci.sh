@@ -56,18 +56,14 @@ process.stdout.write(
         Darwin*)
             brew install libomp
             cp -L /opt/homebrew/opt/libomp/lib/libomp.dylib sqlmath/
-            pip install lightgbm=="$(printf "v4.5.0" | sed "s|v||")"
-            cp "$(
-                find "$(
-                    pip show ruff | grep Location | sed "s|Location: ||"
-                )/lightgbm" | grep "$FILE"
-            )" "sqlmath/$FILE"
-            ;;
-        *)
-            curl -L -o "sqlmath/$FILE" \
-"https://github.com/microsoft/LightGBM/releases/download/v4.5.0/$FILE"
             ;;
         esac
+        pip install lightgbm=="$(printf "v4.5.0" | sed "s|v||")"
+        cp "$(
+            find "$(
+                pip show ruff | grep Location | sed "s|Location: ||"
+            )/lightgbm" | grep "$FILE"
+        )" "sqlmath/$FILE"
     fi
     # .github_cache - restore
     if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
