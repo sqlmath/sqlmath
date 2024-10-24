@@ -1027,9 +1027,9 @@ async function dbTableImportAsync({
     colList = colList.map(function (colName) {
         let colName2;
         let duplicate = 0;
-        colName = "c_" + colName.toLowerCase().replace((
-            /\W/g
-        ), "_");
+        colName = colName.trim();
+        colName = colName.replace((/\W/g), "_");
+        colName = colName.replace((/^[^A-Z_a-z]|^$/gm), "_$&");
         while (true) {
             duplicate += 1;
             colName2 = (

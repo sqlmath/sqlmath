@@ -880,14 +880,14 @@ UPDATE __lgbm_state
                     'max_bin=15', -- param_data
                     NULL, -- reference
                     --
-                    c_1,  c_2,  c_3,  c_4,
-                    c_5,  c_6,  c_7,  c_8,
-                    c_9,  c_10, c_11, c_12,
-                    c_13, c_14, c_15, c_16,
-                    c_17, c_18, c_19, c_20,
-                    c_21, c_22, c_23, c_24,
-                    c_25, c_26, c_27, c_28,
-                    c_29
+                    _1,  _2,  _3,  _4,
+                    _5,  _6,  _7,  _8,
+                    _9,  _10, _11, _12,
+                    _13, _14, _15, _16,
+                    _17, _18, _19, _20,
+                    _21, _22, _23, _24,
+                    _25, _26, _27, _28,
+                    _29
                 )
             FROM __lgbm_file_train
         );
@@ -899,14 +899,14 @@ UPDATE __lgbm_state
                     'max_bin=15', -- param_data
                     data_train_handle, -- reference
                     --
-                    c_1,  c_2,  c_3,  c_4,
-                    c_5,  c_6,  c_7,  c_8,
-                    c_9,  c_10, c_11, c_12,
-                    c_13, c_14, c_15, c_16,
-                    c_17, c_18, c_19, c_20,
-                    c_21, c_22, c_23, c_24,
-                    c_25, c_26, c_27, c_28,
-                    c_29
+                    _1,  _2,  _3,  _4,
+                    _5,  _6,  _7,  _8,
+                    _9,  _10, _11, _12,
+                    _13, _14, _15, _16,
+                    _17, _18, _19, _20,
+                    _21, _22, _23, _24,
+                    _25, _26, _27, _28,
+                    _29
                 )
             FROM __lgbm_file_test
         );
@@ -954,14 +954,14 @@ CREATE TABLE __lgbm_table_preb AS
                 25,                         -- num_iteration
                 '',                         -- param_pred
                 --
-                c_2,  c_3,  c_4,
-                c_5,  c_6,  c_7,  c_8,
-                c_9,  c_10, c_11, c_12,
-                c_13, c_14, c_15, c_16,
-                c_17, c_18, c_19, c_20,
-                c_21, c_22, c_23, c_24,
-                c_25, c_26, c_27, c_28,
-                c_29
+                _2,  _3,  _4,
+                _5,  _6,  _7,  _8,
+                _9,  _10, _11, _12,
+                _13, _14, _15, _16,
+                _17, _18, _19, _20,
+                _21, _22, _23, _24,
+                _25, _26, _27, _28,
+                _29
             ) OVER (
                 ORDER BY rowid ASC
                 ROWS BETWEEN 0 PRECEDING AND 0 FOLLOWING
@@ -971,7 +971,7 @@ CREATE TABLE __lgbm_table_preb AS
 DROP TABLE IF EXISTS __lgbm_table_preb;
 CREATE TABLE __lgbm_table_preb AS
     SELECT
-        doublearray_extract(__lgp, 0) AS c_1
+        doublearray_extract(__lgp, 0) AS _1
     FROM (
         SELECT
             lgbm_predictfortable(
@@ -981,14 +981,14 @@ CREATE TABLE __lgbm_table_preb AS
                 25,                         -- num_iteration
                 '',                         -- param_pred
                 --
-                c_2,  c_3,  c_4,
-                c_5,  c_6,  c_7,  c_8,
-                c_9,  c_10, c_11, c_12,
-                c_13, c_14, c_15, c_16,
-                c_17, c_18, c_19, c_20,
-                c_21, c_22, c_23, c_24,
-                c_25, c_26, c_27, c_28,
-                c_29
+                _2,  _3,  _4,
+                _5,  _6,  _7,  _8,
+                _9,  _10, _11, _12,
+                _13, _14, _15, _16,
+                _17, _18, _19, _20,
+                _21, _22, _23, _24,
+                _25, _26, _27, _28,
+                _29
             ) OVER (
                 ORDER BY rowid ASC
                 ROWS BETWEEN 0 PRECEDING AND 0 FOLLOWING
@@ -1064,14 +1064,14 @@ UPDATE __lgbm_state
                     'max_bin=15', -- param_data
                     NULL, -- reference
                     --
-                    c_1,  c_2,  c_3,  c_4,
-                    c_5,  c_6,  c_7,  c_8,
-                    c_9,  c_10, c_11, c_12,
-                    c_13, c_14, c_15, c_16,
-                    c_17, c_18, c_19, c_20,
-                    c_21, c_22, c_23, c_24,
-                    c_25, c_26, c_27, c_28,
-                    c_29
+                    _1,  _2,  _3,  _4,
+                    _5,  _6,  _7,  _8,
+                    _9,  _10, _11, _12,
+                    _13, _14, _15, _16,
+                    _17, _18, _19, _20,
+                    _21, _22, _23, _24,
+                    _25, _26, _27, _28,
+                    _29
                 )
             FROM __lgbm_file_train
         );
@@ -1190,7 +1190,7 @@ SELECT
                     await dbExecAndReturnLastTable({
                         db,
                         sql: (`
-SELECT ROUND(c_1, 8) AS c_1 FROM __lgbm_table_preb;
+SELECT ROUND(_1, 8) AS _1 FROM __lgbm_table_preb;
                         `)
                     })
                 ),
@@ -1198,7 +1198,7 @@ SELECT ROUND(c_1, 8) AS c_1 FROM __lgbm_table_preb;
                     await dbExecAndReturnLastTable({
                         db,
                         sql: (`
-SELECT ROUND(c_1, 8) AS c_1 FROM __lgbm_file_preb;
+SELECT ROUND(_1, 8) AS _1 FROM __lgbm_file_preb;
                         `)
                     })
                 )
