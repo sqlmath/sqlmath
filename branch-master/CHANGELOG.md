@@ -3,6 +3,11 @@
 # Todo
 - none
 
+# v2024.10.23
+- sqlite - Upgrade to sqlite-v3.46.1.
+- ci - Update shell-function shHttpFileServer() to auto-serve /index.html, when url-path is root /.
+- sqlmath - Expand sql-function IDATEFROMTEXT() to allow shorthand IDATEFROMTEXT(...) for IDATEFROMTEXT(DATE(...)).
+
 # v2024.9.30
 - lgbm - Replace Microsoft-release-version with PyPi-version of lgbm-binary, because it includes gpu-extension.
 - sqlmath - Add sql-function WIN_AVG1(), WIN_AVG2().
