@@ -1629,26 +1629,6 @@ SQLMATH_FUNC static void sql1_fmod_func(
             sqlite3_value_double_or_nan(argv[1])));
 }
 
-SQLMATH_FUNC static void sql1_idatefromtext_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will return integer-yyymmdd from date-string.
-    UNUSED_PARAMETER(argc);
-    char *zBuf = (char *) sqlite3_value_text(argv[0]);
-    if (zBuf == NULL) {
-        return;
-    }
-    int ii = strtol(zBuf, NULL, 10) * 10000     //
-        + strtol(zBuf + 5, NULL, 10) * 100      //
-        + strtol(zBuf + 8, NULL, 10);
-    if (!(10000101 <= ii && ii <= 99991231)) {
-        return;
-    }
-    sqlite3_result_int(context, ii);
-}
-
 SQLMATH_FUNC static void sql1_idatetotext_func(
     sqlite3_context * context,
     int argc,
@@ -1656,13 +1636,13 @@ SQLMATH_FUNC static void sql1_idatetotext_func(
 ) {
 // This function will return date-string from integer-yyymmdd.
     UNUSED_PARAMETER(argc);
-    int ii = sqlite3_value_int(argv[0]);
     char zBuf[10 + 1] = { 0 };
-    sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d", ii / 10000,
-        (ii % 10000) / 100, (ii % 100));
+    const int ii = sqlite3_value_int(argv[0]);
     if (!(10000101 <= ii && ii <= 99991231)) {
         return;
     }
+    sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d", ii / 10000,
+        (ii % 10000) / 100, (ii % 100));
     sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
 }
 
@@ -4306,7 +4286,6 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(doublearray_jsonfrom, 1, 0);
     SQL_CREATE_FUNC1(doublearray_jsonto, 1, 0);
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
-    SQL_CREATE_FUNC1(idatefromtext, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(idatetotext, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefrommat, 7, 0);

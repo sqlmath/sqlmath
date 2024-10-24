@@ -1,5 +1,5 @@
-<svg height="1174" width="800" xmlns="http://www.w3.org/2000/svg">
-<rect height="1174" fill="#222" width="800"></rect>
+<svg height="1218" width="800" xmlns="http://www.w3.org/2000/svg">
+<rect height="1218" fill="#222" width="800"></rect>
 <text
     fill="#7f7"
     font-family="consolas, menlo, monospace"
@@ -41,283 +41,295 @@
     textLength="768"
     x="10"
     y="142"
-># v2024.9.30                                                                                     </tspan>
+># v2024.10.23                                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="164"
->- lgbm - Replace Microsoft-release-version with PyPi-version of lgbm-binary, because it includes\</tspan>
+>- sqlite - Upgrade to sqlite-v3.46.1.                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="186"
->   gpu-extension.                                                                                </tspan>
+>- ci - Update shell-function shHttpFileServer() to auto-server /index.html, when url-path is roo\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="208"
->- sqlmath - Add sql-function WIN_AVG1(), WIN_AVG2().                                             </tspan>
+>  t /.                                                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="230"
->                                                                                                 </tspan>
+>- sqlmath - Expand sql-function IDATEFROMTEXT() to allow shorthand IDATEFROMTEXT(...) for IDATEF\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="252"
-># v2024.8.30                                                                                     </tspan>
+>  ROMTEXT(DATE(...)).                                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
->- betadog - Re-introduce trading of sp500 stocks.                                                </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->- lgbm - Make loading of lightgbm-library optional, only loading if file exists.                 </tspan>
+># v2024.9.30                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="318"
->                                                                                                 </tspan>
+>- lgbm - Replace Microsoft-release-version with PyPi-version of lgbm-binary, because it includes\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="340"
-># v2024.7.28                                                                                     </tspan>
+>   gpu-extension.                                                                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
->- sqlmath - Update sql-function LGBM_PREDICTFORTABLE() to allow multiclass.                      </tspan>
+>- sqlmath - Add sql-function WIN_AVG1(), WIN_AVG2().                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
->- lgbm - Upgrade to lightgbm-v4.5.0.                                                             </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->- sqlite - Upgrade to sqlite-v3.46.0.                                                            </tspan>
+># v2024.8.30                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->- sqlmath - Add sql-aggregate-function COLUMNTYPE() and allow exporting sql-table as sql-stateme\</tspan>
+>- betadog - Re-introduce trading of sp500 stocks.                                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->  nt.                                                                                            </tspan>
+>- lgbm - Make loading of lightgbm-library optional, only loading if file exists.                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
->- sqlmath - Add sql-functions IDATEFROMTEXT(), IDATETOTEXT().                                    </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
->- python - Upgrade to ruff-v0.5.0.                                                               </tspan>
+># v2024.7.28                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->                                                                                                 </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="538"
-># v2024.6.25                                                                                     </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="560"
 >- sqlmath - Update sql-function LGBM_PREDICTFORTABLE() to allow multiclass.                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="538"
+>- lgbm - Upgrade to lightgbm-v4.5.0.                                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="560"
+>- sqlite - Upgrade to sqlite-v3.46.0.                                                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="582"
->- jslint - Remove unnecessary shell-function shCurlExe().                                        </tspan>
+>- sqlmath - Add sql-aggregate-function COLUMNTYPE() and allow exporting sql-table as sql-stateme\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="604"
->- lgbm - Upgrade to lightgbm-v4.4.0.                                                             </tspan>
+>  nt.                                                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="626"
->- jslint - Upgrade to jslint-v2024.6.1-beta.                                                     </tspan>
+>- sqlmath - Add sql-functions IDATEFROMTEXT(), IDATETOTEXT().                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->- lgbm - Include lib_lightgbm.xxx in npm/python package.                                         </tspan>
+>- python - Upgrade to ruff-v0.5.0.                                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->- lgbm - Add sqlite-extension for lightgbm.                                                      </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="692"
->- lgbm - Add sql-functions:                                                                      </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="714"
->    lgbm_datasetcreatefromfile()                                                                 </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="736"
->    lgbm_datasetcreatefrommat()                                                                  </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="758"
->    lgbm_datasetcreatefromtable()                                                                </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="780"
->    lgbm_datasetdumptext()                                                                       </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="802"
->    lgbm_datasetfree()                                                                           </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="824"
->    lgbm_datasetgetnumdata()                                                                     </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="846"
->    lgbm_datasetgetnumfeature()                                                                  </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="868"
->    lgbm_datasetsavebinary()                                                                     </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="890"
->    lgbm_dlopen()                                                                                </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="912"
->    lgbm_predictforfile()                                                                        </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="934"
->    lgbm_predictfortable()                                                                       </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="956"
->    lgbm_trainfromdataset()                                                                      </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="978"
->    lgbm_trainfromtable()                                                                        </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1000"
->- sqlmath - Remove little-used sql-function fill_forward().                                      </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1022"
->- zlib - Update to zlib v1.3.1.                                                                  </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1044"
->- sqlmath - Add function dbExecAndReturnLastValue().                                             </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1066"
->- sqlmath - Replace functions:                                                                   </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1088"
->    dbExecAndReturnFirstRow() with dbExecAndReturnLastRow()                                      </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1110"
->    dbExecAndReturnFirstTable() with dbExecAndReturnLastTable()                                  </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1132"
 >                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="692"
+># v2024.6.25                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="714"
+>- sqlmath - Update sql-function LGBM_PREDICTFORTABLE() to allow multiclass.                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="736"
+>- jslint - Remove unnecessary shell-function shCurlExe().                                        </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="758"
+>- lgbm - Upgrade to lightgbm-v4.4.0.                                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="780"
+>- jslint - Upgrade to jslint-v2024.6.1-beta.                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="802"
+>- lgbm - Include lib_lightgbm.xxx in npm/python package.                                         </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="824"
+>- lgbm - Add sqlite-extension for lightgbm.                                                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="846"
+>- lgbm - Add sql-functions:                                                                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="868"
+>    lgbm_datasetcreatefromfile()                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="890"
+>    lgbm_datasetcreatefrommat()                                                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="912"
+>    lgbm_datasetcreatefromtable()                                                                </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="934"
+>    lgbm_datasetdumptext()                                                                       </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="956"
+>    lgbm_datasetfree()                                                                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="978"
+>    lgbm_datasetgetnumdata()                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1000"
+>    lgbm_datasetgetnumfeature()                                                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1022"
+>    lgbm_datasetsavebinary()                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1044"
+>    lgbm_dlopen()                                                                                </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1066"
+>    lgbm_predictforfile()                                                                        </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1088"
+>    lgbm_predictfortable()                                                                       </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1110"
+>    lgbm_trainfromdataset()                                                                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1132"
+>    lgbm_trainfromtable()                                                                        </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="1154"
-># v2024.5.26                                                                                     </tspan>
+>- sqlmath - Remove little-used sql-function fill_forward().                                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1176"
+>- zlib - Update to zlib v1.3.1.                                                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1198"
+>- sqlmath - Add function dbExecAndReturnLastValue().                                             </tspan>
 
 </text>
 </svg>
