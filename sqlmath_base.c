@@ -258,11 +258,10 @@ typedef uint8_t u8;
 #define SQLITE_FUNC_CONSTANT 0x0800 /* Constant inputs give a constant output */
 #define SQLITE_FUNC_SLOCHNG  0x2000 // "Slow Change". Value constant during a
                                     // single query - might change over time
-typedef struct sqlite3_DateTime sqlite3_DateTime;
 /*
 ** A structure for holding a single date and time.
 */
-struct sqlite3_DateTime {
+typedef struct DateTime {
     sqlite3_int64 iJD;  /* The julian day number times 86400000 */
     int Y, M, D;        /* Year, month, and day */
     int h, m;           /* Hour and minutes */
@@ -277,14 +276,14 @@ struct sqlite3_DateTime {
     unsigned useSubsec : 1; /* Display subsecond precision */
     unsigned isUtc     : 1; /* Time is known to be UTC */
     unsigned isLocal   : 1; /* Time is known to be localtime */
-};
-SQLITE_API void sqlite3_computeYMD(sqlite3_DateTime *p);
-SQLITE_API void sqlite3_computeYMD_HMS(sqlite3_DateTime *p);
+} DateTime;
+SQLITE_API void sqlite3_computeYMD(DateTime *p);
+SQLITE_API void sqlite3_computeYMD_HMS(DateTime *p);
 SQLITE_API int sqlite3_isDate(
     sqlite3_context *context,
     int argc,
     sqlite3_value **argv,
-    sqlite3_DateTime *p
+    DateTime *p
 );
 
 
@@ -1663,7 +1662,7 @@ SQLMATH_FUNC static void sql1_fmod_func(
             sqlite3_value_double_or_nan(argv[1])));
 }
 
-SQLMATH_FUNC static void sql1_idatefromtext_func(
+SQLMATH_FUNC static void sql1_idatefrom_func(
 /*
 **    date( TIMESTRING, MOD, MOD, ...)
 **
@@ -1673,7 +1672,7 @@ SQLMATH_FUNC static void sql1_idatefromtext_func(
     int argc,
     sqlite3_value ** argv
 ) {
-    sqlite3_DateTime tt;
+    DateTime tt;
     if (sqlite3_isDate(context, argc, argv, &tt)) {
         return;
     }
@@ -1705,7 +1704,7 @@ SQLMATH_FUNC static void sql1_idatetotext_func(
     sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
 }
 
-SQLMATH_FUNC static void sql1_idatetimefromtext_func(
+SQLMATH_FUNC static void sql1_idatetimefrom_func(
 /*
 **    datetime( TIMESTRING, MOD, MOD, ...)
 **
@@ -1715,7 +1714,7 @@ SQLMATH_FUNC static void sql1_idatetimefromtext_func(
     int argc,
     sqlite3_value ** argv
 ) {
-    sqlite3_DateTime tt;
+    DateTime tt;
     if (sqlite3_isDate(context, argc, argv, &tt)) {
         return;
     }
@@ -4392,9 +4391,9 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(doublearray_jsonfrom, 1, 0);
     SQL_CREATE_FUNC1(doublearray_jsonto, 1, 0);
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
-    SQL_CREATE_FUNC1(idatefromtext, -1,
+    SQL_CREATE_FUNC1(idatefrom, -1,
         SQLITE_FUNC_SLOCHNG | SQLITE_UTF8 | SQLITE_FUNC_CONSTANT);
-    SQL_CREATE_FUNC1(idatetimefromtext, -1,
+    SQL_CREATE_FUNC1(idatetimefrom, -1,
         SQLITE_FUNC_SLOCHNG | SQLITE_UTF8 | SQLITE_FUNC_CONSTANT);
     SQL_CREATE_FUNC1(idatetotext, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(idatetimetotext, 1, SQLITE_DETERMINISTIC);
