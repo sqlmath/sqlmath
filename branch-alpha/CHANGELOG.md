@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2024.11.1-beta
+- sqlmath - Add sql-functions IDATETIMEFROMTEXT(), IDATETIMETOTEXT().
+
 # v2024.10.23
 - sqlite - Upgrade to sqlite-v3.46.1.
 - ci - Update shell-function shHttpFileServer() to auto-serve /index.html, when url-path is root /.
