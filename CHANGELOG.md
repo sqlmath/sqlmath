@@ -4,6 +4,7 @@
 - none
 
 # v2024.11.1-beta
+- sqlmath - Move sql-functions IDATETIMEFROMTEXT(), IDATETIMETOTEXT() from file sqlmath_external_sqlite.c to sqlmath_base.c.
 - sqlmath - Add sql-functions IDATETIMEFROMTEXT(), IDATETIMETOTEXT().
 
 # v2024.10.23

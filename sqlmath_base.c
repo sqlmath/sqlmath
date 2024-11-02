@@ -254,6 +254,40 @@ typedef uint64_t u64;
 typedef uint8_t u8;
 
 
+// file sqlmath_h - datetime
+#define SQLITE_FUNC_CONSTANT 0x0800 /* Constant inputs give a constant output */
+#define SQLITE_FUNC_SLOCHNG  0x2000 // "Slow Change". Value constant during a
+                                    // single query - might change over time
+typedef struct sqlite3_DateTime sqlite3_DateTime;
+/*
+** A structure for holding a single date and time.
+*/
+struct sqlite3_DateTime {
+    sqlite3_int64 iJD;  /* The julian day number times 86400000 */
+    int Y, M, D;        /* Year, month, and day */
+    int h, m;           /* Hour and minutes */
+    int tz;             /* Timezone offset in minutes */
+    double s;           /* Seconds */
+    char validJD;       /* True (1) if iJD is valid */
+    char validYMD;      /* True (1) if Y,M,D are valid */
+    char validHMS;      /* True (1) if h,m,s are valid */
+    char nFloor;            /* Days to implement "floor" */
+    unsigned rawS      : 1; /* Raw numeric value stored in s */
+    unsigned isError   : 1; /* An overflow has occurred */
+    unsigned useSubsec : 1; /* Display subsecond precision */
+    unsigned isUtc     : 1; /* Time is known to be UTC */
+    unsigned isLocal   : 1; /* Time is known to be localtime */
+};
+SQLITE_API void sqlite3_computeYMD(sqlite3_DateTime *p);
+SQLITE_API void sqlite3_computeYMD_HMS(sqlite3_DateTime *p);
+SQLITE_API int sqlite3_isDate(
+    sqlite3_context *context,
+    int argc,
+    sqlite3_value **argv,
+    sqlite3_DateTime *p
+);
+
+
 // file sqlmath_h - db
 typedef struct Jsbuffer {
     int64_t buf;
@@ -1629,6 +1663,31 @@ SQLMATH_FUNC static void sql1_fmod_func(
             sqlite3_value_double_or_nan(argv[1])));
 }
 
+SQLMATH_FUNC static void sql1_idatefromtext_func(
+/*
+**    date( TIMESTRING, MOD, MOD, ...)
+**
+** Return integer YYYYMMDD
+*/
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+    sqlite3_DateTime tt;
+    if (sqlite3_isDate(context, argc, argv, &tt)) {
+        return;
+    }
+    sqlite3_computeYMD(&tt);
+    if (!(1000 <= tt.Y && tt.Y <= 9999)) {
+        return;
+    }
+    const int ii = tt.Y * 10000 + tt.M * 100 + tt.D;
+    if (!(10000101 <= ii && ii <= 99991231)) {
+        return;
+    }
+    sqlite3_result_int(context, ii);
+}
+
 SQLMATH_FUNC static void sql1_idatetotext_func(
     sqlite3_context * context,
     int argc,
@@ -1644,6 +1703,32 @@ SQLMATH_FUNC static void sql1_idatetotext_func(
     sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d", ii / 10000,
         (ii % 10000) / 100, (ii % 100));
     sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
+}
+
+SQLMATH_FUNC static void sql1_idatetimefromtext_func(
+/*
+**    datetime( TIMESTRING, MOD, MOD, ...)
+**
+** Return int64 YYYYMMDDHHMMSS
+*/
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+    sqlite3_DateTime tt;
+    if (sqlite3_isDate(context, argc, argv, &tt)) {
+        return;
+    }
+    sqlite3_computeYMD_HMS(&tt);
+    if (!(1000 <= tt.Y && tt.Y <= 9999)) {
+        return;
+    }
+    const int64_t ii = (int64_t) (tt.Y * 10000 + tt.M * 100 + tt.D) * 1000000
+        + (int64_t) (tt.h * 10000 + tt.m * 100 + (int) tt.s);
+    if (!(10000101000000 <= ii && ii <= 99991231235959)) {
+        return;
+    }
+    sqlite3_result_int64(context, ii);
 }
 
 SQLMATH_FUNC static void sql1_idatetimetotext_func(
@@ -4307,6 +4392,10 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(doublearray_jsonfrom, 1, 0);
     SQL_CREATE_FUNC1(doublearray_jsonto, 1, 0);
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(idatefromtext, -1,
+        SQLITE_FUNC_SLOCHNG | SQLITE_UTF8 | SQLITE_FUNC_CONSTANT);
+    SQL_CREATE_FUNC1(idatetimefromtext, -1,
+        SQLITE_FUNC_SLOCHNG | SQLITE_UTF8 | SQLITE_FUNC_CONSTANT);
     SQL_CREATE_FUNC1(idatetotext, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(idatetimetotext, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
