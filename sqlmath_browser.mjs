@@ -1147,7 +1147,9 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
         JSON_OBJECT(
-            'isHidden', NOT tname IN ('1a_spy', '1b_stk_lmt', '1c_stk_pct'),
+            'isHidden', NOT tname IN (
+                '1a_spy', '1b_stk_lmt', '1c_stk_pct', '1d_stk_lmb'
+            ),
             'seriesColor', (CASE
             WHEN (tname LIKE '%_lmb') THEN
                 '#999'

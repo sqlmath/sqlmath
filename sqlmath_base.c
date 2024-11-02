@@ -1634,7 +1634,7 @@ SQLMATH_FUNC static void sql1_idatetotext_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will return date-string from integer-yyymmdd.
+// This function will return date-string from integer-yyyymmdd.
     UNUSED_PARAMETER(argc);
     char zBuf[10 + 1] = { 0 };
     const int ii = sqlite3_value_int(argv[0]);
@@ -1643,6 +1643,27 @@ SQLMATH_FUNC static void sql1_idatetotext_func(
     }
     sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d", ii / 10000,
         (ii % 10000) / 100, (ii % 100));
+    sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
+}
+
+SQLMATH_FUNC static void sql1_idatetimetotext_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return datetime-string from int64-yyyymmddhhmmss.
+    UNUSED_PARAMETER(argc);
+    char zBuf[10 + 1 + 8 + 1] = { 0 };
+    const int64_t ii = sqlite3_value_int64(argv[0]);
+    if (!(10000101000000 <= ii && ii <= 99991231235959)) {
+        return;
+    }
+    const int aa = ii / 1000000;
+    const int bb = ii % 1000000;
+    sqlite3_snprintf(sizeof(zBuf), zBuf,        //
+        "%04d-%02d-%02d %02d:%02d:%02d",        //
+        aa / 10000, (aa % 10000) / 100, (aa % 100),     //
+        bb / 10000, (bb % 10000) / 100, (bb % 100));
     sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
 }
 
@@ -4287,6 +4308,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(doublearray_jsonto, 1, 0);
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(idatetotext, 1, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(idatetimetotext, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefrommat, 7, 0);
     SQL_CREATE_FUNC1(lgbm_datasetdumptext, 2, 0);
