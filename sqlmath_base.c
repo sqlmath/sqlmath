@@ -254,39 +254,6 @@ typedef uint64_t u64;
 typedef uint8_t u8;
 
 
-// file sqlmath_h - datetime
-#define SQLITE_FUNC_CONSTANT 0x0800 /* Constant inputs give a constant output */
-#define SQLITE_FUNC_SLOCHNG  0x2000 // "Slow Change". Value constant during a
-                                    // single query - might change over time
-/*
-** A structure for holding a single date and time.
-*/
-typedef struct DateTime {
-    sqlite3_int64 iJD;  /* The julian day number times 86400000 */
-    int Y, M, D;        /* Year, month, and day */
-    int h, m;           /* Hour and minutes */
-    int tz;             /* Timezone offset in minutes */
-    double s;           /* Seconds */
-    char validJD;       /* True (1) if iJD is valid */
-    char validYMD;      /* True (1) if Y,M,D are valid */
-    char validHMS;      /* True (1) if h,m,s are valid */
-    char nFloor;            /* Days to implement "floor" */
-    unsigned rawS      : 1; /* Raw numeric value stored in s */
-    unsigned isError   : 1; /* An overflow has occurred */
-    unsigned useSubsec : 1; /* Display subsecond precision */
-    unsigned isUtc     : 1; /* Time is known to be UTC */
-    unsigned isLocal   : 1; /* Time is known to be localtime */
-} DateTime;
-SQLITE_API void sqlite3_computeYMD(DateTime *p);
-SQLITE_API void sqlite3_computeYMD_HMS(DateTime *p);
-SQLITE_API int sqlite3_isDate(
-    sqlite3_context *context,
-    int argc,
-    sqlite3_value **argv,
-    DateTime *p
-);
-
-
 // file sqlmath_h - db
 typedef struct Jsbuffer {
     int64_t buf;
@@ -363,6 +330,51 @@ SQLMATH_API double *doublewinHead(
 SQLMATH_API void doublewinResultBlob(
     Doublewin * dblwin,
     sqlite3_context * context
+);
+
+
+// file sqlmath_h - idate
+#define SQLITE_FUNC_CONSTANT 0x0800 /* Constant inputs give a constant output */
+#define SQLITE_FUNC_SLOCHNG  0x2000 // "Slow Change". Value constant during a
+                                    // single query - might change over time
+/*
+** A structure for holding a single date and time.
+*/
+typedef struct DateTime {
+    sqlite3_int64 iJD;  /* The julian day number times 86400000 */
+    int Y, M, D;        /* Year, month, and day */
+    int h, m;           /* Hour and minutes */
+    int tz;             /* Timezone offset in minutes */
+    double s;           /* Seconds */
+    char validJD;       /* True (1) if iJD is valid */
+    char validYMD;      /* True (1) if Y,M,D are valid */
+    char validHMS;      /* True (1) if h,m,s are valid */
+    char nFloor;            /* Days to implement "floor" */
+    unsigned rawS      : 1; /* Raw numeric value stored in s */
+    unsigned isError   : 1; /* An overflow has occurred */
+    unsigned useSubsec : 1; /* Display subsecond precision */
+    unsigned isUtc     : 1; /* Time is known to be UTC */
+    unsigned isLocal   : 1; /* Time is known to be localtime */
+} DateTime;
+SQLITE_API void sqlite3_computeYMD(DateTime *p);
+SQLITE_API void sqlite3_computeYMD_HMS(DateTime *p);
+SQLITE_API int sqlite3_isDate(
+    sqlite3_context *context,
+    int argc,
+    sqlite3_value **argv,
+    DateTime *p
+);
+SQLMATH_API int idateParse(
+    DateTime * dt,
+    const int idate
+);
+SQLMATH_API int idatetimeParse(
+    DateTime * dt,
+    const int64_t idatetime
+);
+SQLMATH_API int itimeParse(
+    DateTime * dt,
+    const int itime
 );
 
 
@@ -1182,6 +1194,62 @@ SQLMATH_API void doublewinResultBlob(
 
 // SQLMATH_API doublewin - end
 
+// SQLMATH_API idate - start
+SQLMATH_API int idateParse(
+    DateTime * dt,
+    const int idate
+) {
+// This function will parse int <idate> into <dt>, and return 0 on success.
+    const int yy = idate / 10000;
+    const int mmd = (idate / 100) % 100;
+    const int dd = idate % 100;
+    if (!((1000 <= yy && yy <= 9999)
+            && (1 <= mmd && mmd <= 12)
+            && (1 <= dd && dd <= 31))) {
+        return 1;
+    }
+    dt->validJD = 0;
+    dt->validYMD = 1;
+    dt->Y = yy;
+    dt->M = mmd;
+    dt->D = dd;
+    return 0;
+}
+
+SQLMATH_API int idatetimeParse(
+    DateTime * dt,
+    const int64_t idatetime
+) {
+// This function will parse int64 <idatetime> into <dt>,
+// and return 0 on success.
+    return idateParse(dt, (int) (idatetime / 1000000))
+        || itimeParse(dt, (int) (idatetime % 1000000));
+}
+
+SQLMATH_API int itimeParse(
+    DateTime * dt,
+    const int itime
+) {
+// This function will parse int <idate> into <dt>, and return 0 on success.
+    const int hh = itime / 10000;
+    const int mmt = (itime / 100) % 100;
+    const int ss = itime % 100;
+    if (!((0 <= hh && hh <= 23)
+            && (0 <= mmt && mmt <= 59)
+            && (0 <= ss && ss <= 59))) {
+        return 1;
+    }
+    dt->validJD = 0;
+    dt->validHMS = 1;
+    dt->h = hh;
+    dt->m = mmt;
+    dt->rawS = 0;
+    dt->s = ss;
+    return 0;
+}
+
+// SQLMATH_API idate - end
+
 // SQLMATH_API str99 - start
 SQLMATH_API void str99ArrayAppendDouble(
     sqlite3_str * str99,
@@ -1666,21 +1734,18 @@ SQLMATH_FUNC static void sql1_idatefrom_func(
 /*
 **    date( TIMESTRING, MOD, MOD, ...)
 **
-** Return integer YYYYMMDD
+** Return int YYYYMMDD
 */
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-    DateTime tt;
-    if (sqlite3_isDate(context, argc, argv, &tt)) {
+    DateTime dt = { 0 };
+    if (sqlite3_isDate(context, argc, argv, &dt)) {
         return;
     }
-    sqlite3_computeYMD(&tt);
-    if (!(1000 <= tt.Y && tt.Y <= 9999)) {
-        return;
-    }
-    const int ii = tt.Y * 10000 + tt.M * 100 + tt.D;
+    sqlite3_computeYMD(&dt);
+    const int ii = dt.Y * 10000 + dt.M * 100 + dt.D;
     if (!(10000101 <= ii && ii <= 99991231)) {
         return;
     }
@@ -1692,15 +1757,14 @@ SQLMATH_FUNC static void sql1_idatetotext_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will return date-string from integer-yyyymmdd.
+// This function will return date-string from int YYYYMMDD.
     UNUSED_PARAMETER(argc);
     char zBuf[10 + 1] = { 0 };
-    const int ii = sqlite3_value_int(argv[0]);
-    if (!(10000101 <= ii && ii <= 99991231)) {
+    DateTime dt = { 0 };
+    if (idateParse(&dt, sqlite3_value_int(argv[0]))) {
         return;
     }
-    sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d", ii / 10000,
-        (ii % 10000) / 100, (ii % 100));
+    sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d", dt.Y, dt.M, dt.D);
     sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
 }
 
@@ -1714,16 +1778,13 @@ SQLMATH_FUNC static void sql1_idatetimefrom_func(
     int argc,
     sqlite3_value ** argv
 ) {
-    DateTime tt;
-    if (sqlite3_isDate(context, argc, argv, &tt)) {
+    DateTime dt = { 0 };
+    if (sqlite3_isDate(context, argc, argv, &dt)) {
         return;
     }
-    sqlite3_computeYMD_HMS(&tt);
-    if (!(1000 <= tt.Y && tt.Y <= 9999)) {
-        return;
-    }
-    const int64_t ii = (int64_t) (tt.Y * 10000 + tt.M * 100 + tt.D) * 1000000
-        + (int64_t) (tt.h * 10000 + tt.m * 100 + (int) tt.s);
+    sqlite3_computeYMD_HMS(&dt);
+    const int64_t ii = (int64_t) (dt.Y * 10000 + dt.M * 100 + dt.D) * 1000000
+        + (int64_t) (dt.h * 10000 + dt.m * 100 + (int) dt.s);
     if (!(10000101000000 <= ii && ii <= 99991231235959)) {
         return;
     }
@@ -1735,19 +1796,15 @@ SQLMATH_FUNC static void sql1_idatetimetotext_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will return datetime-string from int64-yyyymmddhhmmss.
+// This function will return datetime-string from int64 YYYYMMDDHHMMSS.
     UNUSED_PARAMETER(argc);
     char zBuf[10 + 1 + 8 + 1] = { 0 };
-    const int64_t ii = sqlite3_value_int64(argv[0]);
-    if (!(10000101000000 <= ii && ii <= 99991231235959)) {
+    DateTime dt = { 0 };
+    if (idatetimeParse(&dt, sqlite3_value_int64(argv[0]))) {
         return;
     }
-    const int aa = ii / 1000000;
-    const int bb = ii % 1000000;
-    sqlite3_snprintf(sizeof(zBuf), zBuf,        //
-        "%04d-%02d-%02d %02d:%02d:%02d",        //
-        aa / 10000, (aa % 10000) / 100, (aa % 100),     //
-        bb / 10000, (bb % 10000) / 100, (bb % 100));
+    sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d %02d:%02d:%02d",
+        dt.Y, dt.M, dt.D, dt.h, dt.m, (int) dt.s);
     sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
 }
 

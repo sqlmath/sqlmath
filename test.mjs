@@ -1380,6 +1380,129 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
         }));
     });
     jstestIt((
+        "test_sqlite_extension_idate_xxx handling-behavior"
+    ), async function test_sqlite_extension_idate_xxx() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let promiseList = [];
+        promiseList.push([
+            "IDATEFROM",
+            "IDATETIMEFROM",
+            "IDATETOTEXT",
+            "IDATETIMETOTEXT"
+        ].map(function (sqlFunc) {
+            return [
+                [sqlFunc, "", null],
+                [sqlFunc, "+0", null],
+                [sqlFunc, "+1", null],
+                [sqlFunc, "-0", null],
+                [sqlFunc, "-1", null],
+                [sqlFunc, "0", null],
+                [sqlFunc, -1, null],
+                [sqlFunc, 0, null],
+                [sqlFunc, 1, null],
+                [sqlFunc, null, null],
+                [sqlFunc, undefined, null]
+            ];
+        }).flat());
+        promiseList.push([
+            "IDATEFROM",
+            "IDATETIMEFROM"
+        ].map(function (sqlFunc) {
+            return [
+                ["-1000-01-01 00:00:00", null],
+                ["-9999-12-31 23:59:59", null],
+                ["0999-12-31 23:59:00", null],
+                ["1000-01-01 00:00:00", 10000101000000],
+                ["1000-01-01 00:00:00", null, -1],
+                ["1000-02-29 00:00:00", 10000301000000],
+                ["1004-02-29 00:00:00", 10040229000000],
+                ["999-12-31 23:59:00", null],
+                ["9996-02-29 23:59:59", 99960229235959],
+                ["9997-02-29 23:59:59", 99970301235959],
+                ["9999-12-31 23:59:59", 99991231235959],
+                ["9999-12-31 23:59:59", null, 1],
+                ["9999-12-32 23:59:59", null],
+                [10000101000000, null],
+                [99991231235959, null]
+            ].map(function ([valIn, valExpect, modifier]) {
+                [valIn, valExpect] = [valIn, valExpect].map(function (arg) {
+                    return (
+                        (arg === null || sqlFunc.startsWith("IDATETIME"))
+                        ? arg
+                        : typeof arg === "string"
+                        ? arg.slice(0, -9)
+                        : Math.floor(arg / 1000000)
+                    );
+                });
+                modifier = (
+                    !modifier
+                    ? modifier
+                    : sqlFunc.startsWith("IDATETIME")
+                    ? `${modifier} SECOND`
+                    : `${modifier} DAY`
+                );
+                return [sqlFunc, valIn, valExpect, modifier];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATETOTEXT",
+            "IDATETIMETOTEXT"
+        ].map(function (sqlFunc) {
+            return [
+                ["1000-01-01 00:00:00", null],
+                ["9999-12-31 23:59:59", null],
+                [10000101000000, "1000-01-01 00:00:00"],
+                [10000229000000, "1000-02-29 00:00:00"],
+                [10040229000000, "1004-02-29 00:00:00"],
+                [9991231000000, null],
+                [99960229235959, "9996-02-29 23:59:59"],
+                [99970229235959, "9997-02-29 23:59:59"],
+                [99991231235959, "9999-12-31 23:59:59"],
+                [99991232235959, null]
+            ].map(function ([valIn, valExpect]) {
+                [valIn, valExpect] = [valIn, valExpect].map(function (arg) {
+                    return (
+                        (arg === null || sqlFunc.startsWith("IDATETIME"))
+                        ? arg
+                        : typeof arg === "string"
+                        ? arg.slice(0, -9)
+                        : Math.floor(arg / 1000000)
+                    );
+                });
+                return [sqlFunc, valIn, valExpect];
+            });
+        }).flat());
+        promiseList.push([
+            ["IDATETIMETOTEXT", 99991231235959, "9999-12-31 23:59:59"],
+            ["IDATETIMETOTEXT", 99991231235960, null]
+        ]);
+        await Promise.all(promiseList.flat().map(async function ([
+            sqlFunc, valIn, valExpect, modifier
+        ], ii) {
+            let valActual;
+            valActual = (
+                await dbExecAndReturnLastValue({
+                    bindList: {
+                        valIn
+                    },
+                    db,
+                    sql: (
+                        modifier
+                        ? `SELECT ${sqlFunc}($valIn, '${modifier}');`
+                        : `SELECT ${sqlFunc}($valIn);`
+                    )
+                })
+            );
+            assertJsonEqual(valActual, valExpect, {
+                ii,
+                modifier,
+                valActual,
+                valExpect,
+                valIn
+            });
+        }));
+    });
+    jstestIt((
         "test sqlite-extension-math handling-behavior"
     ), async function test_sqlite_extension_math() {
         let db = await dbOpenAsync({
