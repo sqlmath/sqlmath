@@ -1,12 +1,12 @@
 # Changelog
 
 # Todo
+- sqlmath - Add sql-function IDATEADD().
 - none
 
 # v2024.11.1-beta
-- sqlmath - Add sql-function IDATETIMETOEPOCH().
-- sqlmath - Rename sql-functions IDATEXXXFROMTEXT() TO IDATEXXXFROM().
-- sqlmath - Add sql-functions IDATETIMEFROMTEXT(), IDATETIMETOTEXT().
+- sqlmath - Add sql-function IDATETOEPOCH().
+- sqlmath - Add sql-functions IDATETIMEFROM().
 
 # v2024.10.23
 - sqlite - Upgrade to sqlite-v3.46.1.

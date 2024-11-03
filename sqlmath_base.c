@@ -358,16 +358,18 @@ typedef struct DateTime {
     unsigned isUtc     : 1; /* Time is known to be UTC */
     unsigned isLocal   : 1; /* Time is known to be localtime */
 } DateTime;
-SQLITE_API void idatetimefromFunc(
+SQLITE_API int idateDateonly(
+    const sqlite3_int64 idate64
+);
+SQLITE_API void idateFrom(
     sqlite3_context * context,
     const int argc,
     sqlite3_value ** argv,
     const int dateonly
 );
-SQLITE_API int idatetimeParse(
+SQLITE_API int idateParse(
     DateTime * dt,
-    const int idate,
-    const int itime,
+    const sqlite3_int64 idate64,
     const int modejd
 );
 
@@ -1678,23 +1680,7 @@ SQLMATH_FUNC static void sql1_idatefrom_func(
     int argc,
     sqlite3_value ** argv
 ) {
-    idatetimefromFunc(context, argc, argv, 1);
-}
-
-SQLMATH_FUNC static void sql1_idatetotext_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will return date-string from int YYYYMMDD.
-    UNUSED_PARAMETER(argc);
-    char zBuf[10 + 1] = { 0 };
-    DateTime dt = { 0 };
-    if (idatetimeParse(&dt, sqlite3_value_int(argv[0]), 0, 0)) {
-        return;
-    }
-    sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d", dt.Y, dt.M, dt.D);
-    sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
+    idateFrom(context, argc, argv, 1);
 }
 
 SQLMATH_FUNC static void sql1_idatetimefrom_func(
@@ -1707,10 +1693,10 @@ SQLMATH_FUNC static void sql1_idatetimefrom_func(
     int argc,
     sqlite3_value ** argv
 ) {
-    idatetimefromFunc(context, argc, argv, 0);
+    idateFrom(context, argc, argv, 0);
 }
 
-SQLMATH_FUNC static void sql1_idatetimetoepoch_func(
+SQLMATH_FUNC static void sql1_idatetoepoch_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -1718,29 +1704,37 @@ SQLMATH_FUNC static void sql1_idatetimetoepoch_func(
 // This function will return unixepoch from int64 YYYYMMDDHHMMSS.
     UNUSED_PARAMETER(argc);
     DateTime dt = { 0 };
-    const int64_t idatet = sqlite3_value_int64(argv[0]);
-    if (idatetimeParse(&dt, idatet / 1000000, idatet % 1000000, 1)) {
+    if (idateParse(&dt, sqlite3_value_int64(argv[0]), 1)) {
         return;
     }
     sqlite3_result_int64(context, dt.iJD / 1000 - 21086676 * (int64_t) 10000);
 }
 
-SQLMATH_FUNC static void sql1_idatetimetotext_func(
+SQLMATH_FUNC static void sql1_idatetotext_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
 // This function will return datetime-string from int64 YYYYMMDDHHMMSS.
     UNUSED_PARAMETER(argc);
-    char zBuf[10 + 1 + 8 + 1] = { 0 };
     DateTime dt = { 0 };
-    const int64_t idatet = sqlite3_value_int64(argv[0]);
-    if (idatetimeParse(&dt, idatet / 1000000, idatet % 1000000, 0)) {
+    const int64_t idate64 = sqlite3_value_int64(argv[0]);
+    if (idateParse(&dt, idate64, 0)) {
         return;
     }
-    sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d %02d:%02d:%02d",
-        dt.Y, dt.M, dt.D, dt.h, dt.m, (int) dt.s);
-    sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
+    if (idateDateonly(idate64)) {
+        char zBuf[10 + 1] = { 0 };
+        sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d",  //
+            dt.Y, dt.M, dt.D);
+        sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1,
+            SQLITE_TRANSIENT);
+    } else {
+        char zBuf[10 + 1 + 8 + 1] = { 0 };
+        sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d %02d:%02d:%02d",
+            dt.Y, dt.M, dt.D, dt.h, dt.m, (int) dt.s);
+        sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1,
+            SQLITE_TRANSIENT);
+    }
 }
 
 // SQLMATH_FUNC sql1_lgbm_xxx_func - start
@@ -4385,9 +4379,8 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(idatefrom, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatetimefrom, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatetoepoch, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(idatetotext, 1, SQLITE_DETERMINISTIC);
-    SQL_CREATE_FUNC1(idatetimetoepoch, 1, SQLITE_DETERMINISTIC);
-    SQL_CREATE_FUNC1(idatetimetotext, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefrommat, 7, 0);
     SQL_CREATE_FUNC1(lgbm_datasetdumptext, 2, 0);
