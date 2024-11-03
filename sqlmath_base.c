@@ -333,7 +333,6 @@ SQLMATH_API void doublewinResultBlob(
 
 
 // file sqlmath_h - idate
-#define DATETIME_ALLOCA(dt) DateTime __##dt = { 0 }; DateTime *dt = &__##dt;
 #define IDATE_TYPE_EPOCH        3
 #define IDATE_TYPE_IDATE        0
 #define IDATE_TYPE_IDATE_DATEONLY         1
@@ -362,28 +361,20 @@ typedef struct DateTime {
     unsigned isUtc     : 1; /* Time is known to be UTC */
     unsigned isLocal   : 1; /* Time is known to be localtime */
 } DateTime;
-SQLITE_API void sqlite3_computeHMS(DateTime *p);
-SQLITE_API void sqlite3_computeJD(DateTime *p);
-SQLITE_API void sqlite3_computeYMD(DateTime *p);
+SQLITE_API void sqlite3_computeYMD_HMS(
+    DateTime *p
+);
 SQLITE_API int sqlite3_isDate(
     sqlite3_context *context,
     int argc,
     sqlite3_value **argv,
     DateTime *p
 );
-SQLITE_API int sqlite3_parseModifier(
-    sqlite3_context * pCtx,     /* Function context */
-    const char *z,              /* The text of the modifier */
-    int n,                      /* Length of zMod in bytes */
-    DateTime * p,               /* The date/time value to be modified */
-    int idx                     /* Parameter index of the modifier */
-);
-SQLMATH_API int idateDateonly(
-    const int64_t idate64
-);
-SQLMATH_API int idateParse(
-    DateTime * dt,
-    sqlite3_value ** argv
+SQLITE_API int sqlite3_isDate2(
+    sqlite3_context *context,
+    int argc,
+    sqlite3_value **argv,
+    DateTime *p
 );
 
 
@@ -1204,60 +1195,6 @@ SQLMATH_API void doublewinResultBlob(
 // SQLMATH_API doublewin - end
 
 // SQLMATH_API idate - start
-SQLMATH_API int idateDateonly(
-    const int64_t idate64
-) {
-// This function will check if <idate64> has only date-component.
-    return 10000101 <= idate64 && idate64 <= 99991231;
-}
-
-SQLMATH_API int idateParse(
-    DateTime * dt,
-    sqlite3_value ** argv
-) {
-// This function will parse <idate> and <itime> into <dt>,
-// and return 0 on success.
-    if (dt->isError || dt->validJD || dt->validHMS || dt->validYMD) {
-        return 1;
-    }
-    const int64_t idate64 = sqlite3_value_int64(argv[0]);
-    // parse idate
-    {
-        const int idate =
-            idateDateonly(idate64) ? idate64 : idate64 / 1000000;
-        const int yy = idate / 10000;
-        const int mmd = (idate / 100) % 100;
-        const int dd = idate % 100;
-        if (!((1000 <= yy && yy <= 9999)
-                && (1 <= mmd && mmd <= 12)
-                && (1 <= dd && dd <= 31))) {
-            return 1;
-        }
-        dt->validYMD = 1;
-        dt->Y = yy;
-        dt->M = mmd;
-        dt->D = dd;
-    }
-    // parse itime
-    if (!idateDateonly(idate64)) {
-        const int itime = idate64 % 1000000;
-        const int hh = itime / 10000;
-        const int mmt = (itime / 100) % 100;
-        const int ss = itime % 100;
-        if (!((0 <= hh && hh <= 23)
-                && (0 <= mmt && mmt <= 59)
-                && (0 <= ss && ss <= 59))) {
-            return 1;
-        }
-        dt->validHMS = 1;
-        dt->h = hh;
-        dt->m = mmt;
-        dt->rawS = 0;
-        dt->s = ss;
-    }
-    return 0;
-}
-
 // SQLMATH_API idate - end
 
 // SQLMATH_API str99 - start
@@ -1752,18 +1689,44 @@ SQLMATH_FUNC static void sql1_idatefrom_func0(
     const int typeFrom,
     const int typeTo
 ) {
-    DATETIME_ALLOCA(dt);
+    // declare var
+    DateTime __dt = { 0 };
+    DateTime *dt = &__dt;
+    int modeDateonly = 0;
+    int64_t idate64 = 0;
+    // parse argv
     switch (typeFrom) {
     case IDATE_TYPE_IDATE:
-        if (idateParse(dt, argv)) {
+        idate64 = sqlite3_value_int64(argv[0]);
+        modeDateonly = 10000101 <= idate64 && idate64 <= 99991231;
+        // parse idate
+        {
+            const int idate = modeDateonly ? idate64 : idate64 / 1000000;
+            dt->validYMD = 1;
+            dt->Y = idate / 10000;
+            dt->M = (idate / 100) % 100;
+            dt->D = idate % 100;
+        }
+        // parse itime
+        if (!modeDateonly) {
+            const int itime = idate64 % 1000000;
+            dt->validHMS = 1;
+            dt->h = itime / 10000;
+            dt->m = (itime / 100) % 100;
+            dt->rawS = 0;
+            dt->s = itime % 100;
+        }
+        // validate dt
+        if (!((1000 <= dt->Y && dt->Y <= 9999)
+                && (1 <= dt->M && dt->M <= 12)
+                && (1 <= dt->D && dt->D <= 31)
+                && (0 <= dt->h && dt->h < 24)
+                && (0 <= dt->m && dt->m < 60)
+                && (0 <= dt->s && dt->s < 60))) {
             return;
         }
-        for (int ii = 1; ii < argc; ii += 1) {
-            const char *zz = (char *) sqlite3_value_text(argv[ii]);
-            int nn = sqlite3_value_bytes(argv[ii]);
-            if (zz == 0 || sqlite3_parseModifier(context, zz, nn, dt, ii)) {
-                return;
-            }
+        if (sqlite3_isDate2(context, argc, argv, dt)) {
+            return;
         }
         break;
         // case IDATE_TYPE_TEXT:
@@ -1772,22 +1735,28 @@ SQLMATH_FUNC static void sql1_idatefrom_func0(
             return;
         }
     }
-    // normalize YMD
-    sqlite3_computeJD(dt);
-    if (dt->D > 28) {
-        dt->validYMD = 0;
-        sqlite3_computeYMD(dt);
-    }
-    if (dt->isError || !(0 <= dt->iJD && dt->iJD <= 464269060799999)) {
+    // normalize YMD_HMS
+    sqlite3_computeYMD_HMS(dt);
+    if (dt->isError) {
         return;
     }
+    // validate dt
+    if (!((1000 <= dt->Y && dt->Y <= 9999)
+            && (1 <= dt->M && dt->M <= 12)
+            && (1 <= dt->D && dt->D <= 31)
+            && (0 <= dt->h && dt->h < 24)
+            && (0 <= dt->m && dt->m < 60)
+            && (0 <= dt->s && dt->s < 60))) {
+        return;
+    }
+    // serialize result
     switch (typeTo) {
     case IDATE_TYPE_EPOCH:
         sqlite3_result_int64(context,
             dt->iJD / 1000 - 21086676 * (int64_t) 10000);
         return;
     case IDATE_TYPE_TEXT:
-        if (idateDateonly(sqlite3_value_int64(argv[0]))) {
+        if (modeDateonly) {
             char zBuf[10 + 1] = { 0 };
             sqlite3_snprintf(sizeof(zBuf), zBuf,        //
                 "%04d-%02d-%02d",       //
@@ -1807,23 +1776,15 @@ SQLMATH_FUNC static void sql1_idatefrom_func0(
         // case IDATE_TYPE_IDATE_DATEONLY:
     default:
         // Return int YYYYMMDD
-        sqlite3_computeYMD(dt);
-        const int idate = dt->Y * 10000 + dt->M * 100 + dt->D;
-        if (!(10000101 <= idate && idate <= 99991231)) {
-            return;
-        }
         if (typeTo == IDATE_TYPE_IDATE_DATEONLY) {
-            sqlite3_result_int(context, idate);
+            sqlite3_result_int(context, //
+                dt->Y * 10000 + dt->M * 100 + dt->D);
             return;
         }
         // Return int64 YYYYMMDDHHMMSS
-        sqlite3_computeHMS(dt);
-        const int itime = dt->h * 10000 + dt->m * 100 + dt->s;
-        if (!(000000 <= itime && itime <= 235959)) {
-            return;
-        }
-        sqlite3_result_int64(context,
-            ((int64_t) idate) * 1000000 + (int64_t) itime);
+        sqlite3_result_int64(context,   //
+            (int64_t) (dt->Y * 10000 + dt->M * 100 + dt->D) * 1000000   //
+            + (int64_t) (dt->h * 10000 + dt->m * 100 + dt->s));
     }
 }
 
