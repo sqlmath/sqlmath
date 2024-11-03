@@ -333,6 +333,7 @@ SQLMATH_API void doublewinResultBlob(
 
 
 // file sqlmath_h - idate
+#define DATETIME_ALLOCA(dt) DateTime __##dt = { 0 }; DateTime *dt = &__##dt;
 #define SQLITE_FUNC_CONSTANT 0x0800 /* Constant inputs give a constant output */
 #define SQLITE_FUNC_SLOCHNG  0x2000 // "Slow Change". Value constant during a
                                     // single query - might change over time
@@ -375,12 +376,6 @@ SQLITE_API int sqlite3_parseModifier(
 );
 SQLMATH_API int idateDateonly(
     const int64_t idate64
-);
-SQLMATH_API void idateFrom(
-    sqlite3_context * context,
-    const int argc,
-    sqlite3_value ** argv,
-    const int dateonly
 );
 SQLMATH_API int idateParse(
     DateTime * dt,
@@ -1209,40 +1204,8 @@ SQLMATH_API void doublewinResultBlob(
 SQLMATH_API int idateDateonly(
     const int64_t idate64
 ) {
+// This function will check if <idate64> has only date-component.
     return 10000101 <= idate64 && idate64 <= 99991231;
-}
-
-SQLMATH_API void idateFrom(
-/*
-**    datetime( TIMESTRING, MOD, MOD, ...)
-**
-** Return int64 YYYYMMDDHHMMSS
-*/
-    sqlite3_context * context,
-    const int argc,
-    sqlite3_value ** argv,
-    const int dateonly
-) {
-    DateTime dt = { 0 };
-    if (sqlite3_isDate(context, argc, argv, &dt)) {
-        return;
-    }
-    sqlite3_computeYMD(&dt);
-    const int idate = dt.Y * 10000 + dt.M * 100 + dt.D;
-    if (!(10000101 <= idate && idate <= 99991231)) {
-        return;
-    }
-    if (dateonly) {
-        sqlite3_result_int(context, idate);
-        return;
-    }
-    sqlite3_computeHMS(&dt);
-    const int itime = dt.h * 10000 + dt.m * 100 + dt.s;
-    if (!(000000 <= itime && itime <= 235959)) {
-        return;
-    }
-    sqlite3_result_int64(context,
-        ((int64_t) idate) * 1000000 + (int64_t) itime);
 }
 
 SQLMATH_API int idateParse(
@@ -1777,6 +1740,39 @@ SQLMATH_FUNC static void sql1_fmod_func(
             sqlite3_value_double_or_nan(argv[1])));
 }
 
+SQLMATH_FUNC static void sql1_idatefrom_func0(
+/*
+**    date( TIMESTRING, MOD, MOD, ...)
+**
+** Return int YYYYMMDD
+*/
+    sqlite3_context * context,
+    const int argc,
+    sqlite3_value ** argv,
+    const int dateonly
+) {
+    DATETIME_ALLOCA(dt);
+    if (sqlite3_isDate(context, argc, argv, dt)) {
+        return;
+    }
+    sqlite3_computeYMD(dt);
+    const int idate = dt->Y * 10000 + dt->M * 100 + dt->D;
+    if (!(10000101 <= idate && idate <= 99991231)) {
+        return;
+    }
+    if (dateonly) {
+        sqlite3_result_int(context, idate);
+        return;
+    }
+    sqlite3_computeHMS(dt);
+    const int itime = dt->h * 10000 + dt->m * 100 + dt->s;
+    if (!(000000 <= itime && itime <= 235959)) {
+        return;
+    }
+    sqlite3_result_int64(context,
+        ((int64_t) idate) * 1000000 + (int64_t) itime);
+}
+
 SQLMATH_FUNC static void sql1_idatefrom_func(
 /*
 **    date( TIMESTRING, MOD, MOD, ...)
@@ -1787,7 +1783,7 @@ SQLMATH_FUNC static void sql1_idatefrom_func(
     int argc,
     sqlite3_value ** argv
 ) {
-    idateFrom(context, argc, argv, 1);
+    sql1_idatefrom_func0(context, argc, argv, 1);
 }
 
 SQLMATH_FUNC static void sql1_idatetimefrom_func(
@@ -1800,7 +1796,7 @@ SQLMATH_FUNC static void sql1_idatetimefrom_func(
     int argc,
     sqlite3_value ** argv
 ) {
-    idateFrom(context, argc, argv, 0);
+    sql1_idatefrom_func0(context, argc, argv, 0);
 }
 
 SQLMATH_FUNC static void sql1_idatetoepoch_func(
@@ -1810,11 +1806,12 @@ SQLMATH_FUNC static void sql1_idatetoepoch_func(
 ) {
 // This function will return unixepoch from int64 YYYYMMDDHHMMSS.
     UNUSED_PARAMETER(argc);
-    DateTime dt = { 0 };
-    if (idateParse(&dt, sqlite3_value_int64(argv[0]), 1)) {
+    DATETIME_ALLOCA(dt);
+    if (idateParse(dt, sqlite3_value_int64(argv[0]), 1)) {
         return;
     }
-    sqlite3_result_int64(context, dt.iJD / 1000 - 21086676 * (int64_t) 10000);
+    sqlite3_result_int64(context,
+        dt->iJD / 1000 - 21086676 * (int64_t) 10000);
 }
 
 SQLMATH_FUNC static void sql1_idatetotext_func(
@@ -1824,21 +1821,21 @@ SQLMATH_FUNC static void sql1_idatetotext_func(
 ) {
 // This function will return datetime-string from int64 YYYYMMDDHHMMSS.
     UNUSED_PARAMETER(argc);
-    DateTime dt = { 0 };
+    DATETIME_ALLOCA(dt);
     const int64_t idate64 = sqlite3_value_int64(argv[0]);
-    if (idateParse(&dt, idate64, 0)) {
+    if (idateParse(dt, idate64, 0)) {
         return;
     }
     if (idateDateonly(idate64)) {
         char zBuf[10 + 1] = { 0 };
         sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d",  //
-            dt.Y, dt.M, dt.D);
+            dt->Y, dt->M, dt->D);
         sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1,
             SQLITE_TRANSIENT);
     } else {
         char zBuf[10 + 1 + 8 + 1] = { 0 };
         sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d %02d:%02d:%02d",
-            dt.Y, dt.M, dt.D, dt.h, dt.m, (int) dt.s);
+            dt->Y, dt->M, dt->D, dt->h, dt->m, (int) dt->s);
         sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1,
             SQLITE_TRANSIENT);
     }
