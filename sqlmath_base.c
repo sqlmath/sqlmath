@@ -1215,6 +1215,9 @@ SQLMATH_API int idateParse(
 ) {
 // This function will parse <idate> and <itime> into <dt>,
 // and return 0 on success.
+    if (dt->isError || dt->validJD || dt->validHMS || dt->validYMD) {
+        return 1;
+    }
     // parse idate
     {
         const int idate =
@@ -1227,7 +1230,6 @@ SQLMATH_API int idateParse(
                 && (1 <= dd && dd <= 31))) {
             return 1;
         }
-        dt->validJD = 0;
         dt->validYMD = 1;
         dt->Y = yy;
         dt->M = mmd;
@@ -1244,7 +1246,6 @@ SQLMATH_API int idateParse(
                 && (0 <= ss && ss <= 59))) {
             return 1;
         }
-        dt->validJD = 0;
         dt->validHMS = 1;
         dt->h = hh;
         dt->m = mmt;
@@ -1255,7 +1256,13 @@ SQLMATH_API int idateParse(
     if (modejd) {
         sqlite3_computeJD(dt);
     }
-    return 0;
+    // normalize YMD
+    if (dt->D > 28) {
+        sqlite3_computeJD(dt);
+        dt->validYMD = 0;
+        sqlite3_computeYMD(dt);
+    }
+    return dt->isError;
 }
 
 // SQLMATH_API idate - end
