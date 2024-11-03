@@ -337,6 +337,8 @@ SQLMATH_API void doublewinResultBlob(
 #define SQLITE_FUNC_CONSTANT 0x0800 /* Constant inputs give a constant output */
 #define SQLITE_FUNC_SLOCHNG  0x2000 // "Slow Change". Value constant during a
                                     // single query - might change over time
+#define SQLITE_FUNC_IDATE \
+    (SQLITE_FUNC_SLOCHNG | SQLITE_UTF8 | SQLITE_FUNC_CONSTANT)
 /*
 ** A structure for holding a single date and time.
 */
@@ -356,25 +358,17 @@ typedef struct DateTime {
     unsigned isUtc     : 1; /* Time is known to be UTC */
     unsigned isLocal   : 1; /* Time is known to be localtime */
 } DateTime;
-SQLITE_API void sqlite3_computeYMD(DateTime *p);
-SQLITE_API void sqlite3_computeYMD_HMS(DateTime *p);
-SQLITE_API int sqlite3_isDate(
-    sqlite3_context *context,
-    int argc,
-    sqlite3_value **argv,
-    DateTime *p
+SQLITE_API void idatetimefromFunc(
+    sqlite3_context * context,
+    const int argc,
+    sqlite3_value ** argv,
+    const int dateonly
 );
-SQLMATH_API int idateParse(
+SQLITE_API int idatetimeParse(
     DateTime * dt,
-    const int idate
-);
-SQLMATH_API int idatetimeParse(
-    DateTime * dt,
-    const int64_t idatetime
-);
-SQLMATH_API int itimeParse(
-    DateTime * dt,
-    const int itime
+    const int idate,
+    const int itime,
+    const int modejd
 );
 
 
@@ -1194,62 +1188,6 @@ SQLMATH_API void doublewinResultBlob(
 
 // SQLMATH_API doublewin - end
 
-// SQLMATH_API idate - start
-SQLMATH_API int idateParse(
-    DateTime * dt,
-    const int idate
-) {
-// This function will parse int <idate> into <dt>, and return 0 on success.
-    const int yy = idate / 10000;
-    const int mmd = (idate / 100) % 100;
-    const int dd = idate % 100;
-    if (!((1000 <= yy && yy <= 9999)
-            && (1 <= mmd && mmd <= 12)
-            && (1 <= dd && dd <= 31))) {
-        return 1;
-    }
-    dt->validJD = 0;
-    dt->validYMD = 1;
-    dt->Y = yy;
-    dt->M = mmd;
-    dt->D = dd;
-    return 0;
-}
-
-SQLMATH_API int idatetimeParse(
-    DateTime * dt,
-    const int64_t idatetime
-) {
-// This function will parse int64 <idatetime> into <dt>,
-// and return 0 on success.
-    return idateParse(dt, (int) (idatetime / 1000000))
-        || itimeParse(dt, (int) (idatetime % 1000000));
-}
-
-SQLMATH_API int itimeParse(
-    DateTime * dt,
-    const int itime
-) {
-// This function will parse int <idate> into <dt>, and return 0 on success.
-    const int hh = itime / 10000;
-    const int mmt = (itime / 100) % 100;
-    const int ss = itime % 100;
-    if (!((0 <= hh && hh <= 23)
-            && (0 <= mmt && mmt <= 59)
-            && (0 <= ss && ss <= 59))) {
-        return 1;
-    }
-    dt->validJD = 0;
-    dt->validHMS = 1;
-    dt->h = hh;
-    dt->m = mmt;
-    dt->rawS = 0;
-    dt->s = ss;
-    return 0;
-}
-
-// SQLMATH_API idate - end
-
 // SQLMATH_API str99 - start
 SQLMATH_API void str99ArrayAppendDouble(
     sqlite3_str * str99,
@@ -1740,16 +1678,7 @@ SQLMATH_FUNC static void sql1_idatefrom_func(
     int argc,
     sqlite3_value ** argv
 ) {
-    DateTime dt = { 0 };
-    if (sqlite3_isDate(context, argc, argv, &dt)) {
-        return;
-    }
-    sqlite3_computeYMD(&dt);
-    const int ii = dt.Y * 10000 + dt.M * 100 + dt.D;
-    if (!(10000101 <= ii && ii <= 99991231)) {
-        return;
-    }
-    sqlite3_result_int(context, ii);
+    idatetimefromFunc(context, argc, argv, 1);
 }
 
 SQLMATH_FUNC static void sql1_idatetotext_func(
@@ -1761,7 +1690,7 @@ SQLMATH_FUNC static void sql1_idatetotext_func(
     UNUSED_PARAMETER(argc);
     char zBuf[10 + 1] = { 0 };
     DateTime dt = { 0 };
-    if (idateParse(&dt, sqlite3_value_int(argv[0]))) {
+    if (idatetimeParse(&dt, sqlite3_value_int(argv[0]), 0, 0)) {
         return;
     }
     sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d", dt.Y, dt.M, dt.D);
@@ -1778,17 +1707,22 @@ SQLMATH_FUNC static void sql1_idatetimefrom_func(
     int argc,
     sqlite3_value ** argv
 ) {
+    idatetimefromFunc(context, argc, argv, 0);
+}
+
+SQLMATH_FUNC static void sql1_idatetimetoepoch_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return unixepoch from int64 YYYYMMDDHHMMSS.
+    UNUSED_PARAMETER(argc);
     DateTime dt = { 0 };
-    if (sqlite3_isDate(context, argc, argv, &dt)) {
+    const int64_t idatet = sqlite3_value_int64(argv[0]);
+    if (idatetimeParse(&dt, idatet / 1000000, idatet % 1000000, 1)) {
         return;
     }
-    sqlite3_computeYMD_HMS(&dt);
-    const int64_t ii = (int64_t) (dt.Y * 10000 + dt.M * 100 + dt.D) * 1000000
-        + (int64_t) (dt.h * 10000 + dt.m * 100 + (int) dt.s);
-    if (!(10000101000000 <= ii && ii <= 99991231235959)) {
-        return;
-    }
-    sqlite3_result_int64(context, ii);
+    sqlite3_result_int64(context, dt.iJD / 1000 - 21086676 * (int64_t) 10000);
 }
 
 SQLMATH_FUNC static void sql1_idatetimetotext_func(
@@ -1800,7 +1734,8 @@ SQLMATH_FUNC static void sql1_idatetimetotext_func(
     UNUSED_PARAMETER(argc);
     char zBuf[10 + 1 + 8 + 1] = { 0 };
     DateTime dt = { 0 };
-    if (idatetimeParse(&dt, sqlite3_value_int64(argv[0]))) {
+    const int64_t idatet = sqlite3_value_int64(argv[0]);
+    if (idatetimeParse(&dt, idatet / 1000000, idatet % 1000000, 0)) {
         return;
     }
     sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d %02d:%02d:%02d",
@@ -4448,11 +4383,10 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(doublearray_jsonfrom, 1, 0);
     SQL_CREATE_FUNC1(doublearray_jsonto, 1, 0);
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
-    SQL_CREATE_FUNC1(idatefrom, -1,
-        SQLITE_FUNC_SLOCHNG | SQLITE_UTF8 | SQLITE_FUNC_CONSTANT);
-    SQL_CREATE_FUNC1(idatetimefrom, -1,
-        SQLITE_FUNC_SLOCHNG | SQLITE_UTF8 | SQLITE_FUNC_CONSTANT);
+    SQL_CREATE_FUNC1(idatefrom, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatetimefrom, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatetotext, 1, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(idatetimetoepoch, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(idatetimetotext, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefrommat, 7, 0);

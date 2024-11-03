@@ -1425,23 +1425,27 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                 [10000101000000, null],
                 [99991231235959, null]
             ].map(function ([valIn, valExpect, modifier]) {
-                [valIn, valExpect] = [valIn, valExpect].map(function (arg) {
-                    return (
-                        (arg === null || sqlFunc.startsWith("IDATETIME"))
-                        ? arg
-                        : typeof arg === "string"
-                        ? arg.slice(0, -9)
-                        : Math.floor(arg / 1000000)
-                    );
-                });
-                modifier = (
-                    !modifier
-                    ? modifier
-                    : sqlFunc.startsWith("IDATETIME")
-                    ? `${modifier} SECOND`
-                    : `${modifier} DAY`
-                );
                 return [sqlFunc, valIn, valExpect, modifier];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATETIMETOEPOCH"
+        ].map(function (sqlFunc) {
+            return [
+                ["1000-01-01 00:00:00", null],
+                ["9999-12-31 23:59:59", null],
+                [10000101000000, -30610224000],
+                [10000229000000, -30605126400],
+                [10000301000000, -30605126400],
+                [10040229000000, -30478982400],
+                [9991231000000, null],
+                [99960229235959, 253281254399],
+                [99970229235959, 253312876799],
+                [99970301235959, 253312876799],
+                [99991231235959, 253402300799],
+                [99991232235959, null]
+            ].map(function ([valIn, valExpect]) {
+                return [sqlFunc, valIn, valExpect];
             });
         }).flat());
         promiseList.push([
@@ -1460,15 +1464,6 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                 [99991231235959, "9999-12-31 23:59:59"],
                 [99991232235959, null]
             ].map(function ([valIn, valExpect]) {
-                [valIn, valExpect] = [valIn, valExpect].map(function (arg) {
-                    return (
-                        (arg === null || sqlFunc.startsWith("IDATETIME"))
-                        ? arg
-                        : typeof arg === "string"
-                        ? arg.slice(0, -9)
-                        : Math.floor(arg / 1000000)
-                    );
-                });
                 return [sqlFunc, valIn, valExpect];
             });
         }).flat());
@@ -1480,6 +1475,22 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             sqlFunc, valIn, valExpect, modifier
         ], ii) {
             let valActual;
+            modifier = (
+                !modifier
+                ? modifier
+                : sqlFunc.startsWith("IDATETIME")
+                ? `${modifier} SECOND`
+                : `${modifier} DAY`
+            );
+            [valIn, valExpect] = [valIn, valExpect].map(function (arg) {
+                return (
+                    (arg === null || sqlFunc.startsWith("IDATETIME"))
+                    ? arg
+                    : typeof arg === "string"
+                    ? arg.slice(0, -9)
+                    : Math.floor(arg / 1000000)
+                );
+            });
             valActual = (
                 await dbExecAndReturnLastValue({
                     bindList: {
