@@ -338,6 +338,14 @@ SQLMATH_API void doublewinResultBlob(
                                     // single query - might change over time
 #define SQLITE_FUNC_IDATE \
     (SQLITE_FUNC_SLOCHNG | SQLITE_UTF8 | SQLITE_FUNC_CONSTANT)
+#define SQL1_IDATE_FUNC(func, typeFrom, typeTo) \
+    sql1_##func##_func( \
+        sqlite3_context * context, \
+        int argc, \
+        sqlite3_value ** argv \
+    ) { \
+        sql1_idate_func0(context, argc, argv, typeFrom, typeTo); \
+    }
 /*
 ** A structure for holding a single date and time.
 */
@@ -1725,87 +1733,47 @@ SQLMATH_FUNC static void sql1_idate_func0(
     }
 }
 
-SQLMATH_FUNC static void sql1_idateadd_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will modify int64 YYYYMMDDHHMMSS.
-    sql1_idate_func0(context, argc, argv, IDATE_TYPE_IDATE, IDATE_TYPE_IDATE);
-}
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idateadd,
+    IDATE_TYPE_IDATE,
+    IDATE_TYPE_IDATE
+);
 
-SQLMATH_FUNC static void sql1_idatefrom_func(
-/*
-**    date( TIMESTRING, MOD, MOD, ...)
-**
-** Return int YYYYMMDD
-*/
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-    sql1_idate_func0(context, argc, argv, IDATE_TYPE_DEFAULT,
-        IDATE_TYPE_IDATE_DATEONLY);
-}
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatefrom,
+    IDATE_TYPE_DEFAULT,
+    IDATE_TYPE_IDATE_DATEONLY
+);
 
-SQLMATH_FUNC static void sql1_idatefromepoch_func(
-/*
-**    date( TIMESTRING, MOD, MOD, ...)
-**
-** Return int YYYYMMDD
-*/
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-    sql1_idate_func0(context, argc, argv, IDATE_TYPE_EPOCH,
-        IDATE_TYPE_IDATE_DATEONLY);
-}
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatefromepoch,
+    IDATE_TYPE_EPOCH,
+    IDATE_TYPE_IDATE_DATEONLY
+);
 
-SQLMATH_FUNC static void sql1_idatetimefrom_func(
-/*
-**    datetime( TIMESTRING, MOD, MOD, ...)
-**
-** Return int64 YYYYMMDDHHMMSS
-*/
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-    sql1_idate_func0(context, argc, argv, IDATE_TYPE_DEFAULT,
-        IDATE_TYPE_IDATE);
-}
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatetimefrom,
+    IDATE_TYPE_DEFAULT,
+    IDATE_TYPE_IDATE
+);
 
-SQLMATH_FUNC static void sql1_idatetimefromepoch_func(
-/*
-**    datetime( TIMESTRING, MOD, MOD, ...)
-**
-** Return int64 YYYYMMDDHHMMSS
-*/
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-    sql1_idate_func0(context, argc, argv, IDATE_TYPE_EPOCH, IDATE_TYPE_IDATE);
-}
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatetimefromepoch,
+    IDATE_TYPE_EPOCH,
+    IDATE_TYPE_IDATE
+);
 
-SQLMATH_FUNC static void sql1_idatetoepoch_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will return unixepoch from int64 YYYYMMDDHHMMSS.
-    sql1_idate_func0(context, argc, argv, IDATE_TYPE_IDATE, IDATE_TYPE_EPOCH);
-}
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatetoepoch,
+    IDATE_TYPE_IDATE,
+    IDATE_TYPE_EPOCH
+);
 
-SQLMATH_FUNC static void sql1_idatetotext_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will return datetime-string from int64 YYYYMMDDHHMMSS.
-    sql1_idate_func0(context, argc, argv, IDATE_TYPE_IDATE, IDATE_TYPE_TEXT);
-}
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatetotext,
+    IDATE_TYPE_IDATE,
+    IDATE_TYPE_TEXT
+);
 
 // SQLMATH_FUNC sql1_lgbm_xxx_func - start
 // https://lightgbm.readthedocs.io/en/latest/C-API.html
@@ -4461,8 +4429,8 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(lgbm_datasetgetnumdata, 1, 0);
     SQL_CREATE_FUNC1(lgbm_datasetgetnumfeature, 1, 0);
     SQL_CREATE_FUNC1(lgbm_datasetsavebinary, 1, 0);
-    SQL_CREATE_FUNC1(lgbm_extract, 2, 0);
     SQL_CREATE_FUNC1(lgbm_dlopen, 1, 0);
+    SQL_CREATE_FUNC1(lgbm_extract, 2, 0);
     SQL_CREATE_FUNC1(lgbm_predictforfile, 8, 0);
     SQL_CREATE_FUNC1(lgbm_trainfromdataset, 5, 0);
     SQL_CREATE_FUNC1(lgbm_trainfromfile, 6, 0);
