@@ -1693,7 +1693,8 @@ SQLMATH_FUNC static void sql1_idate_func0(
         return;
     }
     const int64_t idate64 = sqlite3_value_int64(argv[0]);
-    const int modeDateonly = 10000101 <= idate64 && idate64 <= 99991231;
+    const int modeDateonly = (10000101 <= idate64 && idate64 <= 99991231
+        && typeTo != IDATE_TYPE_IDATE_DATETIMEONLY);
     // serialize result
     switch (typeTo) {
     case IDATE_TYPE_EPOCH:
@@ -1729,7 +1730,7 @@ SQLMATH_FUNC static void sql1_idate_func0(
         // Return int64 YYYYMMDDHHMMSS
         sqlite3_result_int64(context,   //
             (int64_t) (dt->Y * 10000 + dt->M * 100 + dt->D) * 1000000   //
-            + (int64_t) (dt->h * 10000 + dt->m * 100 + dt->s));
+            + (int64_t) (dt->h * 10000 + dt->m * 100 + (int) dt->s));
     }
 }
 
@@ -1767,6 +1768,18 @@ SQLMATH_FUNC static void SQL1_IDATE_FUNC(
     idatetoepoch,
     IDATE_TYPE_IDATE,
     IDATE_TYPE_EPOCH
+);
+
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatetoidate,
+    IDATE_TYPE_IDATE,
+    IDATE_TYPE_IDATE_DATEONLY
+);
+
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatetoidatetime,
+    IDATE_TYPE_IDATE,
+    IDATE_TYPE_IDATE_DATETIMEONLY
 );
 
 SQLMATH_FUNC static void SQL1_IDATE_FUNC(
@@ -4421,6 +4434,8 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(idatetimefrom, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatetimefromepoch, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatetoepoch, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatetoidate, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatetoidatetime, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatetotext, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefrommat, 7, 0);
