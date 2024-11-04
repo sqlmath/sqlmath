@@ -4,6 +4,7 @@
 - none
 
 # v2024.11.1-beta
+- sqlmath - Add sql-functions IDATEFROMEPOCH(), IDATETIMEFROMEPOCH().
 - sqlmath - Add sql-function IDATEADD().
 - sqlmath - Add sql-function IDATETOEPOCH().
 - sqlmath - Add sql-function IDATETIMEFROM().

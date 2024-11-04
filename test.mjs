@@ -1461,7 +1461,9 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
         }).flat());
         promiseList.push([
             "IDATEFROM",
-            "IDATETIMEFROM"
+            "IDATEFROMEPOCH",
+            "IDATETIMEFROM",
+            "IDATETIMEFROMEPOCH"
         ].map(function (sqlFunc) {
             return [
                 [10000101000000, "-30610224000"],
@@ -1485,7 +1487,11 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                         ? valExpect
                         : Math.floor(valExpect / 1000000)
                     ),
-                    "UNIXEPOCH"
+                    (
+                        (/IDATEFROMEPOCH|IDATETIMEFROMEPOCH/).test(sqlFunc)
+                        ? undefined
+                        : "UNIXEPOCH"
+                    )
                 ];
             });
         }).flat());
@@ -1563,6 +1569,7 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                     (
                         arg === null
                         || !(/IDATEFROM|IDATETOTEXT/).test(sqlFunc)
+                        || (/IDATEFROMEPOCH|IDATETIMEFROMEPOCH/).test(sqlFunc)
                         || modifier === "UNIXEPOCH"
                     )
                     ? arg

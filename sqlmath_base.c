@@ -333,10 +333,6 @@ SQLMATH_API void doublewinResultBlob(
 
 
 // file sqlmath_h - idate
-#define IDATE_TYPE_EPOCH        3
-#define IDATE_TYPE_IDATE        0
-#define IDATE_TYPE_IDATE_DATEONLY         1
-#define IDATE_TYPE_TEXT         2
 #define SQLITE_FUNC_CONSTANT 0x0800 /* Constant inputs give a constant output */
 #define SQLITE_FUNC_SLOCHNG  0x2000 // "Slow Change". Value constant during a
                                     // single query - might change over time
@@ -361,20 +357,12 @@ typedef struct DateTime {
     unsigned isUtc     : 1; /* Time is known to be UTC */
     unsigned isLocal   : 1; /* Time is known to be localtime */
 } DateTime;
-SQLITE_API void sqlite3_computeYMD_HMS(
-    DateTime *p
-);
-SQLITE_API int sqlite3_isDate(
-    sqlite3_context *context,
-    int argc,
-    sqlite3_value **argv,
-    DateTime *p
-);
 SQLITE_API int sqlite3_isDate2(
-    sqlite3_context *context,
+    sqlite3_context * context,
     int argc,
-    sqlite3_value **argv,
-    DateTime *p
+    sqlite3_value ** argv,
+    DateTime * dt,
+    const int typeFrom
 );
 
 
@@ -1677,7 +1665,7 @@ SQLMATH_FUNC static void sql1_fmod_func(
             sqlite3_value_double_or_nan(argv[1])));
 }
 
-SQLMATH_FUNC static void sql1_idatefrom_func0(
+SQLMATH_FUNC static void sql1_idate_func0(
 /*
 **    datetime( TIMESTRING, MOD, MOD, ...)
 **
@@ -1692,63 +1680,12 @@ SQLMATH_FUNC static void sql1_idatefrom_func0(
     // declare var
     DateTime __dt = { 0 };
     DateTime *dt = &__dt;
-    int modeDateonly = 0;
-    int64_t idate64 = 0;
-    // parse argv
-    switch (typeFrom) {
-    case IDATE_TYPE_IDATE:
-        idate64 = sqlite3_value_int64(argv[0]);
-        modeDateonly = 10000101 <= idate64 && idate64 <= 99991231;
-        // parse idate
-        {
-            const int idate = modeDateonly ? idate64 : idate64 / 1000000;
-            dt->validYMD = 1;
-            dt->Y = idate / 10000;
-            dt->M = (idate / 100) % 100;
-            dt->D = idate % 100;
-        }
-        // parse itime
-        if (!modeDateonly) {
-            const int itime = idate64 % 1000000;
-            dt->validHMS = 1;
-            dt->h = itime / 10000;
-            dt->m = (itime / 100) % 100;
-            dt->rawS = 0;
-            dt->s = itime % 100;
-        }
-        // validate dt
-        if (!((1000 <= dt->Y && dt->Y <= 9999)
-                && (1 <= dt->M && dt->M <= 12)
-                && (1 <= dt->D && dt->D <= 31)
-                && (0 <= dt->h && dt->h < 24)
-                && (0 <= dt->m && dt->m < 60)
-                && (0 <= dt->s && dt->s < 60))) {
-            return;
-        }
-        if (sqlite3_isDate2(context, argc, argv, dt)) {
-            return;
-        }
-        break;
-        // case IDATE_TYPE_TEXT:
-    default:
-        if (sqlite3_isDate(context, argc, argv, dt)) {
-            return;
-        }
-    }
-    // normalize YMD_HMS
-    sqlite3_computeYMD_HMS(dt);
-    if (dt->isError) {
+    // parse argv[0]
+    if (sqlite3_isDate2(context, argc, argv, dt, typeFrom)) {
         return;
     }
-    // validate dt
-    if (!((1000 <= dt->Y && dt->Y <= 9999)
-            && (1 <= dt->M && dt->M <= 12)
-            && (1 <= dt->D && dt->D <= 31)
-            && (0 <= dt->h && dt->h < 24)
-            && (0 <= dt->m && dt->m < 60)
-            && (0 <= dt->s && dt->s < 60))) {
-        return;
-    }
+    const int64_t idate64 = sqlite3_value_int64(argv[0]);
+    const int modeDateonly = 10000101 <= idate64 && idate64 <= 99991231;
     // serialize result
     switch (typeTo) {
     case IDATE_TYPE_EPOCH:
@@ -1794,8 +1731,7 @@ SQLMATH_FUNC static void sql1_idateadd_func(
     sqlite3_value ** argv
 ) {
 // This function will modify int64 YYYYMMDDHHMMSS.
-    sql1_idatefrom_func0(context, argc, argv, IDATE_TYPE_IDATE,
-        IDATE_TYPE_IDATE);
+    sql1_idate_func0(context, argc, argv, IDATE_TYPE_IDATE, IDATE_TYPE_IDATE);
 }
 
 SQLMATH_FUNC static void sql1_idatefrom_func(
@@ -1808,7 +1744,21 @@ SQLMATH_FUNC static void sql1_idatefrom_func(
     int argc,
     sqlite3_value ** argv
 ) {
-    sql1_idatefrom_func0(context, argc, argv, IDATE_TYPE_TEXT,
+    sql1_idate_func0(context, argc, argv, IDATE_TYPE_DEFAULT,
+        IDATE_TYPE_IDATE_DATEONLY);
+}
+
+SQLMATH_FUNC static void sql1_idatefromepoch_func(
+/*
+**    date( TIMESTRING, MOD, MOD, ...)
+**
+** Return int YYYYMMDD
+*/
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+    sql1_idate_func0(context, argc, argv, IDATE_TYPE_EPOCH,
         IDATE_TYPE_IDATE_DATEONLY);
 }
 
@@ -1822,8 +1772,21 @@ SQLMATH_FUNC static void sql1_idatetimefrom_func(
     int argc,
     sqlite3_value ** argv
 ) {
-    sql1_idatefrom_func0(context, argc, argv, IDATE_TYPE_TEXT,
+    sql1_idate_func0(context, argc, argv, IDATE_TYPE_DEFAULT,
         IDATE_TYPE_IDATE);
+}
+
+SQLMATH_FUNC static void sql1_idatetimefromepoch_func(
+/*
+**    datetime( TIMESTRING, MOD, MOD, ...)
+**
+** Return int64 YYYYMMDDHHMMSS
+*/
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+    sql1_idate_func0(context, argc, argv, IDATE_TYPE_EPOCH, IDATE_TYPE_IDATE);
 }
 
 SQLMATH_FUNC static void sql1_idatetoepoch_func(
@@ -1832,8 +1795,7 @@ SQLMATH_FUNC static void sql1_idatetoepoch_func(
     sqlite3_value ** argv
 ) {
 // This function will return unixepoch from int64 YYYYMMDDHHMMSS.
-    sql1_idatefrom_func0(context, argc, argv, IDATE_TYPE_IDATE,
-        IDATE_TYPE_EPOCH);
+    sql1_idate_func0(context, argc, argv, IDATE_TYPE_IDATE, IDATE_TYPE_EPOCH);
 }
 
 SQLMATH_FUNC static void sql1_idatetotext_func(
@@ -1842,8 +1804,7 @@ SQLMATH_FUNC static void sql1_idatetotext_func(
     sqlite3_value ** argv
 ) {
 // This function will return datetime-string from int64 YYYYMMDDHHMMSS.
-    sql1_idatefrom_func0(context, argc, argv, IDATE_TYPE_IDATE,
-        IDATE_TYPE_TEXT);
+    sql1_idate_func0(context, argc, argv, IDATE_TYPE_IDATE, IDATE_TYPE_TEXT);
 }
 
 // SQLMATH_FUNC sql1_lgbm_xxx_func - start
@@ -4488,7 +4449,9 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(idateadd, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatefrom, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatefromepoch, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatetimefrom, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatetimefromepoch, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatetoepoch, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatetotext, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
