@@ -1776,7 +1776,7 @@ SQLMATH_FUNC static void sql1_idatefrom_func0(
         // case IDATE_TYPE_IDATE_DATEONLY:
     default:
         // Return int YYYYMMDD
-        if (typeTo == IDATE_TYPE_IDATE_DATEONLY) {
+        if (typeTo == IDATE_TYPE_IDATE_DATEONLY || modeDateonly) {
             sqlite3_result_int(context, //
                 dt->Y * 10000 + dt->M * 100 + dt->D);
             return;
@@ -1786,6 +1786,16 @@ SQLMATH_FUNC static void sql1_idatefrom_func0(
             (int64_t) (dt->Y * 10000 + dt->M * 100 + dt->D) * 1000000   //
             + (int64_t) (dt->h * 10000 + dt->m * 100 + dt->s));
     }
+}
+
+SQLMATH_FUNC static void sql1_idateadd_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will modify int64 YYYYMMDDHHMMSS.
+    sql1_idatefrom_func0(context, argc, argv, IDATE_TYPE_IDATE,
+        IDATE_TYPE_IDATE);
 }
 
 SQLMATH_FUNC static void sql1_idatefrom_func(
@@ -4476,10 +4486,11 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(doublearray_jsonfrom, 1, 0);
     SQL_CREATE_FUNC1(doublearray_jsonto, 1, 0);
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(idateadd, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatefrom, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatetimefrom, -1, SQLITE_FUNC_IDATE);
-    SQL_CREATE_FUNC1(idatetoepoch, 1, SQLITE_FUNC_IDATE);
-    SQL_CREATE_FUNC1(idatetotext, 1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatetoepoch, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatetotext, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefrommat, 7, 0);
     SQL_CREATE_FUNC1(lgbm_datasetdumptext, 2, 0);
