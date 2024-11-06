@@ -1698,37 +1698,39 @@ SQLMATH_FUNC static void sql1_idatefromto_func0(
         argc -= 1;
         argv += 1;
         if (typeFrom == -1) {
-            if (sqlite3_stricmp(zType, "EPOCH") == 0) {
-                typeFrom = IDATE_TYPE_EPOCH;
-            } else if (sqlite3_stricmp(zType, "IDATE") == 0) {
+            if (sqlite3_stricmp(zType, "IDATE") == 0) {
                 typeFrom = IDATE_TYPE_IDATE;
-            } else if (sqlite3_stricmp(zType, "JULIAN") == 0) {
-                typeFrom = IDATE_TYPE_JULIAN;
-            } else if (sqlite3_stricmp(zType, "TEXT") == 0) {
-                typeFrom = IDATE_TYPE_TEXT;
+            } else if (sqlite3_stricmp(zType, "IEPOCH") == 0) {
+                typeFrom = IDATE_TYPE_IEPOCH;
+            } else if (sqlite3_stricmp(zType, "IJULIAN") == 0) {
+                typeFrom = IDATE_TYPE_IJULIAN;
+            } else if (sqlite3_stricmp(zType, "ITEXT") == 0) {
+                typeFrom = IDATE_TYPE_ITEXT;
             }
         }
         if (typeTo == -1) {
-            if (sqlite3_stricmp(zType, "EPOCH") == 0) {
-                typeTo = IDATE_TYPE_EPOCH;
-            } else if (sqlite3_stricmp(zType, "JULIAN") == 0) {
-                typeTo = IDATE_TYPE_JULIAN;
-            } else if (sqlite3_stricmp(zType, "TEXT") == 0) {
-                typeTo = IDATE_TYPE_TEXT;
-            } else if (sqlite3_stricmp(zType, "TEXTYMD") == 0) {
-                typeTo = IDATE_TYPE_TEXTYMD;
-            } else if (sqlite3_stricmp(zType, "Y") == 0) {
-                typeTo = IDATE_TYPE_Y;
-            } else if (sqlite3_stricmp(zType, "YM") == 0) {
-                typeTo = IDATE_TYPE_YM;
-            } else if (sqlite3_stricmp(zType, "YMD") == 0) {
-                typeTo = IDATE_TYPE_YMD;
-            } else if (sqlite3_stricmp(zType, "YMDH") == 0) {
-                typeTo = IDATE_TYPE_YMDH;
-            } else if (sqlite3_stricmp(zType, "YMDHM") == 0) {
-                typeTo = IDATE_TYPE_YMDHM;
-            } else if (sqlite3_stricmp(zType, "YMDHMS") == 0) {
-                typeTo = IDATE_TYPE_YMDHMS;
+            if (sqlite3_stricmp(zType, "IDATE") == 0) {
+                typeTo = IDATE_TYPE_IDATE;
+            } else if (sqlite3_stricmp(zType, "IEPOCH") == 0) {
+                typeTo = IDATE_TYPE_IEPOCH;
+            } else if (sqlite3_stricmp(zType, "IJULIAN") == 0) {
+                typeTo = IDATE_TYPE_IJULIAN;
+            } else if (sqlite3_stricmp(zType, "ITEXT") == 0) {
+                typeTo = IDATE_TYPE_ITEXT;
+            } else if (sqlite3_stricmp(zType, "ITEXTYMD") == 0) {
+                typeTo = IDATE_TYPE_ITEXTYMD;
+            } else if (sqlite3_stricmp(zType, "IY") == 0) {
+                typeTo = IDATE_TYPE_IY;
+            } else if (sqlite3_stricmp(zType, "IYM") == 0) {
+                typeTo = IDATE_TYPE_IYM;
+            } else if (sqlite3_stricmp(zType, "IYMD") == 0) {
+                typeTo = IDATE_TYPE_IYMD;
+            } else if (sqlite3_stricmp(zType, "IYMDH") == 0) {
+                typeTo = IDATE_TYPE_IYMDH;
+            } else if (sqlite3_stricmp(zType, "IYMDHM") == 0) {
+                typeTo = IDATE_TYPE_IYMDHM;
+            } else if (sqlite3_stricmp(zType, "IYMDHMS") == 0) {
+                typeTo = IDATE_TYPE_IYMDHMS;
             }
         }
         if (typeFrom == -1 || typeTo == -1) {
@@ -1749,14 +1751,14 @@ SQLMATH_FUNC static void sql1_idatefromto_func0(
     // serialize result
     int modeYmd = 0;
     switch (typeTo) {
-    case IDATE_TYPE_EPOCH:
+    case IDATE_TYPE_IEPOCH:
         sqlite3_result_int64(context,
             dt->iJD / 1000 - 21086676 * (int64_t) 10000);
         return;
-    case IDATE_TYPE_JULIAN:
+    case IDATE_TYPE_IJULIAN:
         sqlite3_result_double(context, dt->iJD / 86400000.0);
         return;
-    case IDATE_TYPE_TEXT:
+    case IDATE_TYPE_ITEXT:
         {
             char zBuf[10 + 1 + 8 + 1] = { 0 };
             sqlite3_snprintf(sizeof(zBuf), zBuf,        //
@@ -1766,7 +1768,7 @@ SQLMATH_FUNC static void sql1_idatefromto_func0(
                 SQLITE_TRANSIENT);
         }
         return;
-    case IDATE_TYPE_TEXTYMD:
+    case IDATE_TYPE_ITEXTYMD:
         {
             char zBuf[10 + 1] = { 0 };
             sqlite3_snprintf(sizeof(zBuf), zBuf,        //
@@ -1776,28 +1778,28 @@ SQLMATH_FUNC static void sql1_idatefromto_func0(
                 SQLITE_TRANSIENT);
         }
         return;
-    case IDATE_TYPE_Y:
+    case IDATE_TYPE_IY:
         dt->M = 0;
         dt->D = 0;
         modeYmd = 1;
         break;
-    case IDATE_TYPE_YM:
+    case IDATE_TYPE_IYM:
         dt->D = 0;
         modeYmd = 1;
         break;
-    case IDATE_TYPE_YMD:
+    case IDATE_TYPE_IYMD:
         modeYmd = 1;
         break;
-    case IDATE_TYPE_YMDH:
+    case IDATE_TYPE_IYMDH:
         dt->m = 0;
         dt->s = 0;
         modeYmd = 0;
         break;
-    case IDATE_TYPE_YMDHM:
+    case IDATE_TYPE_IYMDHM:
         dt->s = 0;
         modeYmd = 0;
         break;
-    case IDATE_TYPE_YMDHMS:
+    case IDATE_TYPE_IYMDHMS:
         modeYmd = 0;
         break;
         // case IDATE_TYPE_IDATE:
@@ -1825,7 +1827,7 @@ SQLMATH_FUNC static void SQL1_IDATE_FUNC(
 SQLMATH_FUNC static void SQL1_IDATE_FUNC(
     idatefrom,
     -1,
-    IDATE_TYPE_YMDHMS
+    IDATE_TYPE_IYMDHMS
 );
 
 SQLMATH_FUNC static void SQL1_IDATE_FUNC(
@@ -1837,7 +1839,7 @@ SQLMATH_FUNC static void SQL1_IDATE_FUNC(
 SQLMATH_FUNC static void SQL1_IDATE_FUNC(
     idateymdfrom,
     -1,
-    IDATE_TYPE_YMD
+    IDATE_TYPE_IYMD
 );
 
 // SQLMATH_FUNC sql1_lgbm_xxx_func - start
