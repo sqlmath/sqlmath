@@ -5,15 +5,12 @@
 
 # v2024.11.1-beta
 - sqlmath - Streamline idate-sql-functions to just:
-        idateadd()
-        idatefrom()
-        idateto()
-        idateymdfrom()
-- sqlmath - Add sql-functions IDATETOIDATE(), IDATETOIDATETIME().
-- sqlmath - Add sql-functions IDATEFROMEPOCH(), IDATETIMEFROMEPOCH().
-- sqlmath - Add sql-function IDATEADD().
-- sqlmath - Add sql-function IDATETOEPOCH().
-- sqlmath - Add sql-function IDATETIMEFROM().
+    IDATEADD()
+    IDATEFROM()
+    IDATEFROMEPOCH()
+    IDATETO()
+    IDATEYMDFROM()
+    IDATEYMDFROMEPOCH()
 
 # v2024.10.23
 - sqlite - Upgrade to sqlite-v3.46.1.

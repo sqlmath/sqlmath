@@ -1385,32 +1385,57 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
         let db = await dbOpenAsync({filename: ":memory:"});
         let promiseList = [];
         function idateArgNormalize(sqlFunc, arg, mode) {
-            return (
-                arg === null
-                ? arg
-                : (mode === "expect" && (/^IDATEFROM\(.*_YMD$/).test(sqlFunc))
-                ? arg - (arg % 1_00_00_00)
-                : (/^IDATEYMDFROM|YMD$/).test(sqlFunc)
-                ? (
-                    Number.isFinite(Number(arg))
-                    ? Math.floor(arg / 1_00_00_00)
-                    : arg.split(" ")[0]
-                )
-                : arg
-            );
+            function idateArgYmdTruncate() {
+                if (Number.isFinite(Number(arg))) {
+                    return Math.floor(arg / 1_00_00_00);
+                }
+                return arg.split(" ")[0];
+            }
+            switch (arg !== null && mode) {
+            case "expect":
+                if ((/(?:IDATEFROM|'IYMDH\w*?').*?_YMD$/).test(sqlFunc)) {
+                    return arg - (arg % 1_00_00_00);
+                }
+                if ((/'IY'/).test(sqlFunc)) {
+                    arg = idateArgYmdTruncate(arg);
+                    return arg - (arg % 1_00_00);
+                }
+                if ((/'IYM'/).test(sqlFunc)) {
+                    arg = idateArgYmdTruncate(arg);
+                    return arg - (arg % 1_00);
+                }
+                if ((/'IYMD'/).test(sqlFunc)) {
+                    arg = idateArgYmdTruncate(arg);
+                    return arg - (arg % 1);
+                }
+                if ((/'IYMDH'/).test(sqlFunc)) {
+                    return arg - (arg % 1_00_00);
+                }
+                if ((/'IYMDHM'/).test(sqlFunc)) {
+                    return arg - (arg % 1_00);
+                }
+                if (
+                    (/^IDATEYMDFROM|'ITEXTYMD'/).test(sqlFunc)
+                    || ((/_YMD$/).test(sqlFunc) && !(/IDATEFROM/).test(sqlFunc))
+                ) {
+                    return idateArgYmdTruncate(arg);
+                }
+                break;
+            case "input":
+                if ((/_YMD$/).test(sqlFunc)) {
+                    return idateArgYmdTruncate(arg);
+                }
+                break;
+            }
+            return arg;
         }
         promiseList.push([
             "IDATEADD",
             //
-            "IDATEFROM('IDATE')",
-            // "IDATEFROM('IEPOCH')",
-            "IDATEFROM('IJULIAN')",
-            "IDATEFROM('ITEXT')",
-            //
-            "IDATEYMDFROM('IDATE')",
-            // "IDATEYMDFROM('IEPOCH')",
-            "IDATEYMDFROM('IJULIAN')",
-            "IDATEYMDFROM('ITEXT')",
+            "IDATEFROM",
+            // "IDATEFROMEPOCH",
+            "IDATEYMDFROM",
+            // "IDATEYMDFROMEPOCH",
             //
             "IDATETO('IDATE')",
             "IDATETO('IEPOCH')",
@@ -1468,10 +1493,42 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             });
         }).flat());
         promiseList.push([
+            "IDATEFROM",
+            "IDATEYMDFROM"
+        ].map(function (sqlFunc) {
+            return [
+                [10000101000000, null],
+                [99991231235959, null]
+            ].map(function ([valIn, valExpect, modifier]) {
+                return [sqlFunc, valIn, valExpect, modifier];
+            });
+        }).flat());
+        promiseList.push([
             "IDATEADD",
-            "IDATEFROM('IDATE')",
             "IDATETO('IDATE')",
-            "IDATEYMDFROM('IDATE')"
+            "IDATETO('IEPOCH')",
+            "IDATETO('IJULIAN')",
+            "IDATETO('ITEXT')",
+            "IDATETO('ITEXTYMD')",
+            "IDATETO('IY')",
+            "IDATETO('IYM')",
+            "IDATETO('IYMD')",
+            "IDATETO('IYMDH')",
+            "IDATETO('IYMDHM')",
+            "IDATETO('IYMDHMS')"
+        ].map(function (sqlFunc) {
+            return [
+                ["1000-01-01 00:00:00", null],
+                ["9999-12-31 23:59:59", null],
+                [2086302.5, null],
+                [5373483.5, null]
+            ].map(function ([valIn, valExpect, modifier]) {
+                return [sqlFunc, valIn, valExpect, modifier];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATEADD",
+            "IDATETO('IDATE')"
         ].map(function (sqlFunc) {
             return [
                 ["10000101000000", 10000101000000],
@@ -1483,10 +1540,7 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                 [99960229235959, 99960229235959],
                 [99970229235959, 99970301235959],
                 [99970301235959, 99970301235959],
-                [99991231235959, 99991231235959],
-                //
-                ["1000-01-01 00:00:00", null],
-                ["9999-12-31 23:59:59", null]
+                [99991231235959, 99991231235959]
             ].map(function ([valIn, valExpect]) {
                 return [sqlFunc, `${sqlFunc}_YMD`].map(function (sqlFunc) {
                     return [
@@ -1498,8 +1552,8 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             }).flat();
         }).flat());
         promiseList.push([
-            "IDATEFROM('IEPOCH')",
-            "IDATEYMDFROM('IEPOCH')"
+            "IDATEFROMEPOCH",
+            "IDATEYMDFROMEPOCH"
         ].map(function (sqlFunc) {
             return [
                 [10000101000000, "-30610224000"],
@@ -1514,7 +1568,7 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                 return [
                     sqlFunc,
                     (
-                        (/^IDATEYMDFROM|YMD$/).test(sqlFunc)
+                        (/^IDATEYMDFROM|_YMD$/).test(sqlFunc)
                         ? valInYmd || valIn
                         : valIn
                     ),
@@ -1523,8 +1577,8 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             });
         }).flat());
         promiseList.push([
-            "IDATEFROM('IEPOCH')",
-            "IDATEYMDFROM('IEPOCH')"
+            "IDATEFROMEPOCH",
+            "IDATEYMDFROMEPOCH"
         ].map(function (sqlFunc) {
             return [
                 [-30610224000, 10000101000000, "-0 SECOND"],
@@ -1541,8 +1595,8 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             });
         }).flat());
         promiseList.push([
-            "IDATEFROM('IJULIAN')",
-            "IDATEYMDFROM('IJULIAN')"
+            "IDATEFROM_JULIAN",
+            "IDATEYMDFROM_JULIAN"
         ].map(function (sqlFunc) {
             return [
                 [10000101000000, "2086302.5"],
@@ -1557,7 +1611,7 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                 return [
                     sqlFunc,
                     (
-                        (/^IDATEYMDFROM|YMD$/).test(sqlFunc)
+                        (/^IDATEYMDFROM|_YMD$/).test(sqlFunc)
                         ? valInYmd || valIn
                         : valIn
                     ),
@@ -1566,8 +1620,8 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             });
         }).flat());
         promiseList.push([
-            "IDATEFROM('IJULIAN')",
-            "IDATEYMDFROM('IJULIAN')"
+            "IDATEFROM_JULIAN",
+            "IDATEYMDFROM_JULIAN"
         ].map(function (sqlFunc) {
             return [
                 [2086302.5, 10000101000000, "-0 SECOND"],
@@ -1584,8 +1638,8 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             });
         }).flat());
         promiseList.push([
-            "IDATEFROM('ITEXT')",
-            "IDATEYMDFROM('ITEXT')"
+            "IDATEFROM_TEXT",
+            "IDATEYMDFROM_TEXT"
         ].map(function (sqlFunc) {
             return [
                 ["1000-01-01 00:00:00", 10000101000000],
@@ -1595,10 +1649,7 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                 ["9996-02-29 23:59:59", 99960229235959],
                 ["9997-02-29 23:59:59", 99970301235959],
                 ["9997-03-01 23:59:59", 99970301235959],
-                ["9999-12-31 23:59:59", 99991231235959],
-                //
-                [10000101000000, null],
-                [99991231235959, null]
+                ["9999-12-31 23:59:59", 99991231235959]
             ].map(function ([valIn, valExpect]) {
                 return [sqlFunc, `${sqlFunc}_YMD`].map(function (sqlFunc) {
                     return [
@@ -1632,7 +1683,7 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                         sqlFunc,
                         idateArgNormalize(sqlFunc, valIn, "input"),
                         (
-                            (/^IDATEYMDFROM|YMD$/).test(sqlFunc)
+                            (/^IDATEYMDFROM|_YMD$/).test(sqlFunc)
                             ? valExpectYmd || valExpect
                             : valExpect
                         )
@@ -1653,17 +1704,14 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                 [99960229235959, 5372083.49998843, 5372082.5],
                 [99970229235959, 5372449.49998843, 5372448.5],
                 [99970301235959, 5372449.49998843, 5372448.5],
-                [99991231235959, 5373484.49998843, 5373483.5],
-                //
-                ["1000-01-01 00:00:00", null],
-                ["9999-12-31 23:59:59", null]
+                [99991231235959, 5373484.49998843, 5373483.5]
             ].map(function ([valIn, valExpect, valExpectYmd]) {
                 return [sqlFunc, `${sqlFunc}_YMD`].map(function (sqlFunc) {
                     return [
                         sqlFunc,
                         idateArgNormalize(sqlFunc, valIn, "input"),
                         (
-                            (/^IDATEYMDFROM|YMD$/).test(sqlFunc)
+                            (/^IDATEYMDFROM|_YMD$/).test(sqlFunc)
                             ? valExpectYmd || valExpect
                             : valExpect
                         )
@@ -1685,24 +1733,21 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                 [99960229235959, "9996-02-29 23:59:59"],
                 [99970229235959, "9997-03-01 23:59:59"],
                 [99970301235959, "9997-03-01 23:59:59"],
-                [99991231235959, "9999-12-31 23:59:59"],
-                //
-                ["1000-01-01 00:00:00", null],
-                ["9999-12-31 23:59:59", null]
+                [99991231235959, "9999-12-31 23:59:59"]
             ].map(function ([valIn, valExpect]) {
                 return [
                     sqlFunc,
                     idateArgNormalize(sqlFunc, valIn, "input"),
-                    idateArgNormalize((
-                        (/TEXTYMD/).test(sqlFunc)
-                        ? "YMD"
-                        : sqlFunc
-                    ), valExpect, "expect")
+                    idateArgNormalize(sqlFunc, valExpect, "expect")
                 ];
             });
         }).flat());
         promiseList.push([
+            "IDATETO('IY')",
+            "IDATETO('IYM')",
             "IDATETO('IYMD')",
+            "IDATETO('IYMDH')",
+            "IDATETO('IYMDHM')",
             "IDATETO('IYMDHMS')"
         ].map(function (sqlFunc) {
             return [
@@ -1717,34 +1762,13 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
                 [99970229235959, 99970301235959],
                 [99970301235959, 99970301235959],
                 [99991231235959, 99991231235959],
-                [99991231235959, null, 1],
-                //
-                ["1000-01-01 00:00:00", null],
-                ["9999-12-31 23:59:59", null]
+                [99991231235959, null, 1]
             ].map(function ([valIn, valExpect, modifier]) {
                 return [sqlFunc, `${sqlFunc}_YMD`].map(function (sqlFunc) {
                     return [
                         sqlFunc,
                         idateArgNormalize(sqlFunc, valIn, "input"),
-                        (
-                            (
-                                sqlFunc === "IDATETO('IYMDHMS')_YMD"
-                                && valExpect !== null
-                            )
-                            ? (
-                                idateArgNormalize(
-                                    "IDATEIHMS",
-                                    valExpect,
-                                    "expect"
-                                )
-                                - (valExpect % 1000000)
-                            )
-                            : idateArgNormalize((
-                                (/'IYMD'/).test(sqlFunc)
-                                ? "YMD"
-                                : sqlFunc
-                            ), valExpect, "expect")
-                        ),
+                        idateArgNormalize(sqlFunc, valExpect, "expect"),
                         modifier
                     ];
                 });
@@ -1754,7 +1778,7 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             sqlFunc, valIn, valExpect, modifier
         ], ii) {
             let sql;
-            let sqlFunc2 = sqlFunc.replace("_YMD", "");
+            let sqlFunc2 = sqlFunc.replace((/_JULIAN|_TEXT|_YMD/g), "");
             let valActual;
             sql = String(
                 modifier === undefined
