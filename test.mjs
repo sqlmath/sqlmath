@@ -1447,7 +1447,8 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             "IDATETO('IYMD')",
             "IDATETO('IYMDH')",
             "IDATETO('IYMDHM')",
-            "IDATETO('IYMDHMS')"
+            "IDATETO('IYMDHMS')",
+            "IDATETOEPOCH"
         ].map(function (sqlFunc) {
             return [
                 ["", null],
@@ -1515,7 +1516,8 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             "IDATETO('IYMD')",
             "IDATETO('IYMDH')",
             "IDATETO('IYMDHM')",
-            "IDATETO('IYMDHMS')"
+            "IDATETO('IYMDHMS')",
+            "IDATETOEPOCH"
         ].map(function (sqlFunc) {
             return [
                 ["1000-01-01 00:00:00", null],
@@ -1661,7 +1663,8 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
             }).flat();
         }).flat());
         promiseList.push([
-            "IDATETO('IEPOCH')"
+            "IDATETO('IEPOCH')",
+            "IDATETOEPOCH"
         ].map(function (sqlFunc) {
             return [
                 ["10000101000000", -30610224000],

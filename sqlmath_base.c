@@ -1868,6 +1868,12 @@ SQLMATH_FUNC static void SQL1_IDATE_FUNC(
 );
 
 SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatetoepoch,
+    IDATE_TYPE_IDATE,
+    IDATE_TYPE_IEPOCH
+);
+
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
     idateymdfrom,
     IDATE_TYPE_IDEFAULT,
     IDATE_TYPE_IYMD
@@ -4523,6 +4529,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(idatefrom, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatefromepoch, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idateto, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatetoepoch, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idateymdfrom, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idateymdfromepoch, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
