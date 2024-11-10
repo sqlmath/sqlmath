@@ -4,7 +4,15 @@
 - none
 
 # v2024.11.1-beta
-- sqlmath - Add sql-functions IDATETIMEFROMTEXT(), IDATETIMETOTEXT().
+- webdemo - bugfix - Fix scaling-bug for technical-prm tradebot_technical.all.1e_stk_pnl.
+- sqlmath - Streamline idate-sql-functions to just:
+    IDATEADD()
+    IDATEFROM()
+    IDATEFROMEPOCH()
+    IDATETO()
+    IDATETOEPOCH()
+    IDATEYMDFROM()
+    IDATEYMDFROMEPOCH()
 
 # v2024.10.23
 - sqlite - Upgrade to sqlite-v3.46.1.

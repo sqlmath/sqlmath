@@ -1126,21 +1126,21 @@ SELECT win_sum1(1) FROM __tmp1;
     });
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-        })
-    ),
-    "3"
+        (/^IDATEYMDFROM|YMD$/).test(sqlFunc)
+        ? `SELECT ${sqlFunc2}($valIn, '${modifier} DAY');`
+        : `SELECT ${sqlFunc2}($valIn, '${modifier} SECOND');`
+    )
+    : `SELECT ${sqlFunc2}($valIn, '${modifier}');`
+).replace(")(", ", ");
+valActual = (
+    await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastValue</span>({
+        bindList: {
+            valIn
+        },
+        db,
+        sql
+    })
 );
-// test dbExecAndReturnLastValue null-case handling-behavior
-assertJsonEqual(
-    noop(
-        await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastValue</span>({
-            db,
-            sql: "SELECT 0 WHERE 0"
-        })
-    ),
-    null
-);
-// test dbExecAndReturnLastValue json handling-behavior
 ...</pre></li>
 
 <li>

@@ -340,11 +340,11 @@ INSERT INTO tradebot_technical_day
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
-            UNION ALL SELECT '1e_stk_pnl'
+            -- UNION ALL SELECT '1e_stk_pnl'
             UNION ALL SELECT '2b_sqq_lmt'
             UNION ALL SELECT '2c_sqq_pct'
             UNION ALL SELECT '2d_sqq_lmb'
-            UNION ALL SELECT '2e_sqq_pnl'
+            -- UNION ALL SELECT '2e_sqq_pnl'
         )
         --
         UNION ALL
@@ -397,11 +397,11 @@ INSERT INTO tradebot_technical_week
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
-            UNION ALL SELECT '1e_stk_pnl'
+            -- UNION ALL SELECT '1e_stk_pnl'
             UNION ALL SELECT '2b_sqq_lmt'
             UNION ALL SELECT '2c_sqq_pct'
             UNION ALL SELECT '2d_sqq_lmb'
-            UNION ALL SELECT '2e_sqq_pnl'
+            -- UNION ALL SELECT '2e_sqq_pnl'
         )
         --
         UNION ALL
@@ -1091,34 +1091,36 @@ UPDATE ${tableData}
             WHEN (tname = '1e_stk_pnl') THEN
                 (lmt_eee * 1.0 / pnl_eee) * (tval - pnl_avg) + lmt_avg
         END)
-    FROM (SELECT
-    -- __join1
-        lmt_avg,
-        lmt_eee,
-        pnl_avg,
-        pnl_eee,
-        spy_avg,
-        spy_eee
-    FROM (SELECT 0)
-    JOIN (SELECT
-        MEDIAN(tval) AS lmt_avg,
-        STDEV(tval) AS lmt_eee
-        FROM ${tableData}
-        WHERE tname = '1b_stk_lmt'
-    )
-    JOIN (SELECT
-        MEDIAN(tval) AS pnl_avg,
-        STDEV(tval) AS pnl_eee
-        FROM ${tableData}
-        WHERE tname = '1e_stk_pnl'
-    )
-    JOIN (SELECT
-        MEDIAN(tval) AS spy_avg,
-        STDEV(tval) AS spy_eee
-        FROM ${tableData}
-        WHERE tname = '1a_spy'
-    )
-    --
+    FROM (
+        SELECT
+            lmt_avg,
+            lmt_eee,
+            pnl_avg,
+            pnl_eee,
+            spy_avg,
+            spy_eee
+        FROM (SELECT 0)
+        JOIN (
+            SELECT
+                MEDIAN(tval) AS lmt_avg,
+                STDEV(tval) AS lmt_eee
+            FROM ${tableData}
+            WHERE tname = '1b_stk_lmt'
+        )
+        JOIN (
+            SELECT
+                MEDIAN(tval) AS pnl_avg,
+                STDEV(tval) AS pnl_eee
+            FROM ${tableData}
+            WHERE tname = '1e_stk_pnl'
+        )
+        JOIN (
+            SELECT
+                MEDIAN(tval) AS spy_avg,
+                STDEV(tval) AS spy_eee
+            FROM ${tableData}
+            WHERE tname = '1a_spy'
+        )
     ) AS __join1
     WHERE
         tname IN ('1a_spy', '1e_stk_pnl');
