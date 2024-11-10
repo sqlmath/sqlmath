@@ -4,6 +4,7 @@
 - none
 
 # v2024.11.1-beta
+- webdemo - bugfix - Fix scaling-bug for technical-prm tradebot_technical.all.1e_stk_pnl.
 - sqlmath - Streamline idate-sql-functions to just:
     IDATEADD()
     IDATEFROM()
