@@ -1380,6 +1380,441 @@ SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
         }));
     });
     jstestIt((
+        "test_sqlite_extension_idate_xxx handling-behavior"
+    ), async function test_sqlite_extension_idate_xxx() {
+        let db = await dbOpenAsync({filename: ":memory:"});
+        let promiseList = [];
+        function idateArgNormalize(sqlFunc, arg, mode) {
+            function idateArgYmdTruncate() {
+                if (Number.isFinite(Number(arg))) {
+                    return Math.floor(arg / 1_00_00_00);
+                }
+                return arg.split(" ")[0];
+            }
+            switch (arg !== null && mode) {
+            case "expect":
+                if ((/(?:IDATEFROM|'IYMDH\w*?').*?_YMD$/).test(sqlFunc)) {
+                    return arg - (arg % 1_00_00_00);
+                }
+                if ((/'IY'/).test(sqlFunc)) {
+                    arg = idateArgYmdTruncate(arg);
+                    return arg - (arg % 1_00_00);
+                }
+                if ((/'IYM'/).test(sqlFunc)) {
+                    arg = idateArgYmdTruncate(arg);
+                    return arg - (arg % 1_00);
+                }
+                if ((/'IYMD'/).test(sqlFunc)) {
+                    arg = idateArgYmdTruncate(arg);
+                    return arg - (arg % 1);
+                }
+                if ((/'IYMDH'/).test(sqlFunc)) {
+                    return arg - (arg % 1_00_00);
+                }
+                if ((/'IYMDHM'/).test(sqlFunc)) {
+                    return arg - (arg % 1_00);
+                }
+                if (
+                    (/^IDATEYMDFROM|'ITEXTYMD'/).test(sqlFunc)
+                    || ((/_YMD$/).test(sqlFunc) && !(/IDATEFROM/).test(sqlFunc))
+                ) {
+                    return idateArgYmdTruncate(arg);
+                }
+                break;
+            case "input":
+                if ((/_YMD$/).test(sqlFunc)) {
+                    return idateArgYmdTruncate(arg);
+                }
+                break;
+            }
+            return arg;
+        }
+        promiseList.push([
+            "IDATEADD",
+            //
+            "IDATEFROM",
+            // "IDATEFROMEPOCH",
+            "IDATEYMDFROM",
+            // "IDATEYMDFROMEPOCH",
+            //
+            "IDATETO('IDATE')",
+            "IDATETO('IEPOCH')",
+            "IDATETO('IJULIAN')",
+            "IDATETO('ITEXT')",
+            "IDATETO('ITEXTYMD')",
+            "IDATETO('IY')",
+            "IDATETO('IYM')",
+            "IDATETO('IYMD')",
+            "IDATETO('IYMDH')",
+            "IDATETO('IYMDHM')",
+            "IDATETO('IYMDHMS')",
+            "IDATETOEPOCH"
+        ].map(function (sqlFunc) {
+            return [
+                ["", null],
+                ["+0", null],
+                ["+1", null],
+                ["-0", null],
+                ["-1", null],
+                ["-1000-01-01 00:00:00", null],
+                ["-10000101000000", null],
+                ["-9991231000000", null],
+                ["-9999-12-31 23:59:59", null],
+                ["-99991231235959", null],
+                ["-99991231235960", null],
+                ["0", null],
+                ["0999-12-31 23:59:00", null],
+                ["09991231235900", null],
+                ["1000-01-01 00:00:00", null, -1],
+                ["10000101000000", null, -1],
+                ["999-12-31 23:59:00", null],
+                ["999-12-31 23:59:59", null],
+                ["9991231000000", null],
+                ["9999-12-31 23:59:59", null, 1],
+                ["9999-12-31 23:59:60", null],
+                ["9999-12-32 23:59:59", null],
+                ["99991231235959", null, 1],
+                ["99991231235960", null],
+                [-1, null],
+                [-10000101000000, null],
+                [-9991231000000, null],
+                [-99991231235959, null],
+                [-99991231235960, null],
+                [0, null],
+                [1, null],
+                [10000101000000, null, -1],
+                [9991231000000, null],
+                [9991231235900, null],
+                [99991231235959, null, 1],
+                [99991231235960, null],
+                [99991232235959, null],
+                [null, null]
+            ].map(function ([valIn, valExpect, modifier]) {
+                return [sqlFunc, valIn, valExpect, modifier];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATEFROM",
+            "IDATEYMDFROM"
+        ].map(function (sqlFunc) {
+            return [
+                [10000101000000, null],
+                [99991231235959, null]
+            ].map(function ([valIn, valExpect, modifier]) {
+                return [sqlFunc, valIn, valExpect, modifier];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATEADD",
+            "IDATETO('IDATE')",
+            "IDATETO('IEPOCH')",
+            "IDATETO('IJULIAN')",
+            "IDATETO('ITEXT')",
+            "IDATETO('ITEXTYMD')",
+            "IDATETO('IY')",
+            "IDATETO('IYM')",
+            "IDATETO('IYMD')",
+            "IDATETO('IYMDH')",
+            "IDATETO('IYMDHM')",
+            "IDATETO('IYMDHMS')",
+            "IDATETOEPOCH"
+        ].map(function (sqlFunc) {
+            return [
+                ["1000-01-01 00:00:00", null],
+                ["9999-12-31 23:59:59", null],
+                [2086302.5, null],
+                [5373483.5, null]
+            ].map(function ([valIn, valExpect, modifier]) {
+                return [sqlFunc, valIn, valExpect, modifier];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATEADD",
+            "IDATETO('IDATE')"
+        ].map(function (sqlFunc) {
+            return [
+                ["10000101000000", 10000101000000],
+                ["99991231235959", 99991231235959],
+                [10000101000000, 10000101000000],
+                [10000229000000, 10000301000000],
+                [10000301000000, 10000301000000],
+                [10040229000000, 10040229000000],
+                [99960229235959, 99960229235959],
+                [99970229235959, 99970301235959],
+                [99970301235959, 99970301235959],
+                [99991231235959, 99991231235959]
+            ].map(function ([valIn, valExpect]) {
+                return [sqlFunc, `${sqlFunc}_YMD`].map(function (sqlFunc) {
+                    return [
+                        sqlFunc,
+                        idateArgNormalize(sqlFunc, valIn, "input"),
+                        idateArgNormalize(sqlFunc, valExpect, "expect")
+                    ];
+                });
+            }).flat();
+        }).flat());
+        promiseList.push([
+            "IDATEFROMEPOCH",
+            "IDATEYMDFROMEPOCH"
+        ].map(function (sqlFunc) {
+            return [
+                [10000101000000, "-30610224000"],
+                [10000101000000, -30610224000],
+                [10000301000000, -30605126400],
+                [10040229000000, -30478982400],
+                [99960229235959, 253281254399, 253281168000],
+                [99970301235959, 253312876799, 253312790400],
+                [99991231235959, "253402300799", "253402214400"],
+                [99991231235959, 253402300799, 253402214400]
+            ].map(function ([valExpect, valIn, valInYmd]) {
+                return [
+                    sqlFunc,
+                    (
+                        (/^IDATEYMDFROM|_YMD$/).test(sqlFunc)
+                        ? valInYmd || valIn
+                        : valIn
+                    ),
+                    idateArgNormalize(sqlFunc, valExpect, "expect")
+                ];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATEFROMEPOCH",
+            "IDATEYMDFROMEPOCH"
+        ].map(function (sqlFunc) {
+            return [
+                [-30610224000, 10000101000000, "-0 SECOND"],
+                [-30610224000, null, "-1 SECOND"],
+                [253402214400, 99991231000000, "+0 DAY"],
+                [253402214400, null, "+1 DAY"]
+            ].map(function ([valIn, valExpect, modifier]) {
+                return [
+                    sqlFunc,
+                    valIn,
+                    idateArgNormalize(sqlFunc, valExpect, "expect"),
+                    modifier
+                ];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATEFROM_JULIAN",
+            "IDATEYMDFROM_JULIAN"
+        ].map(function (sqlFunc) {
+            return [
+                [10000101000000, "2086302.5"],
+                [10000101000000, 2086302.5],
+                [10000301000000, 2086361.5],
+                [10040229000000, 2087821.5],
+                [99960229235959, 5372083.49998843, 5372082.5],
+                [99970301235959, 5372449.49998843, 5372448.5],
+                [99991231235959, "5373484.49998843", "5373483.5"],
+                [99991231235959, 5373484.49998843, 5373483.5]
+            ].map(function ([valExpect, valIn, valInYmd]) {
+                return [
+                    sqlFunc,
+                    (
+                        (/^IDATEYMDFROM|_YMD$/).test(sqlFunc)
+                        ? valInYmd || valIn
+                        : valIn
+                    ),
+                    idateArgNormalize(sqlFunc, valExpect, "expect")
+                ];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATEFROM_JULIAN",
+            "IDATEYMDFROM_JULIAN"
+        ].map(function (sqlFunc) {
+            return [
+                [2086302.5, 10000101000000, "-0 SECOND"],
+                [2086302.5, null, "-1 SECOND"],
+                [5373483.5, 99991231000000, "+0 DAY"],
+                [5373483.5, null, "+1 DAY"]
+            ].map(function ([valIn, valExpect, modifier]) {
+                return [
+                    sqlFunc,
+                    valIn,
+                    idateArgNormalize(sqlFunc, valExpect, "expect"),
+                    modifier
+                ];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATEFROM_TEXT",
+            "IDATEYMDFROM_TEXT"
+        ].map(function (sqlFunc) {
+            return [
+                ["1000-01-01 00:00:00", 10000101000000],
+                ["1000-02-29 00:00:00", 10000301000000],
+                ["1000-03-01 00:00:00", 10000301000000],
+                ["1004-02-29 00:00:00", 10040229000000],
+                ["9996-02-29 23:59:59", 99960229235959],
+                ["9997-02-29 23:59:59", 99970301235959],
+                ["9997-03-01 23:59:59", 99970301235959],
+                ["9999-12-31 23:59:59", 99991231235959]
+            ].map(function ([valIn, valExpect]) {
+                return [sqlFunc, `${sqlFunc}_YMD`].map(function (sqlFunc) {
+                    return [
+                        sqlFunc,
+                        idateArgNormalize(sqlFunc, valIn, "input"),
+                        idateArgNormalize(sqlFunc, valExpect, "expect")
+                    ];
+                });
+            }).flat();
+        }).flat());
+        promiseList.push([
+            "IDATETO('IEPOCH')",
+            "IDATETOEPOCH"
+        ].map(function (sqlFunc) {
+            return [
+                ["10000101000000", -30610224000],
+                ["99991231235959", 253402300799, 253402214400],
+                [10000101000000, -30610224000],
+                [10000229000000, -30605126400],
+                [10000301000000, -30605126400],
+                [10040229000000, -30478982400],
+                [99960229235959, 253281254399, 253281168000],
+                [99970229235959, 253312876799, 253312790400],
+                [99970301235959, 253312876799, 253312790400],
+                [99991231235959, 253402300799, 253402214400],
+                //
+                ["1000-01-01 00:00:00", null],
+                ["9999-12-31 23:59:59", null]
+            ].map(function ([valIn, valExpect, valExpectYmd]) {
+                return [sqlFunc, `${sqlFunc}_YMD`].map(function (sqlFunc) {
+                    return [
+                        sqlFunc,
+                        idateArgNormalize(sqlFunc, valIn, "input"),
+                        (
+                            (/^IDATEYMDFROM|_YMD$/).test(sqlFunc)
+                            ? valExpectYmd || valExpect
+                            : valExpect
+                        )
+                    ];
+                });
+            }).flat();
+        }).flat());
+        promiseList.push([
+            "IDATETO('IJULIAN')"
+        ].map(function (sqlFunc) {
+            return [
+                ["10000101000000", 2086302.5],
+                ["99991231235959", 5373484.49998843, 5373483.5],
+                [10000101000000, 2086302.5],
+                [10000229000000, 2086361.5],
+                [10000301000000, 2086361.5],
+                [10040229000000, 2087821.5],
+                [99960229235959, 5372083.49998843, 5372082.5],
+                [99970229235959, 5372449.49998843, 5372448.5],
+                [99970301235959, 5372449.49998843, 5372448.5],
+                [99991231235959, 5373484.49998843, 5373483.5]
+            ].map(function ([valIn, valExpect, valExpectYmd]) {
+                return [sqlFunc, `${sqlFunc}_YMD`].map(function (sqlFunc) {
+                    return [
+                        sqlFunc,
+                        idateArgNormalize(sqlFunc, valIn, "input"),
+                        (
+                            (/^IDATEYMDFROM|_YMD$/).test(sqlFunc)
+                            ? valExpectYmd || valExpect
+                            : valExpect
+                        )
+                    ];
+                });
+            }).flat();
+        }).flat());
+        promiseList.push([
+            "IDATETO('ITEXT')",
+            "IDATETO('ITEXTYMD')"
+        ].map(function (sqlFunc) {
+            return [
+                ["10000101000000", "1000-01-01 00:00:00"],
+                ["99991231235959", "9999-12-31 23:59:59"],
+                [10000101000000, "1000-01-01 00:00:00"],
+                [10000229000000, "1000-03-01 00:00:00"],
+                [10000301000000, "1000-03-01 00:00:00"],
+                [10040229000000, "1004-02-29 00:00:00"],
+                [99960229235959, "9996-02-29 23:59:59"],
+                [99970229235959, "9997-03-01 23:59:59"],
+                [99970301235959, "9997-03-01 23:59:59"],
+                [99991231235959, "9999-12-31 23:59:59"]
+            ].map(function ([valIn, valExpect]) {
+                return [
+                    sqlFunc,
+                    idateArgNormalize(sqlFunc, valIn, "input"),
+                    idateArgNormalize(sqlFunc, valExpect, "expect")
+                ];
+            });
+        }).flat());
+        promiseList.push([
+            "IDATETO('IY')",
+            "IDATETO('IYM')",
+            "IDATETO('IYMD')",
+            "IDATETO('IYMDH')",
+            "IDATETO('IYMDHM')",
+            "IDATETO('IYMDHMS')"
+        ].map(function (sqlFunc) {
+            return [
+                ["10000101000000", 10000101000000],
+                ["99991231235959", 99991231235959],
+                [10000101000000, 10000101000000],
+                [10000101000000, null, -1],
+                [10000229000000, 10000301000000],
+                [10000301000000, 10000301000000],
+                [10040229000000, 10040229000000],
+                [99960229235959, 99960229235959],
+                [99970229235959, 99970301235959],
+                [99970301235959, 99970301235959],
+                [99991231235959, 99991231235959],
+                [99991231235959, null, 1]
+            ].map(function ([valIn, valExpect, modifier]) {
+                return [sqlFunc, `${sqlFunc}_YMD`].map(function (sqlFunc) {
+                    return [
+                        sqlFunc,
+                        idateArgNormalize(sqlFunc, valIn, "input"),
+                        idateArgNormalize(sqlFunc, valExpect, "expect"),
+                        modifier
+                    ];
+                });
+            }).flat();
+        }).flat());
+        await Promise.all(promiseList.flat().map(async function ([
+            sqlFunc, valIn, valExpect, modifier
+        ], ii) {
+            let sql;
+            let sqlFunc2 = sqlFunc.replace((/_JULIAN|_TEXT|_YMD/g), "");
+            let valActual;
+            sql = String(
+                modifier === undefined
+                ? `SELECT ${sqlFunc2}($valIn, '+0 SECOND');`
+                : typeof modifier === "number"
+                ? (
+                    (/^IDATEYMDFROM|YMD$/).test(sqlFunc)
+                    ? `SELECT ${sqlFunc2}($valIn, '${modifier} DAY');`
+                    : `SELECT ${sqlFunc2}($valIn, '${modifier} SECOND');`
+                )
+                : `SELECT ${sqlFunc2}($valIn, '${modifier}');`
+            ).replace(")(", ", ");
+            valActual = (
+                await dbExecAndReturnLastValue({
+                    bindList: {
+                        valIn
+                    },
+                    db,
+                    sql
+                })
+            );
+            assertJsonEqual(valActual, valExpect, {
+                ii,
+                modifier,
+                sql,
+                sqlFunc,
+                valActual,
+                valExpect,
+                valIn
+            });
+        }));
+    });
+    jstestIt((
         "test sqlite-extension-math handling-behavior"
     ), async function test_sqlite_extension_math() {
         let db = await dbOpenAsync({
