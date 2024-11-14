@@ -302,17 +302,17 @@ CREATE TABLE tradebot_intraday_day AS
         xdate,
         price
     FROM tradebot_intraday_all
-    WHERE xdate >= (SELECT datemkt_beg FROM tradebot_state)
+    WHERE xdate >= (SELECT datemkt0_beg FROM tradebot_state)
     --
     UNION ALL
     --
     SELECT
         sym,
-        DATETIME(datemkt_beg, '-1 MINUTE') AS xdate,
+        DATETIME(datemkt0_beg, '-1 MINUTE') AS xdate,
         price
     FROM tradebot_historical
     JOIN tradebot_state
-    WHERE tradebot_historical.xdate = datemkt_lag;
+    WHERE tradebot_historical.xdate = datemkt0_lag;
 
 -- table - tradebot_intraday_week - insert
 DROP TABLE IF EXISTS tradebot_intraday_week;
@@ -333,7 +333,7 @@ INSERT INTO tradebot_technical_day
     FROM (
         SELECT
             tname,
-            datemkt_beg AS tt,
+            datemkt0_beg AS tt,
             IIF(tname LIKE '1%', stk_beg0, sqq_beg0) AS tval
         FROM tradebot_state
         JOIN (
@@ -390,7 +390,7 @@ INSERT INTO tradebot_technical_week
     FROM (
         SELECT
             tname,
-            datemkt_beg AS tt,
+            datemkt0_beg AS tt,
             IIF(tname LIKE '1%', stk_beg0, sqq_beg0) AS tval
         FROM tradebot_state
         JOIN (
