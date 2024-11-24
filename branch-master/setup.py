@@ -26,8 +26,8 @@ npm_config_mode_debug2=1 python setup.py build_ext && python setup.py test
 python setup.py bdist_wheel
 """
 
-__version__ = "2024.10.23"
-__version_info__ = ("2024", "10", "23")
+__version__ = "2024.11.24"
+__version_info__ = ("2024", "11", "24")
 
 import asyncio
 import base64

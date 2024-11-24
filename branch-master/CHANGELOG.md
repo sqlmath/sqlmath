@@ -3,6 +3,18 @@
 # Todo
 - none
 
+# v2024.11.24
+- sqlmath - Streamline idate-sql-functions to just:
+    IDATEADD()
+    IDATEFROM()
+    IDATEFROMEPOCH()
+    IDATETO()
+    IDATETOEPOCH()
+    IDATEYMDFROM()
+    IDATEYMDFROMEPOCH()
+- jslint - Upgrade to jslint-v2024.11.24.
+- webdemo - bugfix - Fix scaling-bug for technical-prm tradebot_technical.all.1e_stk_pnl.
+
 # v2024.10.23
 - sqlite - Upgrade to sqlite-v3.46.1.
 - ci - Update shell-function shHttpFileServer() to auto-serve /index.html, when url-path is root /.

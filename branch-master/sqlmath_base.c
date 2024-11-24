@@ -248,7 +248,6 @@ file sqlmath_h - start
 
 // file sqlmath_h - sqlite3
 // *INDENT-OFF*
-SQLITE_API const sqlite3_api_routines *sqlite3ApiGet();
 typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uint8_t u8;
@@ -330,6 +329,48 @@ SQLMATH_API double *doublewinHead(
 SQLMATH_API void doublewinResultBlob(
     Doublewin * dblwin,
     sqlite3_context * context
+);
+
+
+// file sqlmath_h - idate
+#define SQLITE_FUNC_CONSTANT 0x0800 /* Constant inputs give a constant output */
+#define SQLITE_FUNC_SLOCHNG  0x2000 // "Slow Change". Value constant during a
+                                    // single query - might change over time
+#define SQLITE_FUNC_IDATE \
+    (SQLITE_FUNC_SLOCHNG | SQLITE_UTF8 | SQLITE_FUNC_CONSTANT)
+#define SQL1_IDATE_FUNC(func, typeFrom, typeTo) \
+    sql1_##func##_func( \
+        sqlite3_context * context, \
+        int argc, \
+        sqlite3_value ** argv \
+    ) { \
+        sql1_idatefromto_func0(context, argc, argv, typeFrom, typeTo); \
+    }
+/*
+** A structure for holding a single date and time.
+*/
+typedef struct DateTime {
+    sqlite3_int64 iJD;  /* The julian day number times 86400000 */
+    int Y, M, D;        /* Year, month, and day */
+    int h, m;           /* Hour and minutes */
+    int tz;             /* Timezone offset in minutes */
+    double s;           /* Seconds */
+    char validJD;       /* True (1) if iJD is valid */
+    char validYMD;      /* True (1) if Y,M,D are valid */
+    char validHMS;      /* True (1) if h,m,s are valid */
+    char nFloor;            /* Days to implement "floor" */
+    unsigned rawS      : 1; /* Raw numeric value stored in s */
+    unsigned isError   : 1; /* An overflow has occurred */
+    unsigned useSubsec : 1; /* Display subsecond precision */
+    unsigned isUtc     : 1; /* Time is known to be UTC */
+    unsigned isLocal   : 1; /* Time is known to be localtime */
+} DateTime;
+SQLITE_API int sqlite3_isDate2(
+    sqlite3_context * context,
+    const int argc,
+    sqlite3_value ** argv,
+    DateTime * dt,
+    const int typeFrom
 );
 
 
@@ -1149,6 +1190,9 @@ SQLMATH_API void doublewinResultBlob(
 
 // SQLMATH_API doublewin - end
 
+// SQLMATH_API idate - start
+// SQLMATH_API idate - end
+
 // SQLMATH_API str99 - start
 SQLMATH_API void str99ArrayAppendDouble(
     sqlite3_str * str99,
@@ -1629,22 +1673,217 @@ SQLMATH_FUNC static void sql1_fmod_func(
             sqlite3_value_double_or_nan(argv[1])));
 }
 
-SQLMATH_FUNC static void sql1_idatetotext_func(
+SQLMATH_FUNC static void sql1_idatefromto_func0(
+/*
+**    datetime( TIMESTRING, MOD, MOD, ...)
+**
+** Return int64 YYYYMMDDHHMMSS
+*/
     sqlite3_context * context,
     int argc,
-    sqlite3_value ** argv
+    sqlite3_value ** argv,
+    int typeFrom,
+    int typeTo
 ) {
-// This function will return date-string from integer-yyymmdd.
-    UNUSED_PARAMETER(argc);
-    char zBuf[10 + 1] = { 0 };
-    const int ii = sqlite3_value_int(argv[0]);
-    if (!(10000101 <= ii && ii <= 99991231)) {
+    // shift typeFrom from argv
+    if (typeFrom == -1 || typeTo == -1) {
+        if (argc < 1) {
+            sqlite3_result_error2(context,      //
+                "%s - number of arguments must be greater than 0",      //
+                typeFrom == -1 ? "idatefrom" : "idateto",       //
+                argc);
+            return;
+        }
+        const char *zType = (char *) sqlite3_value_text(argv[0]);
+        argc -= 1;
+        argv += 1;
+        if (typeFrom == -1) {
+            if (sqlite3_stricmp(zType, "IDATE") == 0) {
+                typeFrom = IDATE_TYPE_IDATE;
+            } else if (sqlite3_stricmp(zType, "IEPOCH") == 0) {
+                typeFrom = IDATE_TYPE_IEPOCH;
+            } else if (sqlite3_stricmp(zType, "IJULIAN") == 0) {
+                typeFrom = IDATE_TYPE_IJULIAN;
+            } else if (sqlite3_stricmp(zType, "ITEXT") == 0) {
+                typeFrom = IDATE_TYPE_ITEXT;
+            }
+        }
+        if (typeTo == -1) {
+            if (sqlite3_stricmp(zType, "IDATE") == 0) {
+                typeTo = IDATE_TYPE_IDATE;
+            } else if (sqlite3_stricmp(zType, "IEPOCH") == 0) {
+                typeTo = IDATE_TYPE_IEPOCH;
+            } else if (sqlite3_stricmp(zType, "IJULIAN") == 0) {
+                typeTo = IDATE_TYPE_IJULIAN;
+            } else if (sqlite3_stricmp(zType, "ITEXT") == 0) {
+                typeTo = IDATE_TYPE_ITEXT;
+            } else if (sqlite3_stricmp(zType, "ITEXTYMD") == 0) {
+                typeTo = IDATE_TYPE_ITEXTYMD;
+            } else if (sqlite3_stricmp(zType, "IY") == 0) {
+                typeTo = IDATE_TYPE_IY;
+            } else if (sqlite3_stricmp(zType, "IYM") == 0) {
+                typeTo = IDATE_TYPE_IYM;
+            } else if (sqlite3_stricmp(zType, "IYMD") == 0) {
+                typeTo = IDATE_TYPE_IYMD;
+            } else if (sqlite3_stricmp(zType, "IYMDH") == 0) {
+                typeTo = IDATE_TYPE_IYMDH;
+            } else if (sqlite3_stricmp(zType, "IYMDHM") == 0) {
+                typeTo = IDATE_TYPE_IYMDHM;
+            } else if (sqlite3_stricmp(zType, "IYMDHMS") == 0) {
+                typeTo = IDATE_TYPE_IYMDHMS;
+            }
+        }
+        if (typeFrom == -1 || typeTo == -1) {
+            sqlite3_result_error2(context,      //
+                "%s - invalid 1st argument %s='%s'",    //
+                typeFrom == -1 ? "idatefrom" : "idateto",       //
+                typeFrom == -1 ? "typeFrom" : "typeTo", //
+                zType);
+            return;
+        }
+    }
+    // parse argv[0]
+    DateTime __dt = { 0 };
+    DateTime *dt = &__dt;
+    int modeYmd = 0;
+    if (typeFrom == IDATE_TYPE_IDATE) {
+        const sqlite3_int64 idate64 = sqlite3_value_int64(argv[0]);
+        modeYmd = 10000101 <= idate64 && idate64 <= 99991231;
+        // parse yyyymmdd
+        {
+            const int yyyymmdd = modeYmd ? idate64 : idate64 / 1000000;
+            dt->validYMD = 1;
+            dt->Y = yyyymmdd / 10000;
+            dt->M = (yyyymmdd / 100) % 100;
+            dt->D = yyyymmdd % 100;
+        }
+        // parse hhmmss
+        if (!modeYmd) {
+            const int hhmmss = idate64 % 1000000;
+            dt->validHMS = 1;
+            dt->h = hhmmss / 10000;
+            dt->m = (hhmmss / 100) % 100;
+            dt->rawS = 0;
+            dt->s = hhmmss % 100;
+        }
+        // validate dt
+        if (!((1000 <= dt->Y && dt->Y <= 9999)
+                && (1 <= dt->M && dt->M <= 12)
+                && (1 <= dt->D && dt->D <= 31)
+                && (0 <= dt->h && dt->h < 24)
+                && (0 <= dt->m && dt->m < 60)
+                && (0 <= dt->s && dt->s < 60))) {
+            return;
+        }
+    }
+    if (sqlite3_isDate2(context, argc, argv, dt, typeFrom)) {
         return;
     }
-    sqlite3_snprintf(sizeof(zBuf), zBuf, "%04d-%02d-%02d", ii / 10000,
-        (ii % 10000) / 100, (ii % 100));
-    sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1, SQLITE_TRANSIENT);
+    // serialize result
+    switch (typeTo) {
+    case IDATE_TYPE_IEPOCH:
+        sqlite3_result_int64(context,
+            dt->iJD / 1000 - 21086676 * (int64_t) 10000);
+        return;
+    case IDATE_TYPE_IJULIAN:
+        sqlite3_result_double(context, dt->iJD / 86400000.0);
+        return;
+    case IDATE_TYPE_ITEXT:
+        {
+            char zBuf[10 + 1 + 8 + 1] = { 0 };
+            sqlite3_snprintf(sizeof(zBuf), zBuf,        //
+                "%04d-%02d-%02d %02d:%02d:%02d",        //
+                dt->Y, dt->M, dt->D, dt->h, dt->m, (int) dt->s);
+            sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1,
+                SQLITE_TRANSIENT);
+        }
+        return;
+    case IDATE_TYPE_ITEXTYMD:
+        {
+            char zBuf[10 + 1] = { 0 };
+            sqlite3_snprintf(sizeof(zBuf), zBuf,        //
+                "%04d-%02d-%02d",       //
+                dt->Y, dt->M, dt->D);
+            sqlite3_result_text(context, zBuf, sizeof(zBuf) - 1,
+                SQLITE_TRANSIENT);
+        }
+        return;
+    case IDATE_TYPE_IY:
+        dt->M = 0;
+        dt->D = 0;
+        modeYmd = 1;
+        break;
+    case IDATE_TYPE_IYM:
+        dt->D = 0;
+        modeYmd = 1;
+        break;
+    case IDATE_TYPE_IYMD:
+        modeYmd = 1;
+        break;
+    case IDATE_TYPE_IYMDH:
+        dt->m = 0;
+        dt->s = 0;
+        modeYmd = 0;
+        break;
+    case IDATE_TYPE_IYMDHM:
+        dt->s = 0;
+        modeYmd = 0;
+        break;
+    case IDATE_TYPE_IYMDHMS:
+        modeYmd = 0;
+        break;
+        // case IDATE_TYPE_IDATE:
+    }
+    if (modeYmd) {
+        sqlite3_result_int(context, dt->Y * 10000 + dt->M * 100 + dt->D);
+        return;
+    }
+    sqlite3_result_int64(context,       //
+        (int64_t) (dt->Y * 10000 + dt->M * 100 + dt->D) * 1000000       //
+        + (int64_t) (dt->h * 10000 + dt->m * 100 + (int) dt->s));
 }
+
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idateadd,
+    IDATE_TYPE_IDATE,
+    IDATE_TYPE_IDATE
+);
+
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatefrom,
+    IDATE_TYPE_IDEFAULT,
+    IDATE_TYPE_IYMDHMS
+);
+
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatefromepoch,
+    IDATE_TYPE_IEPOCH,
+    IDATE_TYPE_IYMDHMS
+);
+
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idateto,
+    IDATE_TYPE_IDATE,
+    -1
+);
+
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idatetoepoch,
+    IDATE_TYPE_IDATE,
+    IDATE_TYPE_IEPOCH
+);
+
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idateymdfrom,
+    IDATE_TYPE_IDEFAULT,
+    IDATE_TYPE_IYMD
+);
+
+SQLMATH_FUNC static void SQL1_IDATE_FUNC(
+    idateymdfromepoch,
+    IDATE_TYPE_IEPOCH,
+    IDATE_TYPE_IYMD
+);
 
 // SQLMATH_FUNC sql1_lgbm_xxx_func - start
 // https://lightgbm.readthedocs.io/en/latest/C-API.html
@@ -4286,7 +4525,13 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(doublearray_jsonfrom, 1, 0);
     SQL_CREATE_FUNC1(doublearray_jsonto, 1, 0);
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
-    SQL_CREATE_FUNC1(idatetotext, 1, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(idateadd, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatefrom, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatefromepoch, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idateto, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idatetoepoch, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idateymdfrom, -1, SQLITE_FUNC_IDATE);
+    SQL_CREATE_FUNC1(idateymdfromepoch, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefromfile, 3, 0);
     SQL_CREATE_FUNC1(lgbm_datasetcreatefrommat, 7, 0);
     SQL_CREATE_FUNC1(lgbm_datasetdumptext, 2, 0);
@@ -4294,8 +4539,8 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(lgbm_datasetgetnumdata, 1, 0);
     SQL_CREATE_FUNC1(lgbm_datasetgetnumfeature, 1, 0);
     SQL_CREATE_FUNC1(lgbm_datasetsavebinary, 1, 0);
-    SQL_CREATE_FUNC1(lgbm_extract, 2, 0);
     SQL_CREATE_FUNC1(lgbm_dlopen, 1, 0);
+    SQL_CREATE_FUNC1(lgbm_extract, 2, 0);
     SQL_CREATE_FUNC1(lgbm_predictforfile, 8, 0);
     SQL_CREATE_FUNC1(lgbm_trainfromdataset, 5, 0);
     SQL_CREATE_FUNC1(lgbm_trainfromfile, 6, 0);

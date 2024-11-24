@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2024.10.23)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2024.11.24)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -1126,21 +1126,21 @@ SELECT win_sum1(1) FROM __tmp1;
     });
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-        })
-    ),
-    "3"
+        (/^IDATEYMDFROM|YMD$/).test(sqlFunc)
+        ? `SELECT ${sqlFunc2}($valIn, '${modifier} DAY');`
+        : `SELECT ${sqlFunc2}($valIn, '${modifier} SECOND');`
+    )
+    : `SELECT ${sqlFunc2}($valIn, '${modifier}');`
+).replace(")(", ", ");
+valActual = (
+    await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastValue</span>({
+        bindList: {
+            valIn
+        },
+        db,
+        sql
+    })
 );
-// test dbExecAndReturnLastValue null-case handling-behavior
-assertJsonEqual(
-    noop(
-        await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastValue</span>({
-            db,
-            sql: "SELECT 0 WHERE 0"
-        })
-    ),
-    null
-);
-// test dbExecAndReturnLastValue json handling-behavior
 ...</pre></li>
 
 <li>

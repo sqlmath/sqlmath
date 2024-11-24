@@ -302,17 +302,17 @@ CREATE TABLE tradebot_intraday_day AS
         xdate,
         price
     FROM tradebot_intraday_all
-    WHERE xdate >= (SELECT datemkt_beg FROM tradebot_state)
+    WHERE xdate >= (SELECT datemkt0_beg FROM tradebot_state)
     --
     UNION ALL
     --
     SELECT
         sym,
-        DATETIME(datemkt_beg, '-1 MINUTE') AS xdate,
+        DATETIME(datemkt0_beg, '-1 MINUTE') AS xdate,
         price
     FROM tradebot_historical
     JOIN tradebot_state
-    WHERE tradebot_historical.xdate = datemkt_lag;
+    WHERE tradebot_historical.xdate = datemkt0_lag;
 
 -- table - tradebot_intraday_week - insert
 DROP TABLE IF EXISTS tradebot_intraday_week;
@@ -333,18 +333,18 @@ INSERT INTO tradebot_technical_day
     FROM (
         SELECT
             tname,
-            datemkt_beg AS tt,
+            datemkt0_beg AS tt,
             IIF(tname LIKE '1%', stk_beg0, sqq_beg0) AS tval
         FROM tradebot_state
         JOIN (
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
-            UNION ALL SELECT '1e_stk_pnl'
+            -- UNION ALL SELECT '1e_stk_pnl'
             UNION ALL SELECT '2b_sqq_lmt'
             UNION ALL SELECT '2c_sqq_pct'
             UNION ALL SELECT '2d_sqq_lmb'
-            UNION ALL SELECT '2e_sqq_pnl'
+            -- UNION ALL SELECT '2e_sqq_pnl'
         )
         --
         UNION ALL
@@ -390,18 +390,18 @@ INSERT INTO tradebot_technical_week
     FROM (
         SELECT
             tname,
-            datemkt_beg AS tt,
+            datemkt0_beg AS tt,
             IIF(tname LIKE '1%', stk_beg0, sqq_beg0) AS tval
         FROM tradebot_state
         JOIN (
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
-            UNION ALL SELECT '1e_stk_pnl'
+            -- UNION ALL SELECT '1e_stk_pnl'
             UNION ALL SELECT '2b_sqq_lmt'
             UNION ALL SELECT '2c_sqq_pct'
             UNION ALL SELECT '2d_sqq_lmb'
-            UNION ALL SELECT '2e_sqq_pnl'
+            -- UNION ALL SELECT '2e_sqq_pnl'
         )
         --
         UNION ALL
@@ -1091,34 +1091,36 @@ UPDATE ${tableData}
             WHEN (tname = '1e_stk_pnl') THEN
                 (lmt_eee * 1.0 / pnl_eee) * (tval - pnl_avg) + lmt_avg
         END)
-    FROM (SELECT
-    -- __join1
-        lmt_avg,
-        lmt_eee,
-        pnl_avg,
-        pnl_eee,
-        spy_avg,
-        spy_eee
-    FROM (SELECT 0)
-    JOIN (SELECT
-        MEDIAN(tval) AS lmt_avg,
-        STDEV(tval) AS lmt_eee
-        FROM ${tableData}
-        WHERE tname = '1b_stk_lmt'
-    )
-    JOIN (SELECT
-        MEDIAN(tval) AS pnl_avg,
-        STDEV(tval) AS pnl_eee
-        FROM ${tableData}
-        WHERE tname = '1e_stk_pnl'
-    )
-    JOIN (SELECT
-        MEDIAN(tval) AS spy_avg,
-        STDEV(tval) AS spy_eee
-        FROM ${tableData}
-        WHERE tname = '1a_spy'
-    )
-    --
+    FROM (
+        SELECT
+            lmt_avg,
+            lmt_eee,
+            pnl_avg,
+            pnl_eee,
+            spy_avg,
+            spy_eee
+        FROM (SELECT 0)
+        JOIN (
+            SELECT
+                MEDIAN(tval) AS lmt_avg,
+                STDEV(tval) AS lmt_eee
+            FROM ${tableData}
+            WHERE tname = '1b_stk_lmt'
+        )
+        JOIN (
+            SELECT
+                MEDIAN(tval) AS pnl_avg,
+                STDEV(tval) AS pnl_eee
+            FROM ${tableData}
+            WHERE tname = '1e_stk_pnl'
+        )
+        JOIN (
+            SELECT
+                MEDIAN(tval) AS spy_avg,
+                STDEV(tval) AS spy_eee
+            FROM ${tableData}
+            WHERE tname = '1a_spy'
+        )
     ) AS __join1
     WHERE
         tname IN ('1a_spy', '1e_stk_pnl');
@@ -1147,7 +1149,9 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
     SELECT
         'series_label' AS datatype,
         JSON_OBJECT(
-            'isHidden', NOT tname IN ('1a_spy', '1b_stk_lmt', '1c_stk_pct'),
+            'isHidden', NOT tname IN (
+                '1a_spy', '1b_stk_lmt', '1c_stk_pct', '1d_stk_lmb'
+            ),
             'seriesColor', (CASE
             WHEN (tname LIKE '%_lmb') THEN
                 '#999'
