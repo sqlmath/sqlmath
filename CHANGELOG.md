@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2024.12.1-beta
+- sqlmath - Add sql-functions SHA256(), STROLL().
+
 # v2024.11.24
 - sqlmath - Streamline idate-sql-functions to just:
     IDATEADD()
