@@ -4,6 +4,7 @@
 - none
 
 # v2024.12.1-beta
+- betadog-revamp - Remove trading-logic for s_sqq=-1.
 - sqlmath - Add sql-functions SHA256(), STROLL().
 
 # v2024.11.24
