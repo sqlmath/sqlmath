@@ -334,17 +334,13 @@ INSERT INTO tradebot_technical_day
         SELECT
             tname,
             datemkt0_beg AS tt,
-            IIF(tname LIKE '1%', stk_beg0, sqq_beg0) AS tval
+            stk_beg0 AS tval
         FROM tradebot_state
         JOIN (
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
             -- UNION ALL SELECT '1e_stk_pnl'
-            UNION ALL SELECT '2b_sqq_lmt'
-            UNION ALL SELECT '2c_sqq_pct'
-            UNION ALL SELECT '2d_sqq_lmb'
-            -- UNION ALL SELECT '2e_sqq_pnl'
         )
         --
         UNION ALL
@@ -362,22 +358,6 @@ INSERT INTO tradebot_technical_day
         UNION ALL
         --
         SELECT '1e_stk_pnl', xdate, stk_pnl FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '2b_sqq_lmt', xdate, sqq_lmt FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '2c_sqq_pct', xdate, sqq_pct FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '2d_sqq_lmb', xdate, sqq_lmb FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '2e_sqq_pnl', xdate, sqq_pnl FROM tradebot_technical_all
     )
     WHERE tt >= (SELECT datemkt0 FROM tradebot_state);
 
@@ -391,17 +371,12 @@ INSERT INTO tradebot_technical_week
         SELECT
             tname,
             datemkt0_beg AS tt,
-            IIF(tname LIKE '1%', stk_beg0, sqq_beg0) AS tval
+            stk_beg0 AS tval
         FROM tradebot_state
         JOIN (
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
-            -- UNION ALL SELECT '1e_stk_pnl'
-            UNION ALL SELECT '2b_sqq_lmt'
-            UNION ALL SELECT '2c_sqq_pct'
-            UNION ALL SELECT '2d_sqq_lmb'
-            -- UNION ALL SELECT '2e_sqq_pnl'
         )
         --
         UNION ALL
@@ -419,22 +394,6 @@ INSERT INTO tradebot_technical_week
         UNION ALL
         --
         SELECT '1e_stk_pnl', xdate2, stk_pnl FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '2b_sqq_lmt', xdate2, sqq_lmt FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '2c_sqq_pct', xdate2, sqq_pct FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '2d_sqq_lmb', xdate2, sqq_lmb FROM tradebot_technical_all
-        --
-        UNION ALL
-        --
-        SELECT '2e_sqq_pnl', xdate2, sqq_pnl FROM tradebot_technical_all
     )
     WHERE tt;
 
@@ -873,13 +832,13 @@ SELECT
                     `)
                     : (`
 SELECT
-        IIF(is_short, 1, 2) AS series_color,
+        2 AS series_color,
         0 AS is_dummy,
         0 AS is_hidden,
         printf(
             '%+.4f%% - %s - %s - %s',
             ${columnData},
-            IIF(is_short, 'short', 'long'),
+            'long',
             sym,
             company_name
         ) AS series_label,
@@ -1225,10 +1184,6 @@ UPDATE ${tableChart}
             WHEN (series_label = '1c_stk_pct') THEN '1c stk holding actual'
             WHEN (series_label = '1d_stk_lmb') THEN '1d stk holding bracket min'
             WHEN (series_label = '1e_stk_pnl') THEN '1e stk gain'
-            WHEN (series_label = '2b_sqq_lmt') THEN '2b sqq holding ideal'
-            WHEN (series_label = '2c_sqq_pct') THEN '2c sqq holding actual'
-            WHEN (series_label = '2d_sqq_lmb') THEN '2d sqq holding bracket min'
-            WHEN (series_label = '2e_sqq_pnl') THEN '2e sqq gain'
         END)
     WHERE
         datatype = 'series_label';
