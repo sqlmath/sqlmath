@@ -2373,6 +2373,186 @@ SQLMATH_FUNC static void sql1_roundorzero_func(
     sqlite3_result_double(context, rr);
 }
 
+// SQLMATH_FUNC sql1_sha256_func - start
+void sha256_transform(
+    uint32_t * state,
+    const unsigned char *data
+) {
+// This function will calculate sha256 <hash> from <message>.
+// https://datatracker.ietf.org/doc/html/rfc4634
+#define ROTLEFT(aa, bb) (((aa) << (bb)) | ((aa) >> (32-(bb))))
+#define ROTRIGHT(aa, bb) (((aa) >> (bb)) | ((aa) << (32-(bb))))
+#define SHA256_CH(xx, yy, zz) (((xx) & (yy)) ^ (~(xx) & (zz)))
+#define SHA256_EP0(xx) (ROTRIGHT(xx, 2) ^ ROTRIGHT(xx, 13) ^ ROTRIGHT(xx, 22))
+#define SHA256_EP1(xx) (ROTRIGHT(xx, 6) ^ ROTRIGHT(xx, 11) ^ ROTRIGHT(xx, 25))
+#define SHA256_MAJ(xx, yy, zz) (((xx) & (yy)) ^ ((xx) & (zz)) ^ ((yy) & (zz)))
+#define SHA256_SIG0(xx) (ROTRIGHT(xx, 7) ^ ROTRIGHT(xx, 18) ^ ((xx) >> 3))
+#define SHA256_SIG1(xx) (ROTRIGHT(xx, 17) ^ ROTRIGHT(xx, 19) ^ ((xx) >> 10))
+    static const uint32_t kk[64] = {
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
+        0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+        0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
+        0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+        0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
+        0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
+        0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+    };
+    int ii = 0;
+    int jj = 0;
+    uint32_t mm[64] = { 0 };
+    uint32_t t1 = 0;
+    uint32_t t2 = 0;
+    for (ii = 0, jj = 0; ii < 16; ii += 1, jj += 4) {
+        mm[ii] = (data[jj] << 24)       //
+            | (data[jj + 1] << 16)      //
+            | (data[jj + 2] << 8)       //
+            | (data[jj + 3]);
+    }
+    for (; ii < 64; ii += 1) {
+        mm[ii] =
+            SHA256_SIG1(mm[ii - 2]) + mm[ii - 7] + SHA256_SIG0(mm[ii - 15]) +
+            mm[ii - 16];
+    }
+    uint32_t aa = state[0];
+    uint32_t bb = state[1];
+    uint32_t cc = state[2];
+    uint32_t dd = state[3];
+    uint32_t ee = state[4];
+    uint32_t ff = state[5];
+    uint32_t gg = state[6];
+    uint32_t hh = state[7];
+    for (ii = 0; ii < 64; ii += 1) {
+        t1 = hh + SHA256_EP1(ee) + SHA256_CH(ee, ff, gg) + kk[ii] + mm[ii];
+        t2 = SHA256_EP0(aa) + SHA256_MAJ(aa, bb, cc);
+        hh = gg;
+        gg = ff;
+        ff = ee;
+        ee = dd + t1;
+        dd = cc;
+        cc = bb;
+        bb = aa;
+        aa = t1 + t2;
+    }
+    state[0] += aa;
+    state[1] += bb;
+    state[2] += cc;
+    state[3] += dd;
+    state[4] += ee;
+    state[5] += ff;
+    state[6] += gg;
+    state[7] += hh;
+}
+
+void sha256_sum(
+    const unsigned char *message,
+    size_t messagelen,
+    unsigned char *hash
+) {
+// This function will calculate sha256 <hash> from <message>.
+// https://datatracker.ietf.org/doc/html/rfc4634
+    int datalen = 0;
+    uint64_t bitlen = 0;
+    unsigned char data[64] = { 0 };
+    uint32_t state[8] = {
+        0x6a09e667,
+        0xbb67ae85,
+        0x3c6ef372,
+        0xa54ff53a,
+        0x510e527f,
+        0x9b05688c,
+        0x1f83d9ab,
+        0x5be0cd19
+    };
+    for (size_t ii = 0; ii < messagelen; ii += 1) {
+        data[datalen] = message[ii];
+        datalen += 1;
+        if (datalen == 64) {
+            sha256_transform(state, data);
+            bitlen += 512;
+            datalen = 0;
+        }
+    }
+    uint32_t ii;
+    ii = datalen;
+    // Pad whatever data is left in the buffer.
+    if (datalen < 56) {
+        data[ii] = 0x80;
+        ii += 1;
+        while (ii < 56) {
+            data[ii] = 0x00;
+            ii += 1;
+        }
+    } else {
+        data[ii] = 0x80;
+        ii += 1;
+        while (ii < 64) {
+            data[ii] = 0x00;
+            ii += 1;
+        }
+        sha256_transform(state, data);
+        memset(data, 0, 56);
+    }
+    // Append to the padding the total message'ss length in bits and transform.
+    bitlen += datalen * 8;
+    data[63] = bitlen;
+    data[62] = bitlen >> 8;
+    data[61] = bitlen >> 16;
+    data[60] = bitlen >> 24;
+    data[59] = bitlen >> 32;
+    data[58] = bitlen >> 40;
+    data[57] = bitlen >> 48;
+    data[56] = bitlen >> 56;
+    sha256_transform(state, data);
+    // Since this implementation uses little endian byte ordering
+    // and SHA uses big endian, reverse all the bytes
+    // when copying the final state to the output hash.
+    for (ii = 0; ii < 4; ii += 1) {
+        hash[ii] = (state[0] >> (24 - ii * 8)) & 0x000000ff;
+        hash[ii + 4] = (state[1] >> (24 - ii * 8)) & 0x000000ff;
+        hash[ii + 8] = (state[2] >> (24 - ii * 8)) & 0x000000ff;
+        hash[ii + 12] = (state[3] >> (24 - ii * 8)) & 0x000000ff;
+        hash[ii + 16] = (state[4] >> (24 - ii * 8)) & 0x000000ff;
+        hash[ii + 20] = (state[5] >> (24 - ii * 8)) & 0x000000ff;
+        hash[ii + 24] = (state[6] >> (24 - ii * 8)) & 0x000000ff;
+        hash[ii + 28] = (state[7] >> (24 - ii * 8)) & 0x000000ff;
+    }
+}
+
+SQLMATH_FUNC static void sql1_sha256_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will calculate sha256 <hash> from <message>.
+// https://datatracker.ietf.org/doc/html/rfc4634
+    UNUSED_PARAMETER(argc);
+    int eType = sqlite3_value_type(argv[0]);
+    int nByte = sqlite3_value_bytes(argv[0]);
+    unsigned char hash[32] = { 0 };
+    // fprintf(stderr, "\nsqlmath.sha256 - eType=%d, nByte=%d, msg=%s\n",
+    //     eType, nByte, (char *) sqlite3_value_blob(argv[0]));
+    if (eType == SQLITE_NULL) {
+        return;
+    }
+    if (eType == SQLITE_BLOB) {
+        sha256_sum(sqlite3_value_blob(argv[0]), nByte, hash);
+    } else {
+        sha256_sum(sqlite3_value_text(argv[0]), nByte, hash);
+    }
+    sqlite3_result_blob(context, hash, sizeof(hash), SQLITE_TRANSIENT);
+}
+
+// SQLMATH_FUNC sql1_sha256_func - end
+
 SQLMATH_FUNC static void sql1_sqrtwithsign_func(
     sqlite3_context * context,
     int argc,
@@ -2416,6 +2596,23 @@ SQLMATH_FUNC static void sql1_squaredwithsign_func(
     UNUSED_PARAMETER(argc);
     const double xx = sqlite3_value_double_or_nan(argv[0]);
     sqlite3_result_double(context, xx < 0 ? -xx * xx : xx * xx);
+}
+
+SQLMATH_FUNC static void sql1_strtoll_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will return stroll(str, base).
+    UNUSED_PARAMETER(argc);
+    const char *str = (char *) sqlite3_value_text(argv[0]);
+    const int base = sqlite3_value_int(argv[1]);
+    char *endptr = NULL;
+    int64_t value = strtoll(str, &endptr, base);
+    if (endptr == str) {
+        return;
+    }
+    sqlite3_result_int64(context, (int64_t) value);
 }
 
 SQLMATH_FUNC static void sql1_throwerror_func(
@@ -4549,11 +4746,13 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(normalizewithsquared, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(random1, 0, 0);
     SQL_CREATE_FUNC1(roundorzero, 2, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(sha256, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(sinefit_extract, 4, 0);
     SQL_CREATE_FUNC1(sinefit_refitlast, -1, 0);
     SQL_CREATE_FUNC1(sqrtwithsign, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(squared, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(squaredwithsign, 1, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(strtoll, 2, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(throwerror, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(zlib_compress, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(zlib_uncompress, 1, SQLITE_DETERMINISTIC);

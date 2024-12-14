@@ -121,11 +121,11 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 ```shell
 python -m build
 #
-twine upload --repository testpypi dist/sqlmath-2024.11.24*
-py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2024.11.24
+twine upload --repository testpypi dist/sqlmath-2024.12.1*
+py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2024.12.1
 #
-twine upload dist/sqlmath-2024.11.24*
-pip install sqlmath==2024.11.24
+twine upload dist/sqlmath-2024.12.1*
+pip install sqlmath==2024.12.1
 ```
 
 
