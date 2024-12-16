@@ -83,14 +83,13 @@ process.stdout.write(
         pip install cibuildwheel
         python -m cibuildwheel --output-dir=dist/
     fi
-    ) &
+    )
     PID_LIST="$PID_LIST $!"
     #
     # shCiBuildWasm
     (
     if (shCiMatrixIsmainName)
     then
-        shImageLogoCreate
         shCiBuildWasm
         # .github_cache - save
         if [ "$GITHUB_ACTION" ] && [ ! -d .github_cache/_emsdk ]
@@ -99,7 +98,7 @@ process.stdout.write(
             cp -a "$EMSDK" .github_cache
         fi
     fi
-    ) &
+    )
     PID_LIST="$PID_LIST $!"
     #
     shPidListWait build_ext "$PID_LIST"
@@ -181,10 +180,6 @@ shCiBaseCustomArtifactUpload() {(set -e
     if [ -f ../../sqlmath_wasm.wasm ]
     then
         cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
-    fi
-    if [ -f ../../.artifact/asset_image_logo_512.png ]
-    then
-        cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
     fi
     for FILE in \
         ../../sqlmath/lib_lightgbm.dll \
