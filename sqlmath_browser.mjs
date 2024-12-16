@@ -377,6 +377,7 @@ INSERT INTO tradebot_technical_week
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
+            -- UNION ALL SELECT '1e_stk_pnl'
         )
         --
         UNION ALL
@@ -1086,7 +1087,7 @@ UPDATE ${tableData}
 UPDATE ${tableData}
     SET
         tt = UNIXEPOCH(tt),
-        tval = ROUNDORZERO(100 * tval, 4);
+        tval = ROUNDORZERO(tval, 4);
 
 -- chart - ${tableChart} - create
 DROP TABLE IF EXISTS ${tableChart};

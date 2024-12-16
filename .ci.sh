@@ -83,7 +83,7 @@ process.stdout.write(
         pip install cibuildwheel
         python -m cibuildwheel --output-dir=dist/
     fi
-    )
+    ) &
     PID_LIST="$PID_LIST $!"
     #
     # shCiBuildWasm
@@ -98,7 +98,7 @@ process.stdout.write(
             cp -a "$EMSDK" .github_cache
         fi
     fi
-    )
+    ) &
     PID_LIST="$PID_LIST $!"
     #
     shPidListWait build_ext "$PID_LIST"
