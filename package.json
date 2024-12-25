@@ -4,13 +4,7 @@
         "name": "kai zhu"
     },
     "counter": 1,
-    "cpu": [
-        "x64"
-    ],
     "description": "sqlite for data-science",
-    "engines": {
-        "node": ">=14"
-    },
     "fileCount": 46,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
