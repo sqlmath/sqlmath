@@ -12,9 +12,9 @@ include PKG-INFO
 include README.md
 include asset_image_folder_open_solid.svg
 include asset_image_github_brands.svg
-include asset_image_logo_512.html
-include asset_image_logo_512.png
-include asset_image_logo_512.svg
+include asset_image_logo_256.html
+include asset_image_logo_256.png
+include asset_image_logo_256.svg
 include asset_sqlmath_external_rollup.js
 include cpplint.py
 include csslint.js
