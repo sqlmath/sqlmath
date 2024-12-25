@@ -2604,7 +2604,7 @@ SQLMATH_FUNC static void sql1_strtoll_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will return stroll(str, base).
+// This function will return strtoll(str, base).
     UNUSED_PARAMETER(argc);
     const char *str = (char *) sqlite3_value_text(argv[0]);
     const int base = sqlite3_value_int(argv[1]);
