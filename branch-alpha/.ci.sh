@@ -90,6 +90,13 @@ process.stdout.write(
     (
     if (shCiMatrixIsmainName)
     then
+        # install graphicsmagick
+        if (! command -v gm >/dev/null)
+        then
+            sudo apt-get install -y graphicsmagick
+        fi
+        # mkdir .artifact/
+        mkdir -p .artifact/
         shImageLogoCreate
         shCiBuildWasm
         # .github_cache - save
@@ -178,19 +185,14 @@ shCiBaseCustomArtifactUpload() {(set -e
     esac
     cp ../../_sqlmath* "branch-$GITHUB_BRANCH0"
     cp ../../sqlmath/_sqlmath* "branch-$GITHUB_BRANCH0"
-    if [ -f ../../sqlmath_wasm.wasm ]
-    then
-        cp ../../sqlmath_wasm.* "branch-$GITHUB_BRANCH0"
-    fi
-    if [ -f ../../.artifact/asset_image_logo_512.png ]
-    then
-        cp ../../.artifact/asset_image_logo_* "branch-$GITHUB_BRANCH0"
-    fi
     for FILE in \
+        ../../.artifact/asset_image_logo_256.png \
         ../../sqlmath/lib_lightgbm.dll \
         ../../sqlmath/lib_lightgbm.dylib \
         ../../sqlmath/lib_lightgbm.so \
-        ../../sqlmath/libomp.dylib
+        ../../sqlmath/libomp.dylib \
+        ../../sqlmath_wasm.js \
+        ../../sqlmath_wasm.wasm
     do
         if [ -f "$FILE" ]
         then

@@ -2331,9 +2331,10 @@ SQLMATH_FUNC static void sql1_random1_func(
 // This function will generate high-quality random-float between 0 <= xx < 1.
     UNUSED_PARAMETER(argc);
     UNUSED_PARAMETER(argv);
-    uint32_t xx[1];
-    sqlite3_randomness(4, (void *) xx);
-    sqlite3_result_double(context, ((double) *xx) / 0x100000000);
+    uint64_t ii = 0;
+    sqlite3_randomness(sizeof(ii), &ii);
+    sqlite3_result_double(context,
+        ((double) ii) / ((double) UINT64_MAX) * (1.0 - DBL_EPSILON));
 }
 
 SQLMATH_FUNC static void sql1_roundorzero_func(
@@ -2603,7 +2604,7 @@ SQLMATH_FUNC static void sql1_strtoll_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will return stroll(str, base).
+// This function will return strtoll(str, base).
     UNUSED_PARAMETER(argc);
     const char *str = (char *) sqlite3_value_text(argv[0]);
     const int base = sqlite3_value_int(argv[1]);
