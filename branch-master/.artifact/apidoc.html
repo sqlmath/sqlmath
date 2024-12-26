@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2024.11.24)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2024.12.25)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -1126,21 +1126,21 @@ SELECT win_sum1(1) FROM __tmp1;
     });
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-        (/^IDATEYMDFROM|YMD$/).test(sqlFunc)
-        ? `SELECT ${sqlFunc2}($valIn, '${modifier} DAY');`
-        : `SELECT ${sqlFunc2}($valIn, '${modifier} SECOND');`
-    )
-    : `SELECT ${sqlFunc2}($valIn, '${modifier}');`
-).replace(")(", ", ");
-valActual = (
+let valActual;
+sql = (
+    func === "SHA256"
+    ? `SELECT HEX(${func}(${arg}))`
+    : `SELECT ${func}(${arg})`
+);
+valActual = noop(
     await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastValue</span>({
-        bindList: {
-            valIn
-        },
         db,
         sql
     })
 );
+assertJsonEqual(valActual, valExpect, {
+    sql,
+    valExpect
 ...</pre></li>
 
 <li>
@@ -1895,21 +1895,21 @@ jstestDescribe((
 </span>    return val;
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-}).forEach(function ([
-    arg, funcDict
-]) {
-    Object.entries(funcDict).forEach(async function ([
-        func, valExpect
-    ]) {
-        let sql = `SELECT ${func}(${arg}) AS val`;
-        let valActual = <span class="apidocCodeKeywordSpan">noop</span>(
-            await dbExecAndReturnLastRow({
-                db,
-                sql
-            })
-        ).val;
-        assertJsonEqual(valActual, valExpect);
-    });
+let sql;
+let valActual;
+sql = (
+    func === "SHA256"
+    ? `SELECT HEX(${func}(${arg}))`
+    : `SELECT ${func}(${arg})`
+);
+valActual = <span class="apidocCodeKeywordSpan">noop</span>(
+    await dbExecAndReturnLastValue({
+        db,
+        sql
+    })
+);
+assertJsonEqual(valActual, valExpect, {
+    sql,
 ...</pre></li>
 
 <li>
