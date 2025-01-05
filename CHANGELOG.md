@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2025.1.1-beta
+- sqlmath - Revamp sql-function win_sinefit2() to guess frequency from stdev of tt, instead of dft.
+
 # v2024.12.25
 - ci - Auto-create asset_image_logo_256.png from asset_image_logo_256.html.
 - ci - Fix shell-function shRollupFetch() from making excessive github-api-request.

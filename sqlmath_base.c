@@ -3459,7 +3459,7 @@ static void sql3_stdev_step(
             const double xx0 = agg->xx0;
             const double dx = xx - xx0;
             agg->vxx +=
-                (xx * xx - xx0 * xx0) - dx * (invn0 * dx + 2 * agg->mxx);
+                (xx * xx - xx0 * xx0) - dx * (dx * invn0 + 2 * agg->mxx);
             agg->mxx += dx * invn0;
         } else {
             // calculate vxx - welford
@@ -3948,7 +3948,7 @@ typedef struct WinSinefit {
     double rr1;                 // r-current
     //
     double saa;                 // sine amplitude
-    double see;                 // sine y-stdev.s5
+    double see;                 // sine y-stdev
     double spp;                 // sine phase
     double sww;                 // sine angular-frequency
     //
@@ -3977,10 +3977,10 @@ static void winSinefitSnr(
 ) {
 // This function will calculate running sine-regression as:
 //     yy = saa*sin(sww*xx + spp)
+    UNUSED_PARAMETER(wbb);
     // declare var0
     const double nnn = nbody / (ncol * WIN_SINEFIT_STEP);
     const double invn0 = 1.0 / nnn;
-    const double wtt0 = sqrt(12.0 * invn0 * wsf->vxx);  // window-period
     double saa = 0;
     double spp = 0;
     double sww = 0;
@@ -3988,35 +3988,8 @@ static void winSinefitSnr(
     // calculate snr - saa
     saa = sqrt(2 * wsf->vyy * invn0     //
         * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
-    // calculate snr - sww - using incremental-discrete-fourier-transform
-    {
-        const double ibb = 2 * MATH_PI * (wbb / (ncol * WIN_SINEFIT_STEP));
-        const double rr0 = isfinite(wsf->rr0) ? wsf->rr0 : 0;
-        const double rr1 = isfinite(wsf->rr1) ? wsf->rr1 : 0;
-        const double rr2 = wsf->wnn ? rr1 - rr0 : rr1;
-        double cfkmax = 0;
-        double tmp = 0;
-        int kk = 0;
-        for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
-            // rr   = yy - (laa + lbb*tt)
-            // dfkr = cos(2*pi/nnn*kk*ibb)*(rr1 - rr0)
-            // dfki = sin(2*pi/nnn*kk*ibb)*(rr1 - rr0)
-            // sfk = sfk + sum(dfkr)^2 + sum(dfki)^2
-            xxyy[ii + 3] += cos(kk * ibb) * rr2;
-            xxyy[ii + 4] += sin(kk * ibb) * rr2;
-            tmp = pow(xxyy[ii + 3], 2) + pow(xxyy[ii + 4], 2);
-            if (                //
-                1 <= kk         //
-                && kk <= 0.5 * nnn      //
-                && kk <= doubleMax(0.03125 * nnn, 4.0 / nnn)    //
-                && cfkmax < tmp) {
-                cfkmax = tmp;
-                sww = kk;
-            }
-            kk += 1;
-        }
-        sww *= 2 * MATH_PI / wtt0;
-    }
+    // calculate snr - sww - using x-variance.p
+    sww = 2 * MATH_PI / sqrt(4.0 * wsf->vxx * invn0);   // window-period
     const double inva = 1.0 / saa;
     if (inva <= 0 || !isfinite(inva) || !isnormal(sww)) {
         return;
@@ -4087,7 +4060,7 @@ static void winSinefitSnr(
         }
     }
     // calculate snr - spp, sww - using gauss-newton-method
-    for (int jj = 4; jj > 0; jj -= 1) {
+    for (int jj = 8; jj > 0; jj -= 1) {
         // for (int jj = sqrt(nnn); jj > 1; jj -= 1) {
         double gp = 0;          // gradient-phase
         double gw = 0;          // gradient-frequency
@@ -4178,7 +4151,7 @@ static void winSinefitSnr(
             spp = spp2;
             vrr1 = vrr2;
         }
-        wsf->see = sqrt(vrr1 / (nnn - 5));
+        wsf->see = sqrt(vrr1 * invn0);
     }
     // save wsf
     if (spp < 0) {
@@ -4210,9 +4183,9 @@ static void winSinefitLnr(
         const double yy0 = wsf->yy0;
         const double dx = xx - xx0;
         const double dy = yy - yy0;
-        vxx += (xx * xx - xx0 * xx0) - dx * (invn0 * dx + 2 * mxx);
-        vyy += (yy * yy - yy0 * yy0) - dy * (invn0 * dy + 2 * myy);
-        vxy += (xx * yy - xx0 * yy0) - dx * myy - dy * (invn0 * dx + mxx);
+        vxx += (xx * xx - xx0 * xx0) - dx * (dx * invn0 + 2 * mxx);
+        vyy += (yy * yy - yy0 * yy0) - dy * (dy * invn0 + 2 * myy);
+        vxy += (xx * yy - xx0 * yy0) - dx * myy - dy * (dx * invn0 + mxx);
         mxx += dx * invn0;
         myy += dy * invn0;
     } else {

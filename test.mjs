@@ -3821,47 +3821,36 @@ CREATE TEMP TABLE __sinefit_csv AS
 SELECT
         *,
         sinefit_extract(__wsf, 0, 'saa', 0) AS saa,
-        sinefit_extract(__wsf, 0, 'see', 0) AS see,
         sinefit_extract(__wsf, 0, 'spp', 0) AS spp,
-        sinefit_extract(__wsf, 0, 'stt', 0) AS stt,
         sinefit_extract(__wsf, 0, 'sww', 0) AS sww,
-        sinefit_extract(__wsf, 0, 'syy', 0) AS syy,
-        sinefit_extract(__wsf, 0, 'vxx', 0) AS vxx,
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM __sinefit_csv
     JOIN (
         SELECT
-            MEDIAN(yy) AS yy_avg,
-            STDEV(yy) AS yy_err
+            MEDIAN(sinefit_extract(__wsf, 0, 'rr1', 0)) AS rr_avg,
+            STDEV(sinefit_extract(__wsf, 0, 'rr1', 0)) AS rr_err
         FROM __sinefit_csv
     )
     LEFT JOIN (
         SELECT
             ii + 1 AS ii,
-            sinefit_extract(__wsf, 0, 'predict_all', ii + 1) AS predict,
-            sinefit_extract(__wsf, 0, 'predict_lnr', ii + 1) AS predict_lnr,
             sinefit_extract(__wsf, 0, 'predict_snr', ii + 1) AS predict_snr
         FROM __sinefit_csv
     ) USING (ii);
                     `)
                 });
                 valActual = (
-                    "date saa sww spp stt"
-                    + " rr0 rr1 ii yy linear sinefit sine\n"
+                    "date saa sww spp"
+                    + " ii linear_residual predict_sine\n"
                     + valActual.map(function (elem) {
                         return [
                             elem.date,
                             elem.saa,
                             elem.sww,
                             elem.spp,
-                            elem.stt,
-                            elem.rr0,
-                            elem.rr1,
                             elem.ii,
-                            10 + (elem.yy - elem.yy_avg) / elem.yy_err,
-                            10 + (elem.predict_lnr - elem.yy_avg) / elem.yy_err,
-                            10 + (elem.predict - elem.yy_avg) / elem.yy_err,
-                            10 + elem.predict_snr / 100
+                            (elem.rr1 - elem.rr_avg) / elem.rr_err,
+                            elem.predict_snr / 100
                         ].map(function (num) {
                             return (
                                 typeof num === "number"
