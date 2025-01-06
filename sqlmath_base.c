@@ -3966,7 +3966,7 @@ typedef struct WinSinefit {
     double yy1;                 // y-current
 } WinSinefit;
 static const int WIN_SINEFIT_N = sizeof(WinSinefit) / sizeof(double);
-static const int WIN_SINEFIT_STEP = 3 + 2;
+static const int WIN_SINEFIT_STEP = 3 + 0;
 
 static void winSinefitSnr(
     WinSinefit * wsf,
@@ -3986,13 +3986,17 @@ static void winSinefitSnr(
     double sww = 0;
     double tmp = 0;
     // calculate snr - saa
-    saa = sqrt(2 * wsf->vyy * invn0     //
-        * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
-    // calculate snr - sww - using x-variance.p
-    sww = 2 * MATH_PI / sqrt(4.0 * wsf->vxx * invn0);   // window-period
-    const double inva = 1.0 / saa;
-    if (inva <= 0 || !isfinite(inva) || !isnormal(sww)) {
+    if (1) {
+        saa = sqrt(2 * wsf->vyy * invn0 //
+            * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
+    }
+    if (saa <= 0 || !isnormal(saa)) {
         return;
+    }
+    const double inva = 1.0 / saa;
+    // calculate snr - sww - using x-variance.p
+    if (1) {
+        sww = 2 * MATH_PI / sqrt(4.0 * wsf->vxx * invn0);       // window-period
     }
     // calculate snr - spp - using multivariate-linear-regression
     if (1) {

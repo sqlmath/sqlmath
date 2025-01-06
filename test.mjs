@@ -3815,9 +3815,20 @@ CREATE TEMP TABLE __sinefit_csv AS
         SELECT
             value->>'ii' AS ii,
             value->>'date' AS date,
-            value->>'priceClose' AS yy
+            value->>'priceClose' AS yy,
+            0 AS rr
         FROM JSON_EAcH($testDataSpx)
     );
+UPDATE __sinefit_csv
+    SET
+        rr = yy - predict_lnr
+    FROM (
+        SELECT
+            ii + 1 AS ii,
+            sinefit_extract(__wsf, 0, 'predict_lnr', ii + 1) AS predict_lnr
+        FROM __sinefit_csv
+    ) AS __join1
+    WHERE __join1.ii = __sinefit_csv.ii;
 SELECT
         *,
         sinefit_extract(__wsf, 0, 'saa', 0) AS saa,
@@ -3827,8 +3838,8 @@ SELECT
     FROM __sinefit_csv
     JOIN (
         SELECT
-            MEDIAN(sinefit_extract(__wsf, 0, 'rr1', 0)) AS rr_avg,
-            STDEV(sinefit_extract(__wsf, 0, 'rr1', 0)) AS rr_err
+            MEDIAN(rr) AS rr_avg,
+            STDEV(rr) AS rr_err
         FROM __sinefit_csv
     )
     LEFT JOIN (
@@ -3849,7 +3860,7 @@ SELECT
                             elem.sww,
                             elem.spp,
                             elem.ii,
-                            (elem.rr1 - elem.rr_avg) / elem.rr_err,
+                            (elem.rr - elem.rr_avg) / elem.rr_err,
                             elem.predict_snr / 100
                         ].map(function (num) {
                             return (
