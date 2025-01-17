@@ -4,6 +4,7 @@
 - none
 
 # v2025.1.1-beta
+- webdemo - Update coloring to highlight tqq/sqq stocks.
 - sqlmath - Revamp sql-function win_sinefit2() to guess frequency from stdev of tt, instead of dft.
 
 # v2024.12.25
