@@ -3973,60 +3973,60 @@ body {
 <pre><span class="lineno"><a href="#line_3815" id="line_3815"> 3815.</a></span><span class="count        ">      1</span><span>        SELECT</span></pre>
 <pre><span class="lineno"><a href="#line_3816" id="line_3816"> 3816.</a></span><span class="count        ">      1</span><span>            value-&gt;&gt;'ii' AS ii,</span></pre>
 <pre><span class="lineno"><a href="#line_3817" id="line_3817"> 3817.</a></span><span class="count        ">      1</span><span>            value-&gt;&gt;'date' AS date,</span></pre>
-<pre><span class="lineno"><a href="#line_3818" id="line_3818"> 3818.</a></span><span class="count        ">      1</span><span>            value-&gt;&gt;'priceClose' AS yy</span></pre>
-<pre><span class="lineno"><a href="#line_3819" id="line_3819"> 3819.</a></span><span class="count        ">      1</span><span>        FROM JSON_EAcH($testDataSpx)</span></pre>
-<pre><span class="lineno"><a href="#line_3820" id="line_3820"> 3820.</a></span><span class="count        ">      1</span><span>    );</span></pre>
-<pre><span class="lineno"><a href="#line_3821" id="line_3821"> 3821.</a></span><span class="count        ">      1</span><span>SELECT</span></pre>
-<pre><span class="lineno"><a href="#line_3822" id="line_3822"> 3822.</a></span><span class="count        ">      1</span><span>        *,</span></pre>
-<pre><span class="lineno"><a href="#line_3823" id="line_3823"> 3823.</a></span><span class="count        ">      1</span><span>        sinefit_extract(__wsf, 0, 'saa', 0) AS saa,</span></pre>
-<pre><span class="lineno"><a href="#line_3824" id="line_3824"> 3824.</a></span><span class="count        ">      1</span><span>        sinefit_extract(__wsf, 0, 'see', 0) AS see,</span></pre>
-<pre><span class="lineno"><a href="#line_3825" id="line_3825"> 3825.</a></span><span class="count        ">      1</span><span>        sinefit_extract(__wsf, 0, 'spp', 0) AS spp,</span></pre>
-<pre><span class="lineno"><a href="#line_3826" id="line_3826"> 3826.</a></span><span class="count        ">      1</span><span>        sinefit_extract(__wsf, 0, 'stt', 0) AS stt,</span></pre>
-<pre><span class="lineno"><a href="#line_3827" id="line_3827"> 3827.</a></span><span class="count        ">      1</span><span>        sinefit_extract(__wsf, 0, 'sww', 0) AS sww,</span></pre>
-<pre><span class="lineno"><a href="#line_3828" id="line_3828"> 3828.</a></span><span class="count        ">      1</span><span>        sinefit_extract(__wsf, 0, 'syy', 0) AS syy,</span></pre>
-<pre><span class="lineno"><a href="#line_3829" id="line_3829"> 3829.</a></span><span class="count        ">      1</span><span>        sinefit_extract(__wsf, 0, 'vxx', 0) AS vxx,</span></pre>
-<pre><span class="lineno"><a href="#line_3830" id="line_3830"> 3830.</a></span><span class="count        ">      1</span><span>        ${sqlSinefitExtractLnr("__wsf", 0, "")}</span></pre>
-<pre><span class="lineno"><a href="#line_3831" id="line_3831"> 3831.</a></span><span class="count        ">      1</span><span>    FROM __sinefit_csv</span></pre>
-<pre><span class="lineno"><a href="#line_3832" id="line_3832"> 3832.</a></span><span class="count        ">      1</span><span>    JOIN (</span></pre>
-<pre><span class="lineno"><a href="#line_3833" id="line_3833"> 3833.</a></span><span class="count        ">      1</span><span>        SELECT</span></pre>
-<pre><span class="lineno"><a href="#line_3834" id="line_3834"> 3834.</a></span><span class="count        ">      1</span><span>            MEDIAN(yy) AS yy_avg,</span></pre>
-<pre><span class="lineno"><a href="#line_3835" id="line_3835"> 3835.</a></span><span class="count        ">      1</span><span>            STDEV(yy) AS yy_err</span></pre>
-<pre><span class="lineno"><a href="#line_3836" id="line_3836"> 3836.</a></span><span class="count        ">      1</span><span>        FROM __sinefit_csv</span></pre>
-<pre><span class="lineno"><a href="#line_3837" id="line_3837"> 3837.</a></span><span class="count        ">      1</span><span>    )</span></pre>
-<pre><span class="lineno"><a href="#line_3838" id="line_3838"> 3838.</a></span><span class="count        ">      1</span><span>    LEFT JOIN (</span></pre>
-<pre><span class="lineno"><a href="#line_3839" id="line_3839"> 3839.</a></span><span class="count        ">      1</span><span>        SELECT</span></pre>
-<pre><span class="lineno"><a href="#line_3840" id="line_3840"> 3840.</a></span><span class="count        ">      1</span><span>            ii + 1 AS ii,</span></pre>
-<pre><span class="lineno"><a href="#line_3841" id="line_3841"> 3841.</a></span><span class="count        ">      1</span><span>            sinefit_extract(__wsf, 0, 'predict_all', ii + 1) AS predict,</span></pre>
-<pre><span class="lineno"><a href="#line_3842" id="line_3842"> 3842.</a></span><span class="count        ">      1</span><span>            sinefit_extract(__wsf, 0, 'predict_lnr', ii + 1) AS predict_lnr,</span></pre>
-<pre><span class="lineno"><a href="#line_3843" id="line_3843"> 3843.</a></span><span class="count        ">      1</span><span>            sinefit_extract(__wsf, 0, 'predict_snr', ii + 1) AS predict_snr</span></pre>
-<pre><span class="lineno"><a href="#line_3844" id="line_3844"> 3844.</a></span><span class="count        ">      1</span><span>        FROM __sinefit_csv</span></pre>
-<pre><span class="lineno"><a href="#line_3845" id="line_3845"> 3845.</a></span><span class="count        ">      1</span><span>    ) USING (ii);</span></pre>
-<pre><span class="lineno"><a href="#line_3846" id="line_3846"> 3846.</a></span><span class="count        ">      1</span><span>                    `)</span></pre>
-<pre><span class="lineno"><a href="#line_3847" id="line_3847"> 3847.</a></span><span class="count        ">      1</span><span>                });</span></pre>
-<pre><span class="lineno"><a href="#line_3848" id="line_3848"> 3848.</a></span><span class="count        ">      1</span><span>                valActual = (</span></pre>
-<pre><span class="lineno"><a href="#line_3849" id="line_3849"> 3849.</a></span><span class="count        ">      1</span><span>                    "date saa sww spp stt"</span></pre>
-<pre><span class="lineno"><a href="#line_3850" id="line_3850"> 3850.</a></span><span class="count        ">      1</span><span>                    + " rr0 rr1 ii yy linear sinefit sine\n"</span></pre>
-<pre><span class="lineno"><a href="#line_3851" id="line_3851"> 3851.</a></span><span class="count        ">   1012</span><span>                    + valActual.map(function (elem) {</span></pre>
-<pre><span class="lineno"><a href="#line_3852" id="line_3852"> 3852.</a></span><span class="count        ">   1012</span><span>                        return [</span></pre>
-<pre><span class="lineno"><a href="#line_3853" id="line_3853"> 3853.</a></span><span class="count        ">   1012</span><span>                            elem.date,</span></pre>
-<pre><span class="lineno"><a href="#line_3854" id="line_3854"> 3854.</a></span><span class="count        ">   1012</span><span>                            elem.saa,</span></pre>
-<pre><span class="lineno"><a href="#line_3855" id="line_3855"> 3855.</a></span><span class="count        ">   1012</span><span>                            elem.sww,</span></pre>
-<pre><span class="lineno"><a href="#line_3856" id="line_3856"> 3856.</a></span><span class="count        ">   1012</span><span>                            elem.spp,</span></pre>
-<pre><span class="lineno"><a href="#line_3857" id="line_3857"> 3857.</a></span><span class="count        ">   1012</span><span>                            elem.stt,</span></pre>
-<pre><span class="lineno"><a href="#line_3858" id="line_3858"> 3858.</a></span><span class="count        ">   1012</span><span>                            elem.rr0,</span></pre>
-<pre><span class="lineno"><a href="#line_3859" id="line_3859"> 3859.</a></span><span class="count        ">   1012</span><span>                            elem.rr1,</span></pre>
-<pre><span class="lineno"><a href="#line_3860" id="line_3860"> 3860.</a></span><span class="count        ">   1012</span><span>                            elem.ii,</span></pre>
-<pre><span class="lineno"><a href="#line_3861" id="line_3861"> 3861.</a></span><span class="count        ">   1012</span><span>                            10 + (elem.yy - elem.yy_avg) / elem.yy_err,</span></pre>
-<pre><span class="lineno"><a href="#line_3862" id="line_3862"> 3862.</a></span><span class="count        ">   1012</span><span>                            10 + (elem.predict_lnr - elem.yy_avg) / elem.yy_err,</span></pre>
-<pre><span class="lineno"><a href="#line_3863" id="line_3863"> 3863.</a></span><span class="count        ">   1012</span><span>                            10 + (elem.predict - elem.yy_avg) / elem.yy_err,</span></pre>
-<pre><span class="lineno"><a href="#line_3864" id="line_3864"> 3864.</a></span><span class="count        ">   1012</span><span>                            10 + elem.predict_snr / 100</span></pre>
-<pre><span class="lineno"><a href="#line_3865" id="line_3865"> 3865.</a></span><span class="count        ">  12144</span><span>                        ].map(function (num) {</span></pre>
-<pre><span class="lineno"><a href="#line_3866" id="line_3866"> 3866.</a></span><span class="count        ">  12144</span><span>                            return (</span></pre>
-<pre><span class="lineno"><a href="#line_3867" id="line_3867"> 3867.</a></span><span class="count        ">  12144</span><span>                                typeof num === "number"</span></pre>
-<pre><span class="lineno"><a href="#line_3868" id="line_3868"> 3868.</a></span><span class="count        ">  11129</span><span>                                ? num.toFixed(4)</span></pre>
-<pre><span class="lineno"><a href="#line_3869" id="line_3869"> 3869.</a></span><span class="count        ">   1015</span><span>                                : num</span></pre>
-<pre><span class="lineno"><a href="#line_3870" id="line_3870"> 3870.</a></span><span class="count        ">  12144</span><span>                            );</span></pre>
-<pre><span class="lineno"><a href="#line_3871" id="line_3871"> 3871.</a></span><span class="count        ">  12144</span><span>                        }).join(" ");</span></pre>
+<pre><span class="lineno"><a href="#line_3818" id="line_3818"> 3818.</a></span><span class="count        ">      1</span><span>            value-&gt;&gt;'priceClose' AS yy,</span></pre>
+<pre><span class="lineno"><a href="#line_3819" id="line_3819"> 3819.</a></span><span class="count        ">      1</span><span>            0 AS rr</span></pre>
+<pre><span class="lineno"><a href="#line_3820" id="line_3820"> 3820.</a></span><span class="count        ">      1</span><span>        FROM JSON_EAcH($testDataSpx)</span></pre>
+<pre><span class="lineno"><a href="#line_3821" id="line_3821"> 3821.</a></span><span class="count        ">      1</span><span>    );</span></pre>
+<pre><span class="lineno"><a href="#line_3822" id="line_3822"> 3822.</a></span><span class="count        ">      1</span><span>UPDATE __sinefit_csv</span></pre>
+<pre><span class="lineno"><a href="#line_3823" id="line_3823"> 3823.</a></span><span class="count        ">      1</span><span>    SET</span></pre>
+<pre><span class="lineno"><a href="#line_3824" id="line_3824"> 3824.</a></span><span class="count        ">      1</span><span>        rr = yy - predict_lnr</span></pre>
+<pre><span class="lineno"><a href="#line_3825" id="line_3825"> 3825.</a></span><span class="count        ">      1</span><span>    FROM (</span></pre>
+<pre><span class="lineno"><a href="#line_3826" id="line_3826"> 3826.</a></span><span class="count        ">      1</span><span>        SELECT</span></pre>
+<pre><span class="lineno"><a href="#line_3827" id="line_3827"> 3827.</a></span><span class="count        ">      1</span><span>            ii + 1 AS ii,</span></pre>
+<pre><span class="lineno"><a href="#line_3828" id="line_3828"> 3828.</a></span><span class="count        ">      1</span><span>            sinefit_extract(__wsf, 0, 'predict_lnr', ii + 1) AS predict_lnr</span></pre>
+<pre><span class="lineno"><a href="#line_3829" id="line_3829"> 3829.</a></span><span class="count        ">      1</span><span>        FROM __sinefit_csv</span></pre>
+<pre><span class="lineno"><a href="#line_3830" id="line_3830"> 3830.</a></span><span class="count        ">      1</span><span>    ) AS __join1</span></pre>
+<pre><span class="lineno"><a href="#line_3831" id="line_3831"> 3831.</a></span><span class="count        ">      1</span><span>    WHERE __join1.ii = __sinefit_csv.ii;</span></pre>
+<pre><span class="lineno"><a href="#line_3832" id="line_3832"> 3832.</a></span><span class="count        ">      1</span><span>SELECT</span></pre>
+<pre><span class="lineno"><a href="#line_3833" id="line_3833"> 3833.</a></span><span class="count        ">      1</span><span>        *,</span></pre>
+<pre><span class="lineno"><a href="#line_3834" id="line_3834"> 3834.</a></span><span class="count        ">      1</span><span>        sinefit_extract(__wsf, 0, 'saa', 0) AS saa,</span></pre>
+<pre><span class="lineno"><a href="#line_3835" id="line_3835"> 3835.</a></span><span class="count        ">      1</span><span>        sinefit_extract(__wsf, 0, 'spp', 0) AS spp,</span></pre>
+<pre><span class="lineno"><a href="#line_3836" id="line_3836"> 3836.</a></span><span class="count        ">      1</span><span>        sinefit_extract(__wsf, 0, 'sww', 0) AS sww,</span></pre>
+<pre><span class="lineno"><a href="#line_3837" id="line_3837"> 3837.</a></span><span class="count        ">      1</span><span>        ${sqlSinefitExtractLnr("__wsf", 0, "")}</span></pre>
+<pre><span class="lineno"><a href="#line_3838" id="line_3838"> 3838.</a></span><span class="count        ">      1</span><span>    FROM __sinefit_csv</span></pre>
+<pre><span class="lineno"><a href="#line_3839" id="line_3839"> 3839.</a></span><span class="count        ">      1</span><span>    JOIN (</span></pre>
+<pre><span class="lineno"><a href="#line_3840" id="line_3840"> 3840.</a></span><span class="count        ">      1</span><span>        SELECT</span></pre>
+<pre><span class="lineno"><a href="#line_3841" id="line_3841"> 3841.</a></span><span class="count        ">      1</span><span>            MEDIAN(rr) AS rr_avg,</span></pre>
+<pre><span class="lineno"><a href="#line_3842" id="line_3842"> 3842.</a></span><span class="count        ">      1</span><span>            STDEV(rr) AS rr_err</span></pre>
+<pre><span class="lineno"><a href="#line_3843" id="line_3843"> 3843.</a></span><span class="count        ">      1</span><span>        FROM __sinefit_csv</span></pre>
+<pre><span class="lineno"><a href="#line_3844" id="line_3844"> 3844.</a></span><span class="count        ">      1</span><span>    )</span></pre>
+<pre><span class="lineno"><a href="#line_3845" id="line_3845"> 3845.</a></span><span class="count        ">      1</span><span>    LEFT JOIN (</span></pre>
+<pre><span class="lineno"><a href="#line_3846" id="line_3846"> 3846.</a></span><span class="count        ">      1</span><span>        SELECT</span></pre>
+<pre><span class="lineno"><a href="#line_3847" id="line_3847"> 3847.</a></span><span class="count        ">      1</span><span>            ii + 1 AS ii,</span></pre>
+<pre><span class="lineno"><a href="#line_3848" id="line_3848"> 3848.</a></span><span class="count        ">      1</span><span>            sinefit_extract(__wsf, 0, 'predict_snr', ii + 1) AS predict_snr</span></pre>
+<pre><span class="lineno"><a href="#line_3849" id="line_3849"> 3849.</a></span><span class="count        ">      1</span><span>        FROM __sinefit_csv</span></pre>
+<pre><span class="lineno"><a href="#line_3850" id="line_3850"> 3850.</a></span><span class="count        ">      1</span><span>    ) USING (ii);</span></pre>
+<pre><span class="lineno"><a href="#line_3851" id="line_3851"> 3851.</a></span><span class="count        ">      1</span><span>                    `)</span></pre>
+<pre><span class="lineno"><a href="#line_3852" id="line_3852"> 3852.</a></span><span class="count        ">      1</span><span>                });</span></pre>
+<pre><span class="lineno"><a href="#line_3853" id="line_3853"> 3853.</a></span><span class="count        ">      1</span><span>                valActual = (</span></pre>
+<pre><span class="lineno"><a href="#line_3854" id="line_3854"> 3854.</a></span><span class="count        ">      1</span><span>                    "date saa sww spp"</span></pre>
+<pre><span class="lineno"><a href="#line_3855" id="line_3855"> 3855.</a></span><span class="count        ">      1</span><span>                    + " ii linear_residual predict_sine\n"</span></pre>
+<pre><span class="lineno"><a href="#line_3856" id="line_3856"> 3856.</a></span><span class="count        ">   1012</span><span>                    + valActual.map(function (elem) {</span></pre>
+<pre><span class="lineno"><a href="#line_3857" id="line_3857"> 3857.</a></span><span class="count        ">   1012</span><span>                        return [</span></pre>
+<pre><span class="lineno"><a href="#line_3858" id="line_3858"> 3858.</a></span><span class="count        ">   1012</span><span>                            elem.date,</span></pre>
+<pre><span class="lineno"><a href="#line_3859" id="line_3859"> 3859.</a></span><span class="count        ">   1012</span><span>                            elem.saa,</span></pre>
+<pre><span class="lineno"><a href="#line_3860" id="line_3860"> 3860.</a></span><span class="count        ">   1012</span><span>                            elem.sww,</span></pre>
+<pre><span class="lineno"><a href="#line_3861" id="line_3861"> 3861.</a></span><span class="count        ">   1012</span><span>                            elem.spp,</span></pre>
+<pre><span class="lineno"><a href="#line_3862" id="line_3862"> 3862.</a></span><span class="count        ">   1012</span><span>                            elem.ii,</span></pre>
+<pre><span class="lineno"><a href="#line_3863" id="line_3863"> 3863.</a></span><span class="count        ">   1012</span><span>                            (elem.rr - elem.rr_avg) / elem.rr_err,</span></pre>
+<pre><span class="lineno"><a href="#line_3864" id="line_3864"> 3864.</a></span><span class="count        ">   1012</span><span>                            elem.predict_snr / 100</span></pre>
+<pre><span class="lineno"><a href="#line_3865" id="line_3865"> 3865.</a></span><span class="count        ">   7084</span><span>                        ].map(function (num) {</span></pre>
+<pre><span class="lineno"><a href="#line_3866" id="line_3866"> 3866.</a></span><span class="count        ">   7084</span><span>                            return (</span></pre>
+<pre><span class="lineno"><a href="#line_3867" id="line_3867"> 3867.</a></span><span class="count        ">   7084</span><span>                                typeof num === "number"</span></pre>
+<pre><span class="lineno"><a href="#line_3868" id="line_3868"> 3868.</a></span><span class="count        ">   6072</span><span>                                ? num.toFixed(4)</span></pre>
+<pre><span class="lineno"><a href="#line_3869" id="line_3869"> 3869.</a></span><span class="count        ">   1012</span><span>                                : num</span></pre>
+<pre><span class="lineno"><a href="#line_3870" id="line_3870"> 3870.</a></span><span class="count        ">   7084</span><span>                            );</span></pre>
+<pre><span class="lineno"><a href="#line_3871" id="line_3871"> 3871.</a></span><span class="count        ">   7084</span><span>                        }).join(" ");</span></pre>
 <pre><span class="lineno"><a href="#line_3872" id="line_3872"> 3872.</a></span><span class="count        ">   1012</span><span>                    }).join("\n")</span></pre>
 <pre><span class="lineno"><a href="#line_3873" id="line_3873"> 3873.</a></span><span class="count        ">      1</span><span>                );</span></pre>
 <pre><span class="lineno"><a href="#line_3874" id="line_3874"> 3874.</a></span><span class="count        ">      1</span><span>                valActual = valActual.replace((/  /g), " null ");</span></pre>
