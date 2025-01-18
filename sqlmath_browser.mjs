@@ -759,7 +759,12 @@ DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
                     grouping === "sector"
                     ? (`
 SELECT
-        IIF(category LIKE 'short%', 1, grouping_index) AS series_color,
+        (CASE
+            WHEN (category LIKE 'index%') THEN 3
+            WHEN (category LIKE 'short%') THEN 1
+            WHEN (grouping = 'sector') THEN 4
+            ELSE grouping_index
+        END) AS series_color,
         category LIKE '-%' AS is_dummy,
         -- 0 AS is_hidden,
         grouping IN ('account', 'exchange') AS is_hidden,
@@ -807,7 +812,11 @@ SELECT
                     : grouping === "subsector"
                     ? (`
 SELECT
-        IIF(category LIKE 'short%', 1, grouping_index) AS series_color,
+        (CASE
+            WHEN (category LIKE 'index%') THEN 3
+            WHEN (category LIKE 'short%') THEN 1
+            ELSE 5
+        END) AS series_color,
         category LIKE '-%' AS is_dummy,
         0 AS is_hidden,
         printf('%05.4f%% - %s', ${columnData}, category) AS series_label,
@@ -833,7 +842,11 @@ SELECT
                     `)
                     : (`
 SELECT
-        2 AS series_color,
+        (CASE
+            WHEN (sector = 'index') THEN 3
+            WHEN (sector = 'short') THEN 1
+            ELSE 2
+        END) AS series_color,
         0 AS is_dummy,
         0 AS is_hidden,
         printf(
@@ -921,7 +934,11 @@ CREATE TEMP TABLE __tmp1 AS
         yy
     FROM (
         SELECT
-            IIF(buy_or_sell = 'buy', 2, 1) AS series_color,
+            (CASE
+                WHEN (sector LIKE 'index%') THEN 3
+                WHEN (sector LIKE 'short%') THEN 1
+                ELSE 2
+            END) AS series_color,
             (
                 buy_or_sell
                 || ' '
