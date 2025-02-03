@@ -280,7 +280,7 @@ body {
 <pre><span class="lineno"><a href="#line_122" id="line_122">  122.</a></span><span class="count        ">      1</span><span>let sqlMessageDict = {}; // dict of web-worker-callbacks</span></pre>
 <pre><span class="lineno"><a href="#line_123" id="line_123">  123.</a></span><span class="count        ">      1</span><span>let sqlMessageId = 0;</span></pre>
 <pre><span class="lineno"><a href="#line_124" id="line_124">  124.</a></span><span class="count        ">      1</span><span>let sqlWorker;</span></pre>
-<pre><span class="lineno"><a href="#line_125" id="line_125">  125.</a></span><span class="count        ">      1</span><span>let version = "v2024.12.25";</span></pre>
+<pre><span class="lineno"><a href="#line_125" id="line_125">  125.</a></span><span class="count        ">      1</span><span>let version = "v2025.1.31";</span></pre>
 <pre><span class="lineno"><a href="#line_126" id="line_126">  126.</a></span><span class="count        ">      1</span><span></span></pre>
 <pre><span class="lineno"><a href="#line_127" id="line_127">  127.</a></span><span class="count        ">     88</span><span>async function assertErrorThrownAsync(asyncFunc, regexp) {</span></pre>
 <pre><span class="lineno"><a href="#line_128" id="line_128">  128.</a></span><span class="count        ">     88</span><span></span></pre>
@@ -941,9 +941,9 @@ body {
 <pre><span class="lineno"><a href="#line_783" id="line_783">  783.</a></span><span class="count        ">    374</span><span>            let colList = table.shift();</span></pre>
 <pre><span class="lineno"><a href="#line_784" id="line_784">  784.</a></span><span class="count        ">  13942</span><span>            return table.map(function (row) {</span></pre>
 <pre><span class="lineno"><a href="#line_785" id="line_785">  785.</a></span><span class="count        ">  13942</span><span>                let dict = {};</span></pre>
-<pre><span class="lineno"><a href="#line_786" id="line_786">  786.</a></span><span class="count        ">  45295</span><span>                colList.forEach(function (key, ii) {</span></pre>
-<pre><span class="lineno"><a href="#line_787" id="line_787">  787.</a></span><span class="count        ">  45295</span><span>                    dict[key] = row[ii];</span></pre>
-<pre><span class="lineno"><a href="#line_788" id="line_788">  788.</a></span><span class="count        ">  45295</span><span>                });</span></pre>
+<pre><span class="lineno"><a href="#line_786" id="line_786">  786.</a></span><span class="count        ">  40235</span><span>                colList.forEach(function (key, ii) {</span></pre>
+<pre><span class="lineno"><a href="#line_787" id="line_787">  787.</a></span><span class="count        ">  40235</span><span>                    dict[key] = row[ii];</span></pre>
+<pre><span class="lineno"><a href="#line_788" id="line_788">  788.</a></span><span class="count        ">  40235</span><span>                });</span></pre>
 <pre><span class="lineno"><a href="#line_789" id="line_789">  789.</a></span><span class="count        ">  13942</span><span>                return dict;</span></pre>
 <pre><span class="lineno"><a href="#line_790" id="line_790">  790.</a></span><span class="count        ">  13942</span><span>            });</span></pre>
 <pre><span class="lineno"><a href="#line_791" id="line_791">  791.</a></span><span class="count        ">    374</span><span>        });</span></pre>

@@ -11,30 +11,13 @@ shCiArtifactUploadCustom() {(set -e
     mv "branch-$GITHUB_BRANCH0"/* .
     git add -f _sqlmath* sqlmath_wasm.*
     # screenshot html
-    node --input-type=module --eval '
-import moduleChildProcess from "child_process";
-(async function () {
-    let {
-        GITHUB_BRANCH0,
-        GITHUB_GITHUB_IO
-    } = process.env;
-    await Promise.all([
-        (
-            `https://${GITHUB_GITHUB_IO}/branch-${GITHUB_BRANCH0}`
-            + `/index.html`
-        ),
-        ".artifact/apidoc.html"
-    ].map(async function (url) {
-        await new Promise(function (resolve) {
-            moduleChildProcess.spawn(
-                "sh",
-                ["jslint_ci.sh", "shBrowserScreenshot", url],
-                {stdio: ["ignore", 1, 2]}
-            ).on("exit", resolve);
-        });
-    }));
-}());
-' "$@" # '
+    PID_LIST=""
+    shBrowserScreenshot \
+        "https://$GITHUB_GITHUB_IO/branch-$GITHUB_BRANCH0/index.html" &
+    PID_LIST="$PID_LIST $!"
+    shBrowserScreenshot .artifact/apidoc.html &
+    PID_LIST="$PID_LIST $!"
+    shPidListWait screenshot "$PID_LIST"
 )}
 
 shCiBaseCustom() {(set -e
