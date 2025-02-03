@@ -5,9 +5,9 @@
 | Branch | [master<br>(v2025.1.31)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
 |--:|:--:|:--:|:--:|
 | CI | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Amaster) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=beta)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Abeta) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=alpha)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Aalpha) |
-| Coverage | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-alpha/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-alpha/.artifact/coverage/index.html) |
-| Demo | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-beta/index.html) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-alpha/index.html) |
-| Artifacts | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-beta/.artifact) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-alpha/.artifact) |
+| Coverage | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-master/.artifact/coverage/index.html) |
+| Demo | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) |
+| Artifacts | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) |
 
 
 <br><br>
@@ -39,7 +39,7 @@
 # Web Demo
 - https://sqlmath.github.io/sqlmath/index.html
 
-[![screenshot](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_browser__2fsqlmath_2fbranch-beta_2findex.html.png)](https://sqlmath.github.io/sqlmath/index.html)
+[![screenshot](https://sqlmath.github.io/sqlmath/branch-master/.artifact/screenshot_browser__2fsqlmath_2fbranch-master_2findex.html.png)](https://sqlmath.github.io/sqlmath/index.html)
 
 
 <br><br>
@@ -87,19 +87,19 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 ### API Doc
 - https://sqlmath.github.io/sqlmath/apidoc.html
 
-[![screenshot](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_browser__2f.artifact_2fapidoc.html.png)](https://sqlmath.github.io/sqlmath/apidoc.html)
+[![screenshot](https://sqlmath.github.io/sqlmath/branch-master/.artifact/screenshot_browser__2f.artifact_2fapidoc.html.png)](https://sqlmath.github.io/sqlmath/apidoc.html)
 
 
 <br><br>
 # Package Listing
-![screenshot_package_listing.svg](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_package_listing.svg)
+![screenshot_package_listing.svg](https://sqlmath.github.io/sqlmath/branch-master/.artifact/screenshot_package_listing.svg)
 
 
 <br><br>
 # Changelog
 - [Full CHANGELOG.md](CHANGELOG.md)
 
-![screenshot_changelog.svg](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_changelog.svg)
+![screenshot_changelog.svg](https://sqlmath.github.io/sqlmath/branch-master/.artifact/screenshot_changelog.svg)
 
 
 <br><br>
