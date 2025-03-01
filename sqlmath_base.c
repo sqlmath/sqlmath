@@ -202,26 +202,34 @@ file sqlmath_h - start
     }
 
 #define SQLITE_OK_OR_RETURN_RC(rc) \
-    if (rc != SQLITE_OK) { return rc; }
+    if (rc != SQLITE_OK) { \
+        return rc; \
+    }
 
 #define SQL_CREATE_FUNC1(func, argc, flag) \
     errcode = sqlite3_create_function(db, #func, argc, \
         flag | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         sql1_##func##_func, NULL, NULL); \
-    if (errcode) { return errcode; }
+    if (errcode) { \
+        return errcode; \
+    }
 
 #define SQL_CREATE_FUNC2(func, argc, flag) \
     errcode = sqlite3_create_function(db, #func, argc, \
         flag | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         NULL, sql2_##func##_step, sql2_##func##_final); \
-    if (errcode) { return errcode; }
+    if (errcode) { \
+        return errcode; \
+    }
 
 #define SQL_CREATE_FUNC3(func, argc, flag) \
     errcode = sqlite3_create_window_function(db, #func, argc, \
         flag | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         sql3_##func##_step, sql3_##func##_final, \
         sql3_##func##_value, sql3_##func##_inverse, NULL); \
-    if (errcode) { return errcode; }
+    if (errcode) { \
+        return errcode; \
+    }
 
 #define STR99_ALLOCA(str99) \
     sqlite3_str __##str99 = { 0 }; \
@@ -4764,6 +4772,11 @@ file sqlmath_nodejs - start
 */
 #if defined(SQLMATH_NODEJS_C2) && !defined(SQLMATH_NODEJS_C3)
 #define SQLMATH_NODEJS_C3
+
+
+#ifdef UNDEFINED // cpplint-hack
+#   include <cstdio>
+#endif
 
 
 // file sqlmath_nodejs - assert

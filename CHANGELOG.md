@@ -4,6 +4,10 @@
 - none
 
 # v2025.2.1-beta
+- ci - Upgrade cpplint.py used in ci to v2.0.0.
+- sqlite - Rename custom-sql-function MEDIAN() to MEDIAN2().
+- sqlite - Enable builtin-sql-functions MEDIAN(), PERCENTILE(), PERCENTILE_CONT(), PERCENTILE_DISC().
+- sqlite - Upgrade to sqlite-v3.47.2.
 - ci - Upgrade nodejs used in ci to v22.
 
 # v2025.1.31
