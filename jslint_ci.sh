@@ -673,8 +673,8 @@ import moduleHttps from "https";
             /<link\b.+?\brel="preconnect".+?>/g
         ), "");
         data.replace((
-            /\bhttps?:\/\/.+?([\s")\]]|\W?$)/gm
-        ), function (url, removeLast) {
+            /\bhttps?:\/\/.+?([\s")\]]|\W?$)(<!--no-validate-->)?/gm
+        ), function (url, removeLast, noValidate) {
             let req;
             let timeStart = Date.now();
             if (removeLast && removeLast !== "/") {
@@ -699,7 +699,7 @@ import moduleHttps from "https";
             );
             if ((
                 /^http:\/\/(?:127\.0\.0\.1|localhost|www\.w3\.org\/2000\/svg)(?:[\/:]|$)|^https:\/\/github\.com\/[\w.\-\/]+?\/compare\/[\w.\-\/]+?\.\.\.\w/m
-            ).test(url)) {
+            ).test(url) || noValidate) {
                 return "";
             }
             moduleAssert.ok(
@@ -736,14 +736,14 @@ import moduleHttps from "https";
             return "";
         });
         data.replace((
-            /(\bhref=|\bsrc=|\burl\(|\[[^]+?\]\()("?.+?)(?:[")\]]|$)(.*?<!--no-validate-->)/gm
-        ), function (ignore, linkType, url, noValidate) {
+            /(\bhref=|\bsrc=|\burl\(|\[[^]+?\]\()("?.+?)(?:[")\]]|$)/gm
+        ), function (ignore, linkType, url) {
             if (!linkType.startsWith("[")) {
                 url = url.slice(1);
             }
             if ((
                 /^$|^\\|^data:/m
-            ).test(url) || noValidate) {
+            ).test(url)) {
                 return "";
             }
             // ignore duplicate-link

@@ -365,20 +365,20 @@ async function ciBuildExt1NodejsConfigure({
             },
             {
                 "defines": [
-                    "SQLMATH_CUSTOM"
+                    "SRC_SQLMATH_CUSTOM"
                 ],
                 "sources": [
                     "sqlmath_custom.c"
                 ],
-                "target_name": "SQLMATH_CUSTOM",
+                "target_name": "SRC_SQLMATH_CUSTOM",
                 "type": "static_library"
             },
             {
                 "defines": [
-                    "SQLMATH_NODEJS_C2"
+                    "SRC_SQLMATH_NODEJS_C2"
                 ],
                 "dependencies": [
-                    "SQLMATH_CUSTOM",
+                    "SRC_SQLMATH_CUSTOM",
                     "SRC_SQLITE_BASE"
                 ],
                 "sources": [
@@ -392,7 +392,7 @@ async function ciBuildExt1NodejsConfigure({
                     "SRC_SQLITE_SHELL_C2"
                 ],
                 "dependencies": [
-                    "SQLMATH_CUSTOM",
+                    "SRC_SQLMATH_CUSTOM",
                     "SRC_SQLITE_BASE"
                 ],
                 "sources": [
@@ -446,7 +446,7 @@ async function ciBuildExt2NodejsBuild({
             (`
 (set -e
     # rebuild binding
-    rm -rf build/Release/obj/SQLMATH_CUSTOM/
+    rm -rf build/Release/obj/SRC_SQLMATH_CUSTOM/
     node "${binNodegyp}" build --release
     mv build/Release/binding.node "${cModulePath}"
     if [ "${process.platform}" = "win32" ]

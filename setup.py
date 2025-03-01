@@ -61,22 +61,22 @@ async def build_ext_async(): # noqa: C901
     async def build_ext_obj(cdefine): # noqa: C901 PLR0912
         file_obj = pathlib.Path(f"build/{cdefine}.obj")
         match cdefine:
-            case "SQLMATH_BASE":
-                file_src = pathlib.Path("sqlmath_base.c")
-            case "SQLMATH_CUSTOM":
-                file_src = pathlib.Path("sqlmath_custom.c")
-            case "SRC_SQLITE_SHELL":
-                file_src = pathlib.Path("sqlmath_external_sqlite.c")
             case "SRC_SQLITE_BASE":
                 file_src = pathlib.Path("sqlmath_external_sqlite.c")
+            case "SRC_SQLITE_SHELL":
+                file_src = pathlib.Path("sqlmath_external_sqlite.c")
+            case "SRC_SQLMATH_BASE":
+                file_src = pathlib.Path("sqlmath_base.c")
+            case "SRC_SQLMATH_CUSTOM":
+                file_src = pathlib.Path("sqlmath_custom.c")
             case "SRC_ZLIB_BASE":
                 file_src = pathlib.Path("sqlmath_external_zlib.c")
         match cdefine:
-            case "SQLMATH_BASE":
-                pass
-            case "SQLMATH_CUSTOM":
-                pass
             case "SRC_SQLITE_SHELL":
+                pass
+            case "SRC_SQLMATH_BASE":
+                pass
+            case "SRC_SQLMATH_CUSTOM":
                 pass
             case _:
                 if (
@@ -90,7 +90,7 @@ async def build_ext_async(): # noqa: C901
             # ,
             f"-D{cdefine}_C2=",
             "-D_REENTRANT=1",
-            "-DSQLMATH_PYTHON_C2=" if cdefine == "SQLMATH_CUSTOM" else "",
+            "-DSQLMATH_PYTHON_C2=" if cdefine == "SRC_SQLMATH_CUSTOM" else "",
         ]
         if npm_config_mode_debug and is_win32:
             arg_list += ["/W3"]
@@ -104,8 +104,8 @@ async def build_ext_async(): # noqa: C901
                 "/wd4996",
             ]
         elif cdefine in [
-            "SQLMATH_BASE",
-            "SQLMATH_CUSTOM",
+            "SRC_SQLMATH_BASE",
+            "SRC_SQLMATH_CUSTOM",
         ]:
             arg_list += ["-Wextra"]
         else:
@@ -171,8 +171,8 @@ async def build_ext_async(): # noqa: C901
             "build/SRC_SQLITE_BASE.obj",
             "build/SRC_ZLIB_BASE.obj",
             # ,
-            "build/SQLMATH_BASE.obj",
-            "build/SQLMATH_CUSTOM.obj",
+            "build/SRC_SQLMATH_BASE.obj",
+            "build/SRC_SQLMATH_CUSTOM.obj",
         ]
         export = "PyInit__sqlmath"
         if is_win32:
@@ -317,8 +317,8 @@ async def build_ext_async(): # noqa: C901
             "SRC_SQLITE_BASE",
             "SRC_ZLIB_BASE",
             # ,
-            "SQLMATH_BASE",
-            "SQLMATH_CUSTOM",
+            "SRC_SQLMATH_BASE",
+            "SRC_SQLMATH_CUSTOM",
         ]
     ])
     #

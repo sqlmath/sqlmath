@@ -35,9 +35,9 @@ file sqlmath_h - start
 #define NAPI_VERSION 6
 #ifdef SRC_SQLITE_BASE_C2
 #   undef SRC_SQLITE_BASE_C2
-#   ifndef SQLMATH_BASE_C2
-#       define SQLMATH_BASE_C2
-#   endif                       // SQLMATH_BASE_C2
+#   ifndef SRC_SQLMATH_BASE_C2
+#       define SRC_SQLMATH_BASE_C2
+#   endif                       // SRC_SQLMATH_BASE_C2
 #endif                          // SRC_SQLITE_BASE_C2
 #ifdef _WIN32
 #   include <windows.h>
@@ -520,8 +520,8 @@ file sqlmath_h - end
 /*
 file sqlmath_base - start
 */
-#if defined(SQLMATH_BASE_C2) && !defined(SQLMATH_BASE_C3)
-#define SQLMATH_BASE_C3
+#if defined(SRC_SQLMATH_BASE_C2) && !defined(SRC_SQLMATH_BASE_C3)
+#define SRC_SQLMATH_BASE_C3
 
 
 // track how many sqlite-db open
@@ -4764,7 +4764,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC3(win_sum2, -1, 0);
     return 0;
 }
-#endif                          // SQLMATH_BASE_C3
+#endif                          // SRC_SQLMATH_BASE_C3
 /*
 file sqlmath_base - end
 */
@@ -4773,7 +4773,7 @@ file sqlmath_base - end
 /*
 file sqlmath_nodejs - start
 */
-#if defined(SQLMATH_NODEJS_C2) && !defined(SQLMATH_NODEJS_C3)
+#if defined(SRC_SQLMATH_NODEJS_C2) && !defined(SQLMATH_NODEJS_C3)
 #define SQLMATH_NODEJS_C3
 
 
