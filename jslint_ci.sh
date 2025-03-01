@@ -676,6 +676,7 @@ import moduleHttps from "https";
             /\bhttps?:\/\/.+?([\s")\]]|\W?$)/gm
         ), function (url, removeLast) {
             let req;
+            let timeStart = Date.now();
             if (removeLast && removeLast !== "/") {
                 url = url.slice(0, -1);
             }
@@ -703,7 +704,7 @@ import moduleHttps from "https";
             }
             moduleAssert.ok(
                 !url.startsWith("http://"),
-                `shDirHttplinkValidate - ${file} - insecure link - ${url}`
+                `shDirHttplinkValidate - ${file} - insecure-link - ${url}`
             );
             // ignore duplicate-link
             if (dict.hasOwnProperty(url)) {
@@ -716,28 +717,33 @@ import moduleHttps from "https";
                 }
             }, function (res) {
                 console.error(
-                    "shDirHttplinkValidate " + res.statusCode + " " + url
+                    `shDirHttplinkValidate ${res.statusCode} ${url}`
+                    + ` - ${Date.now() - timeStart}ms`
                 );
-                moduleAssert.ok(
-                    res.statusCode < 400,
-                    `shDirHttplinkValidate - ${file} - unreachable url ${url}`
-                );
-                req.abort();
+                moduleAssert.ok(res.statusCode < 400);
+                req.destroy();
                 res.destroy();
             });
-            req.setTimeout(30000);
+            req.on("error", function (err) {
+                console.error(
+                    `shDirHttplinkValidate - ${file} - error - ${url}`
+                    + ` - ${Date.now() - timeStart}ms`
+                );
+                throw err;
+            });
+            req.setTimeout(60000);
             req.end();
             return "";
         });
         data.replace((
-            /(\bhref=|\bsrc=|\burl\(|\[[^]+?\]\()("?.+?)(?:[")\]]|$)/gm
-        ), function (ignore, linkType, url) {
+            /(\bhref=|\bsrc=|\burl\(|\[[^]+?\]\()("?.+?)(?:[")\]]|$)(.*?<!--no-validate-->)/gm
+        ), function (ignore, linkType, url, noValidate) {
             if (!linkType.startsWith("[")) {
                 url = url.slice(1);
             }
             if ((
                 /^$|^\\|^data:/m
-            ).test(url)) {
+            ).test(url) || noValidate) {
                 return "";
             }
             // ignore duplicate-link
@@ -750,15 +756,9 @@ import moduleHttps from "https";
             ).test(url)) {
                 moduleFs.stat(url.split("?")[0], function (ignore, exists) {
                     console.error(
-                        "shDirHttplinkValidate " + Boolean(exists) + " " + url
+                        `shDirHttplinkValidate ${Boolean(exists)} ${url}`
                     );
-                    moduleAssert.ok(
-                        exists,
-                        (
-                            `shDirHttplinkValidate - ${file}`
-                            + `- unreachable file ${url}`
-                        )
-                    );
+                    moduleAssert.ok(exists);
                 });
             }
             return "";

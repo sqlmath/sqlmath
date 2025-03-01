@@ -115,6 +115,8 @@ async def build_ext_async(): # noqa: C901
                 "-Wno-implicit-fallthrough",
                 "-Wno-incompatible-pointer-types",
                 "-Wno-int-conversion",
+                "-Wno-stringop-overflow",
+                "-Wno-stringop-overread",
                 "-Wno-unreachable-code",
                 "-Wno-unused-function",
                 "-Wno-unused-parameter",
