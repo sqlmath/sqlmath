@@ -3136,13 +3136,13 @@ SQLMATH_FUNC static void sql2_quantile_step(
     sql2_quantile_step0(context, argc, argv, sqlite3_value_double(argv[1]));
 }
 
-SQLMATH_FUNC static void sql2_median_final(
+SQLMATH_FUNC static void sql2_median2_final(
     sqlite3_context * context
 ) {
     sql2_quantile_final(context);
 }
 
-SQLMATH_FUNC static void sql2_median_step(
+SQLMATH_FUNC static void sql2_median2_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -4737,7 +4737,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC2(columntype, 1, 0);
     SQL_CREATE_FUNC2(lgbm_datasetcreatefromtable, -1, 0);
     SQL_CREATE_FUNC2(lgbm_trainfromtable, -1, 0);
-    SQL_CREATE_FUNC2(median, 1, 0);
+    SQL_CREATE_FUNC2(median2, 1, 0);
     SQL_CREATE_FUNC2(quantile, 2, 0);
     SQL_CREATE_FUNC3(lgbm_predictfortable, -1, 0);
     SQL_CREATE_FUNC3(stdev, 1, 0);

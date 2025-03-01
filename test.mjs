@@ -944,7 +944,7 @@ SELECT
 DROP TABLE IF EXISTS __lgbm_table_preb;
 CREATE TABLE __lgbm_table_preb AS
     SELECT
-        doublearray_extract(__lgp, 0) AS prediction
+        DOUBLEARRAY_EXTRACT(__lgp, 0) AS prediction
     FROM (
         SELECT
             lgbm_predictfortable(
@@ -971,7 +971,7 @@ CREATE TABLE __lgbm_table_preb AS
 DROP TABLE IF EXISTS __lgbm_table_preb;
 CREATE TABLE __lgbm_table_preb AS
     SELECT
-        doublearray_extract(__lgp, 0) AS _1
+        DOUBLEARRAY_EXTRACT(__lgp, 0) AS _1
     FROM (
         SELECT
             lgbm_predictfortable(
@@ -1358,7 +1358,7 @@ jstestDescribe((
                         },
                         db,
                         sql: (`
-SELECT doublearray_jsonto(doublearray_jsonfrom($valIn)) AS result;
+SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                         `)
                     })
                 ).result;
@@ -2138,9 +2138,9 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
 SELECT
         1 AS id,
-        median(val) AS mdn,
-        quantile(val, 0.5) AS qnt,
-        stdev(val) AS std
+        MEDIAN2(val) AS mdn,
+        QUANTILE(val, 0.5) AS qnt,
+        STDEV(val) AS std
     FROM __tmp1;
                 `)
             });
@@ -2251,11 +2251,11 @@ SELECT
                     db,
                     sql: (`
 -- test null-case handling-behavior
-SELECT quantile(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
+SELECT QUANTILE(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
 -- test last-row handling-behavior
 SELECT
-        median(value) AS mdn,
-        quantile(value, ${kk}) AS qnt,
+        MEDIAN2(value) AS mdn,
+        QUANTILE(value, ${kk}) AS qnt,
         ROUND(stdev(value), 8) AS std
     FROM JSON_EACH($tmp1);
                     `)
@@ -2305,7 +2305,7 @@ SELECT
                 db,
                 sql: (`
 SELECT
-        win_avg1(value->>1) OVER (
+        WIN_AVG1(value->>1) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
         ) AS val
@@ -2325,7 +2325,7 @@ SELECT
                 sql: (`
 SELECT
         id2,
-        doublearray_jsonto(win_avg2(
+        DOUBLEARRAY_JSONTO(WIN_AVG2(
             value->>1,
             value->>1,
             value->>1,
@@ -2384,7 +2384,7 @@ SELECT
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_avg2() FROM (SELECT 1);
+SELECT WIN_AVG2() FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
@@ -2394,7 +2394,7 @@ SELECT win_avg2() FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_avg1(1) FROM __tmp1;
+SELECT WIN_AVG1(1) FROM __tmp1;
                     `)
                 });
                 valActual = valActual.map(function ({val}) {
@@ -2407,7 +2407,7 @@ SELECT win_avg1(1) FROM __tmp1;
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT doublearray_jsonto(win_avg2(1, 2, 3)) FROM __tmp1;
+SELECT DOUBLEARRAY_JSONTO(WIN_AVG2(1, 2, 3)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual.map(function ({val}) {
@@ -2484,7 +2484,7 @@ SELECT doublearray_jsonto(win_avg2(1, 2, 3)) FROM __tmp1;
                 db,
                 sql: (`
 SELECT
-        win_ema1(${alpha}, value->>1) OVER (
+        WIN_EMA1(${alpha}, value->>1) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
         ) AS val
@@ -2509,7 +2509,7 @@ SELECT
                 sql: (`
 SELECT
         id2,
-        doublearray_jsonto(win_ema2(
+        DOUBLEARRAY_JSONTO(WIN_EMA2(
             ${alpha},
             value->>1,
             value->>1,
@@ -2569,7 +2569,7 @@ SELECT
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_ema2(1) FROM (SELECT 1);
+SELECT WIN_EMA2(1) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
@@ -2577,7 +2577,7 @@ SELECT win_ema2(1) FROM (SELECT 1);
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_ema2(NULL, 1) FROM (SELECT 1);
+SELECT WIN_EMA2(NULL, 1) FROM (SELECT 1);
                         `)
                     });
                 }, "invalid argument 'alpha'");
@@ -2587,7 +2587,7 @@ SELECT win_ema2(NULL, 1) FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_ema1(1, 2) FROM __tmp1;
+SELECT WIN_EMA1(1, 2) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
@@ -2600,7 +2600,7 @@ SELECT win_ema1(1, 2) FROM __tmp1;
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT doublearray_jsonto(win_ema2(1, 2, 3)) FROM __tmp1;
+SELECT DOUBLEARRAY_JSONTO(WIN_EMA2(1, 2, 3)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual[0].map(function ({val}) {
@@ -2677,7 +2677,7 @@ SELECT doublearray_jsonto(win_ema2(1, 2, 3)) FROM __tmp1;
                 db,
                 sql: (`
 SELECT
-        win_quantile1(${quantile}, value->>1) OVER (
+        WIN_QUANTILE1(${quantile}, value->>1) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
         ) AS val
@@ -2702,7 +2702,7 @@ SELECT
                 sql: (`
 SELECT
         id2,
-        doublearray_jsonto(win_quantile2(
+        DOUBLEARRAY_JSONTO(WIN_QUANTILE2(
             ${quantile}, value->>1,
             ${quantile}, value->>1,
             ${quantile}, value->>1,
@@ -2761,7 +2761,7 @@ SELECT
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_quantile2(1) FROM (SELECT 1);
+SELECT WIN_QUANTILE2(1) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
@@ -2769,7 +2769,7 @@ SELECT win_quantile2(1) FROM (SELECT 1);
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_quantile2(NULL, 1) FROM (SELECT 1);
+SELECT WIN_QUANTILE2(NULL, 1) FROM (SELECT 1);
                         `)
                     });
                 }, "argument 'quantile'");
@@ -2779,7 +2779,7 @@ SELECT win_quantile2(NULL, 1) FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_quantile1(1, 2) FROM __tmp1;
+SELECT WIN_QUANTILE1(1, 2) FROM __tmp1;
                     `)
                 });
                 valActual = valActual.map(function ({val}) {
@@ -2792,7 +2792,7 @@ SELECT win_quantile1(1, 2) FROM __tmp1;
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT doublearray_jsonto(win_quantile2(1, 2, 3)) FROM __tmp1;
+SELECT DOUBLEARRAY_JSONTO(WIN_QUANTILE2(1, 2, 3)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual.map(function ({val}) {
@@ -3007,7 +3007,7 @@ CREATE TEMP TABLE __sinefit_win AS
     FROM (
         SELECT
             id2,
-            win_sinefit2(
+            WIN_SINEFIT2(
                 1, ${xx2},
                 value->>0, value->>1,
                 value->>0, value->>1,
@@ -3379,7 +3379,7 @@ SELECT
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_sinefit2(1, 2, 3) FROM (SELECT 1);
+SELECT WIN_SINEFIT2(1, 2, 3) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
@@ -3389,7 +3389,7 @@ SELECT win_sinefit2(1, 2, 3) FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT doublearray_jsonto(win_sinefit2(1, 2, 3, 4)) FROM __tmp1;
+SELECT DOUBLEARRAY_JSONTO(WIN_SINEFIT2(1, 2, 3, 4)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual.map(function ({val}) {
@@ -3410,7 +3410,7 @@ SELECT
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM (
         SELECT
-            win_sinefit2(1, NULL, value->>0, value->>1) AS __wsf
+            WIN_SINEFIT2(1, NULL, value->>0, value->>1) AS __wsf
         FROM (
             SELECT
                 *,
@@ -3469,7 +3469,7 @@ SELECT
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM (
         SELECT
-            win_sinefit2(1, NULL, xx, yy) AS __wsf
+            WIN_SINEFIT2(1, NULL, xx, yy) AS __wsf
         FROM (
             SELECT 34 AS xx, 5 AS yy
             UNION ALL SELECT 108, 17
@@ -3807,7 +3807,7 @@ DROP TABLE IF EXISTS __sinefit_csv;
 CREATE TEMP TABLE __sinefit_csv AS
     SELECT
         *,
-        win_sinefit2(1, NULL, ii, yy, ii, yy) OVER (
+        WIN_SINEFIT2(1, NULL, ii, yy, ii, yy) OVER (
             ORDER BY date ASC
             ROWS BETWEEN ${ttSinefit - 1} PRECEDING AND 0 FOLLOWING
         ) AS __wsf
@@ -3838,7 +3838,7 @@ SELECT
     FROM __sinefit_csv
     JOIN (
         SELECT
-            MEDIAN(rr) AS rr_avg,
+            MEDIAN2(rr) AS rr_avg,
             STDEV(rr) AS rr_err
         FROM __sinefit_csv
     )
@@ -3914,7 +3914,7 @@ SELECT
                 db,
                 sql: (`
 SELECT
-        win_sum1(value->>1) OVER (
+        WIN_SUM1(value->>1) OVER (
             ORDER BY value->>0 ASC
             ${sqlBetween}
         ) AS val
@@ -3934,7 +3934,7 @@ SELECT
                 sql: (`
 SELECT
         id2,
-        doublearray_jsonto(win_sum2(
+        DOUBLEARRAY_JSONTO(WIN_SUM2(
             value->>1,
             value->>1,
             value->>1,
@@ -3993,7 +3993,7 @@ SELECT
                     return dbExecAsync({
                         db,
                         sql: (`
-SELECT win_sum2() FROM (SELECT 1);
+SELECT WIN_SUM2() FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
@@ -4003,7 +4003,7 @@ SELECT win_sum2() FROM (SELECT 1);
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT win_sum1(1) FROM __tmp1;
+SELECT WIN_SUM1(1) FROM __tmp1;
                     `)
                 });
                 valActual = valActual.map(function ({val}) {
@@ -4016,7 +4016,7 @@ SELECT win_sum1(1) FROM __tmp1;
                     sql: (`
 DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
-SELECT doublearray_jsonto(win_sum2(1, 2, 3)) FROM __tmp1;
+SELECT DOUBLEARRAY_JSONTO(WIN_SUM2(1, 2, 3)) FROM __tmp1;
                     `)
                 });
                 valActual = valActual.map(function ({val}) {
