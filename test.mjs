@@ -2192,7 +2192,7 @@ SELECT
                 [[8], 1, 8],
                 [[], 0, 1]
             ].map(function ([
-                data, kk, valExpect
+                data, qq, valExpect
             ]) {
                 return [
                     data.concat([
@@ -2200,12 +2200,12 @@ SELECT
                         "8", 7, 6, "5", "4", 3, 2, "1",
                         undefined
                     ]),
-                    kk,
+                    qq,
                     valExpect
                 ];
             })
         ].flat().map(async function ([
-            data, kk, valExpect
+            data, qq, valExpect
         ]) {
             let avg = 0;
             let data2;
@@ -2251,11 +2251,11 @@ SELECT
                     db,
                     sql: (`
 -- test null-case handling-behavior
-SELECT QUANTILE(value, ${kk}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
+SELECT QUANTILE(value, ${qq}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
 -- test last-row handling-behavior
 SELECT
         MEDIAN2(value) AS mdn,
-        QUANTILE(value, ${kk}) AS qnt,
+        QUANTILE(value, ${qq}) AS qnt,
         ROUND(stdev(value), 8) AS std
     FROM JSON_EACH($tmp1);
                     `)
@@ -2269,7 +2269,7 @@ SELECT
                     },
                     {
                         data,
-                        kk,
+                        qq,
                         valActual,
                         valExpect,
                         valExpectMdn,

@@ -1,6 +1,7 @@
 # Changelog
 
 # Todo
+- sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
 # v2025.2.1-beta

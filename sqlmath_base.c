@@ -103,7 +103,6 @@ file sqlmath_h - start
 #define MATH_MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
 #define MATH_PI 3.141592653589793238463
 #define MATH_SIGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
-#define MATH_SWAP(aa, bb, tmp) tmp = (aa); (aa) = (bb); (bb) = tmp
 #define SQLITE_COLUMNTYPE_INTEGER_BIG   11
 #define SQLITE_COLUMNTYPE_TEXT_BIG      13
 #define SQLITE_ERROR_DATATYPE_INVALID   0x10003
@@ -3011,16 +3010,21 @@ static void sql2_lgbm_trainfromtable_step(
 // SQLMATH_FUNC sql2_quantile_func - start
 static double quickselect(
     double *arr,
-    int nn,
-    int kk
+    const int nn,
+    const int kk
 ) {
-// This function will find <kk>-th element in <arr>,
+// This function will find <qq>-th-quantile element in <arr>,
 // using median-of-three quickselect-algorithm.
 // derived from https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
+#define QUICKSELECT_SWAP(aa, bb) \
+    do { \
+        double tmp = (aa); \
+        (aa) = (bb); \
+        (bb) = tmp; \
+    } while (0)
     if (nn <= 0 || kk < 0 || kk >= nn) {
-        return NAN;             // Handle invalid input
+        return NAN;             // Invalid input
     }
-    double temp;
     int low = 0;
     int high = nn - 1;
     while (low <= high) {
@@ -3028,35 +3032,39 @@ static double quickselect(
             return arr[low];
         }
         int mid = low + (high - low) / 2;
-        // Median-of-three pivot selection
-        double pivot;
-        if ((arr[low] <= arr[mid] && arr[mid] <= arr[high])
-            || (arr[high] <= arr[mid] && arr[mid] <= arr[low])) {
-            pivot = arr[mid];
-            MATH_SWAP(arr[mid], arr[high], temp);
-        } else if ((arr[mid] <= arr[low] && arr[low] <= arr[high])
-            || (arr[high] <= arr[low] && arr[low] <= arr[mid])) {
-            pivot = arr[low];
-            MATH_SWAP(arr[low], arr[high], temp);
-        } else {
-            pivot = arr[high];  // pivot already at high
+        // Median-of-Three Pivot Selection
+        if (arr[low] > arr[mid]) {
+            QUICKSELECT_SWAP(arr[low], arr[mid]);
         }
+        if (arr[mid] > arr[high]) {
+            QUICKSELECT_SWAP(arr[mid], arr[high]);
+        }
+        if (arr[low] > arr[mid]) {
+            QUICKSELECT_SWAP(arr[low], arr[mid]);
+        }
+        // Move pivot to end
+        QUICKSELECT_SWAP(arr[mid], arr[high]);
         double pivot_val = arr[high];
-        int ii = low - 1;
-        int jj = high;
+        int ii = low;
+        int jj = high - 1;
+        // Hoare’s Partitioning
         while (1) {
-            do {
+            while (ii < high && arr[ii] < pivot_val) {
                 ii++;
-            } while (arr[ii] < pivot_val);
-            do {
+            }
+            while (jj > low && arr[jj] > pivot_val) {
                 jj--;
-            } while (jj >= low && arr[jj] > pivot_val);
+            }
             if (ii >= jj) {
                 break;
             }
-            MATH_SWAP(arr[ii], arr[jj], temp);
+            QUICKSELECT_SWAP(arr[ii], arr[jj]);
+            ii++;
+            jj--;
         }
-        MATH_SWAP(arr[ii], arr[high], temp);
+        // Move pivot to its correct position
+        QUICKSELECT_SWAP(arr[ii], arr[high]);
+        // Quickselect logic
         if (ii == kk) {
             return arr[ii];
         } else if (ii > kk) {
@@ -3076,16 +3084,22 @@ SQLMATH_API double quantile(
 // This function will find <qq>-th-quantile element in <arr>,
 // using median-of-three quickselect-algorithm.
 // derived from https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-    if (!(nn >= 1)) {
-        return NAN;
+    if (nn < 1 || isnan(qq)) {
+        // if (nn < 1 || isnan(qq) || qq < 0 || qq > 1) {
+        return NAN;             // Invalid input
     }
-    double kmod = MATH_MAX(0, MATH_MIN(1, qq)) * (nn - 1);
-    const int kk = kmod;
-    kmod = fmod(kmod, 1);
-    return kmod == 0            //
-        ? quickselect(arr, nn, kk)      //
-        : (1 - kmod) * quickselect(arr, nn, kk) + kmod * quickselect(arr, nn,
-        kk + 1);
+    if (qq == 0) {
+        return quickselect(arr, nn, 0);
+    }
+    if (qq == 1) {
+        return quickselect(arr, nn, nn - 1);
+    }
+    double kmod = fmax(0, fmin(1, qq)) * (nn - 1);
+    int kk = (int) kmod;
+    kmod -= kk;
+    double val1 = quickselect(arr, nn, kk);
+    double val2 = (kk + 1 < nn) ? quickselect(arr, nn, kk + 1) : val1;
+    return (kmod == 0) ? val1 : (1 - kmod) * val1 + kmod * val2;
 }
 
 SQLMATH_FUNC static void sql2_quantile_final(
@@ -3982,7 +3996,7 @@ static void winSinefitSnr(
     double spp = 0;
     double sww = 0;
     double tmp = 0;
-    // calculate snr - saa
+    // guess snr - saa
     if (1) {
         saa = sqrt(2 * wsf->vyy * invn0 //
             * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
@@ -3991,11 +4005,11 @@ static void winSinefitSnr(
         return;
     }
     const double inva = 1.0 / saa;
-    // calculate snr - sww - using x-variance.p
+    // guess snr - sww - using x-variance.p
     if (1) {
         sww = 2 * MATH_PI / sqrt(4.0 * wsf->vxx * invn0);       // window-period
     }
-    // calculate snr - spp - using multivariate-linear-regression
+    // guess snr - spp - using multivariate-linear-regression
     if (1) {
         double sumxx = 0;
         double sumxy = 0;
