@@ -3,6 +3,9 @@
 # Todo
 - none
 
+# v2025.2.1-beta
+- ci - Upgrade nodejs used in ci to v22.
+
 # v2025.1.31
 - webdemo - Update coloring to highlight tqq/sqq stocks.
 - sqlmath - Revamp sql-function win_sinefit2() to guess frequency from stdev of tt, instead of dft.
