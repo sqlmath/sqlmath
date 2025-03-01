@@ -3011,72 +3011,61 @@ static void sql2_lgbm_trainfromtable_step(
 // SQLMATH_FUNC sql2_quantile_func - start
 static double quickselect(
     double *arr,
-    const int nn,
-    const int kk
+    int nn,
+    int kk
 ) {
-// This function will find <kk>-th element in <arr> using quickselect-algorithm.
-// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-    if (nn <= 0) {
-        return NAN;
+// This function will find <kk>-th element in <arr>,
+// using median-of-three quickselect-algorithm.
+// derived from https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
+    if (nn <= 0 || kk < 0 || kk >= nn) {
+        return NAN;             // Handle invalid input
     }
-    double aa = *arr;
-    double tmp = 0;
-    int ii;
-    int ir;
-    int jj;
-    int ll;
-    int mid;
-    ll = 0;
-    ir = nn - 1;
-    while (1) {
-        if (ir <= ll + 1) {
-            if (ir == ll + 1 && arr[ir] < arr[ll]) {
-                MATH_SWAP(arr[ll], arr[ir], tmp);
-            }
-            return arr[kk];
+    double temp;
+    int low = 0;
+    int high = nn - 1;
+    while (low <= high) {
+        if (low == high) {
+            return arr[low];
+        }
+        int mid = low + (high - low) / 2;
+        // Median-of-three pivot selection
+        double pivot;
+        if ((arr[low] <= arr[mid] && arr[mid] <= arr[high])
+            || (arr[high] <= arr[mid] && arr[mid] <= arr[low])) {
+            pivot = arr[mid];
+            MATH_SWAP(arr[mid], arr[high], temp);
+        } else if ((arr[mid] <= arr[low] && arr[low] <= arr[high])
+            || (arr[high] <= arr[low] && arr[low] <= arr[mid])) {
+            pivot = arr[low];
+            MATH_SWAP(arr[low], arr[high], temp);
         } else {
-            mid = (ll + ir) >> 1;
-            MATH_SWAP(arr[mid], arr[ll + 1], tmp);
-            if (arr[ll] > arr[ir]) {
-                MATH_SWAP(arr[ll], arr[ir], tmp);
+            pivot = arr[high];  // pivot already at high
+        }
+        double pivot_val = arr[high];
+        int ii = low - 1;
+        int jj = high;
+        while (1) {
+            do {
+                ii++;
+            } while (arr[ii] < pivot_val);
+            do {
+                jj--;
+            } while (jj >= low && arr[jj] > pivot_val);
+            if (ii >= jj) {
+                break;
             }
-            if (arr[ll + 1] > arr[ir]) {
-                MATH_SWAP(arr[ll + 1], arr[ir], tmp);
-            }
-            if (arr[ll] > arr[ll + 1]) {
-                MATH_SWAP(arr[ll], arr[ll + 1], tmp);
-            }
-            ii = ll + 1;
-            jj = ir;
-            aa = arr[ll + 1];
-            while (1) {
-                while (1) {
-                    ii += 1;
-                    if (arr[ii] >= aa) {
-                        break;
-                    }
-                }
-                while (1) {
-                    jj -= 1;
-                    if (arr[jj] <= aa) {
-                        break;
-                    }
-                }
-                if (jj < ii) {
-                    break;
-                }
-                MATH_SWAP(arr[ii], arr[jj], tmp);
-            }
-            arr[ll + 1] = arr[jj];
-            arr[jj] = aa;
-            if (jj >= kk) {
-                ir = jj - 1;
-            }
-            if (jj <= kk) {
-                ll = ii;
-            }
+            MATH_SWAP(arr[ii], arr[jj], temp);
+        }
+        MATH_SWAP(arr[ii], arr[high], temp);
+        if (ii == kk) {
+            return arr[ii];
+        } else if (ii > kk) {
+            high = ii - 1;
+        } else {
+            low = ii + 1;
         }
     }
+    return NAN;                 // Should not reach here
 }
 
 SQLMATH_API double quantile(
@@ -3084,9 +3073,9 @@ SQLMATH_API double quantile(
     const int nn,
     const double qq
 ) {
-// This function will find <qq>-th-quantile element in <arr>
-// using quickselect-algorithm.
-// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
+// This function will find <qq>-th-quantile element in <arr>,
+// using median-of-three quickselect-algorithm.
+// derived from https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
     if (!(nn >= 1)) {
         return NAN;
     }
@@ -4774,7 +4763,7 @@ file sqlmath_nodejs - start
 #define SQLMATH_NODEJS_C3
 
 
-#ifdef UNDEFINED // cpplint-hack
+#ifdef UNDEFINED                // cpplint-hack
 #   include <cstdio>
 #endif
 
