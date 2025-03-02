@@ -35,9 +35,6 @@ file sqlmath_h - start
 #define NAPI_VERSION 6
 #ifdef SRC_SQLITE_BASE_C2
 #   undef SRC_SQLITE_BASE_C2
-#   ifndef SRC_SQLMATH_BASE_C2
-#       define SRC_SQLMATH_BASE_C2
-#   endif                       // SRC_SQLMATH_BASE_C2
 #endif                          // SRC_SQLITE_BASE_C2
 #ifdef _WIN32
 #   include <windows.h>
@@ -2642,82 +2639,43 @@ SQLMATH_FUNC static void sql1_throwerror_func(
 // SQLMATH_FUNC sql1_zlib_xxx_func - start
 typedef unsigned long z_ulong;  // NOLINT
 
-int compress(
-    unsigned char *,
-    z_ulong *,
-    const unsigned char *,
-    z_ulong
-);
-
-int uncompress(
-    unsigned char *,
-    z_ulong *,
-    const unsigned char *,
-    z_ulong *
-);
-
 SQLMATH_FUNC static void sql1_zlib_compress_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-/*
-** Implementation of the "compress(X)" SQL function.  The input X is
-** compressed using zLib and the output is returned.
-**
-** The output is a BLOB that begins with a variable-length integer that
-** is the input size in bytes (the size of X before compression).  The
-** variable-length integer is implemented as 1 to 5 bytes.  There are
-** seven bits per integer stored in the lower seven bits of each byte.
-** More significant bits occur first.  The most significant bit (0x80)
-** is a flag to indicate the end of the integer.
-**
-** This function, SQLAR, and ZIP all use the same "deflate" compression
-** algorithm, but each is subtly different:
-**
-**   *  ZIP uses raw deflate.
-**
-**   *  SQLAR uses the "zlib format" which is raw deflate with a two-byte
-**      algorithm-identification header and a four-byte checksum at the end.
-**
-**   *  This utility uses the "zlib format" like SQLAR, but adds the variable-
-**      length integer uncompressed size value at the beginning.
-**
-** This function might be extended in the future to support compression
-** formats other than deflate, by providing a different algorithm-id
-** mark following the variable-length integer size parameter.
-*/
+// This function will compress <argv[0]> using zlib's compress() function,
+// with a 4-byte header storing original uncompressed size.
     UNUSED_PARAMETER(argc);
-    const unsigned char *pIn = NULL;
-    int ii = 0;
-    int jj = 0;
-    int nIn = 0;
-    int rc = 0;
-    unsigned char *pOut = NULL;
-    unsigned char x[8] = { 0 };
-    z_ulong nOut = 0;
-    pIn = sqlite3_value_blob(argv[0]);
-    if (pIn == NULL) {
+    // Extract the BLOB data and its size
+    const void *input_data = sqlite3_value_blob(argv[0]);
+    if (input_data == NULL) {
         sqlite3_result_error(context, "Cannot compress() NULL blob", -1);
         return;
     }
-    nIn = sqlite3_value_bytes(argv[0]);
-    nOut = 13 + nIn + (nIn + 999) / 1000;
-    pOut = sqlite3_malloc(nOut + 5);
-    for (ii = 4; ii >= 0; ii--) {
-        x[ii] = (nIn >> (7 * (4 - ii))) & 0x7f;
-    }
-    for (ii = 0; ii < 4 && x[ii] == 0; ii += 1) {
-    }
-    for (jj = 0; ii <= 4; ii += 1, jj += 1)
-        pOut[jj] = x[ii];
-    pOut[jj - 1] |= 0x80;
-    rc = compress(&pOut[jj], &nOut, pIn, nIn);
-    if (rc) {
-        sqlite3_free(pOut);
+    int input_size = sqlite3_value_bytes(argv[0]);
+    // Estimate the maximum size of the compressed data
+    uLongf output_size = compressBound(input_size);
+    // Allocate memory for the final result (header + compressed data)
+    unsigned char *result = (unsigned char *) sqlite3_malloc(4 + output_size);
+    if (result == NULL) {
+        sqlite3_result_error_nomem(context);
         return;
     }
-    sqlite3_result_blob(context, pOut, nOut + jj, sqlite3_free);
+    // Perform the compression using zlib
+    int ret = compress(result + 4, &output_size, input_data, input_size);
+    if (ret != Z_OK) {
+        sqlite3_free(result);
+        sqlite3_result_error(context, "Compression failed", -1);
+        return;
+    }
+    // Set the 4-byte header with the original BLOB size (big-endian)
+    result[0] = (input_size >> 24) & 0xFF;
+    result[1] = (input_size >> 16) & 0xFF;
+    result[2] = (input_size >> 8) & 0xFF;
+    result[3] = input_size & 0xFF;
+    // Return the compressed result as a BLOB
+    sqlite3_result_blob(context, result, 4 + output_size, sqlite3_free);
 }
 
 SQLMATH_FUNC static void sql1_zlib_uncompress_func(
@@ -2725,39 +2683,53 @@ SQLMATH_FUNC static void sql1_zlib_uncompress_func(
     int argc,
     sqlite3_value ** argv
 ) {
-/*
-** Implementation of the "uncompress(X)" SQL function.  The argument X
-** is a blob which was obtained from compress(Y).  The output will be
-** the value Y.
-*/
+// This function will uncompress <argv[0]> using zlib's uncompress() function,
+// and assumes input has a 4-byte header storing original uncompressed size.
     UNUSED_PARAMETER(argc);
-    const unsigned char *pIn = NULL;
-    int ii = 0;
-    int nIn = 0;
-    int rc = 0;
-    unsigned char *pOut = NULL;
-    z_ulong nOut = 0;
-    pIn = sqlite3_value_blob(argv[0]);
-    if (pIn == NULL) {
+    // Extract the compressed BLOB data and its size
+    const unsigned char *input_data = sqlite3_value_blob(argv[0]);
+    if (input_data == NULL) {
         sqlite3_result_error(context, "Cannot uncompress() NULL blob", -1);
         return;
     }
-    nIn = sqlite3_value_bytes(argv[0]);
-    nOut = 0;
-    for (ii = 0; ii < nIn && ii < 5; ii += 1) {
-        nOut = (nOut << 7) | (pIn[ii] & 0x7f);
-        if ((pIn[ii] & 0x80) != 0) {
-            ii += 1;
-            break;
-        }
-    }
-    pOut = sqlite3_malloc(nOut + 1);
-    rc = uncompress(pOut, &nOut, &pIn[ii], (z_ulong *) (intptr_t) (nIn - ii));
-    if (rc) {
-        sqlite3_free(pOut);
+    int input_size = sqlite3_value_bytes(argv[0]);
+    // Ensure the input BLOB is large enough to contain the 4-byte header
+    if (input_size < 4) {
+        sqlite3_result_error(context, "Invalid compressed BLOB, too small",
+            -1);
         return;
     }
-    sqlite3_result_blob(context, pOut, nOut, sqlite3_free);
+    // Extract the original size from the 4-byte header (big-endian)
+    int original_size = (input_data[0] << 24) | (input_data[1] << 16) |
+        (input_data[2] << 8) | input_data[3];
+    // Ensure the original size is valid (greater than 0 and reasonable)
+    if (original_size <= 0 || original_size > SIZEOF_BLOB_MAX) {
+        sqlite3_result_error(context, "Invalid original size", -1);
+        return;
+    }
+    // The compressed data is everything after the 4-byte header
+    const void *compressed_data = input_data + 4;
+    int compressed_size = input_size - 4;
+    // Allocate memory for the decompressed data
+    unsigned char *decompressed_data =
+        (unsigned char *) sqlite3_malloc(original_size);
+    if (decompressed_data == NULL) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
+    // Perform decompression using zlib
+    uLongf decompressed_size = original_size;
+    int ret =
+        uncompress(decompressed_data, &decompressed_size, compressed_data,
+        compressed_size);
+    if (ret != Z_OK) {
+        sqlite3_free(decompressed_data);
+        sqlite3_result_error(context, "Decompression failed", -1);
+        return;
+    }
+    // Return the decompressed data as a BLOB
+    sqlite3_result_blob(context, decompressed_data, decompressed_size,
+        sqlite3_free);
 }
 
 // SQLMATH_FUNC sql1_zlib_xxx_func - end
@@ -5068,8 +5040,8 @@ file sqlmath_nodejs - end
 /*
 file sqlmath_python - start
 */
-#if defined(SQLMATH_PYTHON_C2) && !defined(SQLMATH_PYTHON_C3)
-#define SQLMATH_PYTHON_C3
+#if defined(SRC_SQLMATH_PYTHON_C2) && !defined(SRC_SQLMATH_PYTHON_C3)
+#define SRC_SQLMATH_PYTHON_C3
 
 
 #include <Python.h>
@@ -5241,7 +5213,7 @@ PyMODINIT_FUNC PyInit__sqlmath(
     }
     return PyModule_Create(&_sqlmathmodule);
 }
-#endif                          // SQLMATH_PYTHON_C3
+#endif                          // SRC_SQLMATH_PYTHON_C3
 /*
 file sqlmath_python - end
 */

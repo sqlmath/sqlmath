@@ -318,6 +318,7 @@ async function ciBuildExt1NodejsConfigure({
         "-Wno-all",
         "-Wno-extra",
         "-Wno-implicit-fallthrough",
+        "-Wno-implicit-function-declaration",
         "-Wno-incompatible-pointer-types",
         "-Wno-int-conversion",
         "-Wno-stringop-overflow",
@@ -350,12 +351,29 @@ async function ciBuildExt1NodejsConfigure({
             {
                 "cflags": cflagsNowarning,
                 "defines": [
-                    "SRC_SQLITE_BASE_C2"
+                    "SRC_ZLIB_C2"
+                ],
+                "sources": [
+                    "sqlmath_external_zlib.c"
+                ],
+                "target_name": "SRC_ZLIB",
+                "type": "static_library",
+                "xcode_settings": {
+                    "OTHER_CFLAGS": cflagsNowarning
+                }
+            },
+            {
+                "cflags": cflagsNowarning,
+                "defines": [
+                    "SRC_SQLITE_BASE_C2",
+                    "SRC_SQLMATH_BASE_C2"
+                ],
+                "dependencies": [
+                    "SRC_ZLIB"
                 ],
                 "sources": [
                     "sqlmath_base.c",
-                    "sqlmath_external_sqlite.c",
-                    "sqlmath_external_zlib.c"
+                    "sqlmath_external_sqlite.c"
                 ],
                 "target_name": "SRC_SQLITE_BASE",
                 "type": "static_library",
@@ -365,7 +383,7 @@ async function ciBuildExt1NodejsConfigure({
             },
             {
                 "defines": [
-                    "SRC_SQLMATH_CUSTOM"
+                    "SRC_SQLMATH_CUSTOM_C2"
                 ],
                 "sources": [
                     "sqlmath_custom.c"
@@ -378,8 +396,8 @@ async function ciBuildExt1NodejsConfigure({
                     "SRC_SQLMATH_NODEJS_C2"
                 ],
                 "dependencies": [
-                    "SRC_SQLMATH_CUSTOM",
-                    "SRC_SQLITE_BASE"
+                    "SRC_SQLITE_BASE",
+                    "SRC_SQLMATH_CUSTOM"
                 ],
                 "sources": [
                     "sqlmath_base.c"
@@ -392,8 +410,8 @@ async function ciBuildExt1NodejsConfigure({
                     "SRC_SQLITE_SHELL_C2"
                 ],
                 "dependencies": [
-                    "SRC_SQLMATH_CUSTOM",
-                    "SRC_SQLITE_BASE"
+                    "SRC_SQLITE_BASE",
+                    "SRC_SQLMATH_CUSTOM"
                 ],
                 "sources": [
                     "sqlmath_external_sqlite.c"

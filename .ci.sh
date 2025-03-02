@@ -211,6 +211,7 @@ shCiBuildWasm() {(set -e
     # build wasm
     printf "shCiBuildWasm\n" 1>&2
     OPTION1="$OPTION1 -Wextra"
+    OPTION1="$OPTION1 -Wno-implicit-function-declaration"
     OPTION1="$OPTION1 -Wno-unused-parameter"
     OPTION1="$OPTION1 -flto"
     # debug
@@ -239,7 +240,27 @@ shCiBuildWasm() {(set -e
                 continue
             fi
         esac
-        OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
+        case "$FILE" in
+        sqlmath_base.c)
+            OPTION2="$OPTION2 -DSRC_SQLMATH_BASE_C2="
+            ;;
+        sqlmath_custom.c)
+            OPTION2="$OPTION2 -DSRC_SQLMATH_CUSTOM_C2="
+            ;;
+        sqlmath_external_sqlite.c)
+            OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
+            ;;
+        sqlmath_external_zlib.c)
+            OPTION2="$OPTION2 -DSRC_ZLIB_C2="
+            ;;
+        *)
+            # optimization - skip rebuild of rollup if possible
+            if [ "$FILE2" -nt "$FILE" ]
+            then
+                printf "shCiBuildWasm - skip $FILE\n" 1>&2
+                continue
+            fi
+        esac
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
     done
