@@ -314,71 +314,61 @@ async function ciBuildExt1NodejsConfigure({
 
 // This function will setup posix/win32 env for building c-extension.
 
-    let cflagsNowarning = [
-        "-Wno-all",
-        "-Wno-extra",
-        "-Wno-implicit-fallthrough",
-        "-Wno-implicit-function-declaration",
-        "-Wno-incompatible-pointer-types",
-        "-Wno-int-conversion",
-        "-Wno-stringop-overflow",
-        "-Wno-stringop-overread",
-        "-Wno-unreachable-code",
-        "-Wno-unused-function",
-        "-Wno-unused-parameter"
-    ];
+    let cflagWallList = [];
+    let cflagWnoList = [];
+    String(
+        await fsReadFileUnlessTest(".ci.sh", "utf8", (`
+SQLMATH_CFLAG_WALL_LIST=" \\
+"
+SQLMATH_CFLAG_WNO_LIST=" \\
+"
+        `))
+    ).replace((
+        /(SQLMATH_CFLAG_WALL_LIST|SQLMATH_CFLAG_WNO_LIST)=" \\([\S\s]*?)"/g
+    ), function (ignore, cflagType, cflagList) {
+        cflagList = cflagList.split(/[\s\\]/).filter(noop);
+        switch (cflagType) {
+        case "SQLMATH_CFLAG_WALL_LIST":
+            cflagWallList = cflagList;
+            break;
+        case "SQLMATH_CFLAG_WNO_LIST":
+            cflagWnoList = cflagList;
+            break;
+        }
+        return "";
+    });
     consoleError(`ciBuildExt1Nodejs - configure binding.gyp`);
     await fsWriteFileUnlessTest("binding.gyp", JSON.stringify({
         "target_defaults": {
-            "cflags": [
-                "-Wextra",
-                "-std=c11"
-            ],
+            "cflags": cflagWallList,
 // https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
             "msvs_settings": {
                 "VCCLCompilerTool": {
+                    "WarnAsError": 1,
                     "WarningLevel": 3
                 }
             },
             "xcode_settings": {
-                "OTHER_CFLAGS": [
-                    "-Wextra",
-                    "-std=c11"
-                ]
+                "OTHER_CFLAGS": cflagWallList
             }
         },
         "targets": [
             {
-                "cflags": cflagsNowarning,
+                "cflags": cflagWnoList,
                 "defines": [
+                    "SRC_SQLITE_BASE_C2",
+                    "SRC_SQLMATH_BASE_C2",
                     "SRC_ZLIB_C2"
                 ],
                 "sources": [
-                    "sqlmath_external_zlib.c"
-                ],
-                "target_name": "SRC_ZLIB",
-                "type": "static_library",
-                "xcode_settings": {
-                    "OTHER_CFLAGS": cflagsNowarning
-                }
-            },
-            {
-                "cflags": cflagsNowarning,
-                "defines": [
-                    "SRC_SQLITE_BASE_C2",
-                    "SRC_SQLMATH_BASE_C2"
-                ],
-                "dependencies": [
-                    "SRC_ZLIB"
-                ],
-                "sources": [
                     "sqlmath_base.c",
-                    "sqlmath_external_sqlite.c"
+                    "sqlmath_external_sqlite.c",
+                    "sqlmath_external_zlib.c"
                 ],
                 "target_name": "SRC_SQLITE_BASE",
                 "type": "static_library",
                 "xcode_settings": {
-                    "OTHER_CFLAGS": cflagsNowarning
+                    "OTHER_CFLAGS": cflagWnoList
                 }
             },
             {
@@ -405,7 +395,7 @@ async function ciBuildExt1NodejsConfigure({
                 "target_name": "binding"
             },
             {
-                "cflags": cflagsNowarning,
+                "cflags": cflagWnoList,
                 "defines": [
                     "SRC_SQLITE_SHELL_C2"
                 ],
@@ -419,7 +409,7 @@ async function ciBuildExt1NodejsConfigure({
                 "target_name": "shell",
                 "type": "executable",
                 "xcode_settings": {
-                    "OTHER_CFLAGS": cflagsNowarning
+                    "OTHER_CFLAGS": cflagWnoList
                 }
             }
         ]

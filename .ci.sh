@@ -4,6 +4,17 @@
 # sh jslint_ci.sh shCiBuildWasm
 # sh jslint_ci.sh shSqlmathUpdate
 
+SQLMATH_CFLAG_WALL_LIST=" \
+    -Wall \
+    -Werror \
+    -Wextra \
+"
+SQLMATH_CFLAG_WNO_LIST=" \
+    -Werror \
+    -Wno-all \
+    -Wno-extra \
+"
+
 shCiArtifactUploadCustom() {(set -e
 # This function will run custom-code to upload build-artifacts.
     git fetch origin artifact
@@ -210,9 +221,6 @@ shCiBuildWasm() {(set -e
     # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
     # build wasm
     printf "shCiBuildWasm\n" 1>&2
-    OPTION1="$OPTION1 -Wextra"
-    OPTION1="$OPTION1 -Wno-implicit-function-declaration"
-    OPTION1="$OPTION1 -Wno-unused-parameter"
     OPTION1="$OPTION1 -flto"
     # debug
     # OPTION1="$OPTION1 -O0"
@@ -229,10 +237,13 @@ shCiBuildWasm() {(set -e
         FILE2="build/$(basename "$FILE").wasm.o"
         case "$FILE" in
         sqlmath_base.c)
+            OPTION1="$OPTION1 $SQLMATH_CFLAG_WALL_LIST"
             ;;
         sqlmath_custom.c)
+            OPTION1="$OPTION1 $SQLMATH_CFLAG_WALL_LIST"
             ;;
         *)
+            OPTION1="$OPTION1 $SQLMATH_CFLAG_WNO_LIST"
             # optimization - skip rebuild of rollup if possible
             if [ "$FILE2" -nt "$FILE" ]
             then

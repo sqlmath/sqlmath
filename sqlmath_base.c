@@ -33,10 +33,10 @@ file sqlmath_h - start
 
 
 #define NAPI_VERSION 6
-#ifdef SRC_SQLITE_BASE_C2
+#if defined(SRC_SQLITE_BASE_C2)
 #   undef SRC_SQLITE_BASE_C2
 #endif                          // SRC_SQLITE_BASE_C2
-#ifdef _WIN32
+#if defined(_WIN32)
 #   include <windows.h>
 #else
 #   include <dlfcn.h>
@@ -110,7 +110,7 @@ file sqlmath_h - start
 #define UNUSED_PARAMETER(x) ((void)(x))
 
 
-#ifndef SQLITE_MAX_FUNCTION_ARG
+#if !defined(SQLITE_MAX_FUNCTION_ARG)
 #   define SQLITE_MAX_FUNCTION_ARG 127
 #endif                          // SQLITE_MAX_FUNCTION_ARG
 
@@ -251,6 +251,8 @@ file sqlmath_h - start
     }
 
 // file sqlmath_h - sqlite3
+
+
 // *INDENT-OFF*
 typedef uint32_t u32;
 typedef uint64_t u64;
@@ -392,7 +394,11 @@ struct sqlite3_str {
   u8   accError;       /* SQLITE_NOMEM or SQLITE_TOOBIG */
   u8   printfFlags;    /* SQLITE_PRINTF flags below */
 };
+
+
 // *INDENT-ON*
+
+
 SQLITE_API void str99JsonAppendText(
     sqlite3_str * str99,
     const char *zIn,
@@ -574,7 +580,7 @@ SQLMATH_API int dbDlopen(
 // This function will set <library> = dlopen(<filename>).
     static const intptr_t isBusy = 1;
     for (int ii = 0; *library == (void *) isBusy && ii < 100; ii += 1) {
-#ifdef _WIN32
+#if defined(_WIN32)
         Sleep(100);
 #else
         sleep(100);
@@ -590,7 +596,7 @@ SQLMATH_API int dbDlopen(
         return 0;
     }
     *library = (void *) isBusy;
-#ifdef _WIN32
+#if defined(_WIN32)
     *library = (void *) LoadLibrary(filename);
     if (*library == NULL) {
         sqlite3_result_error2(context,
@@ -691,7 +697,7 @@ SQLMATH_API void dbExec(
     STR99_ALLOCA(str99);
     // fprintf(stderr, "\nsqlmath._dbExec(db=%p blen=%d sql=%s)\n",
     //     db, bindListLength, zSql);
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__)
     // mutex enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
 #endif                          // __EMSCRIPTEN__
@@ -959,7 +965,7 @@ SQLMATH_API void dbExec(
     if (errcode && str99->zText) {
         sqlite3_free(str99->zText);
     }
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__)
     // mutex leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
 #endif                          // __EMSCRIPTEN__
@@ -4749,7 +4755,7 @@ file sqlmath_nodejs - start
 #define SQLMATH_NODEJS_C3
 
 
-#ifdef UNDEFINED                // cpplint-hack
+#if defined(UNDEFINED)          // cpplint-hack
 #   include <cstdio>
 #endif
 

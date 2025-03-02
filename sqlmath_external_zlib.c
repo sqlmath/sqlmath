@@ -1,9 +1,23 @@
-#ifndef SRC_ZLIB_H2
+#if !defined(SRC_ZLIB_H2)
 #define SRC_ZLIB_H2
 
 
 #if defined(SRC_ZLIB_C2) && !defined(SRC_ZLIB_C3)
 #define SRC_ZLIB_C3
+
+
+#if defined(_WIN32)
+#   pragma warning(disable: 4996)
+#endif                          // _WIN32
+#if defined(__GNUC__)
+#   pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
+#   pragma GCC diagnostic ignored "-Wunused-function"
+#endif                          // __GNUC__
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wimplicit-function-declaration"
+#   pragma clang diagnostic ignored "-Wunused-function"
+#endif                          // __clang__
 
 
 #define DIST_CODE_LEN 512
@@ -12122,6 +12136,13 @@ file none
 
 
 // *INDENT-ON*
+
+
+#ifdef __clang__
+#   pragma clang diagnostic pop
+#endif                          // __clang__
+
+
 #else                           // SRC_ZLIB_C3
 
 
@@ -12153,6 +12174,8 @@ typedef z_stream *z_streamp;
 
 
 // *INDENT-OFF*
+
+
 // char *ZEXPORT gzgets(gzFile file, char *buf, int len);
 // const char *ZEXPORT gzerror(gzFile file, int *errnum);
 // const char *ZEXPORT zError(int err);
@@ -12270,6 +12293,10 @@ uLong ZEXPORT compressBound(uLong sourceLen);
 // z_off_t ZEXPORT gztell64(gzFile);
 // z_size_t ZEXPORT gzfread(voidp buf, z_size_t size, z_size_t nitems, gzFile file);
 // z_size_t ZEXPORT gzfwrite(voidpc buf, z_size_t size, z_size_t nitems, gzFile file);
+
+
 // *INDENT-ON*
+
+
 #endif                          // SRC_ZLIB_C3
 #endif                          // SRC_ZLIB_H2
