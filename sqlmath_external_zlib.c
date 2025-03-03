@@ -6,7 +6,6 @@
 
 
 #if defined(_WIN32)
-#   pragma warning(disable: 4996)
 #endif                          // _WIN32
 #if defined(__GNUC__)
 #   pragma GCC diagnostic ignored "-Wimplicit-function-declaration"

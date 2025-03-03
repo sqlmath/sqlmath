@@ -27,8 +27,8 @@ python setup.py bdist_wheel
 python setup.py build_ext
 """
 
-__version__ = "2025.2.1"
-__version_info__ = ("2025", "2", "1")
+__version__ = "2025.2.28"
+__version_info__ = ("2025", "2", "28")
 
 import asyncio
 import base64
@@ -97,9 +97,17 @@ async def build_ext_async(): # noqa: C901
             arg_list += ["/W3"]
         elif npm_config_mode_debug:
             arg_list += cflag_wall_list
+        elif is_win32 and cdefine in [
+            "SRC_SQLMATH_BASE",
+            "SRC_SQLMATH_CUSTOM",
+        ]:
+            arg_list += [
+                "/W4",
+                "/WX",
+            ]
         elif is_win32:
             arg_list += [
-                "/W3",
+                "/W2",
                 "/WX",
             ]
         elif cdefine in [

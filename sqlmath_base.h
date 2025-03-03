@@ -31,11 +31,6 @@
 #if defined(SRC_SQLMATH_BASE_C2)
 
 
-#if defined(_WIN32)
-#   pragma warning(disable: 4267)
-#endif                          // _WIN32
-
-
 #define LIGHTGBM_C_EXPORT typedef
 #ifdef _WIN32
 #define LGBM_DLSYM(func) \
@@ -109,14 +104,6 @@ shRollupFetch
             "url": "https://github.com/intel/tinycrypt/blob/v0.2.8/lib/include/tinycrypt/utils.h"
         },
         {
-            "replaceList": [
-                {
-                    "aa": "^#include ",
-                    "bb": "// hack-tinycrypt - inline header\n// $&",
-                    "flags": "gm",
-                    "substr": ""
-                }
-            ],
             "url": "https://github.com/intel/tinycrypt/blob/v0.2.8/lib/source/utils.c"
         },
         {
@@ -126,12 +113,6 @@ shRollupFetch
                     "aa": "\\bcompress\\b",
                     "bb": "tc_sha256_compress",
                     "flags": "g",
-                    "substr": ""
-                },
-                {
-                    "aa": "^#include ",
-                    "bb": "// hack-tinycrypt - inline header\n// $&",
-                    "flags": "gm",
                     "substr": ""
                 }
             ],
@@ -195,17 +176,24 @@ shRollupFetch
             "url": "https://github.com/nodejs/node/blob/v10.22.1/src/node_api.h"
         }
     ],
-    "replaceList": []
+    "replaceList": [
+        {
+            "aa": "^#include .\\b(?:LightGBM|tinycrypt|node_api_types)\\b",
+            "bb": "// hack-header - inline header\n// $&",
+            "flags": "gm",
+            "substr": ""
+        }
+    ]
 }
 -#define INLINE_FUNCTION inline
 +// hack-lightgbm - fix warning
 +#define INLINE_FUNCTION static inline
 
--#include <LightGBM/arrow.h>
--#include <LightGBM/export.h>
-+// hack-lightgbm - inline header
-+// #include <LightGBM/arrow.h>
-+// #include <LightGBM/export.h>
+-void _set(void *to, uint8_t val, unsigned int len)
++void _set(void *to, uint8_t val, size_t len)
+
+-void _set(void *to, uint8_t val, unsigned int len);
++void _set(void *to, uint8_t val, size_t len);
 */
 
 
@@ -556,7 +544,7 @@ unsigned int _copy(uint8_t *to, unsigned int to_len,
  * @param val IN -- value to be set in 'to'
  * @param len IN -- number of times the value will be copied
  */
-void _set(void *to, uint8_t val, unsigned int len);
+void _set(void *to, uint8_t val, size_t len);
 
 /*
  * @brief AES specific doubling function, which utilizes
@@ -619,13 +607,12 @@ file https://github.com/intel/tinycrypt/blob/v0.2.8/lib/source/utils.c
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-// hack-tinycrypt - inline header
+// hack-header - inline header
 // #include <tinycrypt/utils.h>
-// hack-tinycrypt - inline header
+// hack-header - inline header
 // #include <tinycrypt/constants.h>
 
-// hack-tinycrypt - inline header
-// #include <string.h>
+#include <string.h>
 
 #define MASK_TWENTY_SEVEN 0x1b
 
@@ -640,7 +627,7 @@ unsigned int _copy(uint8_t *to, unsigned int to_len,
 	}
 }
 
-void _set(void *to, uint8_t val, unsigned int len)
+void _set(void *to, uint8_t val, size_t len)
 {
 	(void)memset(to, val, len);
 }
@@ -701,11 +688,11 @@ file https://github.com/intel/tinycrypt/blob/v0.2.8/lib/source/sha256.c
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-// hack-tinycrypt - inline header
+// hack-header - inline header
 // #include <tinycrypt/sha256.h>
-// hack-tinycrypt - inline header
+// hack-header - inline header
 // #include <tinycrypt/constants.h>
-// hack-tinycrypt - inline header
+// hack-header - inline header
 // #include <tinycrypt/utils.h>
 
 static void tc_sha256_compress(unsigned int *iv, const uint8_t *data);
@@ -918,8 +905,9 @@ file https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/c_api.h
 #ifndef LIGHTGBM_C_API_H_
 #define LIGHTGBM_C_API_H_
 
-// hack-lightgbm - inline header
+// hack-header - inline header
 // #include <LightGBM/arrow.h>
+// hack-header - inline header
 // #include <LightGBM/export.h>
 
 #ifdef __cplusplus
