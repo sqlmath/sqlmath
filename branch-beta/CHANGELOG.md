@@ -1,7 +1,17 @@
 # Changelog
 
 # Todo
+- sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
+
+# v2025.2.28
+- sqlmath - Update sql-function SHA256() to use tinycrypt.
+- jslint - Update shell-function shDirHttplinkValidate() with pragma <\!!--novalidate--\>.
+- ci - Upgrade cpplint.py used in ci to v2.0.0.
+- sqlite - Rename custom-sql-function MEDIAN() to MEDIAN2().
+- sqlite - Enable builtin-sql-functions MEDIAN(), PERCENTILE(), PERCENTILE_CONT(), PERCENTILE_DISC().
+- sqlite - Upgrade to sqlite-v3.47.2.
+- ci - Upgrade nodejs used in ci to v22.
 
 # v2025.1.31
 - webdemo - Update coloring to highlight tqq/sqq stocks.

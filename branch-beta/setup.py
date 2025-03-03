@@ -24,10 +24,11 @@ setup.py.
 
 npm_config_mode_debug2=1 python setup.py build_ext && python setup.py test
 python setup.py bdist_wheel
+python setup.py build_ext
 """
 
-__version__ = "2025.1.31"
-__version_info__ = ("2025", "1", "31")
+__version__ = "2025.2.28"
+__version_info__ = ("2025", "2", "28")
 
 import asyncio
 import base64
@@ -61,22 +62,18 @@ async def build_ext_async(): # noqa: C901
     async def build_ext_obj(cdefine): # noqa: C901 PLR0912
         file_obj = pathlib.Path(f"build/{cdefine}.obj")
         match cdefine:
-            case "SQLMATH_BASE":
-                file_src = pathlib.Path("sqlmath_base.c")
-            case "SQLMATH_CUSTOM":
-                file_src = pathlib.Path("sqlmath_custom.c")
-            case "SRC_SQLITE_SHELL":
-                file_src = pathlib.Path("sqlmath_external_sqlite.c")
             case "SRC_SQLITE_BASE":
                 file_src = pathlib.Path("sqlmath_external_sqlite.c")
-            case "SRC_ZLIB_BASE":
+            case "SRC_SQLMATH_BASE":
+                file_src = pathlib.Path("sqlmath_base.c")
+            case "SRC_SQLMATH_CUSTOM":
+                file_src = pathlib.Path("sqlmath_custom.c")
+            case "SRC_ZLIB":
                 file_src = pathlib.Path("sqlmath_external_zlib.c")
         match cdefine:
-            case "SQLMATH_BASE":
+            case "SRC_SQLMATH_BASE":
                 pass
-            case "SQLMATH_CUSTOM":
-                pass
-            case "SRC_SQLITE_SHELL":
+            case "SRC_SQLMATH_CUSTOM":
                 pass
             case _:
                 if (
@@ -90,35 +87,36 @@ async def build_ext_async(): # noqa: C901
             # ,
             f"-D{cdefine}_C2=",
             "-D_REENTRANT=1",
-            "-DSQLMATH_PYTHON_C2=" if cdefine == "SQLMATH_CUSTOM" else "",
+            (
+                "-DSRC_SQLMATH_PYTHON_C2="
+                if cdefine == "SRC_SQLMATH_CUSTOM"
+                else ""
+            ),
         ]
         if npm_config_mode_debug and is_win32:
             arg_list += ["/W3"]
         elif npm_config_mode_debug:
-            arg_list += ["-Wextra"]
+            arg_list += cflag_wall_list
+        elif is_win32 and cdefine in [
+            "SRC_SQLMATH_BASE",
+            "SRC_SQLMATH_CUSTOM",
+        ]:
+            arg_list += [
+                "/W4",
+                "/WX",
+            ]
         elif is_win32:
             arg_list += [
-                "/W3",
-                "/wd4047",
-                "/wd4244",
-                "/wd4996",
+                "/W2",
+                "/WX",
             ]
         elif cdefine in [
-            "SQLMATH_BASE",
-            "SQLMATH_CUSTOM",
+            "SRC_SQLMATH_BASE",
+            "SRC_SQLMATH_CUSTOM",
         ]:
-            arg_list += ["-Wextra"]
+            arg_list += cflag_wall_list
         else:
-            arg_list += [
-                "-Wno-all",
-                "-Wno-extra",
-                "-Wno-implicit-fallthrough",
-                "-Wno-incompatible-pointer-types",
-                "-Wno-int-conversion",
-                "-Wno-unreachable-code",
-                "-Wno-unused-function",
-                "-Wno-unused-parameter",
-            ]
+            arg_list += cflag_wno_list
 # https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
         if is_win32:
             arg_list = [
@@ -167,10 +165,10 @@ async def build_ext_async(): # noqa: C901
         arg_list += [
             # must be ordered first
             "build/SRC_SQLITE_BASE.obj",
-            "build/SRC_ZLIB_BASE.obj",
+            "build/SRC_ZLIB.obj",
             # ,
-            "build/SQLMATH_BASE.obj",
-            "build/SQLMATH_CUSTOM.obj",
+            "build/SRC_SQLMATH_BASE.obj",
+            "build/SRC_SQLMATH_CUSTOM.obj",
         ]
         export = "PyInit__sqlmath"
         if is_win32:
@@ -209,6 +207,23 @@ async def build_ext_async(): # noqa: C901
         version = package_json["version"].split("-")[0]
     if package_json["name"] != "sqlmath":
         version = __version__
+    with pathlib.Path(".ci.sh").open() as file1: # noqa: ASYNC230
+        data = file1.read()
+        data = re.findall(
+            (
+                r"(?:SQLMATH_CFLAG_WALL_LIST|SQLMATH_CFLAG_WNO_LIST)"
+                r'=" \\([\S\s]*?)"'
+            ),
+            data,
+        )
+        data = [
+            [cflag for cflag in re.split(r"[\s\\]", list1) if cflag != ""]
+            for list1 in data
+        ]
+        [
+            cflag_wall_list,
+            cflag_wno_list,
+        ] = data
     for filename in [
         "PKG-INFO",
         "README.md",
@@ -313,10 +328,10 @@ async def build_ext_async(): # noqa: C901
         build_ext_obj(cdefine)
         for cdefine in [
             "SRC_SQLITE_BASE",
-            "SRC_ZLIB_BASE",
+            "SRC_ZLIB",
             # ,
-            "SQLMATH_BASE",
-            "SQLMATH_CUSTOM",
+            "SRC_SQLMATH_BASE",
+            "SRC_SQLMATH_CUSTOM",
         ]
     ])
     #
