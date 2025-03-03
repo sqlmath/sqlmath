@@ -24,22 +24,20 @@
 // LINT_C_FILE
 
 
+#if !defined(SRC_SQLMATH_H2)
+#define SRC_SQLMATH_H2
+
+
 /*
 file sqlmath_h - start
 */
-#define SQLMATH_H2
-#if defined(SQLMATH_H2) && !defined(SQLMATH_H3)
-#define SQLMATH_H3
 
 
 #define NAPI_VERSION 6
-#ifdef SRC_SQLITE_BASE_C2
+#if defined(SRC_SQLITE_BASE_C2)
 #   undef SRC_SQLITE_BASE_C2
-#   ifndef SQLMATH_BASE_C2
-#       define SQLMATH_BASE_C2
-#   endif                       // SQLMATH_BASE_C2
 #endif                          // SRC_SQLITE_BASE_C2
-#ifdef _WIN32
+#if defined(_WIN32)
 #   include <windows.h>
 #else
 #   include <dlfcn.h>
@@ -103,7 +101,6 @@ file sqlmath_h - start
 #define MATH_MIN(aa, bb) (((aa) > (bb)) ? (bb) : (aa))
 #define MATH_PI 3.141592653589793238463
 #define MATH_SIGN(aa) (((aa) < 0) ? -1 : ((aa) > 0) ? 1 : 0)
-#define MATH_SWAP(aa, bb, tmp) tmp = (aa); (aa) = (bb); (bb) = tmp
 #define SQLITE_COLUMNTYPE_INTEGER_BIG   11
 #define SQLITE_COLUMNTYPE_TEXT_BIG      13
 #define SQLITE_ERROR_DATATYPE_INVALID   0x10003
@@ -114,7 +111,7 @@ file sqlmath_h - start
 #define UNUSED_PARAMETER(x) ((void)(x))
 
 
-#ifndef SQLITE_MAX_FUNCTION_ARG
+#if !defined(SQLITE_MAX_FUNCTION_ARG)
 #   define SQLITE_MAX_FUNCTION_ARG 127
 #endif                          // SQLITE_MAX_FUNCTION_ARG
 
@@ -202,26 +199,34 @@ file sqlmath_h - start
     }
 
 #define SQLITE_OK_OR_RETURN_RC(rc) \
-    if (rc != SQLITE_OK) { return rc; }
+    if (rc != SQLITE_OK) { \
+        return rc; \
+    }
 
 #define SQL_CREATE_FUNC1(func, argc, flag) \
     errcode = sqlite3_create_function(db, #func, argc, \
         flag | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         sql1_##func##_func, NULL, NULL); \
-    if (errcode) { return errcode; }
+    if (errcode) { \
+        return errcode; \
+    }
 
 #define SQL_CREATE_FUNC2(func, argc, flag) \
     errcode = sqlite3_create_function(db, #func, argc, \
         flag | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         NULL, sql2_##func##_step, sql2_##func##_final); \
-    if (errcode) { return errcode; }
+    if (errcode) { \
+        return errcode; \
+    }
 
 #define SQL_CREATE_FUNC3(func, argc, flag) \
     errcode = sqlite3_create_window_function(db, #func, argc, \
         flag | SQLITE_DIRECTONLY | SQLITE_UTF8, NULL, \
         sql3_##func##_step, sql3_##func##_final, \
         sql3_##func##_value, sql3_##func##_inverse, NULL); \
-    if (errcode) { return errcode; }
+    if (errcode) { \
+        return errcode; \
+    }
 
 #define STR99_ALLOCA(str99) \
     sqlite3_str __##str99 = { 0 }; \
@@ -247,6 +252,8 @@ file sqlmath_h - start
     }
 
 // file sqlmath_h - sqlite3
+
+
 // *INDENT-OFF*
 typedef uint32_t u32;
 typedef uint64_t u64;
@@ -388,7 +395,11 @@ struct sqlite3_str {
   u8   accError;       /* SQLITE_NOMEM or SQLITE_TOOBIG */
   u8   printfFlags;    /* SQLITE_PRINTF flags below */
 };
+
+
 // *INDENT-ON*
+
+
 SQLITE_API void str99JsonAppendText(
     sqlite3_str * str99,
     const char *zIn,
@@ -504,7 +515,6 @@ SQLMATH_API double sqlite3_value_double_or_prev(
     sqlite3_value * arg,
     double *previous
 );
-#endif                          // SQLMATH_H3
 /*
 file sqlmath_h - end
 */
@@ -513,8 +523,7 @@ file sqlmath_h - end
 /*
 file sqlmath_base - start
 */
-#if defined(SQLMATH_BASE_C2) && !defined(SQLMATH_BASE_C3)
-#define SQLMATH_BASE_C3
+#if defined(SRC_SQLMATH_BASE_C2)
 
 
 // track how many sqlite-db open
@@ -570,7 +579,7 @@ SQLMATH_API int dbDlopen(
 // This function will set <library> = dlopen(<filename>).
     static const intptr_t isBusy = 1;
     for (int ii = 0; *library == (void *) isBusy && ii < 100; ii += 1) {
-#ifdef _WIN32
+#if defined(_WIN32)
         Sleep(100);
 #else
         sleep(100);
@@ -586,7 +595,7 @@ SQLMATH_API int dbDlopen(
         return 0;
     }
     *library = (void *) isBusy;
-#ifdef _WIN32
+#if defined(_WIN32)
     *library = (void *) LoadLibrary(filename);
     if (*library == NULL) {
         sqlite3_result_error2(context,
@@ -687,7 +696,7 @@ SQLMATH_API void dbExec(
     STR99_ALLOCA(str99);
     // fprintf(stderr, "\nsqlmath._dbExec(db=%p blen=%d sql=%s)\n",
     //     db, bindListLength, zSql);
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__)
     // mutex enter
     sqlite3_mutex_enter(sqlite3_db_mutex(db));
 #endif                          // __EMSCRIPTEN__
@@ -724,7 +733,7 @@ SQLMATH_API void dbExec(
             zBind += 4 + bindElem->buflen;
             break;
         case SQLITE_DATATYPE_EXTERNALBUFFER:
-            bindElem->buflen = baton->bufv[*(int32_t *) zBind].len;
+            bindElem->buflen = (int) baton->bufv[*(int32_t *) zBind].len;
             bindElem->buf = (char *) baton->bufv[*(int32_t *) zBind].buf;
             zBind += 4;
             break;
@@ -955,7 +964,7 @@ SQLMATH_API void dbExec(
     if (errcode && str99->zText) {
         sqlite3_free(str99->zText);
     }
-#ifndef __EMSCRIPTEN__
+#if !defined(__EMSCRIPTEN__)
     // mutex leave
     sqlite3_mutex_leave(sqlite3_db_mutex(db));
 #endif                          // __EMSCRIPTEN__
@@ -1135,8 +1144,9 @@ SQLMATH_API int doublewinAggpush(
         return SQLITE_OK;
     }
     const int nn =
-        sizeof(Doublewin) / sizeof(double) + dblwin->nhead + dblwin->nbody;
-    uint32_t alloc = dblwin->alloc;
+        (int) (sizeof(Doublewin) / sizeof(double) + dblwin->nhead +
+        dblwin->nbody);
+    uint32_t alloc = (uint32_t) dblwin->alloc;
     if (nn * sizeof(double) >= alloc) {
         // error - toobig
         if (alloc <= 0 || SIZEOF_BLOB_MAX <= alloc) {
@@ -1183,7 +1193,7 @@ SQLMATH_API void doublewinResultBlob(
 // This function will return <dblwin> as result-blob in given <context>.
     dblwin->alloc =
         sizeof(Doublewin) + (dblwin->nhead + dblwin->nbody) * sizeof(double);
-    sqlite3_result_blob(context, (char *) dblwin, dblwin->alloc,
+    sqlite3_result_blob(context, (char *) dblwin, (int) dblwin->alloc,
         // destructor
         sqlite3_free);
 }
@@ -1751,7 +1761,8 @@ SQLMATH_FUNC static void sql1_idatefromto_func0(
         modeYmd = 10000101 <= idate64 && idate64 <= 99991231;
         // parse yyyymmdd
         {
-            const int yyyymmdd = modeYmd ? idate64 : idate64 / 1000000;
+            const int yyyymmdd =
+                (int) (modeYmd ? idate64 : idate64 / 1000000);
             dt->validYMD = 1;
             dt->Y = yyyymmdd / 10000;
             dt->M = (yyyymmdd / 100) % 100;
@@ -2055,7 +2066,7 @@ SQLMATH_FUNC static void sql1_lgbm_extract_func(
     }
     const double *arr = (double *) sqlite3_value_blob(argv[0]);
     const char *key = (char *) sqlite3_value_text(argv[1]);
-    double argmax = 0;
+    int argmax = 0;
     double probability = arr[0];
     for (int ii = 1; ii < nn; ii += 1) {
         if (arr[ii] > probability) {
@@ -2216,7 +2227,7 @@ SQLMATH_FUNC static void sql1_lgbm_trainfromdataset_func0(
         &model_len,             // int64_t *out_len,
         model_str);             // char *out_str
     LGBM_ASSERT_OK();
-    sqlite3_result_blob(context, model_str, model_len, sqlite3_free);
+    sqlite3_result_blob(context, model_str, (int) model_len, sqlite3_free);
   catch_error:
     LGBM_BoosterFree(booster);
     if (errcode) {
@@ -2375,181 +2386,55 @@ SQLMATH_FUNC static void sql1_roundorzero_func(
 }
 
 // SQLMATH_FUNC sql1_sha256_func - start
-void sha256_transform(
-    uint32_t * state,
-    const unsigned char *data
-) {
-// This function will calculate sha256 <hash> from <message>.
-// https://datatracker.ietf.org/doc/html/rfc4634
-#define ROTLEFT(aa, bb) (((aa) << (bb)) | ((aa) >> (32-(bb))))
-#define ROTRIGHT(aa, bb) (((aa) >> (bb)) | ((aa) << (32-(bb))))
-#define SHA256_CH(xx, yy, zz) (((xx) & (yy)) ^ (~(xx) & (zz)))
-#define SHA256_EP0(xx) (ROTRIGHT(xx, 2) ^ ROTRIGHT(xx, 13) ^ ROTRIGHT(xx, 22))
-#define SHA256_EP1(xx) (ROTRIGHT(xx, 6) ^ ROTRIGHT(xx, 11) ^ ROTRIGHT(xx, 25))
-#define SHA256_MAJ(xx, yy, zz) (((xx) & (yy)) ^ ((xx) & (zz)) ^ ((yy) & (zz)))
-#define SHA256_SIG0(xx) (ROTRIGHT(xx, 7) ^ ROTRIGHT(xx, 18) ^ ((xx) >> 3))
-#define SHA256_SIG1(xx) (ROTRIGHT(xx, 17) ^ ROTRIGHT(xx, 19) ^ ((xx) >> 10))
-    static const uint32_t kk[64] = {
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
-        0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
-        0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
-        0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
-        0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
-        0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
-        0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
-        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-    };
-    int ii = 0;
-    int jj = 0;
-    uint32_t mm[64] = { 0 };
-    uint32_t t1 = 0;
-    uint32_t t2 = 0;
-    for (ii = 0, jj = 0; ii < 16; ii += 1, jj += 4) {
-        mm[ii] = (data[jj] << 24)       //
-            | (data[jj + 1] << 16)      //
-            | (data[jj + 2] << 8)       //
-            | (data[jj + 3]);
-    }
-    for (; ii < 64; ii += 1) {
-        mm[ii] =
-            SHA256_SIG1(mm[ii - 2]) + mm[ii - 7] + SHA256_SIG0(mm[ii - 15]) +
-            mm[ii - 16];
-    }
-    uint32_t aa = state[0];
-    uint32_t bb = state[1];
-    uint32_t cc = state[2];
-    uint32_t dd = state[3];
-    uint32_t ee = state[4];
-    uint32_t ff = state[5];
-    uint32_t gg = state[6];
-    uint32_t hh = state[7];
-    for (ii = 0; ii < 64; ii += 1) {
-        t1 = hh + SHA256_EP1(ee) + SHA256_CH(ee, ff, gg) + kk[ii] + mm[ii];
-        t2 = SHA256_EP0(aa) + SHA256_MAJ(aa, bb, cc);
-        hh = gg;
-        gg = ff;
-        ff = ee;
-        ee = dd + t1;
-        dd = cc;
-        cc = bb;
-        bb = aa;
-        aa = t1 + t2;
-    }
-    state[0] += aa;
-    state[1] += bb;
-    state[2] += cc;
-    state[3] += dd;
-    state[4] += ee;
-    state[5] += ff;
-    state[6] += gg;
-    state[7] += hh;
-}
-
-void sha256_sum(
-    const unsigned char *message,
-    size_t messagelen,
-    unsigned char *hash
-) {
-// This function will calculate sha256 <hash> from <message>.
-// https://datatracker.ietf.org/doc/html/rfc4634
-    int datalen = 0;
-    uint64_t bitlen = 0;
-    unsigned char data[64] = { 0 };
-    uint32_t state[8] = {
-        0x6a09e667,
-        0xbb67ae85,
-        0x3c6ef372,
-        0xa54ff53a,
-        0x510e527f,
-        0x9b05688c,
-        0x1f83d9ab,
-        0x5be0cd19
-    };
-    for (size_t ii = 0; ii < messagelen; ii += 1) {
-        data[datalen] = message[ii];
-        datalen += 1;
-        if (datalen == 64) {
-            sha256_transform(state, data);
-            bitlen += 512;
-            datalen = 0;
-        }
-    }
-    uint32_t ii;
-    ii = datalen;
-    // Pad whatever data is left in the buffer.
-    if (datalen < 56) {
-        data[ii] = 0x80;
-        ii += 1;
-        while (ii < 56) {
-            data[ii] = 0x00;
-            ii += 1;
-        }
-    } else {
-        data[ii] = 0x80;
-        ii += 1;
-        while (ii < 64) {
-            data[ii] = 0x00;
-            ii += 1;
-        }
-        sha256_transform(state, data);
-        memset(data, 0, 56);
-    }
-    // Append to the padding the total message'ss length in bits and transform.
-    bitlen += datalen * 8;
-    data[63] = bitlen;
-    data[62] = bitlen >> 8;
-    data[61] = bitlen >> 16;
-    data[60] = bitlen >> 24;
-    data[59] = bitlen >> 32;
-    data[58] = bitlen >> 40;
-    data[57] = bitlen >> 48;
-    data[56] = bitlen >> 56;
-    sha256_transform(state, data);
-    // Since this implementation uses little endian byte ordering
-    // and SHA uses big endian, reverse all the bytes
-    // when copying the final state to the output hash.
-    for (ii = 0; ii < 4; ii += 1) {
-        hash[ii] = (state[0] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 4] = (state[1] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 8] = (state[2] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 12] = (state[3] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 16] = (state[4] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 20] = (state[5] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 24] = (state[6] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 28] = (state[7] >> (24 - ii * 8)) & 0x000000ff;
-    }
-}
-
-SQLMATH_FUNC static void sql1_sha256_func(
+static void sql1_sha256_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will calculate sha256 <hash> from <message>.
-// https://datatracker.ietf.org/doc/html/rfc4634
+/*
+** The sha256(X) function computes the SHA3 hash of the input X, or NULL if
+** X is NULL.  If inputs X is text, the UTF-8 rendering of that text is
+** used to compute the hash.  If X is a BLOB, then the binary data of the
+** blob is used to compute the hash.  If X is an integer or real number,
+** then that number if converted into UTF-8 text and the hash is computed
+** over the text.
+*/
     UNUSED_PARAMETER(argc);
     int eType = sqlite3_value_type(argv[0]);
-    int nByte = sqlite3_value_bytes(argv[0]);
-    unsigned char hash[32] = { 0 };
-    // fprintf(stderr, "\nsqlmath.sha256 - eType=%d, nByte=%d, msg=%s\n",
-    //     eType, nByte, (char *) sqlite3_value_blob(argv[0]));
+    size_t nByte = sqlite3_value_bytes(argv[0]);
     if (eType == SQLITE_NULL) {
         return;
     }
+    const unsigned char *message;
     if (eType == SQLITE_BLOB) {
-        sha256_sum(sqlite3_value_blob(argv[0]), nByte, hash);
+        message = sqlite3_value_blob(argv[0]);
     } else {
-        sha256_sum(sqlite3_value_text(argv[0]), nByte, hash);
+        message = sqlite3_value_text(argv[0]);
+    }
+    unsigned char hash[32] = {
+        0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14,
+        0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24,
+        0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c,
+        0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55
+    };
+    if (nByte == 0) {
+        sqlite3_result_blob(context, hash, sizeof(hash), SQLITE_TRANSIENT);
+        return;
+    }
+    struct tc_sha256_state_struct sha_state;
+    if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
+        goto catch_error;
+    }
+    if (tc_sha256_update(&sha_state, message, nByte) != TC_CRYPTO_SUCCESS) {
+        goto catch_error;
+    }
+    if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+        goto catch_error;
     }
     sqlite3_result_blob(context, hash, sizeof(hash), SQLITE_TRANSIENT);
+    return;
+  catch_error:
+    sqlite3_result_error(context, "sha256 - could not hash", -1);
 }
 
 // SQLMATH_FUNC sql1_sha256_func - end
@@ -2635,82 +2520,43 @@ SQLMATH_FUNC static void sql1_throwerror_func(
 // SQLMATH_FUNC sql1_zlib_xxx_func - start
 typedef unsigned long z_ulong;  // NOLINT
 
-int compress(
-    unsigned char *,
-    z_ulong *,
-    const unsigned char *,
-    z_ulong
-);
-
-int uncompress(
-    unsigned char *,
-    z_ulong *,
-    const unsigned char *,
-    z_ulong *
-);
-
 SQLMATH_FUNC static void sql1_zlib_compress_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-/*
-** Implementation of the "compress(X)" SQL function.  The input X is
-** compressed using zLib and the output is returned.
-**
-** The output is a BLOB that begins with a variable-length integer that
-** is the input size in bytes (the size of X before compression).  The
-** variable-length integer is implemented as 1 to 5 bytes.  There are
-** seven bits per integer stored in the lower seven bits of each byte.
-** More significant bits occur first.  The most significant bit (0x80)
-** is a flag to indicate the end of the integer.
-**
-** This function, SQLAR, and ZIP all use the same "deflate" compression
-** algorithm, but each is subtly different:
-**
-**   *  ZIP uses raw deflate.
-**
-**   *  SQLAR uses the "zlib format" which is raw deflate with a two-byte
-**      algorithm-identification header and a four-byte checksum at the end.
-**
-**   *  This utility uses the "zlib format" like SQLAR, but adds the variable-
-**      length integer uncompressed size value at the beginning.
-**
-** This function might be extended in the future to support compression
-** formats other than deflate, by providing a different algorithm-id
-** mark following the variable-length integer size parameter.
-*/
+// This function will compress <argv[0]> using zlib's compress() function,
+// with a 4-byte header storing original uncompressed size.
     UNUSED_PARAMETER(argc);
-    const unsigned char *pIn = NULL;
-    int ii = 0;
-    int jj = 0;
-    int nIn = 0;
-    int rc = 0;
-    unsigned char *pOut = NULL;
-    unsigned char x[8] = { 0 };
-    z_ulong nOut = 0;
-    pIn = sqlite3_value_blob(argv[0]);
-    if (pIn == NULL) {
+    // Extract the BLOB data and its size
+    const void *input_data = sqlite3_value_blob(argv[0]);
+    if (input_data == NULL) {
         sqlite3_result_error(context, "Cannot compress() NULL blob", -1);
         return;
     }
-    nIn = sqlite3_value_bytes(argv[0]);
-    nOut = 13 + nIn + (nIn + 999) / 1000;
-    pOut = sqlite3_malloc(nOut + 5);
-    for (ii = 4; ii >= 0; ii--) {
-        x[ii] = (nIn >> (7 * (4 - ii))) & 0x7f;
-    }
-    for (ii = 0; ii < 4 && x[ii] == 0; ii += 1) {
-    }
-    for (jj = 0; ii <= 4; ii += 1, jj += 1)
-        pOut[jj] = x[ii];
-    pOut[jj - 1] |= 0x80;
-    rc = compress(&pOut[jj], &nOut, pIn, nIn);
-    if (rc) {
-        sqlite3_free(pOut);
+    int input_size = sqlite3_value_bytes(argv[0]);
+    // Estimate the maximum size of the compressed data
+    uLongf output_size = compressBound(input_size);
+    // Allocate memory for the final result (header + compressed data)
+    unsigned char *result = (unsigned char *) sqlite3_malloc(4 + output_size);
+    if (result == NULL) {
+        sqlite3_result_error_nomem(context);
         return;
     }
-    sqlite3_result_blob(context, pOut, nOut + jj, sqlite3_free);
+    // Perform the compression using zlib
+    int ret = compress(result + 4, &output_size, input_data, input_size);
+    if (ret != Z_OK) {
+        sqlite3_free(result);
+        sqlite3_result_error(context, "Compression failed", -1);
+        return;
+    }
+    // Set the 4-byte header with the original BLOB size (big-endian)
+    result[0] = (input_size >> 24) & 0xFF;
+    result[1] = (input_size >> 16) & 0xFF;
+    result[2] = (input_size >> 8) & 0xFF;
+    result[3] = input_size & 0xFF;
+    // Return the compressed result as a BLOB
+    sqlite3_result_blob(context, result, 4 + output_size, sqlite3_free);
 }
 
 SQLMATH_FUNC static void sql1_zlib_uncompress_func(
@@ -2718,39 +2564,53 @@ SQLMATH_FUNC static void sql1_zlib_uncompress_func(
     int argc,
     sqlite3_value ** argv
 ) {
-/*
-** Implementation of the "uncompress(X)" SQL function.  The argument X
-** is a blob which was obtained from compress(Y).  The output will be
-** the value Y.
-*/
+// This function will uncompress <argv[0]> using zlib's uncompress() function,
+// and assumes input has a 4-byte header storing original uncompressed size.
     UNUSED_PARAMETER(argc);
-    const unsigned char *pIn = NULL;
-    int ii = 0;
-    int nIn = 0;
-    int rc = 0;
-    unsigned char *pOut = NULL;
-    z_ulong nOut = 0;
-    pIn = sqlite3_value_blob(argv[0]);
-    if (pIn == NULL) {
+    // Extract the compressed BLOB data and its size
+    const unsigned char *input_data = sqlite3_value_blob(argv[0]);
+    if (input_data == NULL) {
         sqlite3_result_error(context, "Cannot uncompress() NULL blob", -1);
         return;
     }
-    nIn = sqlite3_value_bytes(argv[0]);
-    nOut = 0;
-    for (ii = 0; ii < nIn && ii < 5; ii += 1) {
-        nOut = (nOut << 7) | (pIn[ii] & 0x7f);
-        if ((pIn[ii] & 0x80) != 0) {
-            ii += 1;
-            break;
-        }
-    }
-    pOut = sqlite3_malloc(nOut + 1);
-    rc = uncompress(pOut, &nOut, &pIn[ii], (z_ulong *) (intptr_t) (nIn - ii));
-    if (rc) {
-        sqlite3_free(pOut);
+    int input_size = sqlite3_value_bytes(argv[0]);
+    // Ensure the input BLOB is large enough to contain the 4-byte header
+    if (input_size < 4) {
+        sqlite3_result_error(context, "Invalid compressed BLOB, too small",
+            -1);
         return;
     }
-    sqlite3_result_blob(context, pOut, nOut, sqlite3_free);
+    // Extract the original size from the 4-byte header (big-endian)
+    int original_size = (input_data[0] << 24) | (input_data[1] << 16) |
+        (input_data[2] << 8) | input_data[3];
+    // Ensure the original size is valid (greater than 0 and reasonable)
+    if (original_size <= 0 || original_size > SIZEOF_BLOB_MAX) {
+        sqlite3_result_error(context, "Invalid original size", -1);
+        return;
+    }
+    // The compressed data is everything after the 4-byte header
+    const void *compressed_data = input_data + 4;
+    int compressed_size = input_size - 4;
+    // Allocate memory for the decompressed data
+    unsigned char *decompressed_data =
+        (unsigned char *) sqlite3_malloc(original_size);
+    if (decompressed_data == NULL) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
+    // Perform decompression using zlib
+    uLongf decompressed_size = original_size;
+    int ret =
+        uncompress(decompressed_data, &decompressed_size, compressed_data,
+        compressed_size);
+    if (ret != Z_OK) {
+        sqlite3_free(decompressed_data);
+        sqlite3_result_error(context, "Decompression failed", -1);
+        return;
+    }
+    // Return the decompressed data as a BLOB
+    sqlite3_result_blob(context, decompressed_data, decompressed_size,
+        sqlite3_free);
 }
 
 // SQLMATH_FUNC sql1_zlib_xxx_func - end
@@ -2847,7 +2707,7 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final0(
     // label - init
     DatasetHandle out = NULL;
     const int ncol = (int) dblwin->ncol;
-    const int nrow = (int) dblwin->nbody / dblwin->ncol;
+    const int nrow = (int) (dblwin->nbody / dblwin->ncol);
     int errcode = 0;
     label = sqlite3_malloc(nrow * sizeof(float));
     if (label == NULL) {
@@ -3006,69 +2866,67 @@ static double quickselect(
     const int nn,
     const int kk
 ) {
-// This function will find <kk>-th element in <arr> using quickselect-algorithm.
-// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-    if (nn <= 0) {
-        return NAN;
+// This function will find <qq>-th-quantile element in <arr>,
+// using median-of-three quickselect-algorithm.
+// derived from https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
+#define QUICKSELECT_SWAP(aa, bb) \
+    do { \
+        double tmp = (aa); \
+        (aa) = (bb); \
+        (bb) = tmp; \
+    } while (0)
+    if (nn <= 0 || kk < 0 || kk >= nn) {
+        return NAN;             // Invalid input
     }
-    double aa = *arr;
-    double tmp = 0;
-    int ii;
-    int ir;
-    int jj;
-    int ll;
-    int mid;
-    ll = 0;
-    ir = nn - 1;
-    while (1) {
-        if (ir <= ll + 1) {
-            if (ir == ll + 1 && arr[ir] < arr[ll]) {
-                MATH_SWAP(arr[ll], arr[ir], tmp);
+    int low = 0;
+    int high = nn - 1;
+    while (low <= high) {
+        if (low == high) {
+            return arr[low];
+        }
+        int mid = low + (high - low) / 2;
+        // Median-of-Three Pivot Selection
+        if (arr[low] > arr[mid]) {
+            QUICKSELECT_SWAP(arr[low], arr[mid]);
+        }
+        if (arr[mid] > arr[high]) {
+            QUICKSELECT_SWAP(arr[mid], arr[high]);
+        }
+        if (arr[low] > arr[mid]) {
+            QUICKSELECT_SWAP(arr[low], arr[mid]);
+        }
+        // Move pivot to end
+        QUICKSELECT_SWAP(arr[mid], arr[high]);
+        double pivot_val = arr[high];
+        int ii = low;
+        int jj = high - 1;
+        // Hoare’s Partitioning
+        while (1) {
+            while (ii < high && arr[ii] < pivot_val) {
+                ii++;
             }
-            return arr[kk];
+            while (jj > low && arr[jj] > pivot_val) {
+                jj--;
+            }
+            if (ii >= jj) {
+                break;
+            }
+            QUICKSELECT_SWAP(arr[ii], arr[jj]);
+            ii++;
+            jj--;
+        }
+        // Move pivot to its correct position
+        QUICKSELECT_SWAP(arr[ii], arr[high]);
+        // Quickselect logic
+        if (ii == kk) {
+            return arr[ii];
+        } else if (ii > kk) {
+            high = ii - 1;
         } else {
-            mid = (ll + ir) >> 1;
-            MATH_SWAP(arr[mid], arr[ll + 1], tmp);
-            if (arr[ll] > arr[ir]) {
-                MATH_SWAP(arr[ll], arr[ir], tmp);
-            }
-            if (arr[ll + 1] > arr[ir]) {
-                MATH_SWAP(arr[ll + 1], arr[ir], tmp);
-            }
-            if (arr[ll] > arr[ll + 1]) {
-                MATH_SWAP(arr[ll], arr[ll + 1], tmp);
-            }
-            ii = ll + 1;
-            jj = ir;
-            aa = arr[ll + 1];
-            while (1) {
-                while (1) {
-                    ii += 1;
-                    if (arr[ii] >= aa) {
-                        break;
-                    }
-                }
-                while (1) {
-                    jj -= 1;
-                    if (arr[jj] <= aa) {
-                        break;
-                    }
-                }
-                if (jj < ii) {
-                    break;
-                }
-                MATH_SWAP(arr[ii], arr[jj], tmp);
-            }
-            arr[ll + 1] = arr[jj];
-            arr[jj] = aa;
-            if (jj >= kk) {
-                ir = jj - 1;
-            }
-            if (jj <= kk) {
-                ll = ii;
-            }
+            low = ii + 1;
         }
     }
+    return NAN;                 // Should not reach here
 }
 
 SQLMATH_API double quantile(
@@ -3076,19 +2934,25 @@ SQLMATH_API double quantile(
     const int nn,
     const double qq
 ) {
-// This function will find <qq>-th-quantile element in <arr>
-// using quickselect-algorithm.
-// https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
-    if (!(nn >= 1)) {
-        return NAN;
+// This function will find <qq>-th-quantile element in <arr>,
+// using median-of-three quickselect-algorithm.
+// derived from https://www.stat.cmu.edu/~ryantibs/median/quickselect.c
+    if (nn < 1 || isnan(qq)) {
+        // if (nn < 1 || isnan(qq) || qq < 0 || qq > 1) {
+        return NAN;             // Invalid input
     }
-    double kmod = MATH_MAX(0, MATH_MIN(1, qq)) * (nn - 1);
-    const int kk = kmod;
-    kmod = fmod(kmod, 1);
-    return kmod == 0            //
-        ? quickselect(arr, nn, kk)      //
-        : (1 - kmod) * quickselect(arr, nn, kk) + kmod * quickselect(arr, nn,
-        kk + 1);
+    if (qq == 0) {
+        return quickselect(arr, nn, 0);
+    }
+    if (qq == 1) {
+        return quickselect(arr, nn, nn - 1);
+    }
+    double kmod = fmax(0, fmin(1, qq)) * (nn - 1);
+    int kk = (int) kmod;
+    kmod -= kk;
+    double val1 = quickselect(arr, nn, kk);
+    double val2 = (kk + 1 < nn) ? quickselect(arr, nn, kk + 1) : val1;
+    return (kmod == 0) ? val1 : (1 - kmod) * val1 + kmod * val2;
 }
 
 SQLMATH_FUNC static void sql2_quantile_final(
@@ -3101,7 +2965,7 @@ SQLMATH_FUNC static void sql2_quantile_final(
     if (dblwin->nbody == 0) {
         goto catch_error;
     }
-    sqlite3_result_double(context, quantile(dblwin_body, dblwin->nbody,
+    sqlite3_result_double(context, quantile(dblwin_body, (int) dblwin->nbody,
             dblwin_head[0]));
   catch_error:
     doublewinAggfree(dblwinAgg);
@@ -3136,13 +3000,13 @@ SQLMATH_FUNC static void sql2_quantile_step(
     sql2_quantile_step0(context, argc, argv, sqlite3_value_double(argv[1]));
 }
 
-SQLMATH_FUNC static void sql2_median_final(
+SQLMATH_FUNC static void sql2_median2_final(
     sqlite3_context * context
 ) {
     sql2_quantile_final(context);
 }
 
-SQLMATH_FUNC static void sql2_median_step(
+SQLMATH_FUNC static void sql2_median2_step(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
@@ -3237,7 +3101,7 @@ SQLMATH_FUNC static void sql3_win_avg2_value(
 // This function will calculate running-avg.
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    const int ncol = dblwin->ncol;
+    const int ncol = (int) dblwin->ncol;
     if (!ncol) {
         return;
     }
@@ -3491,7 +3355,8 @@ SQLMATH_FUNC static void sql3_win_coinflip2_value(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - result
-    doublearrayResult(context, dblwin_head, dblwin->nhead, SQLITE_TRANSIENT);
+    doublearrayResult(context, dblwin_head, (int) dblwin->nhead,
+        SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_coinflip2_final(
@@ -3706,7 +3571,7 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
     }
     // dblwin - calculate ema
     arg_alpha = dblwin_head[ncol + 0];
-    const int nrow = dblwin->nbody / ncol;
+    const int nrow = (int) dblwin->nbody / ncol;
     argv += 1;
     for (int ii = 0; ii < ncol; ii += 1) {
         sqlite3_value_double_or_prev(argv[0], &dblwin_head[ii]);
@@ -3812,7 +3677,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_inverse(
     // dblwin - inverse
     const int ncol = argc / 2;
     const int nstep = ncol * 2;
-    const int nn = dblwin->nbody - nstep;
+    const int nn = (int) dblwin->nbody - nstep;
     double *arr = dblwin_body + 1;
     double *xx0 = dblwin_body + 0 + (int) dblwin->waa;
     for (int ii = 0; ii < ncol; ii += 1) {
@@ -3856,7 +3721,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
     }
     // dblwin - calculate quantile
     const int nstep = ncol * 2;
-    const int nn = dblwin->nbody / nstep;
+    const int nn = (int) dblwin->nbody / nstep;
     double *arr = dblwin_body + 1;
     for (int ii = 0; ii < ncol; ii += 1) {
         // init argQuantile
@@ -3869,7 +3734,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
             return;
         }
         argQuantile *= (nn - 1);
-        const int kk1 = floor(argQuantile) * nstep;
+        const int kk1 = (int) floor(argQuantile) * nstep;
         const int kk2 = kk1 + nstep;
         argQuantile = fmod(argQuantile, 1);
         // calculate quantile
@@ -3985,7 +3850,7 @@ static void winSinefitSnr(
     double spp = 0;
     double sww = 0;
     double tmp = 0;
-    // calculate snr - saa
+    // guess snr - saa
     if (1) {
         saa = sqrt(2 * wsf->vyy * invn0 //
             * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
@@ -3994,11 +3859,11 @@ static void winSinefitSnr(
         return;
     }
     const double inva = 1.0 / saa;
-    // calculate snr - sww - using x-variance.p
+    // guess snr - sww - using x-variance.p
     if (1) {
         sww = 2 * MATH_PI / sqrt(4.0 * wsf->vxx * invn0);       // window-period
     }
-    // calculate snr - spp - using multivariate-linear-regression
+    // guess snr - spp - using multivariate-linear-regression
     if (1) {
         double sumxx = 0;
         double sumxy = 0;
@@ -4235,8 +4100,9 @@ SQLMATH_FUNC static void sql3_win_sinefit2_value(
     doublearrayResult(context, dblwin_head,     //
         // If x-current == x-refit, then include extra data needed for refit.
         // This data is normally not included, due to memory performance.
-        wsf->xx2 == wsf->xx1 ? dblwin->nhead + dblwin->nbody : dblwin->nhead,
-        SQLITE_TRANSIENT);
+        (int) (wsf->xx2 == wsf->xx1     //
+            ? dblwin->nhead + dblwin->nbody     //
+            : dblwin->nhead), SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_sinefit2_final(
@@ -4296,8 +4162,8 @@ static void sql3_win_sinefit2_step(
     const int modeSnr = sqlite3_value_int(argv[0]);
     argv += argc0;
     WinSinefit *wsf = NULL;
-    const int waa = dblwin->waa;
-    const int wbb = dblwin->wnn ? dblwin->waa : dblwin->nbody;
+    const int waa = (int) dblwin->waa;
+    const int wbb = (int) (dblwin->wnn ? dblwin->waa : dblwin->nbody);
     double *xxyy = NULL;
     for (int ii = 0; ii < ncol; ii += 1) {
         // dblwin - init xx, yy, rr
@@ -4334,7 +4200,8 @@ static void sql3_win_sinefit2_step(
         winSinefitLnr(wsf, xxyy, wbb);
         // dblwin - calculate snr
         if (modeSnr) {
-            winSinefitSnr(wsf, xxyy, wbb, dblwin->nbody, dblwin->ncol);
+            winSinefitSnr(wsf, xxyy, wbb, (int) dblwin->nbody,
+                (int) dblwin->ncol);
         }
         // increment counter
         wsf += 1;
@@ -4521,7 +4388,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
         return;
     }
     const WinSinefit *blob0 = sqlite3_value_blob(argv[0]);
-    const int nbody = blob0->nnn * ncol * WIN_SINEFIT_STEP;
+    const int nbody = (int) blob0->nnn * ncol * WIN_SINEFIT_STEP;
     if (blob0->nnn <= 0
         || bytes != (ncol * WIN_SINEFIT_N + nbody) * sizeof(double)) {
         sqlite3_result_error(context,
@@ -4541,7 +4408,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
     WinSinefit *wsf = wsf0;
     argv += argc0;
     double *xxyy = (double *) (wsf0 + ncol);
-    const int wbb = wsf->wbb;
+    const int wbb = (int) wsf->wbb;
     if (!(0 <= wbb && wbb + ncol * WIN_SINEFIT_STEP <= nbody)) {
         goto catch_error;
     }
@@ -4627,8 +4494,8 @@ SQLMATH_FUNC static void sql3_win_sum2_value(
         return;
     }
     // dblwin - result
-    doublearrayResult(context, dblwin_head + (int) dblwin->ncol, dblwin->ncol,
-        SQLITE_TRANSIENT);
+    doublearrayResult(context, dblwin_head + (int) dblwin->ncol,
+        (int) dblwin->ncol, SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_sum2_final(
@@ -4737,7 +4604,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC2(columntype, 1, 0);
     SQL_CREATE_FUNC2(lgbm_datasetcreatefromtable, -1, 0);
     SQL_CREATE_FUNC2(lgbm_trainfromtable, -1, 0);
-    SQL_CREATE_FUNC2(median, 1, 0);
+    SQL_CREATE_FUNC2(median2, 1, 0);
     SQL_CREATE_FUNC2(quantile, 2, 0);
     SQL_CREATE_FUNC3(lgbm_predictfortable, -1, 0);
     SQL_CREATE_FUNC3(stdev, 1, 0);
@@ -4753,7 +4620,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC3(win_sum2, -1, 0);
     return 0;
 }
-#endif                          // SQLMATH_BASE_C3
+#endif                          // SRC_SQLMATH_BASE_C2
 /*
 file sqlmath_base - end
 */
@@ -4762,8 +4629,12 @@ file sqlmath_base - end
 /*
 file sqlmath_nodejs - start
 */
-#if defined(SQLMATH_NODEJS_C2) && !defined(SQLMATH_NODEJS_C3)
-#define SQLMATH_NODEJS_C3
+#if defined(SRC_SQLMATH_NODEJS_C2)
+
+
+#if defined(UNDEFINED)          // cpplint-hack
+#   include <cstdio>
+#endif
 
 
 // file sqlmath_nodejs - assert
@@ -5043,7 +4914,7 @@ napi_value napi_module_sqlmath_init(
 }
 
 NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_sqlmath_init);
-#endif                          // SQLMATH_NODEJS_C3
+#endif                          // SQLMATH_NODEJS_C2
 /*
 file sqlmath_nodejs - end
 */
@@ -5052,8 +4923,7 @@ file sqlmath_nodejs - end
 /*
 file sqlmath_python - start
 */
-#if defined(SQLMATH_PYTHON_C2) && !defined(SQLMATH_PYTHON_C3)
-#define SQLMATH_PYTHON_C3
+#if defined(SRC_SQLMATH_PYTHON_C2)
 
 
 #include <Python.h>
@@ -5225,7 +5095,8 @@ PyMODINIT_FUNC PyInit__sqlmath(
     }
     return PyModule_Create(&_sqlmathmodule);
 }
-#endif                          // SQLMATH_PYTHON_C3
+#endif                          // SRC_SQLMATH_PYTHON_C2
 /*
 file sqlmath_python - end
 */
+#endif                          // SRC_SQLMATH_H2

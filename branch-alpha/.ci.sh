@@ -4,6 +4,17 @@
 # sh jslint_ci.sh shCiBuildWasm
 # sh jslint_ci.sh shSqlmathUpdate
 
+SQLMATH_CFLAG_WALL_LIST=" \
+    -Wall \
+    -Werror \
+    -Wextra \
+"
+SQLMATH_CFLAG_WNO_LIST=" \
+    -Werror \
+    -Wno-all \
+    -Wno-extra \
+"
+
 shCiArtifactUploadCustom() {(set -e
 # This function will run custom-code to upload build-artifacts.
     git fetch origin artifact
@@ -210,8 +221,6 @@ shCiBuildWasm() {(set -e
     # cd ${EMSDK} && . ./emsdk_env.sh && cd ..
     # build wasm
     printf "shCiBuildWasm\n" 1>&2
-    OPTION1="$OPTION1 -Wextra"
-    OPTION1="$OPTION1 -Wno-unused-parameter"
     OPTION1="$OPTION1 -flto"
     # debug
     # OPTION1="$OPTION1 -O0"
@@ -228,8 +237,32 @@ shCiBuildWasm() {(set -e
         FILE2="build/$(basename "$FILE").wasm.o"
         case "$FILE" in
         sqlmath_base.c)
+            OPTION1="$OPTION1 $SQLMATH_CFLAG_WALL_LIST"
             ;;
         sqlmath_custom.c)
+            OPTION1="$OPTION1 $SQLMATH_CFLAG_WALL_LIST"
+            ;;
+        *)
+            OPTION1="$OPTION1 $SQLMATH_CFLAG_WNO_LIST"
+            # optimization - skip rebuild of rollup if possible
+            if [ "$FILE2" -nt "$FILE" ]
+            then
+                printf "shCiBuildWasm - skip $FILE\n" 1>&2
+                continue
+            fi
+        esac
+        case "$FILE" in
+        sqlmath_base.c)
+            OPTION2="$OPTION2 -DSRC_SQLMATH_BASE_C2="
+            ;;
+        sqlmath_custom.c)
+            OPTION2="$OPTION2 -DSRC_SQLMATH_CUSTOM_C2="
+            ;;
+        sqlmath_external_sqlite.c)
+            OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
+            ;;
+        sqlmath_external_zlib.c)
+            OPTION2="$OPTION2 -DSRC_ZLIB_C2="
             ;;
         *)
             # optimization - skip rebuild of rollup if possible
@@ -239,7 +272,6 @@ shCiBuildWasm() {(set -e
                 continue
             fi
         esac
-        OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
     done
@@ -481,16 +513,16 @@ shSqlmathUpdate() {(set -e
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         # shRollupFetch
-        if [ ! -d .sqlite-autoconf-3460100 ]
+        if [ ! -d .sqlite-autoconf-3470200 ]
         then
             for URL in \
 https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
-https://www.sqlite.org/2024/sqlite-autoconf-3460100.tar.gz
+https://www.sqlite.org/2024/sqlite-autoconf-3470200.tar.gz
             do
                 curl -L "$URL" | tar -xz
             done
             for DIR in \
-                sqlite-autoconf-3460100 \
+                sqlite-autoconf-3470200 \
                 zlib-1.3.1
             do
                 rm -rf ".$DIR"
@@ -506,6 +538,7 @@ https://www.sqlite.org/2024/sqlite-autoconf-3460100.tar.gz
         if (uname | grep -q "MING\|MSYS")
         then
             shIndentC sqlmath_base.c
+            shIndentC sqlmath_base.h
             shIndentC sqlmath_custom.c
             shIndentC sqlmath_external_sqlite.c
             shIndentC sqlmath_external_zlib.c
