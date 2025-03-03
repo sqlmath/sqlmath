@@ -357,11 +357,9 @@ SQLMATH_CFLAG_WNO_LIST=" \\
                 "cflags": cflagWnoList,
                 "defines": [
                     "SRC_SQLITE_BASE_C2",
-                    "SRC_SQLMATH_BASE_C2",
                     "SRC_ZLIB_C2"
                 ],
                 "sources": [
-                    "sqlmath_base.c",
                     "sqlmath_external_sqlite.c",
                     "sqlmath_external_zlib.c"
                 ],
@@ -373,9 +371,11 @@ SQLMATH_CFLAG_WNO_LIST=" \\
             },
             {
                 "defines": [
+                    "SRC_SQLMATH_BASE_C2",
                     "SRC_SQLMATH_CUSTOM_C2"
                 ],
                 "sources": [
+                    "sqlmath_base.c",
                     "sqlmath_custom.c"
                 ],
                 "target_name": "SRC_SQLMATH_CUSTOM",

@@ -24,12 +24,13 @@
 // LINT_C_FILE
 
 
+#if !defined(SRC_SQLMATH_H2)
+#define SRC_SQLMATH_H2
+
+
 /*
 file sqlmath_h - start
 */
-#define SQLMATH_H2
-#if defined(SQLMATH_H2) && !defined(SQLMATH_H3)
-#define SQLMATH_H3
 
 
 #define NAPI_VERSION 6
@@ -514,7 +515,6 @@ SQLMATH_API double sqlite3_value_double_or_prev(
     sqlite3_value * arg,
     double *previous
 );
-#endif                          // SQLMATH_H3
 /*
 file sqlmath_h - end
 */
@@ -523,8 +523,7 @@ file sqlmath_h - end
 /*
 file sqlmath_base - start
 */
-#if defined(SRC_SQLMATH_BASE_C2) && !defined(SRC_SQLMATH_BASE_C3)
-#define SRC_SQLMATH_BASE_C3
+#if defined(SRC_SQLMATH_BASE_C2)
 
 
 // track how many sqlite-db open
@@ -734,7 +733,7 @@ SQLMATH_API void dbExec(
             zBind += 4 + bindElem->buflen;
             break;
         case SQLITE_DATATYPE_EXTERNALBUFFER:
-            bindElem->buflen = baton->bufv[*(int32_t *) zBind].len;
+            bindElem->buflen = (int) baton->bufv[*(int32_t *) zBind].len;
             bindElem->buf = (char *) baton->bufv[*(int32_t *) zBind].buf;
             zBind += 4;
             break;
@@ -1145,8 +1144,9 @@ SQLMATH_API int doublewinAggpush(
         return SQLITE_OK;
     }
     const int nn =
-        sizeof(Doublewin) / sizeof(double) + dblwin->nhead + dblwin->nbody;
-    uint32_t alloc = dblwin->alloc;
+        (int) (sizeof(Doublewin) / sizeof(double) + dblwin->nhead +
+        dblwin->nbody);
+    uint32_t alloc = (uint32_t) dblwin->alloc;
     if (nn * sizeof(double) >= alloc) {
         // error - toobig
         if (alloc <= 0 || SIZEOF_BLOB_MAX <= alloc) {
@@ -1193,7 +1193,7 @@ SQLMATH_API void doublewinResultBlob(
 // This function will return <dblwin> as result-blob in given <context>.
     dblwin->alloc =
         sizeof(Doublewin) + (dblwin->nhead + dblwin->nbody) * sizeof(double);
-    sqlite3_result_blob(context, (char *) dblwin, dblwin->alloc,
+    sqlite3_result_blob(context, (char *) dblwin, (int) dblwin->alloc,
         // destructor
         sqlite3_free);
 }
@@ -1761,7 +1761,8 @@ SQLMATH_FUNC static void sql1_idatefromto_func0(
         modeYmd = 10000101 <= idate64 && idate64 <= 99991231;
         // parse yyyymmdd
         {
-            const int yyyymmdd = modeYmd ? idate64 : idate64 / 1000000;
+            const int yyyymmdd =
+                (int) (modeYmd ? idate64 : idate64 / 1000000);
             dt->validYMD = 1;
             dt->Y = yyyymmdd / 10000;
             dt->M = (yyyymmdd / 100) % 100;
@@ -2065,7 +2066,7 @@ SQLMATH_FUNC static void sql1_lgbm_extract_func(
     }
     const double *arr = (double *) sqlite3_value_blob(argv[0]);
     const char *key = (char *) sqlite3_value_text(argv[1]);
-    double argmax = 0;
+    int argmax = 0;
     double probability = arr[0];
     for (int ii = 1; ii < nn; ii += 1) {
         if (arr[ii] > probability) {
@@ -2226,7 +2227,7 @@ SQLMATH_FUNC static void sql1_lgbm_trainfromdataset_func0(
         &model_len,             // int64_t *out_len,
         model_str);             // char *out_str
     LGBM_ASSERT_OK();
-    sqlite3_result_blob(context, model_str, model_len, sqlite3_free);
+    sqlite3_result_blob(context, model_str, (int) model_len, sqlite3_free);
   catch_error:
     LGBM_BoosterFree(booster);
     if (errcode) {
@@ -2385,181 +2386,55 @@ SQLMATH_FUNC static void sql1_roundorzero_func(
 }
 
 // SQLMATH_FUNC sql1_sha256_func - start
-void sha256_transform(
-    uint32_t * state,
-    const unsigned char *data
-) {
-// This function will calculate sha256 <hash> from <message>.
-// https://datatracker.ietf.org/doc/html/rfc4634
-#define ROTLEFT(aa, bb) (((aa) << (bb)) | ((aa) >> (32-(bb))))
-#define ROTRIGHT(aa, bb) (((aa) >> (bb)) | ((aa) << (32-(bb))))
-#define SHA256_CH(xx, yy, zz) (((xx) & (yy)) ^ (~(xx) & (zz)))
-#define SHA256_EP0(xx) (ROTRIGHT(xx, 2) ^ ROTRIGHT(xx, 13) ^ ROTRIGHT(xx, 22))
-#define SHA256_EP1(xx) (ROTRIGHT(xx, 6) ^ ROTRIGHT(xx, 11) ^ ROTRIGHT(xx, 25))
-#define SHA256_MAJ(xx, yy, zz) (((xx) & (yy)) ^ ((xx) & (zz)) ^ ((yy) & (zz)))
-#define SHA256_SIG0(xx) (ROTRIGHT(xx, 7) ^ ROTRIGHT(xx, 18) ^ ((xx) >> 3))
-#define SHA256_SIG1(xx) (ROTRIGHT(xx, 17) ^ ROTRIGHT(xx, 19) ^ ((xx) >> 10))
-    static const uint32_t kk[64] = {
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
-        0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
-        0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
-        0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
-        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
-        0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
-        0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
-        0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
-        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-    };
-    int ii = 0;
-    int jj = 0;
-    uint32_t mm[64] = { 0 };
-    uint32_t t1 = 0;
-    uint32_t t2 = 0;
-    for (ii = 0, jj = 0; ii < 16; ii += 1, jj += 4) {
-        mm[ii] = (data[jj] << 24)       //
-            | (data[jj + 1] << 16)      //
-            | (data[jj + 2] << 8)       //
-            | (data[jj + 3]);
-    }
-    for (; ii < 64; ii += 1) {
-        mm[ii] =
-            SHA256_SIG1(mm[ii - 2]) + mm[ii - 7] + SHA256_SIG0(mm[ii - 15]) +
-            mm[ii - 16];
-    }
-    uint32_t aa = state[0];
-    uint32_t bb = state[1];
-    uint32_t cc = state[2];
-    uint32_t dd = state[3];
-    uint32_t ee = state[4];
-    uint32_t ff = state[5];
-    uint32_t gg = state[6];
-    uint32_t hh = state[7];
-    for (ii = 0; ii < 64; ii += 1) {
-        t1 = hh + SHA256_EP1(ee) + SHA256_CH(ee, ff, gg) + kk[ii] + mm[ii];
-        t2 = SHA256_EP0(aa) + SHA256_MAJ(aa, bb, cc);
-        hh = gg;
-        gg = ff;
-        ff = ee;
-        ee = dd + t1;
-        dd = cc;
-        cc = bb;
-        bb = aa;
-        aa = t1 + t2;
-    }
-    state[0] += aa;
-    state[1] += bb;
-    state[2] += cc;
-    state[3] += dd;
-    state[4] += ee;
-    state[5] += ff;
-    state[6] += gg;
-    state[7] += hh;
-}
-
-void sha256_sum(
-    const unsigned char *message,
-    size_t messagelen,
-    unsigned char *hash
-) {
-// This function will calculate sha256 <hash> from <message>.
-// https://datatracker.ietf.org/doc/html/rfc4634
-    int datalen = 0;
-    uint64_t bitlen = 0;
-    unsigned char data[64] = { 0 };
-    uint32_t state[8] = {
-        0x6a09e667,
-        0xbb67ae85,
-        0x3c6ef372,
-        0xa54ff53a,
-        0x510e527f,
-        0x9b05688c,
-        0x1f83d9ab,
-        0x5be0cd19
-    };
-    for (size_t ii = 0; ii < messagelen; ii += 1) {
-        data[datalen] = message[ii];
-        datalen += 1;
-        if (datalen == 64) {
-            sha256_transform(state, data);
-            bitlen += 512;
-            datalen = 0;
-        }
-    }
-    uint32_t ii;
-    ii = datalen;
-    // Pad whatever data is left in the buffer.
-    if (datalen < 56) {
-        data[ii] = 0x80;
-        ii += 1;
-        while (ii < 56) {
-            data[ii] = 0x00;
-            ii += 1;
-        }
-    } else {
-        data[ii] = 0x80;
-        ii += 1;
-        while (ii < 64) {
-            data[ii] = 0x00;
-            ii += 1;
-        }
-        sha256_transform(state, data);
-        memset(data, 0, 56);
-    }
-    // Append to the padding the total message'ss length in bits and transform.
-    bitlen += datalen * 8;
-    data[63] = bitlen;
-    data[62] = bitlen >> 8;
-    data[61] = bitlen >> 16;
-    data[60] = bitlen >> 24;
-    data[59] = bitlen >> 32;
-    data[58] = bitlen >> 40;
-    data[57] = bitlen >> 48;
-    data[56] = bitlen >> 56;
-    sha256_transform(state, data);
-    // Since this implementation uses little endian byte ordering
-    // and SHA uses big endian, reverse all the bytes
-    // when copying the final state to the output hash.
-    for (ii = 0; ii < 4; ii += 1) {
-        hash[ii] = (state[0] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 4] = (state[1] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 8] = (state[2] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 12] = (state[3] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 16] = (state[4] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 20] = (state[5] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 24] = (state[6] >> (24 - ii * 8)) & 0x000000ff;
-        hash[ii + 28] = (state[7] >> (24 - ii * 8)) & 0x000000ff;
-    }
-}
-
-SQLMATH_FUNC static void sql1_sha256_func(
+static void sql1_sha256_func(
     sqlite3_context * context,
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will calculate sha256 <hash> from <message>.
-// https://datatracker.ietf.org/doc/html/rfc4634
+/*
+** The sha256(X) function computes the SHA3 hash of the input X, or NULL if
+** X is NULL.  If inputs X is text, the UTF-8 rendering of that text is
+** used to compute the hash.  If X is a BLOB, then the binary data of the
+** blob is used to compute the hash.  If X is an integer or real number,
+** then that number if converted into UTF-8 text and the hash is computed
+** over the text.
+*/
     UNUSED_PARAMETER(argc);
     int eType = sqlite3_value_type(argv[0]);
-    int nByte = sqlite3_value_bytes(argv[0]);
-    unsigned char hash[32] = { 0 };
-    // fprintf(stderr, "\nsqlmath.sha256 - eType=%d, nByte=%d, msg=%s\n",
-    //     eType, nByte, (char *) sqlite3_value_blob(argv[0]));
+    size_t nByte = sqlite3_value_bytes(argv[0]);
     if (eType == SQLITE_NULL) {
         return;
     }
+    const unsigned char *message;
     if (eType == SQLITE_BLOB) {
-        sha256_sum(sqlite3_value_blob(argv[0]), nByte, hash);
+        message = sqlite3_value_blob(argv[0]);
     } else {
-        sha256_sum(sqlite3_value_text(argv[0]), nByte, hash);
+        message = sqlite3_value_text(argv[0]);
+    }
+    unsigned char hash[32] = {
+        0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14,
+        0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f, 0xb9, 0x24,
+        0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c,
+        0xa4, 0x95, 0x99, 0x1b, 0x78, 0x52, 0xb8, 0x55
+    };
+    if (nByte == 0) {
+        sqlite3_result_blob(context, hash, sizeof(hash), SQLITE_TRANSIENT);
+        return;
+    }
+    struct tc_sha256_state_struct sha_state;
+    if (tc_sha256_init(&sha_state) != TC_CRYPTO_SUCCESS) {
+        goto catch_error;
+    }
+    if (tc_sha256_update(&sha_state, message, nByte) != TC_CRYPTO_SUCCESS) {
+        goto catch_error;
+    }
+    if (tc_sha256_final(hash, &sha_state) != TC_CRYPTO_SUCCESS) {
+        goto catch_error;
     }
     sqlite3_result_blob(context, hash, sizeof(hash), SQLITE_TRANSIENT);
+    return;
+  catch_error:
+    sqlite3_result_error(context, "sha256 - could not hash", -1);
 }
 
 // SQLMATH_FUNC sql1_sha256_func - end
@@ -2832,7 +2707,7 @@ SQLMATH_FUNC static void sql2_lgbm_datasetcreatefromtable_final0(
     // label - init
     DatasetHandle out = NULL;
     const int ncol = (int) dblwin->ncol;
-    const int nrow = (int) dblwin->nbody / dblwin->ncol;
+    const int nrow = (int) (dblwin->nbody / dblwin->ncol);
     int errcode = 0;
     label = sqlite3_malloc(nrow * sizeof(float));
     if (label == NULL) {
@@ -3090,7 +2965,7 @@ SQLMATH_FUNC static void sql2_quantile_final(
     if (dblwin->nbody == 0) {
         goto catch_error;
     }
-    sqlite3_result_double(context, quantile(dblwin_body, dblwin->nbody,
+    sqlite3_result_double(context, quantile(dblwin_body, (int) dblwin->nbody,
             dblwin_head[0]));
   catch_error:
     doublewinAggfree(dblwinAgg);
@@ -3226,7 +3101,7 @@ SQLMATH_FUNC static void sql3_win_avg2_value(
 // This function will calculate running-avg.
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
-    const int ncol = dblwin->ncol;
+    const int ncol = (int) dblwin->ncol;
     if (!ncol) {
         return;
     }
@@ -3480,7 +3355,8 @@ SQLMATH_FUNC static void sql3_win_coinflip2_value(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     // dblwin - result
-    doublearrayResult(context, dblwin_head, dblwin->nhead, SQLITE_TRANSIENT);
+    doublearrayResult(context, dblwin_head, (int) dblwin->nhead,
+        SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_coinflip2_final(
@@ -3695,7 +3571,7 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
     }
     // dblwin - calculate ema
     arg_alpha = dblwin_head[ncol + 0];
-    const int nrow = dblwin->nbody / ncol;
+    const int nrow = (int) dblwin->nbody / ncol;
     argv += 1;
     for (int ii = 0; ii < ncol; ii += 1) {
         sqlite3_value_double_or_prev(argv[0], &dblwin_head[ii]);
@@ -3801,7 +3677,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_inverse(
     // dblwin - inverse
     const int ncol = argc / 2;
     const int nstep = ncol * 2;
-    const int nn = dblwin->nbody - nstep;
+    const int nn = (int) dblwin->nbody - nstep;
     double *arr = dblwin_body + 1;
     double *xx0 = dblwin_body + 0 + (int) dblwin->waa;
     for (int ii = 0; ii < ncol; ii += 1) {
@@ -3845,7 +3721,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
     }
     // dblwin - calculate quantile
     const int nstep = ncol * 2;
-    const int nn = dblwin->nbody / nstep;
+    const int nn = (int) dblwin->nbody / nstep;
     double *arr = dblwin_body + 1;
     for (int ii = 0; ii < ncol; ii += 1) {
         // init argQuantile
@@ -3858,7 +3734,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_step(
             return;
         }
         argQuantile *= (nn - 1);
-        const int kk1 = floor(argQuantile) * nstep;
+        const int kk1 = (int) floor(argQuantile) * nstep;
         const int kk2 = kk1 + nstep;
         argQuantile = fmod(argQuantile, 1);
         // calculate quantile
@@ -4224,8 +4100,9 @@ SQLMATH_FUNC static void sql3_win_sinefit2_value(
     doublearrayResult(context, dblwin_head,     //
         // If x-current == x-refit, then include extra data needed for refit.
         // This data is normally not included, due to memory performance.
-        wsf->xx2 == wsf->xx1 ? dblwin->nhead + dblwin->nbody : dblwin->nhead,
-        SQLITE_TRANSIENT);
+        (int) (wsf->xx2 == wsf->xx1     //
+            ? dblwin->nhead + dblwin->nbody     //
+            : dblwin->nhead), SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_sinefit2_final(
@@ -4285,8 +4162,8 @@ static void sql3_win_sinefit2_step(
     const int modeSnr = sqlite3_value_int(argv[0]);
     argv += argc0;
     WinSinefit *wsf = NULL;
-    const int waa = dblwin->waa;
-    const int wbb = dblwin->wnn ? dblwin->waa : dblwin->nbody;
+    const int waa = (int) dblwin->waa;
+    const int wbb = (int) (dblwin->wnn ? dblwin->waa : dblwin->nbody);
     double *xxyy = NULL;
     for (int ii = 0; ii < ncol; ii += 1) {
         // dblwin - init xx, yy, rr
@@ -4323,7 +4200,8 @@ static void sql3_win_sinefit2_step(
         winSinefitLnr(wsf, xxyy, wbb);
         // dblwin - calculate snr
         if (modeSnr) {
-            winSinefitSnr(wsf, xxyy, wbb, dblwin->nbody, dblwin->ncol);
+            winSinefitSnr(wsf, xxyy, wbb, (int) dblwin->nbody,
+                (int) dblwin->ncol);
         }
         // increment counter
         wsf += 1;
@@ -4510,7 +4388,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
         return;
     }
     const WinSinefit *blob0 = sqlite3_value_blob(argv[0]);
-    const int nbody = blob0->nnn * ncol * WIN_SINEFIT_STEP;
+    const int nbody = (int) blob0->nnn * ncol * WIN_SINEFIT_STEP;
     if (blob0->nnn <= 0
         || bytes != (ncol * WIN_SINEFIT_N + nbody) * sizeof(double)) {
         sqlite3_result_error(context,
@@ -4530,7 +4408,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
     WinSinefit *wsf = wsf0;
     argv += argc0;
     double *xxyy = (double *) (wsf0 + ncol);
-    const int wbb = wsf->wbb;
+    const int wbb = (int) wsf->wbb;
     if (!(0 <= wbb && wbb + ncol * WIN_SINEFIT_STEP <= nbody)) {
         goto catch_error;
     }
@@ -4616,8 +4494,8 @@ SQLMATH_FUNC static void sql3_win_sum2_value(
         return;
     }
     // dblwin - result
-    doublearrayResult(context, dblwin_head + (int) dblwin->ncol, dblwin->ncol,
-        SQLITE_TRANSIENT);
+    doublearrayResult(context, dblwin_head + (int) dblwin->ncol,
+        (int) dblwin->ncol, SQLITE_TRANSIENT);
 }
 
 SQLMATH_FUNC static void sql3_win_sum2_final(
@@ -4742,7 +4620,7 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC3(win_sum2, -1, 0);
     return 0;
 }
-#endif                          // SRC_SQLMATH_BASE_C3
+#endif                          // SRC_SQLMATH_BASE_C2
 /*
 file sqlmath_base - end
 */
@@ -4751,8 +4629,7 @@ file sqlmath_base - end
 /*
 file sqlmath_nodejs - start
 */
-#if defined(SRC_SQLMATH_NODEJS_C2) && !defined(SQLMATH_NODEJS_C3)
-#define SQLMATH_NODEJS_C3
+#if defined(SRC_SQLMATH_NODEJS_C2)
 
 
 #if defined(UNDEFINED)          // cpplint-hack
@@ -5037,7 +4914,7 @@ napi_value napi_module_sqlmath_init(
 }
 
 NAPI_MODULE(NODE_GYP_MODULE_NAME, napi_module_sqlmath_init);
-#endif                          // SQLMATH_NODEJS_C3
+#endif                          // SQLMATH_NODEJS_C2
 /*
 file sqlmath_nodejs - end
 */
@@ -5046,8 +4923,7 @@ file sqlmath_nodejs - end
 /*
 file sqlmath_python - start
 */
-#if defined(SRC_SQLMATH_PYTHON_C2) && !defined(SRC_SQLMATH_PYTHON_C3)
-#define SRC_SQLMATH_PYTHON_C3
+#if defined(SRC_SQLMATH_PYTHON_C2)
 
 
 #include <Python.h>
@@ -5219,7 +5095,8 @@ PyMODINIT_FUNC PyInit__sqlmath(
     }
     return PyModule_Create(&_sqlmathmodule);
 }
-#endif                          // SRC_SQLMATH_PYTHON_C3
+#endif                          // SRC_SQLMATH_PYTHON_C2
 /*
 file sqlmath_python - end
 */
+#endif                          // SRC_SQLMATH_H2

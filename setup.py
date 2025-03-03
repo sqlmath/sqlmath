@@ -100,7 +100,7 @@ async def build_ext_async(): # noqa: C901
         elif is_win32:
             arg_list += [
                 "/W3",
-                # "/WX",
+                "/WX",
             ]
         elif cdefine in [
             "SRC_SQLMATH_BASE",

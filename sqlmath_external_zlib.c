@@ -2,8 +2,7 @@
 #define SRC_ZLIB_H2
 
 
-#if defined(SRC_ZLIB_C2) && !defined(SRC_ZLIB_C3)
-#define SRC_ZLIB_C3
+#if defined(SRC_ZLIB_C2)
 
 
 #if defined(_WIN32)
@@ -12143,7 +12142,7 @@ file none
 #endif                          // __clang__
 
 
-#else                           // SRC_ZLIB_C3
+#else                           // SRC_ZLIB_C2
 
 
 #include <stddef.h>
@@ -12296,7 +12295,5 @@ uLong ZEXPORT compressBound(uLong sourceLen);
 
 
 // *INDENT-ON*
-
-
-#endif                          // SRC_ZLIB_C3
+#endif                          // SRC_ZLIB_C2
 #endif                          // SRC_ZLIB_H2

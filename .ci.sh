@@ -538,6 +538,7 @@ https://www.sqlite.org/2024/sqlite-autoconf-3470200.tar.gz
         if (uname | grep -q "MING\|MSYS")
         then
             shIndentC sqlmath_base.c
+            shIndentC sqlmath_base.h
             shIndentC sqlmath_custom.c
             shIndentC sqlmath_external_sqlite.c
             shIndentC sqlmath_external_zlib.c

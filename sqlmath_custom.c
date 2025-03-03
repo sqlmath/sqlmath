@@ -25,6 +25,7 @@
 
 
 // header
+#undef SRC_SQLMATH_BASE_C2
 #include "sqlmath_base.c"
 
 
