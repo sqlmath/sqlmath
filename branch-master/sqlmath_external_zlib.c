@@ -1,22 +1,28 @@
-#define SRC_SQLITE_ZLIB_C2
+#if !defined(SRC_ZLIB_H2)
+#define SRC_ZLIB_H2
 
 
-#define SRC_SQLITE3EXT_H2
-#undef SRC_SQLITE_BASE_C2
-#include "sqlmath_external_sqlite.c"
+#if defined(SRC_ZLIB_C2)
+
+
+#if defined(_WIN32)
+#endif                          // _WIN32
+#if defined(__GNUC__)
+#   pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
+#   pragma GCC diagnostic ignored "-Wunused-function"
+#endif                          // __GNUC__
+#if defined(__clang__)
+#   pragma clang diagnostic push
+#   pragma clang diagnostic ignored "-Wimplicit-function-declaration"
+#   pragma clang diagnostic ignored "-Wunused-function"
+#endif                          // __clang__
 
 
 #define DIST_CODE_LEN 512
 #define NO_GZIP
-#define ZEXPORT
 #define ZEXTERN
-#define ZLIB_INTERNAL
 
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-function"
-#endif                          // __clang__
 // *INDENT-OFF*
 /*jslint-disable*/
 /*
@@ -135,7 +141,7 @@ shRollupFetch
             "substr": ""
         },
         {
-            "aa": "^static (.*? (?:compress|uncompress)\\()",
+            "aa": "^static (.*?\\bZEXPORT (?:compress|uncompress))",
             "bb": "// hack-zlib - export\n$1",
             "flags": "gm",
             "substr": ""
@@ -2013,7 +2019,8 @@ ZEXTERN int ZEXPORT compress(Bytef *dest,   uLongf *destLen,
 */
 
 // hack-zlib - optimization - static
-static ZEXTERN int ZEXPORT compress2(Bytef *dest,   uLongf *destLen,
+// hack-zlib - export
+ZEXTERN int ZEXPORT compress2(Bytef *dest,   uLongf *destLen,
                               const Bytef *source, uLong sourceLen,
                               int level);
 /*
@@ -2030,7 +2037,8 @@ static ZEXTERN int ZEXPORT compress2(Bytef *dest,   uLongf *destLen,
 */
 
 // hack-zlib - optimization - static
-static ZEXTERN uLong ZEXPORT compressBound(uLong sourceLen);
+// hack-zlib - export
+ZEXTERN uLong ZEXPORT compressBound(uLong sourceLen);
 /*
      compressBound() returns an upper bound on the compressed size after
    compress() or compress2() on sourceLen bytes.  It would be used before a
@@ -2058,7 +2066,8 @@ ZEXTERN int ZEXPORT uncompress(Bytef *dest,   uLongf *destLen,
 */
 
 // hack-zlib - optimization - static
-static ZEXTERN int ZEXPORT uncompress2(Bytef *dest,   uLongf *destLen,
+// hack-zlib - export
+ZEXTERN int ZEXPORT uncompress2(Bytef *dest,   uLongf *destLen,
                                 const Bytef *source, uLong *sourceLen);
 /*
      Same as uncompress, except that sourceLen is a pointer, where the
@@ -10069,7 +10078,8 @@ file https://github.com/madler/zlib/blob/v1.3.1/compress.c
    Z_STREAM_ERROR if the level parameter is invalid.
 */
 // hack-zlib - optimization - static
-static int ZEXPORT compress2(Bytef *dest, uLongf *destLen, const Bytef *source,
+// hack-zlib - export
+int ZEXPORT compress2(Bytef *dest, uLongf *destLen, const Bytef *source,
                       uLong sourceLen, int level) {
     z_stream stream;
     int err;
@@ -10122,7 +10132,8 @@ int ZEXPORT compress(Bytef *dest, uLongf *destLen, const Bytef *source,
    this function needs to be updated.
  */
 // hack-zlib - optimization - static
-static uLong ZEXPORT compressBound(uLong sourceLen) {
+// hack-zlib - export
+uLong ZEXPORT compressBound(uLong sourceLen) {
     return sourceLen + (sourceLen >> 12) + (sourceLen >> 14) +
            (sourceLen >> 25) + 13;
 }
@@ -10159,7 +10170,8 @@ file https://github.com/madler/zlib/blob/v1.3.1/uncompr.c
    an incomplete zlib stream.
 */
 // hack-zlib - optimization - static
-static int ZEXPORT uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source,
+// hack-zlib - export
+int ZEXPORT uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source,
                         uLong *sourceLen) {
     z_stream stream;
     int err;
@@ -12122,6 +12134,165 @@ file none
 
 
 // *INDENT-ON*
+
+
 #ifdef __clang__
-#pragma clang diagnostic pop
+#   pragma clang diagnostic pop
 #endif                          // __clang__
+
+
+#else                           // SRC_ZLIB_C2
+
+
+#include <stddef.h>
+//
+#define Z_OK 0
+#define ZEXPORT
+//
+typedef size_t z_size_t;
+typedef unsigned long z_crc_t;
+typedef void *voidp;
+typedef void *voidpf;
+typedef void const *voidpc;
+//
+typedef unsigned char Byte;
+typedef Byte Bytef;
+//
+typedef unsigned int uInt;
+typedef uInt uIntf;
+//
+typedef unsigned long uLong;
+typedef uLong uLongf;
+//
+typedef struct gz_header_s gz_header;
+typedef gz_header *gz_headerp;
+//
+typedef struct z_stream_s z_stream;
+typedef z_stream *z_streamp;
+
+
+// *INDENT-OFF*
+
+
+// char *ZEXPORT gzgets(gzFile file, char *buf, int len);
+// const char *ZEXPORT gzerror(gzFile file, int *errnum);
+// const char *ZEXPORT zError(int err);
+// const char *ZEXPORT zError(int);
+// const char *ZEXPORT zlibVersion(void);
+// const z_crc_t *ZEXPORT get_crc_table(void);
+// gzFile ZEXPORT gzdopen(int fd, const char *mode);
+// gzFile ZEXPORT gzopen(const char *, const char *);
+// gzFile ZEXPORT gzopen(const char *path, const char *mode);
+// gzFile ZEXPORT gzopen64(const char *, const char *);
+// gzFile ZEXPORT gzopen64(const char *path, const char *mode);
+// gzFile ZEXPORT gzopen_w(const wchar_t *path, const char *mode);
+int ZEXPORT compress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen);
+// int ZEXPORT compress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen, int level);
+// int ZEXPORT deflate(z_streamp strm, int flush);
+// int ZEXPORT deflateCopy(z_streamp dest, z_streamp source);
+// int ZEXPORT deflateEnd(z_streamp strm);
+// int ZEXPORT deflateGetDictionary(z_streamp strm, Bytef *dictionary, uInt *dictLength);
+// int ZEXPORT deflateInit(z_streamp strm, int level);
+// int ZEXPORT deflateInit2(z_streamp strm, int level, int method, int windowBits, int memLevel, int strategy);
+// int ZEXPORT deflateInit2_(z_streamp strm, int level, int method, int windowBits, int memLevel, int strategy, const char *version, int stream_size);
+// int ZEXPORT deflateInit_(z_streamp strm, int level, const char *version, int stream_size);
+// int ZEXPORT deflateParams(z_streamp strm, int level, int strategy);
+// int ZEXPORT deflatePending(z_streamp strm, unsigned *pending, int *bits);
+// int ZEXPORT deflatePrime(z_streamp strm, int bits, int value);
+// int ZEXPORT deflateReset(z_streamp strm);
+// int ZEXPORT deflateResetKeep(z_streamp strm);
+// int ZEXPORT deflateResetKeep(z_streamp);
+// int ZEXPORT deflateSetDictionary(z_streamp strm, const Bytef *dictionary, uInt dictLength);
+// int ZEXPORT deflateSetHeader(z_streamp strm, gz_headerp head);
+// int ZEXPORT deflateTune(z_streamp strm, int good_length, int max_lazy, int nice_length, int max_chain);
+// int ZEXPORT gzbuffer(gzFile file, unsigned size);
+// int ZEXPORT gzclose(gzFile file);
+// int ZEXPORT gzclose_r(gzFile file);
+// int ZEXPORT gzclose_w(gzFile file);
+// int ZEXPORT gzdirect(gzFile file);
+// int ZEXPORT gzeof(gzFile file);
+// int ZEXPORT gzflush(gzFile file, int flush);
+// int ZEXPORT gzgetc(gzFile file);
+// int ZEXPORT gzgetc_(gzFile file);
+// int ZEXPORT gzputc(gzFile file, int c);
+// int ZEXPORT gzputs(gzFile file, const char *s);
+// int ZEXPORT gzread(gzFile file, voidp buf, unsigned len);
+// int ZEXPORT gzrewind(gzFile file);
+// int ZEXPORT gzsetparams(gzFile file, int level, int strategy);
+// int ZEXPORT gzungetc(int c, gzFile file);
+// int ZEXPORT gzwrite(gzFile file, voidpc buf, unsigned len);
+// int ZEXPORT inflate(z_streamp strm, int flush);
+// int ZEXPORT inflateBack(z_streamp strm, in_func in, void *in_desc, out_func out, void *out_desc);
+// int ZEXPORT inflateBackEnd(z_streamp strm);
+// int ZEXPORT inflateBackInit(z_streamp strm, int windowBits, unsigned char *window);
+// int ZEXPORT inflateBackInit_(z_streamp strm, int windowBits, unsigned char *window, const char *version, int stream_size);
+// int ZEXPORT inflateCopy(z_streamp dest, z_streamp source);
+// int ZEXPORT inflateEnd(z_streamp strm);
+// int ZEXPORT inflateGetDictionary(z_streamp strm, Bytef *dictionary, uInt *dictLength);
+// int ZEXPORT inflateGetHeader(z_streamp strm, gz_headerp head);
+// int ZEXPORT inflateInit(z_streamp strm);
+// int ZEXPORT inflateInit2(z_streamp strm, int windowBits);
+// int ZEXPORT inflateInit2_(z_streamp strm, int windowBits, const char *version, int stream_size);
+// int ZEXPORT inflateInit_(z_streamp strm, const char *version, int stream_size);
+// int ZEXPORT inflatePrime(z_streamp strm, int bits, int value);
+// int ZEXPORT inflateReset(z_streamp strm);
+// int ZEXPORT inflateReset2(z_streamp strm, int windowBits);
+// int ZEXPORT inflateResetKeep(z_streamp strm);
+// int ZEXPORT inflateResetKeep(z_streamp);
+// int ZEXPORT inflateSetDictionary(z_streamp strm, const Bytef *dictionary, uInt dictLength);
+// int ZEXPORT inflateSync(z_streamp strm);
+// int ZEXPORT inflateSyncPoint(z_streamp strm);
+// int ZEXPORT inflateSyncPoint(z_streamp);
+// int ZEXPORT inflateUndermine(z_streamp strm, int subvert);
+// int ZEXPORT inflateUndermine(z_streamp, int);
+// int ZEXPORT inflateValidate(z_streamp strm, int check);
+// int ZEXPORT inflateValidate(z_streamp, int);
+int ZEXPORT uncompress(Bytef *dest, uLongf *destLen, const Bytef *source, uLong sourceLen);
+// int ZEXPORT uncompress2(Bytef *dest, uLongf *destLen, const Bytef *source, uLong *sourceLen);
+// long ZEXPORT inflateMark(z_streamp strm);
+// uLong ZEXPORT adler32(uLong adler, const Bytef *buf, uInt len);
+// uLong ZEXPORT adler32_combine(uLong adler1, uLong adler2, z_off_t len2);
+// uLong ZEXPORT adler32_combine(uLong, uLong, z_off_t);
+// uLong ZEXPORT adler32_combine64(uLong adler1, uLong adler2, z_off64_t len2);
+// uLong ZEXPORT adler32_combine64(uLong, uLong, z_off64_t);
+// uLong ZEXPORT adler32_combine64(uLong, uLong, z_off_t);
+// uLong ZEXPORT adler32_z(uLong adler, const Bytef *buf, z_size_t len);
+uLong ZEXPORT compressBound(uLong sourceLen);
+// uLong ZEXPORT crc32(uLong crc, const Bytef *buf, uInt len);
+// uLong ZEXPORT crc32_combine(uLong crc1, uLong crc2, z_off_t len2);
+// uLong ZEXPORT crc32_combine(uLong, uLong, z_off_t);
+// uLong ZEXPORT crc32_combine64(uLong, uLong, z_off64_t);
+// uLong ZEXPORT crc32_combine64(uLong, uLong, z_off_t);
+// uLong ZEXPORT crc32_combine_gen(z_off_t len2);
+// uLong ZEXPORT crc32_combine_gen(z_off_t);
+// uLong ZEXPORT crc32_combine_gen64(z_off64_t);
+// uLong ZEXPORT crc32_combine_gen64(z_off_t);
+// uLong ZEXPORT crc32_combine_op(uLong crc1, uLong crc2, uLong op);
+// uLong ZEXPORT crc32_z(uLong crc, const Bytef *buf, z_size_t len);
+// uLong ZEXPORT deflateBound(z_streamp strm, uLong sourceLen);
+// uLong ZEXPORT zlibCompileFlags(void);
+// unsigned long ZEXPORT inflateCodesUsed(z_streamp strm);
+// unsigned long ZEXPORT inflateCodesUsed(z_streamp);
+// void ZEXPORT gzclearerr(gzFile file);
+// z_off64_t ZEXPORT gzoffset64(gzFile file);
+// z_off64_t ZEXPORT gzoffset64(gzFile);
+// z_off64_t ZEXPORT gzseek64(gzFile file, z_off64_t offset, int whence);
+// z_off64_t ZEXPORT gzseek64(gzFile, z_off64_t, int);
+// z_off64_t ZEXPORT gztell64(gzFile file);
+// z_off64_t ZEXPORT gztell64(gzFile);
+// z_off_t ZEXPORT gzoffset(gzFile file);
+// z_off_t ZEXPORT gzoffset(gzFile);
+// z_off_t ZEXPORT gzoffset64(gzFile);
+// z_off_t ZEXPORT gzseek(gzFile file, z_off_t offset, int whence);
+// z_off_t ZEXPORT gzseek(gzFile, z_off_t, int);
+// z_off_t ZEXPORT gzseek64(gzFile, z_off_t, int);
+// z_off_t ZEXPORT gztell(gzFile file);
+// z_off_t ZEXPORT gztell(gzFile);
+// z_off_t ZEXPORT gztell64(gzFile);
+// z_size_t ZEXPORT gzfread(voidp buf, z_size_t size, z_size_t nitems, gzFile file);
+// z_size_t ZEXPORT gzfwrite(voidpc buf, z_size_t size, z_size_t nitems, gzFile file);
+
+
+// *INDENT-ON*
+#endif                          // SRC_ZLIB_C2
+#endif                          // SRC_ZLIB_H2
