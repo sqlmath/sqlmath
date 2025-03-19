@@ -2526,37 +2526,40 @@ SQLMATH_FUNC static void sql1_zlib_compress_func(
     sqlite3_value ** argv
 ) {
 // This function will compress <argv[0]> using zlib's compress() function,
-// with a 4-byte header storing original uncompressed size.
+// with a 4-byte header storing <original_size>.
     UNUSED_PARAMETER(argc);
-    // Extract the BLOB data and its size
-    const void *input_data = sqlite3_value_blob(argv[0]);
-    if (input_data == NULL) {
-        sqlite3_result_error(context, "Cannot compress() NULL blob", -1);
+    // init original_data
+    const void *original_data = sqlite3_value_blob(argv[0]);
+    if (original_data == NULL) {
+        sqlite3_result_error(context, "zlib_compress - cannot compress NULL",
+            -1);
         return;
     }
-    int input_size = sqlite3_value_bytes(argv[0]);
-    // Estimate the maximum size of the compressed data
-    uLongf output_size = compressBound(input_size);
-    // Allocate memory for the final result (header + compressed data)
-    unsigned char *result = (unsigned char *) sqlite3_malloc(4 + output_size);
-    if (result == NULL) {
+    // init original_size
+    int original_size = sqlite3_value_bytes(argv[0]);
+    // init compress_size
+    uLongf compress_size = compressBound(original_size);
+    // init compress_data
+    unsigned char *compress_data =
+        (unsigned char *) sqlite3_malloc(4 + compress_size);
+    if (compress_data == NULL) {
         sqlite3_result_error_nomem(context);
         return;
     }
-    // Perform the compression using zlib
-    int ret = compress(result + 4, &output_size, input_data, input_size);
-    if (ret != Z_OK) {
-        sqlite3_free(result);
-        sqlite3_result_error(context, "Compression failed", -1);
+    // zlib_compress
+    if (compress(compress_data + 4, &compress_size, original_data,
+            original_size) != Z_OK) {
+        sqlite3_free(compress_data);
+        sqlite3_result_error(context, "zlib_compress - failed compress", -1);
         return;
     }
-    // Set the 4-byte header with the original BLOB size (big-endian)
-    result[0] = (input_size >> 24) & 0xFF;
-    result[1] = (input_size >> 16) & 0xFF;
-    result[2] = (input_size >> 8) & 0xFF;
-    result[3] = input_size & 0xFF;
-    // Return the compressed result as a BLOB
-    sqlite3_result_blob(context, result, 4 + output_size, sqlite3_free);
+    // set 4-byte header storing <original_size> (big-endian)
+    compress_data[0] = (original_size >> 0x18) & 0xff;
+    compress_data[1] = (original_size >> 0x10) & 0xff;
+    compress_data[2] = (original_size >> 0x08) & 0xff;
+    compress_data[3] = (original_size >> 0x00) & 0xff;
+    sqlite3_result_blob(context, compress_data, 4 + compress_size,
+        sqlite3_free);
 }
 
 SQLMATH_FUNC static void sql1_zlib_uncompress_func(
@@ -2564,53 +2567,49 @@ SQLMATH_FUNC static void sql1_zlib_uncompress_func(
     int argc,
     sqlite3_value ** argv
 ) {
-// This function will uncompress <argv[0]> using zlib's uncompress() function,
-// and assumes input has a 4-byte header storing original uncompressed size.
+// This function will compress <argv[0]> using zlib's compress() function,
+// with a 4-byte header storing <original_size>.
     UNUSED_PARAMETER(argc);
-    // Extract the compressed BLOB data and its size
-    const unsigned char *input_data = sqlite3_value_blob(argv[0]);
-    if (input_data == NULL) {
-        sqlite3_result_error(context, "Cannot uncompress() NULL blob", -1);
+    // init compress_data
+    const unsigned char *compress_data = sqlite3_value_blob(argv[0]);
+    if (compress_data == NULL) {
+        sqlite3_result_error(context,
+            "zlib_uncompress - cannot uncompress NULL", -1);
         return;
     }
-    int input_size = sqlite3_value_bytes(argv[0]);
-    // Ensure the input BLOB is large enough to contain the 4-byte header
-    if (input_size < 4) {
-        sqlite3_result_error(context, "Invalid compressed BLOB, too small",
-            -1);
+    // init compress_size
+    int compress_size = sqlite3_value_bytes(argv[0]) - 4;
+    if (compress_size < 0) {
+        sqlite3_result_error(context, "zlib_uncompress - invalid header", -1);
         return;
     }
-    // Extract the original size from the 4-byte header (big-endian)
-    int original_size = (input_data[0] << 24) | (input_data[1] << 16) |
-        (input_data[2] << 8) | input_data[3];
-    // Ensure the original size is valid (greater than 0 and reasonable)
+    // init original_size
+    uLongf original_size = 0    //
+        | (compress_data[0] << 0x18)    //
+        | (compress_data[1] << 0x10)    //
+        | (compress_data[2] << 0x08)    //
+        | (compress_data[3] << 0x00);
     if (original_size <= 0 || original_size > SIZEOF_BLOB_MAX) {
-        sqlite3_result_error(context, "Invalid original size", -1);
+        sqlite3_result_error(context,
+            "zlib_uncompress - invalid original_size", -1);
         return;
     }
-    // The compressed data is everything after the 4-byte header
-    const void *compressed_data = input_data + 4;
-    int compressed_size = input_size - 4;
-    // Allocate memory for the decompressed data
-    unsigned char *decompressed_data =
+    // init original_data
+    unsigned char *original_data =
         (unsigned char *) sqlite3_malloc(original_size);
-    if (decompressed_data == NULL) {
+    if (original_data == NULL) {
         sqlite3_result_error_nomem(context);
         return;
     }
-    // Perform decompression using zlib
-    uLongf decompressed_size = original_size;
-    int ret =
-        uncompress(decompressed_data, &decompressed_size, compressed_data,
-        compressed_size);
-    if (ret != Z_OK) {
-        sqlite3_free(decompressed_data);
-        sqlite3_result_error(context, "Decompression failed", -1);
+    // zlib_uncompress
+    if (uncompress(original_data, &original_size, compress_data + 4,
+            compress_size) != Z_OK) {
+        sqlite3_free(original_data);
+        sqlite3_result_error(context, "zlib_uncompress - failed uncompress",
+            -1);
         return;
     }
-    // Return the decompressed data as a BLOB
-    sqlite3_result_blob(context, decompressed_data, decompressed_size,
-        sqlite3_free);
+    sqlite3_result_blob(context, original_data, original_size, sqlite3_free);
 }
 
 // SQLMATH_FUNC sql1_zlib_xxx_func - end
@@ -3817,7 +3816,7 @@ typedef struct WinSinefit {
     double spp;                 // sine phase
     double sww;                 // sine angular-frequency
     //
-    double vxx;                 // y-variance.p
+    double vxx;                 // x-variance.p
     double vxy;                 // xy-covariance.p
     double vyy;                 // y-variance.p
     //
@@ -3888,6 +3887,7 @@ static void winSinefitSnr(
             tmp = sww * xxyy[ii + 0];
             const double sxx = cos(tmp);
             const double syy = sin(tmp);
+            // Use de-trended residual.
             const double szz = inva * xxyy[ii + 2];
             sumxx += sxx * sxx;
             sumxy += sxx * syy;
