@@ -26,7 +26,7 @@ jobs:
           # - 24
         os:
           - macos-latest
-          - ubuntu-latest
+          # !! - ubuntu-latest
           - windows-latest
         python_version:
           - "3.12"

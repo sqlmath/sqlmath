@@ -1,11 +1,12 @@
 # Changelog
 
 # Todo
+- sqlmath - Re-introduce sliding-discrete-fourier-transform to improve initial guess in sql-function WIN_SINEFIT2().
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
 # v2025.2.28
-- sqlmath - Re-introduce sliding-discrete-fourier-transform to improve initial guess in sql-function WIN_SINEFIT2().
+- sqlite - Upgrade to sqlite-v3.49.1.
 - sqlmath - Update sql-function SHA256() to use tinycrypt.
 - jslint - Update shell-function shDirHttplinkValidate() with pragma <\!!--novalidate--\>.
 - ci - Upgrade cpplint.py used in ci to v2.0.0.
