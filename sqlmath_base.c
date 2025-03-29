@@ -314,7 +314,7 @@ typedef struct Doublewin {
     //
     double ncol;                // number of columns
     double waa;                 // window-position-left
-    double wnn;                 // number of window elements
+    double wnn;                 // window-mode
 } Doublewin;
 SQLMATH_API void doublewinAggfree(
     Doublewin ** dblwinAgg
@@ -3050,7 +3050,7 @@ SQLMATH_FUNC static void sql3_win_avg1_inverse(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     if (!dblwin->wnn) {
-        dblwin->wnn = dblwin->nbody;
+        dblwin->wnn = 1;
     }
 }
 
@@ -3262,7 +3262,7 @@ typedef struct AggStdev {
     double mxx;                 // x-average
     double nnn;                 // number of elements
     double vxx;                 // x-variance.p
-    double wnn;                 // number of window elements
+    double wnn;                 // window-mode
     double xx0;                 // x-trailing
 } AggStdev;
 
@@ -3299,7 +3299,7 @@ SQLMATH_FUNC static void sql3_stdev_inverse(
     SQLITE3_AGGREGATE_CONTEXT(AggStdev);
     // agg - welford - increment agg->vxx
     if (sqlite3_value_numeric_type(argv[0]) != SQLITE_NULL) {
-        agg->wnn = agg->nnn;
+        agg->wnn = 1;
         agg->xx0 = sqlite3_value_double(argv[0]);
     }
 }
@@ -3537,7 +3537,7 @@ SQLMATH_FUNC static void sql3_win_ema1_inverse(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     if (!dblwin->wnn) {
-        dblwin->wnn = dblwin->nbody;
+        dblwin->wnn = 1;
     }
 }
 
@@ -3671,7 +3671,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_inverse(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     if (!dblwin->wnn) {
-        dblwin->wnn = dblwin->nbody;
+        dblwin->wnn = 1;
     }
     // dblwin - inverse
     const int ncol = argc / 2;
@@ -3821,7 +3821,7 @@ typedef struct WinSinefit {
     double vyy;                 // y-variance.p
     //
     double wbb;                 // window-position-right
-    double wnn;                 // number of window elements
+    double wnn;                 // window-mode
     //
     double xx0;                 // x-trailing
     double xx1;                 // x-current
@@ -3830,7 +3830,8 @@ typedef struct WinSinefit {
     double yy1;                 // y-current
 } WinSinefit;
 static const int WIN_SINEFIT_N = sizeof(WinSinefit) / sizeof(double);
-static const int WIN_SINEFIT_STEP = 3 + 2;
+static const int WIN_SINEFIT_STEP = 3 + 0;
+// static const int WIN_SINEFIT_STEP = 3 + 2;
 
 static void winSinefitDft(
     WinSinefit * wsf,
@@ -4148,7 +4149,7 @@ SQLMATH_FUNC static void sql3_win_sinefit2_inverse(
     // dblwin - init
     DOUBLEWIN_AGGREGATE_CONTEXT(0);
     if (!dblwin->wnn) {
-        dblwin->wnn = dblwin->nbody;
+        dblwin->wnn = 1;
     }
 }
 
