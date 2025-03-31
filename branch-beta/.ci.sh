@@ -87,6 +87,7 @@ process.stdout.write(
         # install graphicsmagick
         if (! command -v gm >/dev/null)
         then
+            sudo apt-get update
             sudo apt-get install -y graphicsmagick
         fi
         # mkdir .artifact/
@@ -513,16 +514,16 @@ shSqlmathUpdate() {(set -e
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         # shRollupFetch
-        if [ ! -d .sqlite-autoconf-3470200 ]
+        if [ ! -d .sqlite-autoconf-3490100 ]
         then
             for URL in \
 https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
-https://www.sqlite.org/2024/sqlite-autoconf-3470200.tar.gz
+https://www.sqlite.org/2025/sqlite-autoconf-3490100.tar.gz
             do
                 curl -L "$URL" | tar -xz
             done
             for DIR in \
-                sqlite-autoconf-3470200 \
+                sqlite-autoconf-3490100 \
                 zlib-1.3.1
             do
                 rm -rf ".$DIR"

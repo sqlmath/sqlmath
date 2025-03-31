@@ -1,8 +1,14 @@
 # Changelog
 
 # Todo
+- sqlmath - Re-introduce sliding-discrete-fourier-transform to improve initial guess in sql-function WIN_SINEFIT2().
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
+
+# v2025.3.31
+- ubuntu-ci - bugfix - Fix out-of-date apt-list when installing graphicsmagick.
+- sqlite - Upgrade to sqlite-v3.49.1.
+- Cleanup sql-functions ZLIB_COMPRESS(), ZLIB_UNCOMPRESS().
 
 # v2025.2.28
 - sqlmath - Update sql-function SHA256() to use tinycrypt.

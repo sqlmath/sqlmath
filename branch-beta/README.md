@@ -2,7 +2,7 @@
 
 
 # Status
-| Branch | [master<br>(v2025.2.28)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
+| Branch | [master<br>(v2025.3.31)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
 |--:|:--:|:--:|:--:|
 | CI | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Amaster) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=beta)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Abeta) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=alpha)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Aalpha) |
 | Coverage | [![coverage](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/coverage/index.html) |
@@ -121,11 +121,11 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 ```shell
 python -m build
 #
-twine upload --repository testpypi dist/sqlmath-2025.2.28*
-py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2025.2.28
+twine upload --repository testpypi dist/sqlmath-2025.3.31*
+py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2025.3.31
 #
-twine upload dist/sqlmath-2025.2.28*
-pip install sqlmath==2025.2.28
+twine upload dist/sqlmath-2025.3.31*
+pip install sqlmath==2025.3.31
 ```
 
 
@@ -139,8 +139,8 @@ pip install sqlmath==2025.2.28
     sh jslint_ci.sh shRollupUpgrade "v4.4.0" "v4.5.0" ".ci.sh sqlmath_base.h"
     #
     # sqlite
-    sh jslint_ci.sh shRollupUpgrade "3.46.1" "3.47.2" ".ci.sh sqlmath_external_sqlite.c"
-    sh jslint_ci.sh shRollupUpgrade "3460100" "3470200" ".ci.sh sqlmath_external_sqlite.c"
+    sh jslint_ci.sh shRollupUpgrade "3.47.2" "3.49.1" ".ci.sh sqlmath_external_sqlite.c"
+    sh jslint_ci.sh shRollupUpgrade "3470200" "3490100" ".ci.sh sqlmath_external_sqlite.c"
     #
     # zlib
     # sh jslint_ci.sh shRollupUpgrade "1.3" "1.3.1" ".ci.sh sqlmath_external_zlib.c"
