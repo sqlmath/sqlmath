@@ -87,6 +87,7 @@ process.stdout.write(
         # install graphicsmagick
         if (! command -v gm >/dev/null)
         then
+            sudo apt-get update
             sudo apt-get install -y graphicsmagick
         fi
         # mkdir .artifact/

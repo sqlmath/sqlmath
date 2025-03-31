@@ -5,8 +5,12 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
-# v2025.2.28
+# v2025.3.1-beta
+- ubuntu-ci - bugfix - Fix out-of-date apt-list when installing graphicsmagick.
 - sqlite - Upgrade to sqlite-v3.49.1.
+- Cleanup sql-functions ZLIB_COMPRESS(), ZLIB_UNCOMPRESS().
+
+# v2025.2.28
 - sqlmath - Update sql-function SHA256() to use tinycrypt.
 - jslint - Update shell-function shDirHttplinkValidate() with pragma <\!!--novalidate--\>.
 - ci - Upgrade cpplint.py used in ci to v2.0.0.
