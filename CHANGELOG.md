@@ -5,6 +5,9 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2025.4.1-beta
+- jslint - Upgrade to jslint-v2025.3.31.
+
 # v2025.3.31
 - ubuntu-ci - bugfix - Fix out-of-date apt-list when installing graphicsmagick.
 - sqlite - Upgrade to sqlite-v3.49.1.
