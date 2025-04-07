@@ -52,7 +52,7 @@ process.stdout.write(
             cp -L /opt/homebrew/opt/libomp/lib/libomp.dylib sqlmath/
             ;;
         esac
-        pip install lightgbm=="$(printf "v4.5.0" | sed "s|v||")"
+        pip install lightgbm=="$(printf "v4.6.0" | sed "s|v||")"
         cp "$(
             find "$(
                 pip show ruff | grep Location | sed "s|Location: ||"
