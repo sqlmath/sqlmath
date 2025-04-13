@@ -121,11 +121,11 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 ```shell
 python -m build
 #
-twine upload --repository testpypi dist/sqlmath-2025.3.31*
-py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2025.3.31
+twine upload --repository testpypi dist/sqlmath-2025.4.1*
+py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2025.4.1
 #
-twine upload dist/sqlmath-2025.3.31*
-pip install sqlmath==2025.3.31
+twine upload dist/sqlmath-2025.4.1*
+pip install sqlmath==2025.4.1
 ```
 
 
@@ -136,7 +136,7 @@ pip install sqlmath==2025.3.31
     (set -e
     #
     # lgbm
-    sh jslint_ci.sh shRollupUpgrade "v4.4.0" "v4.5.0" ".ci.sh sqlmath_base.h"
+    sh jslint_ci.sh shRollupUpgrade "v4.5.0" "v4.6.0" ".ci.sh sqlmath_base.h"
     #
     # sqlite
     sh jslint_ci.sh shRollupUpgrade "3.47.2" "3.49.1" ".ci.sh sqlmath_external_sqlite.c"

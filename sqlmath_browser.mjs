@@ -340,8 +340,11 @@ INSERT INTO tradebot_technical_day
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
-            -- UNION ALL SELECT '1e_stk_pnl'
         )
+        --
+        UNION ALL
+        --
+        SELECT '1a_spy_cls', xdate, spy_cls FROM tradebot_technical_all
         --
         UNION ALL
         --
@@ -358,6 +361,14 @@ INSERT INTO tradebot_technical_day
         UNION ALL
         --
         SELECT '1e_stk_pnl', xdate, stk_pnl FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2a_spy_sin', xdate, spy_sin FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2b_spy_cos', xdate, spy_cos FROM tradebot_technical_all
     )
     WHERE tt >= (SELECT datemkt0 FROM tradebot_state);
 
@@ -377,42 +388,37 @@ INSERT INTO tradebot_technical_week
                       SELECT '1b_stk_lmt' AS tname
             UNION ALL SELECT '1c_stk_pct'
             UNION ALL SELECT '1d_stk_lmb'
-            -- UNION ALL SELECT '1e_stk_pnl'
         )
         --
         UNION ALL
         --
-        SELECT '1b_stk_lmt', xdate2, stk_lmt FROM tradebot_technical_all
+        SELECT '1a_spy_cls', xdate, spy_cls FROM tradebot_technical_all
         --
         UNION ALL
         --
-        SELECT '1c_stk_pct', xdate2, stk_pct FROM tradebot_technical_all
+        SELECT '1b_stk_lmt', xdate, stk_lmt FROM tradebot_technical_all
         --
         UNION ALL
         --
-        SELECT '1d_stk_lmb', xdate2, stk_lmb FROM tradebot_technical_all
+        SELECT '1c_stk_pct', xdate, stk_pct FROM tradebot_technical_all
         --
         UNION ALL
         --
-        SELECT '1e_stk_pnl', xdate2, stk_pnl FROM tradebot_technical_all
+        SELECT '1d_stk_lmb', xdate, stk_lmb FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '1e_stk_pnl', xdate, stk_pnl FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2a_spy_sin', xdate, spy_sin FROM tradebot_technical_all
+        --
+        UNION ALL
+        --
+        SELECT '2b_spy_cos', xdate, spy_cos FROM tradebot_technical_all
     )
     WHERE tt;
-
--- table - tradebot_technical_day, tradebot_technical_week - insert - spy
-INSERT INTO tradebot_technical_day
-    SELECT
-        '1a_spy' AS tname,
-        xdate AS tt,
-        price
-    FROM tradebot_intraday_day
-    WHERE sym = 'spy';
-INSERT INTO tradebot_technical_week
-    SELECT
-        '1a_spy' AS tname,
-        xdate AS tt,
-        price
-    FROM tradebot_intraday_week
-    WHERE sym = 'spy';
         `),
         [
             "1 day",
@@ -1047,7 +1053,8 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
                     dateInterval === "1 day"
                     ? 60
                     : dateInterval === "1 week"
-                    ? 15 * 60
+                    ? 60
+                    // ? 15 * 60
                     : 1
                 ),
                 xvalueConvert: (
@@ -1063,20 +1070,39 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
 UPDATE ${tableData}
     SET
         tval = (CASE
-            WHEN (tname = '1a_spy') THEN
-                (lmt_eee * 1.0 / spy_eee) * (tval - spy_avg) + lmt_avg
+            WHEN (tname = '1a_spy_cls') THEN
+                (lmt_eee * cls_inv) * (tval - cls_avg) + lmt_avg
             WHEN (tname = '1e_stk_pnl') THEN
-                (lmt_eee * 1.0 / pnl_eee) * (tval - pnl_avg) + lmt_avg
+                (lmt_eee * pnl_inv) * (tval - pnl_avg) + lmt_avg
+            WHEN (tname = '2a_spy_sin') THEN
+                (lmt_eee * sin_inv) * (tval - sin_avg) + lmt_avg
+            WHEN (tname = '2b_spy_cos') THEN
+                (lmt_eee * cos_inv) * (tval - cos_avg) + lmt_avg
         END)
     FROM (
         SELECT
             lmt_avg,
             lmt_eee,
+            --
             pnl_avg,
-            pnl_eee,
-            spy_avg,
-            spy_eee
+            pnl_inv,
+            --
+            cls_avg,
+            cls_inv,
+            --
+            cos_avg,
+            cos_inv,
+            --
+            sin_avg,
+            sin_inv
         FROM (SELECT 0)
+        JOIN (
+            SELECT
+                MEDIAN(tval) AS cls_avg,
+                1.0 / STDEV(tval) AS cls_inv
+            FROM ${tableData}
+            WHERE tname = '1a_spy_cls'
+        )
         JOIN (
             SELECT
                 MEDIAN(tval) AS lmt_avg,
@@ -1087,20 +1113,27 @@ UPDATE ${tableData}
         JOIN (
             SELECT
                 MEDIAN(tval) AS pnl_avg,
-                STDEV(tval) AS pnl_eee
+                1.0 / STDEV(tval) AS pnl_inv
             FROM ${tableData}
             WHERE tname = '1e_stk_pnl'
         )
         JOIN (
             SELECT
-                MEDIAN(tval) AS spy_avg,
-                STDEV(tval) AS spy_eee
+                MEDIAN(tval) AS cos_avg,
+                1.0 / STDEV(tval) AS cos_inv
             FROM ${tableData}
-            WHERE tname = '1a_spy'
+            WHERE tname = '2a_spy_sin'
+        )
+        JOIN (
+            SELECT
+                MEDIAN(tval) AS sin_avg,
+                1.0 / STDEV(tval) AS sin_inv
+            FROM ${tableData}
+            WHERE tname = '2b_spy_cos'
         )
     ) AS __join1
     WHERE
-        tname IN ('1a_spy', '1e_stk_pnl');
+        tname IN ('1a_spy_cls', '1e_stk_pnl', '2a_spy_sin', '2b_spy_cos');
 UPDATE ${tableData}
     SET
         tt = UNIXEPOCH(tt),
@@ -1127,10 +1160,10 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
         'series_label' AS datatype,
         JSON_OBJECT(
             'isHidden', NOT tname IN (
-                '1a_spy', '1b_stk_lmt', '1c_stk_pct', '1d_stk_lmb'
+                '1a_spy_cls', '1b_stk_lmt', '1c_stk_pct'
             ),
             'seriesColor', (CASE
-            WHEN (tname LIKE '%_lmb') THEN
+            WHEN (tname = '1d_stk_lmb') THEN
                 '#999'
             ELSE
                 NULL
@@ -1197,11 +1230,13 @@ DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
 UPDATE ${tableChart}
     SET
         series_label = (CASE
-            WHEN (series_label = '1a_spy') THEN '1a spy change'
+            WHEN (series_label = '1a_spy_cls') THEN '1a spy change'
             WHEN (series_label = '1b_stk_lmt') THEN '1b stk holding ideal'
             WHEN (series_label = '1c_stk_pct') THEN '1c stk holding actual'
             WHEN (series_label = '1d_stk_lmb') THEN '1d stk holding bracket min'
             WHEN (series_label = '1e_stk_pnl') THEN '1e stk gain'
+            WHEN (series_label = '2a_spy_sin') THEN '2a spy sine'
+            WHEN (series_label = '2b_spy_cos') THEN '2b spy cosine'
         END)
     WHERE
         datatype = 'series_label';
