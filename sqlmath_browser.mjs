@@ -364,7 +364,7 @@ INSERT INTO tradebot_technical_day
         --
         UNION ALL
         --
-        SELECT '2a_spy_sin', xdate, -spy_sin FROM tradebot_technical_all
+        SELECT '2a_spy_sin', xdate, spy_sin FROM tradebot_technical_all
         --
         UNION ALL
         --
@@ -412,7 +412,7 @@ INSERT INTO tradebot_technical_week
         --
         UNION ALL
         --
-        SELECT '2a_spy_sin', xdate, -spy_sin FROM tradebot_technical_all
+        SELECT '2a_spy_sin', xdate, spy_sin FROM tradebot_technical_all
         --
         UNION ALL
         --
