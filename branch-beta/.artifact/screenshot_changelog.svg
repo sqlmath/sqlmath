@@ -1,0 +1,329 @@
+<svg height="1196" width="800" xmlns="http://www.w3.org/2000/svg">
+<rect height="1196" fill="#222" width="800"></rect>
+<text
+    fill="#7f7"
+    font-family="consolas, menlo, monospace"
+    font-size="14"
+    xml:space="preserve"
+>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="32"
+># Changelog                                                                                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="54"
+>                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="76"
+># Todo                                                                                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="98"
+>- sqlmath - Re-introduce sliding-discrete-fourier-transform to improve initial guess in sql-func\</tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="120"
+>  tion WIN_SINEFIT2().                                                                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="142"
+>- sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-fun\</tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="164"
+>  ction QUANTILE().                                                                              </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="186"
+>- none                                                                                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="208"
+>                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="230"
+># v2025.4.1-beta                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="252"
+>- betadog - Add table a_lgbm_intra, and prm a_state.zcis_spx.                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="274"
+>- lgbm - Upgrade to lightgbm-v4.6.0.                                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="296"
+>- jslint - Upgrade to jslint-v2025.3.31.                                                         </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="318"
+>                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="340"
+># v2025.3.31                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="362"
+>- ubuntu-ci - bugfix - Fix out-of-date apt-list when installing graphicsmagick.                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="384"
+>- sqlite - Upgrade to sqlite-v3.49.1.                                                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="406"
+>- Cleanup sql-functions ZLIB_COMPRESS(), ZLIB_UNCOMPRESS().                                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="428"
+>                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="450"
+># v2025.2.28                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="472"
+>- sqlmath - Update sql-function SHA256() to use tinycrypt.                                       </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="494"
+>- jslint - Update shell-function shDirHttplinkValidate() with pragma &lt;\!!--novalidate--\&gt;.       </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="516"
+>- ci - Upgrade cpplint.py used in ci to v2.0.0.                                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="538"
+>- sqlite - Rename custom-sql-function MEDIAN() to MEDIAN2().                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="560"
+>- sqlite - Enable builtin-sql-functions MEDIAN(), PERCENTILE(), PERCENTILE_CONT(), PERCENTILE_DI\</tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="582"
+>  SC().                                                                                          </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="604"
+>- sqlite - Upgrade to sqlite-v3.47.2.                                                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="626"
+>- ci - Upgrade nodejs used in ci to v22.                                                         </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="648"
+>                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="670"
+># v2025.1.31                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="692"
+>- webdemo - Update coloring to highlight tqq/sqq stocks.                                         </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="714"
+>- sqlmath - Revamp sql-function win_sinefit2() to guess frequency from stdev of tt, instead of d\</tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="736"
+>  ft.                                                                                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="758"
+>                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="780"
+># v2024.12.25                                                                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="802"
+>- ci - Auto-create asset_image_logo_256.png from asset_image_logo_256.html.                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="824"
+>- ci - Fix shell-function shRollupFetch() from making excessive github-api-request.              </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="846"
+>- ci - Fix improperly-cropped jslint-logo, auto-generated by headless-chrome.                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="868"
+>- ci - Fix failed-ci from missing graphicsmagick library in latest Ubuntu image.                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="890"
+>- betadog-revamp - Remove trading-logic for s_sqq=-1.                                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="912"
+>- sqlmath - Add sql-functions SHA256(), STRTOLL().                                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="934"
+>                                                                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="956"
+># v2024.11.24                                                                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="978"
+>- sqlmath - Streamline idate-sql-functions to just:                                              </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1000"
+>    IDATEADD()                                                                                   </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1022"
+>    IDATEFROM()                                                                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1044"
+>    IDATEFROMEPOCH()                                                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1066"
+>    IDATETO()                                                                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1088"
+>    IDATETOEPOCH()                                                                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1110"
+>    IDATEYMDFROM()                                                                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1132"
+>    IDATEYMDFROMEPOCH()                                                                          </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1154"
+>- jslint - Upgrade to jslint-v2024.11.24.                                                        </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1176"
+>- webdemo - bugfix - Fix scaling-bug for technical-prm tradebot_technical.all.1e_stk_pnl.        </tspan>
+
+</text>
+</svg>
