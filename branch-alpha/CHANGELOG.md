@@ -5,7 +5,8 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
-# v2025.4.1-beta
+# v2025.5.31
+- sqlite - Upgrade to sqlite-v3.49.2.
 - betadog - Add table a_lgbm_intra, and prm a_state.zcis_spx.
 - lgbm - Upgrade to lightgbm-v4.6.0.
 - jslint - Upgrade to jslint-v2025.3.31.
