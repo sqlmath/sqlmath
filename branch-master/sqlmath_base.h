@@ -39,7 +39,7 @@
 #define LGBM_DLSYM(func) \
     func = (func##_t) dlsym(lgbm_library, #func);
 #endif                          // _WIN32
-// https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/arrow.h
+// https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/arrow.h
 typedef struct ArrowSchema {
     // Array type description
     const char *format;
@@ -128,7 +128,7 @@ shRollupFetch
                     "substr": ""
                 }
             ],
-            "url": "https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/c_api.h"
+            "url": "https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/c_api.h"
         },
         {
             "footer": "\n}\n#endif // SRC_SQLMATH_BASE_C2\n",
@@ -153,7 +153,7 @@ shRollupFetch
                     "substr": ""
                 }
             ],
-            "url": "https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/c_api.h"
+            "url": "https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/c_api.h"
         },
         {
             "comment": true,
@@ -880,13 +880,13 @@ static void tc_sha256_compress(unsigned int *iv, const uint8_t *data)
 
 
 /*
-repo https://github.com/microsoft/LightGBM/tree/v4.5.0
-committed 2024-07-25T14:51:01Z
+repo https://github.com/microsoft/LightGBM/tree/v4.6.0
+committed 2025-02-14T20:27:28Z
 */
 
 
 /*
-file https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/c_api.h
+file https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/c_api.h
 */
 
 #if defined(SRC_SQLMATH_BASE_C2)
@@ -1338,7 +1338,7 @@ static LGBM_DatasetCreateFromMat_t LGBM_DatasetCreateFromMat = NULL;
  * \param data_type Type of ``data`` pointer, can be ``C_API_DTYPE_FLOAT32`` or ``C_API_DTYPE_FLOAT64``
  * \param nrow Number of rows
  * \param ncol Number of columns
- * \param is_row_major 1 for row-major, 0 for column-major
+ * \param is_row_major Pointer to the data layouts. 1 for row-major, 0 for column-major
  * \param parameters Additional parameters
  * \param reference Used to align bin mapper with other dataset, nullptr means isn't used
  * \param[out] out Created dataset
@@ -1349,7 +1349,7 @@ LIGHTGBM_C_EXPORT int (*LGBM_DatasetCreateFromMats_t) (int32_t nmat,
                                                  int data_type,
                                                  int32_t* nrow,
                                                  int32_t ncol,
-                                                 int is_row_major,
+                                                 int* is_row_major,
                                                  const char* parameters,
                                                  const DatasetHandle reference,
                                                  DatasetHandle* out);
@@ -2649,7 +2649,7 @@ INLINE_FUNCTION void LGBM_SetLastError(const char* msg) {
 
 
 /*
-file https://github.com/microsoft/LightGBM/blob/v4.5.0/include/LightGBM/c_api.h
+file https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/c_api.h
 */
 static void LGBM_dlsym() {
 LGBM_DLSYM(LGBM_GetLastError);
