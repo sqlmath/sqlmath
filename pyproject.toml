@@ -9,7 +9,7 @@ backend-path = ["."]
 # https://peps.python.org/pep-0621/#example
 [project]
 name = "sqlmath"
-version = "2025.6.1"
+version = "2025.6.28"
 description = "sqlite for datascience"
 authors = [{name = "Kai Zhu"}]
 maintainers = []
@@ -52,7 +52,6 @@ build-verbosity = "1"
 manylinux-x86_64-image = "manylinux_2_28"
 skip = [
     "*-musllinux*",
-    "pp*",
 ]
 test-command = [
     "python --version",
