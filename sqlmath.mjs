@@ -122,7 +122,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2025.5.31";
+let version = "v2025.6.1-beta";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -724,6 +724,7 @@ function dbExecAndReturnLastValue({
 async function dbExecAsync({
     bindList = [],
     db,
+    modeNoop,
     responseType,
     sql
 }) {
@@ -735,6 +736,9 @@ async function dbExecAsync({
     let bufi = [0];
     let referenceList = [];
     let result;
+    if (modeNoop) {
+        return;
+    }
     if (bindByKey) {
         Object.entries(bindList).forEach(function ([key, val]) {
             baton = jsbatonSetValue(baton, undefined, `:${key}\u0000`);
