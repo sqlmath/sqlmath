@@ -139,8 +139,8 @@ pip install sqlmath==2025.6.1
     sh jslint_ci.sh shRollupUpgrade "v4.5.0" "v4.6.0" ".ci.sh sqlmath_base.h"
     #
     # sqlite
-    sh jslint_ci.sh shRollupUpgrade "3.49.1" "3.49.2" ".ci.sh sqlmath_external_sqlite.c"
-    sh jslint_ci.sh shRollupUpgrade "3490100" "3490200" ".ci.sh sqlmath_external_sqlite.c"
+    sh jslint_ci.sh shRollupUpgrade "3.49.2" "3.50.2" ".ci.sh sqlmath_external_sqlite.c"
+    sh jslint_ci.sh shRollupUpgrade "3490200" "3500200" ".ci.sh sqlmath_external_sqlite.c"
     #
     # zlib
     # sh jslint_ci.sh shRollupUpgrade "1.3" "1.3.1" ".ci.sh sqlmath_external_zlib.c"

@@ -6,6 +6,7 @@
 - none
 
 # v2025.6.1-beta
+- sqlite - Upgrade to sqlite-v3.50.2.
 - sqlmath - Update function dbExecAsync() with extra param modeNoop, used in mock-code-coverage.
 
 # v2025.5.31
