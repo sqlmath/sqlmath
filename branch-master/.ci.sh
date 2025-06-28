@@ -514,16 +514,16 @@ shSqlmathUpdate() {(set -e
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
         # shRollupFetch
-        if [ ! -d .sqlite-autoconf-3490200 ]
+        if [ ! -d .sqlite-autoconf-3500200 ]
         then
             for URL in \
 https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
-https://www.sqlite.org/2025/sqlite-autoconf-3490200.tar.gz
+https://www.sqlite.org/2025/sqlite-autoconf-3500200.tar.gz
             do
                 curl -L "$URL" | tar -xz
             done
             for DIR in \
-                sqlite-autoconf-3490200 \
+                sqlite-autoconf-3500200 \
                 zlib-1.3.1
             do
                 rm -rf ".$DIR"
