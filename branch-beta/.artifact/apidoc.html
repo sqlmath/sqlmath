@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2025.5.31)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2025.6.28)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -186,6 +186,7 @@ function dbExecAndReturnLastValue<span class="apidocSignatureSpan">({
 function dbExecAsync<span class="apidocSignatureSpan">({
     bindList = [],
     db,
+    modeNoop,
     responseType,
     sql
 })</span>
@@ -1149,6 +1150,7 @@ assertJsonEqual(valActual, valExpect, {
     function dbExecAsync<span class="apidocSignatureSpan">({
     bindList = [],
     db,
+    modeNoop,
     responseType,
     sql
 })</span>
@@ -1158,6 +1160,7 @@ assertJsonEqual(valActual, valExpect, {
 <li>Description and source-code:<pre class="apidocCodePre">async function dbExecAsync({
     bindList = [],
     db,
+    modeNoop,
     responseType,
     sql
 }) {
@@ -1169,6 +1172,9 @@ assertJsonEqual(valActual, valExpect, {
     let bufi = [0];
     let referenceList = [];
     let result;
+    if (modeNoop) {
+        return;
+    }
     if (bindByKey) {
         Object.entries(bindList).forEach(function ([key, val]) {
             baton = jsbatonSetValue(baton, undefined, `:${key}\u0000`);
@@ -1229,10 +1235,7 @@ assertJsonEqual(valActual, valExpect, {
     }
     switch (responseType) {
     case "arraybuffer":
-    case "lastblob":
-        return result;
-    case "lastvalue":
-    ca...
+    case "lastbl...
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...

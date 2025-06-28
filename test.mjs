@@ -624,6 +624,10 @@ jstestDescribe((
         let db = await dbOpenAsync({
             filename: ":memory:"
         });
+        // test modeNoop handling-behavior
+        dbExecAsync({
+            modeNoop: true
+        });
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbExecAsync({
