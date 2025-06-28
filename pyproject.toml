@@ -52,7 +52,6 @@ build-verbosity = "1"
 manylinux-x86_64-image = "manylinux_2_28"
 skip = [
     "*-musllinux*",
-    "pp*",
 ]
 test-command = [
     "python --version",
