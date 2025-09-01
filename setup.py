@@ -27,8 +27,8 @@ python setup.py bdist_wheel
 python setup.py build_ext
 """
 
-__version__ = "2025.6.28"
-__version_info__ = ("2025", "6", "28")
+__version__ = "2025.8.30"
+__version_info__ = ("2025", "8", "30")
 
 import asyncio
 import base64
@@ -472,6 +472,12 @@ def build_wheel(
     # The version is py_version_nodot.
     tag_python = f'cp{sysconfig.get_config_var("py_version_nodot")}'
     tag_abi = tag_python
+    # https://peps.python.org/pep-0703/#build-configuration-changes
+    # When built with --disable-gil, CPython will define the Py_GIL_DISABLED
+    # macro in Python/patchlevel.h. The ABI tag will include the letter "t"
+    # (for "threading").
+    if sysconfig.get_config_var("Py_GIL_DISABLED"):
+        tag_abi += "t"
     # The platform tag is simply sysconfig.get_platform()
     # with all hyphens - and periods . replaced with underscore _.
     tag_platform = re.sub("\\W", "_", sysconfig.get_platform())

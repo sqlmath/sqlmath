@@ -5,6 +5,10 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2025.8.30
+- sqlite - Upgrade to sqlite-v3.50.4.
+- python - Add support for PEP 703 – Making the Global Interpreter Lock Optional in CPython.
+
 # v2025.6.28
 - sqlite - Upgrade to sqlite-v3.50.2.
 - sqlmath - Update function dbExecAsync() with extra param modeNoop, used in mock-code-coverage.
