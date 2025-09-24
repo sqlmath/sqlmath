@@ -85,6 +85,8 @@ const SQLITE_OPEN_URI = 0x00000040;             /* Ok for sqlite3_open_v2() */
 const SQLITE_OPEN_WAL = 0x00080000;             /* VFS only */
 
 let IS_BROWSER;
+let SQLMATH_EXE;
+let SQLMATH_NODE;
 let cModule;
 let cModulePath;
 let consoleError = console.error;
@@ -122,7 +124,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2025.8.30";
+let version = "v2025.9.1-beta";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -213,7 +215,7 @@ async function childProcessSpawn2(command, args, option) {
         let {
             modeCapture,
             modeDebug,
-            stdio
+            stdio = []
         } = option;
         if (modeDebug) {
             consoleError(
@@ -273,43 +275,86 @@ async function childProcessSpawn2(command, args, option) {
             if (npm_config_mode_test) {
                 resolve = resolve0;
             }
-            [stdout, stderr] = bufList.slice(1).map(function (buf) {
+            [
+                stdout, stderr
+            ] = bufList.slice(1).map(function (buf) {
                 return (
                     typeof modeCapture === "string"
                     ? Buffer.concat(buf).toString(modeCapture)
                     : Buffer.concat(buf)
                 );
             });
-            resolve({exitCode, stderr, stdout});
+            resolve([
+                exitCode, stdout, stderr
+            ]);
         });
     });
-
 }
 
 async function ciBuildExt({
-    modeSkip,
     process
 }) {
 
 // This function will build sqlmath from c.
 
-    let option;
-    option = {
-        binNodegyp: modulePath.resolve(
-            modulePath.dirname(process.execPath || ""),
-            "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
-        ).replace("/bin/node_modules/", "/lib/node_modules/"),
-        isWin32: process.platform === "win32",
-        modeDebug: npm_config_mode_debug,
-        modeSkip,
-        process
-    };
-    await ciBuildExt2NodejsBuild(option);
+    let binNodegyp;
+    let exitCode;
+    binNodegyp = modulePath.resolve(
+        modulePath.dirname(process.execPath || ""),
+        "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+    ).replace("/bin/node_modules/", "/lib/node_modules/");
+    if (!noop(
+        await fsExistsUnlessTest(cModulePath)
+    )) {
+        await ciBuildExt1NodejsConfigure({
+            binNodegyp,
+            process
+        });
+    }
+    consoleError(
+        `ciBuildExt2Nodejs - linking lib ${modulePath.resolve(cModulePath)}`
+    );
+    [
+        exitCode
+    ] = await childProcessSpawn2(
+        "sh",
+        [
+            "-c",
+            (`
+(set -e
+    # rebuild binding
+    rm -rf build/Release/obj/SRC_SQLMATH_CUSTOM/
+    node "${binNodegyp}" build --release
+    # node "${binNodegyp}" build --release --loglevel=verbose
+    mv build/Release/binding.node "${cModulePath}"
+    mv build/Release/shell "${SQLMATH_EXE}"
+    # ugly-hack - win32-sqlite-shell doesn't like nodejs-builtin-zlib,
+    #             so link with external-zlib.
+    if (uname | grep -q "MING\\|MSYS")
+    then
+        rm -f ${SQLMATH_EXE}
+        python setup.py exe_link \
+            ./build/Release/SRC_SQLITE_BASE.lib \
+            ./build/Release/SRC_SQLMATH_CUSTOM.lib \
+            ./build/Release/obj/shell/sqlmath_external_sqlite.obj \
+            ./zlib.lib \
+            \
+            -ltcg \
+            -nologo \
+            -out:${SQLMATH_EXE} \
+            -subsystem:console
+    fi
+)
+            `)
+        ],
+        {modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
+    );
+    assertOrThrow(!exitCode, `ciBuildExt - exitCode=${exitCode}`);
 }
 
 async function ciBuildExt1NodejsConfigure({
-    binNodegyp,
-    modeDebug
+    binNodegyp
+    // process
 }) {
 
 // This function will setup posix/win32 env for building c-extension.
@@ -340,82 +385,82 @@ SQLMATH_CFLAG_WNO_LIST=" \\
     consoleError(`ciBuildExt1Nodejs - configure binding.gyp`);
     await fsWriteFileUnlessTest("binding.gyp", JSON.stringify({
         "target_defaults": {
-            "cflags": cflagWnoList,
-// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
+            "cflags": cflagWallList,
+// https://github.com/nodejs/node-gyp/blob/v10.3.1/gyp/pylib/gyp/MSVSSettings.py
             "msvs_settings": {
                 "VCCLCompilerTool": {
                     "WarnAsError": 1,
-                    "WarningLevel": 2
+                    "WarningLevel": 4
                 }
             },
             "xcode_settings": {
-                "OTHER_CFLAGS": cflagWnoList
+                "OTHER_CFLAGS": cflagWallList
             }
         },
         "targets": [
             {
+                "cflags": cflagWnoList,
                 "defines": [
-                    "SRC_SQLITE_BASE_C2",
-                    "SRC_ZLIB_C2"
-                ],
-                "sources": [
-                    "sqlmath_external_sqlite.c",
-                    "sqlmath_external_zlib.c"
-                ],
-                "target_name": "SRC_SQLITE_BASE",
-                "type": "static_library"
-            },
-            {
-                "cflags": cflagWallList,
-                "defines": [
-                    "SRC_SQLMATH_BASE_C2",
-                    "SRC_SQLMATH_CUSTOM_C2"
+                    "SRC_SQLITE_BASE_C2"
                 ],
                 "msvs_settings": {
                     "VCCLCompilerTool": {
                         "WarnAsError": 1,
-                        "WarningLevel": 4
+                        "WarningLevel": 2
                     }
                 },
+                "sources": [
+                    "sqlmath_external_sqlite.c"
+                ],
+                "target_name": "SRC_SQLITE_BASE",
+                "type": "static_library",
+                "xcode_settings": {
+                    "OTHER_CFLAGS": cflagWnoList
+                }
+            },
+            {
+                "defines": [
+                    "SRC_SQLMATH_BASE_C2",
+                    "SRC_SQLMATH_CUSTOM_C2"
+                ],
+                "dependencies": [
+                    "SRC_SQLITE_BASE"
+                ],
                 "sources": [
                     "sqlmath_base.c",
                     "sqlmath_custom.c"
                 ],
                 "target_name": "SRC_SQLMATH_CUSTOM",
-                "type": "static_library",
-                "xcode_settings": {
-                    "OTHER_CFLAGS": cflagWallList
-                }
+                "type": "static_library"
             },
             {
-                "cflags": cflagWallList,
                 "defines": [
                     "SRC_SQLMATH_NODEJS_C2"
                 ],
                 "dependencies": [
-                    "SRC_SQLITE_BASE",
                     "SRC_SQLMATH_CUSTOM"
                 ],
-                "msvs_settings": {
-                    "VCCLCompilerTool": {
-                        "WarnAsError": 1,
-                        "WarningLevel": 4
-                    }
-                },
                 "sources": [
                     "sqlmath_base.c"
                 ],
-                "target_name": "binding",
-                "xcode_settings": {
-                    "OTHER_CFLAGS": cflagWallList
-                }
+                "target_name": "binding"
             },
             {
+                "conditions": [
+                    [
+                        "OS==\"win\"",
+                        {},
+                        {
+                            "libraries": [
+                                "-lz"
+                            ]
+                        }
+                    ]
+                ],
                 "defines": [
                     "SRC_SQLITE_SHELL_C2"
                 ],
                 "dependencies": [
-                    "SRC_SQLITE_BASE",
                     "SRC_SQLMATH_CUSTOM"
                 ],
                 "sources": [
@@ -437,50 +482,7 @@ SQLMATH_CFLAG_WNO_LIST=" \\
 )
             `)
         ],
-        {modeDebug, stdio: ["ignore", 1, 2]}
-    );
-}
-
-async function ciBuildExt2NodejsBuild({
-    binNodegyp,
-    modeDebug
-}) {
-
-// This function will archive <fileObj> into <fileLib>
-
-    if (!noop(
-        await fsExistsUnlessTest(cModulePath)
-    )) {
-        await ciBuildExt1NodejsConfigure({
-            binNodegyp,
-            modeDebug
-        });
-    }
-    consoleError(
-        `ciBuildExt2Nodejs - linking lib ${modulePath.resolve(cModulePath)}`
-    );
-    await childProcessSpawn2(
-        "sh",
-        [
-            "-c",
-            (`
-(set -e
-    # rebuild binding
-    rm -rf build/Release/obj/SRC_SQLMATH_CUSTOM/
-    node "${binNodegyp}" build --release
-    mv build/Release/binding.node "${cModulePath}"
-    if [ "${process.platform}" = "win32" ]
-    then
-        mv build/Release/shell \
-            "_sqlmath.shell_${process.platform}_${process.arch}.exe"
-    else
-        mv build/Release/shell \
-            "_sqlmath.shell_${process.platform}_${process.arch}"
-    fi
-)
-            `)
-        ],
-        {modeDebug, stdio: ["ignore", 1, 2]}
+        {modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
     );
 }
 
@@ -1609,6 +1611,17 @@ async function moduleFsInit() {
     while (moduleFsInitResolveList.length > 0) {
         moduleFsInitResolveList.shift()();
     }
+    SQLMATH_NODE = `_sqlmath.napi6_${process.platform}_${process.arch}.node`;
+    SQLMATH_EXE = (
+        SQLMATH_NODE.replace((/\.node$/), "")
+        + process.platform.replace(
+            "win32",
+            ".exe"
+        ).replace(
+            process.platform,
+            ""
+        )
+    );
 }
 
 function noop(val) {
@@ -1683,7 +1696,7 @@ async function sqlmathInit() {
     moduleChildProcessSpawn = moduleChildProcess.spawn;
     cModulePath = moduleUrl.fileURLToPath(import.meta.url).replace(
         (/\bsqlmath\.mjs$/),
-        `_sqlmath.napi6_${process.platform}_${process.arch}.node`
+        SQLMATH_NODE
     );
 
 // Import napi c-addon.
@@ -1812,6 +1825,8 @@ export {
     SQLITE_OPEN_TRANSIENT_DB,
     SQLITE_OPEN_URI,
     SQLITE_OPEN_WAL,
+    SQLMATH_EXE,
+    SQLMATH_NODE,
     assertErrorThrownAsync,
     assertInt64,
     assertJsonEqual,

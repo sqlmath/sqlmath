@@ -26,9 +26,13 @@ npm_config_mode_test_save2=1 npm test
  */
 
 /*jslint beta, node*/
+import moduleChildProcess from "child_process";
+import modulePath from "path";
+import moduleUtil from "util";
 import jslint from "./jslint.mjs";
 import {
     LGBM_PREDICT_NORMAL,
+    SQLMATH_EXE,
     assertErrorThrownAsync,
     assertJsonEqual,
     assertNumericalEqual,
@@ -65,7 +69,7 @@ let {
 } = jslint;
 let {
     npm_config_mode_test_save
-} = typeof process === "object" && process?.env;
+} = process.env;
 noop(debugInline);
 
 jstestDescribe((
@@ -120,10 +124,47 @@ jstestDescribe((
     ), async function () {
         await Promise.all([
             childProcessSpawn2(
-                "aa",
+                "undefined",
                 [],
                 {modeCapture: "utf8", modeDebug: true, stdio: []}
+            ),
+            (async function () {
+                let result;
+                result = await moduleUtil.promisify(
+                    moduleChildProcess.execFile
+                )(
+                    (
+                        process.cwd()
+                        + modulePath.sep
+                        + SQLMATH_EXE
+                    ),
+                    [
+                        ":memory:",
+                        (`
+SELECT
+        CAST(
+            SQLAR_UNCOMPRESS(
+                SQLAR_COMPRESS(
+                    CAST('abcd1234' AS BLOB)
+                ),
+                8
             )
+            AS 'TEXT'
+        ),
+        CAST(
+            GZIP_UNCOMPRESS(
+                GZIP_COMPRESS(
+                    CAST('abcd1234' AS BLOB)
+                )
+            )
+            AS 'TEXT'
+        );
+                        `)
+                    ]
+                );
+                result = result.stdout.trim();
+                assertJsonEqual(result, "abcd1234|abcd1234");
+            }())
         ]);
     });
 });
@@ -135,13 +176,13 @@ jstestDescribe((
         "test ciBuildExt handling-behavior"
     ), async function () {
         await Promise.all([
-            ciBuildExt({modeSkip: true, process: {}}),
             ciBuildExt({process: {arch: "arm", env: {}, platform: "win32"}}),
             ciBuildExt({process: {arch: "arm64", env: {}, platform: "win32"}}),
             ciBuildExt({process: {arch: "ia32", env: {}, platform: "win32"}}),
+            ciBuildExt({process: {cwd: noop}}),
             ciBuildExt({process: {env: {}, platform: "darwin"}}),
             ciBuildExt({process: {env: {}, platform: "win32"}}),
-            ciBuildExt({process: {}})
+            ciBuildExt({process: {versions: {}}})
         ]);
     });
 });
@@ -665,9 +706,9 @@ VALUES
     (?1, ?2, ?3),
     (CAST(?1 AS TEXT), CAST(?2 AS TEXT), CAST(?3 AS TEXT)),
     (
-        CAST(zlib_uncompress(zlib_compress(?1)) AS TEXT),
-        CAST(zlib_uncompress(zlib_compress(?2)) AS TEXT),
-        CAST(zlib_uncompress(zlib_compress(?3)) AS TEXT)
+        CAST(GZIP_UNCOMPRESS(GZIP_COMPRESS(?1)) AS TEXT),
+        CAST(GZIP_UNCOMPRESS(GZIP_COMPRESS(?2)) AS TEXT),
+        CAST(GZIP_UNCOMPRESS(GZIP_COMPRESS(?3)) AS TEXT)
     );
 SELECT * FROM testDbExecAsync1;
 SELECT * FROM testDbExecAsync2;
@@ -858,7 +899,7 @@ UPDATE __lgbm_state
     SET
         data_train_handle = (
             SELECT
-                lgbm_datasetcreatefromfile(
+                LGBM_DATASETCREATEFROMFILE(
                     '${fileTrain}', -- filename
                     'max_bin=15', -- param_data
                     NULL -- reference
@@ -868,7 +909,7 @@ UPDATE __lgbm_state
     SET
         data_test_handle = (
             SELECT
-                lgbm_datasetcreatefromfile(
+                LGBM_DATASETCREATEFROMFILE(
                     '${fileTest}', -- filename
                     'max_bin=15', -- param_data
                     data_train_handle -- reference
@@ -880,7 +921,7 @@ UPDATE __lgbm_state
     SET
         data_train_handle = (
             SELECT
-                lgbm_datasetcreatefromtable(
+                LGBM_DATASETCREATEFROMTABLE(
                     'max_bin=15', -- param_data
                     NULL, -- reference
                     --
@@ -899,7 +940,7 @@ UPDATE __lgbm_state
     SET
         data_test_handle = (
             SELECT
-                lgbm_datasetcreatefromtable(
+                LGBM_DATASETCREATEFROMTABLE(
                     'max_bin=15', -- param_data
                     data_train_handle, -- reference
                     --
@@ -918,7 +959,7 @@ UPDATE __lgbm_state
         let sqlIi = 0;
         let sqlPredictFile = (`
 SELECT
-        lgbm_predictforfile(
+        LGBM_PREDICTFORFILE(
             model,                      -- model
             ${LGBM_PREDICT_NORMAL},     -- predict_type
             0,                          -- start_iteration
@@ -931,7 +972,7 @@ SELECT
         )
     FROM __lgbm_state;
 SELECT
-        lgbm_predictforfile(
+        LGBM_PREDICTFORFILE(
             model,                      -- model
             ${LGBM_PREDICT_NORMAL},     -- predict_type
             10,                         -- start_iteration
@@ -951,7 +992,7 @@ CREATE TABLE __lgbm_table_preb AS
         DOUBLEARRAY_EXTRACT(__lgp, 0) AS prediction
     FROM (
         SELECT
-            lgbm_predictfortable(
+            LGBM_PREDICTFORTABLE(
                 (SELECT model FROM __lgbm_state),   -- model
                 ${LGBM_PREDICT_NORMAL},     -- predict_type
                 0,                          -- start_iteration
@@ -978,7 +1019,7 @@ CREATE TABLE __lgbm_table_preb AS
         DOUBLEARRAY_EXTRACT(__lgp, 0) AS _1
     FROM (
         SELECT
-            lgbm_predictfortable(
+            LGBM_PREDICTFORTABLE(
                 (SELECT model FROM __lgbm_state),   -- model
                 ${LGBM_PREDICT_NORMAL},     -- predict_type
                 10,                         -- start_iteration
@@ -1003,7 +1044,7 @@ CREATE TABLE __lgbm_table_preb AS
         let sqlTrainData = (`
 UPDATE __lgbm_state
     SET
-        model = lgbm_trainfromdataset(
+        model = LGBM_TRAINFROMDATASET(
             -- param_train
             (
                 'objective=binary'
@@ -1025,7 +1066,7 @@ UPDATE __lgbm_state
         let sqlTrainFile = (`
 UPDATE __lgbm_state
     SET
-        model = lgbm_trainfromfile(
+        model = LGBM_TRAINFROMFILE(
             -- param_train
             (
                 'objective=binary'
@@ -1050,7 +1091,7 @@ UPDATE __lgbm_state
     SET
         model = (
             SELECT
-                lgbm_trainfromtable(
+                LGBM_TRAINFROMTABLE(
                     -- param_train
                     (
                         'objective=binary'
@@ -1127,10 +1168,10 @@ INSERT INTO __lgbm_state(rowid) SELECT 1;
 ${sqlDataXxx};
 UPDATE __lgbm_state
     SET
-        data_test_num_data = lgbm_datasetgetnumdata(data_test_handle),
-        data_test_num_feature = lgbm_datasetgetnumfeature(data_test_handle),
-        data_train_num_data = lgbm_datasetgetnumdata(data_train_handle),
-        data_train_num_feature = lgbm_datasetgetnumfeature(data_train_handle);
+        data_test_num_data = LGBM_DATASETGETNUMDATA(data_test_handle),
+        data_test_num_feature = LGBM_DATASETGETNUMFEATURE(data_test_handle),
+        data_train_num_data = LGBM_DATASETGETNUMDATA(data_train_handle),
+        data_train_num_feature = LGBM_DATASETGETNUMFEATURE(data_train_handle);
 
 -- lgbm - train
 ${sqlTrainXxx};
@@ -1144,8 +1185,8 @@ ${sqlPredictXxx.replace(/fileActual/g, fileActual)};
 
 -- lgbm - cleanup
 SELECT
-        lgbm_datasetfree(data_test_handle),
-        lgbm_datasetfree(data_train_handle)
+        LGBM_DATASETFREE(data_test_handle),
+        LGBM_DATASETFREE(data_train_handle)
     FROM __lgbm_state;
                 `)
             });
@@ -2958,21 +2999,24 @@ SELECT DOUBLEARRAY_JSONTO(WIN_QUANTILE2(1, 2, 3)) FROM __tmp1;
         let valIn;
         function sqlSinefitExtractLnr(wsf, ii, suffix) {
             return (`
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'gyy', 0), 8) AS gyy${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'laa', 0), 8) AS laa${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'lbb', 0), 8) AS lbb${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'lee', 0), 8) AS lee${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'lxy', 0), 8) AS lxy${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'lyy', 0), 8) AS lyy${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'mee', 0), 8) AS mee${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'mxe', 0), 8) AS mxe${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'mxx', 0), 8) AS mxx${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'myy', 0), 8) AS myy${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'nnn', 0), 8) AS nnn${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'rr0', 0), 8) AS rr0${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'rr1', 0), 8) AS rr1${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'xx1', 0), 8) AS xx1${suffix},
-    ROUND(sinefit_extract(${wsf}, ${ii}, 'yy1', 0), 8) AS yy1${suffix}
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'gyy', 0), 8) AS gyy${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'laa', 0), 8) AS laa${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'lbb', 0), 8) AS lbb${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'lee', 0), 8) AS lee${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'lxy', 0), 8) AS lxy${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'lyy', 0), 8) AS lyy${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'mee', 0), 8) AS mee${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'mrr', 0), 8) AS mrr${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'mxe', 0), 8) AS mxe${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'mxx', 0), 8) AS mxx${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'myy', 0), 8) AS myy${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'nnn', 0), 8) AS nnn${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'rra', 0), 8) AS rra${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'rrb', 0), 8) AS rrb${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'xxa', 0), 8) AS xxa${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'xxb', 0), 8) AS xxb${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'yya', 0), 8) AS yya${suffix},
+    ROUND(SINEFIT_EXTRACT(${wsf}, ${ii}, 'yyb', 0), 8) AS yyb${suffix}
             `);
         }
         async function test_win_sinefit2_aggregate({
@@ -2984,7 +3028,7 @@ SELECT DOUBLEARRAY_JSONTO(WIN_QUANTILE2(1, 2, 3)) FROM __tmp1;
         }) {
             let sqlBetween = "";
             let valActual;
-            let xx2 = 2;
+            let xxr = 2;
             if (aa !== undefined) {
                 sqlBetween = (
                     `ROWS BETWEEN ${aa - 1} PRECEDING AND ${bb} FOLLOWING`
@@ -3002,17 +3046,17 @@ CREATE TEMP TABLE __sinefit_win AS
     SELECT
         id2,
         __wsf,
-        sinefit_extract(__wsf, 0, 'xx1', 0) AS xx11,
-        sinefit_extract(__wsf, 0, 'yy1', 0) AS yy11,
-        sinefit_extract(__wsf, 8, 'xx1', 0) AS xx12,
-        sinefit_extract(__wsf, 8, 'yy1', 0) AS yy12,
-        sinefit_extract(__wsf, 9, 'xx1', 0) AS xx13,
-        sinefit_extract(__wsf, 9, 'yy1', 0) AS yy13
+        SINEFIT_EXTRACT(__wsf, 0, 'xxb', 0) AS xxb1,
+        SINEFIT_EXTRACT(__wsf, 0, 'yyb', 0) AS yyb1,
+        SINEFIT_EXTRACT(__wsf, 8, 'xxb', 0) AS xxb2,
+        SINEFIT_EXTRACT(__wsf, 8, 'yyb', 0) AS yyb2,
+        SINEFIT_EXTRACT(__wsf, 9, 'xxb', 0) AS xxb3,
+        SINEFIT_EXTRACT(__wsf, 9, 'yyb', 0) AS yyb3
     FROM (
         SELECT
             id2,
             WIN_SINEFIT2(
-                1, ${xx2},
+                1, ${xxr},
                 value->>0, value->>1,
                 value->>0, value->>1,
                 value->>0, value->>1,
@@ -3036,7 +3080,7 @@ CREATE TEMP TABLE __sinefit_win AS
     );
 UPDATE __sinefit_win
     SET
-        __wsf = sinefit_refitlast(
+        __wsf = SINEFIT_REFITLAST(
             __wsf,
             0, 0,
             0, 0,
@@ -3052,18 +3096,18 @@ UPDATE __sinefit_win
     WHERE id2 = ${id4};
 UPDATE __sinefit_win
     SET
-        __wsf = sinefit_refitlast(
+        __wsf = SINEFIT_REFITLAST(
             __wsf,
-            xx11, yy11,
-            xx11, yy11,
-            xx11, yy11,
-            xx11, yy11,
-            xx11, yy11,
-            xx11, yy11,
-            xx11, yy11,
-            xx11, yy11,
-            xx12, yy12,
-            xx13, yy13
+            xxb1, yyb1,
+            xxb1, yyb1,
+            xxb1, yyb1,
+            xxb1, yyb1,
+            xxb1, yyb1,
+            xxb1, yyb1,
+            xxb1, yyb1,
+            xxb1, yyb1,
+            xxb2, yyb2,
+            xxb3, yyb3
         )
     WHERE id2 = ${id4};
 SELECT
@@ -3094,6 +3138,9 @@ SELECT
                 mee1,
                 mee2,
                 mee3,
+                mrr1,
+                mrr2,
+                mrr3,
                 mxe1,
                 mxe2,
                 mxe3,
@@ -3106,18 +3153,24 @@ SELECT
                 nnn1,
                 nnn2,
                 nnn3,
-                rr01,
-                rr02,
-                rr03,
-                rr11,
-                rr12,
-                rr13,
-                xx11,
-                xx12,
-                xx13,
-                yy11,
-                yy12,
-                yy13
+                rra1,
+                rra2,
+                rra3,
+                rrb1,
+                rrb2,
+                rrb3,
+                xxa1,
+                xxa2,
+                xxa3,
+                xxb1,
+                xxb2,
+                xxb3,
+                yya1,
+                yya2,
+                yya3,
+                yyb1,
+                yyb2,
+                yyb3
             }, ii, list) {
                 let obj1;
                 let obj2;
@@ -3130,14 +3183,17 @@ SELECT
                     "lxy": lxy1,
                     "lyy": lyy1,
                     "mee": mee1,
+                    "mrr": mrr1,
                     "mxe": mxe1,
                     "mxx": mxx1,
                     "myy": myy1,
                     "nnn": nnn1,
-                    "rr0": rr01,
-                    "rr1": rr11,
-                    "xx1": xx11,
-                    "yy1": yy11
+                    "rra": rra1,
+                    "rrb": rrb1,
+                    "xxa": xxa1,
+                    "xxb": xxb1,
+                    "yya": yya1,
+                    "yyb": yyb1
                 };
                 obj2 = {
                     id2,
@@ -3147,14 +3203,17 @@ SELECT
                     "lxy": lxy2,
                     "lyy": lyy2,
                     "mee": mee2,
+                    "mrr": mrr2,
                     "mxe": mxe2,
                     "mxx": mxx2,
                     "myy": myy2,
                     "nnn": nnn2,
-                    "rr0": rr02,
-                    "rr1": rr12,
-                    "xx1": xx12,
-                    "yy1": yy12
+                    "rra": rra2,
+                    "rrb": rrb2,
+                    "xxa": xxa2,
+                    "xxb": xxb2,
+                    "yya": yya2,
+                    "yyb": yyb2
                 };
                 obj3 = {
                     id2,
@@ -3164,14 +3223,17 @@ SELECT
                     "lxy": lxy3,
                     "lyy": lyy3,
                     "mee": mee3,
+                    "mrr": mrr3,
                     "mxe": mxe3,
                     "mxx": mxx3,
                     "myy": myy3,
                     "nnn": nnn3,
-                    "rr0": rr03,
-                    "rr1": rr13,
-                    "xx1": xx13,
-                    "yy1": yy13
+                    "rra": rra3,
+                    "rrb": rrb3,
+                    "xxa": xxa3,
+                    "xxb": xxb3,
+                    "yya": yya3,
+                    "yyb": yyb3
                 };
                 switch (list.length - ii) {
                 case 1:
@@ -3197,16 +3259,19 @@ SELECT
                 "lbb": null,
                 "lee": null,
                 "lxy": null,
-                "lyy": null,
+                "lyy": 0,
                 "mee": null,
+                "mrr": 0,
                 "mxe": null,
                 "mxx": 2,
                 "myy": 0,
                 "nnn": 1,
-                "rr0": 0,
-                "rr1": null,
-                "xx1": 2,
-                "yy1": 0
+                "rra": 0,
+                "rrb": 0,
+                "xxa": 0,
+                "xxb": 2,
+                "yya": 0,
+                "yyb": 0
             },
             {
                 "id2": 2,
@@ -3214,16 +3279,19 @@ SELECT
                 "lbb": null,
                 "lee": null,
                 "lxy": null,
-                "lyy": null,
+                "lyy": 1,
                 "mee": 0.70710678,
+                "mrr": 0,
                 "mxe": 0,
                 "mxx": 2,
                 "myy": 0.5,
                 "nnn": 2,
-                "rr0": 0,
-                "rr1": null,
-                "xx1": 2,
-                "yy1": 1
+                "rra": 0,
+                "rrb": 0,
+                "xxa": 2,
+                "xxb": 2,
+                "yya": 0,
+                "yyb": 1
             },
             {
                 "id2": 3,
@@ -3233,14 +3301,17 @@ SELECT
                 "lxy": 0.94491118,
                 "lyy": 3,
                 "mee": 1.52752523,
+                "mrr": 0,
                 "mxe": 0.57735027,
                 "mxx": 2.33333333,
                 "myy": 1.33333333,
                 "nnn": 3,
-                "rr0": 0,
-                "rr1": 0,
-                "xx1": 3,
-                "yy1": 3
+                "rra": 0,
+                "rrb": 0,
+                "xxa": 2,
+                "xxb": 3,
+                "yya": 0,
+                "yyb": 3
             },
             {
                 "id2": 4,
@@ -3250,14 +3321,17 @@ SELECT
                 "lxy": 0.95346259,
                 "lyy": 4.27272727,
                 "mee": 1.82574186,
+                "mrr": -0.06818182,
                 "mxe": 0.95742711,
                 "mxx": 2.75,
                 "myy": 2,
                 "nnn": 4,
-                "rr0": 0,
-                "rr1": -0.27272727,
-                "xx1": 4,
-                "yy1": 4
+                "rra": 0,
+                "rrb": -0.27272727,
+                "xxa": 2,
+                "xxb": 4,
+                "yya": 0,
+                "yyb": 4
             },
             {
                 "id2": 5,
@@ -3267,14 +3341,17 @@ SELECT
                 "lxy": 0.96164474,
                 "lyy": 5.35294118,
                 "mee": 2.07364414,
+                "mrr": -0.12513369,
                 "mxe": 1.30384048,
                 "mxx": 3.2,
                 "myy": 2.6,
                 "nnn": 5,
-                "rr0": 0,
-                "rr1": -0.35294118,
-                "xx1": 5,
-                "yy1": 5
+                "rra": 0,
+                "rrb": -0.35294118,
+                "xxa": 2,
+                "xxb": 5,
+                "yya": 0,
+                "yyb": 5
             },
             {
                 "id2": 6,
@@ -3284,14 +3361,17 @@ SELECT
                 "lxy": 0.97080629,
                 "lyy": 5.61403509,
                 "mee": 2.31660671,
+                "mrr": -0.03995059,
                 "mxe": 1.37840488,
                 "mxx": 3.5,
                 "myy": 3.16666667,
                 "nnn": 6,
-                "rr0": 0,
-                "rr1": 0.38596491,
-                "xx1": 5,
-                "yy1": 6
+                "rra": 0,
+                "rrb": 0.38596491,
+                "xxa": 2,
+                "xxb": 5,
+                "yya": 0,
+                "yyb": 6
             },
             {
                 "id2": 7,
@@ -3301,14 +3381,17 @@ SELECT
                 "lxy": 0.9752227,
                 "lyy": 5.725,
                 "mee": 2.37045304,
+                "mrr": 0.00504235,
                 "mxe": 1.38013112,
                 "mxx": 3.71428571,
                 "myy": 3.57142857,
                 "nnn": 7,
-                "rr0": 0,
-                "rr1": 0.275,
-                "xx1": 5,
-                "yy1": 6
+                "rra": 0,
+                "rrb": 0.275,
+                "xxa": 2,
+                "xxb": 5,
+                "yya": 0,
+                "yyb": 6
             },
             {
                 "id2": 8,
@@ -3318,14 +3401,17 @@ SELECT
                 "lxy": 0.97991187,
                 "lyy": 7.25,
                 "mee": 2.50713268,
+                "mrr": -0.02683794,
                 "mxe": 1.51185789,
                 "mxx": 4,
                 "myy": 4,
                 "nnn": 8,
-                "rr0": 0,
-                "rr1": -0.25,
-                "xx1": 6,
-                "yy1": 7
+                "rra": 0,
+                "rrb": -0.25,
+                "xxa": 2,
+                "xxb": 6,
+                "yya": 0,
+                "yyb": 7
             },
             {
                 "id2": 9,
@@ -3335,14 +3421,17 @@ SELECT
                 "lxy": 0.89597867,
                 "lyy": 9.25,
                 "mee": 2.26778684,
+                "mrr": -0.18308794,
                 "mxe": 2.39045722,
                 "mxx": 5,
                 "myy": 5,
                 "nnn": 8,
-                "rr0": 0,
-                "rr1": -1.25,
-                "xx1": 10,
-                "yy1": 8
+                "rra": 0,
+                "rrb": -1.25,
+                "xxa": 2,
+                "xxb": 10,
+                "yya": 0,
+                "yyb": 8
             },
             {
                 "id2": 10,
@@ -3352,14 +3441,17 @@ SELECT
                 "lxy": 0.81989159,
                 "lyy": 3.85,
                 "mee": 1.60356745,
+                "mrr": -0.03933794,
                 "mxe": 2.39045722,
                 "mxx": 5,
                 "myy": 5.5,
                 "nnn": 8,
-                "rr0": -0.87387387,
-                "rr1": 1.15,
-                "xx1": 2,
-                "yy1": 5
+                "rra": -0.87387387,
+                "rrb": 1.15,
+                "xxa": 0,
+                "xxb": 2,
+                "yya": 0,
+                "yyb": 5
             }
         ];
         valIn = [
@@ -3434,14 +3526,17 @@ SELECT
                         "lxy": 0.81541829,
                         "lyy": 2.47058824,
                         "mee": 2.54950976,
+                        "mrr": 0.06110045,
                         "mxe": 2.45854519,
                         "mxx": 4.4,
                         "myy": 4.5,
                         "nnn": 10,
-                        "rr0": 0,
-                        "rr1": 2.52941176,
-                        "xx1": 2,
-                        "yy1": 5
+                        "rra": 0,
+                        "rrb": 2.52941176,
+                        "xxa": 2,
+                        "xxb": 2,
+                        "yya": 0,
+                        "yyb": 5
                     }
                 );
             }()),
@@ -3457,14 +3552,17 @@ SELECT
                     "lxy": 0.865665,
                     "lyy": 6.63694722,
                     "mee": 4.89897949,
+                    "mrr": -0.79455058,
                     "mxe": 29.00344807,
                     "mxx": 74,
                     "myy": 10,
                     "nnn": 6,
-                    "rr0": 0,
-                    "rr1": -1.63694722,
-                    "xx1": 51,
-                    "yy1": 5
+                    "rra": 0,
+                    "rrb": -1.63694722,
+                    "xxa": 34,
+                    "xxb": 51,
+                    "yya": 5,
+                    "yyb": 5
                 };
                 valActual = await dbExecAndReturnLastRow({
                     db,
@@ -3500,14 +3598,17 @@ SELECT
                     "lxy": -0.23918696,
                     "lyy": 2.5,
                     "mee": 2.74837614,
+                    "mrr": -0.46433794,
                     "mxe": 2.39045722,
                     "mxx": 5,
                     "myy": 3.875,
                     "nnn": 8,
-                    "rr0": 0,
-                    "rr1": -3.5,
-                    "xx1": 10,
-                    "yy1": -1
+                    "rra": 0,
+                    "rrb": -3.5,
+                    "xxa": 2,
+                    "xxb": 10,
+                    "yya": 0,
+                    "yyb": -1
                 },
                 valExpect3: {
                     "id2": id4,
@@ -3517,14 +3618,17 @@ SELECT
                     "lxy": -0.5490214,
                     "lyy": 6.1,
                     "mee": 2.50356888,
+                    "mrr": -0.60183794,
                     "mxe": 2.39045722,
                     "mxx": 5,
                     "myy": 4.375,
                     "nnn": 8,
-                    "rr0": -3.79279279,
-                    "rr1": -1.1,
-                    "xx1": 2,
-                    "yy1": 5
+                    "rra": -3.79279279,
+                    "rrb": -1.1,
+                    "xxa": 0,
+                    "xxb": 2,
+                    "yya": 0,
+                    "yyb": 5
                 }
             }),
             // test win_sinefit2-spx handling-behavior
@@ -3829,15 +3933,15 @@ UPDATE __sinefit_csv
     FROM (
         SELECT
             ii + 1 AS ii,
-            sinefit_extract(__wsf, 0, 'predict_lnr', ii + 1) AS predict_lnr
+            SINEFIT_EXTRACT(__wsf, 0, 'predict_lnr', ii + 1) AS predict_lnr
         FROM __sinefit_csv
     ) AS __join1
     WHERE __join1.ii = __sinefit_csv.ii;
 SELECT
         *,
-        sinefit_extract(__wsf, 0, 'saa', 0) AS saa,
-        sinefit_extract(__wsf, 0, 'spp', 0) AS spp,
-        sinefit_extract(__wsf, 0, 'sww', 0) AS sww,
+        SINEFIT_EXTRACT(__wsf, 0, 'saa', 0) AS saa,
+        SINEFIT_EXTRACT(__wsf, 0, 'spp', 0) AS spp,
+        SINEFIT_EXTRACT(__wsf, 0, 'sww', 0) AS sww,
         ${sqlSinefitExtractLnr("__wsf", 0, "")}
     FROM __sinefit_csv
     JOIN (
@@ -3849,7 +3953,7 @@ SELECT
     LEFT JOIN (
         SELECT
             ii + 1 AS ii,
-            sinefit_extract(__wsf, 0, 'predict_snr', ii + 1) AS predict_snr
+            SINEFIT_EXTRACT(__wsf, 0, 'predict_snr', ii + 1) AS predict_snr
         FROM __sinefit_csv
     ) USING (ii);
                     `)

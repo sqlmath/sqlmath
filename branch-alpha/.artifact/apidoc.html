@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2025.8.30)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2025.9.1-beta)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -123,7 +123,6 @@ function childProcessSpawn2<span class="apidocSignatureSpan">(command, args, opt
 
 <a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.ciBuildExt">7.
 function ciBuildExt<span class="apidocSignatureSpan">({
-    modeSkip,
     process
 })</span>
 </a>
@@ -572,7 +571,21 @@ number SQLITE_OPEN_WAL
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version">64.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE">64.
+string SQLMATH_EXE
+</a>
+
+</li>
+<li>
+
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE">65.
+string SQLMATH_NODE
+</a>
+
+</li>
+<li>
+
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version">66.
 string version
 </a>
 
@@ -803,7 +816,7 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
         let {
             modeCapture,
             modeDebug,
-            stdio
+            stdio = []
         } = option;
         if (modeDebug) {
             consoleError(
@@ -858,57 +871,95 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
             // coverage-hack
             if (exitCode || npm_config_mode_test) {
                 resolve = reject;
-            }
-...
+         ...
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
 jstestDescribe((
-    "test_childProcessSpawn2"
+"test_childProcessSpawn2"
 ), function test_childProcessSpawn2() {
-    jstestIt((
-        "test childProcessSpawn2 handling-behavior"
-    ), async function () {
-        await Promise.all([
-            <span class="apidocCodeKeywordSpan">childProcessSpawn2</span>(
-                "aa",
-                [],
-                {modeCapture: "utf8", modeDebug: true, stdio: []}
-            )
-        ]);
-    });
-});
+jstestIt((
+    "test childProcessSpawn2 handling-behavior"
+), async function () {
+    await Promise.all([
+        <span class="apidocCodeKeywordSpan">childProcessSpawn2</span>(
+            "undefined",
+            [],
+            {modeCapture: "utf8", modeDebug: true, stdio: []}
+        ),
+        (async function () {
+            let result;
+            result = await moduleUtil.promisify(
 ...</pre></li>
 
 <li>
     <h2>
     <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.ciBuildExt" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.ciBuildExt">7.
     function ciBuildExt<span class="apidocSignatureSpan">({
-    modeSkip,
     process
 })</span>
     </a>
     </h2>
 </li>
 <li>Description and source-code:<pre class="apidocCodePre">async function ciBuildExt({
-    modeSkip,
     process
 }) {
 <span class="apidocCodeCommentSpan">
 // This function will build sqlmath from c.
 
-</span>    let option;
-    option = {
-        binNodegyp: modulePath.resolve(
-            modulePath.dirname(process.execPath || ""),
-            "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
-        ).replace("/bin/node_modules/", "/lib/node_modules/"),
-        isWin32: process.platform === "win32",
-        modeDebug: npm_config_mode_debug,
-        modeSkip,
-        process
-    };
-    await ciBuildExt2NodejsBuild(option);
+</span>    let binNodegyp;
+    let exitCode;
+    binNodegyp = modulePath.resolve(
+        modulePath.dirname(process.execPath || ""),
+        "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+    ).replace("/bin/node_modules/", "/lib/node_modules/");
+    if (!noop(
+        await fsExistsUnlessTest(cModulePath)
+    )) {
+        await ciBuildExt1NodejsConfigure({
+            binNodegyp,
+            process
+        });
+    }
+    consoleError(
+        `ciBuildExt2Nodejs - linking lib ${modulePath.resolve(cModulePath)}`
+    );
+    [
+        exitCode
+    ] = await childProcessSpawn2(
+        "sh",
+        [
+            "-c",
+            (`
+(set -e
+    # rebuild binding
+    rm -rf build/Release/obj/SRC_SQLMATH_CUSTOM/
+    node "${binNodegyp}" build --release
+    # node "${binNodegyp}" build --release --loglevel=verbose
+    mv build/Release/binding.node "${cModulePath}"
+    mv build/Release/shell "${SQLMATH_EXE}"
+    # ugly-hack - win32-sqlite-shell doesn't like nodejs-builtin-zlib,
+    #             so link with external-zlib.
+    if (uname | grep -q "MING\\|MSYS")
+    then
+        rm -f ${SQLMATH_EXE}
+        python setup.py exe_link \
+            ./build/Release/SRC_SQLITE_BASE.lib \
+            ./build/Release/SRC_SQLMATH_CUSTOM.lib \
+            ./build/Release/obj/shell/sqlmath_external_sqlite.obj \
+            ./zlib.lib \
+            \
+            -ltcg \
+            -nologo \
+            -out:${SQLMATH_EXE} \
+            -subsystem:console
+    fi
+)
+            `)
+        ],
+        {modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
+    );
+    assertOrThrow(!exitCode, `ciBuildExt - exitCode=${exitCode}`);
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
 jstestDescribe((
@@ -918,13 +969,13 @@ jstestIt((
     "test ciBuildExt handling-behavior"
 ), async function () {
     await Promise.all([
-        <span class="apidocCodeKeywordSpan">ciBuildExt</span>({modeSkip: true, process: {}}),
-        ciBuildExt({process: {arch: "arm", env: {}, platform: "win32"}}),
+        <span class="apidocCodeKeywordSpan">ciBuildExt</span>({process: {arch: "arm", env: {}, platform: "win32"}}),
         ciBuildExt({process: {arch: "arm64", env: {}, platform: "win32"}}),
         ciBuildExt({process: {arch: "ia32", env: {}, platform: "win32"}}),
+        ciBuildExt({process: {cwd: noop}}),
         ciBuildExt({process: {env: {}, platform: "darwin"}}),
         ciBuildExt({process: {env: {}, platform: "win32"}}),
-        ciBuildExt({process: {}})
+        ciBuildExt({process: {versions: {}}})
     ]);
 ...</pre></li>
 
@@ -1040,12 +1091,12 @@ assertJsonEqual(
     return result;
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-                "myy": 10,
-                "nnn": 6,
-                "rr0": 0,
-                "rr1": -1.63694722,
-                "xx1": 51,
-                "yy1": 5
+                "rra": 0,
+                "rrb": -1.63694722,
+                "xxa": 34,
+                "xxb": 51,
+                "yya": 5,
+                "yyb": 5
             };
             valActual = await <span class="apidocCodeKeywordSpan">dbExecAndReturnLastRow</span>({
                 db,
@@ -1607,8 +1658,8 @@ jstestIt((
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
 SELECT
-    lgbm_datasetfree(data_test_handle),
-    lgbm_datasetfree(data_train_handle)
+    LGBM_DATASETFREE(data_test_handle),
+    LGBM_DATASETFREE(data_train_handle)
 FROM __lgbm_state;
             `)
         });
@@ -2326,7 +2377,23 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.version">64.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE">64.
+    string SQLMATH_EXE
+    </a>
+    </h2>
+</li>
+
+<li>
+    <h2>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE">65.
+    string SQLMATH_NODE
+    </a>
+    </h2>
+</li>
+
+<li>
+    <h2>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.version">66.
     string version
     </a>
     </h2>
