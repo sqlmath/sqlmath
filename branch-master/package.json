@@ -3,7 +3,7 @@
         "email": "kaizhu256@gmail.com",
         "name": "kai zhu"
     },
-    "counter": 2,
+    "counter": 0,
     "description": "sqlite for data-science",
     "fileCount": 46,
     "homepage": "https://github.com/sqlmath/sqlmath",
@@ -32,5 +32,5 @@
     },
     "shCiArtifactUpload": 1,
     "shCiPublishNpm": 1,
-    "version": "2025.8.30"
+    "version": "2025.9.30"
 }
