@@ -21,8 +21,8 @@
 
 """sqlmath.py."""
 
-__version__ = "2025.8.30"
-__version_info__ = ("2025", "8", "30")
+__version__ = "2025.9.30"
+__version_info__ = ("2025", "9", "30")
 
 import json
 import math
@@ -312,7 +312,7 @@ def db_noop(*arglist):
     return db_call(jsbaton_create("_dbNoop"), arglist)
 
 
-def db_open(filename, flags=None):
+def db_open(filename=":memory:", flags=None):
     """
     This function will open and return sqlite-database-connection <db>.
 

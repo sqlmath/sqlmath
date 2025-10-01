@@ -11,13 +11,13 @@
     textLength="768"
     x="10"
     y="32"
-> 0.  755  2025-08-31T12:51:38Z  16212 KB  .                                                      </tspan>
+> 0.  755  2025-10-01T07:27:20Z  16316 KB  .                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="54"
-> 1.  644  2025-08-31T12:49:40Z     17 KB  .ci.sh                                                 </tspan>
+> 1.  644  2025-10-01T07:27:20Z     16 KB  .ci.sh                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -53,13 +53,13 @@
     textLength="768"
     x="10"
     y="186"
-> 7.  644  2022-05-14T17:14:34Z      1 KB  .npmignore                                             </tspan>
+> 7.  644  2025-10-01T07:27:20Z      1 KB  .npmignore                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="208"
-> 8.  644  2025-08-31T12:51:38Z     32 KB  CHANGELOG.md                                           </tspan>
+> 8.  644  2025-10-01T07:27:20Z     34 KB  CHANGELOG.md                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -71,19 +71,19 @@
     textLength="768"
     x="10"
     y="252"
->10.  644  2024-12-16T05:16:49Z      2 KB  MANIFEST.in                                            </tspan>
+>10.  644  2025-10-01T07:27:20Z      2 KB  MANIFEST.in                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
->11.  644  2025-08-31T12:51:38Z      7 KB  PKG-INFO                                               </tspan>
+>11.  644  2025-10-01T07:27:20Z      7 KB  PKG-INFO                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->12.  644  2025-08-31T12:51:38Z      6 KB  README.md                                              </tspan>
+>12.  644  2025-10-01T07:27:20Z      6 KB  README.md                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -149,13 +149,13 @@
     textLength="768"
     x="10"
     y="538"
->23.  644  2025-04-01T16:51:56Z    331 KB  jslint.mjs                                             </tspan>
+>23.  644  2025-09-28T09:47:21Z    332 KB  jslint.mjs                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
->24.  644  2025-04-01T16:51:56Z    103 KB  jslint_ci.sh                                           </tspan>
+>24.  644  2025-09-28T09:48:12Z    100 KB  jslint_ci.sh                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -173,43 +173,43 @@
     textLength="768"
     x="10"
     y="626"
->27.  644  2025-08-31T12:51:38Z      1 KB  package.json                                           </tspan>
+>27.  644  2025-10-01T07:27:20Z      1 KB  package.json                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->28.  644  2025-08-31T12:51:38Z      2 KB  pyproject.toml                                         </tspan>
+>28.  644  2025-10-01T07:27:20Z      2 KB  pyproject.toml                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->29.  644  2025-08-31T12:51:38Z     21 KB  setup.py                                               </tspan>
+>29.  644  2025-10-01T07:27:20Z     21 KB  setup.py                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->30.  644  2025-08-31T12:51:38Z     52 KB  sqlmath.mjs                                            </tspan>
+>30.  644  2025-10-01T07:27:20Z     56 KB  sqlmath.mjs                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->31.  644  2025-08-31T12:51:38Z     20 KB  sqlmath/__init__.py                                    </tspan>
+>31.  644  2025-10-01T07:27:20Z     20 KB  sqlmath/__init__.py                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="736"
->32.  644  2025-03-29T21:20:52Z    158 KB  sqlmath_base.c                                         </tspan>
+>32.  644  2025-09-30T02:15:53Z    161 KB  sqlmath_base.c                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="758"
->33.  644  2025-04-07T21:20:02Z    234 KB  sqlmath_base.h                                         </tspan>
+>33.  644  2025-09-24T06:53:36Z    342 KB  sqlmath_base.h                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -233,61 +233,61 @@
     textLength="768"
     x="10"
     y="846"
->37.  644  2025-08-31T12:49:40Z  10810 KB  sqlmath_external_sqlite.c                              </tspan>
+>37.  644  2025-09-30T02:15:53Z  10810 KB  sqlmath_external_sqlite.c                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="868"
->38.  644  2025-03-03T03:27:26Z    458 KB  sqlmath_external_zlib.c                                </tspan>
+>38.  644  2023-10-12T08:09:24Z      7 KB  sqlmath_wrapper_wasm.js                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="890"
->39.  644  2023-10-12T08:09:24Z      7 KB  sqlmath_wrapper_wasm.js                                </tspan>
+>39.  644  2025-09-30T02:15:53Z    145 KB  test.mjs                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="912"
->40.  644  2025-06-28T16:17:01Z    142 KB  test.mjs                                               </tspan>
+>40.  644  2025-09-30T02:15:53Z     18 KB  test.py                                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="934"
->41.  644  2024-06-03T00:42:32Z     18 KB  test.py                                                </tspan>
+>41.  644  2025-01-06T01:15:40Z     57 KB  test_data_sinefit.csv                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="956"
->42.  644  2025-01-06T01:15:40Z     57 KB  test_data_sinefit.csv                                  </tspan>
+>42.  644  2024-06-23T22:54:32Z      9 KB  test_lgbm.py                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="978"
->43.  644  2024-06-23T22:54:32Z      9 KB  test_lgbm.py                                           </tspan>
+>43.  644  2024-05-28T09:05:42Z     86 KB  test_lgbm_binary.test                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1000"
->44.  644  2024-05-28T09:05:42Z     86 KB  test_lgbm_binary.test                                  </tspan>
+>44.  644  2024-05-28T09:05:42Z   1200 KB  test_lgbm_binary.train                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1022"
->45.  644  2024-05-28T09:05:42Z   1200 KB  test_lgbm_binary.train                                 </tspan>
+>45.  644  2024-05-28T09:05:42Z     10 KB  test_lgbm_preb.txt                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1044"
->46.  644  2024-05-28T09:05:42Z     10 KB  test_lgbm_preb.txt                                     </tspan>
+>46.  644  2025-10-01T07:27:20Z    446 KB  zlib.v1.3.1.vcpkg.x64-windows-static.lib               </tspan>
 
 </text>
 </svg>

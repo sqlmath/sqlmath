@@ -116,7 +116,7 @@ process.stdout.write(
         || [ "$GITHUB_BRANCH0" = master ] \
     )
     then
-        export GITHUB_UPLOAD_RETRY=0
+        GITHUB_UPLOAD_RETRY=0
         while true
         do
             GITHUB_UPLOAD_RETRY="$((GITHUB_UPLOAD_RETRY + 1))"
@@ -137,6 +137,7 @@ import moduleChildProcess from "child_process";
             then
                 break
             fi
+            sleep 5
         done
     fi
 )}
@@ -226,32 +227,14 @@ shCiBuildWasm() {(set -e
     # debug
     # OPTION1="$OPTION1 -O0"
     OPTION1="$OPTION1 -Os"
-    # OPTION2="$OPTION2 -Oz"
+    # OPTION1="$OPTION1 -Oz"
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
         sqlmath_base.c \
         sqlmath_custom.c \
-        sqlmath_external_sqlite.c \
-        sqlmath_external_zlib.c
+        sqlmath_external_sqlite.c
     do
         OPTION2=""
-        FILE2="build/$(basename "$FILE").wasm.o"
-        case "$FILE" in
-        sqlmath_base.c)
-            OPTION1="$OPTION1 $SQLMATH_CFLAG_WALL_LIST"
-            ;;
-        sqlmath_custom.c)
-            OPTION1="$OPTION1 $SQLMATH_CFLAG_WALL_LIST"
-            ;;
-        *)
-            OPTION1="$OPTION1 $SQLMATH_CFLAG_WNO_LIST"
-            # optimization - skip rebuild of rollup if possible
-            if [ "$FILE2" -nt "$FILE" ]
-            then
-                printf "shCiBuildWasm - skip $FILE\n" 1>&2
-                continue
-            fi
-        esac
         case "$FILE" in
         sqlmath_base.c)
             OPTION2="$OPTION2 -DSRC_SQLMATH_BASE_C2="
@@ -262,10 +245,18 @@ shCiBuildWasm() {(set -e
         sqlmath_external_sqlite.c)
             OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
             ;;
-        sqlmath_external_zlib.c)
-            OPTION2="$OPTION2 -DSRC_ZLIB_C2="
+        esac
+        FILE2="build/$(basename "$FILE").wasm.o"
+        OPTION2="$OPTION2 -c $FILE -o $FILE2"
+        case "$FILE" in
+        sqlmath_base.c)
+            OPTION2="$OPTION2 $SQLMATH_CFLAG_WALL_LIST"
+            ;;
+        sqlmath_custom.c)
+            OPTION2="$OPTION2 $SQLMATH_CFLAG_WALL_LIST"
             ;;
         *)
+            OPTION2="$OPTION2 $SQLMATH_CFLAG_WNO_LIST"
             # optimization - skip rebuild of rollup if possible
             if [ "$FILE2" -nt "$FILE" ]
             then
@@ -273,7 +264,6 @@ shCiBuildWasm() {(set -e
                 continue
             fi
         esac
-        OPTION2="$OPTION2 -c $FILE -o $FILE2"
         emcc $OPTION1 $OPTION2
     done
     OPTION2=""
@@ -309,12 +299,12 @@ shCiBuildWasm() {(set -e
         -s NODEJS_CATCH_REJECTION=0 \
         -s RESERVED_FUNCTION_POINTERS=64 \
         -s SINGLE_FILE=0 \
+        -s USE_ZLIB=1 \
         -s WASM=1 \
         -s WASM_BIGINT \
         build/sqlmath_base.c.wasm.o \
         build/sqlmath_custom.c.wasm.o \
         build/sqlmath_external_sqlite.c.wasm.o \
-        build/sqlmath_external_zlib.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
     printf "/*jslint-disable*/
@@ -352,7 +342,7 @@ shCiEmsdkInstall() {(set -e
     then
         exit
     fi
-    # https://github.com/emscripten-core/emsdk/blob/2.0.34/docker/Dockerfile
+    # https://github.com/emscripten-core/emsdk/blob/3.1.74/docker/Dockerfile
     git clone https://github.com/emscripten-core/emsdk.git $EMSDK
     #
     echo "## Install Emscripten"
@@ -370,7 +360,9 @@ shCiEmsdkInstall() {(set -e
     chmod 777 ${EMSDK}/upstream/emscripten
     chmod -R 777 ${EMSDK}/upstream/emscripten/cache
     echo "int main() { return 0; }" > hello.c
-    ${EMSDK}/upstream/emscripten/emcc -c hello.c
+    ${EMSDK}/upstream/emscripten/emcc -c hello.c \
+        -s USE_LIBPNG=1 \
+        -s USE_ZLIB=1
     cat ${EMSDK}/upstream/emscripten/cache/sanity.txt
     echo "## Done"
     #
@@ -378,11 +370,9 @@ shCiEmsdkInstall() {(set -e
     echo "## Aggressive optimization: Remove debug symbols"
     cd ${EMSDK} && . ./emsdk_env.sh
     # Remove debugging symbols from embedded node (extra 7MB)
-    strip -s `which node`
+    # strip -s `which node`
     # Tests consume ~80MB disc space
     rm -fr ${EMSDK}/upstream/emscripten/tests
-    # Fastcomp is not supported
-    rm -fr ${EMSDK}/upstream/fastcomp
     # strip out symbols from clang (~extra 50MB disc space)
     find ${EMSDK}/upstream/bin -type f -exec strip -s {} + || true
     echo "## Done"
@@ -390,7 +380,8 @@ shCiEmsdkInstall() {(set -e
     # download ports
     # touch "$EMSDK/.null.c"
     # emcc \
-    #     -s USE_ZLIB \
+    #     -s USE_LIBPNG=1 \
+    #     -s USE_ZLIB=1 \
     #     "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
 )}
 
@@ -513,28 +504,29 @@ shSqlmathUpdate() {(set -e
     . "$HOME/myci2.sh" : && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
+        DIR_SQLITE=sqlite-autoconf-3500400
+        URL_SQLITE=https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
         # shRollupFetch
-        if [ ! -d .sqlite-autoconf-3500400 ]
-        then
-            for URL in \
-https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz \
-https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
-            do
+        for DIR in \
+            "$DIR_SQLITE"
+        do
+            if [ ! -d ".$DIR" ]
+            then
+                case "$DIR" in
+                "$DIR_SQLITE")
+                    URL="$URL_SQLITE"
+                    ;;
+                esac
+                echo "$DIR" "$URL"
                 curl -L "$URL" | tar -xz
-            done
-            for DIR in \
-                sqlite-autoconf-3500400 \
-                zlib-1.3.1
-            do
                 rm -rf ".$DIR"
                 mv "$DIR" ".$DIR"
-            done
-        fi
+            fi
+        done
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
         shRollupFetch sqlmath_base.h
         shRollupFetch sqlmath_external_sqlite.c
-        shRollupFetch sqlmath_external_zlib.c
         # shIndentC
         if (uname | grep -q "MING\|MSYS")
         then
@@ -542,7 +534,6 @@ https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
             shIndentC sqlmath_base.h
             shIndentC sqlmath_custom.c
             shIndentC sqlmath_external_sqlite.c
-            shIndentC sqlmath_external_zlib.c
         fi
         return
     fi
@@ -551,7 +542,6 @@ https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
         for FILE in \
             .ci.sh \
             asset_sqlmath_external_rollup.js \
-            indent.exe \
             index.html \
             setup.py \
             sqlmath.mjs \
@@ -560,8 +550,8 @@ https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
             sqlmath_base.h \
             sqlmath_browser.mjs \
             sqlmath_external_sqlite.c \
-            sqlmath_external_zlib.c \
-            sqlmath_wrapper_wasm.js
+            sqlmath_wrapper_wasm.js \
+            zlib.v1.3.1.vcpkg.x64-windows-static.lib
         do
             ln -f "$HOME/Documents/sqlmath/$FILE" "$FILE"
         done

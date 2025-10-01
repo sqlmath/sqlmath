@@ -42,6 +42,7 @@ file sqlmath_h - start
 #else
 #   include <dlfcn.h>
 #   include <unistd.h>
+#   include <zlib.h>
 #endif                          // _WIN32
 
 
@@ -112,7 +113,7 @@ file sqlmath_h - start
 
 
 #if !defined(SQLITE_MAX_FUNCTION_ARG)
-#   define SQLITE_MAX_FUNCTION_ARG 127
+#   define SQLITE_MAX_FUNCTION_ARG 1000
 #endif                          // SQLITE_MAX_FUNCTION_ARG
 
 
@@ -1149,7 +1150,7 @@ SQLMATH_API int doublewinAggpush(
     uint32_t alloc = (uint32_t) dblwin->alloc;
     if (nn * sizeof(double) >= alloc) {
         // error - toobig
-        if (alloc <= 0 || SIZEOF_BLOB_MAX <= alloc) {
+        if (alloc <= 0 || SIZEOF_BLOB_MAX < alloc) {
             doublewinAggfree(dblwinAgg);
             return SQLITE_NOMEM;
         }
@@ -1683,6 +1684,165 @@ SQLMATH_FUNC static void sql1_fmod_func(
             sqlite3_value_double_or_nan(argv[1])));
 }
 
+// SQLMATH_FUNC sql1_gzip_xxx_func - start
+
+SQLMATH_FUNC static void sql1_gzip_compress_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will gzip-compress <argv[0]> using zlib's deflate-algorithm.
+    UNUSED_PARAMETER(argc);
+    // declare var
+    z_stream strm = { 0 };
+    int errcode = Z_OK;
+    uint8_t *gzip_buf = NULL;
+    // init argv
+    const uint8_t *src_buf = sqlite3_value_blob(argv[0]);
+    if (src_buf == NULL) {
+        sqlite3_result_error(context,   //
+            "gzip_compress - Input cannot be NULL", -1);
+        return;
+    }
+    const int src_len = sqlite3_value_bytes(argv[0]);
+    if (SIZEOF_BLOB_MAX < src_len) {
+        goto catch_error;
+    }
+    // uLong compressBound(
+    //     uLong sourceLen
+    // );
+    const int gzip_len = (int) compressBound(src_len) + 18;
+    gzip_buf = sqlite3_malloc(gzip_len);
+    if (!gzip_buf) {
+        goto catch_error;
+    }
+    // int deflateInit2(
+    //     z_streamp strm,
+    //     int level,
+    //     int method,
+    //     int windowBits,
+    //     int memLevel,
+    //     int strategy
+    // );
+    errcode = deflateInit2(     //
+        &strm,                  //
+        Z_DEFAULT_COMPRESSION,  //
+        Z_DEFLATED,             //
+        15 + 16,                //
+        8,                      //
+        Z_DEFAULT_STRATEGY);
+    if (errcode != Z_OK) {
+        goto catch_error;
+    }
+    strm.avail_in = (uLong) src_len;
+    strm.next_in = (uint8_t *) src_buf;
+    strm.avail_out = (uLong) gzip_len;
+    strm.next_out = gzip_buf;
+    // int deflate(
+    //     z_streamp strm,
+    //     int flush
+    // );
+    errcode = deflate(&strm, Z_FINISH);
+    if (errcode != Z_STREAM_END) {
+        sqlite3_result_error2(context,  //
+            "gzip_compress - deflate() failed - %d\n", errcode);
+        goto cleanup;
+    }
+    sqlite3_result_blob(context, gzip_buf, gzip_len - (int) strm.avail_out,
+        sqlite3_free);
+    deflateEnd(&strm);
+    return;
+  catch_error:
+    sqlite3_result_error_nomem(context);
+  cleanup:
+    // int deflateEnd(
+    //     z_streamp strm
+    // );
+    deflateEnd(&strm);
+    if (gzip_buf) {
+        sqlite3_free(gzip_buf);
+    }
+}
+
+SQLMATH_FUNC static void sql1_gzip_uncompress_func(
+    sqlite3_context * context,
+    int argc,
+    sqlite3_value ** argv
+) {
+// This function will gzip-uncompress <argv[0]> using zlib's inflate-algorithm.
+    UNUSED_PARAMETER(argc);
+    // declare var
+    z_stream strm = { 0 };
+    uint8_t *src_buf = NULL;
+    int src_len = 4096;
+    int errcode = Z_OK;
+    // init argv
+    const uint8_t *gzip_buf = sqlite3_value_blob(argv[0]);
+    if (gzip_buf == NULL) {
+        sqlite3_result_error(context,   //
+            "gzip_uncompress - Input cannot be NULL", -1);
+        return;
+    }
+    const int gzip_len = sqlite3_value_bytes(argv[0]);
+    if (SIZEOF_BLOB_MAX < gzip_len) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
+    // int inflateInit2(
+    //     z_streamp strm,
+    //     int windowBits
+    // );
+    errcode = inflateInit2(&strm, 15 + 16);
+    if (errcode != Z_OK) {
+        goto catch_error;
+    }
+    strm.avail_in = (uLong) gzip_len;
+    strm.next_in = (uint8_t *) gzip_buf;
+    // Allocate the initial output buffer
+    src_buf = sqlite3_malloc(src_len);
+    if (!src_buf) {
+        goto catch_error;
+    }
+    do {
+        // Set up the output buffer for the next decompression step.
+        // `total_out` is the total bytes decompressed so far.
+        strm.avail_out = (uLong) src_len - strm.total_out;
+        strm.next_out = src_buf + strm.total_out;
+        errcode = inflate(&strm, Z_NO_FLUSH);
+        if (errcode < 0 && errcode != Z_STREAM_END) {
+            sqlite3_result_error2(context,      //
+                "gzip_uncompress - inflate() failed - %d\n", errcode);
+            goto cleanup;
+        }
+        // If the output buffer is full, reallocate to double its capacity.
+        if (strm.avail_out == 0 && errcode != Z_STREAM_END) {
+            src_len = src_len * 2;
+            if (SIZEOF_BLOB_MAX < src_len) {    // Check for overflow
+                goto catch_error;
+            }
+            src_buf = sqlite3_realloc(src_buf, src_len);
+            if (!src_buf) {
+                goto catch_error;
+            }
+        }
+    } while (errcode != Z_STREAM_END);
+    sqlite3_result_blob(context, src_buf, (int) strm.total_out, sqlite3_free);
+    inflateEnd(&strm);
+    return;
+  catch_error:
+    sqlite3_result_error_nomem(context);
+  cleanup:
+    // int inflateEnd(
+    //     z_streamp strm
+    // );
+    inflateEnd(&strm);
+    if (src_buf) {
+        sqlite3_free(src_buf);
+    }
+}
+
+// SQLMATH_FUNC sql1_gzip_xxx_func - end
+
 SQLMATH_FUNC static void sql1_idatefromto_func0(
 /*
 **    datetime( TIMESTRING, MOD, MOD, ...)
@@ -1909,6 +2069,7 @@ SQLMATH_FUNC static void sql1_lgbm_dlopen_func(
     int errcode = 0;
     errcode = dbDlopen(context, filename, (void **) &lgbm_library);
     if (errcode) {
+        sqlite3_result_error_code(context, errcode);
         return;
     }
     LGBM_dlsym();
@@ -2094,13 +2255,13 @@ SQLMATH_FUNC static void sql1_lgbm_predictforfile_func(
     sqlite3_value ** argv
 ) {
 // This function will make prediction for file from <model_str>.
+    UNUSED_PARAMETER(argc);
     const char *model_str = (char *) sqlite3_value_text(argv[0]);
     if (model_str == NULL) {
         sqlite3_result_error(context,
             "lgbm_predictforfile - model_str cannot be NULL", -1);
         return;
     }
-    UNUSED_PARAMETER(argc);
     int errcode = 0;
     // booster - init
     BoosterHandle booster = NULL;
@@ -2206,8 +2367,8 @@ SQLMATH_FUNC static void sql1_lgbm_trainfromdataset_func0(
         booster,                // BoosterHandle handle,
         0,                      // int start_iteration,
         -1,                     // int num_iteration,
-        C_API_FEATURE_IMPORTANCE_SPLIT, // int feature_importance_type,
-        // C_API_FEATURE_IMPORTANCE_GAIN,  // int feature_importance_type,
+        // C_API_FEATURE_IMPORTANCE_SPLIT, // int feature_importance_type,
+        C_API_FEATURE_IMPORTANCE_GAIN,  // int feature_importance_type,
         0,                      // int64_t buffer_len,
         &model_len,             // int64_t *out_len,
         model_str);             // char *out_str
@@ -2221,8 +2382,8 @@ SQLMATH_FUNC static void sql1_lgbm_trainfromdataset_func0(
         booster,                // BoosterHandle handle,
         0,                      // int start_iteration,
         -1,                     // int num_iteration,
-        C_API_FEATURE_IMPORTANCE_SPLIT, // int feature_importance_type,
-        // C_API_FEATURE_IMPORTANCE_GAIN,  // int feature_importance_type,
+        // C_API_FEATURE_IMPORTANCE_SPLIT, // int feature_importance_type,
+        C_API_FEATURE_IMPORTANCE_GAIN,  // int feature_importance_type,
         model_len,              // int64_t buffer_len,
         &model_len,             // int64_t *out_len,
         model_str);             // char *out_str
@@ -2516,103 +2677,6 @@ SQLMATH_FUNC static void sql1_throwerror_func(
     }
     sqlite3_result_error_code(context, SQLITE_INTERNAL);
 }
-
-// SQLMATH_FUNC sql1_zlib_xxx_func - start
-typedef unsigned long z_ulong;  // NOLINT
-
-SQLMATH_FUNC static void sql1_zlib_compress_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will compress <argv[0]> using zlib's compress() function,
-// with a 4-byte header storing <original_size>.
-    UNUSED_PARAMETER(argc);
-    // init original_data
-    const void *original_data = sqlite3_value_blob(argv[0]);
-    if (original_data == NULL) {
-        sqlite3_result_error(context, "zlib_compress - cannot compress NULL",
-            -1);
-        return;
-    }
-    // init original_size
-    int original_size = sqlite3_value_bytes(argv[0]);
-    // init compress_size
-    uLongf compress_size = compressBound(original_size);
-    // init compress_data
-    unsigned char *compress_data =
-        (unsigned char *) sqlite3_malloc(4 + compress_size);
-    if (compress_data == NULL) {
-        sqlite3_result_error_nomem(context);
-        return;
-    }
-    // zlib_compress
-    if (compress(compress_data + 4, &compress_size, original_data,
-            original_size) != Z_OK) {
-        sqlite3_free(compress_data);
-        sqlite3_result_error(context, "zlib_compress - failed compress", -1);
-        return;
-    }
-    // set 4-byte header storing <original_size> (big-endian)
-    compress_data[0] = (original_size >> 0x18) & 0xff;
-    compress_data[1] = (original_size >> 0x10) & 0xff;
-    compress_data[2] = (original_size >> 0x08) & 0xff;
-    compress_data[3] = (original_size >> 0x00) & 0xff;
-    sqlite3_result_blob(context, compress_data, 4 + compress_size,
-        sqlite3_free);
-}
-
-SQLMATH_FUNC static void sql1_zlib_uncompress_func(
-    sqlite3_context * context,
-    int argc,
-    sqlite3_value ** argv
-) {
-// This function will compress <argv[0]> using zlib's compress() function,
-// with a 4-byte header storing <original_size>.
-    UNUSED_PARAMETER(argc);
-    // init compress_data
-    const unsigned char *compress_data = sqlite3_value_blob(argv[0]);
-    if (compress_data == NULL) {
-        sqlite3_result_error(context,
-            "zlib_uncompress - cannot uncompress NULL", -1);
-        return;
-    }
-    // init compress_size
-    int compress_size = sqlite3_value_bytes(argv[0]) - 4;
-    if (compress_size < 0) {
-        sqlite3_result_error(context, "zlib_uncompress - invalid header", -1);
-        return;
-    }
-    // init original_size
-    uLongf original_size = 0    //
-        | (compress_data[0] << 0x18)    //
-        | (compress_data[1] << 0x10)    //
-        | (compress_data[2] << 0x08)    //
-        | (compress_data[3] << 0x00);
-    if (original_size <= 0 || original_size > SIZEOF_BLOB_MAX) {
-        sqlite3_result_error(context,
-            "zlib_uncompress - invalid original_size", -1);
-        return;
-    }
-    // init original_data
-    unsigned char *original_data =
-        (unsigned char *) sqlite3_malloc(original_size);
-    if (original_data == NULL) {
-        sqlite3_result_error_nomem(context);
-        return;
-    }
-    // zlib_uncompress
-    if (uncompress(original_data, &original_size, compress_data + 4,
-            compress_size) != Z_OK) {
-        sqlite3_free(original_data);
-        sqlite3_result_error(context, "zlib_uncompress - failed uncompress",
-            -1);
-        return;
-    }
-    sqlite3_result_blob(context, original_data, original_size, sqlite3_free);
-}
-
-// SQLMATH_FUNC sql1_zlib_xxx_func - end
 
 // SQLMATH_FUNC sql2_columntype_func - start
 typedef struct AggColumntype {
@@ -3263,7 +3327,7 @@ typedef struct AggStdev {
     double nnn;                 // number of elements
     double vxx;                 // x-variance.p
     double wnn;                 // window-mode
-    double xx0;                 // x-trailing
+    double xxa;                 // x-left
 } AggStdev;
 
 SQLMATH_FUNC static void sql3_stdev_value(
@@ -3300,7 +3364,7 @@ SQLMATH_FUNC static void sql3_stdev_inverse(
     // agg - welford - increment agg->vxx
     if (sqlite3_value_numeric_type(argv[0]) != SQLITE_NULL) {
         agg->wnn = 1;
-        agg->xx0 = sqlite3_value_double(argv[0]);
+        agg->xxa = sqlite3_value_double(argv[0]);
     }
 }
 
@@ -3319,10 +3383,10 @@ static void sql3_stdev_step(
         if (agg->wnn) {
             // calculate vxx - window
             const double invn0 = 1.0 / agg->nnn;
-            const double xx0 = agg->xx0;
-            const double dx = xx - xx0;
+            const double xxa = agg->xxa;
+            const double dx = xx - xxa;
             agg->vxx +=
-                (xx * xx - xx0 * xx0) - dx * (dx * invn0 + 2 * agg->mxx);
+                (xx * xx - xxa * xxa) - dx * (dx * invn0 + 2 * agg->mxx);
             agg->mxx += dx * invn0;
         } else {
             // calculate vxx - welford
@@ -3576,7 +3640,7 @@ SQLMATH_FUNC static void sql3_win_ema1_step(
         sqlite3_value_double_or_prev(argv[0], &dblwin_head[ii]);
         double *row = dblwin_body + ii;
         // fprintf(stderr,         //
-        //     "win_ema2 - nbody=%.0f xx0=%f xx=%f arg_alpha=%f\n",        //
+        //     "win_ema2 - nbody=%.0f xxa=%f xx=%f arg_alpha=%f\n",        //
         //     dblwin->nbody, *row, dblwin_head[0], arg_alpha);
         for (int jj = 0; jj < nrow; jj += 1) {
             *row = arg_alpha * dblwin_head[ii] + (1 - arg_alpha) * *row;
@@ -3678,9 +3742,9 @@ SQLMATH_FUNC static void sql3_win_quantile1_inverse(
     const int nstep = ncol * 2;
     const int nn = (int) dblwin->nbody - nstep;
     double *arr = dblwin_body + 1;
-    double *xx0 = dblwin_body + 0 + (int) dblwin->waa;
+    double *xxa = dblwin_body + 0 + (int) dblwin->waa;
     for (int ii = 0; ii < ncol; ii += 1) {
-        const double xx = *xx0;
+        const double xx = *xxa;
         int jj = 0;
         for (; jj < nn && arr[jj] < xx; jj += nstep) {
         }
@@ -3689,7 +3753,7 @@ SQLMATH_FUNC static void sql3_win_quantile1_inverse(
         }
         arr[jj] = INFINITY;
         arr += 2;
-        xx0 += 2;
+        xxa += 2;
     }
 }
 
@@ -3800,22 +3864,28 @@ SQLMATH_FUNC static void sql3_win_quantile2_step(
 // SQLMATH_FUNC sql3_win_quantile2_func - end
 
 // SQLMATH_FUNC sql3_win_sinefit2_func - start
+#define WIN_SINEFIT_WSF_RR(ii) (xxyy[ii + 2])
+#define WIN_SINEFIT_WSF_XX(ii) (xxyy[ii + 0])
+#define WIN_SINEFIT_WSF_YY(ii) (xxyy[ii + 1])
+
 typedef struct WinSinefit {
     double laa;                 // linest y-intercept
     double lbb;                 // linest slope
     //
+    double mrr;                 // r-average
     double mxx;                 // x-average
     double myy;                 // y-average
     double nnn;                 // number of elements
     //
-    double rr0;                 // r-trailing
-    double rr1;                 // r-current
+    double rra;                 // r-left
+    double rrb;                 // r-current
     //
     double saa;                 // sine amplitude
     double see;                 // sine y-stdev
     double spp;                 // sine phase
     double sww;                 // sine angular-frequency
     //
+    double vrr;                 // r-variance.p
     double vxx;                 // x-variance.p
     double vxy;                 // xy-covariance.p
     double vyy;                 // y-variance.p
@@ -3823,56 +3893,41 @@ typedef struct WinSinefit {
     double wbb;                 // window-position-right
     double wnn;                 // window-mode
     //
-    double xx0;                 // x-trailing
-    double xx1;                 // x-current
-    double xx2;                 // x-refit
-    double yy0;                 // y-trailing
-    double yy1;                 // y-current
+    double xxa;                 // x-left
+    double xxb;                 // x-current
+    double xxr;                 // x-refit
+    double yya;                 // y-left
+    double yyb;                 // y-current
 } WinSinefit;
 static const int WIN_SINEFIT_N = sizeof(WinSinefit) / sizeof(double);
 static const int WIN_SINEFIT_STEP = 3 + 0;
 // static const int WIN_SINEFIT_STEP = 3 + 2;
 
-static void winSinefitDft(
-    WinSinefit * wsf,
-    double *xxyy,
-    const int wbb,
-    const int nbody,
-    const int ncol
-) {
-// This function will calculate running sliding-discrete-fourier-transform as:
-//     DFTn(tt+1) = (DFTn(tt) - dft(tt) + dft(tt+nnn)) * e
-    UNUSED_PARAMETER(wsf);
-    UNUSED_PARAMETER(xxyy);
-    UNUSED_PARAMETER(wbb);
-    UNUSED_PARAMETER(nbody);
-    UNUSED_PARAMETER(ncol);
-}
-
 static void winSinefitLnr(
-    WinSinefit * wsf,
-    double *xxyy,
-    const int wbb
+    WinSinefit * wsf
 ) {
 // This function will calculate running simple-linear-regression as:
 //     yy = laa + lbb*xx
     const double invn0 = 1.0 / wsf->nnn;
-    const double xx = wsf->xx1;
-    const double yy = wsf->yy1;
+    const double xx = wsf->xxb;
+    const double yy = wsf->yyb;
+    double mrr = wsf->mrr;
     double mxx = wsf->mxx;
     double myy = wsf->myy;
+    double vrr = wsf->vrr;
     double vxx = wsf->vxx;
     double vxy = wsf->vxy;
     double vyy = wsf->vyy;
+    // calculate lnr - myy, vyy
     if (wsf->wnn) {
         // calculate running lnr - window
-        const double xx0 = wsf->xx0;
-        const double yy0 = wsf->yy0;
-        const double dx = xx - xx0;
-        const double dy = yy - yy0;
-        vxx += (xx * xx - xx0 * xx0) - dx * (dx * invn0 + 2 * mxx);
-        vyy += (yy * yy - yy0 * yy0) - dy * (dy * invn0 + 2 * myy);
-        vxy += (xx * yy - xx0 * yy0) - dx * myy - dy * (dx * invn0 + mxx);
+        const double xxa = wsf->xxa;
+        const double yya = wsf->yya;
+        const double dx = xx - xxa;
+        const double dy = yy - yya;
+        vxx += (xx * xx - xxa * xxa) - dx * (dx * invn0 + 2 * mxx);
+        vyy += (yy * yy - yya * yya) - dy * (dy * invn0 + 2 * myy);
+        vxy += (xx * yy - xxa * yya) - dx * myy - dy * (dx * invn0 + mxx);
         mxx += dx * invn0;
         myy += dy * invn0;
     } else {
@@ -3888,33 +3943,48 @@ static void winSinefitLnr(
         // welford - increment vxy
         vxy += dy * (xx - mxx);
     }
-    // calculate lnr - laa, lbb
+    // calculate lnr - laa, lbb, rr
     const double lbb = vxy / vxx;
     const double laa = myy - lbb * mxx;
-    const double rr = yy - (laa + lbb * xx);
+    double rr = yy - (laa + lbb * xx);
+    rr = isfinite(rr) ? rr : 0;
+    // calculate lnr - mrr, vrr
+    if (wsf->wnn) {
+        // calculate running lnr - window
+        const double rra = wsf->rra;
+        const double dr = rr - rra;
+        vrr += (rr * rr - rra * rra) - dr * (dr * invn0 + 2 * mrr);
+        mrr += dr * invn0;
+        // fprintf(stderr, "n=%d rr=%f r0=%f mr=%f\n", (int) wsf->nnn, rr, rra,
+        //     mrr);
+    } else {
+        // calculate running lnr - welford
+        const double dr = rr - mrr;
+        // welford - increment vrr
+        mrr += dr * invn0;
+        vrr += dr * (rr - mrr);
+    }
     // wsf - save
     wsf->laa = laa;
     wsf->lbb = lbb;
+    wsf->mrr = mrr;
     wsf->mxx = mxx;
     wsf->myy = myy;
-    wsf->rr1 = rr;
+    wsf->rrb = rr;
+    wsf->vrr = vrr;
     wsf->vxx = vxx;
     wsf->vxy = vxy;
     wsf->vyy = vyy;
-    // save rr1 in window
-    xxyy[wbb + 2] = isfinite(rr) ? rr : 0;
 }
 
 static void winSinefitSnr(
     WinSinefit * wsf,
     double *xxyy,
-    const int wbb,
     const int nbody,
     const int ncol
 ) {
 // This function will calculate running sine-regression as:
 //     yy = saa*sin(sww*xx + spp)
-    UNUSED_PARAMETER(wbb);
     // declare var0
     const double nnn = nbody / (ncol * WIN_SINEFIT_STEP);
     const double invn0 = 1.0 / nnn;
@@ -3957,11 +4027,11 @@ static void winSinefitSnr(
         // spp  = asin(sbb) = acos(scc)
         // spp  = atan(sbb/scc)
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
-            tmp = sww * xxyy[ii + 0];
+            tmp = sww * WIN_SINEFIT_WSF_XX(ii);
             const double sxx = cos(tmp);
             const double syy = sin(tmp);
             // Use de-trended residual.
-            const double szz = inva * xxyy[ii + 2];
+            const double szz = inva * WIN_SINEFIT_WSF_RR(ii);
             sumxx += sxx * sxx;
             sumxy += sxx * syy;
             sumxz += sxx * szz;
@@ -3985,14 +4055,14 @@ static void winSinefitSnr(
         double vrr1 = 0;        // r-variance.p
         double vrr2 = 0;        // r-variance.p
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
-            tmp = fmod(sww * xxyy[ii + 0], 2 * MATH_PI);
+            tmp = fmod(sww * WIN_SINEFIT_WSF_XX(ii), 2 * MATH_PI);
             // welford - increment vrr1
-            rr = xxyy[ii + 2] - saa * sin(tmp + spp);
+            rr = WIN_SINEFIT_WSF_RR(ii) - saa * sin(tmp + spp);
             dr = rr - mrr1;
             mrr1 += dr * invn0;
             vrr1 += dr * (rr - mrr1);
             // welford - increment vrr2
-            rr = xxyy[ii + 2] - saa * sin(tmp + spp2);
+            rr = WIN_SINEFIT_WSF_RR(ii) - saa * sin(tmp + spp2);
             dr = rr - mrr2;
             mrr2 += dr * invn0;
             vrr2 += dr * (rr - mrr2);
@@ -4028,15 +4098,15 @@ static void winSinefitSnr(
         // hpw  = d^2/dpdw[y-sin(w*t+p)]^2 = 2*(cost*cost + sint*rr)*tt
         // hww  = d^2/dwdw[y-sin(w*t+p)]^2 = 2*(cost*cost + sint*rr)*tt*tt
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
-            const double tt = xxyy[ii + 0];
+            const double tt = WIN_SINEFIT_WSF_XX(ii);
             tmp = fmod(sww * tt, 2 * MATH_PI) + spp;
             const double cost = cos(tmp);
             const double sint = sin(tmp);
             // solve saa
             sxx += sint * sint;
-            sxy += sint * xxyy[ii + 2];
+            sxy += sint * WIN_SINEFIT_WSF_RR(ii);
             // solve spp, sww
-            const double rr = inva * xxyy[ii + 2] - sint;
+            const double rr = inva * WIN_SINEFIT_WSF_RR(ii) - sint;
             tmp = -cost * rr;
             gp += tmp;
             gw += tmp * tt;
@@ -4076,14 +4146,14 @@ static void winSinefitSnr(
         double vrr1 = 0;        // r-variance.p
         double vrr2 = 0;        // r-variance.p
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
-            tmp = fmod(sww * xxyy[ii + 0], 2 * MATH_PI);
+            tmp = fmod(sww * WIN_SINEFIT_WSF_XX(ii), 2 * MATH_PI);
             // welford - increment vrr1
-            rr = xxyy[ii + 2] - saa * sin(tmp + spp);
+            rr = WIN_SINEFIT_WSF_RR(ii) - saa * sin(tmp + spp);
             dr = rr - mrr1;
             mrr1 += dr * invn0;
             vrr1 += dr * (rr - mrr1);
             // welford - increment vrr2
-            rr = xxyy[ii + 2] - saa * sin(tmp + spp2);
+            rr = WIN_SINEFIT_WSF_RR(ii) - saa * sin(tmp + spp2);
             dr = rr - mrr2;
             mrr2 += dr * invn0;
             vrr2 += dr * (rr - mrr2);
@@ -4117,7 +4187,7 @@ SQLMATH_FUNC static void sql3_win_sinefit2_value(
     doublearrayResult(context, dblwin_head,     //
         // If x-current == x-refit, then include extra data needed for refit.
         // This data is normally not included, due to memory performance.
-        (int) (wsf->xx2 == wsf->xx1     //
+        (int) (wsf->xxr == wsf->xxb     //
             ? dblwin->nhead + dblwin->nbody     //
             : dblwin->nhead), SQLITE_TRANSIENT);
 }
@@ -4175,7 +4245,7 @@ static void sql3_win_sinefit2_step(
         dblwin->ncol = ncol;
     }
     // dblwin - init argv
-    const double xx2 = sqlite3_value_double_or_nan(argv[1]);
+    const double xxr = sqlite3_value_double_or_nan(argv[1]);
     const int modeSnr = sqlite3_value_int(argv[0]);
     argv += argc0;
     WinSinefit *wsf = NULL;
@@ -4185,19 +4255,19 @@ static void sql3_win_sinefit2_step(
     for (int ii = 0; ii < ncol; ii += 1) {
         // dblwin - init xx, yy, rr
         wsf = (WinSinefit *) dblwin_head + ii;
-        sqlite3_value_double_or_prev(argv[0], &wsf->xx1);
-        sqlite3_value_double_or_prev(argv[1], &wsf->yy1);
+        sqlite3_value_double_or_prev(argv[0], &wsf->xxb);
+        sqlite3_value_double_or_prev(argv[1], &wsf->yyb);
         // bugfix - Fix buffer-overlow, reading pointer past dblwin->nbody.
         if (dblwin->nbody) {
             xxyy = dblwin_body + ii * WIN_SINEFIT_STEP;
-            wsf->rr0 = xxyy[waa + 2];
-            wsf->xx0 = xxyy[waa + 0];
-            wsf->yy0 = xxyy[waa + 1];
+            wsf->xxa = WIN_SINEFIT_WSF_XX(waa);
+            wsf->yya = WIN_SINEFIT_WSF_YY(waa);
+            wsf->rra = WIN_SINEFIT_WSF_RR(waa);
         }
         wsf->wbb = wbb;
-        wsf->xx2 = xx2;
-        const double xx = wsf->xx1;
-        const double yy = wsf->yy1;
+        wsf->xxr = xxr;
+        const double xx = wsf->xxb;
+        const double yy = wsf->yyb;
         // dblwin - push xx, yy, rr, sff
         DOUBLEWIN_AGGREGATE_PUSH(xx);
         DOUBLEWIN_AGGREGATE_PUSH(yy);
@@ -4214,13 +4284,11 @@ static void sql3_win_sinefit2_step(
         wsf->nnn = dblwin->nbody / (ncol * WIN_SINEFIT_STEP);
         wsf->wnn = dblwin->wnn;
         // dblwin - calculate lnr
-        winSinefitLnr(wsf, xxyy, wbb);
+        winSinefitLnr(wsf);
+        WIN_SINEFIT_WSF_RR(wbb) = wsf->rrb;
         // dblwin - calculate snr
         if (modeSnr) {
-            winSinefitDft(wsf, xxyy, wbb, (int) dblwin->nbody,
-                (int) dblwin->ncol);
-            winSinefitSnr(wsf, xxyy, wbb, (int) dblwin->nbody,
-                (int) dblwin->ncol);
+            winSinefitSnr(wsf, xxyy, (int) dblwin->nbody, (int) dblwin->ncol);
         }
         // increment counter
         wsf += 1;
@@ -4257,18 +4325,20 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
         "laa",
         "lbb",
         //
+        "mrr",
         "mxx",
         "myy",
         "nnn",
         //
-        "rr0",
-        "rr1",
+        "rra",
+        "rrb",
         //
         "saa",
         "see",
         "spp",
         "sww",
         //
+        "vrr",
         "vxx",
         "vxy",
         "vyy",
@@ -4276,11 +4346,11 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
         "wbb",
         "wnn",
         //
-        "xx0",
-        "xx1",
-        "xx2",
-        "yy0",
-        "yy1"
+        "xxa",
+        "xxb",
+        "xxr",
+        "yya",
+        "yyb"
     };
     for (int ii = 0; ii < WIN_SINEFIT_N; ii += 1) {
         if (strcmp(key, keyList[ii]) == 0) {
@@ -4288,10 +4358,16 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
             return;
         }
     }
+    // gaussian-normalized r-value
+    if (strcmp(key, "grr") == 0) {
+        sqlite3_result_double_or_null(context,  //
+            (wsf->rrb - wsf->mrr) * sqrt((wsf->nnn - 1) / wsf->vrr));
+        return;
+    }
     // gaussian-normalized y-value
     if (strcmp(key, "gyy") == 0) {
         sqlite3_result_double_or_null(context,  //
-            (wsf->yy1 - wsf->myy) * sqrt((wsf->nnn - 1) / wsf->vyy));
+            (wsf->yyb - wsf->myy) * sqrt((wsf->nnn - 1) / wsf->vyy));
         return;
     }
     // linest y-stdev.s2
@@ -4310,7 +4386,7 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
     }
     // linest y-estimate
     if (strcmp(key, "lyy") == 0) {
-        sqlite3_result_double_or_null(context, wsf->yy1 - wsf->rr1);
+        sqlite3_result_double_or_null(context, wsf->yyb - wsf->rrb);
         return;
     }
     // y-stdev.s1
@@ -4376,8 +4452,8 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
     // sine y-estimate
     if (strcmp(key, "syy") == 0) {
         sqlite3_result_double_or_null(context, 0        //
-            + wsf->yy1 - wsf->rr1       //
-            + wsf->saa * sin(fmod(wsf->sww * wsf->xx1,
+            + wsf->yyb - wsf->rrb       //
+            + wsf->saa * sin(fmod(wsf->sww * wsf->xxb,
                     2 * MATH_PI) + wsf->spp));
         return;
     }
@@ -4392,9 +4468,15 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
 ) {
 // This function will refit last datapoint.
     static const int argc0 = 1;
+    // copy argv[0]
+    sqlite3_value *blobCopy = sqlite3_value_dup(argv[0]);
+    if (blobCopy == NULL) {
+        sqlite3_result_error_nomem(context);
+        return;
+    }
     // validate argv
     const int ncol = (argc - argc0) / 2;
-    const uint32_t bytes = (uint32_t) sqlite3_value_bytes(argv[0]);
+    const uint32_t bytes = (uint32_t) sqlite3_value_bytes(blobCopy);
     if (argc < argc0 + 2 || argc != argc0 + ncol * 2) {
         goto catch_error;
     }
@@ -4404,9 +4486,10 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
             "sinefit_refitlast"
             " - 1st argument as sinefit-object does not have enough columns",
             -1);
+        sqlite3_value_free(blobCopy);
         return;
     }
-    const WinSinefit *blob0 = sqlite3_value_blob(argv[0]);
+    const WinSinefit *blob0 = sqlite3_value_blob(blobCopy);
     const int nbody = (int) blob0->nnn * ncol * WIN_SINEFIT_STEP;
     if (blob0->nnn <= 0
         || bytes != (ncol * WIN_SINEFIT_N + nbody) * sizeof(double)) {
@@ -4414,11 +4497,13 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
             "sinefit_refitlast"
             " - 1st argument as sinefit-object does not have enough columns",
             -1);
+        sqlite3_value_free(blobCopy);
         return;
     }
     // init wsf0
     WinSinefit *wsf0 = sqlite3_malloc(bytes);
     if (wsf0 == NULL) {
+        sqlite3_value_free(blobCopy);
         sqlite3_result_error_nomem(context);
         return;
     }
@@ -4433,18 +4518,21 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
     }
     for (int ii = 0; ii < ncol; ii += 1) {
         wsf->wnn = 1;
-        wsf->rr0 = wsf->rr1;
-        wsf->xx0 = wsf->xx1;
-        wsf->yy0 = wsf->yy1;
-        sqlite3_value_double_or_prev(argv[0], &wsf->xx1);
-        sqlite3_value_double_or_prev(argv[1], &wsf->yy1);
-        xxyy[wbb + 0] = wsf->xx1;
-        xxyy[wbb + 1] = wsf->yy1;
+        wsf->xxa = WIN_SINEFIT_WSF_XX(wbb);
+        wsf->yya = WIN_SINEFIT_WSF_YY(wbb);
+        wsf->rra = WIN_SINEFIT_WSF_RR(wbb);
+        sqlite3_value_double_or_prev(argv[0], &wsf->xxb);
+        sqlite3_value_double_or_prev(argv[1], &wsf->yyb);
+        WIN_SINEFIT_WSF_XX(wbb) = wsf->xxb;
+        WIN_SINEFIT_WSF_YY(wbb) = wsf->yyb;
+        // fprintf(stderr, "wb=%d x=%f y=%f\n", (int) wbb, wsf->xxb, wsf->yyb);
         // dblwin - calculate lnr
-        winSinefitLnr(wsf, xxyy, wbb);
+        winSinefitLnr(wsf);
+        WIN_SINEFIT_WSF_RR(wbb) = wsf->rrb;
         // dblwin - calculate snr
-        winSinefitDft(wsf, xxyy, wbb, nbody, ncol);
-        winSinefitSnr(wsf, xxyy, wbb, nbody, ncol);
+        if (1) {
+            winSinefitSnr(wsf, xxyy, nbody, ncol);
+        }
         // increment counter
         argv += 2;
         wsf += 1;
@@ -4453,8 +4541,10 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
     // dblwin - result
     doublearrayResult(context, (double *) wsf0, bytes / sizeof(double),
         sqlite3_free);
+    sqlite3_value_free(blobCopy);
     return;
   catch_error:
+    sqlite3_value_free(blobCopy);
     sqlite3_result_error(context, "sinefit_refitlast - invalid arguments",
         -1);
 }
@@ -4587,6 +4677,8 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(doublearray_jsonfrom, 1, 0);
     SQL_CREATE_FUNC1(doublearray_jsonto, 1, 0);
     SQL_CREATE_FUNC1(fmod, 2, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(gzip_compress, 1, SQLITE_DETERMINISTIC);
+    SQL_CREATE_FUNC1(gzip_uncompress, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(idateadd, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatefrom, -1, SQLITE_FUNC_IDATE);
     SQL_CREATE_FUNC1(idatefromepoch, -1, SQLITE_FUNC_IDATE);
@@ -4619,8 +4711,6 @@ int sqlite3_sqlmath_base_init(
     SQL_CREATE_FUNC1(squaredwithsign, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(strtoll, 2, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(throwerror, 1, SQLITE_DETERMINISTIC);
-    SQL_CREATE_FUNC1(zlib_compress, 1, SQLITE_DETERMINISTIC);
-    SQL_CREATE_FUNC1(zlib_uncompress, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC2(columntype, 1, 0);
     SQL_CREATE_FUNC2(lgbm_datasetcreatefromtable, -1, 0);
     SQL_CREATE_FUNC2(lgbm_trainfromtable, -1, 0);

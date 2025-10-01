@@ -16,108 +16,115 @@
 .coverage th,
 .coverage thead,
 .coverage tr {
-  box-sizing: border-box;
-  font-family: monospace;
+ box-sizing: border-box;
+ font-family: monospace;
 }
 /*csslint ignore:end*/
 
 /* css - coverage_report - general */
 body {
-  margin: 0;
+ margin: 0;
 }
 .coverage pre {
-  margin: 5px 0;
+ margin: 5px 0;
 }
 .coverage table {
-  border-collapse: collapse;
+ border-collapse: collapse;
 }
 .coverage td,
 .coverage th {
-  border: 1px solid #777;
-  line-height: 20px;
-  margin: 0;
-  padding: 5px 10px;
+ border: 1px solid #777;
+ line-height: 20px;
+ margin: 0;
+ padding: 5px 10px;
 }
 .coverage td span {
-  display: inline-block;
-  width: 100%;
+ display: inline-block;
+ width: 100%;
 }
 .coverage .content {
-  padding: 0 5px;
+ padding: 0 5px;
 }
 .coverage .content a {
-  text-decoration: none;
+ text-decoration: none;
 }
 .coverage .count {
-  margin: 0 5px;
-  padding: 0 5px;
+ margin: 0 5px;
+ padding: 0 5px;
 }
 .coverage .footer,
 .coverage .header {
-  padding: 20px;
+ padding: 20px;
 }
 .coverage .footer {
-  text-align: center;
+ text-align: center;
 }
 .coverage .percentbar {
-  height: 12px;
-  margin: 2px 0;
-  min-width: 200px;
-  position: relative;
-  width: 100%;
+ height: 12px;
+ margin: 2px 0;
+ min-width: 200px;
+ position: relative;
+ width: 100%;
 }
 .coverage .percentbar div {
-  height: 100%;
-  position: absolute;
+ height: 100%;
+ position: absolute;
 }
 .coverage .title {
-  font-size: large;
-  font-weight: bold;
-  margin-bottom: 10px;
+ font-size: large;
+ font-weight: bold;
+ margin-bottom: 10px;
 }
 
 /* css - coverage_report - color */
 .coverage td,
 .coverage th {
-  background: #fff;
+ background: #fff;
 }
 .coverage .count,
 .coverage .coverageHigh {
-  background: #9d9;
+ background: #9d9;
 }
 .coverage .count {
-  color: #666;
+ color: #333;
 }
 .coverage .coverageIgnore {
-  background: #ccc;
+ background: #ccc;
 }
 .coverage .coverageLow,
+.coverage .ignore {
+ background: #ccc;
+}
 .coverage .uncovered {
-  background: #ebb;
+ background: #ebb;
 }
 .coverage .coverageMedium {
-  background: #fd7;
+ background: #fd7;
 }
 .coverage .footer,
 .coverage .header,
 .coverage .lineno {
-  background: #ddd;
+ background: #ddd;
 }
 .coverage .percentbar {
-  background: #999;
+ background: #999;
 }
 .coverage .percentbar div {
-  background: #666;
+ background: #666;
 }
 
 /* css - coverage_report - important */
 .coverage pre:hover span,
 .coverage tr:hover td {
-  background: #7d7;
+ background: #7d7;
+}
+.coverage pre:hover span.ignore,
+.coverage tr:hover td.coverageIgnore {
+ background: #ccc;
 }
 .coverage pre:hover span.uncovered,
 .coverage tr:hover td.coverageLow {
-  background: #f99;
+ background: #f99;
 }
 </style>
 </head>
@@ -127,70 +134,70 @@ body {
 <div class="title">V8 Coverage Report</div>
 <table>
 <thead>
-  <tr>
-  <th>Files covered</th>
-  <th>Lines</th>
-  <th>Remaining</th>
-  </tr>
+ <tr>
+ <th>Files covered</th>
+ <th>Lines</th>
+ <th>Remaining</th>
+ </tr>
 </thead>
 <tbody>
 <tr>
-  <td class="coverageHigh">
-      <a href="index.html">. / </a><br>
-    <div class="percentbar">
-      <div style="width: 100.00%;"></div>
-    </div>
-  </td>
-  <td style="text-align: right;">
-     100.00 %<br>
-    5938 / 5938
-  </td>
-  <td style="text-align: right;">
-    <br>
-    0 / 5938
-  </td>
-  </tr>
+ <td class="coverageHigh">
+   <a href="index.html">. / </a><br>
+  <div class="percentbar">
+   <div style="width: 100.00%;"></div>
+  </div>
+ </td>
+ <td style="text-align: right;">
+   100.00 %<br>
+  6145 / 6145
+ </td>
+ <td style="text-align: right;">
+  <br>
+  0 / 6145
+ </td>
+ </tr>
 <tr>
-  <td class="coverageHigh">
-      <a href="sqlmath.mjs.html">. / sqlmath.mjs</a><br>
-    <div class="percentbar">
-      <div style="width: 100.00%;"></div>
-    </div>
-  </td>
-  <td style="text-align: right;">
-     100.00 %<br>
-    1847 / 1847
-  </td>
-  <td style="text-align: right;">
-    <br>
-    0 / 1847
-  </td>
-  </tr>
+ <td class="coverageHigh">
+   <a href="sqlmath.mjs.html">. / sqlmath.mjs</a><br>
+  <div class="percentbar">
+   <div style="width: 100.00%;"></div>
+  </div>
+ </td>
+ <td style="text-align: right;">
+   100.00 %<br>
+  1968 / 1968
+ </td>
+ <td style="text-align: right;">
+  <br>
+  0 / 1968
+ </td>
+ </tr>
 <tr>
-  <td class="coverageHigh">
-      <a href="test.mjs.html">. / test.mjs</a><br>
-    <div class="percentbar">
-      <div style="width: 100.00%;"></div>
-    </div>
-  </td>
-  <td style="text-align: right;">
-     100.00 %<br>
-    4091 / 4091
-  </td>
-  <td style="text-align: right;">
-    <br>
-    0 / 4091
-  </td>
-  </tr>
+ <td class="coverageHigh">
+   <a href="test.mjs.html">. / test.mjs</a><br>
+  <div class="percentbar">
+   <div style="width: 100.00%;"></div>
+  </div>
+ </td>
+ <td style="text-align: right;">
+   100.00 %<br>
+  4177 / 4177
+ </td>
+ <td style="text-align: right;">
+  <br>
+  0 / 4177
+ </td>
+ </tr>
 </tbody>
 </table>
 </div>
 <!-- header end -->
 <div class="footer">
-  [
-  This document was created with
-  <a href="https://github.com/jslint-org/jslint">JSLint</a>
-  ]
+ [
+ This document was created with
+ <a href="https://github.com/jslint-org/jslint">JSLint</a>
+ ]
 </div>
 </body>
 </html>

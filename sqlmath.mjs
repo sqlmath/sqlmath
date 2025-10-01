@@ -84,7 +84,13 @@ const SQLITE_OPEN_TRANSIENT_DB = 0x00000400;    /* VFS only */
 const SQLITE_OPEN_URI = 0x00000040;             /* Ok for sqlite3_open_v2() */
 const SQLITE_OPEN_WAL = 0x00080000;             /* VFS only */
 
+let DB_EXEC_PROFILE_DICT = {};
+let DB_EXEC_PROFILE_MODE;
+let DB_EXEC_PROFILE_SQL_LENGTH;
+let DB_OPEN_INIT;
 let IS_BROWSER;
+let SQLMATH_EXE;
+let SQLMATH_NODE;
 let cModule;
 let cModulePath;
 let consoleError = console.error;
@@ -122,7 +128,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2025.8.30";
+let version = "v2025.9.30";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -213,7 +219,7 @@ async function childProcessSpawn2(command, args, option) {
         let {
             modeCapture,
             modeDebug,
-            stdio
+            stdio = []
         } = option;
         if (modeDebug) {
             consoleError(
@@ -273,43 +279,86 @@ async function childProcessSpawn2(command, args, option) {
             if (npm_config_mode_test) {
                 resolve = resolve0;
             }
-            [stdout, stderr] = bufList.slice(1).map(function (buf) {
+            [
+                stdout, stderr
+            ] = bufList.slice(1).map(function (buf) {
                 return (
                     typeof modeCapture === "string"
                     ? Buffer.concat(buf).toString(modeCapture)
                     : Buffer.concat(buf)
                 );
             });
-            resolve({exitCode, stderr, stdout});
+            resolve([
+                exitCode, stdout, stderr
+            ]);
         });
     });
-
 }
 
 async function ciBuildExt({
-    modeSkip,
     process
 }) {
 
 // This function will build sqlmath from c.
 
-    let option;
-    option = {
-        binNodegyp: modulePath.resolve(
-            modulePath.dirname(process.execPath || ""),
-            "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
-        ).replace("/bin/node_modules/", "/lib/node_modules/"),
-        isWin32: process.platform === "win32",
-        modeDebug: npm_config_mode_debug,
-        modeSkip,
-        process
-    };
-    await ciBuildExt2NodejsBuild(option);
+    let binNodegyp;
+    let exitCode;
+    binNodegyp = modulePath.resolve(
+        modulePath.dirname(process.execPath || ""),
+        "node_modules/npm/node_modules/node-gyp/bin/node-gyp.js"
+    ).replace("/bin/node_modules/", "/lib/node_modules/");
+    if (!noop(
+        await fsExistsUnlessTest(cModulePath)
+    )) {
+        await ciBuildExt1NodejsConfigure({
+            binNodegyp,
+            process
+        });
+    }
+    consoleError(
+        `ciBuildExt2Nodejs - linking lib ${modulePath.resolve(cModulePath)}`
+    );
+    [
+        exitCode
+    ] = await childProcessSpawn2(
+        "sh",
+        [
+            "-c",
+            (`
+(set -e
+    # rebuild binding
+    rm -rf build/Release/obj/SRC_SQLMATH_CUSTOM/
+    node "${binNodegyp}" build --release
+    # node "${binNodegyp}" build --release --loglevel=verbose
+    mv build/Release/binding.node "${cModulePath}"
+    mv build/Release/shell "${SQLMATH_EXE}"
+    # ugly-hack - win32-sqlite-shell doesn't like nodejs-builtin-zlib,
+    #             so link with external-zlib.
+    if (uname | grep -q "MING\\|MSYS")
+    then
+        rm -f ${SQLMATH_EXE}
+        python setup.py exe_link \
+            ./build/Release/SRC_SQLITE_BASE.lib \
+            ./build/Release/SRC_SQLMATH_CUSTOM.lib \
+            ./build/Release/obj/shell/sqlmath_external_sqlite.obj \
+            ./zlib.v1.3.1.vcpkg.x64-windows-static.lib \
+            \
+            -ltcg \
+            -nologo \
+            -out:${SQLMATH_EXE} \
+            -subsystem:console
+    fi
+)
+            `)
+        ],
+        {modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
+    );
+    assertOrThrow(!exitCode, `ciBuildExt - exitCode=${exitCode}`);
 }
 
 async function ciBuildExt1NodejsConfigure({
-    binNodegyp,
-    modeDebug
+    binNodegyp
+    // process
 }) {
 
 // This function will setup posix/win32 env for building c-extension.
@@ -340,82 +389,82 @@ SQLMATH_CFLAG_WNO_LIST=" \\
     consoleError(`ciBuildExt1Nodejs - configure binding.gyp`);
     await fsWriteFileUnlessTest("binding.gyp", JSON.stringify({
         "target_defaults": {
-            "cflags": cflagWnoList,
-// https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
+            "cflags": cflagWallList,
+// https://github.com/nodejs/node-gyp/blob/v10.3.1/gyp/pylib/gyp/MSVSSettings.py
             "msvs_settings": {
                 "VCCLCompilerTool": {
                     "WarnAsError": 1,
-                    "WarningLevel": 2
+                    "WarningLevel": 4
                 }
             },
             "xcode_settings": {
-                "OTHER_CFLAGS": cflagWnoList
+                "OTHER_CFLAGS": cflagWallList
             }
         },
         "targets": [
             {
+                "cflags": cflagWnoList,
                 "defines": [
-                    "SRC_SQLITE_BASE_C2",
-                    "SRC_ZLIB_C2"
-                ],
-                "sources": [
-                    "sqlmath_external_sqlite.c",
-                    "sqlmath_external_zlib.c"
-                ],
-                "target_name": "SRC_SQLITE_BASE",
-                "type": "static_library"
-            },
-            {
-                "cflags": cflagWallList,
-                "defines": [
-                    "SRC_SQLMATH_BASE_C2",
-                    "SRC_SQLMATH_CUSTOM_C2"
+                    "SRC_SQLITE_BASE_C2"
                 ],
                 "msvs_settings": {
                     "VCCLCompilerTool": {
                         "WarnAsError": 1,
-                        "WarningLevel": 4
+                        "WarningLevel": 2
                     }
                 },
+                "sources": [
+                    "sqlmath_external_sqlite.c"
+                ],
+                "target_name": "SRC_SQLITE_BASE",
+                "type": "static_library",
+                "xcode_settings": {
+                    "OTHER_CFLAGS": cflagWnoList
+                }
+            },
+            {
+                "defines": [
+                    "SRC_SQLMATH_BASE_C2",
+                    "SRC_SQLMATH_CUSTOM_C2"
+                ],
+                "dependencies": [
+                    "SRC_SQLITE_BASE"
+                ],
                 "sources": [
                     "sqlmath_base.c",
                     "sqlmath_custom.c"
                 ],
                 "target_name": "SRC_SQLMATH_CUSTOM",
-                "type": "static_library",
-                "xcode_settings": {
-                    "OTHER_CFLAGS": cflagWallList
-                }
+                "type": "static_library"
             },
             {
-                "cflags": cflagWallList,
                 "defines": [
                     "SRC_SQLMATH_NODEJS_C2"
                 ],
                 "dependencies": [
-                    "SRC_SQLITE_BASE",
                     "SRC_SQLMATH_CUSTOM"
                 ],
-                "msvs_settings": {
-                    "VCCLCompilerTool": {
-                        "WarnAsError": 1,
-                        "WarningLevel": 4
-                    }
-                },
                 "sources": [
                     "sqlmath_base.c"
                 ],
-                "target_name": "binding",
-                "xcode_settings": {
-                    "OTHER_CFLAGS": cflagWallList
-                }
+                "target_name": "binding"
             },
             {
+                "conditions": [
+                    [
+                        "OS==\"win\"",
+                        {},
+                        {
+                            "libraries": [
+                                "-lz"
+                            ]
+                        }
+                    ]
+                ],
                 "defines": [
                     "SRC_SQLITE_SHELL_C2"
                 ],
                 "dependencies": [
-                    "SRC_SQLITE_BASE",
                     "SRC_SQLMATH_CUSTOM"
                 ],
                 "sources": [
@@ -437,66 +486,25 @@ SQLMATH_CFLAG_WNO_LIST=" \\
 )
             `)
         ],
-        {modeDebug, stdio: ["ignore", 1, 2]}
+        {modeDebug: npm_config_mode_debug, stdio: ["ignore", 1, 2]}
     );
 }
 
-async function ciBuildExt2NodejsBuild({
-    binNodegyp,
-    modeDebug
-}) {
-
-// This function will archive <fileObj> into <fileLib>
-
-    if (!noop(
-        await fsExistsUnlessTest(cModulePath)
-    )) {
-        await ciBuildExt1NodejsConfigure({
-            binNodegyp,
-            modeDebug
-        });
-    }
-    consoleError(
-        `ciBuildExt2Nodejs - linking lib ${modulePath.resolve(cModulePath)}`
-    );
-    await childProcessSpawn2(
-        "sh",
-        [
-            "-c",
-            (`
-(set -e
-    # rebuild binding
-    rm -rf build/Release/obj/SRC_SQLMATH_CUSTOM/
-    node "${binNodegyp}" build --release
-    mv build/Release/binding.node "${cModulePath}"
-    if [ "${process.platform}" = "win32" ]
-    then
-        mv build/Release/shell \
-            "_sqlmath.shell_${process.platform}_${process.arch}.exe"
-    else
-        mv build/Release/shell \
-            "_sqlmath.shell_${process.platform}_${process.arch}"
-    fi
-)
-            `)
-        ],
-        {modeDebug, stdio: ["ignore", 1, 2]}
-    );
-}
-
-async function dbCallAsync(baton, argList, mode) {
+async function dbCallAsync(baton, argList, mode, db) {
 
 // This function will call c-function dbXxx() with given <funcname>
 // and return [<baton>, ...argList].
 
-    let db;
     let errStack;
     let funcname;
     let id;
+    let profileObj;
+    let profileStart;
     let result;
+    let sql;
     let timeElapsed;
     // If argList contains <db>, then mark it as busy.
-    if (mode === "modeDb") {
+    if (mode === "modeDbExec" || mode === "modeDbFile") {
         // init db
         db = argList[0];
         assertOrThrow(
@@ -507,8 +515,44 @@ async function dbCallAsync(baton, argList, mode) {
         db.ptr = db.connPool[db.ii][0];
         // increment db.busy
         db.busy += 1;
+        // init profileObj
+        if (DB_EXEC_PROFILE_MODE && mode === "modeDbExec") {
+            profileStart = Date.now();
+            sql = String(argList[1]);
+            // sql-hash - remove comment
+            sql = sql.replace((/(?:^|\s+?)--.*/gm), "");
+            // sql-hash - remove vowel
+            sql = sql.replace((/[aeiou]\b/gi), "\u0000$&");
+            sql = sql.replace((/([bcdfghjklmnpqrstvwxyz])[aeiou]+/gi), "$1");
+            sql = sql.replace((/\u0000([aeiou])\b/gi), "$1");
+            // sql-hash - remove underscore
+            sql = sql.replace((/_+/g), "");
+            // sql-hash - truncate long text
+            sql = sql.replace((/(\S{16})\S+/g), "$1");
+            // sql-hash - remove whitespace
+            sql = sql.replace((/\s+/g), " ");
+            sql = sql.trim().slice(0, DB_EXEC_PROFILE_SQL_LENGTH);
+            DB_EXEC_PROFILE_DICT[sql] = DB_EXEC_PROFILE_DICT[sql] || {
+                busy: 0,
+                count: 0,
+                sql,
+                timeElapsed: 0
+            };
+            profileObj = DB_EXEC_PROFILE_DICT[sql];
+            // increment profileObj.busy
+            profileObj.busy += 1;
+            profileObj.count += 1;
+        }
         try {
-            return await dbCallAsync(baton, [db.ptr, ...argList.slice(1)]);
+            return await dbCallAsync(
+                baton,
+                [
+                    db.ptr,
+                    ...argList.slice(1)
+                ],
+                undefined,
+                db
+            );
         } finally {
             // decrement db.busy
             db.busy -= 1;
@@ -516,6 +560,18 @@ async function dbCallAsync(baton, argList, mode) {
                 db.busy >= 0,
                 `dbCallAsync - invalid db.busy = ${db.busy}`
             );
+            // update profileObj
+            if (profileObj) {
+                // decrement profileObj.busy
+                profileObj.busy -= 1;
+                assertOrThrow(
+                    profileObj.busy >= 0,
+                    `dbCallAsync - invalid profileObj.busy = ${profileObj.busy}`
+                );
+                if (profileObj.busy === 0) {
+                    profileObj.timeElapsed += Date.now() - profileStart;
+                }
+            }
         }
     }
     // copy argList to avoid side-effect
@@ -636,6 +692,10 @@ async function dbCallAsync(baton, argList, mode) {
         // prepend baton to argList
         return [result.baton, ...result.argList];
     } catch (err) {
+        // debug db.filename
+        if (db?.filename2 || db?.filename) {
+            err.message += ` (from ${db?.filename2 || db?.filename})`;
+        }
         err.stack += errStack;
         assertOrThrow(undefined, err);
     }
@@ -654,71 +714,55 @@ async function dbCloseAsync(db) {
     await Promise.all(db.connPool.map(async function (ptr) {
         let val = ptr[0];
         ptr[0] = 0n;
-        await dbCallAsync(jsbatonCreate("_dbClose"), [val, db.filename]);
+        await dbCallAsync(
+            jsbatonCreate("_dbClose"),
+            [
+                val,
+                db.filename
+            ]
+        );
     }));
 }
 
-function dbExecAndReturnLastBlob({
-    bindList = [],
-    db,
-    sql
-}) {
+function dbExecAndReturnLastBlob(option) {
 
 // This function will exec <sql> in <db>,
 // and return last-value retrieved from execution as raw blob/buffer.
 
-    return dbExecAsync({
-        bindList,
-        db,
-        responseType: "lastblob",
-        sql
-    });
+    return dbExecAsync(Object.assign({
+        responseType: "lastblob"
+    }, option));
 }
 
-async function dbExecAndReturnLastRow({
-    bindList = [],
-    db,
-    sql
-}) {
+async function dbExecAndReturnLastRow(option) {
 
 // This function will exec <sql> in <db>,
 // and return last-row or empty-object.
 
-    let result = await dbExecAsync({bindList, db, sql});
+    let result = await dbExecAsync(option);
     result = result[result.length - 1] || [];
     result = result[result.length - 1] || {};
     return result;
 }
 
-async function dbExecAndReturnLastTable({
-    bindList = [],
-    db,
-    sql
-}) {
+async function dbExecAndReturnLastTable(option) {
 
 // This function will exec <sql> in <db>,
 // and return last-table or empty-list.
 
-    let result = await dbExecAsync({bindList, db, sql});
+    let result = await dbExecAsync(option);
     result = result[result.length - 1] || [];
     return result;
 }
 
-function dbExecAndReturnLastValue({
-    bindList = [],
-    db,
-    sql
-}) {
+function dbExecAndReturnLastValue(option) {
 
 // This function will exec <sql> in <db>,
 // and return last-json-value.
 
-    return dbExecAsync({
-        bindList,
-        db,
-        responseType: "lastvalue",
-        sql
-    });
+    return dbExecAsync(Object.assign({
+        responseType: "lastvalue"
+    }, option));
 }
 
 async function dbExecAsync({
@@ -761,7 +805,9 @@ async function dbExecAsync({
             );
         });
     }
-    [baton, ...result] = await dbCallAsync(
+    [
+        baton, ...result
+    ] = await dbCallAsync(
         baton,
         [
             // 0. db
@@ -785,7 +831,7 @@ async function dbExecAsync({
                 : 0
             )
         ],
-        "modeDb"
+        "modeDbExec"
     );
     result = result[0];
     if (!IS_BROWSER) {
@@ -800,12 +846,13 @@ async function dbExecAsync({
     switch (responseType) {
     case "arraybuffer":
     case "lastblob":
-        return result;
+        break;
     case "lastvalue":
     case "list":
-        return jsonParseArraybuffer(result);
+        result = jsonParseArraybuffer(result);
+        break;
     default:
-        return jsonParseArraybuffer(result).map(function (table) {
+        result = jsonParseArraybuffer(result).map(function (table) {
             let colList = table.shift();
             return table.map(function (row) {
                 let dict = {};
@@ -816,6 +863,52 @@ async function dbExecAsync({
             });
         });
     }
+    return result;
+}
+
+function dbExecProfile({
+    limit = 20,
+    lineLength = 80,
+    modeInit,
+    sqlLength = 256
+}) {
+
+// This function will profile dbExecAsync.
+
+    let result;
+    if (modeInit && !DB_EXEC_PROFILE_MODE) {
+        DB_EXEC_PROFILE_MODE = Date.now();
+        DB_EXEC_PROFILE_SQL_LENGTH = sqlLength;
+        process.on("exit", function () {
+            console.error(dbExecProfile({
+                limit,
+                lineLength
+            }));
+        });
+        return;
+    }
+    result = Object.values(DB_EXEC_PROFILE_DICT);
+    result.sort(function (aa, bb) {
+        return ((bb.timeElapsed - aa.timeElapsed) || (bb.count - aa.count));
+    });
+    result = result.slice(0, limit).map(function ({
+        count,
+        sql,
+        timeElapsed
+    }, ii) {
+        return String(
+            `${Number(ii + 1).toFixed(0).padStart(2, " ")}.`
+            + ` ${timeElapsed.toFixed(0).padStart(4)}`
+            + ` ${count.toFixed(0).padStart(3)}`
+            + " " + JSON.stringify(sql)
+        ).slice(0, lineLength);
+    }).join("\n");
+    result = (
+        `\ndbExecProfile:\n`
+        + ` #  time cnt sql\n`
+        + `${result}\n`
+    );
+    return result;
 }
 
 async function dbFileLoadAsync({
@@ -844,7 +937,7 @@ async function dbFileLoadAsync({
                 // 4. dbData - same position as dbOpenAsync
                 dbData
             ],
-            "modeDb"
+            "modeDbFile"
         );
     }
     if (modeNoop) {
@@ -857,6 +950,7 @@ async function dbFileLoadAsync({
         typeof filename === "string" && filename,
         `invalid filename ${filename}`
     );
+    db.filename2 = filename;
     // Save to tmpfile and then atomically-rename to actual-filename.
     if (moduleFs && modeSave) {
         filename2 = filename;
@@ -898,13 +992,16 @@ async function dbNoopAsync(...argList) {
 
 // This function will do nothing except return <argList>.
 
-    return await dbCallAsync(jsbatonCreate("_dbNoop"), argList);
+    return await dbCallAsync(
+        jsbatonCreate("_dbNoop"),
+        argList
+    );
 }
 
 async function dbOpenAsync({
     afterFinalization,
     dbData,
-    filename,
+    filename = ":memory:",
     flags,
     threadCount = 1
 }) {
@@ -919,7 +1016,7 @@ async function dbOpenAsync({
 // );
     let connPool;
     let db = {busy: 0, filename, ii: 0};
-    let fileLgbm;
+    let libLgbm;
     assertOrThrow(typeof filename === "string", `invalid filename ${filename}`);
     assertOrThrow(
         !dbData || isExternalBuffer(dbData),
@@ -950,19 +1047,18 @@ async function dbOpenAsync({
         return ptr;
     }));
     db.connPool = connPool;
-    // init lightgbm
-    if (!IS_BROWSER) {
-        fileLgbm = process.platform;
-        fileLgbm = fileLgbm.replace("darwin", "lib_lightgbm.dylib");
-        fileLgbm = fileLgbm.replace("win32", "lib_lightgbm.dll");
-        fileLgbm = fileLgbm.replace(process.platform, "lib_lightgbm.so");
-        fileLgbm = `${import.meta.dirname}/sqlmath/${fileLgbm}`;
-        await moduleFs.promises.access(fileLgbm).then(async function () {
-            await dbExecAsync({
-                db,
-                sql: `SELECT lgbm_dlopen('${fileLgbm}');`
-            });
-        }).catch(noop);
+    if (!IS_BROWSER && !DB_OPEN_INIT) {
+        DB_OPEN_INIT = true;
+        // init lgbm
+        libLgbm = process.platform;
+        libLgbm = libLgbm.replace("darwin", "lib_lightgbm.dylib");
+        libLgbm = libLgbm.replace("win32", "lib_lightgbm.dll");
+        libLgbm = libLgbm.replace(process.platform, "lib_lightgbm.so");
+        libLgbm = `${import.meta.dirname}/sqlmath/${libLgbm}`;
+        await dbExecAsync({
+            db,
+            sql: `SELECT LGBM_DLOPEN('${libLgbm}');`
+        });
     }
     return db;
 }
@@ -1609,6 +1705,17 @@ async function moduleFsInit() {
     while (moduleFsInitResolveList.length > 0) {
         moduleFsInitResolveList.shift()();
     }
+    SQLMATH_NODE = `_sqlmath.napi6_${process.platform}_${process.arch}.node`;
+    SQLMATH_EXE = (
+        `_sqlmath.shell_${process.platform}_${process.arch}`
+        + process.platform.replace(
+            "win32",
+            ".exe"
+        ).replace(
+            process.platform,
+            ""
+        )
+    );
 }
 
 function noop(val) {
@@ -1654,7 +1761,12 @@ async function sqlmathInit() {
 // This function will auto-close any open sqlite3-db-pointer,
 // after its js-wrapper has been garbage-collected.
 
-        dbCallAsync(jsbatonCreate("_dbClose"), [ptr[0]]);
+        dbCallAsync(
+            jsbatonCreate("_dbClose"),
+            [
+                ptr[0]
+            ]
+        );
         if (afterFinalization) {
             afterFinalization();
         }
@@ -1683,7 +1795,7 @@ async function sqlmathInit() {
     moduleChildProcessSpawn = moduleChildProcess.spawn;
     cModulePath = moduleUrl.fileURLToPath(import.meta.url).replace(
         (/\bsqlmath\.mjs$/),
-        `_sqlmath.napi6_${process.platform}_${process.arch}.node`
+        SQLMATH_NODE
     );
 
 // Import napi c-addon.
@@ -1755,7 +1867,12 @@ function sqlmathWebworkerInit({
             });
         };
         // test dbCallAsync handling-behavior
-        dbCallAsync(jsbatonCreate("testTimeElapsed"), [true]);
+        dbCallAsync(
+            jsbatonCreate("testTimeElapsed"),
+            [
+                true
+            ]
+        );
         // test dbFileLoadAsync handling-behavior
         dbFileLoadAsync({db, filename: "aa", modeTest});
         // test jsonParseArraybuffer handling-behavior
@@ -1779,6 +1896,7 @@ await sqlmathInit();
 sqlmathInit(); // coverage-hack
 
 export {
+    DB_EXEC_PROFILE_DICT,
     LGBM_DTYPE_FLOAT32,
     LGBM_DTYPE_FLOAT64,
     LGBM_DTYPE_INT32,
@@ -1812,6 +1930,8 @@ export {
     SQLITE_OPEN_TRANSIENT_DB,
     SQLITE_OPEN_URI,
     SQLITE_OPEN_WAL,
+    SQLMATH_EXE,
+    SQLMATH_NODE,
     assertErrorThrownAsync,
     assertInt64,
     assertJsonEqual,
@@ -1825,6 +1945,7 @@ export {
     dbExecAndReturnLastTable,
     dbExecAndReturnLastValue,
     dbExecAsync,
+    dbExecProfile,
     dbFileLoadAsync,
     dbFileSaveAsync,
     dbNoopAsync,

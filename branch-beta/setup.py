@@ -27,8 +27,8 @@ python setup.py bdist_wheel
 python setup.py build_ext
 """
 
-__version__ = "2025.8.30"
-__version_info__ = ("2025", "8", "30")
+__version__ = "2025.9.30"
+__version_info__ = ("2025", "9", "30")
 
 import asyncio
 import base64
@@ -60,6 +60,11 @@ async def build_ext_async(): # noqa: C901
     """This function will build c-extension."""
 
     async def build_ext_obj(cdefine): # noqa: C901 PLR0912
+        arg_list = [
+            *[f"-I{path}" for path in path_include],
+            # ,
+            f"-D{cdefine}_C2=",
+        ]
         file_obj = pathlib.Path(f"build/{cdefine}.obj")
         match cdefine:
             case "SRC_SQLITE_BASE":
@@ -68,8 +73,9 @@ async def build_ext_async(): # noqa: C901
                 file_src = pathlib.Path("sqlmath_base.c")
             case "SRC_SQLMATH_CUSTOM":
                 file_src = pathlib.Path("sqlmath_custom.c")
-            case "SRC_ZLIB":
-                file_src = pathlib.Path("sqlmath_external_zlib.c")
+                arg_list += [
+                    "-DSRC_SQLMATH_PYTHON_C2=",
+                ]
         match cdefine:
             case "SRC_SQLMATH_BASE":
                 pass
@@ -82,17 +88,6 @@ async def build_ext_async(): # noqa: C901
                 ):
                     print(f"build_ext - skip {file_src}")
                     return
-        arg_list = [
-            *[f"-I{path}" for path in path_include],
-            # ,
-            f"-D{cdefine}_C2=",
-            "-D_REENTRANT=1",
-            (
-                "-DSRC_SQLMATH_PYTHON_C2="
-                if cdefine == "SRC_SQLMATH_CUSTOM"
-                else ""
-            ),
-        ]
         if npm_config_mode_debug and is_win32:
             arg_list += ["/W3"]
         elif npm_config_mode_debug:
@@ -117,7 +112,7 @@ async def build_ext_async(): # noqa: C901
             arg_list += cflag_wall_list
         else:
             arg_list += cflag_wno_list
-# https://github.com/nodejs/node-gyp/blob/v9.3.1/gyp/pylib/gyp/MSVSSettings.py
+# https://github.com/nodejs/node-gyp/blob/v10.3.1/gyp/pylib/gyp/MSVSSettings.py
         if is_win32:
             arg_list = [
                 exe_cl,
@@ -144,28 +139,24 @@ async def build_ext_async(): # noqa: C901
                 "-o", file_obj,
             ]
         print(f"build_ext - compile {file_obj}")
-        await create_subprocess_exec_and_check(
-            *arg_list,
-            env=env,
-            stdout=subprocess.DEVNULL if npm_config_mode_debug else None,
-        )
+        await create_subprocess_exec_and_check(*arg_list, env=env)
 
     async def create_subprocess_exec_and_check(*args, **kwds):
         child = await asyncio.create_subprocess_exec(
             *[arg for arg in args if arg],
             **kwds,
         )
-        await child.communicate()
+        stdout_data, stderr_data = await child.communicate()
         if child.returncode != 0:
             msg = f"returncode={child.returncode}"
             raise subprocess.SubprocessError(msg)
+        return (stdout_data, stderr_data)
 
     async def link_ext_obj(file_lib):
         arg_list = []
         arg_list += [
             # must be ordered first
             "build/SRC_SQLITE_BASE.obj",
-            "build/SRC_ZLIB.obj",
             # ,
             "build/SRC_SQLMATH_BASE.obj",
             "build/SRC_SQLMATH_CUSTOM.obj",
@@ -176,6 +167,7 @@ async def build_ext_async(): # noqa: C901
                 exe_link,
                 *[f"/LIBPATH:{path}" for path in path_library],
                 *arg_list,
+                "./zlib.v1.3.1.vcpkg.x64-windows-static.lib",
                 # ,
                 "/INCREMENTAL:NO", # optimization - reduce filesize
                 "/LTCG", # from cl.exe /GL
@@ -195,6 +187,7 @@ async def build_ext_async(): # noqa: C901
                 # ,
                 *cc_ldflags.strip().split(" "),
                 # ,
+                "-lz",
                 "-o", f"build/{file_lib}",
             ]
         await create_subprocess_exec_and_check(*arg_list, env=env)
@@ -299,21 +292,8 @@ async def build_ext_async(): # noqa: C901
     env = os.environ
     if is_win32:
         env = env_vcvarsall()
-        await_list = []
-        for exe in ["cl.exe", "link.exe"]:
-            await_list.append( # noqa: PERF401
-                (
-                    await asyncio.create_subprocess_exec(
-                        *["where", exe],
-                        env=env,
-                        stdout=asyncio.subprocess.PIPE,
-                    )
-                ).stdout.readline(),
-            )
-        [exe_cl, exe_link] = [
-            str(exe.splitlines()[0], "utf8")
-            for exe in await asyncio.gather(*await_list)
-        ]
+        exe_cl = env["exe_cl"]
+        exe_link = env["exe_link"]
     #
     # build_ext - virtualenv
     for arr in [path_include, path_library]:
@@ -322,13 +302,11 @@ async def build_ext_async(): # noqa: C901
                 path2 = path.replace(path_prefix, path_prefix_base)
                 if path2 not in arr:
                     arr.append(path2)
-    #
     # build_ext - compile .obj file
     await asyncio.gather(*[
         build_ext_obj(cdefine)
         for cdefine in [
             "SRC_SQLITE_BASE",
-            "SRC_ZLIB",
             # ,
             "SRC_SQLMATH_BASE",
             "SRC_SQLMATH_CUSTOM",
@@ -533,34 +511,38 @@ def debuginline(*argv):
 
 def env_vcvarsall():
     """This function will return vcvarsall <env>."""
-    env = subprocess.check_output(
-        [
+    env = [
+        (
             (
-                (
-                    os.getenv("PROGRAMFILES(X86)")
-                    or os.getenv("PROGRAMFILES")
-                )
-                + "\\Microsoft Visual Studio"
-                + "\\Installer"
-                + "\\vswhere.exe"
-            ),
-            "-latest", "-prerelease",
-            "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
-            "-property", "installationPath",
-            "-products", "*",
-        ],
+                os.getenv("PROGRAMFILES(X86)")
+                or os.getenv("PROGRAMFILES")
+            )
+            + "\\Microsoft Visual Studio"
+            + "\\Installer"
+            + "\\vswhere.exe"
+        ),
+        "-latest", "-prerelease",
+        "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+        "-property", "installationPath",
+        "-products", "*",
+    ]
+    # print(" \\\n    ".join(env))
+    env = subprocess.check_output(
+        env,
         stderr=subprocess.STDOUT,
     ).decode(encoding="mbcs", errors="strict").strip()
+    env = 'cmd /u /c "{}" {} && set'.format(
+        f"{env}\\VC\\Auxiliary\\Build\\vcvarsall.bat",
+        {
+            "win-amd64": "x86_amd64",
+            "win-arm32": "x86_arm",
+            "win-arm64": "x86_arm64",
+            "win32": "x86",
+        }.get(sysconfig.get_platform()),
+    )
+    # print(env)
     env = subprocess.check_output(
-        'cmd /u /c "{}" {} && set'.format(
-            f"{env}\\VC\\Auxiliary\\Build\\vcvarsall.bat",
-            {
-                "win-amd64": "x86_amd64",
-                "win-arm32": "x86_arm",
-                "win-arm64": "x86_arm64",
-                "win32": "x86",
-            }.get(sysconfig.get_platform()),
-        ),
+        env,
         stderr=subprocess.STDOUT,
     ).decode("utf-16le", errors="replace")
     env = {
@@ -573,11 +555,48 @@ def env_vcvarsall():
             and not re.search("[\"'\n\r]", val)
         )
     }
-    with pathlib.Path("build/vcvarsall.sh").open("w") as file1:
-        file1.write(
-            "".join(f"export {key}='{val}'\n" for key, val in env.items()),
-        )
+    exe_cl = subprocess.check_output(
+        ["where.exe", "cl.exe"],
+        env=env,
+    ).decode(encoding="mbcs", errors="strict").splitlines()[0]
+    env["exe_cl"] = exe_cl
+    env["exe_link"] = re.sub(
+        "cl.exe$",
+        "link.exe",
+        exe_cl,
+        flags=re.IGNORECASE,
+    )
     return env
+
+
+def main():
+    """This function will run main-program."""
+    match sys.argv[1]:
+        case "bdist_wheel":
+            build_wheel("dist")
+        case "build_ext":
+            build_ext()
+        case "build_ext_async":
+            asyncio.set_event_loop(asyncio.new_event_loop())
+            asyncio.get_event_loop().run_until_complete(build_ext_async())
+        case "build_pkg_info":
+            build_pkg_info()
+        case "env_vcvarsall":
+            env = env_vcvarsall()
+            print(json.dumps(env, indent=4))
+        case "exe_link":
+            env = env_vcvarsall()
+            subprocess.run(
+                [env["exe_link"], *sys.argv[2:]],
+                check=True,
+                env=env,
+            )
+        case "sdist":
+            build_sdist("dist")
+        case "test":
+            subprocess.run(["python", "test.py", "--verbose"], check=True)
+        case _:
+            raise_setup_error(sys.argv)
 
 
 def noop(*args, **kwargs): # noqa: ARG001
@@ -603,23 +622,4 @@ FILE_LIB_SQLMATH = f"_sqlmath{sysconfig.get_config_var('EXT_SUFFIX')}"
 
 
 if __name__ == "__main__":
-    match sys.argv[1]:
-        case "bdist_wheel":
-            build_wheel("dist")
-        case "build_ext":
-            build_ext()
-        case "build_ext_async":
-            asyncio.set_event_loop(asyncio.new_event_loop())
-            asyncio.get_event_loop().run_until_complete(build_ext_async())
-        case "build_pkg_info":
-            build_pkg_info()
-        case "env_vcvarsall":
-            env_vcvarsall()
-            with pathlib.Path("build/vcvarsall.sh").open() as file1:
-                print(file1.read())
-        case "sdist":
-            build_sdist("dist")
-        case "test":
-            subprocess.run(["python", "test.py", "--verbose"], check=True)
-        case _:
-            raise_setup_error(sys.argv)
+    main()
