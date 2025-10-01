@@ -27,8 +27,8 @@ python setup.py bdist_wheel
 python setup.py build_ext
 """
 
-__version__ = "2025.9.1"
-__version_info__ = ("2025", "9", "1")
+__version__ = "2025.9.30"
+__version_info__ = ("2025", "9", "30")
 
 import asyncio
 import base64
@@ -167,7 +167,7 @@ async def build_ext_async(): # noqa: C901
                 exe_link,
                 *[f"/LIBPATH:{path}" for path in path_library],
                 *arg_list,
-                "./zlib.lib",
+                "./zlib.v1.3.1.vcpkg.x64-windows-static.lib",
                 # ,
                 "/INCREMENTAL:NO", # optimization - reduce filesize
                 "/LTCG", # from cl.exe /GL

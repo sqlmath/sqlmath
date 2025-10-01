@@ -45,6 +45,7 @@ import {
     dbExecAndReturnLastTable,
     dbExecAndReturnLastValue,
     dbExecAsync,
+    dbExecProfile,
     dbFileLoadAsync,
     dbFileSaveAsync,
     dbNoopAsync,
@@ -70,7 +71,10 @@ let {
 let {
     npm_config_mode_test_save
 } = process.env;
-noop(debugInline);
+
+dbExecProfile({
+    modeInit: true
+});
 
 jstestDescribe((
     "test_apidoc"
@@ -397,7 +401,7 @@ jstestDescribe((
                 });
             }));
         }
-        db = await dbOpenAsync({filename: ":memory:"});
+        db = await dbOpenAsync({});
         await Promise.all([
             // 1. bigint
             [-0n, -0],
@@ -582,9 +586,7 @@ jstestDescribe((
     jstestIt((
         "test dbCloseAsync handling-behavior"
     ), async function test_dbCloseAsync() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
+        let db = await dbOpenAsync({});
         // test null-case handling-behavior
         assertErrorThrownAsync(function () {
             return dbCloseAsync({});
@@ -595,9 +597,7 @@ jstestDescribe((
     jstestIt((
         "test dbExecAndReturnXxx handling-behavior"
     ), async function test_dbExecAndReturnXxx() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
+        let db = await dbOpenAsync({});
         // test dbExecAndReturnLastRow null-case handling-behavior
         assertJsonEqual(
             noop(
@@ -662,9 +662,7 @@ jstestDescribe((
     jstestIt((
         "test dbExecAsync handling-behavior"
     ), async function test_dbExecAsync() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
+        let db = await dbOpenAsync({});
         // test modeNoop handling-behavior
         dbExecAsync({
             modeNoop: true
@@ -752,23 +750,17 @@ SELECT * FROM testDbExecAsync2;
         "test dbFileXxx handling-behavior"
     ), async function test_dbFileXxx() {
         let data;
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
+        let db = await dbOpenAsync({});
         // test null-case handling-behavior
         dbFileLoadAsync({
             modeNoop: true
         });
         assertErrorThrownAsync(function () {
-            return dbFileLoadAsync({
-                db
-            });
-        }, "invalid filename undefined");
-        assertErrorThrownAsync(function () {
             return dbFileSaveAsync({
-                db
+                db,
+                filename: 0
             });
-        }, "invalid filename undefined");
+        }, "invalid filename 0");
         await dbExecAsync({
             db,
             sql: "CREATE TABLE t01 AS SELECT 1 AS c01"
@@ -777,9 +769,7 @@ SELECT * FROM testDbExecAsync2;
             db,
             filename: ".testDbFileXxx.sqlite"
         });
-        db = await dbOpenAsync({
-            filename: ":memory:"
-        });
+        db = await dbOpenAsync({});
         await dbFileLoadAsync({
             db,
             filename: ".testDbFileXxx.sqlite"
@@ -796,21 +786,16 @@ SELECT * FROM testDbExecAsync2;
         // test auto-finalization handling-behavior
         await new Promise(function (resolve) {
             dbOpenAsync({
-                afterFinalization: resolve,
-                filename: ":memory:"
+                afterFinalization: resolve
             });
         });
         // test null-case handling-behavior
-        assertErrorThrownAsync(function () {
-            return dbOpenAsync({});
-        }, "invalid filename");
+        await dbOpenAsync({});
     });
     jstestIt((
         "test dbTableXxx handling-behavior"
     ), async function test_dbTableXxx() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
+        let db = await dbOpenAsync({});
         await Promise.all([
             dbTableImportAsync({
                 db,
@@ -1122,7 +1107,7 @@ UPDATE __lgbm_state
         );
         `);
         async function testLgbm(sqlDataXxx, sqlTrainXxx, sqlPredictXxx, sqlIi) {
-            let db = await dbOpenAsync({filename: ":memory:"});
+            let db = await dbOpenAsync({});
             let fileActual = `.tmp/test_lgbm_preb_${sqlIi}.txt`;
             await Promise.all([
                 dbTableImportAsync({
@@ -1309,9 +1294,7 @@ jstestDescribe((
     jstestIt((
         "test sqlite-error handling-behavior"
     ), async function test_sqliteError() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
+        let db = await dbOpenAsync({});
         assertJsonEqual(
             "not an error",
             noop(
@@ -1366,9 +1349,7 @@ jstestDescribe((
     jstestIt((
         "test sqlite-extension-doublearray_xxx handling-behavior"
     ), async function test_sqlite_extension_doublearray_xxx() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
+        let db = await dbOpenAsync({});
         await Promise.all([
             [" [ , 1 ] ", "error"],
             [" [ , ] ", "error"],
@@ -1427,7 +1408,7 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
     jstestIt((
         "test_sqlite_extension_idate_xxx handling-behavior"
     ), async function test_sqlite_extension_idate_xxx() {
-        let db = await dbOpenAsync({filename: ":memory:"});
+        let db = await dbOpenAsync({});
         let promiseList = [];
         function idateArgNormalize(sqlFunc, arg, mode) {
             function idateArgYmdTruncate() {
@@ -1862,7 +1843,7 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
     jstestIt((
         "test sqlite-extension-math handling-behavior"
     ), async function test_sqlite_extension_math() {
-        let db = await dbOpenAsync({filename: ":memory:"});
+        let db = await dbOpenAsync({});
         // test sqlmath-defined-func handling-behavior
         Object.entries({
             "''": {
@@ -2171,9 +2152,7 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
     jstestIt((
         "test sqlite-extension-quantile handling-behavior"
     ), async function test_sqlite_extension_quantile() {
-        let db = await dbOpenAsync({
-            filename: ":memory:"
-        });
+        let db = await dbOpenAsync({});
         await (async function () {
             let valActual = await dbExecAndReturnLastTable({
                 db,
@@ -2327,7 +2306,7 @@ SELECT
     jstestIt((
         "test sqlite-extension-win_avgx handling-behavior"
     ), async function test_sqlite_extension_win_avgx() {
-        let db = await dbOpenAsync({filename: ":memory:"});
+        let db = await dbOpenAsync({});
         let valIn;
         async function test_win_avgx_aggregate({
             aa,
@@ -2505,7 +2484,7 @@ SELECT DOUBLEARRAY_JSONTO(WIN_AVG2(1, 2, 3)) FROM __tmp1;
     jstestIt((
         "test sqlite-extension-win_emax handling-behavior"
     ), async function test_sqlite_extension_win_emax() {
-        let db = await dbOpenAsync({filename: ":memory:"});
+        let db = await dbOpenAsync({});
         let valIn;
         async function test_win_emax_aggregate({
             aa,
@@ -2698,7 +2677,7 @@ SELECT DOUBLEARRAY_JSONTO(WIN_EMA2(1, 2, 3)) FROM __tmp1;
     jstestIt((
         "test sqlite-extension-win_quantilex handling-behavior"
     ), async function test_sqlite_extension_win_quantilex() {
-        let db = await dbOpenAsync({filename: ":memory:"});
+        let db = await dbOpenAsync({});
         let valIn;
         async function test_win_quantilex_aggregate({
             aa,
@@ -2992,7 +2971,7 @@ SELECT DOUBLEARRAY_JSONTO(WIN_QUANTILE2(1, 2, 3)) FROM __tmp1;
     jstestIt((
         "test sqlite-extension-win_sinefit2 handling-behavior"
     ), async function test_sqlite_extension_win_sinefit2() {
-        let db = await dbOpenAsync({filename: ":memory:"});
+        let db = await dbOpenAsync({});
         let id3 = 9;
         let id4 = 10;
         let valExpect0;
@@ -3999,7 +3978,7 @@ SELECT
     jstestIt((
         "test sqlite-extension-win_sumx handling-behavior"
     ), async function test_sqlite_extension_win_sumx() {
-        let db = await dbOpenAsync({filename: ":memory:"});
+        let db = await dbOpenAsync({});
         let valIn;
         async function test_win_sumx_aggregate({
             aa,
@@ -4183,8 +4162,7 @@ jstestDescribe((
         "test sqlmathWebworkerInit handling-behavior"
     ), async function () {
         let db = await dbOpenAsync({
-            dbData: new ArrayBuffer(),
-            filename: ":memory:"
+            dbData: new ArrayBuffer()
         });
         sqlmathWebworkerInit({
             db,
@@ -4192,3 +4170,7 @@ jstestDescribe((
         });
     });
 });
+
+export {
+    debugInline
+};

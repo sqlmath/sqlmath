@@ -84,6 +84,10 @@ const SQLITE_OPEN_TRANSIENT_DB = 0x00000400;    /* VFS only */
 const SQLITE_OPEN_URI = 0x00000040;             /* Ok for sqlite3_open_v2() */
 const SQLITE_OPEN_WAL = 0x00080000;             /* VFS only */
 
+let DB_EXEC_PROFILE_DICT = {};
+let DB_EXEC_PROFILE_MODE;
+let DB_EXEC_PROFILE_SQL_LENGTH;
+let DB_OPEN_INIT;
 let IS_BROWSER;
 let SQLMATH_EXE;
 let SQLMATH_NODE;
@@ -124,7 +128,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2025.9.1-beta";
+let version = "v2025.9.30";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -337,7 +341,7 @@ async function ciBuildExt({
             ./build/Release/SRC_SQLITE_BASE.lib \
             ./build/Release/SRC_SQLMATH_CUSTOM.lib \
             ./build/Release/obj/shell/sqlmath_external_sqlite.obj \
-            ./zlib.lib \
+            ./zlib.v1.3.1.vcpkg.x64-windows-static.lib \
             \
             -ltcg \
             -nologo \
@@ -486,19 +490,21 @@ SQLMATH_CFLAG_WNO_LIST=" \\
     );
 }
 
-async function dbCallAsync(baton, argList, mode) {
+async function dbCallAsync(baton, argList, mode, db) {
 
 // This function will call c-function dbXxx() with given <funcname>
 // and return [<baton>, ...argList].
 
-    let db;
     let errStack;
     let funcname;
     let id;
+    let profileObj;
+    let profileStart;
     let result;
+    let sql;
     let timeElapsed;
     // If argList contains <db>, then mark it as busy.
-    if (mode === "modeDb") {
+    if (mode === "modeDbExec" || mode === "modeDbFile") {
         // init db
         db = argList[0];
         assertOrThrow(
@@ -509,8 +515,44 @@ async function dbCallAsync(baton, argList, mode) {
         db.ptr = db.connPool[db.ii][0];
         // increment db.busy
         db.busy += 1;
+        // init profileObj
+        if (DB_EXEC_PROFILE_MODE && mode === "modeDbExec") {
+            profileStart = Date.now();
+            sql = String(argList[1]);
+            // sql-hash - remove comment
+            sql = sql.replace((/(?:^|\s+?)--.*/gm), "");
+            // sql-hash - remove vowel
+            sql = sql.replace((/[aeiou]\b/gi), "\u0000$&");
+            sql = sql.replace((/([bcdfghjklmnpqrstvwxyz])[aeiou]+/gi), "$1");
+            sql = sql.replace((/\u0000([aeiou])\b/gi), "$1");
+            // sql-hash - remove underscore
+            sql = sql.replace((/_+/g), "");
+            // sql-hash - truncate long text
+            sql = sql.replace((/(\S{16})\S+/g), "$1");
+            // sql-hash - remove whitespace
+            sql = sql.replace((/\s+/g), " ");
+            sql = sql.trim().slice(0, DB_EXEC_PROFILE_SQL_LENGTH);
+            DB_EXEC_PROFILE_DICT[sql] = DB_EXEC_PROFILE_DICT[sql] || {
+                busy: 0,
+                count: 0,
+                sql,
+                timeElapsed: 0
+            };
+            profileObj = DB_EXEC_PROFILE_DICT[sql];
+            // increment profileObj.busy
+            profileObj.busy += 1;
+            profileObj.count += 1;
+        }
         try {
-            return await dbCallAsync(baton, [db.ptr, ...argList.slice(1)]);
+            return await dbCallAsync(
+                baton,
+                [
+                    db.ptr,
+                    ...argList.slice(1)
+                ],
+                undefined,
+                db
+            );
         } finally {
             // decrement db.busy
             db.busy -= 1;
@@ -518,6 +560,18 @@ async function dbCallAsync(baton, argList, mode) {
                 db.busy >= 0,
                 `dbCallAsync - invalid db.busy = ${db.busy}`
             );
+            // update profileObj
+            if (profileObj) {
+                // decrement profileObj.busy
+                profileObj.busy -= 1;
+                assertOrThrow(
+                    profileObj.busy >= 0,
+                    `dbCallAsync - invalid profileObj.busy = ${profileObj.busy}`
+                );
+                if (profileObj.busy === 0) {
+                    profileObj.timeElapsed += Date.now() - profileStart;
+                }
+            }
         }
     }
     // copy argList to avoid side-effect
@@ -638,6 +692,10 @@ async function dbCallAsync(baton, argList, mode) {
         // prepend baton to argList
         return [result.baton, ...result.argList];
     } catch (err) {
+        // debug db.filename
+        if (db?.filename2 || db?.filename) {
+            err.message += ` (from ${db?.filename2 || db?.filename})`;
+        }
         err.stack += errStack;
         assertOrThrow(undefined, err);
     }
@@ -656,71 +714,55 @@ async function dbCloseAsync(db) {
     await Promise.all(db.connPool.map(async function (ptr) {
         let val = ptr[0];
         ptr[0] = 0n;
-        await dbCallAsync(jsbatonCreate("_dbClose"), [val, db.filename]);
+        await dbCallAsync(
+            jsbatonCreate("_dbClose"),
+            [
+                val,
+                db.filename
+            ]
+        );
     }));
 }
 
-function dbExecAndReturnLastBlob({
-    bindList = [],
-    db,
-    sql
-}) {
+function dbExecAndReturnLastBlob(option) {
 
 // This function will exec <sql> in <db>,
 // and return last-value retrieved from execution as raw blob/buffer.
 
-    return dbExecAsync({
-        bindList,
-        db,
-        responseType: "lastblob",
-        sql
-    });
+    return dbExecAsync(Object.assign({
+        responseType: "lastblob"
+    }, option));
 }
 
-async function dbExecAndReturnLastRow({
-    bindList = [],
-    db,
-    sql
-}) {
+async function dbExecAndReturnLastRow(option) {
 
 // This function will exec <sql> in <db>,
 // and return last-row or empty-object.
 
-    let result = await dbExecAsync({bindList, db, sql});
+    let result = await dbExecAsync(option);
     result = result[result.length - 1] || [];
     result = result[result.length - 1] || {};
     return result;
 }
 
-async function dbExecAndReturnLastTable({
-    bindList = [],
-    db,
-    sql
-}) {
+async function dbExecAndReturnLastTable(option) {
 
 // This function will exec <sql> in <db>,
 // and return last-table or empty-list.
 
-    let result = await dbExecAsync({bindList, db, sql});
+    let result = await dbExecAsync(option);
     result = result[result.length - 1] || [];
     return result;
 }
 
-function dbExecAndReturnLastValue({
-    bindList = [],
-    db,
-    sql
-}) {
+function dbExecAndReturnLastValue(option) {
 
 // This function will exec <sql> in <db>,
 // and return last-json-value.
 
-    return dbExecAsync({
-        bindList,
-        db,
-        responseType: "lastvalue",
-        sql
-    });
+    return dbExecAsync(Object.assign({
+        responseType: "lastvalue"
+    }, option));
 }
 
 async function dbExecAsync({
@@ -763,7 +805,9 @@ async function dbExecAsync({
             );
         });
     }
-    [baton, ...result] = await dbCallAsync(
+    [
+        baton, ...result
+    ] = await dbCallAsync(
         baton,
         [
             // 0. db
@@ -787,7 +831,7 @@ async function dbExecAsync({
                 : 0
             )
         ],
-        "modeDb"
+        "modeDbExec"
     );
     result = result[0];
     if (!IS_BROWSER) {
@@ -802,12 +846,13 @@ async function dbExecAsync({
     switch (responseType) {
     case "arraybuffer":
     case "lastblob":
-        return result;
+        break;
     case "lastvalue":
     case "list":
-        return jsonParseArraybuffer(result);
+        result = jsonParseArraybuffer(result);
+        break;
     default:
-        return jsonParseArraybuffer(result).map(function (table) {
+        result = jsonParseArraybuffer(result).map(function (table) {
             let colList = table.shift();
             return table.map(function (row) {
                 let dict = {};
@@ -818,6 +863,52 @@ async function dbExecAsync({
             });
         });
     }
+    return result;
+}
+
+function dbExecProfile({
+    limit = 20,
+    lineLength = 80,
+    modeInit,
+    sqlLength = 256
+}) {
+
+// This function will profile dbExecAsync.
+
+    let result;
+    if (modeInit && !DB_EXEC_PROFILE_MODE) {
+        DB_EXEC_PROFILE_MODE = Date.now();
+        DB_EXEC_PROFILE_SQL_LENGTH = sqlLength;
+        process.on("exit", function () {
+            console.error(dbExecProfile({
+                limit,
+                lineLength
+            }));
+        });
+        return;
+    }
+    result = Object.values(DB_EXEC_PROFILE_DICT);
+    result.sort(function (aa, bb) {
+        return ((bb.timeElapsed - aa.timeElapsed) || (bb.count - aa.count));
+    });
+    result = result.slice(0, limit).map(function ({
+        count,
+        sql,
+        timeElapsed
+    }, ii) {
+        return String(
+            `${Number(ii + 1).toFixed(0).padStart(2, " ")}.`
+            + ` ${timeElapsed.toFixed(0).padStart(4)}`
+            + ` ${count.toFixed(0).padStart(3)}`
+            + " " + JSON.stringify(sql)
+        ).slice(0, lineLength);
+    }).join("\n");
+    result = (
+        `\ndbExecProfile:\n`
+        + ` #  time cnt sql\n`
+        + `${result}\n`
+    );
+    return result;
 }
 
 async function dbFileLoadAsync({
@@ -846,7 +937,7 @@ async function dbFileLoadAsync({
                 // 4. dbData - same position as dbOpenAsync
                 dbData
             ],
-            "modeDb"
+            "modeDbFile"
         );
     }
     if (modeNoop) {
@@ -859,6 +950,7 @@ async function dbFileLoadAsync({
         typeof filename === "string" && filename,
         `invalid filename ${filename}`
     );
+    db.filename2 = filename;
     // Save to tmpfile and then atomically-rename to actual-filename.
     if (moduleFs && modeSave) {
         filename2 = filename;
@@ -900,13 +992,16 @@ async function dbNoopAsync(...argList) {
 
 // This function will do nothing except return <argList>.
 
-    return await dbCallAsync(jsbatonCreate("_dbNoop"), argList);
+    return await dbCallAsync(
+        jsbatonCreate("_dbNoop"),
+        argList
+    );
 }
 
 async function dbOpenAsync({
     afterFinalization,
     dbData,
-    filename,
+    filename = ":memory:",
     flags,
     threadCount = 1
 }) {
@@ -921,7 +1016,7 @@ async function dbOpenAsync({
 // );
     let connPool;
     let db = {busy: 0, filename, ii: 0};
-    let fileLgbm;
+    let libLgbm;
     assertOrThrow(typeof filename === "string", `invalid filename ${filename}`);
     assertOrThrow(
         !dbData || isExternalBuffer(dbData),
@@ -952,19 +1047,18 @@ async function dbOpenAsync({
         return ptr;
     }));
     db.connPool = connPool;
-    // init lightgbm
-    if (!IS_BROWSER) {
-        fileLgbm = process.platform;
-        fileLgbm = fileLgbm.replace("darwin", "lib_lightgbm.dylib");
-        fileLgbm = fileLgbm.replace("win32", "lib_lightgbm.dll");
-        fileLgbm = fileLgbm.replace(process.platform, "lib_lightgbm.so");
-        fileLgbm = `${import.meta.dirname}/sqlmath/${fileLgbm}`;
-        await moduleFs.promises.access(fileLgbm).then(async function () {
-            await dbExecAsync({
-                db,
-                sql: `SELECT lgbm_dlopen('${fileLgbm}');`
-            });
-        }).catch(noop);
+    if (!IS_BROWSER && !DB_OPEN_INIT) {
+        DB_OPEN_INIT = true;
+        // init lgbm
+        libLgbm = process.platform;
+        libLgbm = libLgbm.replace("darwin", "lib_lightgbm.dylib");
+        libLgbm = libLgbm.replace("win32", "lib_lightgbm.dll");
+        libLgbm = libLgbm.replace(process.platform, "lib_lightgbm.so");
+        libLgbm = `${import.meta.dirname}/sqlmath/${libLgbm}`;
+        await dbExecAsync({
+            db,
+            sql: `SELECT LGBM_DLOPEN('${libLgbm}');`
+        });
     }
     return db;
 }
@@ -1613,7 +1707,7 @@ async function moduleFsInit() {
     }
     SQLMATH_NODE = `_sqlmath.napi6_${process.platform}_${process.arch}.node`;
     SQLMATH_EXE = (
-        SQLMATH_NODE.replace((/\.node$/), "")
+        `_sqlmath.shell_${process.platform}_${process.arch}`
         + process.platform.replace(
             "win32",
             ".exe"
@@ -1667,7 +1761,12 @@ async function sqlmathInit() {
 // This function will auto-close any open sqlite3-db-pointer,
 // after its js-wrapper has been garbage-collected.
 
-        dbCallAsync(jsbatonCreate("_dbClose"), [ptr[0]]);
+        dbCallAsync(
+            jsbatonCreate("_dbClose"),
+            [
+                ptr[0]
+            ]
+        );
         if (afterFinalization) {
             afterFinalization();
         }
@@ -1768,7 +1867,12 @@ function sqlmathWebworkerInit({
             });
         };
         // test dbCallAsync handling-behavior
-        dbCallAsync(jsbatonCreate("testTimeElapsed"), [true]);
+        dbCallAsync(
+            jsbatonCreate("testTimeElapsed"),
+            [
+                true
+            ]
+        );
         // test dbFileLoadAsync handling-behavior
         dbFileLoadAsync({db, filename: "aa", modeTest});
         // test jsonParseArraybuffer handling-behavior
@@ -1792,6 +1896,7 @@ await sqlmathInit();
 sqlmathInit(); // coverage-hack
 
 export {
+    DB_EXEC_PROFILE_DICT,
     LGBM_DTYPE_FLOAT32,
     LGBM_DTYPE_FLOAT64,
     LGBM_DTYPE_INT32,
@@ -1840,6 +1945,7 @@ export {
     dbExecAndReturnLastTable,
     dbExecAndReturnLastValue,
     dbExecAsync,
+    dbExecProfile,
     dbFileLoadAsync,
     dbFileSaveAsync,
     dbNoopAsync,

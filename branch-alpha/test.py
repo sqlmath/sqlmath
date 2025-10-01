@@ -202,7 +202,7 @@ class TestCaseSqlmath(unittest.TestCase):
                     "val_expect": val_expect,
                     "val_in": str(val_in),
                 })
-        db = sqlmath.db_open(":memory:")
+        db = sqlmath.db_open()
         # test datatype handling-behavior
         for ii, (val_in, val_expect) in enumerate([
             #  1. 0.NoneType

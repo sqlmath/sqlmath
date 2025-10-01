@@ -5,7 +5,13 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
-# v2025.9.1-beta
+# v2025.9.30
+- sqlmath - Update function dbExecProfile() with additional-arg sqlLength.
+- sqlmath - Update function dbOpenAsync() with default-filename :memory:.
+- coverage - Add coverage-directives '/*coverage-disable*/', '/*coverage-enable*/'. '//coverage-ignore-line'.
+- sqlmath - Add function dbExecProfile() to profile sql-queries.
+- sqlmath - Update function dbCallAsync() to include db.filename in error-message.
+- sqlmath - Replace miniz-library with native-zib-library.
 - sqlmath - ugly-hack - win32-sqlite-shell doesn't like nodejs-builtin-zlib, so link with external-zlib.
 - sqlmath - Replace sql-functions ZLIB_COMPRESS() to GZIP_COMPRESS(), ZLIB_UNCOMPRESS() to GZIP_UNCOMPRESS().
 - sqlmath - Prefer platform-native zlib over sqlmath_external_sqlite.c.

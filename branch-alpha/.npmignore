@@ -1,12 +1,15 @@
 *
 .*
 node_modules
+
 !.npmignore
 !CHANGELOG.md
 !LICENSE
 !README.md
 
-!_binary_*
+!_sqlmath*
 !jslint.mjs
 !sqlmath.mjs
+!sqlmath_browser.mjs
 !sqlmath_custom.mjs
+!test.mjs
