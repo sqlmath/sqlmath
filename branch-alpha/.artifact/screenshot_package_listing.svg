@@ -1,0 +1,293 @@
+<svg height="1064" width="800" xmlns="http://www.w3.org/2000/svg">
+<rect height="1064" fill="#222" width="800"></rect>
+<text
+    fill="#7f7"
+    font-family="consolas, menlo, monospace"
+    font-size="14"
+    xml:space="preserve"
+>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="32"
+> 0.  755  2025-12-28T20:13:56Z  16318 KB  .                                                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="54"
+> 1.  644  2025-10-01T07:27:20Z     16 KB  .ci.sh                                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="76"
+> 2.  644  2023-01-25T08:57:57Z      1 KB  .gitconfig                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="98"
+> 3.  644  2025-11-01T19:06:53Z      3 KB  .github/workflows/ci.yml                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="120"
+> 4.  644  2025-12-22T20:23:56Z      3 KB  .github/workflows/publish.yml                          </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="142"
+> 5.  644  2024-12-25T20:15:59Z      1 KB  .github/workflows/publish_pypi_test.yml                </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="164"
+> 6.  644  2023-10-24T22:14:30Z      1 KB  .gitignore                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="186"
+> 7.  644  2025-10-01T07:27:20Z      1 KB  .npmignore                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="208"
+> 8.  644  2025-12-28T20:13:56Z     34 KB  CHANGELOG.md                                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="230"
+> 9.  644  2022-05-15T03:37:09Z      2 KB  LICENSE                                                </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="252"
+>10.  644  2025-10-01T07:27:20Z      2 KB  MANIFEST.in                                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="274"
+>11.  644  2025-12-28T20:13:56Z      7 KB  PKG-INFO                                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="296"
+>12.  644  2025-12-28T20:13:56Z      6 KB  README.md                                              </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="318"
+>13.  644  2021-11-23T06:44:41Z      1 KB  asset_image_folder_open_solid.svg                      </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="340"
+>14.  644  2022-07-01T08:46:29Z      2 KB  asset_image_github_brands.svg                          </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="362"
+>15.  644  2024-12-16T06:51:09Z      2 KB  asset_image_logo_256.html                              </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="384"
+>16.  644  2024-12-16T06:51:09Z     10 KB  asset_image_logo_256.png                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="406"
+>17.  644  2024-12-16T06:51:09Z      3 KB  asset_image_logo_256.svg                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="428"
+>18.  644  2023-05-07T23:44:29Z    462 KB  asset_sqlmath_external_rollup.js                       </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="450"
+>19.  644  2025-03-01T06:13:21Z    260 KB  cpplint.py                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="472"
+>20.  644  2023-05-07T23:44:29Z    377 KB  csslint.js                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="494"
+>21.  644  2022-03-12T10:07:54Z     71 KB  indent.exe                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="516"
+>22.  644  2024-07-26T05:59:45Z     24 KB  index.html                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="538"
+>23.  644  2025-12-28T20:13:56Z    332 KB  jslint.mjs                                             </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="560"
+>24.  644  2025-12-28T20:13:56Z    100 KB  jslint_ci.sh                                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="582"
+>25.  644  2023-04-26T16:45:21Z    985 KB  libiconv2.dll                                          </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="604"
+>26.  644  2023-04-26T16:45:21Z    101 KB  libintl3.dll                                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="626"
+>27.  644  2025-12-28T20:13:56Z      1 KB  package.json                                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="648"
+>28.  644  2025-12-28T20:13:56Z      2 KB  pyproject.toml                                         </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="670"
+>29.  644  2025-12-28T20:13:56Z     21 KB  setup.py                                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="692"
+>30.  644  2025-12-28T20:13:56Z     56 KB  sqlmath.mjs                                            </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="714"
+>31.  644  2025-12-28T20:13:56Z     20 KB  sqlmath/__init__.py                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="736"
+>32.  644  2025-09-30T02:15:53Z    161 KB  sqlmath_base.c                                         </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="758"
+>33.  644  2025-09-24T06:53:36Z    342 KB  sqlmath_base.h                                         </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="780"
+>34.  644  2025-12-22T20:23:56Z    139 KB  sqlmath_browser.mjs                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="802"
+>35.  644  2025-03-03T01:22:47Z      2 KB  sqlmath_custom.c                                       </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="824"
+>36.  644  2021-11-22T22:48:54Z      1 KB  sqlmath_custom.mjs                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="846"
+>37.  644  2025-09-30T02:15:53Z  10810 KB  sqlmath_external_sqlite.c                              </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="868"
+>38.  644  2023-10-12T08:09:24Z      7 KB  sqlmath_wrapper_wasm.js                                </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="890"
+>39.  644  2025-09-30T02:15:53Z    145 KB  test.mjs                                               </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="912"
+>40.  644  2025-09-30T02:15:53Z     18 KB  test.py                                                </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="934"
+>41.  644  2025-01-06T01:15:40Z     57 KB  test_data_sinefit.csv                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="956"
+>42.  644  2024-06-23T22:54:32Z      9 KB  test_lgbm.py                                           </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="978"
+>43.  644  2024-05-28T09:05:42Z     86 KB  test_lgbm_binary.test                                  </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1000"
+>44.  644  2024-05-28T09:05:42Z   1200 KB  test_lgbm_binary.train                                 </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1022"
+>45.  644  2024-05-28T09:05:42Z     10 KB  test_lgbm_preb.txt                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1044"
+>46.  644  2025-10-01T07:27:20Z    446 KB  zlib.v1.3.1.vcpkg.x64-windows-static.lib               </tspan>
+
+</text>
+</svg>

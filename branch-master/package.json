@@ -1,0 +1,36 @@
+{
+    "author": {
+        "email": "kaizhu256@gmail.com",
+        "name": "kai zhu"
+    },
+    "counter": 0,
+    "description": "sqlite for data-science",
+    "fileCount": 46,
+    "homepage": "https://github.com/sqlmath/sqlmath",
+    "keywords": [
+        "data-science",
+        "database",
+        "numerical",
+        "sqlite"
+    ],
+    "license": "MIT",
+    "main": "sqlmath.mjs",
+    "name": "sqlmath",
+    "os": [
+        "darwin",
+        "linux",
+        "win32"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/sqlmath/sqlmath.git"
+    },
+    "scripts": {
+        "build": "sh jslint_ci.sh shCiBuildNodejs",
+        "test": "sh jslint_ci.sh shCiTestNodejs",
+        "test2": "sh jslint_ci.sh shCiBase"
+    },
+    "shCiArtifactUpload": 1,
+    "shCiPublishNpm": 1,
+    "version": "2025.9.30"
+}
