@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2025.9.30)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2025.12.28)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -228,7 +228,8 @@ function dbOpenAsync<span class="apidocSignatureSpan">({
     dbData,
     filename = ":memory:",
     flags,
-    threadCount = 1
+    threadCount = 1,
+    timeoutBusy = 5000
 })</span>
 </a>
 
@@ -1531,7 +1532,8 @@ assertJsonEqual(
     dbData,
     filename = ":memory:",
     flags,
-    threadCount = 1
+    threadCount = 1,
+    timeoutBusy = 5000
 })</span>
     </a>
     </h2>
@@ -1541,7 +1543,8 @@ assertJsonEqual(
     dbData,
     filename = ":memory:",
     flags,
-    threadCount = 1
+    threadCount = 1,
+    timeoutBusy = 5000
 }) {
 <span class="apidocCodeCommentSpan">
 // This function will open and return sqlite-database-connection &lt;db&gt;.
@@ -1591,7 +1594,7 @@ assertJsonEqual(
         libLgbm = process.platform;
         libLgbm = libLgbm.replace("darwin", "lib_lightgbm.dylib");
         libLgbm = libLgbm.replace("win32", "lib_lightgbm.dll");
-        libLgbm = libLgbm.replace(process.plat...
+        libLgbm = libL...
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
