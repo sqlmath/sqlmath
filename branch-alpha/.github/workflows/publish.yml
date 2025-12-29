@@ -72,6 +72,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+      id-token: write  # Required for OIDC
       packages: write
     steps:
       # Setup .npmrc file to publish to npm
@@ -84,9 +85,6 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       # Publish to npm
       - run: sh jslint_ci.sh shCiPublishNpm
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_REGISTRY: npm
 # base - .github/workflows/publish.yml - end
 
 
