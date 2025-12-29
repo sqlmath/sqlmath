@@ -2046,6 +2046,7 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
         data = (
             String(`
 -- DROP TABLE __sqlite_table_01;
+-- IF OBJECT_ID('tempdb..#tmp1') IS NOT NULL DROP TABLE #tmp1;
 -- SELECT * FROM __sqlite_table_01;
 -- ALTER TABLE __sqlite_table_01 RENAME TO __sqlite_table_02;
 -- EXEC sp_rename '__sqlite_table_01', '__sqlite_table_02';

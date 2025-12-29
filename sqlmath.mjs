@@ -128,7 +128,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2025.9.30";
+let version = "v2025.12.28";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -1003,7 +1003,8 @@ async function dbOpenAsync({
     dbData,
     filename = ":memory:",
     flags,
-    threadCount = 1
+    threadCount = 1,
+    timeoutBusy = 5000
 }) {
 
 // This function will open and return sqlite-database-connection <db>.
@@ -1057,7 +1058,10 @@ async function dbOpenAsync({
         libLgbm = `${import.meta.dirname}/sqlmath/${libLgbm}`;
         await dbExecAsync({
             db,
-            sql: `SELECT LGBM_DLOPEN('${libLgbm}');`
+            sql: (`
+PRAGMA busy_timeout = ${timeoutBusy};
+SELECT LGBM_DLOPEN('${libLgbm}');
+            `)
         });
     }
     return db;
