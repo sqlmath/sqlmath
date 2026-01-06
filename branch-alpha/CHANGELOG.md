@@ -6,6 +6,11 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2026.1.1-beta
+- chart - Cleanup chart _15_tradebot_tech_intra_1_month.
+- chart - Add intraday-technical-indicator tradebot_tech_intra.spy_zcl.
+- chart - Change time-scale of 1-month charts from 1-day to 15-minute/5-minute.
+
 # v2025.12.28
 - jslint - Upgrade to jslint-v2025.12.28.
 - sqlmath - Update function dbOpenAsync() with default-prm timeoutBusy=5000.
