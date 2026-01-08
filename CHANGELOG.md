@@ -7,6 +7,7 @@
 - none
 
 # v2026.1.1-beta
+- chart - Make tooltip more transparent, so datapoints behind it are more visible.
 - chart - Cleanup chart _15_tradebot_tech_intra_1_month.
 - chart - Add intraday-technical-indicator tradebot_tech_intra.spy_zcl.
 - chart - Change time-scale of 1-month charts from 1-day to 15-minute/5-minute.

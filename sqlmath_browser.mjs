@@ -3007,7 +3007,7 @@ SELECT
         <g class="uichartTooltip" visibility="hidden">
             <rect
                 class="uichartTooltipBorder"
-                fill-opacity="0.8000"
+                fill-opacity="0.5000"
                 fill="#fff"
                 rx="5"
                 ry="5"
@@ -3390,21 +3390,24 @@ SELECT
         // update elemTooltipText
         elemTooltip.setAttribute("visibility", "visible");
         elemTooltipText.innerHTML = (`
-<tspan dy="17" x="6">${stringHtmlSafe(seriesHovered.seriesName)}</tspan>
-<tspan dy="17" x="6">x: ${stringHtmlSafe(xlabel)}</tspan>
 <tspan
-    dy="19"
-    style="font-size: 14px; font-weight: bold;"
-    x="6"
->y: ${stringHtmlSafe(ylabel)}</tspan>
+    dy="15"
+    style="filter: brightness(75%); font-size: 14px; font-weight: normal;"
+    x="5"
+>
+    ${stringHtmlSafe(ylabel)} -- ${stringHtmlSafe(xlabel)}
+</tspan>
         `);
+        svgAttrSet(elemTooltipText, {
+            fill: seriesHovered.seriesColor
+        });
         // update elemTooltipBorder after text-update
         tooltipBbox = elemTooltipText.getBBox();
         tooltipWidth = tooltipBbox.width + 10;
-        tooltipHeight = tooltipBbox.height + 10;
+        tooltipHeight = tooltipBbox.height + 0;
         svgAttrSet(elemTooltipBorder, {
             height: tooltipHeight,
-            stroke: seriesHovered.seriesColor,
+            // stroke: seriesHovered.seriesColor,
             width: tooltipWidth
         });
         // calculate tooltipX
