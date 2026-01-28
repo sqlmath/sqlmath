@@ -60,7 +60,7 @@ process.stdout.write(
         )" "sqlmath/$FILE"
     fi
     # .github_cache - restore
-    if [ "$GITHUB_ACTION" ] && [ -d .github_cache ]
+    if [ "$GITHUB_ACTION" ] && [ -d .github_cache/ ]
     then
         cp -a .github_cache/* . || true # js-hack - */
     fi
@@ -95,10 +95,10 @@ process.stdout.write(
         shImageLogoCreate
         shCiBuildWasm
         # .github_cache - save
-        if [ "$GITHUB_ACTION" ] && [ ! -d .github_cache/_emsdk ]
+        if [ "$GITHUB_ACTION" ] && [ ! -d .github_cache/_emsdk/ ]
         then
-            mkdir -p .github_cache
-            cp -a "$EMSDK" .github_cache
+            mkdir -p .github_cache/
+            cp -a "$EMSDK" .github_cache/
         fi
     fi
     ) &
@@ -116,7 +116,7 @@ process.stdout.write(
         || [ "$GITHUB_BRANCH0" = master ] \
     )
     then
-        GITHUB_UPLOAD_RETRY=0
+        export GITHUB_UPLOAD_RETRY=0
         while true
         do
             GITHUB_UPLOAD_RETRY="$((GITHUB_UPLOAD_RETRY + 1))"
@@ -155,7 +155,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     git config --local user.email "github-actions@users.noreply.github.com"
     git config --local user.name "github-actions"
     # git clone origin/artifact
-    rm -rf .tmp/artifact
+    rm -rf .tmp/artifact/
     shGitCmdWithGithubToken clone origin .tmp/artifact \
         --branch=artifact --single-branch
     (
@@ -205,7 +205,8 @@ shCiBaseCustomArtifactUpload() {(set -e
         # git push
         shGitCmdWithGithubToken push origin artifact
         # git squash
-        if (shCiMatrixIsmainName) && [ "$GITHUB_BRANCH0" = alpha ]
+        if (shCiMatrixIsmainName) \
+            && ([ "$GITHUB_BRANCH0" = alpha ] || [ "$GITHUB_BRANCH0" = beta ])
         then
             shGitCommitPushOrSquash "" 50
         fi
@@ -443,7 +444,7 @@ shCiPublishPypiCustom() {(set -e
 shCiTestNodejs() {(set -e
 # This function will run test in nodejs.
     # init .tmp
-    mkdir -p .tmp
+    mkdir -p .tmp/
     # rebuild c-module
     export npm_config_mode_test=1
     if [ "$npm_config_fast" != true ]

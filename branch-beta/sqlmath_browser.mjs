@@ -718,8 +718,7 @@ DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
             `);
         }),
         [
-            "sector",
-            "subsector",
+            "subindustry",
             "stock"
         ].map(function (grouping) {
             return [
@@ -747,60 +746,7 @@ DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
                     yvalueSuffix: " %"
                 };
                 sqlSelect = (
-                    grouping === "sector"
-                    ? (`
-SELECT
-        (CASE
-            WHEN (category LIKE 'index%') THEN 3
-            WHEN (category LIKE 'short%') THEN 1
-            WHEN (grouping = 'sector') THEN 4
-            ELSE grouping_index
-        END) AS series_color,
-        category LIKE '-%' AS is_dummy,
-        -- 0 AS is_hidden,
-        grouping IN ('account', 'exchange') AS is_hidden,
-        printf(
-            '%05.4f%% - %s - %s',
-            ${columnData},
-            grouping,
-            category
-        ) AS series_label,
-        ROW_NUMBER() OVER (
-            ORDER BY
-                grouping_index,
-                category != '----' DESC,
-                ${columnData} DESC
-        ) AS xx,
-        category AS xx_label,
-        ${columnData} AS yy
-    FROM (
-        SELECT
-            category,
-            grouping,
-            grouping_index,
-            ${columnData},
-            perc_holding
-        FROM tradebot_position_category
-        WHERE
-            grouping != 'subsector'
-        --
-        UNION ALL
-        --
-        SELECT
-            '----' AS category,
-            '----' AS grouping,
-            grouping_index,
-            NULL AS ${columnData},
-            NULL perc_holding
-        FROM (
-            SELECT DISTINCT
-                grouping,
-                grouping_index
-            FROM tradebot_position_category
-        )
-    )
-                    `)
-                    : grouping === "subsector"
+                    grouping === "subindustry"
                     ? (`
 SELECT
         (CASE
@@ -828,14 +774,14 @@ SELECT
             perc_holding
         FROM tradebot_position_category
         WHERE
-            grouping = 'subsector'
+            grouping = 'subindustry'
     )
                     `)
                     : (`
 SELECT
         (CASE
-            WHEN (sector = 'index') THEN 3
-            WHEN (sector = 'short') THEN 1
+            WHEN (subindustry LIKE '___+') THEN 3
+            WHEN (subindustry LIKE '___-') THEN 1
             ELSE 2
         END) AS series_color,
         0 AS is_dummy,
@@ -926,8 +872,8 @@ CREATE TEMP TABLE __tmp1 AS
     FROM (
         SELECT
             (CASE
-                WHEN (sector LIKE 'index%') THEN 3
-                WHEN (sector LIKE 'short%') THEN 1
+                WHEN (subindustry LIKE '___+') THEN 3
+                WHEN (subindustry LIKE '___-') THEN 1
                 ELSE 2
             END) AS series_color,
             (
@@ -3007,7 +2953,7 @@ SELECT
         <g class="uichartTooltip" visibility="hidden">
             <rect
                 class="uichartTooltipBorder"
-                fill-opacity="0.5000"
+                fill-opacity="0.6667"
                 fill="#fff"
                 rx="5"
                 ry="5"
