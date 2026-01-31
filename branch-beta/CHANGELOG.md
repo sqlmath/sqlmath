@@ -1,12 +1,12 @@
 # Changelog
 
 # Todo
-- betadog - Add function taskBacktest() to auto-remove features with low feature-importance.
 - sqlmath - Re-introduce sliding-discrete-fourier-transform to improve initial guess in sql-function WIN_SINEFIT2().
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
-# v2026.1.1-beta
+# v2026.1.31
+- demo - Replace sector and subsector charts with subindustry chart.
 - chart - Make tooltip more transparent, so datapoints behind it are more visible.
 - chart - Cleanup chart _15_tradebot_tech_intra_1_month.
 - chart - Add intraday-technical-indicator tradebot_tech_intra.spy_zcl.
