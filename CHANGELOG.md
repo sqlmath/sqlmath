@@ -5,6 +5,9 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2026.2.1
+- jslint-ci - Update shell-function shCiBase() to check npm-version-support, before running npm-pkg-fix.
+
 # v2026.1.31
 - demo - Replace sector and subsector charts with subindustry chart.
 - chart - Make tooltip more transparent, so datapoints behind it are more visible.

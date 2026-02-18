@@ -348,10 +348,6 @@ INSERT INTO tradebot_tech_intra_day
             UNION ALL
             --
             SELECT '1b_stk_lmt' AS tname
-            --
-            UNION ALL
-            --
-            SELECT '1c_stk_lmb' AS tname
         )
         --
         UNION ALL
@@ -364,11 +360,7 @@ INSERT INTO tradebot_tech_intra_day
         --
         UNION ALL
         --
-        SELECT '1c_stk_lmb', xdate, xdate2, stk_lmb FROM tradebot_tech_intra
-        --
-        UNION ALL
-        --
-        SELECT '1d_stk_pnl', xdate, xdate2, stk_pnl FROM tradebot_tech_intra
+        SELECT '1c_stk_pnl', xdate, xdate2, stk_pnl FROM tradebot_tech_intra
         --
         UNION ALL
         --
@@ -751,7 +743,7 @@ DELETE FROM ${tableChart} WHERE datatype = 'xx_label';
 SELECT
         (CASE
             WHEN (category LIKE 'index%') THEN 3
-            WHEN (category LIKE 'short%') THEN 1
+            WHEN (category LIKE '___-') THEN 1
             ELSE 5
         END) AS series_color,
         category LIKE '-%' AS is_dummy,
@@ -1025,19 +1017,7 @@ INSERT INTO ${tableChart} (datatype, options, series_index, series_label)
                 -- '1a_stk_pct',
                 -- '1b_stk_lmt',
                 '2a_spy_prc'
-            ),
-            'seriesColor', (CASE
-            WHEN (tname = '1c_stk_lmb') THEN
-                '#999'
-            ELSE
-                NULL
-                -- (
-                --     '#'
-                --     || printf('%x', 12 - 2 * rownum)
-                --     || printf('%x',  0 + 2 * rownum)
-                --     || printf('%x', 16 - 2 * rownum)
-                -- )
-            END)
+            )
         ) AS options,
         rownum AS series_index,
         tname AS series_label
