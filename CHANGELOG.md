@@ -5,7 +5,8 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
-# v2026.2.1
+# v2026.2.1-beta
+- python-ci - Fix ruff lint-errors.
 - jslint-ci - Update shell-function shCiBase() to check npm-version-support, before running npm-pkg-fix.
 
 # v2026.1.31
