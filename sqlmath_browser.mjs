@@ -755,7 +755,7 @@ SELECT
                 category != '----' DESC,
                 ${columnData} DESC
         ) AS xx,
-        SUBSTR(category, INSTR(category, '____') + 4) AS xx_label,
+        category AS xx_label,
         ${columnData} AS yy
     FROM (
         SELECT
