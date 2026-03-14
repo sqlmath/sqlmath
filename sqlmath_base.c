@@ -146,6 +146,10 @@ file sqlmath_h - start
         goto catch_error; \
     }
 
+#define JSBATON_DEBUG(header, baton) \
+    fprintf(stderr, "\n#### " header " p=%p s=%s\n", baton, \
+    (char *) (baton)->bufv[0].buf);
+
 #define LGBM_ASSERT_OK() \
     if (errcode) { \
         sqlite3_result_error(context, LGBM_GetLastError(), -1); \
@@ -189,8 +193,7 @@ file sqlmath_h - start
     if (!PyArg_ParseTuple(__VA_ARGS__)) { \
         return NULL; \
     } \
-    baton = pybuf[0].buf; \
-    PyBuffer_Release(&(pybuf[0]));
+    baton = pybuf->buf;
 
 #define SQLITE3_AGGREGATE_CONTEXT(type) \
     type *agg = (type *) sqlite3_aggregate_context(context, sizeof(*agg)); \
@@ -275,7 +278,7 @@ typedef struct Jsbaton {
     int64_t napi_work;          // offset 040-048
     char errmsg[SIZEOF_ERRMSG]; // offset 048-128
     int64_t argv[JSBATON_ARGC]; // offset 128-192
-    Jsbuffer bufv[JSBATON_ARGC];        // offset 192-256
+    Jsbuffer bufv[JSBATON_ARGC];        // offset 192-320
 } Jsbaton;
 SQLMATH_API void dbCall(
     Jsbaton * baton
@@ -5047,63 +5050,99 @@ static PyObject *pybatonSetMemoryview(
     UNUSED_PARAMETER(self);
     // init baton, bufi
     int bufi = 0;
-    PY_PARSE_ARGV(2, args, "y*ly*", &(pybuf[0]), &bufi, &(pybuf[1]));
+    PY_PARSE_ARGV(2, args, "y*ly*", pybuf, &bufi, &(pybuf[1]));
     // set memoryview
     Jsbuffer *buf = &(baton->bufv[(size_t) bufi]);
     buf->buf = (int64_t) pybuf[1].buf;
     buf->len = pybuf[1].len;
+    PyBuffer_Release(pybuf);
     PyBuffer_Release(&(pybuf[1]));
     Py_RETURN_NONE;
 }
 
 
-// static PyObject *pybatonStealCbuffer - end
+// static PyObject *pybatonStealCbuffer - beg
 typedef struct {
     PyObject_HEAD char *buf;
     Py_ssize_t len;
-} PycbufStruct;
+} PybatonStruct;
 
-static void Pycbuf_dealloc(
-    PycbufStruct * self
+static void Pybaton_dealloc(
+    PybatonStruct * self
 ) {
-    sqlite3_free(self->buf);
+    if (self->buf) {
+        //!! JSBATON_DEBUG("PY_DEALL", (Jsbaton *) self->buf);
+        sqlite3_free(self->buf);
+    }
     self->buf = NULL;
     self->len = 0;
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
-static int Pycbuf_getbuf(
-    PycbufStruct * self,
+static int Pybaton_getbuffer(
+    PybatonStruct * self,
     Py_buffer * view,
     int flags
 ) {
-    UNUSED_PARAMETER(flags);
-    view->obj = Py_XNewRef((PyObject *) self);
-    view->buf = self->buf;
-    view->len = self->len;
-    view->readonly = 1;
-    view->itemsize = 1;
-    view->format = "B";
-    view->ndim = 1;
-    view->shape = NULL;
-    view->strides = NULL;
-    view->suboffsets = NULL;
-    view->internal = NULL;
+    return PyBuffer_FillInfo(view, (PyObject *) self, self->buf, self->len, 0,
+        flags);
+}
+
+static Py_ssize_t Pybaton_sq_length(
+    PybatonStruct * self
+) {
+    return self->len;
+}
+
+static int Pybaton_init(
+    PyObject * self,
+    PyObject * args,
+    PyObject * kwds
+) {
+    UNUSED_PARAMETER(kwds);
+    Py_ssize_t len;
+    if (!PyArg_ParseTuple(args, "n", &len))
+        return -1;
+    if ((int) len <= 0) {
+        PyErr_SetString(PyExc_ValueError, "Buffer len must be positive");
+        return -1;
+    }
+    PybatonStruct *self2 = (PybatonStruct *) self;
+    // Allocate the persistent memory in C-land.
+    self2->buf = sqlite3_malloc((int) len);
+    if (self2->buf == NULL) {
+        PyErr_NoMemory();
+        return -1;
+    }
+    // Zero-initialize for safety.
+    memset(self2->buf, 0, len);
+    self2->len = len;
+    // debug prevent gc
+    // Py_INCREF(self);
     return 0;
 }
 
-static PyBufferProcs Pycbuf_as_buffer = {
-    .bf_getbuffer = (getbufferproc) Pycbuf_getbuf,
+static PyBufferProcs Pybaton_as_buffer = {
+    .bf_getbuffer = (getbufferproc) Pybaton_getbuffer,
+    .bf_releasebuffer = NULL,
 };
 
-static PyTypeObject PycbufType = {
+static PySequenceMethods Pybaton_as_sequence = {
+    .sq_length = (lenfunc) Pybaton_sq_length,
+};
+
+static PyTypeObject PyBaton = {
     PyVarObject_HEAD_INIT(NULL, 0)
-        .tp_name = "PycbufType",
-    .tp_basicsize = sizeof(PycbufStruct),
+        .tp_name = "_sqlmath.PyBaton",
+    .tp_basicsize = sizeof(PybatonStruct),
+    .tp_dealloc = (destructor) Pybaton_dealloc,
     //
-    .tp_dealloc = (destructor) Pycbuf_dealloc,
-    .tp_as_buffer = &Pycbuf_as_buffer,
-    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_as_buffer = &Pybaton_as_buffer,
+    .tp_as_sequence = &Pybaton_as_sequence,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_init = (initproc) Pybaton_init,
+    .tp_itemsize = 0,
+    // .tp_new is set at runtime.
 };
 
 static PyObject *pybatonStealCbuffer(
@@ -5116,7 +5155,18 @@ static PyObject *pybatonStealCbuffer(
     // init baton, bufi, modestr
     int bufi = 0;
     int modestr = 0;
-    PY_PARSE_ARGV(1, args, "y*ii", &(pybuf[0]), &bufi, &modestr);
+    //!! PY_PARSE_ARGV(1, args, "y*ii", pybuf, &bufi, &modestr);
+
+    Jsbaton *baton = NULL;
+    Py_buffer pybuf[1] = { 0 };
+    // json_raw = pybatonStealCbuffer(baton, 0, 1)
+    if (!PyArg_ParseTuple(args, "y*ii", pybuf, &bufi, &modestr)) {
+        return NULL;
+    }
+    baton = pybuf->buf;
+    PyBuffer_Release(pybuf);
+
+    //!! JSBATON_DEBUG("PY_STEAL", baton);
     // init sqlite-buffer
     Jsbuffer *sqlite_buf = &(baton->bufv[(size_t) bufi]);
     // reference-steal sqlite-buffer to python-str
@@ -5132,8 +5182,8 @@ static PyObject *pybatonStealCbuffer(
         return python_str;
     }
     // reference-steal sqlite-buffer to python-buffer
-    PycbufStruct *python_buf =
-        (PycbufStruct *) (&PycbufType)->tp_alloc(&PycbufType, 0);
+    PybatonStruct *python_buf =
+        (PybatonStruct *) (&PyBaton)->tp_alloc(&PyBaton, 0);
     if (python_buf == NULL) {
         sqlite3_free((void *) sqlite_buf->buf);
         sqlite_buf->buf = 0;
@@ -5156,7 +5206,17 @@ static PyObject *pydbCall(
     //
     // Create baton for passing data between nodejs <-> c.
     // init baton
-    PY_PARSE_ARGV(1, args, "y*", &(pybuf[0]));
+    //!! PY_PARSE_ARGV(1, args, "y*", pybuf);
+
+    Jsbaton *baton = NULL;
+    Py_buffer pybuf[1] = { 0 };
+    // pydbCall(baton)
+    if (!PyArg_ParseTuple(args, "y*", pybuf)) {
+        return NULL;
+    }
+    baton = pybuf->buf;
+    PyBuffer_Release(pybuf);
+
     //
     // Execute dbCall().
     dbCall(baton);
@@ -5164,15 +5224,16 @@ static PyObject *pydbCall(
         PyErr_SetString(PyExc_RuntimeError, jsbatonGetErrmsg(baton));
         return NULL;
     }
+    //!! JSBATON_DEBUG("PY_CALL_", baton);
     Py_RETURN_NONE;
 }
 
 
 // file sqlmath_python - init
 static PyMethodDef SqlmathMethods[] = {
-    {"_pybatonSetMemoryview", pybatonSetMemoryview, METH_VARARGS, NULL},
-    {"_pybatonStealCbuffer", pybatonStealCbuffer, METH_VARARGS, NULL},
-    {"_pydbCall", pydbCall, METH_VARARGS, NULL},
+    {"pybatonSetMemoryview", pybatonSetMemoryview, METH_VARARGS, NULL},
+    {"pybatonStealCbuffer", pybatonStealCbuffer, METH_VARARGS, NULL},
+    {"pydbCall", pydbCall, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}       // sentinel
 };
 
@@ -5195,7 +5256,9 @@ static struct PyModuleDef _sqlmathmodule = {
 PyMODINIT_FUNC PyInit__sqlmath(
     void
 ) {
-    if (PyType_Ready(&PycbufType) < 0) {
+    // Initialize tp_new at runtime to avoid DLL linkage issues on Windows.
+    PyBaton.tp_new = PyType_GenericNew;
+    if (PyType_Ready(&PyBaton) < 0) {
         return NULL;
     }
     int rc = sqlite3_initialize();
@@ -5203,7 +5266,16 @@ PyMODINIT_FUNC PyInit__sqlmath(
         PyErr_SetString(PyExc_ImportError, sqlite3_errstr(rc));
         return NULL;
     }
-    return PyModule_Create(&_sqlmathmodule);
+    PyObject *module = PyModule_Create(&_sqlmathmodule);
+    if (module == NULL)
+        return NULL;
+    Py_INCREF(&PyBaton);
+    if (PyModule_AddObject(module, "PyBaton", (PyObject *) & PyBaton) < 0) {
+        Py_DECREF(&PyBaton);
+        Py_DECREF(module);
+        return NULL;
+    }
+    return module;
 }
 #endif                          // SRC_SQLMATH_PYTHON_C2
 /*

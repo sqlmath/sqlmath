@@ -1,12 +1,13 @@
 # Changelog
 
 # Todo
-- sqlmath - bugfix - Fix 762-character-limit SQL-string-bug in function db_exec().
+- sqlmath-python - bugfix - Fix 762-character-limit SQL-string-bug in python-function db_exec().
 - sqlmath - Re-introduce sliding-discrete-fourier-transform to improve initial guess in sql-function WIN_SINEFIT2().
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
 # v2026.3.1-beta
+- sqlmath-python - bugfix - Fix 762-character-limit SQL-string-bug in python-function db_exec(). - part1
 - jslint-ci - Update shell-function shLintPython().
 - python - Add file test_lgbm_sqlite.py.
 - python - Auto-detect-and-load lib_lightgbm.dll.

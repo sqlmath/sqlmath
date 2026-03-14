@@ -189,7 +189,7 @@ class TestCaseSqlmath(unittest.TestCase):
                 match response_type:
                     case "arraybuffer":
                         buf_actual = json.loads(
-                            buf_actual.tobytes().decode(),
+                            memoryview(buf_actual).tobytes().decode(),
                         )[0][1][0]
                     case "list":
                         buf_actual = buf_actual[0][1][0]
