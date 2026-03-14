@@ -241,7 +241,8 @@ def db_exec(
                 bufi,
                 externalbuffer_list,
             )
-    db_call(
+    # bugfix - Re-assign baton, in-case it was resized.
+    [baton] = db_call(
         baton,
         [
             # 0. db
@@ -262,17 +263,14 @@ def db_exec(
     )
     match response_type:
         case "arraybuffer":
-            return _sqlmath.pybatonStealCbuffer(baton, 0, 0)
+            return memoryview(_sqlmath.pybatonStealCbuffer(baton, 0, 0))
         case "lastblob":
-            return _sqlmath.pybatonStealCbuffer(baton, 0, 0)
+            return memoryview(_sqlmath.pybatonStealCbuffer(baton, 0, 0))
         case "list":
             return json.loads(_sqlmath.pybatonStealCbuffer(baton, 0, 1))
         case _:
             table_list = []
             json_raw = _sqlmath.pybatonStealCbuffer(baton, 0, 1)
-            # !! debug
-            if not json_raw:
-                return None
             for table in json.loads(json_raw):
                 col_list = tuple(enumerate(table.pop(0)))
                 table_list.append([
@@ -510,12 +508,12 @@ def debuginline(*argv):
 
 def jsbaton_create(funcname):
     """This function will create buffer <baton>."""
-    baton = _sqlmath.PyBaton(1024)
+    baton = memoryview(_sqlmath.PyBaton(1024))
     # init nalloc, nused
     struct.pack_into("i", baton, 4, JSBATON_OFFSET_ALL) # ctype-i = int
     # copy funcname into baton
     funcname = bytes(funcname, "utf-8")
-    memoryview(baton)[
+    baton[
         JSBATON_OFFSET_FUNCNAME: JSBATON_OFFSET_FUNCNAME + len(funcname)
     ] = funcname
     return baton
@@ -532,7 +530,7 @@ def jsbaton_get_string(baton, argi):
     # ctype-q = long-long
     offset = struct.unpack_from("q", baton, JSBATON_OFFSET_ARGV + argi * 8)[0]
     return str(
-        memoryview(baton)[
+        baton[
             offset + 1 + 4:
             # remove null-terminator from string
             # ctype-i = int
@@ -709,13 +707,13 @@ def jsbaton_set_value(baton, argi, val, bufi, reference_list):
     # exponentially grow baton as needed
     if len(baton) < nn:
         tmp = baton
-        baton = _sqlmath.PyBaton(
+        baton = memoryview(_sqlmath.PyBaton(
             min(2 ** math.ceil(math.log2(nn)), 0x7fff_ffff),
-        )
+        ))
         # update nallc
         struct.pack_into("i", baton, 0, len(baton)) # ctype-i = int
         # copy old-baton into new-baton
-        memoryview(baton)[:len(tmp)] = tmp
+        baton[:len(tmp)] = tmp
     # push vtype - 1-byte
     struct.pack_into("b", baton, nused, vtype) # ctype-b = signed-char
     # update nused
@@ -737,7 +735,7 @@ def jsbaton_set_value(baton, argi, val, bufi, reference_list):
         # push vsize - 4-byte
         struct.pack_into("i", baton, nused + 1, vsize) # ctype-i = int
         # push SQLITE-BLOB/TEXT - vsize-byte
-        memoryview(baton)[nused + 1 + 4:nused + 1 + 4 + vsize] = val
+        baton[nused + 1 + 4:nused + 1 + 4 + vsize] = val
         return baton
     if vtype == SQLITE_DATATYPE_EXTERNALBUFFER:
         vsize = len(val)

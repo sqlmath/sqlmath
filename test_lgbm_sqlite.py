@@ -295,50 +295,33 @@ SELECT 1;
                 # !! sqlmath.db_exec(db=db, sql=f"""
 # !! CREATE VIRTUAL TABLE {table_name} USING tsv(filename='{filename}');
                 # !! """)
+            sqlmath.db_exec(db=db, sql=f"""
+-- lgbm - init
+CREATE TABLE __lgbm_state(
+    data_test_handle INTEGER,
+    data_test_num_data REAL,
+    data_test_num_feature REAL,
+    --
+    data_train_handle INTEGER,
+    data_train_num_data REAL,
+    data_train_num_feature REAL,
+    --
+    model BLOB
+);
+INSERT INTO __lgbm_state(rowid) SELECT 1;
 
-            # !! return
-            # Setup state and train
-            sqlmath.db_exec(db=db, mode_debug=1, sql="""
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
-----------------------------------------------------------------
---------------------
+-- lgbm - data
+{sqlDataXxx};
+UPDATE __lgbm_state
+    SET
+        data_test_num_data = LGBM_DATASETGETNUMDATA(data_test_handle),
+        data_test_num_feature = LGBM_DATASETGETNUMFEATURE(data_test_handle),
+        data_train_num_data = LGBM_DATASETGETNUMDATA(data_train_handle),
+        data_train_num_feature = LGBM_DATASETGETNUMFEATURE(data_train_handle);
+
+-- lgbm - train
+{sqlTrainXxx};
             """)
-            # !! sqlmath.db_exec(db=db, mode_debug=1, sql=f"""
-# !! -- lgbm - init
-# !! CREATE TABLE __lgbm_state(
-    # !! data_test_handle INTEGER,
-    # !! data_test_num_data REAL,
-    # !! data_test_num_feature REAL,
-    # !! --
-    # !! data_train_handle INTEGER,
-    # !! data_train_num_data REAL,
-    # !! data_train_num_feature REAL,
-    # !! --
-    # !! model BLOB
-# !! );
-# !! INSERT INTO __lgbm_state(rowid) SELECT 1;
-
-# !! -- lgbm - data
-# !! {sqlDataXxx};
-# !! UPDATE __lgbm_state
-    # !! SET
-        # !! data_test_num_data = LGBM_DATASETGETNUMDATA(data_test_handle),
-        # !! data_test_num_feature = LGBM_DATASETGETNUMFEATURE(data_test_handle),
-        # !! data_train_num_data = LGBM_DATASETGETNUMDATA(data_train_handle),
-        # !! data_train_num_feature = LGBM_DATASETGETNUMFEATURE(data_train_handle);
-
-# !! -- lgbm - train
-# !! {sqlTrainXxx};
-            # !! """)
             sqlmath.db_exec(db=db, sql=f"""
 -- lgbm - predict
 {sqlPredictXxx.replace("file_actual", file_actual)};
