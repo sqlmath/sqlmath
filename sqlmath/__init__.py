@@ -21,17 +21,26 @@
 
 """sqlmath.py."""
 
-__version__ = "2026.2.28"
-__version_info__ = ("2026", "2", "28")
+__version__ = "2026.3.1"
+__version_info__ = ("2026", "3", "1")
 
+import csv
+import io
 import json
 import math
+import pathlib
+import platform
 import re
 import struct
 import sys
 import weakref
 
 from ._sqlmath import _pybatonSetMemoryview, _pybatonStealCbuffer, _pydbCall
+
+_STATE = {
+    "DB_OPEN_INIT": False,
+}
+
 
 JSBATON_ARGC = 8
 JSBATON_OFFSET_ALL = 256
@@ -50,27 +59,39 @@ SQLITE_DATATYPE_TEXT_0 = 0x13
 SQLITE_RESPONSETYPE_LASTBLOB = 1
 
 
-SQLITE_OPEN_AUTOPROXY = 0x00000020     # VFS only
-SQLITE_OPEN_CREATE = 0x00000004        # Ok for sqlite3_open_v2()
-SQLITE_OPEN_DELETEONCLOSE = 0x00000008 # VFS only
-SQLITE_OPEN_EXCLUSIVE = 0x00000010     # VFS only
-SQLITE_OPEN_FULLMUTEX = 0x00010000     # Ok for sqlite3_open_v2()
-SQLITE_OPEN_MAIN_DB = 0x00000100       # VFS only
-SQLITE_OPEN_MAIN_JOURNAL = 0x00000800  # VFS only
-SQLITE_OPEN_MEMORY = 0x00000080        # Ok for sqlite3_open_v2()
-SQLITE_OPEN_NOFOLLOW = 0x01000000      # Ok for sqlite3_open_v2()
-SQLITE_OPEN_NOMUTEX = 0x00008000       # Ok for sqlite3_open_v2()
-SQLITE_OPEN_PRIVATECACHE = 0x00040000  # Ok for sqlite3_open_v2()
-SQLITE_OPEN_READONLY = 0x00000001      # Ok for sqlite3_open_v2()
-SQLITE_OPEN_READWRITE = 0x00000002     # Ok for sqlite3_open_v2()
-SQLITE_OPEN_SHAREDCACHE = 0x00020000   # Ok for sqlite3_open_v2()
-SQLITE_OPEN_SUBJOURNAL = 0x00002000    # VFS only
-SQLITE_OPEN_SUPER_JOURNAL = 0x00004000 # VFS only
-SQLITE_OPEN_TEMP_DB = 0x00000200       # VFS only
-SQLITE_OPEN_TEMP_JOURNAL = 0x00001000  # VFS only
-SQLITE_OPEN_TRANSIENT_DB = 0x00000400  # VFS only
-SQLITE_OPEN_URI = 0x00000040           # Ok for sqlite3_open_v2()
-SQLITE_OPEN_WAL = 0x00080000           # VFS only
+LGBM_DTYPE_FLOAT32 = 0                  # float32 (single precision float)
+LGBM_DTYPE_FLOAT64 = 1                  # float64 (double precision float)
+LGBM_DTYPE_INT32 = 2                    # int32
+LGBM_DTYPE_INT64 = 3                    # int64
+LGBM_FEATURE_IMPORTANCE_GAIN = 1        # Gain type of feature importance
+LGBM_FEATURE_IMPORTANCE_SPLIT = 0       # Split type of feature importance
+LGBM_MATRIX_TYPE_CSC = 1                # CSC sparse matrix type
+LGBM_MATRIX_TYPE_CSR = 0                # CSR sparse matrix type
+LGBM_PREDICT_CONTRIB = 3        # Predict feature contributions (SHAP values)
+LGBM_PREDICT_LEAF_INDEX = 2             # Predict leaf index
+LGBM_PREDICT_NORMAL = 0         # Normal prediction w/ transform (if needed)
+LGBM_PREDICT_RAW_SCORE = 1              # Predict raw score
+SQLITE_OPEN_AUTOPROXY = 0x00000020      # VFS only
+SQLITE_OPEN_CREATE = 0x00000004         # Ok for sqlite3_open_v2()
+SQLITE_OPEN_DELETEONCLOSE = 0x00000008  # VFS only
+SQLITE_OPEN_EXCLUSIVE = 0x00000010      # VFS only
+SQLITE_OPEN_FULLMUTEX = 0x00010000      # Ok for sqlite3_open_v2()
+SQLITE_OPEN_MAIN_DB = 0x00000100        # VFS only
+SQLITE_OPEN_MAIN_JOURNAL = 0x00000800   # VFS only
+SQLITE_OPEN_MEMORY = 0x00000080         # Ok for sqlite3_open_v2()
+SQLITE_OPEN_NOFOLLOW = 0x01000000       # Ok for sqlite3_open_v2()
+SQLITE_OPEN_NOMUTEX = 0x00008000        # Ok for sqlite3_open_v2()
+SQLITE_OPEN_PRIVATECACHE = 0x00040000   # Ok for sqlite3_open_v2()
+SQLITE_OPEN_READONLY = 0x00000001       # Ok for sqlite3_open_v2()
+SQLITE_OPEN_READWRITE = 0x00000002      # Ok for sqlite3_open_v2()
+SQLITE_OPEN_SHAREDCACHE = 0x00020000    # Ok for sqlite3_open_v2()
+SQLITE_OPEN_SUBJOURNAL = 0x00002000     # VFS only
+SQLITE_OPEN_SUPER_JOURNAL = 0x00004000  # VFS only
+SQLITE_OPEN_TEMP_DB = 0x00000200        # VFS only
+SQLITE_OPEN_TEMP_JOURNAL = 0x00001000   # VFS only
+SQLITE_OPEN_TRANSIENT_DB = 0x00000400   # VFS only
+SQLITE_OPEN_URI = 0x00000040            # Ok for sqlite3_open_v2()
+SQLITE_OPEN_WAL = 0x00080000            # VFS only
 
 
 INFINITY = float("inf")
@@ -140,9 +161,13 @@ def assert_or_throw(condition, message):
         )
 
 
-def db_call(baton, arglist):
+def db_call(baton, arglist, mode_debug=None):
     """This function will call c-function dbXxx() with given <funcname>."""
     """and return [<baton>, ...arglist]."""
+    # !! # copy argList to avoid side-effect
+    # !! arglist = arglist.copy()
+    if mode_debug:
+        print(arglist, sys.stderr)
     assert_or_throw(
         len(arglist) <= JSBATON_ARGC,
         f"db_call - len(arglist) must be less than than {JSBATON_ARGC}",
@@ -172,6 +197,7 @@ def db_call(baton, arglist):
                 val if val.endswith("\u0000") else val + "\u0000",
                 None,
                 None,
+                mode_debug,
             )
             continue
         msg = f'db_call - invalid arg-type "{type(val)}"'
@@ -191,6 +217,7 @@ def db_close(db):
 def db_exec(
     bind_list=None,
     db=None,
+    mode_debug=None,
     response_type=None,
     sql=None,
 ):
@@ -220,6 +247,8 @@ def db_exec(
                 bufi,
                 externalbuffer_list,
             )
+    if mode_debug:
+        print(len(sql), sql, sys.stderr)
     db_call(
         baton,
         [
@@ -238,6 +267,7 @@ def db_exec(
                 else 0
             ),
         ],
+        mode_debug=mode_debug,
     )
     match response_type:
         case "arraybuffer":
@@ -248,7 +278,12 @@ def db_exec(
             return json.loads(_pybatonStealCbuffer(baton, 0, 1))
         case _:
             table_list = []
-            for table in json.loads(_pybatonStealCbuffer(baton, 0, 1)):
+            json_raw = _pybatonStealCbuffer(baton, 0, 1)
+            if mode_debug:
+                print(json.dumps(json_raw), sys.stderr)
+            # !! if not json_raw:
+                # !! return None
+            for table in json.loads(json_raw):
                 col_list = tuple(enumerate(table.pop(0)))
                 table_list.append([
                     {key: row[ii] for ii, key in col_list}
@@ -312,7 +347,11 @@ def db_noop(*arglist):
     return db_call(jsbaton_create("_dbNoop"), arglist)
 
 
-def db_open(filename=":memory:", flags=None):
+def db_open(
+    filename=":memory:",
+    flags=None,
+    timeout_busy=5000,
+):
     """
     This function will open and return sqlite-database-connection <db>.
 
@@ -347,7 +386,127 @@ def db_open(filename=":memory:", flags=None):
     db.filename = filename
     db.ptr = ptr
     weakref.finalize(db, db_close, db)
+    if not _STATE["DB_OPEN_INIT"]:
+        _STATE["DB_OPEN_INIT"] = True
+        # init lgbm
+        lib_lgbm = platform.system()
+        lib_lgbm = lib_lgbm.replace("Darwin", "lib_lightgbm.dylib")
+        lib_lgbm = lib_lgbm.replace("Linux", "lib_lightgbm.so")
+        lib_lgbm = lib_lgbm.replace("Windows", "lib_lightgbm.dll")
+        lib_lgbm = pathlib.Path(__file__).resolve().parent / lib_lgbm
+        if lib_lgbm.exists():
+            db_exec(
+                db=db,
+                sql=f"""
+PRAGMA busy_timeout = {timeout_busy};
+SELECT LGBM_DLOPEN('{lib_lgbm}');
+                """,
+            )
     return db
+
+
+def db_table_import(
+    db=None,
+    filename=None,
+    header_missing=None,
+    mode=None,
+    table_name=None,
+    text_data=None,
+):
+    """This function will create table from imported csv/json <textData>."""
+    row_list = []
+    rowid_list = []
+    if filename:
+        with pathlib.Path(filename).open(encoding="utf-8") as f:
+            text_data = f.read()
+    if text_data is None:
+        text_data = ""
+    if mode == "csv":
+        row_list = json_row_list_from_csv(text_data)
+    elif mode == "tsv":
+        row_list = [
+            line.split("\t") for line in text_data.strip().splitlines()
+        ]
+    # elif mode == "json":
+    else:
+        try:
+            row_list = json.loads(text_data)
+        except json.JSONDecodeError:
+            row_list = []
+    # Normalize row_list if it's a dictionary
+    if isinstance(row_list, dict):
+        rowid_list = list(row_list.keys())
+        row_list = list(row_list.values())
+    if not isinstance(row_list, list):
+        row_list = []
+    # Handle header_missing
+    if header_missing and row_list and isinstance(row_list[0], list):
+        header = [str(i + 1) for i in range(len(row_list[0]))]
+        row_list.insert(0, header)
+    # Normalize empty data
+    if not row_list:
+        row_list = [["undefined"]]
+    # Normalize objects to lists if necessary
+    if not isinstance(row_list[0], list):
+        # Extract unique keys across all objects
+        all_keys = []
+        for obj in row_list:
+            if isinstance(obj, dict):
+                all_keys.extend(obj.keys())
+        # Preserve order and get unique keys
+        col_list = list(dict.fromkeys(all_keys))
+        normalized_rows = [col_list] # First row is headers
+        for obj in row_list:
+            normalized_rows.extend(
+                [obj.get(key) for key in col_list]
+                for obj in row_list
+            )
+        row_list = normalized_rows
+    # Extract col_list from first row
+    col_list = row_list.pop(0)
+    # Preserve rowid if it existed from a dict import
+    if rowid_list:
+        col_list.insert(0, "rowid")
+        for i in range(len(row_list)):
+            row_list[i].insert(0, rowid_list[i])
+    # Normalize column names (regex sanitization)
+    seen_cols = set()
+    final_cols = []
+    for col_name in col_list:
+        clean_name = str(col_name).strip()
+        clean_name = re.sub(r"\W", "_", clean_name)
+        # Ensure it starts with a letter or underscore
+        if not re.match(r"[A-Z_a-z]", clean_name) or clean_name == "":
+            clean_name = "_" + clean_name
+        # Handle duplicates
+        suffix = 1
+        candidate = clean_name
+        while candidate in seen_cols:
+            suffix += 1
+            candidate = f"{clean_name}_{suffix}"
+        seen_cols.add(candidate)
+        final_cols.append(candidate)
+    # create dbtable from rowList
+    db_exec(
+        bind_list={
+            "row_list": json.dumps(row_list),
+        },
+        db=db,
+        sql=(
+            f"CREATE TABLE {table_name} ({','.join(final_cols)});"
+            if not row_list else
+            (
+                f"CREATE TABLE {table_name} AS SELECT "
+                + ",".join(
+                    [
+                        f"value->>{ii} AS {col}"
+                        for ii, col in enumerate(final_cols)
+                    ],
+                )
+                + " FROM JSON_EACH($row_list);"
+            )
+        ),
+    )
 
 
 def debuginline(*argv):
@@ -393,7 +552,7 @@ def jsbaton_get_string(baton, argi):
     )
 
 
-def jsbaton_set_value(baton, argi, val, bufi, reference_list): # noqa: C901 PLR0912
+def jsbaton_set_value(baton, argi, val, bufi, reference_list, mode_debug=None):
     """
     This function will push <val> to buffer <baton>.
 
@@ -545,6 +704,11 @@ def jsbaton_set_value(baton, argi, val, bufi, reference_list): # noqa: C901 PLR0
             val = bytes(val, "utf-8")
             vtype = SQLITE_DATATYPE_TEXT
             vsize = 4 + len(val)
+            if mode_debug:
+                print({
+                    vsize,
+                    val,
+                })
         # 30. 1.tuple
         # 31. json
         case _:
@@ -627,6 +791,22 @@ def jsbaton_set_value(baton, argi, val, bufi, reference_list): # noqa: C901 PLR0
 def noop(val=None, *_, **__):
     """This function will do nothing except return <val>."""
     return val
+
+
+def json_row_list_from_csv(csv_text):
+    """This function will convert <csv>-text to json list-of-list."""
+    # Normalize line endings and trim as per original logic
+    csv_text = csv_text.rstrip() + "\n"
+    # Use io.StringIO to treat the string as a file for the csv reader
+    file = io.StringIO(csv_text)
+    reader = csv.reader(
+        file,
+        quotechar='"',
+        delimiter=",",
+        quoting=csv.QUOTE_MINIMAL,
+        skipinitialspace=False,
+    )
+    return [row for row in reader if row]
 
 
 def objectdeepcopywithkeyssorted(obj):

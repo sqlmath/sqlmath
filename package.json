@@ -5,7 +5,7 @@
     },
     "counter": 0,
     "description": "sqlite for data-science",
-    "fileCount": 46,
+    "fileCount": 47,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",
@@ -32,5 +32,5 @@
     },
     "shCiArtifactUpload": 1,
     "shCiPublishNpm": 1,
-    "version": "2026.2.28"
+    "version": "2026.3.1-beta"
 }

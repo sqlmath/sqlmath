@@ -50,7 +50,7 @@ noop(debuginline)
 class TestCaseSqlmath(unittest.TestCase):
     """Custom TestCase."""
 
-    def test_db_bind(self): # noqa: C901
+    def test_db_bind(self):
         """Test db_bind handling-behavior."""
         def test_db_bind_exec(ii, val_in, val_expect):
             for bind_list, sql in [

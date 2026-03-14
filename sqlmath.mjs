@@ -50,14 +50,14 @@ const SQLITE_RESPONSETYPE_LASTVALUE = 2;
 
 const FILENAME_DBTMP = "/tmp/__dbtmp1"; //jslint-ignore-line
 
-const LGBM_DTYPE_FLOAT32 = 0;   /* float32 (single precision float)*/
-const LGBM_DTYPE_FLOAT64 = 1;   /* float64 (double precision float)*/
-const LGBM_DTYPE_INT32 = 2;     /* int32*/
-const LGBM_DTYPE_INT64 = 3;     /* int64*/
+const LGBM_DTYPE_FLOAT32 = 0;           /* float32 (single precision float)*/
+const LGBM_DTYPE_FLOAT64 = 1;           /* float64 (double precision float)*/
+const LGBM_DTYPE_INT32 = 2;             /* int32*/
+const LGBM_DTYPE_INT64 = 3;             /* int64*/
 const LGBM_FEATURE_IMPORTANCE_GAIN = 1; /* Gain type of feature importance*/
 const LGBM_FEATURE_IMPORTANCE_SPLIT = 0;/* Split type of feature importance*/
-const LGBM_MATRIX_TYPE_CSC = 1; /* CSC sparse matrix type*/
-const LGBM_MATRIX_TYPE_CSR = 0; /* CSR sparse matrix type*/
+const LGBM_MATRIX_TYPE_CSC = 1;         /* CSC sparse matrix type*/
+const LGBM_MATRIX_TYPE_CSR = 0;         /* CSR sparse matrix type*/
 const LGBM_PREDICT_CONTRIB = 3; /* Predict feature contributions (SHAP values)*/
 const LGBM_PREDICT_LEAF_INDEX = 2;      /* Predict leaf index*/
 const LGBM_PREDICT_NORMAL = 0;  /* Normal prediction w/ transform (if needed)*/
@@ -128,7 +128,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2026.2.28";
+let version = "v2026.3.1-beta";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -1056,13 +1056,15 @@ async function dbOpenAsync({
         libLgbm = libLgbm.replace("win32", "lib_lightgbm.dll");
         libLgbm = libLgbm.replace(process.platform, "lib_lightgbm.so");
         libLgbm = `${import.meta.dirname}/sqlmath/${libLgbm}`;
-        await dbExecAsync({
-            db,
-            sql: (`
+        await moduleFs.promises.access(libLgbm).then(async function () {
+            await dbExecAsync({
+                db,
+                sql: (`
 PRAGMA busy_timeout = ${timeoutBusy};
 SELECT LGBM_DLOPEN('${libLgbm}');
-            `)
-        });
+                `)
+            });
+        }).catch(noop);
     }
     return db;
 }
@@ -1075,7 +1077,7 @@ async function dbTableImportAsync({
     tableName,
     textData
 }) {
-// this function will create table from imported csv/json <textData>
+// This function will create table from imported csv/json <textData>.
     let colList;
     let rowList;
     let rowidList;
@@ -1516,7 +1518,7 @@ function jsonParseArraybuffer(buf) {
 function jsonRowListFromCsv({
     csv
 }) {
-// this function will convert <csv>-text to json list-of-list
+// This function will convert <csv>-text to json list-of-list.
 //
 // https://tools.ietf.org/html/rfc4180#section-2
 // Definition of the CSV Format
