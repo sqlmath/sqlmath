@@ -3321,12 +3321,6 @@ static void tc_sha256_compress(unsigned int *iv, const uint8_t *data)
 
 
 /*
-repo https://github.com/microsoft/LightGBM/tree/v4.6.0
-committed 2025-02-14T20:27:28Z
-*/
-
-
-/*
 file https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/c_api.h
 */
 

@@ -27,8 +27,8 @@ python setup.py bdist_wheel
 python setup.py build_ext
 """
 
-__version__ = "2026.2.28"
-__version_info__ = ("2026", "2", "28")
+__version__ = "2026.3.1"
+__version_info__ = ("2026", "3", "1")
 
 import asyncio
 import base64
@@ -56,10 +56,10 @@ def build_ext():
     subprocess.run(["python", "setup.py", "build_ext_async"], check=True)
 
 
-async def build_ext_async(): # noqa: C901
+async def build_ext_async():
     """This function will build c-extension."""
 
-    async def build_ext_obj(cdefine): # noqa: C901 PLR0912
+    async def build_ext_obj(cdefine):
         arg_list = [
             *[f"-I{path}" for path in path_include],
             # ,

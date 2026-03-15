@@ -5,6 +5,12 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2026.3.1
+- sqlmath-python - bugfix - Fix 762-character-limit SQL-string-bug in python-function db_exec().
+- jslint-ci - Update shell-function shLintPython().
+- python - Auto-detect-and-load lib_lightgbm.dll.
+- sqlite - Add sqlite-extension csv.c, tsv.c.
+
 # v2026.2.28
 - python-ci - Fix ruff lint-errors.
 - jslint-ci - Update shell-function shCiBase() to check npm-version-support, before running npm-pkg-fix.
