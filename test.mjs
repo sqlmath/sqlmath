@@ -1108,7 +1108,7 @@ UPDATE __lgbm_state
         `);
         async function testLgbm(sqlDataXxx, sqlTrainXxx, sqlPredictXxx, sqlIi) {
             let db = await dbOpenAsync({});
-            let fileActual = `.tmp/test_lgbm_preb_${sqlIi}.txt`;
+            let fileActual = `.tmp/test_lgbm_preb_${sqlIi}.js.txt`;
             await Promise.all([
                 [filePreb, "__lgbm_file_preb"],
                 [fileTest, "__lgbm_file_test"],

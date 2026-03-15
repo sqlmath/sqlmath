@@ -87,7 +87,7 @@ const SQLITE_OPEN_WAL = 0x00080000;             /* VFS only */
 let DB_EXEC_PROFILE_DICT = {};
 let DB_EXEC_PROFILE_MODE;
 let DB_EXEC_PROFILE_SQL_LENGTH;
-let DB_OPEN_INIT;
+let DB_STATE = {};
 let IS_BROWSER;
 let SQLMATH_EXE;
 let SQLMATH_NODE;
@@ -1017,7 +1017,6 @@ async function dbOpenAsync({
 // );
     let connPool;
     let db = {busy: 0, filename, ii: 0};
-    let libLgbm;
     assertOrThrow(typeof filename === "string", `invalid filename ${filename}`);
     assertOrThrow(
         !dbData || isExternalBuffer(dbData),
@@ -1048,23 +1047,37 @@ async function dbOpenAsync({
         return ptr;
     }));
     db.connPool = connPool;
-    if (!IS_BROWSER && !DB_OPEN_INIT) {
-        DB_OPEN_INIT = true;
-        // init lgbm
-        libLgbm = process.platform;
-        libLgbm = libLgbm.replace("darwin", "lib_lightgbm.dylib");
-        libLgbm = libLgbm.replace("win32", "lib_lightgbm.dll");
-        libLgbm = libLgbm.replace(process.platform, "lib_lightgbm.so");
-        libLgbm = `${import.meta.dirname}/sqlmath/${libLgbm}`;
-        await moduleFs.promises.access(libLgbm).then(async function () {
-            await dbExecAsync({
+    if (!IS_BROWSER && !DB_STATE.init) {
+        DB_STATE.init = true;
+        await Promise.all([
+            // PRAGMA busy_timeout
+            dbExecAsync({
                 db,
                 sql: (`
 PRAGMA busy_timeout = ${timeoutBusy};
-SELECT LGBM_DLOPEN('${libLgbm}');
                 `)
-            });
-        }).catch(noop);
+            }),
+            // LGBM_DLOPEN
+            (async function () {
+                let libLgbm;
+                libLgbm = process.platform;
+                libLgbm = libLgbm.replace("darwin", "lib_lightgbm.dylib");
+                libLgbm = libLgbm.replace("win32", "lib_lightgbm.dll");
+                libLgbm = libLgbm.replace(process.platform, "lib_lightgbm.so");
+                libLgbm = `${import.meta.dirname}/sqlmath/${libLgbm}`;
+                await moduleFs.promises.access(
+                    libLgbm
+                ).then(async function () {
+                    await dbExecAsync({
+                        db,
+                        sql: (`
+SELECT LGBM_DLOPEN('${libLgbm}');
+                        `)
+                    });
+                    DB_STATE.lgbm = true;
+                }).catch(noop);
+            }())
+        ]);
     }
     return db;
 }
@@ -1903,6 +1916,7 @@ sqlmathInit(); // coverage-hack
 
 export {
     DB_EXEC_PROFILE_DICT,
+    DB_STATE,
     LGBM_DTYPE_FLOAT32,
     LGBM_DTYPE_FLOAT64,
     LGBM_DTYPE_INT32,

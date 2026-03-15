@@ -8,7 +8,6 @@
 # v2026.3.1-beta
 - sqlmath-python - bugfix - Fix 762-character-limit SQL-string-bug in python-function db_exec().
 - jslint-ci - Update shell-function shLintPython().
-- python - Add file test_lgbm_sqlite.py.
 - python - Auto-detect-and-load lib_lightgbm.dll.
 - sqlite - Add sqlite-extension csv.c, tsv.c.
 

@@ -37,8 +37,9 @@ import weakref
 
 from . import _sqlmath
 
-_STATE = {
-    "DB_OPEN_INIT": False,
+DB_STATE = {
+    "init": None,
+    "lgbm": None,
 }
 
 
@@ -374,9 +375,16 @@ def db_open(
     db.filename = filename
     db.ptr = ptr
     weakref.finalize(db, db_close, db)
-    if not _STATE["DB_OPEN_INIT"]:
-        _STATE["DB_OPEN_INIT"] = True
-        # init lgbm
+    if not DB_STATE["init"]:
+        DB_STATE["init"] = True
+        # PRAGMA busy_timeout
+        db_exec(
+            db=db,
+            sql=f"""
+PRAGMA busy_timeout = {timeout_busy};
+            """,
+        )
+        # LGBM_DLOPEN
         lib_lgbm = platform.system()
         lib_lgbm = lib_lgbm.replace("Darwin", "lib_lightgbm.dylib")
         lib_lgbm = lib_lgbm.replace("Linux", "lib_lightgbm.so")
@@ -386,10 +394,10 @@ def db_open(
             db_exec(
                 db=db,
                 sql=f"""
-PRAGMA busy_timeout = {timeout_busy};
 SELECT LGBM_DLOPEN('{lib_lgbm}');
                 """,
             )
+            DB_STATE["lgbm"] = True
     return db
 
 
