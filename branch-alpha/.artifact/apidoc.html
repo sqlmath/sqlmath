@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2026.2.28)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2026.3.1)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -575,21 +575,28 @@ object DB_EXEC_PROFILE_DICT
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE">66.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_STATE">66.
+object DB_STATE
+</a>
+
+</li>
+<li>
+
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE">67.
 string SQLMATH_EXE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE">67.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE">68.
 string SQLMATH_NODE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version">68.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version">69.
 string version
 </a>
 
@@ -1557,7 +1564,6 @@ assertJsonEqual(
 // );
     let connPool;
     let db = {busy: 0, filename, ii: 0};
-    let libLgbm;
     assertOrThrow(typeof filename === "string", `invalid filename ${filename}`);
     assertOrThrow(
         !dbData || isExternalBuffer(dbData),
@@ -1588,13 +1594,17 @@ assertJsonEqual(
         return ptr;
     }));
     db.connPool = connPool;
-    if (!IS_BROWSER &amp;&amp; !DB_OPEN_INIT) {
-        DB_OPEN_INIT = true;
-        // init lgbm
-        libLgbm = process.platform;
-        libLgbm = libLgbm.replace("darwin", "lib_lightgbm.dylib");
-        libLgbm = libLgbm.replace("win32", "lib_lightgbm.dll");
-        libLgbm = libL...
+    if (!IS_BROWSER &amp;&amp; !DB_STATE.init) {
+        DB_STATE.init = true;
+        await Promise.all([
+            // PRAGMA busy_timeout
+            dbExecAsync({
+                db,
+                sql: (`
+PRAGMA busy_timeout = ${timeoutBusy};
+                `)
+            }),
+            // LGBM...
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
@@ -1637,7 +1647,7 @@ jstestIt((
     tableName,
     textData
 }) {
-// this function will create table from imported csv/json &lt;textData&gt;
+// This function will create table from imported csv/json &lt;textData&gt;.
     let colList;
     let rowList;
     let rowidList;
@@ -1706,7 +1716,7 @@ jstestIt((
     // preserve rowid
     if (rowidList) {
         colList.unshift("rowid");
-        rowList.forEach(funct...
+        rowList.forEach(func...
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
@@ -2445,7 +2455,15 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE">66.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_STATE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_STATE">66.
+    object DB_STATE
+    </a>
+    </h2>
+</li>
+
+<li>
+    <h2>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE">67.
     string SQLMATH_EXE
     </a>
     </h2>
@@ -2453,7 +2471,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE">67.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE">68.
     string SQLMATH_NODE
     </a>
     </h2>
@@ -2461,7 +2479,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.version">68.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.version">69.
     string version
     </a>
     </h2>

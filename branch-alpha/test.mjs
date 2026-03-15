@@ -1108,30 +1108,20 @@ UPDATE __lgbm_state
         `);
         async function testLgbm(sqlDataXxx, sqlTrainXxx, sqlPredictXxx, sqlIi) {
             let db = await dbOpenAsync({});
-            let fileActual = `.tmp/test_lgbm_preb_${sqlIi}.txt`;
+            let fileActual = `.tmp/test_lgbm_preb_${sqlIi}.js.txt`;
             await Promise.all([
-                dbTableImportAsync({
+                [filePreb, "__lgbm_file_preb"],
+                [fileTest, "__lgbm_file_test"],
+                [fileTrain, "__lgbm_file_train"]
+            ].map(async function ([filename, tableName]) {
+                await dbTableImportAsync({
                     db,
-                    filename: filePreb,
+                    filename,
                     headerMissing: true,
                     mode: "tsv",
-                    tableName: "__lgbm_file_preb"
-                }),
-                dbTableImportAsync({
-                    db,
-                    filename: fileTest,
-                    headerMissing: true,
-                    mode: "tsv",
-                    tableName: "__lgbm_file_test"
-                }),
-                dbTableImportAsync({
-                    db,
-                    filename: fileTrain,
-                    headerMissing: true,
-                    mode: "tsv",
-                    tableName: "__lgbm_file_train"
-                })
-            ]);
+                    tableName
+                });
+            }));
             await dbExecAsync({
                 db,
                 sql: (`
