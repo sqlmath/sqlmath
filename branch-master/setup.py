@@ -27,8 +27,8 @@ python setup.py bdist_wheel
 python setup.py build_ext
 """
 
-__version__ = "2026.1.31"
-__version_info__ = ("2026", "1", "31")
+__version__ = "2026.2.28"
+__version_info__ = ("2026", "2", "28")
 
 import asyncio
 import base64
@@ -83,8 +83,14 @@ async def build_ext_async(): # noqa: C901
                 pass
             case _:
                 if (
-                    file_obj.exists()
-                    and file_obj.stat().st_mtime > file_src.stat().st_mtime
+                    await asyncio.to_thread(
+                        lambda f1, f2: (
+                            f1.exists()
+                            and f1.stat().st_mtime > f2.stat().st_mtime
+                        ),
+                        file_obj,
+                        file_src,
+                    )
                 ):
                     print(f"build_ext - skip {file_src}")
                     return
@@ -194,29 +200,39 @@ async def build_ext_async(): # noqa: C901
         shutil.copyfile(f"build/{file_lib}", f"sqlmath/{file_lib}")
     #
     # build_ext - update version
-    pathlib.Path("build").mkdir(parents=True, exist_ok=True)
-    with pathlib.Path("package.json").open() as file1: # noqa: ASYNC230
-        package_json = json.load(file1)
-        version = package_json["version"].split("-")[0]
+    await asyncio.to_thread(
+        pathlib.Path("build").mkdir,
+        parents=True,
+        exist_ok=True,
+    )
+    package_json = json.loads(
+        await asyncio.to_thread(
+            pathlib.Path("package.json").read_text,
+            encoding="utf-8",
+        ),
+    )
+    version = package_json["version"].split("-")[0]
     if package_json["name"] != "sqlmath":
         version = __version__
-    with pathlib.Path(".ci.sh").open() as file1: # noqa: ASYNC230
-        data = file1.read()
-        data = re.findall(
-            (
-                r"(?:SQLMATH_CFLAG_WALL_LIST|SQLMATH_CFLAG_WNO_LIST)"
-                r'=" \\([\S\s]*?)"'
-            ),
-            data,
-        )
-        data = [
-            [cflag for cflag in re.split(r"[\s\\]", list1) if cflag != ""]
-            for list1 in data
-        ]
-        [
-            cflag_wall_list,
-            cflag_wno_list,
-        ] = data
+    data = await asyncio.to_thread(
+        pathlib.Path(".ci.sh").read_text,
+        encoding="utf-8",
+    )
+    data = re.findall(
+        (
+            r"(?:SQLMATH_CFLAG_WALL_LIST|SQLMATH_CFLAG_WNO_LIST)"
+            r'=" \\([\S\s]*?)"'
+        ),
+        data,
+    )
+    data = [
+        [cflag for cflag in re.split(r"[\s\\]", list1) if cflag != ""]
+        for list1 in data
+    ]
+    [
+        cflag_wall_list,
+        cflag_wno_list,
+    ] = data
     for filename in [
         "PKG-INFO",
         "README.md",
@@ -224,48 +240,54 @@ async def build_ext_async(): # noqa: C901
         "setup.py",
         "sqlmath/__init__.py",
     ]:
-        with pathlib.Path(filename).open("r+", newline="\n") as file1: # noqa: ASYNC230
-            data0 = file1.read()
-            data1 = data0
-            # update version - PKG-INFO
-            data1 = re.sub(
-                "\nVersion: .*",
-                f"\nVersion: {version}",
-                data1,
+        file1 = pathlib.Path(filename)
+        data0 = await asyncio.to_thread(
+            file1.read_text,
+            encoding="utf-8",
+        )
+        data1 = data0
+        # update version - PKG-INFO
+        data1 = re.sub(
+            "\nVersion: .*",
+            f"\nVersion: {version}",
+            data1,
+        )
+        # update version - README.md
+        data1 = re.sub(
+            "(sqlmath(?:-|==))\\d\\d\\d\\d\\.\\d\\d?\\.\\d\\d?",
+            f"\\g<1>{version}",
+            data1,
+        )
+        # update version - pyproject.toml
+        data1 = re.sub("\nversion = .*", f'\nversion = "{version}"', data1)
+        # update version - sqlmath/__init__.py
+        data1 = re.sub(
+            "\n__version__ = .*",
+            f'\n__version__ = "{version}"',
+            data1,
+        )
+        data1 = re.sub(
+            "\n__version_info__ = .*",
+            (
+                "\n__version_info__ = "
+                + str(tuple(version.split("."))).replace("'", '"')
+            ),
+            data1,
+        )
+        if (
+            data1 != data0
+            and (
+                package_json["name"] == "sqlmath"
+                or filename in ("PKG-INFO", "pyproject.toml")
             )
-            # update version - README.md
-            data1 = re.sub(
-                "(sqlmath(?:-|==))\\d\\d\\d\\d\\.\\d\\d?\\.\\d\\d?",
-                f"\\g<1>{version}",
+        ):
+            print(f"build_ext - update file {file1}")
+            await asyncio.to_thread(
+                file1.write_text,
                 data1,
+                encoding="utf-8",
+                newline="\n",
             )
-            # update version - pyproject.toml
-            data1 = re.sub("\nversion = .*", f'\nversion = "{version}"', data1)
-            # update version - sqlmath/__init__.py
-            data1 = re.sub(
-                "\n__version__ = .*",
-                f'\n__version__ = "{version}"',
-                data1,
-            )
-            data1 = re.sub(
-                "\n__version_info__ = .*",
-                (
-                    "\n__version_info__ = "
-                    + str(tuple(version.split("."))).replace("'", '"')
-                ),
-                data1,
-            )
-            if (
-                data1 != data0
-                and (
-                    package_json["name"] == "sqlmath"
-                    or filename in ("PKG-INFO", "pyproject.toml")
-                )
-            ):
-                print(f"build_ext - update file {file1.name}")
-                file1.seek(0)
-                file1.write(data1)
-                file1.truncate()
     #
     # build_ext - init sysconfig
     cc_ccshared = sysconfig.get_config_var("CCSHARED") or ""
