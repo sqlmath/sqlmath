@@ -5,7 +5,7 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
-# v2026.3.1-beta
+# v2026.3.1
 - sqlmath-python - bugfix - Fix 762-character-limit SQL-string-bug in python-function db_exec().
 - jslint-ci - Update shell-function shLintPython().
 - python - Auto-detect-and-load lib_lightgbm.dll.

@@ -830,7 +830,7 @@ SELECT
                 )
             db_file_save(
                 db=db,
-                filename=f".tmp/test_lgbm_{sql_ii}.sqlite",
+                filename=f".tmp/test_lgbm_{sql_ii}.py.sqlite",
             )
             # Assertions
             assert_json_equal(
