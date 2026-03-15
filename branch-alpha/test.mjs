@@ -1176,7 +1176,7 @@ SELECT
             }
             await dbFileSaveAsync({
                 db,
-                filename: `.tmp/test_lgbm_${sqlIi}.sqlite`
+                filename: `.tmp/test_lgbm_${sqlIi}.js.sqlite`
             });
             assertJsonEqual(
                 noop(
