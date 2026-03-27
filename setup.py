@@ -385,7 +385,11 @@ def build_pkg_info():
     with pathlib.Path("README.md").open(encoding="utf-8") as file1:
         data += "Description-Content-Type: text/markdown\n\n"
         data += file1.read().strip() + "\n"
-    with pathlib.Path("PKG-INFO").open("w", encoding="utf-8", newline="\n") as file1:
+    with pathlib.Path("PKG-INFO").open(
+        "w",
+        encoding="utf-8",
+        newline="\n",
+    ) as file1:
         file1.write(re.sub(" +\n", "\n", data))
 
 
