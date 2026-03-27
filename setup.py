@@ -349,7 +349,7 @@ def build_pkg_info():
     """This function will build PKG-INFO."""
     # https://packaging.python.org/en/latest/specifications/core-metadata/#core-metadata
     toml = ""
-    with pathlib.Path("pyproject.toml").open() as file1:
+    with pathlib.Path("pyproject.toml").open(encoding="utf-8") as file1:
         toml = file1.read()
     data = ""
     data += "Metadata-Version: 2.1\n"
@@ -382,10 +382,10 @@ def build_pkg_info():
     ):
         data += f"Project-URL: {match[1]}, {match[2]}\n"
     data += "License-File: LICENSE\n"
-    with pathlib.Path("README.md").open() as file1:
+    with pathlib.Path("README.md").open(encoding="utf-8") as file1:
         data += "Description-Content-Type: text/markdown\n\n"
         data += file1.read().strip() + "\n"
-    with pathlib.Path("PKG-INFO").open("w", newline="\n") as file1:
+    with pathlib.Path("PKG-INFO").open("w", encoding="utf-8", newline="\n") as file1:
         file1.write(re.sub(" +\n", "\n", data))
 
 
@@ -405,7 +405,7 @@ def build_sdist(sdist_directory, config_settings=None):
     sdist_directory = pathlib.Path(sdist_directory).resolve()
     # init file_sdist
     name_version = ""
-    with pathlib.Path("pyproject.toml").open() as file1:
+    with pathlib.Path("pyproject.toml").open(encoding="utf-8") as file1:
         toml = file1.read()
         name_version = (
             re.search('\nname = "(.*?)"', toml)[1]
@@ -417,7 +417,7 @@ def build_sdist(sdist_directory, config_settings=None):
     # Copy files from MANIFEST.in to dir_tmp and create tarball.
     with tempfile.TemporaryDirectory() as dir_tmp:
         script = ""
-        with pathlib.Path("MANIFEST.in").open() as file1:
+        with pathlib.Path("MANIFEST.in").open(encoding="utf-8") as file1:
             script = file1.read()
         script = "\n".join(
             f"cp --parents '{file}' '{dir_tmp}/{name_version}/'"
@@ -437,7 +437,12 @@ def build_sdist(sdist_directory, config_settings=None):
         )
         """
         file_tmp = ""
-        with tempfile.NamedTemporaryFile("w", delete=False) as file1:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            delete=False,
+            encoding="utf-8",
+            newline="\n",
+        ) as file1:
             file1.write(script)
             file_tmp = file1.name
         subprocess.run(["sh", file_tmp], check=True)
