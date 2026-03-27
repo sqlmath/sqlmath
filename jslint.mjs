@@ -11381,7 +11381,17 @@ function sentinel() {}
                     ),
                     stdio: ["ignore", 1, 2]
                 }
-            ).on("exit", resolve);
+            ).on("close", function (code, signal) {
+                let exitCode0;
+                if (typeof code === "number") {
+                    exitCode0 = code;
+                } else if (signal) {
+                    exitCode0 = 1;
+                } else {
+                    exitCode0 = 0;
+                }
+                resolve(exitCode0);
+            });
         });
         consoleError(
             `v8CoverageReportCreate - program exited with exitCode=${exitCode}`
