@@ -49,13 +49,30 @@ process.stdout.write(
         case "$(uname)" in
         Darwin*)
             brew install libomp
-            cp -L /opt/homebrew/opt/libomp/lib/libomp.dylib sqlmath/
+            LIBOMP_ROOT=""
+            if [ -f /opt/homebrew/opt/libomp/lib/libomp.dylib ]
+            then
+                LIBOMP_ROOT=/opt/homebrew/opt/libomp
+            elif [ -f /usr/local/opt/libomp/lib/libomp.dylib ]
+            then
+                LIBOMP_ROOT=/usr/local/opt/libomp
+            elif [ -n "${HOMEBREW_PREFIX:-}" ] \
+                && [ -f "$HOMEBREW_PREFIX/opt/libomp/lib/libomp.dylib" ]
+            then
+                LIBOMP_ROOT="$HOMEBREW_PREFIX/opt/libomp"
+            else
+                printf "%s\n" "shCiBaseCustom: libomp.dylib not found (Homebrew ARM/Intel prefix)." 1>&2
+                exit 1
+            fi
+            rm -f sqlmath/libomp.dylib
+            cp -L "$LIBOMP_ROOT/lib/libomp.dylib" sqlmath/
             ;;
         esac
         pip install lightgbm=="$(printf "v4.6.0" | sed "s|v||")"
+        rm -f "sqlmath/$FILE"
         cp "$(
             find "$(
-                pip show ruff | grep Location | sed "s|Location: ||"
+                pip show lightgbm | grep Location | sed "s|Location: ||"
             )/lightgbm" | grep "$FILE"
         )" "sqlmath/$FILE"
     fi
