@@ -24,6 +24,7 @@ jobs:
         node_version:
           - "24"
         os:
+          - macos-15-intel
           - macos-latest
           - ubuntu-latest
           - windows-latest
