@@ -49,12 +49,17 @@ process.stdout.write(
         case "$(uname)" in
         Darwin*)
             brew install libomp
-            # Use the keg path for *this* brew (ARM → /opt/homebrew, Intel → /usr/local).
-            # Hard-coding /opt/homebrew first breaks macos-15-intel (GitHub-hosted) runners.
+            # Use the keg path for *this* brew (ARM → /opt/homebrew,
+            # Intel → /usr/local).
+            # Hard-coding /opt/homebrew first breaks
+            # macos-15-intel (GitHub-hosted) runners.
             LIBOMP_ROOT="$(brew --prefix libomp)"
             if [ ! -f "$LIBOMP_ROOT/lib/libomp.dylib" ]
             then
-                printf "%s\n" "shCiBaseCustom: libomp.dylib not found at $LIBOMP_ROOT/lib/libomp.dylib" 1>&2
+                printf "%s%s\n" \
+                    "shCiBaseCustom: libomp.dylib not found at " \
+                    "$LIBOMP_ROOT/lib/libomp.dylib" \
+                    1>&2
                 exit 1
             fi
             rm -f sqlmath/libomp.dylib
