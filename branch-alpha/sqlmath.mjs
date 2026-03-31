@@ -1906,7 +1906,11 @@ function waitAsync(timeout) {
 // This function will wait <timeout> ms.
 
     return new Promise(function (resolve) {
-        setTimeout(resolve, timeout * !npm_config_mode_test);
+        let ms = Number(timeout);
+        if (!Number.isFinite(ms)) {
+            ms = 0;
+        }
+        setTimeout(resolve, ms * !npm_config_mode_test);
     });
 }
 

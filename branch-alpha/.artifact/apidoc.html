@@ -2160,7 +2160,11 @@ export {
 // This function will wait &lt;timeout&gt; ms.
 
 </span>    return new Promise(function (resolve) {
-        setTimeout(resolve, timeout * !npm_config_mode_test);
+        let ms = Number(timeout);
+        if (!Number.isFinite(ms)) {
+            ms = 0;
+        }
+        setTimeout(resolve, ms * !npm_config_mode_test);
     });
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...

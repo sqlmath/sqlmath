@@ -6,8 +6,10 @@
 - none
 
 # v2026.3.2-beta
-- ci - Update shell-function shGitPullrequestCleanup() to allow squash-and-merge pull-request.
-- ci - Update file .github/workflows/ci.yml with hook to run on pull-request.
+- sqlmath-ci - Update file setup.py to open text-files with utf-8 encoding.
+- sqlmath-ci - Update file .github/workflows/ci.yml with extra matrix.os macos-15-intel.
+- jslint-ci - Update shell-function shGitPullrequestCleanup() to allow squash-and-merge pull-request.
+- sqlmath-ci - Update file .github/workflows/ci.yml with hook to run on pull-request.
 
 # v2026.3.1
 - sqlmath-python - bugfix - Fix 762-character-limit SQL-string-bug in python-function db_exec().
