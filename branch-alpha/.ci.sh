@@ -110,12 +110,16 @@ process.stdout.write(
     shCiTestNodejs
     #
     # upload artifact
-    if (shCiMatrixIsmainNodeversion) \
-        && [ "$GITHUB_EVENT_NAME" != "pull_request" ] \
-        && ( \
-            [ "$GITHUB_BRANCH0" = alpha ] \
-            || [ "$GITHUB_BRANCH0" = beta ] \
-            || [ "$GITHUB_BRANCH0" = master ] \
+    if (shCiMatrixIsmainNodeversion) && \
+        ( \
+            [ "$GITHUB_EVENT_NAME" = push ] || \
+            [ "$GITHUB_EVENT_NAME" = schedule ] || \
+            [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] \
+        ) && \
+        ( \
+            [ "$GITHUB_BRANCH0" = alpha ] || \
+            [ "$GITHUB_BRANCH0" = beta ] || \
+            [ "$GITHUB_BRANCH0" = master ] \
         )
     then
         shCiBaseCustomArtifactUpload
