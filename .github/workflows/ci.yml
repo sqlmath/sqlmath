@@ -12,11 +12,6 @@ on:
       - alpha
       - beta
       - master
-  pull_request:
-    branches:
-      - alpha
-      - beta
-      - master
   workflow_dispatch:
 env:
   MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}

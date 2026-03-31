@@ -137,19 +137,11 @@ process.stdout.write(
             [ "$GITHUB_BRANCH0" = master ] \
         )
     then
-        shCiBaseCustomArtifactUpload
-    fi
-)}
-
-shCiBaseCustomArtifactUpload() {(set -e
-# This function will upload build-artifacts to branch-gh-pages.
-    if [ ! "$GITHUB_UPLOAD_RETRY" ]
-    then
-        export GITHUB_UPLOAD_RETRY=0
+        GITHUB_UPLOAD_RETRY=0
         while true
         do
             GITHUB_UPLOAD_RETRY="$((GITHUB_UPLOAD_RETRY + 1))"
-            if [ "$GITHUB_UPLOAD_RETRY" -gt 4 ]
+            if [ ! "$GITHUB_UPLOAD_RETRY" -le 4 ]
             then
                 return 1
             fi
@@ -168,8 +160,11 @@ import moduleChildProcess from "child_process";
             fi
             sleep 5
         done
-        return
     fi
+)}
+
+shCiBaseCustomArtifactUpload() {(set -e
+# This function will upload build-artifacts to branch-gh-pages.
     COMMIT_MESSAGE="- upload artifact
 - retry$GITHUB_UPLOAD_RETRY
 - $GITHUB_BRANCH0

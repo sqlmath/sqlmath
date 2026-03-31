@@ -1083,7 +1083,6 @@ shGitPullrequestCleanup() {(set -e
     git reset upstream/beta
     git push . alpha:beta -f
     git push origin alpha beta -f
-    git push upstream alpha -f
     sh jslint_ci.sh shMyciUpdate
     git push . alpha:__pr_upstream -f
 )}
