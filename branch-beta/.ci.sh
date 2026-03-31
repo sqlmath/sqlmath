@@ -20,7 +20,7 @@ shCiArtifactUploadCustom() {(set -e
     git fetch origin artifact
     git checkout origin/artifact "branch-$GITHUB_BRANCH0"
     mv "branch-$GITHUB_BRANCH0"/* .
-    git add -f _sqlmath* sqlmath_wasm.*
+    git add -f sqlmath_wasm.*
     # screenshot html
     PID_LIST=""
     shBrowserScreenshot \
@@ -110,11 +110,25 @@ process.stdout.write(
     shCiTestNodejs
     #
     # upload artifact
-    if (shCiMatrixIsmainNodeversion) && ( \
-        [ "$GITHUB_BRANCH0" = alpha ] \
-        || [ "$GITHUB_BRANCH0" = beta ] \
-        || [ "$GITHUB_BRANCH0" = master ] \
-    )
+    if (shCiMatrixIsmainNodeversion) && \
+        ( \
+            [ "$GITHUB_EVENT_NAME" = push ] || \
+            [ "$GITHUB_EVENT_NAME" = schedule ] || \
+            [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] \
+        ) && \
+        ( \
+            [ "$GITHUB_BRANCH0" = alpha ] || \
+            [ "$GITHUB_BRANCH0" = beta ] || \
+            [ "$GITHUB_BRANCH0" = master ] \
+        )
+    then
+        shCiBaseCustomArtifactUpload
+    fi
+)}
+
+shCiBaseCustomArtifactUpload() {(set -e
+# This function will upload build-artifacts to branch-gh-pages.
+    if [ ! "$GITHUB_UPLOAD_RETRY" ]
     then
         export GITHUB_UPLOAD_RETRY=0
         while true
@@ -139,11 +153,8 @@ import moduleChildProcess from "child_process";
             fi
             sleep 5
         done
+        return
     fi
-)}
-
-shCiBaseCustomArtifactUpload() {(set -e
-# This function will upload build-artifacts to branch-gh-pages.
     COMMIT_MESSAGE="- upload artifact
 - retry$GITHUB_UPLOAD_RETRY
 - $GITHUB_BRANCH0
@@ -426,7 +437,8 @@ shCiPublishNpmCustom() {(set -e
     git checkout origin/artifact \
         branch-beta/_sqlmath* \
         branch-beta/sqlmath_wasm*
-    cp -a branch-beta/_sqlmath* .
+    cp -a branch-beta/_sqlmath.napi* .
+    cp -a branch-beta/_sqlmath.shell* .
     cp -a branch-beta/sqlmath_wasm.* .
     # npm-publish
     npm publish --access public
