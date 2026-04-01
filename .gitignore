@@ -36,5 +36,6 @@ wheelhouse/
 # base - .gitignore - end
 
 binding.gyp
-lib_lightgbm.*
+lib_lightgbm*
+libomp*
 sqlmath_wasm.*

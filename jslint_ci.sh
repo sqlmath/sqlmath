@@ -206,7 +206,6 @@ import moduleChildProcess from "child_process";
 import moduleFs from "fs";
 import moduleOs from "os";
 import modulePath from "path";
-import moduleUrl from "url";
 (async function () {
     let child;
     let exitCode;
@@ -221,7 +220,7 @@ import moduleUrl from "url";
     ).test(url)) {
         url = modulePath.resolve(url);
     }
-    file = moduleUrl.parse(url).pathname;
+    file = new URL(url, "http://localhost").pathname;
     // remove prefix $PWD from file
     if (String(file + "/").startsWith(process.cwd() + "/")) {
         file = file.replace(process.cwd(), "");
@@ -1083,7 +1082,6 @@ shGitPullrequestCleanup() {(set -e
     git reset upstream/beta
     git push . alpha:beta -f
     git push origin alpha beta -f
-    git push upstream alpha -f
     sh jslint_ci.sh shMyciUpdate
     git push . alpha:__pr_upstream -f
 )}
@@ -1375,7 +1373,6 @@ import moduleFs from "fs";
 import moduleHttp from "http";
 import modulePath from "path";
 import moduleRepl from "repl";
-import moduleUrl from "url";
 (async function httpFileServer() {
 
 // this function will start http-file-server
@@ -1423,7 +1420,7 @@ import moduleUrl from "url";
         // init timeStart
         timeStart = Date.now();
         // init pathname
-        pathname = moduleUrl.parse(req.url).pathname;
+        pathname = new URL(req.url, "http://localhost").pathname;
         // debug - serverLog
         res.on("close", function () {
             if (pathname === "/favicon.ico") {

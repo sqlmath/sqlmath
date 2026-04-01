@@ -7,9 +7,12 @@ node_modules
 !LICENSE
 !README.md
 
-!_sqlmath*
+!_sqlmath.napi*
+!_sqlmath.shell*
 !jslint.mjs
+!lib_lightgbm*
 !sqlmath.mjs
 !sqlmath_browser.mjs
 !sqlmath_custom.mjs
+!sqlmath_wasm*
 !test.mjs

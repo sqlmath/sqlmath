@@ -1059,11 +1059,7 @@ PRAGMA busy_timeout = ${timeoutBusy};
             }),
             // LGBM_DLOPEN
             (async function () {
-                let libLgbm;
-                libLgbm = process.platform;
-                libLgbm = libLgbm.replace("darwin", "lib_lightgbm.dylib");
-                libLgbm = libLgbm.replace("win32", "lib_lightgbm.dll");
-                libLgbm = libLgbm.replace(process.platform, "lib_lightgbm.so");
+                let libLgbm = `lib_lightgbm_${libPlatformArchExt()}`;
                 libLgbm = `${import.meta.dirname}/sqlmath/${libLgbm}`;
                 await moduleFs.promises.access(
                     libLgbm
@@ -1679,6 +1675,16 @@ function jsonRowListFromCsv({
     return rowList;
 }
 
+function libPlatformArchExt() {
+    let libArch = process.arch;
+    let libExt = process.platform;
+    let libPlatform = process.platform;
+    libExt = libExt.replace("darwin", "dylib");
+    libExt = libExt.replace("win32", "dll");
+    libExt = libExt.replace(libPlatform, "so");
+    return `${libPlatform}_${libArch}.${libExt}`;
+}
+
 function listOrEmptyList(list) {
 
 // This function will return <list> or empty-list if falsy.
@@ -1906,7 +1912,11 @@ function waitAsync(timeout) {
 // This function will wait <timeout> ms.
 
     return new Promise(function (resolve) {
-        setTimeout(resolve, timeout * !npm_config_mode_test);
+        let ms = Number(timeout);
+        if (!Number.isFinite(ms)) {
+            ms = 0;
+        }
+        setTimeout(resolve, ms * !npm_config_mode_test);
     });
 }
 
@@ -1978,6 +1988,7 @@ export {
     fsWriteFileUnlessTest,
     jsbatonGetInt64,
     jsbatonGetString,
+    libPlatformArchExt,
     listOrEmptyList,
     noop,
     objectDeepCopyWithKeysSorted,
