@@ -34,50 +34,39 @@ shCiArtifactUploadCustom() {(set -e
 shCiBaseCustom() {(set -e
 # This function will run custom-code for base-ci.
     shCiEmsdkExport
-    FILE="$(node --input-type=module -e '
-process.stdout.write(
-    process.platform === "darwin"
-    ? "lib_lightgbm.dylib"
-    : process.platform === "win32"
-    ? "lib_lightgbm.dll"
-    : "lib_lightgbm.so"
-);
+    FILE_LIB_LGBM="$(node --input-type=module -e '
+function libPlatformArchExt() {
+    let libArch = process.arch;
+    let libExt = process.platform;
+    let libPlatform = process.platform;
+    libExt = libExt.replace("darwin", "dylib");
+    libExt = libExt.replace("win32", "dll");
+    libExt = libExt.replace(libPlatform, "so");
+    return `${libPlatform}_${libArch}.${libExt}`;
+}
+process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
 ' "$@")" # '
     # bugfix - Library not loaded: /usr/local/opt/libomp/lib/libomp.dylib
-    if [ ! -f "sqlmath/$FILE" ]
+    if [ ! -f "sqlmath/$FILE_LIB_LGBM" ]
     then
         case "$(uname)" in
         Darwin*)
             brew install libomp
-            # Use the keg path for *this* brew (ARM → /opt/homebrew,
-            # Intel → /usr/local).
-            # Hard-coding /opt/homebrew first breaks
-            # macos-15-intel (GitHub-hosted) runners.
-            LIBOMP_ROOT="$(brew --prefix libomp)"
-            if [ ! -f "$LIBOMP_ROOT/lib/libomp.dylib" ]
-            then
-                printf "%s%s\n" \
-                    "shCiBaseCustom: libomp.dylib not found at " \
-                    "$LIBOMP_ROOT/lib/libomp.dylib" \
-                    1>&2
-                exit 1
-            fi
-            rm -f sqlmath/libomp.dylib
-            cp -L "$LIBOMP_ROOT/lib/libomp.dylib" sqlmath/
+            cp -L "$(brew --prefix libomp)/lib/libomp.dylib" \
+"sqlmath/$(node -p '`libomp_${process.platform}_${process.arch}.dylib`')"
             ;;
         esac
         pip install lightgbm=="$(printf "v4.6.0" | sed "s|v||")"
-        rm -f "sqlmath/$FILE"
         cp "$(
             find "$(
                 pip show lightgbm | grep Location | sed "s|Location: ||"
-            )/lightgbm" | grep "$FILE"
-        )" "sqlmath/$FILE"
+            )/lightgbm" | grep "\<lib_lightgbm\.\(dll\|dylib\|so\)$"
+        )" "sqlmath/$FILE_LIB_LGBM"
     fi
     # .github_cache - restore
     if [ "$GITHUB_ACTION" ] && [ -d .github_cache/ ]
     then
-        cp -a .github_cache/* . || true # js-hack - */
+        cp -a .github_cache/* ./ || true # js-hack - */
     fi
     # cleanup
     rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
@@ -186,38 +175,48 @@ shCiBaseCustomArtifactUpload() {(set -e
     mkdir -p "branch-$GITHUB_BRANCH0"
     case "$(uname)" in
     Darwin*)
-        rm -f "branch-$GITHUB_BRANCH0/"*darwin*
-        rm -f "branch-$GITHUB_BRANCH0/"*macos*
+        case $(uname -m) in
+        x86_64)
+            rm -f "branch-$GITHUB_BRANCH0/"*darwin*x64*
+            rm -f "branch-$GITHUB_BRANCH0/"*macos*x86_64*
+            ;;
+        *)
+            rm -f "branch-$GITHUB_BRANCH0/"*darwin*arm64*
+            rm -f "branch-$GITHUB_BRANCH0/"*macos*arm64*
+            ;;
+        esac
         ;;
     Linux*)
         rm -f "branch-$GITHUB_BRANCH0/"*linux*
+        rm -f "branch-$GITHUB_BRANCH0/"lib_lightgbm.*
+        rm -f "branch-$GITHUB_BRANCH0/"libomp.*
         # save sdist
         rm -f "branch-$GITHUB_BRANCH0/"*.tar.gz
-        cp ../../dist/sqlmath-*.tar.gz "branch-$GITHUB_BRANCH0"
+        cp ../../dist/sqlmath-*.tar.gz "branch-$GITHUB_BRANCH0/"
         ;;
     MINGW*)
-        rm -f "branch-$GITHUB_BRANCH0/"*-win*
-        rm -f "branch-$GITHUB_BRANCH0/"*_win*
+        rm -f "branch-$GITHUB_BRANCH0/"*win32_x64*
+        rm -f "branch-$GITHUB_BRANCH0/"*win_amd64*
         ;;
     esac
-    cp ../../_sqlmath* "branch-$GITHUB_BRANCH0"
-    cp ../../sqlmath/_sqlmath* "branch-$GITHUB_BRANCH0"
-    for FILE in \
-        ../../.artifact/asset_image_logo_256.png \
-        ../../sqlmath/lib_lightgbm.dll \
-        ../../sqlmath/lib_lightgbm.dylib \
-        ../../sqlmath/lib_lightgbm.so \
-        ../../sqlmath/libomp.dylib \
-        ../../sqlmath_wasm.js \
-        ../../sqlmath_wasm.wasm
+    (
+    cd ../../
+    for FILE in $(
+        ls \
+            .artifact/asset_image_logo_256.png \
+            _sqlmath.napi* \
+            _sqlmath.shell* \
+            dist/sqlmath-*.whl \
+            sqlmath/lib_lightgbm_* \
+            sqlmath/libomp_* \
+            sqlmath_wasm.js \
+            sqlmath_wasm.wasm \
+            2>/dev/null
+    )
     do
-        if [ -f "$FILE" ]
-        then
-            cp "$FILE" "branch-$GITHUB_BRANCH0"
-        fi
+        cp "$FILE" ".tmp/artifact/branch-$GITHUB_BRANCH0/"
     done
-    # save cibuildwheel
-    cp ../../dist/sqlmath-*.whl "branch-$GITHUB_BRANCH0"
+    )
     # git commit
     git add .
     git add -f "branch-$GITHUB_BRANCH0"/_sqlmath*
@@ -343,7 +342,7 @@ shCiBuildWasm() {(set -e
 }());
 /*jslint-enable*/
 ' >> sqlmath_wasm.js
-    cp build/sqlmath_wasm.wasm .
+    cp build/sqlmath_wasm.wasm ./
     ls -l sqlmath_wasm.*
 )}
 
@@ -447,9 +446,9 @@ shCiPublishNpmCustom() {(set -e
     git checkout origin/artifact \
         branch-beta/_sqlmath* \
         branch-beta/sqlmath_wasm*
-    cp -a branch-beta/_sqlmath.napi* .
-    cp -a branch-beta/_sqlmath.shell* .
-    cp -a branch-beta/sqlmath_wasm.* .
+    cp -a branch-beta/_sqlmath.napi* ./
+    cp -a branch-beta/_sqlmath.shell* ./
+    cp -a branch-beta/sqlmath_wasm.* ./
     # npm-publish
     npm publish --access public
 )}

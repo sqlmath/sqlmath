@@ -6,6 +6,7 @@
 - none
 
 # v2026.3.2-beta
+- sqlmath-ci - Rename pre-built-binaries lib_lightgbm.xxx, libomp.xxx to lib_lightgbm_platform_arch.xxx, libomp_platform_arch.xxx, to prevent name-collision under darwin_arm64 and darwin_x64 builds.
 - sqlmath-ci - Update file setup.py to open text-files with utf-8 encoding.
 - sqlmath-ci - Update file .github/workflows/ci.yml with extra matrix.os macos-15-intel.
 - jslint-ci - Update shell-function shGitPullrequestCleanup() to allow squash-and-merge pull-request.
