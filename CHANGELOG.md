@@ -6,6 +6,7 @@
 - none
 
 # v2026.3.2-beta
+- ci - Speed-up windows-ci by replacing windows-latest with windows-2022.
 - sqlmath-ci - Speed-up ci with env-var npm_config_mode_test_nopython, allowing shell-function shCiTestNodejs() to be run in background, parallel to python -m cibuildwheel.
 - sqlmath-ci - Rename pre-built-binaries lib_lightgbm.xxx, libomp.xxx to lib_lightgbm_platform_arch.xxx, libomp_platform_arch.xxx, to prevent name-collision under darwin_arm64 and darwin_x64 builds.
 - sqlmath-ci - Update file setup.py to open text-files with utf-8 encoding.
