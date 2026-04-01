@@ -210,11 +210,11 @@ shCiBaseCustomArtifactUpload() {(set -e
     cd ../../
     for FILE in $(
         ls \
-            _sqlmath.napi_* \
-            _sqlmath.shell_* \
+            _sqlmath.napi* \
+            _sqlmath.shell* \
             dist/sqlmath-*.whl \
-            sqlmath/lib_lightgbm_* \
-            sqlmath/libomp_*
+            sqlmath/lib_lightgbm* \
+            sqlmath/libomp*
     )
     do
         cp "$FILE" ".tmp/artifact/branch-$GITHUB_BRANCH0/"
