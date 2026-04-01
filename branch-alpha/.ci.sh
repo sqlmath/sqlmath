@@ -172,34 +172,37 @@ shCiBaseCustomArtifactUpload() {(set -e
     cd .tmp/artifact/
     cp ../../.git/config .git/config
     # update dir branch-$GITHUB_BRANCH0
-    mkdir -p "branch-$GITHUB_BRANCH0"
+    mkdir -p "branch-$GITHUB_BRANCH0/"
+    (
+    cd "branch-$GITHUB_BRANCH0/"
+    rm -f lib_lightgbm.*
+    rm -f libomp.*
     case "$(uname)" in
     Darwin*)
-        rm -f "branch-$GITHUB_BRANCH0/"*darwin.so
+        rm -f *darwin.so
         case $(uname -m) in
-        x86_64)
-            rm -f "branch-$GITHUB_BRANCH0/"*darwin*x64*
-            rm -f "branch-$GITHUB_BRANCH0/"*macos*x86_64*
+        arm64)
+            rm -f *darwin*arm64*
+            rm -f *macos*arm64*
             ;;
-        *)
-            rm -f "branch-$GITHUB_BRANCH0/"*darwin*arm64*
-            rm -f "branch-$GITHUB_BRANCH0/"*macos*arm64*
+        x86_64)
+            rm -f *darwin*x64*
+            rm -f *macos*x86_64*
             ;;
         esac
         ;;
     Linux*)
-        rm -f "branch-$GITHUB_BRANCH0/"*linux*
-        rm -f "branch-$GITHUB_BRANCH0/"lib_lightgbm.*
-        rm -f "branch-$GITHUB_BRANCH0/"libomp.*
+        rm -f *linux*
         # save sdist
-        rm -f "branch-$GITHUB_BRANCH0/"*.tar.gz
-        cp ../../dist/sqlmath-*.tar.gz "branch-$GITHUB_BRANCH0/"
+        rm -f *.tar.gz
+        cp ../../../dist/sqlmath-*.tar.gz ./
         ;;
     MINGW*)
-        rm -f "branch-$GITHUB_BRANCH0/"*win32_x64*
-        rm -f "branch-$GITHUB_BRANCH0/"*win_amd64*
+        rm -f *win32_x64*
+        rm -f *win_amd64*
         ;;
     esac
+    )
     (
     cd ../../
     for FILE in $(
