@@ -196,6 +196,9 @@ shCiBaseCustomArtifactUpload() {(set -e
         # save sdist
         rm -f *.tar.gz
         cp ../../../dist/sqlmath-*.tar.gz ./
+        # save wasm
+        cp ../../../.artifact/asset_image_logo_256.png ./
+        cp ../../../sqlmath_wasm* ./
         ;;
     MINGW*)
         rm -f *win32_x64*
@@ -207,15 +210,11 @@ shCiBaseCustomArtifactUpload() {(set -e
     cd ../../
     for FILE in $(
         ls \
-            .artifact/asset_image_logo_256.png \
-            _sqlmath.napi* \
-            _sqlmath.shell* \
+            _sqlmath.napi_* \
+            _sqlmath.shell_* \
             dist/sqlmath-*.whl \
             sqlmath/lib_lightgbm_* \
-            sqlmath/libomp_* \
-            sqlmath_wasm.js \
-            sqlmath_wasm.wasm \
-            2>/dev/null
+            sqlmath/libomp_*
     )
     do
         cp "$FILE" ".tmp/artifact/branch-$GITHUB_BRANCH0/"
