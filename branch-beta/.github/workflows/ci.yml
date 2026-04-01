@@ -32,7 +32,7 @@ jobs:
           - macos-15-intel
           - macos-latest
           - ubuntu-latest
-          - windows-latest
+          - windows-2022
         python_version:
           - "3.12"
 # base - .github/workflows/ci.yml - beg
