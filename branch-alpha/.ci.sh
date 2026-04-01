@@ -175,6 +175,7 @@ shCiBaseCustomArtifactUpload() {(set -e
     mkdir -p "branch-$GITHUB_BRANCH0"
     case "$(uname)" in
     Darwin*)
+        rm -f "branch-$GITHUB_BRANCH0/"*darwin.so
         case $(uname -m) in
         x86_64)
             rm -f "branch-$GITHUB_BRANCH0/"*darwin*x64*
