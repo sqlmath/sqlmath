@@ -72,6 +72,10 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
     rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
     PID_LIST=""
     #
+    # run nodejs-ci
+    npm_config_mode_test_nopython=1 shCiTestNodejs &
+    PID_LIST="$PID_LIST $!"
+    #
     # python -m build --sdist
     # python -m cibuildwheel
     (
@@ -110,9 +114,6 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
     #
     shPidListWait build_ext "$PID_LIST"
     #
-    # run nodejs-ci
-    shCiTestNodejs
-    #
     # upload artifact
     if (shCiMatrixIsmainNodeversion) && \
         ( \
@@ -126,10 +127,10 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
             [ "$GITHUB_BRANCH0" = master ] \
         )
     then
-        GITHUB_UPLOAD_RETRY=0
+        export GITHUB_UPLOAD_RETRY=0
         while true
         do
-            GITHUB_UPLOAD_RETRY="$((GITHUB_UPLOAD_RETRY + 1))"
+            export GITHUB_UPLOAD_RETRY="$((GITHUB_UPLOAD_RETRY + 1))"
             if [ ! "$GITHUB_UPLOAD_RETRY" -le 4 ]
             then
                 return 1
@@ -190,6 +191,8 @@ shCiBaseCustomArtifactUpload() {(set -e
             rm -f *macos*x86_64*
             ;;
         esac
+        # save libomp
+        cp ../../../sqlmath/libomp* ./
         ;;
     Linux*)
         rm -f *linux*
@@ -197,6 +200,7 @@ shCiBaseCustomArtifactUpload() {(set -e
         rm -f *.tar.gz
         cp ../../../dist/sqlmath-*.tar.gz ./
         # save wasm
+        rm -f sqlmath_wasm*
         cp ../../../.artifact/asset_image_logo_256.png ./
         cp ../../../sqlmath_wasm* ./
         ;;
@@ -205,20 +209,10 @@ shCiBaseCustomArtifactUpload() {(set -e
         rm -f *win_amd64*
         ;;
     esac
-    )
-    (
-    cd ../../
-    for FILE in $(
-        ls \
-            _sqlmath.napi* \
-            _sqlmath.shell* \
-            dist/sqlmath-*.whl \
-            sqlmath/lib_lightgbm* \
-            sqlmath/libomp*
-    )
-    do
-        cp "$FILE" ".tmp/artifact/branch-$GITHUB_BRANCH0/"
-    done
+    cp ../../../_sqlmath.napi* ./
+    cp ../../../_sqlmath.shell* ./
+    cp ../../../dist/sqlmath-*.whl ./
+    cp ../../../sqlmath/lib_lightgbm* ./
     )
     # git commit
     git add .
@@ -501,8 +495,11 @@ ciBuildExt({process});
         ) &
         PID_LIST="$PID_LIST $!"
         # build python c-extension
-        python setup.py build_ext &
-        PID_LIST="$PID_LIST $!"
+        if [ ! "$npm_config_mode_test_nopython" ]
+        then
+            python setup.py build_ext &
+            PID_LIST="$PID_LIST $!"
+        fi
         shPidListWait build_ext "$PID_LIST"
     fi;
     PID_LIST=""
@@ -521,8 +518,11 @@ require("assert")(require("./package.json").name !== "sqlmath");
     ) &
     PID_LIST="$PID_LIST $!"
     # test python
-    python setup.py test &
-    PID_LIST="$PID_LIST $!"
+    if [ ! "$npm_config_mode_test_nopython" ]
+    then
+        python setup.py test &
+        PID_LIST="$PID_LIST $!"
+    fi
     shPidListWait test "$PID_LIST"
 )}
 
