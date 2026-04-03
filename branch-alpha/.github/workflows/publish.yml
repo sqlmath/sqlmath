@@ -1,0 +1,69 @@
+# base - .github/workflows/publish.yml - beg
+# Publishing packages to npm and GitHub Packages
+# https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages#publishing-packages-to-npm-and-github-packages
+# https://docs.npmjs.com/trusted-publishers#step-2-configure-your-cicd-workflow
+name: publish
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+jobs:
+
+
+  publish_github:
+    name: Publish Package to GitHub
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://npm.pkg.github.com"
+          # Defaults to the user or organization that owns the workflow file
+          # scope: "@octocat"
+      # Publish to GitHub Packages
+      - run: sh jslint_ci.sh shCiPublishNpm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_REGISTRY: github
+
+
+  publish_npmjs:
+    name: Publish Package to npmjs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+      # Publish to npmjs Packages
+      - run: sh jslint_ci.sh shCiPublishNpm
+# base - .github/workflows/publish.yml - end
+
+
+  publish_pypi:
+    name: Publish Package to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/sqlmath/
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      # retrieve your distributions here
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sh jslint_ci.sh shCiPublishPypi
+      # publish to pypi
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
