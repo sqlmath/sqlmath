@@ -73,7 +73,12 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
     PID_LIST=""
     #
     # run nodejs-ci
-    npm_config_mode_test_nopython=1 shCiTestNodejs &
+    if [ "$GITHUB_ACTION" ]
+    then
+        npm_config_mode_test_nopython=1 shCiTestNodejs &
+    else
+        shCiTestNodejs &
+    fi
     PID_LIST="$PID_LIST $!"
     #
     # python -m build --sdist
@@ -112,7 +117,7 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
     ) &
     PID_LIST="$PID_LIST $!"
     #
-    shPidListWait build_ext "$PID_LIST"
+    shPidListWait shCiBaseCustom "$PID_LIST"
     #
     # upload artifact
     if (shCiMatrixIsmainNodeversion) && \
@@ -213,6 +218,8 @@ shCiBaseCustomArtifactUpload() {(set -e
     cp ../../../_sqlmath.shell* ./
     cp ../../../dist/sqlmath-*.whl ./
     cp ../../../sqlmath/lib_lightgbm* ./
+    rm -f *win32_x64*.exp
+    rm -f *win32_x64*.lib
     )
     # git commit
     git add .
@@ -454,10 +461,10 @@ shCiPublishPypiCustom() {(set -e
 # This function will run custom-code to npm-publish package.
     # fetch artifact
     git fetch origin artifact --depth=1
-    git checkout origin/artifact branch-alpha/
+    git checkout origin/artifact branch-beta/
     mkdir dist/
-    cp -a branch-alpha/sqlmath-*.tar.gz dist/
-    cp -a branch-alpha/sqlmath-*.whl dist/
+    cp -a branch-beta/sqlmath-*.tar.gz dist/
+    cp -a branch-beta/sqlmath-*.whl dist/
     ls -la dist/
 )}
 
