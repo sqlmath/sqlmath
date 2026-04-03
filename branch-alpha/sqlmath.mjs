@@ -128,7 +128,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2026.3.2-beta";
+let version = "v2026.3.31";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
