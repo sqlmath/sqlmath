@@ -5,6 +5,15 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2026.3.31
+- ci - Speed-up windows-ci by replacing windows-latest with windows-2022.
+- sqlmath-ci - Speed-up ci with env-var npm_config_mode_test_nopython, allowing shell-function shCiTestNodejs() to be run in background, parallel to python -m cibuildwheel.
+- sqlmath-ci - Rename pre-built-binaries lib_lightgbm.xxx, libomp.xxx to lib_lightgbm_platform_arch.xxx, libomp_platform_arch.xxx, to prevent name-collision under darwin_arm64 and darwin_x64 builds.
+- sqlmath-ci - Update file setup.py to open text-files with utf-8 encoding.
+- sqlmath-ci - Update file .github/workflows/ci.yml with extra matrix.os macos-15-intel.
+- jslint-ci - Update shell-function shGitPullrequestCleanup() to allow squash-and-merge pull-request.
+- sqlmath-ci - Update file .github/workflows/ci.yml with hook to run on pull-request.
+
 # v2026.3.1
 - sqlmath-python - bugfix - Fix 762-character-limit SQL-string-bug in python-function db_exec().
 - jslint-ci - Update shell-function shLintPython().

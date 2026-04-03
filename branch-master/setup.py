@@ -27,8 +27,8 @@ python setup.py bdist_wheel
 python setup.py build_ext
 """
 
-__version__ = "2026.3.1"
-__version_info__ = ("2026", "3", "1")
+__version__ = "2026.3.2"
+__version_info__ = ("2026", "3", "2")
 
 import asyncio
 import base64
@@ -36,6 +36,7 @@ import hashlib
 import json
 import os
 import pathlib
+import platform
 import re
 import shutil
 import subprocess
@@ -349,7 +350,7 @@ def build_pkg_info():
     """This function will build PKG-INFO."""
     # https://packaging.python.org/en/latest/specifications/core-metadata/#core-metadata
     toml = ""
-    with pathlib.Path("pyproject.toml").open() as file1:
+    with pathlib.Path("pyproject.toml").open(encoding="utf-8") as file1:
         toml = file1.read()
     data = ""
     data += "Metadata-Version: 2.1\n"
@@ -382,10 +383,14 @@ def build_pkg_info():
     ):
         data += f"Project-URL: {match[1]}, {match[2]}\n"
     data += "License-File: LICENSE\n"
-    with pathlib.Path("README.md").open() as file1:
+    with pathlib.Path("README.md").open(encoding="utf-8") as file1:
         data += "Description-Content-Type: text/markdown\n\n"
         data += file1.read().strip() + "\n"
-    with pathlib.Path("PKG-INFO").open("w", newline="\n") as file1:
+    with pathlib.Path("PKG-INFO").open(
+        "w",
+        encoding="utf-8",
+        newline="\n",
+    ) as file1:
         file1.write(re.sub(" +\n", "\n", data))
 
 
@@ -405,7 +410,7 @@ def build_sdist(sdist_directory, config_settings=None):
     sdist_directory = pathlib.Path(sdist_directory).resolve()
     # init file_sdist
     name_version = ""
-    with pathlib.Path("pyproject.toml").open() as file1:
+    with pathlib.Path("pyproject.toml").open(encoding="utf-8") as file1:
         toml = file1.read()
         name_version = (
             re.search('\nname = "(.*?)"', toml)[1]
@@ -417,7 +422,7 @@ def build_sdist(sdist_directory, config_settings=None):
     # Copy files from MANIFEST.in to dir_tmp and create tarball.
     with tempfile.TemporaryDirectory() as dir_tmp:
         script = ""
-        with pathlib.Path("MANIFEST.in").open() as file1:
+        with pathlib.Path("MANIFEST.in").open(encoding="utf-8") as file1:
             script = file1.read()
         script = "\n".join(
             f"cp --parents '{file}' '{dir_tmp}/{name_version}/'"
@@ -437,7 +442,12 @@ def build_sdist(sdist_directory, config_settings=None):
         )
         """
         file_tmp = ""
-        with tempfile.NamedTemporaryFile("w", delete=False) as file1:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            delete=False,
+            encoding="utf-8",
+            newline="\n",
+        ) as file1:
             file1.write(script)
             file_tmp = file1.name
         subprocess.run(["sh", file_tmp], check=True)
@@ -591,6 +601,24 @@ def env_vcvarsall():
     return env
 
 
+def lib_platform_arch_ext():
+    """This function will return f"{platform}_{arch}.{extension}"."""
+    lib_arch = (
+        platform.machine()
+        .lower()
+        .replace("aarch64", "arm64")
+        .replace("amd64", "x64")
+        .replace("x86_64", "x64")
+    )
+    lib_platform = sys.platform
+    lib_ext = "so"
+    if lib_platform == "darwin":
+        lib_ext = "dylib"
+    if lib_platform == "win32":
+        lib_ext = "dll"
+    return f"{lib_platform}_{lib_arch}.{lib_ext}"
+
+
 def main():
     """This function will run main-program."""
     match sys.argv[1]:
@@ -635,11 +663,7 @@ class SetupError(Exception):
     """Setup error."""
 
 
-FILE_LIB_LGBM = (
-    "lib_lightgbm.dylib" if sys.platform == "darwin"
-    else "lib_lightgbm.dll" if sys.platform == "win32"
-    else "lib_lightgbm.so"
-)
+FILE_LIB_LGBM = f"lib_lightgbm_{lib_platform_arch_ext()}"
 FILE_LIB_SQLMATH = f"_sqlmath{sysconfig.get_config_var('EXT_SUFFIX')}"
 
 
