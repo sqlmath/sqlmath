@@ -1,4 +1,4 @@
-# sqlmath — sqlite for data-science
+# sqlmath
 
 **SQLite with data science superpowers.** Run statistics, machine learning, and analytics directly in SQL queries — from Python, JavaScript, or the browser.
 
