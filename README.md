@@ -3,11 +3,11 @@
 **SQLite with data science superpowers.** Run statistics, machine learning, and analytics directly in SQL queries — from Python, JavaScript, or the browser.
 
 [![PyPI](https://img.shields.io/badge/PyPI-Install_Package-3775A9?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/sqlmath/)
-[![npm](https://img.shields.io/badge/npm-Install_Package-CB3837?style=for-the-badge&logo=npm&logoColor=white)](https://www.npmjs.com/package/sqlmath)
+[![npm](https://img.shields.io/badge/npm-Install_Package-CB3837?style=for-the-badge&logo=npm&logoColor=white)](https://www.npmjs.com/package/sqlmath)<!--no-validate-->
 [![Demo](https://img.shields.io/badge/Demo-Try_Live-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://sqlmath.github.io/sqlmath/index.html)
 [![API Docs](https://img.shields.io/badge/Docs-API_Reference-blue?style=for-the-badge&logo=readthedocs&logoColor=white)](https://sqlmath.github.io/sqlmath/apidoc.html)
 
-## Status
+# Status
 
 | Branch | [master<br>(v2026.3.31)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
 |--:|:--:|:--:|:--:|
@@ -16,9 +16,76 @@
 | Demo | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-master/index.html) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-beta/index.html) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_github_brands.svg" height="32">](https://sqlmath.github.io/sqlmath/branch-alpha/index.html) |
 | Artifacts | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-master/.artifact) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-beta/.artifact) | [<img src="https://sqlmath.github.io/sqlmath/asset_image_folder_open_solid.svg" height="30">](https://github.com/sqlmath/sqlmath/tree/gh-pages/branch-alpha/.artifact) |
 
----
 
-## Why sqlmath?
+<br><br>
+# Table of Contents
+
+1. [Web Demo](#web-demo)
+
+2. [Why sqlmath?](#why-sqlmath)
+
+3. [Quickstart](#quickstart)
+    - [Python](#python)
+    - [JavaScript (Node.js)](#javascript-nodejs)
+    - [Browser (WebAssembly)](#browser-webassembly)
+
+4. [Built-in SQL Functions](#built-in-sql-functions)
+    - [Math](#math)
+    - [Statistics (Aggregate)](#statistics-aggregate)
+    - [Statistics (Scalar)](#statistics-scalar)
+    - [Arrays](#arrays)
+    - [Date/Time](#datetime)
+    - [Time Series / Signal Processing](#time-series--signal-processing)
+    - [Compression](#compression)
+    - [Type Casting](#type-casting)
+    - [Cryptography](#cryptography)
+
+5. [Machine Learning with LightGBM](#machine-learning-with-lightgbm)
+    - [Training from a Table](#training-from-a-table)
+    - [Prediction](#prediction)
+    - [Real-World Example: Credit Card Fraud Detection](#real-world-example-credit-card-fraud-detection)
+    - [LightGBM Functions](#lightgbm-functions)
+
+6. [Use Cases](#use-cases)
+    - [Financial Data Analysis](#financial-data-analysis)
+    - [Embedded ML Pipelines](#embedded-ml-pipelines)
+    - [Data Compression & Hashing](#data-compression--hashing)
+
+7. [Why sqlmath vs Alternatives?](#why-sqlmath-vs-alternatives)
+
+8. [Python API Reference](#python-api-reference)
+    - [db_exec()](#db_exec)
+
+9. [Node.js API Reference](#nodejs-api-reference)
+
+10. [Platform Notes](#platform-notes)
+
+11. [Building from Source](#building-from-source)
+    - [Prerequisites](#prerequisites)
+    - [Build](#build)
+    - [Run Tests](#run-tests)
+    - [Serve Demo Locally](#serve-demo-locally)
+
+12. [Package Listing](#package-listing)
+
+13. [Changelog](#changelog)
+
+14. [License](#license)
+
+15. [Devops Instruction](#devops-instruction)
+    - [python pypi publish](#python-pypi-publish)
+    - [sqlite upgrade](#sqlite-upgrade)
+
+
+<br><br>
+# Web Demo
+- https://sqlmath.github.io/sqlmath/index.html
+
+[![screenshot](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_browser__2fsqlmath_2fbranch-beta_2findex.html.png)](https://sqlmath.github.io/sqlmath/index.html)
+
+
+<br><br>
+# Why sqlmath?
 
 SQLite is everywhere — it's the most deployed database in the world. But it lacks the statistical and ML functions needed for data science. sqlmath fixes that.
 
@@ -28,13 +95,15 @@ SQLite is everywhere — it's the most deployed database in the world. But it la
 - **Zero dependencies** — single binary, no external libraries needed
 - **Multi-platform** — Python, Node.js, browser (WebAssembly)
 
----
 
-## Quick Start
+<br><br>
+# Quickstart
 
+
+<br><br>
 ### Python
 
-```bash
+```shell
 pip install sqlmath
 ```
 
@@ -52,7 +121,7 @@ db_exec(db=db, sql="""
 
 # Use built-in statistical functions
 result = db_exec(db=db, sql="""
-    SELECT 
+    SELECT
         AVG(price) AS mean_price,
         MEDIAN2(price) AS median_price,
         STDEV(price) AS stdev_price
@@ -64,9 +133,11 @@ print(result)
 db_close(db)
 ```
 
+
+<br><br>
 ### JavaScript (Node.js)
 
-```bash
+```shell
 npm install sqlmath
 ```
 
@@ -92,14 +163,18 @@ console.log(result);
 await dbCloseAsync(db);
 ```
 
+
+<br><br>
 ### Browser (WebAssembly)
 
 Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/index.html)**
 
----
 
-## Built-in SQL Functions
+<br><br>
+# Built-in SQL Functions
 
+
+<br><br>
 ### Math
 
 | Function | Description |
@@ -113,6 +188,8 @@ Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/ind
 | `normalizewithsqrt(x)` | Normalize using square root |
 | `normalizewithsquared(x)` | Normalize using square |
 
+
+<br><br>
 ### Statistics (Aggregate)
 
 | Function | Description |
@@ -122,6 +199,8 @@ Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/ind
 | `QUANTILE(x, q)` | Quantile at q (aggregate) |
 | `STDEV(x)` | Standard deviation (sample, window-capable) |
 
+
+<br><br>
 ### Statistics (Scalar)
 
 | Function | Description |
@@ -129,6 +208,8 @@ Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/ind
 | `marginoferror95(p, n)` | 95% margin of error: sqrt(p*(1-p)/n) |
 | `random1()` | Random float in [0, 1) |
 
+
+<br><br>
 ### Arrays
 
 | Function | Description |
@@ -138,10 +219,14 @@ Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/ind
 | `doublearray_jsonfrom(json)` | Create array from JSON |
 | `doublearray_jsonto(arr)` | Convert array to JSON |
 
+
+<br><br>
 ### Date/Time
 
 sqlmath extends SQLite's date functions with integer-format conversions (YYYYMMDDHHMMSS).
 
+
+<br><br>
 ### Time Series / Signal Processing
 
 | Function | Description |
@@ -149,6 +234,8 @@ sqlmath extends SQLite's date functions with integer-format conversions (YYYYMMD
 | `WIN_SINEFIT2(...)` | Fit sine wave to data (aggregate window function) |
 | `SINEFIT_REFITLAST(...)` | Refit sine wave with new data point |
 
+
+<br><br>
 ### Compression
 
 | Function | Description |
@@ -158,6 +245,8 @@ sqlmath extends SQLite's date functions with integer-format conversions (YYYYMMD
 
 > **Note:** Input must be BLOB. Use `CAST(text AS BLOB)` for text data.
 
+
+<br><br>
 ### Type Casting
 
 | Function | Description |
@@ -167,6 +256,8 @@ sqlmath extends SQLite's date functions with integer-format conversions (YYYYMMD
 | `casttextorempty(x)` | Cast to TEXT or '' |
 | `roundorzero(x, n)` | Round or return 0 |
 
+
+<br><br>
 ### Cryptography
 
 | Function | Description |
@@ -178,14 +269,16 @@ SELECT HEX(sha256('hello')) AS hash;
 -- 2CF24DBA5FB0A30E26E83B2AC5B9E29E1B161E5C1FA7425E73043362938B9824
 ```
 
----
 
-## Machine Learning with LightGBM
+<br><br>
+# Machine Learning with LightGBM
 
 sqlmath embeds [LightGBM](https://lightgbm.readthedocs.io/) for gradient boosting directly in SQL queries. Train models on your data without leaving SQL — no data shuffle to Python needed.
 
 > **Python users:** You must call `lgbm_dlopen()` before using any `lgbm_*` functions. See [Platform Notes](#platform-notes) for details.
 
+
+<br><br>
 ### Training from a Table
 
 `LGBM_TRAINFROMTABLE` is an **aggregate function** — it consumes rows like `SUM()` or `AVG()`, but outputs a trained model BLOB.
@@ -216,6 +309,8 @@ SELECT
 FROM training_data;
 ```
 
+
+<br><br>
 ### Prediction
 
 ```sql
@@ -233,6 +328,8 @@ SELECT
 FROM test_data;
 ```
 
+
+<br><br>
 ### Real-World Example: Credit Card Fraud Detection
 
 From the [Kaggle notebook](https://www.kaggle.com/code/kaizhu256/sql-is-all-you-need) — training on 284,807 transactions with 0.17% fraud rate:
@@ -254,7 +351,7 @@ db_exec(db=db, sql="""
 # Train with automatic class imbalance handling
 db_exec(db=db, sql="""
     CREATE TABLE model_store (model BLOB);
-    
+
     INSERT INTO model_store(model)
     SELECT
         LGBM_TRAINFROMTABLE(
@@ -279,6 +376,8 @@ db_exec(db=db, sql="""
 """)
 ```
 
+
+<br><br>
 ### LightGBM Functions
 
 | Function | Type | Description |
@@ -301,10 +400,12 @@ Full notebook with fraud detection, intraday trading signals, and model persiste
 - Datasets: [Credit Card Fraud](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) (284K transactions), SPY intraday OHLCV
 - sqlmath installs via `pip install sqlmath==2026.3.31`
 
----
 
-## Use Cases
+<br><br>
+# Use Cases
 
+
+<br><br>
 ### Financial Data Analysis
 
 ```python
@@ -317,7 +418,7 @@ db_table_import(db=db, table_name="prices", filename="prices.csv", mode="csv")
 
 # Calculate rolling statistics in SQL
 result = db_exec(db=db, sql="""
-    SELECT 
+    SELECT
         date,
         close,
         AVG(close) OVER (ORDER BY date ROWS 20 PRECEDING) AS sma_20,
@@ -331,6 +432,8 @@ result = db_exec(db=db, sql="""
 db_close(db)
 ```
 
+
+<br><br>
 ### Embedded ML Pipelines
 
 Train and deploy models without data movement:
@@ -345,7 +448,7 @@ db_exec(db=db, sql="""
     SELECT LGBM_TRAINFROMTABLE(...) AS model FROM features
 """)
 
-# 3. Score new data in-database  
+# 3. Score new data in-database
 db_exec(db=db, sql="""
     SELECT id, LGBM_PREDICTFORTABLE(model, ...) AS score
     FROM new_data, models
@@ -355,23 +458,25 @@ db_exec(db=db, sql="""
 db_file_save(db=db, filename="scored_data.sqlite")
 ```
 
+
+<br><br>
 ### Data Compression & Hashing
 
 ```sql
 -- Compress large text fields
-UPDATE documents SET 
+UPDATE documents SET
     content_compressed = GZIP_COMPRESS(CAST(content AS BLOB));
 
 -- Generate content hashes for deduplication
-SELECT HEX(sha256(content)) AS content_hash, COUNT(*) 
-FROM documents 
-GROUP BY content_hash 
+SELECT HEX(sha256(content)) AS content_hash, COUNT(*)
+FROM documents
+GROUP BY content_hash
 HAVING COUNT(*) > 1;
 ```
 
----
 
-## Why sqlmath vs Alternatives?
+<br><br>
+# Why sqlmath vs Alternatives?
 
 | Feature | sqlmath | pandas | DuckDB | sqlite3 |
 |---------|---------|--------|--------|---------|
@@ -398,9 +503,9 @@ HAVING COUNT(*) > 1;
 - You want pandas DataFrame interop
 - OLAP workloads are primary
 
----
 
-## Python API Reference
+<br><br>
+# Python API Reference
 
 ```python
 from sqlmath import (
@@ -415,6 +520,8 @@ from sqlmath import (
 )
 ```
 
+
+<br><br>
 ### db_exec()
 
 ```python
@@ -428,59 +535,46 @@ result = db_exec(
 # Default: [[{'col1': val1, 'col2': val2}, ...]]
 ```
 
-Full API documentation: **[sqlmath.github.io/sqlmath/apidoc.html](https://sqlmath.github.io/sqlmath/apidoc.html)**
 
----
+<br><br>
+# Node.js API Reference
+- https://sqlmath.github.io/sqlmath/apidoc.html
 
-## Platform Notes
+[![screenshot](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_browser__2f.artifact_2fapidoc.html.png)](https://sqlmath.github.io/sqlmath/apidoc.html)
+
+
+<br><br>
+# Platform Notes
 
 The JavaScript (Node.js) binding is more mature than Python. Key differences:
 
 | Feature | Node.js | Python |
 |---------|---------|--------|
-| LightGBM auto-load | ✅ Automatic | ❌ Manual `lgbm_dlopen()` required |
 | Type hints | N/A | ❌ Not yet |
 | Context manager | N/A | ❌ `with db_open()` not supported |
-| ARM64 (Apple Silicon) | ❓ Limited testing | ❓ Limited testing |
-
-### Python: Loading LightGBM
-
-Python requires explicit library loading before using `lgbm_*` functions:
-
-```python
-import lightgbm as lgb
-import os
-import platform
-
-db = db_open(":memory:")
-
-# Required: manually load LightGBM shared library
-lib_name = {
-    "Darwin": "lib_lightgbm.dylib",
-    "Linux": "lib_lightgbm.so",
-    "Windows": "lib_lightgbm.dll",
-}[platform.system()]
-lib_path = os.path.join(os.path.dirname(lgb.__file__), "lib", lib_name)
-db_exec(db=db, sql=f"SELECT lgbm_dlopen('{lib_path}')")
-
-# Now lgbm_* functions work
-```
 
 > **Note:** The Python wrapper is a work in progress. Contributions welcome!
 
----
 
-## Building from Source
+<br><br>
+# Building from Source
 
+
+<br><br>
 ### Prerequisites
 
-- Node.js 18+
-- Python 3.9+
+- Node.js 24+
+- Python 3.12+
 - C compiler (gcc, clang, or MSVC)
 
+
+<br><br>
 ### Build
 
-```bash
+```shell
+#!/bin/sh
+
+# git clone sqlmath repo
 git clone https://github.com/sqlmath/sqlmath --branch=beta --single-branch
 cd sqlmath
 
@@ -491,48 +585,59 @@ npm run test2
 sh jslint_ci.sh shCiBuildWasm
 ```
 
+
+<br><br>
 ### Run Tests
 
-```bash
-# Full test suite (includes build)
+```shell
+# Full test suite (includes full clean-build)
 npm run test2
+
+# Full test suite (includes partial re-build of modified files)
+npm run test
 
 # Quick test (skip build)
 npm run test --fast
 ```
 
+
+<br><br>
 ### Serve Demo Locally
 
-```bash
+```shell
 PORT=8080 sh jslint_ci.sh shHttpFileServer
 # Open http://localhost:8080/index.html
 ```
 
----
 
-## Changelog
+<br><br>
+# Package Listing
+![screenshot_package_listing.svg](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_package_listing.svg)
 
-See [CHANGELOG.md](CHANGELOG.md) for version history.
+
+<br><br>
+# Changelog
+- [Full CHANGELOG.md](CHANGELOG.md)
 
 ![screenshot_changelog.svg](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_changelog.svg)
 
-## Package listing
 
-![screenshot_package_listing.svg](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_package_listing.svg)
-
-## License
-
+<br><br>
+# License
 - [sqlite](https://github.com/sqlite/sqlite) is under [public domain](https://www.sqlite.org/copyright.html).
 - [jslint](https://github.com/jslint-org/jslint) is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
 - [zlib](https://github.com/madler/zlib) is under [zlib License](https://github.com/madler/zlib/blob/v1.3.1/LICENSE).
 - [cpplint.py](cpplint.py) is under [3-Clause BSD License](https://github.com/cpplint/cpplint/blob/2.0.0/LICENSE).
 - [indent.exe](indent.exe) is under [GPLv3 License](https://www.gnu.org/licenses/gpl-3.0.txt)<!--no-validate-->.
-- Everything else is under MIT License — see [LICENSE](LICENSE).
+- Everything else is under MIT License.
 
-## Devops instruction
 
+<br><br>
+# Devops Instruction
+
+
+<br><br>
 ### python pypi publish
-
 ```shell
 python -m build
 #
@@ -543,10 +648,10 @@ twine upload dist/sqlmath-2026.3.31*
 pip install sqlmath==2026.3.31
 ```
 
+
+<br><br>
 ### sqlite upgrade
-
 - goto https://www.sqlite.org/changes.html
-
 ```shell
     (set -e
     #
