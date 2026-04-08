@@ -6,6 +6,7 @@
 - none
 
 # v2026.4.1-beta
+- github-ci - Pin various github-runner-os to stable/lts version.
 - sqlmath-demo - Change historical charts from 5-years to 3-years.
 - sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package.
 - sqlmath-doc - Rewrite README with examples, API reference, use cases.
