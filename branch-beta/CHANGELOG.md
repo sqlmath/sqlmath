@@ -5,6 +5,11 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2026.4.1-beta
+- sqlmath-demo - Change historical charts from 5-years to 3-years.
+- sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package.
+- sqlmath-doc - Rewrite README with examples, API reference, use cases.
+
 # v2026.3.31
 - python-ci - bugfix - Fix shell-function shCiBaseCustom() always skipping python setup.py build_ext.
 - ci - Speed-up windows-ci by replacing windows-latest with windows-2022.
