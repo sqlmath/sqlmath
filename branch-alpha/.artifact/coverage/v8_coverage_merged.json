@@ -386,7 +386,7 @@
        "startOffset": 18256
       },
       {
-       "count": 375,
+       "count": 373,
        "endOffset": 18649,
        "startOffset": 18557
       },
@@ -834,12 +834,12 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 1482,
+       "count": 1500,
        "endOffset": 27558,
        "startOffset": 27456
       },
       {
-       "count": 453,
+       "count": 403,
        "endOffset": 27550,
        "startOffset": 27526
       }
