@@ -299,7 +299,7 @@ Full notebook with fraud detection, intraday trading signals, and model persiste
 **Kaggle Environment:**
 - Linux x64, Python 3.12, Node.js 24
 - Datasets: [Credit Card Fraud](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) (284K transactions), SPY intraday OHLCV
-- sqlmath installs via `pip install sqlmath==2026.3.1`
+- sqlmath installs via `pip install sqlmath==2026.3.31`
 
 ---
 
