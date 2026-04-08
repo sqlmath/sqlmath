@@ -10,7 +10,7 @@ backend-path = ["."]
 [project]
 name = "sqlmath"
 version = "2026.4.1"
-description = "sqlite for datascience"
+description = "sqlite for data-science"
 authors = [{name = "Kai Zhu"}]
 maintainers = []
 requires-python = ">=3.10"

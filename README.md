@@ -1,6 +1,6 @@
 # sqlmath
 
-**SQLite with data science superpowers.** Run statistics, machine learning, and analytics directly in SQL queries — from Python, JavaScript, or the browser.
+**SQLite with data-science superpowers.** Run statistics, machine learning, and analytics directly in SQL queries — from Python, JavaScript, or the browser.
 
 [![PyPI](https://img.shields.io/badge/PyPI-Install_Package-3775A9?style=for-the-badge&logo=pypi&logoColor=white)](https://pypi.org/project/sqlmath/)
 [![npm](https://img.shields.io/badge/npm-Install_Package-CB3837?style=for-the-badge&logo=npm&logoColor=white)](https://www.npmjs.com/package/sqlmath)<!--no-validate-->
@@ -87,7 +87,7 @@
 <br><br>
 # Why sqlmath?
 
-SQLite is everywhere — it's the most deployed database in the world. But it lacks the statistical and ML functions needed for data science. sqlmath fixes that.
+SQLite is everywhere — it's the most deployed database in the world. But it lacks the statistical and ML functions needed for data-science. sqlmath fixes that.
 
 **What you get:**
 - **20+ built-in functions** for math, statistics, arrays, dates, and compression
@@ -550,6 +550,8 @@ The JavaScript (Node.js) binding is more mature than Python. Key differences:
 
 | Feature | Node.js | Python |
 |---------|---------|--------|
+| Async vs sync api | **async only:** `result = await dbExecAsync({...})` | **sync only:** `result = db_exec(...)` |
+| Connection pooling | ✅ `db = await dbOpenAsync({threadCount: 4, ...})` | ❌ `db = db_open(...)` |
 | Type hints | N/A | ❌ Not yet |
 | Context manager | N/A | ❌ `with db_open()` not supported |
 

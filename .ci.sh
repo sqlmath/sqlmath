@@ -452,6 +452,7 @@ shCiPublishNpmCustom() {(set -e
         branch-beta/sqlmath_wasm*
     cp -a branch-beta/_sqlmath.napi* ./
     cp -a branch-beta/_sqlmath.shell* ./
+    cp -a branch-beta/lib_lightgbm* ./
     cp -a branch-beta/sqlmath_wasm.* ./
     # npm-publish
     npm publish --access public

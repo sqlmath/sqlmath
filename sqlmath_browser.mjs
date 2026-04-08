@@ -404,8 +404,8 @@ ALTER TABLE tradebot_tech_intra_month DROP COLUMN xdate2;
             "1 month",
             "ytd",
             "1 year",
-            "5 year",
-            "5 year reverse timeline"
+            "3 year",
+            "3 year reverse timeline"
         ].map(function (dateInterval) {
             let optionDict;
             let tableChart;
@@ -520,8 +520,8 @@ UPDATE __tmp1
                 MAX(aa,
             ${
                 (
-                    dateInterval === "5 year reverse timeline"
-                    ? "DATE(bb, '-5 YEAR')"
+                    dateInterval === "3 year reverse timeline"
+                    ? "DATE(bb, '-3 YEAR')"
                     : dateInterval === "ytd"
                     ? "DATE(STRFTIME('%Y', bb) || '-01-01', '-1 DAY')"
                     : "DATE(bb, '-" + dateInterval + "')"
@@ -583,7 +583,7 @@ UPDATE ${tableChart}
     SET
             ${
                 (
-                    dateInterval === "5 year reverse timeline"
+                    dateInterval === "3 year reverse timeline"
                     ? "yy = ROUND(100 * (1.0 / (yy * inv) - 1), 4)"
                     : "yy = ROUND(100 * (yy * inv - 1), 4)"
                 )
@@ -599,7 +599,7 @@ UPDATE ${tableChart}
                 PARTITION BY series_index ORDER BY xx
             ${
                 (
-                    dateInterval === "5 year reverse timeline"
+                    dateInterval === "3 year reverse timeline"
                     ? "DESC"
                     : "ASC"
                 )
