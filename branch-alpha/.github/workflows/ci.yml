@@ -29,9 +29,9 @@ jobs:
         node_version:
           - "24"
         os:
+          - macos-15
           - macos-15-intel
-          - macos-latest
-          - ubuntu-latest
+          - ubuntu-22.04
           - windows-2022
         python_version:
           - "3.12"
@@ -42,7 +42,7 @@ jobs:
         v${{ matrix.node_version }}
         ${{ matrix.architecture }}
         ${{ matrix.os }}
-      CI_MATRIX_NAME_MAIN: "node v24 x64 ubuntu-latest"
+      CI_MATRIX_NAME_MAIN: "node v24 x64 ubuntu-22.04"
       CI_MATRIX_NODE_VERSION: ${{ matrix.node_version }}
       CI_MATRIX_NODE_VERSION_MAIN: "24"
       CI_WORKFLOW_NAME: >
