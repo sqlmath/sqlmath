@@ -13,6 +13,5 @@ node_modules
 !lib_lightgbm*
 !sqlmath.mjs
 !sqlmath_browser.mjs
-!sqlmath_custom.mjs
 !sqlmath_wasm*
 !test.mjs

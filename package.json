@@ -5,7 +5,7 @@
     },
     "counter": 0,
     "description": "sqlite for data-science",
-    "fileCount": 46,
+    "fileCount": 44,
     "homepage": "https://github.com/sqlmath/sqlmath",
     "keywords": [
         "data-science",

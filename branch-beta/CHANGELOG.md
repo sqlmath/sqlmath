@@ -1,11 +1,13 @@
 # Changelog
 
 # Todo
-- sqlmath - Re-introduce sliding-discrete-fourier-transform to improve initial guess in sql-function WIN_SINEFIT2().
+- sqlmath - Streamline and optimize sql-function WIN_SINEFIT2().
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
 # v2026.4.1-beta
+- sqlmath - Removue under-used custom-files sqlmath_custom.c, sqlmath_custom.mjs.
+- github-ci - Pin various github-runner-os to stable/lts version.
 - sqlmath-demo - Change historical charts from 5-years to 3-years.
 - sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package.
 - sqlmath-doc - Rewrite README with examples, API reference, use cases.

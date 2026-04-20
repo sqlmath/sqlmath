@@ -4652,12 +4652,6 @@ int sqlite3_compress_init(
     const sqlite3_api_routines * pApi
 );
 
-int sqlite3_sqlmath_custom_init(
-    sqlite3 *,
-    char **,
-    const sqlite3_api_routines *
-);
-
 int sqlite3_sqlmath_base_init(
     sqlite3 * db,
     char **pzErrMsg,
@@ -4666,9 +4660,6 @@ int sqlite3_sqlmath_base_init(
     UNUSED_PARAMETER(pApi);
     UNUSED_PARAMETER(pzErrMsg);
     int errcode = 0;
-    //
-    errcode = sqlite3_sqlmath_custom_init(db, pzErrMsg, pApi);
-    SQLITE_OK_OR_RETURN_RC(errcode);
     //
     SQL_CREATE_FUNC1(castrealornull, 1, SQLITE_DETERMINISTIC);
     SQL_CREATE_FUNC1(castrealorzero, 1, SQLITE_DETERMINISTIC);

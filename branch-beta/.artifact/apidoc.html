@@ -951,7 +951,6 @@ jstestIt((
             (`
 (set -e
     # rebuild binding
-    rm -rf build/Release/obj/SRC_SQLMATH_CUSTOM/
     node "${binNodegyp}" build --release
     # node "${binNodegyp}" build --release --loglevel=verbose
     mv build/Release/binding.node "${cModulePath}"
@@ -963,7 +962,7 @@ jstestIt((
         rm -f ${SQLMATH_EXE}
         python setup.py exe_link \
             ./build/Release/SRC_SQLITE_BASE.lib \
-            ./build/Release/SRC_SQLMATH_CUSTOM.lib \
+            ./build/Release/SRC_SQLMATH_BASE.lib \
             ./build/Release/obj/shell/sqlmath_external_sqlite.obj \
             ./zlib.v1.3.1.vcpkg.x64-windows-static.lib \
             \
