@@ -72,15 +72,11 @@ async def build_ext_async():
                 file_src = pathlib.Path("sqlmath_external_sqlite.c")
             case "SRC_SQLMATH_BASE":
                 file_src = pathlib.Path("sqlmath_base.c")
-            case "SRC_SQLMATH_CUSTOM":
-                file_src = pathlib.Path("sqlmath_custom.c")
                 arg_list += [
                     "-DSRC_SQLMATH_PYTHON_C2=",
                 ]
         match cdefine:
             case "SRC_SQLMATH_BASE":
-                pass
-            case "SRC_SQLMATH_CUSTOM":
                 pass
             case _:
                 if (
@@ -99,10 +95,7 @@ async def build_ext_async():
             arg_list += ["/W3"]
         elif npm_config_mode_debug:
             arg_list += cflag_wall_list
-        elif is_win32 and cdefine in [
-            "SRC_SQLMATH_BASE",
-            "SRC_SQLMATH_CUSTOM",
-        ]:
+        elif is_win32 and cdefine == "SRC_SQLMATH_BASE":
             arg_list += [
                 "/W4",
                 "/WX",
@@ -112,10 +105,7 @@ async def build_ext_async():
                 "/W2",
                 "/WX",
             ]
-        elif cdefine in [
-            "SRC_SQLMATH_BASE",
-            "SRC_SQLMATH_CUSTOM",
-        ]:
+        elif cdefine == "SRC_SQLMATH_BASE":
             arg_list += cflag_wall_list
         else:
             arg_list += cflag_wno_list
@@ -166,7 +156,6 @@ async def build_ext_async():
             "build/SRC_SQLITE_BASE.obj",
             # ,
             "build/SRC_SQLMATH_BASE.obj",
-            "build/SRC_SQLMATH_CUSTOM.obj",
         ]
         export = "PyInit__sqlmath"
         if is_win32:
@@ -332,7 +321,6 @@ async def build_ext_async():
             "SRC_SQLITE_BASE",
             # ,
             "SRC_SQLMATH_BASE",
-            "SRC_SQLMATH_CUSTOM",
         ]
     ])
     #

@@ -258,16 +258,12 @@ shCiBuildWasm() {(set -e
     # OPTION1="$OPTION1 -fsanitize=address"
     for FILE in \
         sqlmath_base.c \
-        sqlmath_custom.c \
         sqlmath_external_sqlite.c
     do
         OPTION2=""
         case "$FILE" in
         sqlmath_base.c)
             OPTION2="$OPTION2 -DSRC_SQLMATH_BASE_C2="
-            ;;
-        sqlmath_custom.c)
-            OPTION2="$OPTION2 -DSRC_SQLMATH_CUSTOM_C2="
             ;;
         sqlmath_external_sqlite.c)
             OPTION2="$OPTION2 -DSRC_SQLITE_BASE_C2="
@@ -277,9 +273,6 @@ shCiBuildWasm() {(set -e
         OPTION2="$OPTION2 -c $FILE -o $FILE2"
         case "$FILE" in
         sqlmath_base.c)
-            OPTION2="$OPTION2 $SQLMATH_CFLAG_WALL_LIST"
-            ;;
-        sqlmath_custom.c)
             OPTION2="$OPTION2 $SQLMATH_CFLAG_WALL_LIST"
             ;;
         *)
@@ -330,7 +323,6 @@ shCiBuildWasm() {(set -e
         -s WASM=1 \
         -s WASM_BIGINT \
         build/sqlmath_base.c.wasm.o \
-        build/sqlmath_custom.c.wasm.o \
         build/sqlmath_external_sqlite.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
@@ -480,8 +472,7 @@ shCiTestNodejs() {(set -e
         # lint c-file
         python cpplint.py \
             --filter=-whitespace/comments \
-            sqlmath_base.c \
-            sqlmath_custom.c
+            sqlmath_base.c
         # lint js-file
         node jslint.mjs .
         # create file MANIFEST.in
@@ -567,7 +558,6 @@ shSqlmathUpdate() {(set -e
         then
             shIndentC sqlmath_base.c
             shIndentC sqlmath_base.h
-            shIndentC sqlmath_custom.c
             shIndentC sqlmath_external_sqlite.c
         fi
         return
