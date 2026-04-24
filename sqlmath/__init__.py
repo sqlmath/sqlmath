@@ -106,6 +106,15 @@ class SqlmathDb:
     filename = ""
     ptr = 0
 
+    def __repr__(self):
+        """Return string representation for debugging."""
+        state = "closed" if self.closed else "open"
+        return f"SqlmathDb({self.filename!r}, {state})"
+
+    def __bool__(self):
+        """Return True if database is open."""
+        return not self.closed
+
 
 class SqlmathError(Exception):
     """Sqlmath error."""
