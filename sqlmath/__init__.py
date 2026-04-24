@@ -106,6 +106,19 @@ class SqlmathDb:
     filename = ""
     ptr = 0
 
+    def execute(self, sql, bind_list=None, response_type=None):
+        """Execute SQL statement. Alias for db_exec(db=self, ...)."""
+        return db_exec(
+            db=self,
+            sql=sql,
+            bind_list=bind_list,
+            response_type=response_type,
+        )
+
+    def close(self):
+        """Close database connection. Alias for db_close(self)."""
+        db_close(self)
+
 
 class SqlmathError(Exception):
     """Sqlmath error."""
