@@ -106,6 +106,15 @@ class SqlmathDb:
     filename = ""
     ptr = 0
 
+    def __enter__(self):
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager and close database."""
+        db_close(self)
+        return False
+
 
 class SqlmathError(Exception):
     """Sqlmath error."""
