@@ -6,6 +6,7 @@
 - none
 
 # v2026.4.1-beta
+- sqlmath-python - Add context manager and Pythonic API (execute, close) to SqlmathDb matching sqlite3 conventions.
 - sqlmath - Removue under-used custom-files sqlmath_custom.c, sqlmath_custom.mjs.
 - github-ci - Pin various github-runner-os to stable/lts version.
 - sqlmath-demo - Change historical charts from 5-years to 3-years.
