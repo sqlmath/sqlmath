@@ -1,5 +1,5 @@
-<svg height="1306" width="800" xmlns="http://www.w3.org/2000/svg">
-<rect height="1306" fill="#222" width="800"></rect>
+<svg height="1328" width="800" xmlns="http://www.w3.org/2000/svg">
+<rect height="1328" fill="#222" width="800"></rect>
 <text
     fill="#7f7"
     font-family="consolas, menlo, monospace"
@@ -65,295 +65,301 @@
     textLength="768"
     x="10"
     y="230"
->- sqlmath-python - Add __repr__ and __bool__ methods to SqlmathDb for better debugging experienc\</tspan>
+>- sqlmath-python - Add context manager and Pythonic API (execute, close) to SqlmathDb matching s\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="252"
->  e.                                                                                             </tspan>
+>  qlite3 conventions.                                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="274"
->- sqlmath - Removue under-used custom-files sqlmath_custom.c, sqlmath_custom.mjs.                </tspan>
+>- sqlmath-python - Add __repr__ and __bool__ methods to SqlmathDb for better debugging experienc\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->- github-ci - Pin various github-runner-os to stable/lts version.                                </tspan>
+>  e.                                                                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="318"
->- sqlmath-demo - Change historical charts from 5-years to 3-years.                               </tspan>
+>- sqlmath - Removue under-used custom-files sqlmath_custom.c, sqlmath_custom.mjs.                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="340"
->- sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package.            </tspan>
+>- github-ci - Pin various github-runner-os to stable/lts version.                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
->- sqlmath-doc - Rewrite README with examples, API reference, use cases.                          </tspan>
+>- sqlmath-demo - Change historical charts from 5-years to 3-years.                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
->                                                                                                 </tspan>
+>- sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package.            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
-># v2026.3.31                                                                                     </tspan>
+>- sqlmath-doc - Rewrite README with examples, API reference, use cases.                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->- python-ci - bugfix - Fix shell-function shCiBaseCustom() always skipping python setup.py build\</tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->  _ext.                                                                                          </tspan>
+># v2026.3.31                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
->- ci - Speed-up windows-ci by replacing windows-latest with windows-2022.                        </tspan>
+>- python-ci - bugfix - Fix shell-function shCiBaseCustom() always skipping python setup.py build\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
->- sqlmath-ci - Speed-up ci with env-var npm_config_mode_test_nopython, allowing shell-function s\</tspan>
+>  _ext.                                                                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->  hCiTestNodejs() to be run in background, parallel to python -m cibuildwheel.                   </tspan>
+>- ci - Speed-up windows-ci by replacing windows-latest with windows-2022.                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="538"
->- sqlmath-ci - Rename pre-built-binaries lib_lightgbm.xxx, libomp.xxx to lib_lightgbm_platform_a\</tspan>
+>- sqlmath-ci - Speed-up ci with env-var npm_config_mode_test_nopython, allowing shell-function s\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
->  rch.xxx, libomp_platform_arch.xxx, to prevent name-collision under darwin_arm64 and darwin_x64\</tspan>
+>  hCiTestNodejs() to be run in background, parallel to python -m cibuildwheel.                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="582"
->   builds.                                                                                       </tspan>
+>- sqlmath-ci - Rename pre-built-binaries lib_lightgbm.xxx, libomp.xxx to lib_lightgbm_platform_a\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="604"
->- sqlmath-ci - Update file setup.py to open text-files with utf-8 encoding.                      </tspan>
+>  rch.xxx, libomp_platform_arch.xxx, to prevent name-collision under darwin_arm64 and darwin_x64\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="626"
->- sqlmath-ci - Update file .github/workflows/ci.yml with extra matrix.os macos-15-intel.         </tspan>
+>   builds.                                                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
->- jslint-ci - Update shell-function shGitPullrequestCleanup() to allow squash-and-merge pull-req\</tspan>
+>- sqlmath-ci - Update file setup.py to open text-files with utf-8 encoding.                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->  uest.                                                                                          </tspan>
+>- sqlmath-ci - Update file .github/workflows/ci.yml with extra matrix.os macos-15-intel.         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->- sqlmath-ci - Update file .github/workflows/ci.yml with hook to run on pull-request.            </tspan>
+>- jslint-ci - Update shell-function shGitPullrequestCleanup() to allow squash-and-merge pull-req\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->                                                                                                 </tspan>
+>  uest.                                                                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="736"
-># v2026.3.1                                                                                      </tspan>
+>- sqlmath-ci - Update file .github/workflows/ci.yml with hook to run on pull-request.            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="758"
->- sqlmath-python - bugfix - Fix 762-character-limit SQL-string-bug in python-function db_exec(). </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="780"
->- jslint-ci - Update shell-function shLintPython().                                              </tspan>
+># v2026.3.1                                                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="802"
->- python - Auto-detect-and-load lib_lightgbm.dll.                                                </tspan>
+>- sqlmath-python - bugfix - Fix 762-character-limit SQL-string-bug in python-function db_exec(). </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="824"
->- sqlite - Add sqlite-extension csv.c, tsv.c.                                                    </tspan>
+>- jslint-ci - Update shell-function shLintPython().                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="846"
->                                                                                                 </tspan>
+>- python - Auto-detect-and-load lib_lightgbm.dll.                                                </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="868"
-># v2026.2.28                                                                                     </tspan>
+>- sqlite - Add sqlite-extension csv.c, tsv.c.                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="890"
->- python-ci - Fix ruff lint-errors.                                                              </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="912"
->- jslint-ci - Update shell-function shCiBase() to check npm-version-support, before running npm-\</tspan>
+># v2026.2.28                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="934"
->  pkg-fix.                                                                                       </tspan>
+>- python-ci - Fix ruff lint-errors.                                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="956"
->                                                                                                 </tspan>
+>- jslint-ci - Update shell-function shCiBase() to check npm-version-support, before running npm-\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="978"
-># v2026.1.31                                                                                     </tspan>
+>  pkg-fix.                                                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1000"
->- demo - Replace sector and subsector charts with subindustry chart.                             </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1022"
->- chart - Make tooltip more transparent, so datapoints behind it are more visible.               </tspan>
+># v2026.1.31                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1044"
->- chart - Cleanup chart _15_tradebot_tech_intra_1_month.                                         </tspan>
+>- demo - Replace sector and subsector charts with subindustry chart.                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1066"
->- chart - Add intraday-technical-indicator tradebot_tech_intra.spy_zcl.                          </tspan>
+>- chart - Make tooltip more transparent, so datapoints behind it are more visible.               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1088"
->- chart - Change time-scale of 1-month charts from 1-day to 15-minute/5-minute.                  </tspan>
+>- chart - Cleanup chart _15_tradebot_tech_intra_1_month.                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1110"
->                                                                                                 </tspan>
+>- chart - Add intraday-technical-indicator tradebot_tech_intra.spy_zcl.                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1132"
-># v2025.12.28                                                                                    </tspan>
+>- chart - Change time-scale of 1-month charts from 1-day to 15-minute/5-minute.                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1154"
->- jslint - Upgrade to jslint-v2025.12.28.                                                        </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1176"
->- sqlmath - Update function dbOpenAsync() with default-prm timeoutBusy=5000.                     </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1198"
->- ci - Upgrade nodejs used in ci to v24.                                                         </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1220"
 >                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="1176"
+># v2025.12.28                                                                                    </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1198"
+>- jslint - Upgrade to jslint-v2025.12.28.                                                        </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1220"
+>- sqlmath - Update function dbOpenAsync() with default-prm timeoutBusy=5000.                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="1242"
-># v2025.9.30                                                                                     </tspan>
+>- ci - Upgrade nodejs used in ci to v24.                                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1264"
->- sqlmath - Update function dbExecProfile() with additional-arg sqlLength.                       </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1286"
->- sqlmath - Update function dbOpenAsync() with default-filename :memory:.                        </tspan>
+># v2025.9.30                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1308"
+>- sqlmath - Update function dbExecProfile() with additional-arg sqlLength.                       </tspan>
 
 </text>
 </svg>
