@@ -106,6 +106,10 @@ class SqlmathDb:
     filename = ""
     ptr = 0
 
+    def __bool__(self):
+        """Return True if database is open."""
+        return not self.closed
+
     def __enter__(self):
         """Enter context manager."""
         return self
@@ -115,6 +119,15 @@ class SqlmathDb:
         db_close(self)
         return False
 
+    def close(self):
+        """Close database connection. Alias for db_close(self)."""
+        db_close(self)
+
+    def __repr__(self):
+        """Return string representation for debugging."""
+        state = "closed" if self.closed else "open"
+        return f"SqlmathDb({self.filename!r}, {state})"
+
     def execute(self, sql, bind_list=None, response_type=None):
         """Execute SQL statement. Alias for db_exec(db=self, ...)."""
         return db_exec(
@@ -123,10 +136,6 @@ class SqlmathDb:
             bind_list=bind_list,
             response_type=response_type,
         )
-
-    def close(self):
-        """Close database connection. Alias for db_close(self)."""
-        db_close(self)
 
 
 class SqlmathError(Exception):
