@@ -10,8 +10,8 @@ node_modules
 !_sqlmath.napi*
 !_sqlmath.shell*
 !jslint.mjs
-!lib_lightgbm*
 !sqlmath.mjs
+!sqlmath/lib_lightgbm*
 !sqlmath_browser.mjs
 !sqlmath_wasm*
 !test.mjs

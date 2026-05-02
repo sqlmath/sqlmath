@@ -439,13 +439,12 @@ shCiPublishNpmCustom() {(set -e
 # This function will run custom-code to npm-publish package.
     # fetch artifact
     git fetch origin artifact --depth=1
-    git checkout origin/artifact \
-        branch-beta/_sqlmath* \
-        branch-beta/sqlmath_wasm*
+    git checkout origin/artifact branch-beta/
     cp -a branch-beta/_sqlmath.napi* ./
     cp -a branch-beta/_sqlmath.shell* ./
-    cp -a branch-beta/lib_lightgbm* ./
     cp -a branch-beta/sqlmath_wasm.* ./
+    mkdir -p sqlmath/
+    cp -a branch-beta/lib_lightgbm* sqlmath/
     # npm-publish
     npm publish --access public
 )}
