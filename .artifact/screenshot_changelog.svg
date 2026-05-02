@@ -59,7 +59,7 @@
     textLength="768"
     x="10"
     y="208"
-># v2026.4.1-beta                                                                                 </tspan>
+># v2026.4.30                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -89,7 +89,7 @@
     textLength="768"
     x="10"
     y="318"
->- sqlmath - Removue under-used custom-files sqlmath_custom.c, sqlmath_custom.mjs.                </tspan>
+>- sqlmath - Remove under-used custom-files sqlmath_custom.c, sqlmath_custom.mjs.                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
