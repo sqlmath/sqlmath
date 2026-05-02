@@ -5,6 +5,10 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2026.4.31
+- sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package. - part3 - ./sqlmath/lib_lightgbm_xxx.
+- sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package. - part2 - git checkout origin/artifact branch-beta/
+
 # v2026.4.30
 - sqlmath-python - Add context manager and Pythonic API (execute, close) to SqlmathDb matching sqlite3 conventions.
 - sqlmath-python - Add __repr__ and __bool__ methods to SqlmathDb for better debugging experience.
