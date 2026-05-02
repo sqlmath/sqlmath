@@ -442,8 +442,9 @@ shCiPublishNpmCustom() {(set -e
     git checkout origin/artifact branch-beta/
     cp -a branch-beta/_sqlmath.napi* ./
     cp -a branch-beta/_sqlmath.shell* ./
-    cp -a branch-beta/lib_lightgbm* ./
     cp -a branch-beta/sqlmath_wasm.* ./
+    mkdir -p sqlmath/
+    cp -a branch-beta/lib_lightgbm* sqlmath/
     # npm-publish
     npm publish --access public
 )}

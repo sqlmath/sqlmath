@@ -9,7 +9,7 @@
 
 # Status
 
-| Branch | [master<br>(v2026.4.30)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
+| Branch | [master<br>(v2026.4.31)](https://github.com/sqlmath/sqlmath/tree/master) | [beta<br>(Web Demo)](https://github.com/sqlmath/sqlmath/tree/beta) | [alpha<br>(Development)](https://github.com/sqlmath/sqlmath/tree/alpha) |
 |--:|:--:|:--:|:--:|
 | CI | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Amaster) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=beta)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Abeta) | [![ci](https://github.com/sqlmath/sqlmath/actions/workflows/ci.yml/badge.svg?branch=alpha)](https://github.com/sqlmath/sqlmath/actions?query=branch%3Aalpha) |
 | Coverage | [![coverage](https://sqlmath.github.io/sqlmath/branch-alpha/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-alpha/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-alpha/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-alpha/.artifact/coverage/index.html) | [![coverage](https://sqlmath.github.io/sqlmath/branch-alpha/.artifact/coverage/coverage_badge.svg)](https://sqlmath.github.io/sqlmath/branch-alpha/.artifact/coverage/index.html) |
@@ -398,7 +398,7 @@ Full notebook with fraud detection, intraday trading signals, and model persiste
 **Kaggle Environment:**
 - Linux x64, Python 3.12, Node.js 24
 - Datasets: [Credit Card Fraud](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) (284K transactions), SPY intraday OHLCV
-- sqlmath installs via `pip install sqlmath==2026.4.30`
+- sqlmath installs via `pip install sqlmath==2026.4.31`
 
 
 <br><br>
@@ -643,11 +643,11 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 ```shell
 python -m build
 #
-twine upload --repository testpypi dist/sqlmath-2026.4.30*
-py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2026.4.30
+twine upload --repository testpypi dist/sqlmath-2026.4.31*
+py -m pip install --index-url https://test.pypi.org/simple/ sqlmath==2026.4.31
 #
-twine upload dist/sqlmath-2026.4.30*
-pip install sqlmath==2026.4.30
+twine upload dist/sqlmath-2026.4.31*
+pip install sqlmath==2026.4.31
 ```
 
 
