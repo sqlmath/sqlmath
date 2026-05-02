@@ -293,7 +293,7 @@ body {
 <pre><span class="lineno"><a href="#line_128" id="line_128">  128.</a></span><span class="count    ">      1</span><span>let sqlMessageDict = {}; // dict of web-worker-callbacks</span></pre>
 <pre><span class="lineno"><a href="#line_129" id="line_129">  129.</a></span><span class="count    ">      1</span><span>let sqlMessageId = 0;</span></pre>
 <pre><span class="lineno"><a href="#line_130" id="line_130">  130.</a></span><span class="count    ">      1</span><span>let sqlWorker;</span></pre>
-<pre><span class="lineno"><a href="#line_131" id="line_131">  131.</a></span><span class="count    ">      1</span><span>let version = "v2026.4.30";</span></pre>
+<pre><span class="lineno"><a href="#line_131" id="line_131">  131.</a></span><span class="count    ">      1</span><span>let version = "v2026.4.31";</span></pre>
 <pre><span class="lineno"><a href="#line_132" id="line_132">  132.</a></span><span class="count    ">      1</span><span></span></pre>
 <pre><span class="lineno"><a href="#line_133" id="line_133">  133.</a></span><span class="count    ">     86</span><span>async function assertErrorThrownAsync(asyncFunc, regexp) {</span></pre>
 <pre><span class="lineno"><a href="#line_134" id="line_134">  134.</a></span><span class="count    ">     86</span><span></span></pre>
@@ -1050,9 +1050,9 @@ body {
 <pre><span class="lineno"><a href="#line_885" id="line_885">  885.</a></span><span class="count    ">      1</span><span>        return;</span></pre>
 <pre><span class="lineno"><a href="#line_886" id="line_886">  886.</a></span><span class="count    ">      1</span><span>    }</span></pre>
 <pre><span class="lineno"><a href="#line_887" id="line_887">  887.</a></span><span class="count    ">      1</span><span>    result = Object.values(DB_EXEC_PROFILE_DICT);</span></pre>
-<pre><span class="lineno"><a href="#line_888" id="line_888">  888.</a></span><span class="count    ">   1656</span><span>    result.sort(function (aa, bb) {</span></pre>
-<pre><span class="lineno"><a href="#line_889" id="line_889">  889.</a></span><span class="count    ">    478</span><span>        return ((bb.timeElapsed - aa.timeElapsed) || (bb.count - aa.count));</span></pre>
-<pre><span class="lineno"><a href="#line_890" id="line_890">  890.</a></span><span class="count    ">   1656</span><span>    });</span></pre>
+<pre><span class="lineno"><a href="#line_888" id="line_888">  888.</a></span><span class="count    ">   1558</span><span>    result.sort(function (aa, bb) {</span></pre>
+<pre><span class="lineno"><a href="#line_889" id="line_889">  889.</a></span><span class="count    ">    448</span><span>        return ((bb.timeElapsed - aa.timeElapsed) || (bb.count - aa.count));</span></pre>
+<pre><span class="lineno"><a href="#line_890" id="line_890">  890.</a></span><span class="count    ">   1558</span><span>    });</span></pre>
 <pre><span class="lineno"><a href="#line_891" id="line_891">  891.</a></span><span class="count    ">     20</span><span>    result = result.slice(0, limit).map(function ({</span></pre>
 <pre><span class="lineno"><a href="#line_892" id="line_892">  892.</a></span><span class="count    ">     20</span><span>        count,</span></pre>
 <pre><span class="lineno"><a href="#line_893" id="line_893">  893.</a></span><span class="count    ">     20</span><span>        sql,</span></pre>
