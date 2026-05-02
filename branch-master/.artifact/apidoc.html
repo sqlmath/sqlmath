@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2026.3.31)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2026.4.30)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -951,7 +951,6 @@ jstestIt((
             (`
 (set -e
     # rebuild binding
-    rm -rf build/Release/obj/SRC_SQLMATH_CUSTOM/
     node "${binNodegyp}" build --release
     # node "${binNodegyp}" build --release --loglevel=verbose
     mv build/Release/binding.node "${cModulePath}"
@@ -963,7 +962,7 @@ jstestIt((
         rm -f ${SQLMATH_EXE}
         python setup.py exe_link \
             ./build/Release/SRC_SQLITE_BASE.lib \
-            ./build/Release/SRC_SQLMATH_CUSTOM.lib \
+            ./build/Release/SRC_SQLMATH_BASE.lib \
             ./build/Release/obj/shell/sqlmath_external_sqlite.obj \
             ./zlib.v1.3.1.vcpkg.x64-windows-static.lib \
             \
@@ -1027,21 +1026,21 @@ jstestIt((
     }));
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-                ) &gt;= 0,
-                err
-            );
-        }
-    });
-    // test close-while-busy handling-behavior
-    assertErrorThrownAsync(function () {
-        return <span class="apidocCodeKeywordSpan">dbCloseAsync</span>(db);
-    }, "cannot close db");
+
+const result = await dbExecAsync({
+    db,
+    sql: "SELECT AVG(price) AS mean_price FROM prices"
 });
-jstestIt((
-    "test dbFileXxx handling-behavior"
-), async function test_dbFileXxx() {
-    let data;
-    let db = await dbOpenAsync({});
+console.log(result);
+
+await <span class="apidocCodeKeywordSpan">dbCloseAsync</span>(db);
+```
+
+
+&lt;br&gt;&lt;br&gt;
+### Browser (WebAssembly)
+
+Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/index.html)**
 ...</pre></li>
 
 <li>
@@ -1277,21 +1276,19 @@ assertJsonEqual(valActual, valExpect, {
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-            [0, undefined]
-        ];
-        await Promise.all([
-            (async function () {
-let valActual;
-// test win_sum2-error handling-behavior
-await assertErrorThrownAsync(function () {
-    return <span class="apidocCodeKeywordSpan">dbExecAsync</span>({
-        db,
-        sql: (`
-SELECT WIN_SUM2() FROM (SELECT 1);
-        `)
-    });
-}, "wrong number of arguments");
-// test win_sum1-null-case handling-behavior
+&lt;br&gt;&lt;br&gt;
+# Platform Notes
+
+The JavaScript (Node.js) binding is more mature than Python. Key differences:
+
+| Feature | Node.js | Python |
+|---------|---------|--------|
+| Async vs sync api | **async only:** `result = await <span class="apidocCodeKeywordSpan">dbExecAsync</span>({...})` | **sync only:** `result = db_exec(...)` |
+| Connection pooling | ✅ `db = await dbOpenAsync({threadCount: 4, ...})` | ❌ `db = db_open(...)` |
+| Type hints | N/A | ❌ Not yet |
+| Context manager | N/A | ❌ `with db_open()` not supported |
+
+&gt; **Note:** The Python wrapper is a work in progress. Contributions welcome!
 ...</pre></li>
 
 <li>
@@ -1615,21 +1612,21 @@ PRAGMA busy_timeout = ${timeoutBusy};
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
+# Platform Notes
 
-jstestDescribe((
-"test_sqlmathWebworkerInit"
-), function test_sqlmathWebworkerInit() {
-jstestIt((
-    "test sqlmathWebworkerInit handling-behavior"
-), async function () {
-    let db = await <span class="apidocCodeKeywordSpan">dbOpenAsync</span>({
-        dbData: new ArrayBuffer()
-    });
-    sqlmathWebworkerInit({
-        db,
-        modeTest: true
-    });
-});
+The JavaScript (Node.js) binding is more mature than Python. Key differences:
+
+| Feature | Node.js | Python |
+|---------|---------|--------|
+| Async vs sync api | **async only:** `result = await dbExecAsync({...})` | **sync only:** `result = db_exec(...)` |
+| Connection pooling | ✅ `db = await <span class="apidocCodeKeywordSpan">dbOpenAsync</span>({threadCount: 4, ...})` | ❌ `db = db_open(...)` |
+| Type hints | N/A | ❌ Not yet |
+| Context manager | N/A | ❌ `with db_open()` not supported |
+
+&gt; **Note:** The Python wrapper is a work in progress. Contributions welcome!
+
+
+&lt;br&gt;&lt;br&gt;
 ...</pre></li>
 
 <li>

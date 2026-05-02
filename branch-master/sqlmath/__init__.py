@@ -21,8 +21,8 @@
 
 """sqlmath.py."""
 
-__version__ = "2026.3.31"
-__version_info__ = ("2026", "3", "31")
+__version__ = "2026.4.30"
+__version_info__ = ("2026", "4", "30")
 
 import csv
 import io
@@ -105,6 +105,37 @@ class SqlmathDb:
     closed = False
     filename = ""
     ptr = 0
+
+    def __bool__(self):
+        """Return True if database is open."""
+        return not self.closed
+
+    def __enter__(self):
+        """Enter context manager."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit context manager and close database."""
+        db_close(self)
+        return False
+
+    def close(self):
+        """Close database connection. Alias for db_close(self)."""
+        db_close(self)
+
+    def __repr__(self):
+        """Return string representation for debugging."""
+        state = "closed" if self.closed else "open"
+        return f"SqlmathDb({self.filename!r}, {state})"
+
+    def execute(self, sql, bind_list=None, response_type=None):
+        """Execute SQL statement. Alias for db_exec(db=self, ...)."""
+        return db_exec(
+            db=self,
+            sql=sql,
+            bind_list=bind_list,
+            response_type=response_type,
+        )
 
 
 class SqlmathError(Exception):

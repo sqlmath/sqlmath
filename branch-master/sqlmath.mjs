@@ -128,7 +128,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2026.3.31";
+let version = "v2026.4.30";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -327,7 +327,6 @@ async function ciBuildExt({
             (`
 (set -e
     # rebuild binding
-    rm -rf build/Release/obj/SRC_SQLMATH_CUSTOM/
     node "${binNodegyp}" build --release
     # node "${binNodegyp}" build --release --loglevel=verbose
     mv build/Release/binding.node "${cModulePath}"
@@ -339,7 +338,7 @@ async function ciBuildExt({
         rm -f ${SQLMATH_EXE}
         python setup.py exe_link \
             ./build/Release/SRC_SQLITE_BASE.lib \
-            ./build/Release/SRC_SQLMATH_CUSTOM.lib \
+            ./build/Release/SRC_SQLMATH_BASE.lib \
             ./build/Release/obj/shell/sqlmath_external_sqlite.obj \
             ./zlib.v1.3.1.vcpkg.x64-windows-static.lib \
             \
@@ -424,17 +423,15 @@ SQLMATH_CFLAG_WNO_LIST=" \\
             },
             {
                 "defines": [
-                    "SRC_SQLMATH_BASE_C2",
-                    "SRC_SQLMATH_CUSTOM_C2"
+                    "SRC_SQLMATH_BASE_C2"
                 ],
                 "dependencies": [
                     "SRC_SQLITE_BASE"
                 ],
                 "sources": [
-                    "sqlmath_base.c",
-                    "sqlmath_custom.c"
+                    "sqlmath_base.c"
                 ],
-                "target_name": "SRC_SQLMATH_CUSTOM",
+                "target_name": "SRC_SQLMATH_BASE",
                 "type": "static_library"
             },
             {
@@ -442,7 +439,7 @@ SQLMATH_CFLAG_WNO_LIST=" \\
                     "SRC_SQLMATH_NODEJS_C2"
                 ],
                 "dependencies": [
-                    "SRC_SQLMATH_CUSTOM"
+                    "SRC_SQLMATH_BASE"
                 ],
                 "sources": [
                     "sqlmath_base.c"
@@ -465,7 +462,7 @@ SQLMATH_CFLAG_WNO_LIST=" \\
                     "SRC_SQLITE_SHELL_C2"
                 ],
                 "dependencies": [
-                    "SRC_SQLMATH_CUSTOM"
+                    "SRC_SQLMATH_BASE"
                 ],
                 "sources": [
                     "sqlmath_external_sqlite.c"
