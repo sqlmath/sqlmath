@@ -337,22 +337,11 @@ INSERT INTO tradebot_tech_intra_day
         *
     FROM (
         SELECT
-            tname,
-            datemkt0_beg AS xdate,
-            datemkt0_beg AS xdate2,
-            stk_beg0 AS tval
-        FROM tradebot_state
-        JOIN (
-            SELECT '1a_stk_pct' AS tname
-            --
-            UNION ALL
-            --
-            SELECT '1b_stk_lmt' AS tname
-        )
-        --
-        UNION ALL
-        --
-        SELECT '1a_stk_pct', xdate, xdate2, stk_pct FROM tradebot_tech_intra
+                '1a_stk_pct' AS tname,
+                xdate,
+                xdate2,
+                stk_pct AS tval
+            FROM tradebot_tech_intra
         --
         UNION ALL
         --
@@ -984,7 +973,7 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
                     ? "unixepochToTimeutc"
                     : "juliandayToDate"
                 ),
-                yaxisTitle: "percent holding",
+                yaxisTitle: "percent gain",
                 yvalueSuffix: " %"
             };
             return (`

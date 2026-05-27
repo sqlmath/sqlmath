@@ -8,6 +8,7 @@
 - none
 
 # v2026.5.1-beta
+- sqlmath-demo - Update chart tradebot_tech_intra_xxx normalized to spy_prc instead of stk_pct.
 - sqlmath - Add function uvthreadpoolsizeGet().
 
 # v2026.4.31
