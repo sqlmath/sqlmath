@@ -128,7 +128,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2026.4.31";
+let version = "v2026.5.1-beta";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -1215,7 +1215,7 @@ async function fsExistsUnlessTest(file, mode) {
         return false;
     }
     try {
-        await moduleFs.promises.access(file);
+        await moduleFs.promises.access(file, moduleFs.promises.constants.F_OK);
         return true;
     } catch (ignore) {
         return false;
@@ -1904,6 +1904,43 @@ function sqlmathWebworkerInit({
     }
 }
 
+async function uvthreadpoolsizeGet() {
+
+// This function will guess how many logical-processors on current-host.
+
+    let uvthreadpoolsize;
+    await new Promise(function (resolve) {
+        let child;
+        child = moduleChildProcess.spawn(
+            "sh",
+            ["-c", (`
+    case "$(uname)" in
+    Darwin)
+        sysctl -n hw.logicalcpu
+        ;;
+    Linux)
+        nproc
+        ;;
+    *NT*)
+        wmic cpu get NumberOfLogicalProcessors | \
+            grep -v "NumberOfLogicalProcessors"
+        ;;
+    esac
+            `)],
+            {stdio: ["ignore", "pipe", "ignore"]}
+        );
+        child.stdout.setEncoding("utf8");
+        child.stdout.on("data", function (chunk) {
+            uvthreadpoolsize = Number(chunk);
+        });
+        child.on("exit", resolve);
+    });
+    if (npm_config_mode_test) {
+        uvthreadpoolsize = undefined;
+    }
+    return uvthreadpoolsize || 4;
+}
+
 function waitAsync(timeout) {
 
 // This function will wait <timeout> ms.
@@ -1990,6 +2027,7 @@ export {
     noop,
     objectDeepCopyWithKeysSorted,
     sqlmathWebworkerInit,
+    uvthreadpoolsizeGet,
     version,
     waitAsync
 };

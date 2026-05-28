@@ -150,11 +150,11 @@ body {
  </td>
  <td style="text-align: right;">
    100.00 %<br>
-  1996 / 1996
+  2034 / 2034
  </td>
  <td style="text-align: right;">
   <br>
-  0 / 1996
+  0 / 2034
  </td>
  </tr>
 </tbody>
@@ -293,7 +293,7 @@ body {
 <pre><span class="lineno"><a href="#line_128" id="line_128">  128.</a></span><span class="count    ">      1</span><span>let sqlMessageDict = {}; // dict of web-worker-callbacks</span></pre>
 <pre><span class="lineno"><a href="#line_129" id="line_129">  129.</a></span><span class="count    ">      1</span><span>let sqlMessageId = 0;</span></pre>
 <pre><span class="lineno"><a href="#line_130" id="line_130">  130.</a></span><span class="count    ">      1</span><span>let sqlWorker;</span></pre>
-<pre><span class="lineno"><a href="#line_131" id="line_131">  131.</a></span><span class="count    ">      1</span><span>let version = "v2026.4.31";</span></pre>
+<pre><span class="lineno"><a href="#line_131" id="line_131">  131.</a></span><span class="count    ">      1</span><span>let version = "v2026.5.1-beta";</span></pre>
 <pre><span class="lineno"><a href="#line_132" id="line_132">  132.</a></span><span class="count    ">      1</span><span></span></pre>
 <pre><span class="lineno"><a href="#line_133" id="line_133">  133.</a></span><span class="count    ">     86</span><span>async function assertErrorThrownAsync(asyncFunc, regexp) {</span></pre>
 <pre><span class="lineno"><a href="#line_134" id="line_134">  134.</a></span><span class="count    ">     86</span><span></span></pre>
@@ -1050,9 +1050,9 @@ body {
 <pre><span class="lineno"><a href="#line_885" id="line_885">  885.</a></span><span class="count    ">      1</span><span>        return;</span></pre>
 <pre><span class="lineno"><a href="#line_886" id="line_886">  886.</a></span><span class="count    ">      1</span><span>    }</span></pre>
 <pre><span class="lineno"><a href="#line_887" id="line_887">  887.</a></span><span class="count    ">      1</span><span>    result = Object.values(DB_EXEC_PROFILE_DICT);</span></pre>
-<pre><span class="lineno"><a href="#line_888" id="line_888">  888.</a></span><span class="count    ">   1558</span><span>    result.sort(function (aa, bb) {</span></pre>
-<pre><span class="lineno"><a href="#line_889" id="line_889">  889.</a></span><span class="count    ">    448</span><span>        return ((bb.timeElapsed - aa.timeElapsed) || (bb.count - aa.count));</span></pre>
-<pre><span class="lineno"><a href="#line_890" id="line_890">  890.</a></span><span class="count    ">   1558</span><span>    });</span></pre>
+<pre><span class="lineno"><a href="#line_888" id="line_888">  888.</a></span><span class="count    ">   1691</span><span>    result.sort(function (aa, bb) {</span></pre>
+<pre><span class="lineno"><a href="#line_889" id="line_889">  889.</a></span><span class="count    ">    482</span><span>        return ((bb.timeElapsed - aa.timeElapsed) || (bb.count - aa.count));</span></pre>
+<pre><span class="lineno"><a href="#line_890" id="line_890">  890.</a></span><span class="count    ">   1691</span><span>    });</span></pre>
 <pre><span class="lineno"><a href="#line_891" id="line_891">  891.</a></span><span class="count    ">     20</span><span>    result = result.slice(0, limit).map(function ({</span></pre>
 <pre><span class="lineno"><a href="#line_892" id="line_892">  892.</a></span><span class="count    ">     20</span><span>        count,</span></pre>
 <pre><span class="lineno"><a href="#line_893" id="line_893">  893.</a></span><span class="count    ">     20</span><span>        sql,</span></pre>
@@ -1380,7 +1380,7 @@ body {
 <pre><span class="lineno"><a href="#line_1215" id="line_1215"> 1215.</a></span><span class="count    ">      8</span><span>        return false;</span></pre>
 <pre><span class="lineno"><a href="#line_1216" id="line_1216"> 1216.</a></span><span class="count    ">      8</span><span>    }</span></pre>
 <pre><span class="lineno"><a href="#line_1217" id="line_1217"> 1217.</a></span><span class="count    ">      2</span><span>    try {</span></pre>
-<pre><span class="lineno"><a href="#line_1218" id="line_1218"> 1218.</a></span><span class="count    ">      2</span><span>        await moduleFs.promises.access(file);</span></pre>
+<pre><span class="lineno"><a href="#line_1218" id="line_1218"> 1218.</a></span><span class="count    ">      2</span><span>        await moduleFs.promises.access(file, moduleFs.promises.constants.F_OK);</span></pre>
 <pre><span class="lineno"><a href="#line_1219" id="line_1219"> 1219.</a></span><span class="count    ">      1</span><span>        return true;</span></pre>
 <pre><span class="lineno"><a href="#line_1220" id="line_1220"> 1220.</a></span><span class="count    ">      1</span><span>    } catch (ignore) {</span></pre>
 <pre><span class="lineno"><a href="#line_1221" id="line_1221"> 1221.</a></span><span class="count    ">      1</span><span>        return false;</span></pre>
@@ -2069,96 +2069,134 @@ body {
 <pre><span class="lineno"><a href="#line_1904" id="line_1904"> 1904.</a></span><span class="count    ">      1</span><span>    }</span></pre>
 <pre><span class="lineno"><a href="#line_1905" id="line_1905"> 1905.</a></span><span class="count    ">      1</span><span>}</span></pre>
 <pre><span class="lineno"><a href="#line_1906" id="line_1906"> 1906.</a></span><span class="count    ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1907" id="line_1907"> 1907.</a></span><span class="count    ">      1</span><span>function waitAsync(timeout) {</span></pre>
+<pre><span class="lineno"><a href="#line_1907" id="line_1907"> 1907.</a></span><span class="count    ">      1</span><span>async function uvthreadpoolsizeGet() {</span></pre>
 <pre><span class="lineno"><a href="#line_1908" id="line_1908"> 1908.</a></span><span class="count    ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1909" id="line_1909"> 1909.</a></span><span class="count    ">      1</span><span>// This function will wait &lt;timeout&gt; ms.</span></pre>
+<pre><span class="lineno"><a href="#line_1909" id="line_1909"> 1909.</a></span><span class="count    ">      1</span><span>// This function will guess how many logical-processors on current-host.</span></pre>
 <pre><span class="lineno"><a href="#line_1910" id="line_1910"> 1910.</a></span><span class="count    ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1911" id="line_1911"> 1911.</a></span><span class="count    ">      1</span><span>    return new Promise(function (resolve) {</span></pre>
-<pre><span class="lineno"><a href="#line_1912" id="line_1912"> 1912.</a></span><span class="count    ">      1</span><span>        let ms = Number(timeout);</span></pre>
-<pre><span class="lineno"><a href="#line_1913" id="line_1913"> 1913.</a></span><span class="count    ">      1</span><span>        if (!Number.isFinite(ms)) {</span></pre>
-<pre><span class="lineno"><a href="#line_1914" id="line_1914"> 1914.</a></span><span class="count    ">      1</span><span>            ms = 0;</span></pre>
-<pre><span class="lineno"><a href="#line_1915" id="line_1915"> 1915.</a></span><span class="count    ">      1</span><span>        }</span></pre>
-<pre><span class="lineno"><a href="#line_1916" id="line_1916"> 1916.</a></span><span class="count    ">      1</span><span>        setTimeout(resolve, ms * !npm_config_mode_test);</span></pre>
-<pre><span class="lineno"><a href="#line_1917" id="line_1917"> 1917.</a></span><span class="count    ">      1</span><span>    });</span></pre>
-<pre><span class="lineno"><a href="#line_1918" id="line_1918"> 1918.</a></span><span class="count    ">      1</span><span>}</span></pre>
-<pre><span class="lineno"><a href="#line_1919" id="line_1919"> 1919.</a></span><span class="count    ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1920" id="line_1920"> 1920.</a></span><span class="count    ">      1</span><span>sqlmathInit(); // coverage-hack</span></pre>
-<pre><span class="lineno"><a href="#line_1921" id="line_1921"> 1921.</a></span><span class="count    ">      1</span><span>await sqlmathInit();</span></pre>
-<pre><span class="lineno"><a href="#line_1922" id="line_1922"> 1922.</a></span><span class="count    ">      1</span><span>sqlmathInit(); // coverage-hack</span></pre>
-<pre><span class="lineno"><a href="#line_1923" id="line_1923"> 1923.</a></span><span class="count    ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_1924" id="line_1924"> 1924.</a></span><span class="count    ">      1</span><span>export {</span></pre>
-<pre><span class="lineno"><a href="#line_1925" id="line_1925"> 1925.</a></span><span class="count    ">      1</span><span>    DB_EXEC_PROFILE_DICT,</span></pre>
-<pre><span class="lineno"><a href="#line_1926" id="line_1926"> 1926.</a></span><span class="count    ">      1</span><span>    DB_STATE,</span></pre>
-<pre><span class="lineno"><a href="#line_1927" id="line_1927"> 1927.</a></span><span class="count    ">      1</span><span>    LGBM_DTYPE_FLOAT32,</span></pre>
-<pre><span class="lineno"><a href="#line_1928" id="line_1928"> 1928.</a></span><span class="count    ">      1</span><span>    LGBM_DTYPE_FLOAT64,</span></pre>
-<pre><span class="lineno"><a href="#line_1929" id="line_1929"> 1929.</a></span><span class="count    ">      1</span><span>    LGBM_DTYPE_INT32,</span></pre>
-<pre><span class="lineno"><a href="#line_1930" id="line_1930"> 1930.</a></span><span class="count    ">      1</span><span>    LGBM_DTYPE_INT64,</span></pre>
-<pre><span class="lineno"><a href="#line_1931" id="line_1931"> 1931.</a></span><span class="count    ">      1</span><span>    LGBM_FEATURE_IMPORTANCE_GAIN,</span></pre>
-<pre><span class="lineno"><a href="#line_1932" id="line_1932"> 1932.</a></span><span class="count    ">      1</span><span>    LGBM_FEATURE_IMPORTANCE_SPLIT,</span></pre>
-<pre><span class="lineno"><a href="#line_1933" id="line_1933"> 1933.</a></span><span class="count    ">      1</span><span>    LGBM_MATRIX_TYPE_CSC,</span></pre>
-<pre><span class="lineno"><a href="#line_1934" id="line_1934"> 1934.</a></span><span class="count    ">      1</span><span>    LGBM_MATRIX_TYPE_CSR,</span></pre>
-<pre><span class="lineno"><a href="#line_1935" id="line_1935"> 1935.</a></span><span class="count    ">      1</span><span>    LGBM_PREDICT_CONTRIB,</span></pre>
-<pre><span class="lineno"><a href="#line_1936" id="line_1936"> 1936.</a></span><span class="count    ">      1</span><span>    LGBM_PREDICT_LEAF_INDEX,</span></pre>
-<pre><span class="lineno"><a href="#line_1937" id="line_1937"> 1937.</a></span><span class="count    ">      1</span><span>    LGBM_PREDICT_NORMAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1938" id="line_1938"> 1938.</a></span><span class="count    ">      1</span><span>    LGBM_PREDICT_RAW_SCORE,</span></pre>
-<pre><span class="lineno"><a href="#line_1939" id="line_1939"> 1939.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_AUTOPROXY,</span></pre>
-<pre><span class="lineno"><a href="#line_1940" id="line_1940"> 1940.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_CREATE,</span></pre>
-<pre><span class="lineno"><a href="#line_1941" id="line_1941"> 1941.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_DELETEONCLOSE,</span></pre>
-<pre><span class="lineno"><a href="#line_1942" id="line_1942"> 1942.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_EXCLUSIVE,</span></pre>
-<pre><span class="lineno"><a href="#line_1943" id="line_1943"> 1943.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_FULLMUTEX,</span></pre>
-<pre><span class="lineno"><a href="#line_1944" id="line_1944"> 1944.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_MAIN_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_1945" id="line_1945"> 1945.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_MAIN_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1946" id="line_1946"> 1946.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_MEMORY,</span></pre>
-<pre><span class="lineno"><a href="#line_1947" id="line_1947"> 1947.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_NOFOLLOW,</span></pre>
-<pre><span class="lineno"><a href="#line_1948" id="line_1948"> 1948.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_NOMUTEX,</span></pre>
-<pre><span class="lineno"><a href="#line_1949" id="line_1949"> 1949.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_PRIVATECACHE,</span></pre>
-<pre><span class="lineno"><a href="#line_1950" id="line_1950"> 1950.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_READONLY,</span></pre>
-<pre><span class="lineno"><a href="#line_1951" id="line_1951"> 1951.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_READWRITE,</span></pre>
-<pre><span class="lineno"><a href="#line_1952" id="line_1952"> 1952.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_SHAREDCACHE,</span></pre>
-<pre><span class="lineno"><a href="#line_1953" id="line_1953"> 1953.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_SUBJOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1954" id="line_1954"> 1954.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_SUPER_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1955" id="line_1955"> 1955.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_TEMP_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_1956" id="line_1956"> 1956.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_TEMP_JOURNAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1957" id="line_1957"> 1957.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_TRANSIENT_DB,</span></pre>
-<pre><span class="lineno"><a href="#line_1958" id="line_1958"> 1958.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_URI,</span></pre>
-<pre><span class="lineno"><a href="#line_1959" id="line_1959"> 1959.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_WAL,</span></pre>
-<pre><span class="lineno"><a href="#line_1960" id="line_1960"> 1960.</a></span><span class="count    ">      1</span><span>    SQLMATH_EXE,</span></pre>
-<pre><span class="lineno"><a href="#line_1961" id="line_1961"> 1961.</a></span><span class="count    ">      1</span><span>    SQLMATH_NODE,</span></pre>
-<pre><span class="lineno"><a href="#line_1962" id="line_1962"> 1962.</a></span><span class="count    ">      1</span><span>    assertErrorThrownAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1963" id="line_1963"> 1963.</a></span><span class="count    ">      1</span><span>    assertInt64,</span></pre>
-<pre><span class="lineno"><a href="#line_1964" id="line_1964"> 1964.</a></span><span class="count    ">      1</span><span>    assertJsonEqual,</span></pre>
-<pre><span class="lineno"><a href="#line_1965" id="line_1965"> 1965.</a></span><span class="count    ">      1</span><span>    assertNumericalEqual,</span></pre>
-<pre><span class="lineno"><a href="#line_1966" id="line_1966"> 1966.</a></span><span class="count    ">      1</span><span>    assertOrThrow,</span></pre>
-<pre><span class="lineno"><a href="#line_1967" id="line_1967"> 1967.</a></span><span class="count    ">      1</span><span>    childProcessSpawn2,</span></pre>
-<pre><span class="lineno"><a href="#line_1968" id="line_1968"> 1968.</a></span><span class="count    ">      1</span><span>    ciBuildExt,</span></pre>
-<pre><span class="lineno"><a href="#line_1969" id="line_1969"> 1969.</a></span><span class="count    ">      1</span><span>    dbCloseAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1970" id="line_1970"> 1970.</a></span><span class="count    ">      1</span><span>    dbExecAndReturnLastBlob,</span></pre>
-<pre><span class="lineno"><a href="#line_1971" id="line_1971"> 1971.</a></span><span class="count    ">      1</span><span>    dbExecAndReturnLastRow,</span></pre>
-<pre><span class="lineno"><a href="#line_1972" id="line_1972"> 1972.</a></span><span class="count    ">      1</span><span>    dbExecAndReturnLastTable,</span></pre>
-<pre><span class="lineno"><a href="#line_1973" id="line_1973"> 1973.</a></span><span class="count    ">      1</span><span>    dbExecAndReturnLastValue,</span></pre>
-<pre><span class="lineno"><a href="#line_1974" id="line_1974"> 1974.</a></span><span class="count    ">      1</span><span>    dbExecAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1975" id="line_1975"> 1975.</a></span><span class="count    ">      1</span><span>    dbExecProfile,</span></pre>
-<pre><span class="lineno"><a href="#line_1976" id="line_1976"> 1976.</a></span><span class="count    ">      1</span><span>    dbFileLoadAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1977" id="line_1977"> 1977.</a></span><span class="count    ">      1</span><span>    dbFileSaveAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1978" id="line_1978"> 1978.</a></span><span class="count    ">      1</span><span>    dbNoopAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1979" id="line_1979"> 1979.</a></span><span class="count    ">      1</span><span>    dbOpenAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1980" id="line_1980"> 1980.</a></span><span class="count    ">      1</span><span>    dbTableImportAsync,</span></pre>
-<pre><span class="lineno"><a href="#line_1981" id="line_1981"> 1981.</a></span><span class="count    ">      1</span><span>    debugInline,</span></pre>
-<pre><span class="lineno"><a href="#line_1982" id="line_1982"> 1982.</a></span><span class="count    ">      1</span><span>    fsCopyFileUnlessTest,</span></pre>
-<pre><span class="lineno"><a href="#line_1983" id="line_1983"> 1983.</a></span><span class="count    ">      1</span><span>    fsExistsUnlessTest,</span></pre>
-<pre><span class="lineno"><a href="#line_1984" id="line_1984"> 1984.</a></span><span class="count    ">      1</span><span>    fsReadFileUnlessTest,</span></pre>
-<pre><span class="lineno"><a href="#line_1985" id="line_1985"> 1985.</a></span><span class="count    ">      1</span><span>    fsWriteFileUnlessTest,</span></pre>
-<pre><span class="lineno"><a href="#line_1986" id="line_1986"> 1986.</a></span><span class="count    ">      1</span><span>    jsbatonGetInt64,</span></pre>
-<pre><span class="lineno"><a href="#line_1987" id="line_1987"> 1987.</a></span><span class="count    ">      1</span><span>    jsbatonGetString,</span></pre>
-<pre><span class="lineno"><a href="#line_1988" id="line_1988"> 1988.</a></span><span class="count    ">      1</span><span>    libPlatformArchExt,</span></pre>
-<pre><span class="lineno"><a href="#line_1989" id="line_1989"> 1989.</a></span><span class="count    ">      1</span><span>    listOrEmptyList,</span></pre>
-<pre><span class="lineno"><a href="#line_1990" id="line_1990"> 1990.</a></span><span class="count    ">      1</span><span>    noop,</span></pre>
-<pre><span class="lineno"><a href="#line_1991" id="line_1991"> 1991.</a></span><span class="count    ">      1</span><span>    objectDeepCopyWithKeysSorted,</span></pre>
-<pre><span class="lineno"><a href="#line_1992" id="line_1992"> 1992.</a></span><span class="count    ">      1</span><span>    sqlmathWebworkerInit,</span></pre>
-<pre><span class="lineno"><a href="#line_1993" id="line_1993"> 1993.</a></span><span class="count    ">      1</span><span>    version,</span></pre>
-<pre><span class="lineno"><a href="#line_1994" id="line_1994"> 1994.</a></span><span class="count    ">      1</span><span>    waitAsync</span></pre>
-<pre><span class="lineno"><a href="#line_1995" id="line_1995"> 1995.</a></span><span class="count    ">      1</span><span>};</span></pre>
-<pre><span class="lineno"><a href="#line_1996" id="line_1996"> 1996.</a></span><span class="count    ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1911" id="line_1911"> 1911.</a></span><span class="count    ">      1</span><span>    let uvthreadpoolsize;</span></pre>
+<pre><span class="lineno"><a href="#line_1912" id="line_1912"> 1912.</a></span><span class="count    ">      1</span><span>    await new Promise(function (resolve) {</span></pre>
+<pre><span class="lineno"><a href="#line_1913" id="line_1913"> 1913.</a></span><span class="count    ">      1</span><span>        let child;</span></pre>
+<pre><span class="lineno"><a href="#line_1914" id="line_1914"> 1914.</a></span><span class="count    ">      1</span><span>        child = moduleChildProcess.spawn(</span></pre>
+<pre><span class="lineno"><a href="#line_1915" id="line_1915"> 1915.</a></span><span class="count    ">      1</span><span>            "sh",</span></pre>
+<pre><span class="lineno"><a href="#line_1916" id="line_1916"> 1916.</a></span><span class="count    ">      1</span><span>            ["-c", (`</span></pre>
+<pre><span class="lineno"><a href="#line_1917" id="line_1917"> 1917.</a></span><span class="count    ">      1</span><span>    case "$(uname)" in</span></pre>
+<pre><span class="lineno"><a href="#line_1918" id="line_1918"> 1918.</a></span><span class="count    ">      1</span><span>    Darwin)</span></pre>
+<pre><span class="lineno"><a href="#line_1919" id="line_1919"> 1919.</a></span><span class="count    ">      1</span><span>        sysctl -n hw.logicalcpu</span></pre>
+<pre><span class="lineno"><a href="#line_1920" id="line_1920"> 1920.</a></span><span class="count    ">      1</span><span>        ;;</span></pre>
+<pre><span class="lineno"><a href="#line_1921" id="line_1921"> 1921.</a></span><span class="count    ">      1</span><span>    Linux)</span></pre>
+<pre><span class="lineno"><a href="#line_1922" id="line_1922"> 1922.</a></span><span class="count    ">      1</span><span>        nproc</span></pre>
+<pre><span class="lineno"><a href="#line_1923" id="line_1923"> 1923.</a></span><span class="count    ">      1</span><span>        ;;</span></pre>
+<pre><span class="lineno"><a href="#line_1924" id="line_1924"> 1924.</a></span><span class="count    ">      1</span><span>    *NT*)</span></pre>
+<pre><span class="lineno"><a href="#line_1925" id="line_1925"> 1925.</a></span><span class="count    ">      1</span><span>        wmic cpu get NumberOfLogicalProcessors | \</span></pre>
+<pre><span class="lineno"><a href="#line_1926" id="line_1926"> 1926.</a></span><span class="count    ">      1</span><span>            grep -v "NumberOfLogicalProcessors"</span></pre>
+<pre><span class="lineno"><a href="#line_1927" id="line_1927"> 1927.</a></span><span class="count    ">      1</span><span>        ;;</span></pre>
+<pre><span class="lineno"><a href="#line_1928" id="line_1928"> 1928.</a></span><span class="count    ">      1</span><span>    esac</span></pre>
+<pre><span class="lineno"><a href="#line_1929" id="line_1929"> 1929.</a></span><span class="count    ">      1</span><span>            `)],</span></pre>
+<pre><span class="lineno"><a href="#line_1930" id="line_1930"> 1930.</a></span><span class="count    ">      1</span><span>            {stdio: ["ignore", "pipe", "ignore"]}</span></pre>
+<pre><span class="lineno"><a href="#line_1931" id="line_1931"> 1931.</a></span><span class="count    ">      1</span><span>        );</span></pre>
+<pre><span class="lineno"><a href="#line_1932" id="line_1932"> 1932.</a></span><span class="count    ">      1</span><span>        child.stdout.setEncoding("utf8");</span></pre>
+<pre><span class="lineno"><a href="#line_1933" id="line_1933"> 1933.</a></span><span class="count    ">      1</span><span>        child.stdout.on("data", function (chunk) {</span></pre>
+<pre><span class="lineno"><a href="#line_1934" id="line_1934"> 1934.</a></span><span class="count    ">      1</span><span>            uvthreadpoolsize = Number(chunk);</span></pre>
+<pre><span class="lineno"><a href="#line_1935" id="line_1935"> 1935.</a></span><span class="count    ">      1</span><span>        });</span></pre>
+<pre><span class="lineno"><a href="#line_1936" id="line_1936"> 1936.</a></span><span class="count    ">      1</span><span>        child.on("exit", resolve);</span></pre>
+<pre><span class="lineno"><a href="#line_1937" id="line_1937"> 1937.</a></span><span class="count    ">      1</span><span>    });</span></pre>
+<pre><span class="lineno"><a href="#line_1938" id="line_1938"> 1938.</a></span><span class="count    ">      1</span><span>    if (npm_config_mode_test) {</span></pre>
+<pre><span class="lineno"><a href="#line_1939" id="line_1939"> 1939.</a></span><span class="count    ">      1</span><span>        uvthreadpoolsize = undefined;</span></pre>
+<pre><span class="lineno"><a href="#line_1940" id="line_1940"> 1940.</a></span><span class="count    ">      1</span><span>    }</span></pre>
+<pre><span class="lineno"><a href="#line_1941" id="line_1941"> 1941.</a></span><span class="count    ">      1</span><span>    return uvthreadpoolsize || 4;</span></pre>
+<pre><span class="lineno"><a href="#line_1942" id="line_1942"> 1942.</a></span><span class="count    ">      1</span><span>}</span></pre>
+<pre><span class="lineno"><a href="#line_1943" id="line_1943"> 1943.</a></span><span class="count    ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1944" id="line_1944"> 1944.</a></span><span class="count    ">      1</span><span>function waitAsync(timeout) {</span></pre>
+<pre><span class="lineno"><a href="#line_1945" id="line_1945"> 1945.</a></span><span class="count    ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1946" id="line_1946"> 1946.</a></span><span class="count    ">      1</span><span>// This function will wait &lt;timeout&gt; ms.</span></pre>
+<pre><span class="lineno"><a href="#line_1947" id="line_1947"> 1947.</a></span><span class="count    ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1948" id="line_1948"> 1948.</a></span><span class="count    ">      1</span><span>    return new Promise(function (resolve) {</span></pre>
+<pre><span class="lineno"><a href="#line_1949" id="line_1949"> 1949.</a></span><span class="count    ">      1</span><span>        let ms = Number(timeout);</span></pre>
+<pre><span class="lineno"><a href="#line_1950" id="line_1950"> 1950.</a></span><span class="count    ">      1</span><span>        if (!Number.isFinite(ms)) {</span></pre>
+<pre><span class="lineno"><a href="#line_1951" id="line_1951"> 1951.</a></span><span class="count    ">      1</span><span>            ms = 0;</span></pre>
+<pre><span class="lineno"><a href="#line_1952" id="line_1952"> 1952.</a></span><span class="count    ">      1</span><span>        }</span></pre>
+<pre><span class="lineno"><a href="#line_1953" id="line_1953"> 1953.</a></span><span class="count    ">      1</span><span>        setTimeout(resolve, ms * !npm_config_mode_test);</span></pre>
+<pre><span class="lineno"><a href="#line_1954" id="line_1954"> 1954.</a></span><span class="count    ">      1</span><span>    });</span></pre>
+<pre><span class="lineno"><a href="#line_1955" id="line_1955"> 1955.</a></span><span class="count    ">      1</span><span>}</span></pre>
+<pre><span class="lineno"><a href="#line_1956" id="line_1956"> 1956.</a></span><span class="count    ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1957" id="line_1957"> 1957.</a></span><span class="count    ">      1</span><span>sqlmathInit(); // coverage-hack</span></pre>
+<pre><span class="lineno"><a href="#line_1958" id="line_1958"> 1958.</a></span><span class="count    ">      1</span><span>await sqlmathInit();</span></pre>
+<pre><span class="lineno"><a href="#line_1959" id="line_1959"> 1959.</a></span><span class="count    ">      1</span><span>sqlmathInit(); // coverage-hack</span></pre>
+<pre><span class="lineno"><a href="#line_1960" id="line_1960"> 1960.</a></span><span class="count    ">      1</span><span></span></pre>
+<pre><span class="lineno"><a href="#line_1961" id="line_1961"> 1961.</a></span><span class="count    ">      1</span><span>export {</span></pre>
+<pre><span class="lineno"><a href="#line_1962" id="line_1962"> 1962.</a></span><span class="count    ">      1</span><span>    DB_EXEC_PROFILE_DICT,</span></pre>
+<pre><span class="lineno"><a href="#line_1963" id="line_1963"> 1963.</a></span><span class="count    ">      1</span><span>    DB_STATE,</span></pre>
+<pre><span class="lineno"><a href="#line_1964" id="line_1964"> 1964.</a></span><span class="count    ">      1</span><span>    LGBM_DTYPE_FLOAT32,</span></pre>
+<pre><span class="lineno"><a href="#line_1965" id="line_1965"> 1965.</a></span><span class="count    ">      1</span><span>    LGBM_DTYPE_FLOAT64,</span></pre>
+<pre><span class="lineno"><a href="#line_1966" id="line_1966"> 1966.</a></span><span class="count    ">      1</span><span>    LGBM_DTYPE_INT32,</span></pre>
+<pre><span class="lineno"><a href="#line_1967" id="line_1967"> 1967.</a></span><span class="count    ">      1</span><span>    LGBM_DTYPE_INT64,</span></pre>
+<pre><span class="lineno"><a href="#line_1968" id="line_1968"> 1968.</a></span><span class="count    ">      1</span><span>    LGBM_FEATURE_IMPORTANCE_GAIN,</span></pre>
+<pre><span class="lineno"><a href="#line_1969" id="line_1969"> 1969.</a></span><span class="count    ">      1</span><span>    LGBM_FEATURE_IMPORTANCE_SPLIT,</span></pre>
+<pre><span class="lineno"><a href="#line_1970" id="line_1970"> 1970.</a></span><span class="count    ">      1</span><span>    LGBM_MATRIX_TYPE_CSC,</span></pre>
+<pre><span class="lineno"><a href="#line_1971" id="line_1971"> 1971.</a></span><span class="count    ">      1</span><span>    LGBM_MATRIX_TYPE_CSR,</span></pre>
+<pre><span class="lineno"><a href="#line_1972" id="line_1972"> 1972.</a></span><span class="count    ">      1</span><span>    LGBM_PREDICT_CONTRIB,</span></pre>
+<pre><span class="lineno"><a href="#line_1973" id="line_1973"> 1973.</a></span><span class="count    ">      1</span><span>    LGBM_PREDICT_LEAF_INDEX,</span></pre>
+<pre><span class="lineno"><a href="#line_1974" id="line_1974"> 1974.</a></span><span class="count    ">      1</span><span>    LGBM_PREDICT_NORMAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1975" id="line_1975"> 1975.</a></span><span class="count    ">      1</span><span>    LGBM_PREDICT_RAW_SCORE,</span></pre>
+<pre><span class="lineno"><a href="#line_1976" id="line_1976"> 1976.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_AUTOPROXY,</span></pre>
+<pre><span class="lineno"><a href="#line_1977" id="line_1977"> 1977.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_CREATE,</span></pre>
+<pre><span class="lineno"><a href="#line_1978" id="line_1978"> 1978.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_DELETEONCLOSE,</span></pre>
+<pre><span class="lineno"><a href="#line_1979" id="line_1979"> 1979.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_EXCLUSIVE,</span></pre>
+<pre><span class="lineno"><a href="#line_1980" id="line_1980"> 1980.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_FULLMUTEX,</span></pre>
+<pre><span class="lineno"><a href="#line_1981" id="line_1981"> 1981.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_MAIN_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_1982" id="line_1982"> 1982.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_MAIN_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1983" id="line_1983"> 1983.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_MEMORY,</span></pre>
+<pre><span class="lineno"><a href="#line_1984" id="line_1984"> 1984.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_NOFOLLOW,</span></pre>
+<pre><span class="lineno"><a href="#line_1985" id="line_1985"> 1985.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_NOMUTEX,</span></pre>
+<pre><span class="lineno"><a href="#line_1986" id="line_1986"> 1986.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_PRIVATECACHE,</span></pre>
+<pre><span class="lineno"><a href="#line_1987" id="line_1987"> 1987.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_READONLY,</span></pre>
+<pre><span class="lineno"><a href="#line_1988" id="line_1988"> 1988.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_READWRITE,</span></pre>
+<pre><span class="lineno"><a href="#line_1989" id="line_1989"> 1989.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_SHAREDCACHE,</span></pre>
+<pre><span class="lineno"><a href="#line_1990" id="line_1990"> 1990.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_SUBJOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1991" id="line_1991"> 1991.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_SUPER_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1992" id="line_1992"> 1992.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_TEMP_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_1993" id="line_1993"> 1993.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_TEMP_JOURNAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1994" id="line_1994"> 1994.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_TRANSIENT_DB,</span></pre>
+<pre><span class="lineno"><a href="#line_1995" id="line_1995"> 1995.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_URI,</span></pre>
+<pre><span class="lineno"><a href="#line_1996" id="line_1996"> 1996.</a></span><span class="count    ">      1</span><span>    SQLITE_OPEN_WAL,</span></pre>
+<pre><span class="lineno"><a href="#line_1997" id="line_1997"> 1997.</a></span><span class="count    ">      1</span><span>    SQLMATH_EXE,</span></pre>
+<pre><span class="lineno"><a href="#line_1998" id="line_1998"> 1998.</a></span><span class="count    ">      1</span><span>    SQLMATH_NODE,</span></pre>
+<pre><span class="lineno"><a href="#line_1999" id="line_1999"> 1999.</a></span><span class="count    ">      1</span><span>    assertErrorThrownAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_2000" id="line_2000"> 2000.</a></span><span class="count    ">      1</span><span>    assertInt64,</span></pre>
+<pre><span class="lineno"><a href="#line_2001" id="line_2001"> 2001.</a></span><span class="count    ">      1</span><span>    assertJsonEqual,</span></pre>
+<pre><span class="lineno"><a href="#line_2002" id="line_2002"> 2002.</a></span><span class="count    ">      1</span><span>    assertNumericalEqual,</span></pre>
+<pre><span class="lineno"><a href="#line_2003" id="line_2003"> 2003.</a></span><span class="count    ">      1</span><span>    assertOrThrow,</span></pre>
+<pre><span class="lineno"><a href="#line_2004" id="line_2004"> 2004.</a></span><span class="count    ">      1</span><span>    childProcessSpawn2,</span></pre>
+<pre><span class="lineno"><a href="#line_2005" id="line_2005"> 2005.</a></span><span class="count    ">      1</span><span>    ciBuildExt,</span></pre>
+<pre><span class="lineno"><a href="#line_2006" id="line_2006"> 2006.</a></span><span class="count    ">      1</span><span>    dbCloseAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_2007" id="line_2007"> 2007.</a></span><span class="count    ">      1</span><span>    dbExecAndReturnLastBlob,</span></pre>
+<pre><span class="lineno"><a href="#line_2008" id="line_2008"> 2008.</a></span><span class="count    ">      1</span><span>    dbExecAndReturnLastRow,</span></pre>
+<pre><span class="lineno"><a href="#line_2009" id="line_2009"> 2009.</a></span><span class="count    ">      1</span><span>    dbExecAndReturnLastTable,</span></pre>
+<pre><span class="lineno"><a href="#line_2010" id="line_2010"> 2010.</a></span><span class="count    ">      1</span><span>    dbExecAndReturnLastValue,</span></pre>
+<pre><span class="lineno"><a href="#line_2011" id="line_2011"> 2011.</a></span><span class="count    ">      1</span><span>    dbExecAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_2012" id="line_2012"> 2012.</a></span><span class="count    ">      1</span><span>    dbExecProfile,</span></pre>
+<pre><span class="lineno"><a href="#line_2013" id="line_2013"> 2013.</a></span><span class="count    ">      1</span><span>    dbFileLoadAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_2014" id="line_2014"> 2014.</a></span><span class="count    ">      1</span><span>    dbFileSaveAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_2015" id="line_2015"> 2015.</a></span><span class="count    ">      1</span><span>    dbNoopAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_2016" id="line_2016"> 2016.</a></span><span class="count    ">      1</span><span>    dbOpenAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_2017" id="line_2017"> 2017.</a></span><span class="count    ">      1</span><span>    dbTableImportAsync,</span></pre>
+<pre><span class="lineno"><a href="#line_2018" id="line_2018"> 2018.</a></span><span class="count    ">      1</span><span>    debugInline,</span></pre>
+<pre><span class="lineno"><a href="#line_2019" id="line_2019"> 2019.</a></span><span class="count    ">      1</span><span>    fsCopyFileUnlessTest,</span></pre>
+<pre><span class="lineno"><a href="#line_2020" id="line_2020"> 2020.</a></span><span class="count    ">      1</span><span>    fsExistsUnlessTest,</span></pre>
+<pre><span class="lineno"><a href="#line_2021" id="line_2021"> 2021.</a></span><span class="count    ">      1</span><span>    fsReadFileUnlessTest,</span></pre>
+<pre><span class="lineno"><a href="#line_2022" id="line_2022"> 2022.</a></span><span class="count    ">      1</span><span>    fsWriteFileUnlessTest,</span></pre>
+<pre><span class="lineno"><a href="#line_2023" id="line_2023"> 2023.</a></span><span class="count    ">      1</span><span>    jsbatonGetInt64,</span></pre>
+<pre><span class="lineno"><a href="#line_2024" id="line_2024"> 2024.</a></span><span class="count    ">      1</span><span>    jsbatonGetString,</span></pre>
+<pre><span class="lineno"><a href="#line_2025" id="line_2025"> 2025.</a></span><span class="count    ">      1</span><span>    libPlatformArchExt,</span></pre>
+<pre><span class="lineno"><a href="#line_2026" id="line_2026"> 2026.</a></span><span class="count    ">      1</span><span>    listOrEmptyList,</span></pre>
+<pre><span class="lineno"><a href="#line_2027" id="line_2027"> 2027.</a></span><span class="count    ">      1</span><span>    noop,</span></pre>
+<pre><span class="lineno"><a href="#line_2028" id="line_2028"> 2028.</a></span><span class="count    ">      1</span><span>    objectDeepCopyWithKeysSorted,</span></pre>
+<pre><span class="lineno"><a href="#line_2029" id="line_2029"> 2029.</a></span><span class="count    ">      1</span><span>    sqlmathWebworkerInit,</span></pre>
+<pre><span class="lineno"><a href="#line_2030" id="line_2030"> 2030.</a></span><span class="count    ">      1</span><span>    uvthreadpoolsizeGet,</span></pre>
+<pre><span class="lineno"><a href="#line_2031" id="line_2031"> 2031.</a></span><span class="count    ">      1</span><span>    version,</span></pre>
+<pre><span class="lineno"><a href="#line_2032" id="line_2032"> 2032.</a></span><span class="count    ">      1</span><span>    waitAsync</span></pre>
+<pre><span class="lineno"><a href="#line_2033" id="line_2033"> 2033.</a></span><span class="count    ">      1</span><span>};</span></pre>
+<pre><span class="lineno"><a href="#line_2034" id="line_2034"> 2034.</a></span><span class="count    ">      1</span><span></span></pre>
 </div>
 <!-- content end -->
 <div class="footer">

@@ -61,6 +61,7 @@ import {
     listOrEmptyList,
     noop,
     sqlmathWebworkerInit,
+    uvthreadpoolsizeGet,
     version,
     waitAsync
 } from "./sqlmath.mjs";
@@ -168,7 +169,8 @@ SELECT
                 );
                 result = result.stdout.trim();
                 assertJsonEqual(result, "abcd1234|abcd1234");
-            }())
+            }()),
+            uvthreadpoolsizeGet()
         ]);
     });
 });

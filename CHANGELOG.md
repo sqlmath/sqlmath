@@ -1,9 +1,15 @@
 # Changelog
 
 # Todo
+- sqlmath - Update function dbTableImportAsync() with excel/xlsx support.
+- sqlmath - Add file asset_sheetjs_rollup.mjs.
 - sqlmath - Streamline and optimize sql-function WIN_SINEFIT2().
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
+
+# v2026.5.1-beta
+- sqlmath-demo - Update chart tradebot_tech_intra_xxx normalized to spy_prc instead of stk_pct.
+- sqlmath - Add function uvthreadpoolsizeGet().
 
 # v2026.4.31
 - sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package. - part3 - ./sqlmath/lib_lightgbm_xxx.
