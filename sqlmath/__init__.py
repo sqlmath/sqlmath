@@ -193,7 +193,7 @@ def assert_or_throw(condition, message):
         )
 
 
-def csv_to_json_row_list(csv_text):
+def csv_to_list_of_list(csv_text):
     """This function will convert <csv>-text to json list-of-list."""
     # Normalize line endings and trim as per original logic
     csv_text = csv_text.rstrip() + "\n"
@@ -462,7 +462,7 @@ def db_table_import(
     if text_data is None:
         text_data = ""
     if mode == "csv":
-        row_list = csv_to_json_row_list(text_data)
+        row_list = csv_to_list_of_list(text_data)
     elif mode == "tsv":
         row_list = [
             line.split("\t") for line in text_data.strip().splitlines()

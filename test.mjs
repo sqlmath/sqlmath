@@ -39,7 +39,7 @@ import {
     assertOrThrow,
     childProcessSpawn2,
     ciBuildExt,
-    csvFromJsonRowList,
+    csvFromListofList,
     dbCloseAsync,
     dbExecAndReturnLastBlob,
     dbExecAndReturnLastRow,
@@ -3930,7 +3930,7 @@ SELECT
     ) USING (ii);
                     `)
                 });
-                valActual = csvFromJsonRowList({
+                valActual = csvFromListofList({
                     colList: [
                         "date",
                         "saa",

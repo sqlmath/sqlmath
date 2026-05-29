@@ -487,7 +487,7 @@ SQLMATH_CFLAG_WNO_LIST=" \\
     );
 }
 
-function csvFromJsonRowList({
+function csvFromListofList({
     colList,
     rowList
 }) {
@@ -527,7 +527,7 @@ function csvFromJsonRowList({
     return data;
 }
 
-function csvToJsonRowList({
+function csvToListofList({
     csv
 }) {
 // This function will convert <csv>-text to json list-of-list.
@@ -1284,7 +1284,7 @@ async function dbTableImportAsync({
     }
     switch (mode) {
     case "csv":
-        rowList = csvToJsonRowList({
+        rowList = csvToListofList({
             csv: textData
         });
         break;
@@ -2043,8 +2043,8 @@ export {
     assertOrThrow,
     childProcessSpawn2,
     ciBuildExt,
-    csvFromJsonRowList,
-    csvToJsonRowList,
+    csvFromListofList,
+    csvToListofList,
     dbCloseAsync,
     dbExecAndReturnLastBlob,
     dbExecAndReturnLastRow,

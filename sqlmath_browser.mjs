@@ -1,7 +1,7 @@
 /*jslint beta, bitwise, browser, devel, nomen*/
 import {
     assertOrThrow,
-    csvFromJsonRowList,
+    csvFromListofList,
     dbCloseAsync,
     dbExecAsync,
     dbFileSaveAsync,
@@ -1829,7 +1829,7 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
         });
         data = data[0] || [];
         data.shift();
-        data = csvFromJsonRowList({
+        data = csvFromListofList({
             colList: baton.colList,
             rowList: data
         });
