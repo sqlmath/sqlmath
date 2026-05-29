@@ -1,6 +1,7 @@
 /*jslint beta, bitwise, browser, devel, nomen*/
 import {
     assertOrThrow,
+    csvFromJsonRowList,
     dbCloseAsync,
     dbExecAsync,
     dbFileSaveAsync,
@@ -1828,7 +1829,7 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
         });
         data = data[0] || [];
         data.shift();
-        data = rowListToCsv({
+        data = csvFromJsonRowList({
             colList: baton.colList,
             rowList: data
         });
@@ -2088,46 +2089,6 @@ function onResize() {
         elem.dataset.init = "0";
     });
     uitableInitWithinView({});
-}
-
-function rowListToCsv({
-    colList,
-    rowList
-}) {
-// this function will convert json <rowList> to csv with given <colList>
-    let data = JSON.stringify([[colList], rowList].flat(), undefined, 1);
-    // convert data to csv
-    data = data.replace((
-        /\n  /g
-    ), "");
-    data = data.replace((
-        /\n \[/g
-    ), "");
-    data = data.replace((
-        /\n \],?/g
-    ), "\r\n");
-    data = data.slice(1, -2);
-    // sqlite-strings are c-strings which should never contain null-char
-    data = data.replace((
-        /\u0000/g
-    ), "");
-    // hide double-backslash `\\\\` as null-char
-    data = data.replace((
-        /\\\\/g
-    ), "\u0000");
-    // escape double-quote `\\"` to `""`
-    data = data.replace((
-        /\\"/g
-    ), "\"\"");
-    // replace newline with space
-    data = data.replace((
-        /\\r\\n|\\r|\\n/g
-    ), " ");
-    // restore double-backslash `\\\\` from null-char
-    data = data.replace((
-        /\u0000/g
-    ), "\\\\");
-    return data;
 }
 
 function stringHtmlSafe(str) {

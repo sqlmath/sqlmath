@@ -487,6 +487,197 @@ SQLMATH_CFLAG_WNO_LIST=" \\
     );
 }
 
+function csvFromJsonRowList({
+    colList,
+    rowList
+}) {
+// this function will convert json <rowList> to csv with given <colList>
+    let data = JSON.stringify([[colList], rowList].flat(), undefined, 1);
+    // convert data to csv
+    data = data.replace((
+        /\n  /g
+    ), "");
+    data = data.replace((
+        /\n \[/g
+    ), "");
+    data = data.replace((
+        /\n \],?/g
+    ), "\r\n");
+    data = data.slice(1, -2);
+    // sqlite-strings are c-strings which should never contain null-char
+    data = data.replace((
+        /\u0000/g
+    ), "");
+    // hide double-backslash `\\\\` as null-char
+    data = data.replace((
+        /\\\\/g
+    ), "\u0000");
+    // escape double-quote `\\"` to `""`
+    data = data.replace((
+        /\\"/g
+    ), "\"\"");
+    // replace newline with space
+    data = data.replace((
+        /\\r\\n|\\r|\\n/g
+    ), " ");
+    // restore double-backslash `\\\\` from null-char
+    data = data.replace((
+        /\u0000/g
+    ), "\\\\");
+    return data;
+}
+
+function csvToJsonRowList({
+    csv
+}) {
+// This function will convert <csv>-text to json list-of-list.
+//
+// https://tools.ietf.org/html/rfc4180#section-2
+// Definition of the CSV Format
+// While there are various specifications and implementations for the
+// CSV format (for ex. [4], [5], [6] and [7]), there is no formal
+// specification in existence, which allows for a wide variety of
+// interpretations of CSV files.  This section documents the format that
+// seems to be followed by most implementations:
+//
+// 1.  Each record is located on a separate line, delimited by a line
+//     break (CRLF).  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+//
+// 2.  The last record in the file may or may not have an ending line
+//     break.  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx
+//
+// 3.  There maybe an optional header line appearing as the first line
+//     of the file with the same format as normal record lines.  This
+//     header will contain names corresponding to the fields in the file
+//     and should contain the same number of fields as the records in
+//     the rest of the file (the presence or absence of the header line
+//     should be indicated via the optional "header" parameter of this
+//     MIME type).  For example:
+//     field_name,field_name,field_name CRLF
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+//
+// 4.  Within the header and each record, there may be one or more
+//     fields, separated by commas.  Each line should contain the same
+//     number of fields throughout the file.  Spaces are considered part
+//     of a field and should not be ignored.  The last field in the
+//     record must not be followed by a comma.  For example:
+//     aaa,bbb,ccc
+//
+// 5.  Each field may or may not be enclosed in double quotes (however
+//     some programs, such as Microsoft Excel, do not use double quotes
+//     at all).  If fields are not enclosed with double quotes, then
+//     double quotes may not appear inside the fields.  For example:
+//     "aaa","bbb","ccc" CRLF
+//     zzz,yyy,xxx
+//
+// 6.  Fields containing line breaks (CRLF), double quotes, and commas
+//     should be enclosed in double-quotes.  For example:
+//     "aaa","b CRLF
+//     bb","ccc" CRLF
+//     zzz,yyy,xxx
+//
+// 7.  If double-quotes are used to enclose fields, then a double-quote
+//     appearing inside a field must be escaped by preceding it with
+//     another double quote.  For example:
+//     "aaa","b""bb","ccc"
+    let match;
+    let quote;
+    let rgx;
+    let row;
+    let rowList;
+    let val;
+    // normalize "\r\n" to "\n"
+    csv = csv.trimEnd().replace((
+        /\r\n?/gu
+    ), "\n") + "\n";
+    rgx = (
+        /(.*?)(""|"|,|\n)/gu
+    );
+    rowList = [];
+    // reset row
+    row = [];
+    val = "";
+    while (true) {
+        match = rgx.exec(csv);
+        if (!match) {
+// 2.  The last record in the file may or may not have an ending line
+//     break.  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx
+            if (!row.length) {
+                break;
+            }
+            // // if eof missing crlf, then mock it
+            // rgx.lastIndex = csv.length;
+            // match = [
+            //     "\n", "", "\n"
+            // ];
+        }
+        // build val
+        val += match[1];
+        if (match[2] === "\"") {
+// 5.  Each field may or may not be enclosed in double quotes (however
+//     some programs, such as Microsoft Excel, do not use double quotes
+//     at all).  If fields are not enclosed with double quotes, then
+//     double quotes may not appear inside the fields.  For example:
+//     "aaa","bbb","ccc" CRLF
+//     zzz,yyy,xxx
+            quote = !quote;
+        } else if (quote) {
+// 7.  If double-quotes are used to enclose fields, then a double-quote
+//     appearing inside a field must be escaped by preceding it with
+//     another double quote.  For example:
+//     "aaa","b""bb","ccc"
+            if (match[2] === "\"\"") {
+                val += "\"";
+// 6.  Fields containing line breaks (CRLF), double quotes, and commas
+//     should be enclosed in double-quotes.  For example:
+//     "aaa","b CRLF
+//     bb","ccc" CRLF
+//     zzz,yyy,xxx
+            } else {
+                val += match[2];
+            }
+        } else if (match[2] === ",") {
+// 4.  Within the header and each record, there may be one or more
+//     fields, separated by commas.  Each line should contain the same
+//     number of fields throughout the file.  Spaces are considered part
+//     of a field and should not be ignored.  The last field in the
+//     record must not be followed by a comma.  For example:
+//     aaa,bbb,ccc
+            // delimit val
+            row.push(val);
+            val = "";
+        } else if (match[2] === "\n") {
+// 1.  Each record is located on a separate line, delimited by a line
+//     break (CRLF).  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+            // delimit val
+            row.push(val);
+            val = "";
+            // append row
+            rowList.push(row);
+            // reset row
+            row = [];
+        }
+    }
+    // // append val
+    // if (val) {
+    //     row.push(val);
+    // }
+    // // append row
+    // if (row.length) {
+    //     rowList.push(row);
+    // }
+    return rowList;
+}
+
 async function dbCallAsync(baton, argList, mode, db) {
 
 // This function will call c-function dbXxx() with given <funcname>
@@ -1093,7 +1284,7 @@ async function dbTableImportAsync({
     }
     switch (mode) {
     case "csv":
-        rowList = jsonRowListFromCsv({
+        rowList = csvToJsonRowList({
             csv: textData
         });
         break;
@@ -1521,157 +1712,6 @@ function jsonParseArraybuffer(buf) {
     );
 }
 
-function jsonRowListFromCsv({
-    csv
-}) {
-// This function will convert <csv>-text to json list-of-list.
-//
-// https://tools.ietf.org/html/rfc4180#section-2
-// Definition of the CSV Format
-// While there are various specifications and implementations for the
-// CSV format (for ex. [4], [5], [6] and [7]), there is no formal
-// specification in existence, which allows for a wide variety of
-// interpretations of CSV files.  This section documents the format that
-// seems to be followed by most implementations:
-//
-// 1.  Each record is located on a separate line, delimited by a line
-//     break (CRLF).  For example:
-//     aaa,bbb,ccc CRLF
-//     zzz,yyy,xxx CRLF
-//
-// 2.  The last record in the file may or may not have an ending line
-//     break.  For example:
-//     aaa,bbb,ccc CRLF
-//     zzz,yyy,xxx
-//
-// 3.  There maybe an optional header line appearing as the first line
-//     of the file with the same format as normal record lines.  This
-//     header will contain names corresponding to the fields in the file
-//     and should contain the same number of fields as the records in
-//     the rest of the file (the presence or absence of the header line
-//     should be indicated via the optional "header" parameter of this
-//     MIME type).  For example:
-//     field_name,field_name,field_name CRLF
-//     aaa,bbb,ccc CRLF
-//     zzz,yyy,xxx CRLF
-//
-// 4.  Within the header and each record, there may be one or more
-//     fields, separated by commas.  Each line should contain the same
-//     number of fields throughout the file.  Spaces are considered part
-//     of a field and should not be ignored.  The last field in the
-//     record must not be followed by a comma.  For example:
-//     aaa,bbb,ccc
-//
-// 5.  Each field may or may not be enclosed in double quotes (however
-//     some programs, such as Microsoft Excel, do not use double quotes
-//     at all).  If fields are not enclosed with double quotes, then
-//     double quotes may not appear inside the fields.  For example:
-//     "aaa","bbb","ccc" CRLF
-//     zzz,yyy,xxx
-//
-// 6.  Fields containing line breaks (CRLF), double quotes, and commas
-//     should be enclosed in double-quotes.  For example:
-//     "aaa","b CRLF
-//     bb","ccc" CRLF
-//     zzz,yyy,xxx
-//
-// 7.  If double-quotes are used to enclose fields, then a double-quote
-//     appearing inside a field must be escaped by preceding it with
-//     another double quote.  For example:
-//     "aaa","b""bb","ccc"
-    let match;
-    let quote;
-    let rgx;
-    let row;
-    let rowList;
-    let val;
-    // normalize "\r\n" to "\n"
-    csv = csv.trimEnd().replace((
-        /\r\n?/gu
-    ), "\n") + "\n";
-    rgx = (
-        /(.*?)(""|"|,|\n)/gu
-    );
-    rowList = [];
-    // reset row
-    row = [];
-    val = "";
-    while (true) {
-        match = rgx.exec(csv);
-        if (!match) {
-// 2.  The last record in the file may or may not have an ending line
-//     break.  For example:
-//     aaa,bbb,ccc CRLF
-//     zzz,yyy,xxx
-            if (!row.length) {
-                break;
-            }
-            // // if eof missing crlf, then mock it
-            // rgx.lastIndex = csv.length;
-            // match = [
-            //     "\n", "", "\n"
-            // ];
-        }
-        // build val
-        val += match[1];
-        if (match[2] === "\"") {
-// 5.  Each field may or may not be enclosed in double quotes (however
-//     some programs, such as Microsoft Excel, do not use double quotes
-//     at all).  If fields are not enclosed with double quotes, then
-//     double quotes may not appear inside the fields.  For example:
-//     "aaa","bbb","ccc" CRLF
-//     zzz,yyy,xxx
-            quote = !quote;
-        } else if (quote) {
-// 7.  If double-quotes are used to enclose fields, then a double-quote
-//     appearing inside a field must be escaped by preceding it with
-//     another double quote.  For example:
-//     "aaa","b""bb","ccc"
-            if (match[2] === "\"\"") {
-                val += "\"";
-// 6.  Fields containing line breaks (CRLF), double quotes, and commas
-//     should be enclosed in double-quotes.  For example:
-//     "aaa","b CRLF
-//     bb","ccc" CRLF
-//     zzz,yyy,xxx
-            } else {
-                val += match[2];
-            }
-        } else if (match[2] === ",") {
-// 4.  Within the header and each record, there may be one or more
-//     fields, separated by commas.  Each line should contain the same
-//     number of fields throughout the file.  Spaces are considered part
-//     of a field and should not be ignored.  The last field in the
-//     record must not be followed by a comma.  For example:
-//     aaa,bbb,ccc
-            // delimit val
-            row.push(val);
-            val = "";
-        } else if (match[2] === "\n") {
-// 1.  Each record is located on a separate line, delimited by a line
-//     break (CRLF).  For example:
-//     aaa,bbb,ccc CRLF
-//     zzz,yyy,xxx CRLF
-            // delimit val
-            row.push(val);
-            val = "";
-            // append row
-            rowList.push(row);
-            // reset row
-            row = [];
-        }
-    }
-    // // append val
-    // if (val) {
-    //     row.push(val);
-    // }
-    // // append row
-    // if (row.length) {
-    //     rowList.push(row);
-    // }
-    return rowList;
-}
-
 function libPlatformArchExt() {
     let libArch = process.arch;
     let libExt = process.platform;
@@ -2003,6 +2043,8 @@ export {
     assertOrThrow,
     childProcessSpawn2,
     ciBuildExt,
+    csvFromJsonRowList,
+    csvToJsonRowList,
     dbCloseAsync,
     dbExecAndReturnLastBlob,
     dbExecAndReturnLastRow,
