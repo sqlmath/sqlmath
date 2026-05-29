@@ -130,42 +130,61 @@ function ciBuildExt<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync">8.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.csvFromListofList">8.
+function csvFromListofList<span class="apidocSignatureSpan">({
+    colList,
+    rowList
+})</span>
+</a>
+
+</li>
+<li>
+
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.csvToListofList">9.
+function csvToListofList<span class="apidocSignatureSpan">({
+    csv
+})</span>
+</a>
+
+</li>
+<li>
+
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync">10.
 function dbCloseAsync<span class="apidocSignatureSpan">(db)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlob">9.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlob">11.
 function dbExecAndReturnLastBlob<span class="apidocSignatureSpan">(option)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastRow">10.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastRow">12.
 function dbExecAndReturnLastRow<span class="apidocSignatureSpan">(option)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastTable">11.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastTable">13.
 function dbExecAndReturnLastTable<span class="apidocSignatureSpan">(option)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastValue">12.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastValue">14.
 function dbExecAndReturnLastValue<span class="apidocSignatureSpan">(option)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync">13.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync">15.
 function dbExecAsync<span class="apidocSignatureSpan">({
     bindList = [],
     db,
@@ -178,7 +197,7 @@ function dbExecAsync<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecProfile">14.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecProfile">16.
 function dbExecProfile<span class="apidocSignatureSpan">({
     limit = 20,
     lineLength = 80,
@@ -190,7 +209,7 @@ function dbExecProfile<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileLoadAsync">15.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileLoadAsync">17.
 function dbFileLoadAsync<span class="apidocSignatureSpan">({
     db,
     dbData,
@@ -203,7 +222,7 @@ function dbFileLoadAsync<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileSaveAsync">16.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileSaveAsync">18.
 function dbFileSaveAsync<span class="apidocSignatureSpan">({
     db,
     dbData,
@@ -215,14 +234,14 @@ function dbFileSaveAsync<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync">17.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync">19.
 function dbNoopAsync<span class="apidocSignatureSpan">(...argList)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync">18.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync">20.
 function dbOpenAsync<span class="apidocSignatureSpan">({
     afterFinalization,
     dbData,
@@ -236,7 +255,7 @@ function dbOpenAsync<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbTableImportAsync">19.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbTableImportAsync">21.
 function dbTableImportAsync<span class="apidocSignatureSpan">({
     db,
     filename,
@@ -250,84 +269,84 @@ function dbTableImportAsync<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline">20.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline">22.
 function debugInline<span class="apidocSignatureSpan">(...argv)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest">21.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest">23.
 function fsCopyFileUnlessTest<span class="apidocSignatureSpan">(file1, file2, mode)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest">22.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest">24.
 function fsExistsUnlessTest<span class="apidocSignatureSpan">(file, mode)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest">23.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest">25.
 function fsReadFileUnlessTest<span class="apidocSignatureSpan">(file, mode, defaultData)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest">24.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest">26.
 function fsWriteFileUnlessTest<span class="apidocSignatureSpan">(file, data, mode)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetInt64">25.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetInt64">27.
 function jsbatonGetInt64<span class="apidocSignatureSpan">(baton, argi)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetString">26.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetString">28.
 function jsbatonGetString<span class="apidocSignatureSpan">(baton, argi)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.libPlatformArchExt">27.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.libPlatformArchExt">29.
 function libPlatformArchExt<span class="apidocSignatureSpan">()</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.listOrEmptyList">28.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.listOrEmptyList">30.
 function listOrEmptyList<span class="apidocSignatureSpan">(list)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.noop">29.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.noop">31.
 function noop<span class="apidocSignatureSpan">(val)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted">30.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted">32.
 function objectDeepCopyWithKeysSorted<span class="apidocSignatureSpan">(obj)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit">31.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit">33.
 function sqlmathWebworkerInit<span class="apidocSignatureSpan">({
     db,
     modeTest
@@ -337,280 +356,280 @@ function sqlmathWebworkerInit<span class="apidocSignatureSpan">({
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.uvthreadpoolsizeGet">32.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.uvthreadpoolsizeGet">34.
 function uvthreadpoolsizeGet<span class="apidocSignatureSpan">()</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.waitAsync">33.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.waitAsync">35.
 function waitAsync<span class="apidocSignatureSpan">(timeout)</span>
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT32">34.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT32">36.
 number LGBM_DTYPE_FLOAT32
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT64">35.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT64">37.
 number LGBM_DTYPE_FLOAT64
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT32">36.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT32">38.
 number LGBM_DTYPE_INT32
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT64">37.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT64">39.
 number LGBM_DTYPE_INT64
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_GAIN">38.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_GAIN">40.
 number LGBM_FEATURE_IMPORTANCE_GAIN
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_SPLIT">39.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_SPLIT">41.
 number LGBM_FEATURE_IMPORTANCE_SPLIT
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSC">40.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSC">42.
 number LGBM_MATRIX_TYPE_CSC
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSR">41.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSR">43.
 number LGBM_MATRIX_TYPE_CSR
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_CONTRIB">42.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_CONTRIB">44.
 number LGBM_PREDICT_CONTRIB
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_LEAF_INDEX">43.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_LEAF_INDEX">45.
 number LGBM_PREDICT_LEAF_INDEX
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_NORMAL">44.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_NORMAL">46.
 number LGBM_PREDICT_NORMAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_RAW_SCORE">45.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_RAW_SCORE">47.
 number LGBM_PREDICT_RAW_SCORE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY">46.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY">48.
 number SQLITE_OPEN_AUTOPROXY
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE">47.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE">49.
 number SQLITE_OPEN_CREATE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE">48.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE">50.
 number SQLITE_OPEN_DELETEONCLOSE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE">49.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE">51.
 number SQLITE_OPEN_EXCLUSIVE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX">50.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX">52.
 number SQLITE_OPEN_FULLMUTEX
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB">51.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB">53.
 number SQLITE_OPEN_MAIN_DB
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL">52.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL">54.
 number SQLITE_OPEN_MAIN_JOURNAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY">53.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY">55.
 number SQLITE_OPEN_MEMORY
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW">54.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW">56.
 number SQLITE_OPEN_NOFOLLOW
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX">55.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX">57.
 number SQLITE_OPEN_NOMUTEX
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE">56.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE">58.
 number SQLITE_OPEN_PRIVATECACHE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY">57.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY">59.
 number SQLITE_OPEN_READONLY
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE">58.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE">60.
 number SQLITE_OPEN_READWRITE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE">59.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE">61.
 number SQLITE_OPEN_SHAREDCACHE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL">60.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL">62.
 number SQLITE_OPEN_SUBJOURNAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL">61.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL">63.
 number SQLITE_OPEN_SUPER_JOURNAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB">62.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB">64.
 number SQLITE_OPEN_TEMP_DB
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL">63.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL">65.
 number SQLITE_OPEN_TEMP_JOURNAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB">64.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB">66.
 number SQLITE_OPEN_TRANSIENT_DB
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI">65.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI">67.
 number SQLITE_OPEN_URI
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL">66.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL">68.
 number SQLITE_OPEN_WAL
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_EXEC_PROFILE_DICT">67.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_EXEC_PROFILE_DICT">69.
 object DB_EXEC_PROFILE_DICT
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_STATE">68.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_STATE">70.
 object DB_STATE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE">69.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE">71.
 string SQLMATH_EXE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE">70.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE">72.
 string SQLMATH_NODE
 </a>
 
 </li>
 <li>
 
-<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version">71.
+<a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version">73.
 string version
 </a>
 
@@ -1005,7 +1024,149 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync">8.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.csvFromListofList" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.csvFromListofList">8.
+    function csvFromListofList<span class="apidocSignatureSpan">({
+    colList,
+    rowList
+})</span>
+    </a>
+    </h2>
+</li>
+<li>Description and source-code:<pre class="apidocCodePre">function csvFromListofList({
+    colList,
+    rowList
+}) {
+// this function will convert json &lt;rowList&gt; to csv with given &lt;colList&gt;
+    let data = JSON.stringify([[colList], rowList].flat(), undefined, 1);
+    // convert data to csv
+    data = data.replace((
+        /\n  /g
+    ), "");
+    data = data.replace((
+        /\n \[/g
+    ), "");
+    data = data.replace((
+        /\n \],?/g
+    ), "\r\n");
+    data = data.slice(1, -2);
+    // sqlite-strings are c-strings which should never contain null-char
+    data = data.replace((
+        /\u0000/g
+    ), "");
+    // hide double-backslash `\\\\` as null-char
+    data = data.replace((
+        /\\\\/g
+    ), "\u0000");
+    // escape double-quote `\\"` to `""`
+    data = data.replace((
+        /\\"/g
+    ), "\"\"");
+    // replace newline with space
+    data = data.replace((
+        /\\r\\n|\\r|\\n/g
+    ), " ");
+    // restore double-backslash `\\\\` from null-char
+    data = data.replace((
+        /\u0000/g
+    ), "\\\\");
+    return data;
+}</pre></li>
+<li>Example usage:<pre class="apidocCodePre">...
+    SELECT
+        ii + 1 AS ii,
+        SINEFIT_EXTRACT(__wsf, 0, 'predict_snr', ii + 1) AS predict_snr
+    FROM __sinefit_csv
+) USING (ii);
+                `)
+            });
+            valActual = <span class="apidocCodeKeywordSpan">csvFromListofList</span>({
+                colList: [
+                    "date",
+                    "saa",
+                    "sww",
+                    "spp",
+                    "ii",
+                    "linear_residual",
+...</pre></li>
+
+<li>
+    <h2>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.csvToListofList" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.csvToListofList">9.
+    function csvToListofList<span class="apidocSignatureSpan">({
+    csv
+})</span>
+    </a>
+    </h2>
+</li>
+<li>Description and source-code:<pre class="apidocCodePre">function csvToListofList({
+    csv
+}) {
+// This function will convert &lt;csv&gt;-text to json list-of-list.
+//
+// https://tools.ietf.org/html/rfc4180#section-2
+// Definition of the CSV Format
+// While there are various specifications and implementations for the
+// CSV format (for ex. [4], [5], [6] and [7]), there is no formal
+// specification in existence, which allows for a wide variety of
+// interpretations of CSV files.  This section documents the format that
+// seems to be followed by most implementations:
+//
+// 1.  Each record is located on a separate line, delimited by a line
+//     break (CRLF).  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+//
+// 2.  The last record in the file may or may not have an ending line
+//     break.  For example:
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx
+//
+// 3.  There maybe an optional header line appearing as the first line
+//     of the file with the same format as normal record lines.  This
+//     header will contain names corresponding to the fields in the file
+//     and should contain the same number of fields as the records in
+//     the rest of the file (the presence or absence of the header line
+//     should be indicated via the optional "header" parameter of this
+//     MIME type).  For example:
+//     field_name,field_name,field_name CRLF
+//     aaa,bbb,ccc CRLF
+//     zzz,yyy,xxx CRLF
+//
+// 4.  Within the header and each record, there may be one or more
+//     fields, separated by commas.  Each line should contain the same
+//     number of fields throughout the file.  Spaces are considered part
+//     of a field and should not be ignored.  The last field in the
+//     record must not be followed by a comma.  For example:
+//     aaa,bbb,ccc
+//
+// 5.  Each field may or may not be enclosed in double quotes (however
+//     some programs, such as Microsoft Excel, do not use double quotes
+//     at all).  If fields are not enclosed with double quotes, then
+//     double quotes may not appear inside the fields.  For example:
+//     "aaa","bbb","ccc" CRLF...
+}
+</pre></li>
+<li>Example usage:<pre class="apidocCodePre">...
+let rowidList;
+let tmp;
+if (filename) {
+    textData = await moduleFs.promises.readFile(filename, "utf8");
+}
+switch (mode) {
+case "csv":
+    rowList = <span class="apidocCodeKeywordSpan">csvToListofList</span>({
+        csv: textData
+    });
+    break;
+case "tsv":
+    rowList = [];
+    textData.trimEnd().replace((/.+/g), function (line) {
+        rowList.push(line.split("\t"));
+...</pre></li>
+
+<li>
+    <h2>
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbCloseAsync">10.
     function dbCloseAsync<span class="apidocSignatureSpan">(db)</span>
     </a>
     </h2>
@@ -1052,7 +1213,7 @@ Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/ind
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlob" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlob">9.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlob" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastBlob">11.
     function dbExecAndReturnLastBlob<span class="apidocSignatureSpan">(option)</span>
     </a>
     </h2>
@@ -1086,7 +1247,7 @@ assertJsonEqual(
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastRow" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastRow">10.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastRow" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastRow">12.
     function dbExecAndReturnLastRow<span class="apidocSignatureSpan">(option)</span>
     </a>
     </h2>
@@ -1121,7 +1282,7 @@ FROM (
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastTable" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastTable">11.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastTable" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastTable">13.
     function dbExecAndReturnLastTable<span class="apidocSignatureSpan">(option)</span>
     </a>
     </h2>
@@ -1155,7 +1316,7 @@ SELECT WIN_SUM1(1) FROM __tmp1;
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastValue" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastValue">12.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastValue" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAndReturnLastValue">14.
     function dbExecAndReturnLastValue<span class="apidocSignatureSpan">(option)</span>
     </a>
     </h2>
@@ -1189,7 +1350,7 @@ assertJsonEqual(valActual, valExpect, {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync">13.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecAsync">15.
     function dbExecAsync<span class="apidocSignatureSpan">({
     bindList = [],
     db,
@@ -1300,7 +1461,7 @@ The JavaScript (Node.js) binding is more mature than Python. Key differences:
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecProfile" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecProfile">14.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecProfile" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbExecProfile">16.
     function dbExecProfile<span class="apidocSignatureSpan">({
     limit = 20,
     lineLength = 80,
@@ -1374,7 +1535,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileLoadAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileLoadAsync">15.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileLoadAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileLoadAsync">17.
     function dbFileLoadAsync<span class="apidocSignatureSpan">({
     db,
     dbData,
@@ -1463,7 +1624,7 @@ data = await dbExecAsync({
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileSaveAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileSaveAsync">16.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileSaveAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbFileSaveAsync">18.
     function dbFileSaveAsync<span class="apidocSignatureSpan">({
     db,
     dbData,
@@ -1510,7 +1671,7 @@ assertJsonEqual(
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync">17.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbNoopAsync">19.
     function dbNoopAsync<span class="apidocSignatureSpan">(...argList)</span>
     </a>
     </h2>
@@ -1544,7 +1705,7 @@ assertJsonEqual(
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync">18.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbOpenAsync">20.
     function dbOpenAsync<span class="apidocSignatureSpan">({
     afterFinalization,
     dbData,
@@ -1638,7 +1799,7 @@ The JavaScript (Node.js) binding is more mature than Python. Key differences:
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbTableImportAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbTableImportAsync">19.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.dbTableImportAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.dbTableImportAsync">21.
     function dbTableImportAsync<span class="apidocSignatureSpan">({
     db,
     filename,
@@ -1668,7 +1829,7 @@ The JavaScript (Node.js) binding is more mature than Python. Key differences:
     }
     switch (mode) {
     case "csv":
-        rowList = jsonRowListFromCsv({
+        rowList = csvToListofList({
             csv: textData
         });
         break;
@@ -1727,7 +1888,7 @@ The JavaScript (Node.js) binding is more mature than Python. Key differences:
     // preserve rowid
     if (rowidList) {
         colList.unshift("rowid");
-        rowList.forEach(func...
+        rowList.forEach(functio...
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
@@ -1750,7 +1911,7 @@ FROM __lgbm_state;
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline">20.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.debugInline">22.
     function debugInline<span class="apidocSignatureSpan">(...argv)</span>
     </a>
     </h2>
@@ -1768,7 +1929,7 @@ FROM __lgbm_state;
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest">21.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsCopyFileUnlessTest">23.
     function fsCopyFileUnlessTest<span class="apidocSignatureSpan">(file1, file2, mode)</span>
     </a>
     </h2>
@@ -1802,7 +1963,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest">22.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsExistsUnlessTest">24.
     function fsExistsUnlessTest<span class="apidocSignatureSpan">(file, mode)</span>
     </a>
     </h2>
@@ -1841,7 +2002,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest">23.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsReadFileUnlessTest">25.
     function fsReadFileUnlessTest<span class="apidocSignatureSpan">(file, mode, defaultData)</span>
     </a>
     </h2>
@@ -1859,8 +2020,8 @@ jstestIt((
     );
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-            valActual = valActual.replace((/ /g), "\t");
-            valActual = valActual.trim() + "\n";
+            valActual = valActual.replace((/\r\n/g), "\n");
+            valActual = valActual.replace((/,/g), "\t");
             await fsWriteFileUnlessTest(
                 "test_data_sinefit.csv",
                 valActual,
@@ -1878,7 +2039,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest">24.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.fsWriteFileUnlessTest">26.
     function fsWriteFileUnlessTest<span class="apidocSignatureSpan">(file, data, mode)</span>
     </a>
     </h2>
@@ -1893,13 +2054,13 @@ jstestIt((
     await moduleFs.promises.writeFile(file, data);
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-        }).join(" ");
-    }).join("\n")
-);
-valActual = valActual.replace((/  /g), " null ");
-valActual = valActual.replace((/ \n/g), "\n");
-valActual = valActual.replace((/ /g), "\t");
-valActual = valActual.trim() + "\n";
+        });
+    })
+});
+valActual = valActual.replace((/"/g), "");
+valActual = valActual.replace((/,,/g), ",null,");
+valActual = valActual.replace((/\r\n/g), "\n");
+valActual = valActual.replace((/,/g), "\t");
 await <span class="apidocCodeKeywordSpan">fsWriteFileUnlessTest</span>(
     "test_data_sinefit.csv",
     valActual,
@@ -1912,7 +2073,7 @@ valExpect = await fsReadFileUnlessTest(
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetInt64" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetInt64">25.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetInt64" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetInt64">27.
     function jsbatonGetInt64<span class="apidocSignatureSpan">(baton, argi)</span>
     </a>
     </h2>
@@ -1943,7 +2104,7 @@ assertJsonEqual(valActual, valExpect, {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetString" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetString">26.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetString" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.jsbatonGetString">28.
     function jsbatonGetString<span class="apidocSignatureSpan">(baton, argi)</span>
     </a>
     </h2>
@@ -1980,7 +2141,7 @@ assertJsonEqual(valActual, valExpect, {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.libPlatformArchExt" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.libPlatformArchExt">27.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.libPlatformArchExt" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.libPlatformArchExt">29.
     function libPlatformArchExt<span class="apidocSignatureSpan">()</span>
     </a>
     </h2>
@@ -2014,7 +2175,7 @@ PRAGMA busy_timeout = ${timeoutBusy};
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.listOrEmptyList" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.listOrEmptyList">28.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.listOrEmptyList" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.listOrEmptyList">30.
     function listOrEmptyList<span class="apidocSignatureSpan">(list)</span>
     </a>
     </h2>
@@ -2045,7 +2206,7 @@ jstestDescribe((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.noop" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.noop">29.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.noop" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.noop">31.
     function noop<span class="apidocSignatureSpan">(val)</span>
     </a>
     </h2>
@@ -2076,7 +2237,7 @@ assertJsonEqual(valActual, valExpect, {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted">30.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.objectDeepCopyWithKeysSorted">32.
     function objectDeepCopyWithKeysSorted<span class="apidocSignatureSpan">(obj)</span>
     </a>
     </h2>
@@ -2124,7 +2285,7 @@ async function sqlmathInit() {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit">31.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.sqlmathWebworkerInit">33.
     function sqlmathWebworkerInit<span class="apidocSignatureSpan">({
     db,
     modeTest
@@ -2195,7 +2356,7 @@ export {
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.uvthreadpoolsizeGet" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.uvthreadpoolsizeGet">32.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.uvthreadpoolsizeGet" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.uvthreadpoolsizeGet">34.
     function uvthreadpoolsizeGet<span class="apidocSignatureSpan">()</span>
     </a>
     </h2>
@@ -2256,7 +2417,7 @@ jstestDescribe((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.waitAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.waitAsync">33.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.waitAsync" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.waitAsync">35.
     function waitAsync<span class="apidocSignatureSpan">(timeout)</span>
     </a>
     </h2>
@@ -2293,7 +2454,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT32" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT32">34.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT32" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT32">36.
     number LGBM_DTYPE_FLOAT32
     </a>
     </h2>
@@ -2301,7 +2462,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT64" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT64">35.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT64" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_FLOAT64">37.
     number LGBM_DTYPE_FLOAT64
     </a>
     </h2>
@@ -2309,7 +2470,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT32" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT32">36.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT32" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT32">38.
     number LGBM_DTYPE_INT32
     </a>
     </h2>
@@ -2317,7 +2478,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT64" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT64">37.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT64" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_DTYPE_INT64">39.
     number LGBM_DTYPE_INT64
     </a>
     </h2>
@@ -2325,7 +2486,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_GAIN" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_GAIN">38.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_GAIN" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_GAIN">40.
     number LGBM_FEATURE_IMPORTANCE_GAIN
     </a>
     </h2>
@@ -2333,7 +2494,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_SPLIT" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_SPLIT">39.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_SPLIT" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_FEATURE_IMPORTANCE_SPLIT">41.
     number LGBM_FEATURE_IMPORTANCE_SPLIT
     </a>
     </h2>
@@ -2341,7 +2502,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSC" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSC">40.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSC" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSC">42.
     number LGBM_MATRIX_TYPE_CSC
     </a>
     </h2>
@@ -2349,7 +2510,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSR" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSR">41.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSR" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_MATRIX_TYPE_CSR">43.
     number LGBM_MATRIX_TYPE_CSR
     </a>
     </h2>
@@ -2357,7 +2518,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_CONTRIB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_CONTRIB">42.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_CONTRIB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_CONTRIB">44.
     number LGBM_PREDICT_CONTRIB
     </a>
     </h2>
@@ -2365,7 +2526,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_LEAF_INDEX" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_LEAF_INDEX">43.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_LEAF_INDEX" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_LEAF_INDEX">45.
     number LGBM_PREDICT_LEAF_INDEX
     </a>
     </h2>
@@ -2373,7 +2534,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_NORMAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_NORMAL">44.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_NORMAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_NORMAL">46.
     number LGBM_PREDICT_NORMAL
     </a>
     </h2>
@@ -2381,7 +2542,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_RAW_SCORE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_RAW_SCORE">45.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_RAW_SCORE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.LGBM_PREDICT_RAW_SCORE">47.
     number LGBM_PREDICT_RAW_SCORE
     </a>
     </h2>
@@ -2389,7 +2550,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY">46.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_AUTOPROXY">48.
     number SQLITE_OPEN_AUTOPROXY
     </a>
     </h2>
@@ -2397,7 +2558,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE">47.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_CREATE">49.
     number SQLITE_OPEN_CREATE
     </a>
     </h2>
@@ -2405,7 +2566,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE">48.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_DELETEONCLOSE">50.
     number SQLITE_OPEN_DELETEONCLOSE
     </a>
     </h2>
@@ -2413,7 +2574,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE">49.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_EXCLUSIVE">51.
     number SQLITE_OPEN_EXCLUSIVE
     </a>
     </h2>
@@ -2421,7 +2582,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX">50.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_FULLMUTEX">52.
     number SQLITE_OPEN_FULLMUTEX
     </a>
     </h2>
@@ -2429,7 +2590,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB">51.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_DB">53.
     number SQLITE_OPEN_MAIN_DB
     </a>
     </h2>
@@ -2437,7 +2598,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL">52.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MAIN_JOURNAL">54.
     number SQLITE_OPEN_MAIN_JOURNAL
     </a>
     </h2>
@@ -2445,7 +2606,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY">53.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_MEMORY">55.
     number SQLITE_OPEN_MEMORY
     </a>
     </h2>
@@ -2453,7 +2614,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW">54.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOFOLLOW">56.
     number SQLITE_OPEN_NOFOLLOW
     </a>
     </h2>
@@ -2461,7 +2622,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX">55.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_NOMUTEX">57.
     number SQLITE_OPEN_NOMUTEX
     </a>
     </h2>
@@ -2469,7 +2630,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE">56.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_PRIVATECACHE">58.
     number SQLITE_OPEN_PRIVATECACHE
     </a>
     </h2>
@@ -2477,7 +2638,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY">57.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READONLY">59.
     number SQLITE_OPEN_READONLY
     </a>
     </h2>
@@ -2485,7 +2646,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE">58.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_READWRITE">60.
     number SQLITE_OPEN_READWRITE
     </a>
     </h2>
@@ -2493,7 +2654,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE">59.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SHAREDCACHE">61.
     number SQLITE_OPEN_SHAREDCACHE
     </a>
     </h2>
@@ -2501,7 +2662,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL">60.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUBJOURNAL">62.
     number SQLITE_OPEN_SUBJOURNAL
     </a>
     </h2>
@@ -2509,7 +2670,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL">61.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_SUPER_JOURNAL">63.
     number SQLITE_OPEN_SUPER_JOURNAL
     </a>
     </h2>
@@ -2517,7 +2678,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB">62.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_DB">64.
     number SQLITE_OPEN_TEMP_DB
     </a>
     </h2>
@@ -2525,7 +2686,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL">63.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TEMP_JOURNAL">65.
     number SQLITE_OPEN_TEMP_JOURNAL
     </a>
     </h2>
@@ -2533,7 +2694,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB">64.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_TRANSIENT_DB">66.
     number SQLITE_OPEN_TRANSIENT_DB
     </a>
     </h2>
@@ -2541,7 +2702,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI">65.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_URI">67.
     number SQLITE_OPEN_URI
     </a>
     </h2>
@@ -2549,7 +2710,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL">66.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLITE_OPEN_WAL">68.
     number SQLITE_OPEN_WAL
     </a>
     </h2>
@@ -2557,7 +2718,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_EXEC_PROFILE_DICT" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_EXEC_PROFILE_DICT">67.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_EXEC_PROFILE_DICT" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_EXEC_PROFILE_DICT">69.
     object DB_EXEC_PROFILE_DICT
     </a>
     </h2>
@@ -2565,7 +2726,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_STATE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_STATE">68.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_STATE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.DB_STATE">70.
     object DB_STATE
     </a>
     </h2>
@@ -2573,7 +2734,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE">69.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_EXE">71.
     string SQLMATH_EXE
     </a>
     </h2>
@@ -2581,7 +2742,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE">70.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.SQLMATH_NODE">72.
     string SQLMATH_NODE
     </a>
     </h2>
@@ -2589,7 +2750,7 @@ jstestIt((
 
 <li>
     <h2>
-    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.version">71.
+    <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.version" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.version">73.
     string version
     </a>
     </h2>

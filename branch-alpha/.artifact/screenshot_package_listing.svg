@@ -11,7 +11,7 @@
     textLength="768"
     x="10"
     y="32"
-> 0.  755  2026-05-27T23:59:06Z  16427 KB  .                                                      </tspan>
+> 0.  755  2026-05-29T15:02:36Z  16427 KB  .                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -59,7 +59,7 @@
     textLength="768"
     x="10"
     y="208"
-> 8.  644  2026-05-27T23:59:06Z     36 KB  CHANGELOG.md                                           </tspan>
+> 8.  644  2026-05-29T15:02:36Z     37 KB  CHANGELOG.md                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -191,13 +191,13 @@
     textLength="768"
     x="10"
     y="692"
->30.  644  2026-05-17T23:43:14Z     58 KB  sqlmath.mjs                                            </tspan>
+>30.  644  2026-05-29T15:02:36Z     59 KB  sqlmath.mjs                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->31.  644  2026-05-17T23:43:14Z     27 KB  sqlmath/__init__.py                                    </tspan>
+>31.  644  2026-05-29T15:02:36Z     27 KB  sqlmath/__init__.py                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -215,7 +215,7 @@
     textLength="768"
     x="10"
     y="780"
->34.  644  2026-05-27T23:59:06Z    134 KB  sqlmath_browser.mjs                                    </tspan>
+>34.  644  2026-05-29T15:02:36Z    133 KB  sqlmath_browser.mjs                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -233,7 +233,7 @@
     textLength="768"
     x="10"
     y="846"
->37.  644  2026-05-17T23:43:14Z    144 KB  test.mjs                                               </tspan>
+>37.  644  2026-05-29T15:02:36Z    145 KB  test.mjs                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"

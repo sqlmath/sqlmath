@@ -8,6 +8,8 @@
 - none
 
 # v2026.5.1-beta
+- sqlmath - Add function csvFromListofList().
+- sqlmath - Rename function jsonRowListFromCsv() to csvToListofList().
 - sqlmath-demo - Update chart tradebot_tech_intra_xxx normalized to spy_prc instead of stk_pct.
 - sqlmath - Add function uvthreadpoolsizeGet().
 
