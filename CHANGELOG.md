@@ -7,7 +7,7 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
-# v2026.5.1-beta
+# v2026.5.31
 - sqlmath - Add function csvFromListofList().
 - sqlmath - Rename function jsonRowListFromCsv() to csvToListofList().
 - sqlmath-demo - Update chart tradebot_tech_intra_xxx normalized to spy_prc instead of stk_pct.
