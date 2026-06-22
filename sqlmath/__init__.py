@@ -21,8 +21,8 @@
 
 """sqlmath.py."""
 
-__version__ = "2026.5.1"
-__version_info__ = ("2026", "5", "1")
+__version__ = "2026.5.31"
+__version_info__ = ("2026", "5", "31")
 
 import csv
 import io
@@ -191,6 +191,22 @@ def assert_or_throw(condition, message):
             if not message or isinstance(message, str)
             else message
         )
+
+
+def csv_to_list_of_list(csv_text):
+    """This function will convert <csv>-text to json list-of-list."""
+    # Normalize line endings and trim as per original logic
+    csv_text = csv_text.rstrip() + "\n"
+    # Use io.StringIO to treat the string as a file for the csv reader
+    file = io.StringIO(csv_text)
+    reader = csv.reader(
+        file,
+        quotechar='"',
+        delimiter=",",
+        quoting=csv.QUOTE_MINIMAL,
+        skipinitialspace=False,
+    )
+    return [row for row in reader if row]
 
 
 def db_call(baton, arglist):
@@ -446,7 +462,7 @@ def db_table_import(
     if text_data is None:
         text_data = ""
     if mode == "csv":
-        row_list = json_row_list_from_csv(text_data)
+        row_list = csv_to_list_of_list(text_data)
     elif mode == "tsv":
         row_list = [
             line.split("\t") for line in text_data.strip().splitlines()
@@ -810,22 +826,6 @@ def jsbaton_set_value(baton, argi, val, bufi, reference_list):
 def noop(val=None, *_, **__):
     """This function will do nothing except return <val>."""
     return val
-
-
-def json_row_list_from_csv(csv_text):
-    """This function will convert <csv>-text to json list-of-list."""
-    # Normalize line endings and trim as per original logic
-    csv_text = csv_text.rstrip() + "\n"
-    # Use io.StringIO to treat the string as a file for the csv reader
-    file = io.StringIO(csv_text)
-    reader = csv.reader(
-        file,
-        quotechar='"',
-        delimiter=",",
-        quoting=csv.QUOTE_MINIMAL,
-        skipinitialspace=False,
-    )
-    return [row for row in reader if row]
 
 
 def lib_platform_arch_ext():
