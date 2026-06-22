@@ -566,6 +566,7 @@ shSqlmathUpdate() {(set -e
         for FILE in \
             .ci.sh \
             asset_sqlmath_external_rollup.js \
+            cpplint.py \
             index.html \
             setup.py \
             sqlmath.mjs \

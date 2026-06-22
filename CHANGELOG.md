@@ -8,6 +8,7 @@
 - none
 
 # v2026.6.1-beta
+- cpplint - Upgrade to cpplint@v2.0.2.
 - jslint - Add ES2018-syntax for object-literal-spread-operator.
 - jslint - Add ES2025-syntax "import ... with {...}".
 
