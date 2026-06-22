@@ -39,6 +39,7 @@ import {
     assertOrThrow,
     childProcessSpawn2,
     ciBuildExt,
+    csvFromListofList,
     dbCloseAsync,
     dbExecAndReturnLastBlob,
     dbExecAndReturnLastRow,
@@ -61,6 +62,7 @@ import {
     listOrEmptyList,
     noop,
     sqlmathWebworkerInit,
+    uvthreadpoolsizeGet,
     version,
     waitAsync
 } from "./sqlmath.mjs";
@@ -168,7 +170,8 @@ SELECT
                 );
                 result = result.stdout.trim();
                 assertJsonEqual(result, "abcd1234|abcd1234");
-            }())
+            }()),
+            uvthreadpoolsizeGet()
         ]);
     });
 });
@@ -3927,10 +3930,17 @@ SELECT
     ) USING (ii);
                     `)
                 });
-                valActual = (
-                    "date saa sww spp"
-                    + " ii linear_residual predict_sine\n"
-                    + valActual.map(function (elem) {
+                valActual = csvFromListofList({
+                    colList: [
+                        "date",
+                        "saa",
+                        "sww",
+                        "spp",
+                        "ii",
+                        "linear_residual",
+                        "predict_sine"
+                    ],
+                    rowList: valActual.map(function (elem) {
                         return [
                             elem.date,
                             elem.saa,
@@ -3945,13 +3955,13 @@ SELECT
                                 ? num.toFixed(4)
                                 : num
                             );
-                        }).join(" ");
-                    }).join("\n")
-                );
-                valActual = valActual.replace((/  /g), " null ");
-                valActual = valActual.replace((/ \n/g), "\n");
-                valActual = valActual.replace((/ /g), "\t");
-                valActual = valActual.trim() + "\n";
+                        });
+                    })
+                });
+                valActual = valActual.replace((/"/g), "");
+                valActual = valActual.replace((/,,/g), ",null,");
+                valActual = valActual.replace((/\r\n/g), "\n");
+                valActual = valActual.replace((/,/g), "\t");
                 await fsWriteFileUnlessTest(
                     "test_data_sinefit.csv",
                     valActual,

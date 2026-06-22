@@ -1,6 +1,7 @@
 /*jslint beta, bitwise, browser, devel, nomen*/
 import {
     assertOrThrow,
+    csvFromListofList,
     dbCloseAsync,
     dbExecAsync,
     dbFileSaveAsync,
@@ -337,22 +338,11 @@ INSERT INTO tradebot_tech_intra_day
         *
     FROM (
         SELECT
-            tname,
-            datemkt0_beg AS xdate,
-            datemkt0_beg AS xdate2,
-            stk_beg0 AS tval
-        FROM tradebot_state
-        JOIN (
-            SELECT '1a_stk_pct' AS tname
-            --
-            UNION ALL
-            --
-            SELECT '1b_stk_lmt' AS tname
-        )
-        --
-        UNION ALL
-        --
-        SELECT '1a_stk_pct', xdate, xdate2, stk_pct FROM tradebot_tech_intra
+                '1a_stk_pct' AS tname,
+                xdate,
+                xdate2,
+                stk_pct AS tval
+            FROM tradebot_tech_intra
         --
         UNION ALL
         --
@@ -984,7 +974,7 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
                     ? "unixepochToTimeutc"
                     : "juliandayToDate"
                 ),
-                yaxisTitle: "percent holding",
+                yaxisTitle: "percent gain",
                 yvalueSuffix: " %"
             };
             return (`
@@ -1839,7 +1829,7 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
         });
         data = data[0] || [];
         data.shift();
-        data = rowListToCsv({
+        data = csvFromListofList({
             colList: baton.colList,
             rowList: data
         });
@@ -2099,46 +2089,6 @@ function onResize() {
         elem.dataset.init = "0";
     });
     uitableInitWithinView({});
-}
-
-function rowListToCsv({
-    colList,
-    rowList
-}) {
-// this function will convert json <rowList> to csv with given <colList>
-    let data = JSON.stringify([[colList], rowList].flat(), undefined, 1);
-    // convert data to csv
-    data = data.replace((
-        /\n  /g
-    ), "");
-    data = data.replace((
-        /\n \[/g
-    ), "");
-    data = data.replace((
-        /\n \],?/g
-    ), "\r\n");
-    data = data.slice(1, -2);
-    // sqlite-strings are c-strings which should never contain null-char
-    data = data.replace((
-        /\u0000/g
-    ), "");
-    // hide double-backslash `\\\\` as null-char
-    data = data.replace((
-        /\\\\/g
-    ), "\u0000");
-    // escape double-quote `\\"` to `""`
-    data = data.replace((
-        /\\"/g
-    ), "\"\"");
-    // replace newline with space
-    data = data.replace((
-        /\\r\\n|\\r|\\n/g
-    ), " ");
-    // restore double-backslash `\\\\` from null-char
-    data = data.replace((
-        /\u0000/g
-    ), "\\\\");
-    return data;
 }
 
 function stringHtmlSafe(str) {

@@ -27,8 +27,8 @@ python setup.py bdist_wheel
 python setup.py build_ext
 """
 
-__version__ = "2026.4.31"
-__version_info__ = ("2026", "4", "31")
+__version__ = "2026.5.31"
+__version_info__ = ("2026", "5", "31")
 
 import asyncio
 import base64
