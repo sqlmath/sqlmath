@@ -7,6 +7,11 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2026.6.1-beta
+- cpplint - Upgrade to cpplint@v2.0.2.
+- jslint - Add ES2018-syntax for object-literal-spread-operator.
+- jslint - Add ES2025-syntax "import ... with {...}".
+
 # v2026.5.31
 - sqlmath - Add function csvFromListofList().
 - sqlmath - Rename function jsonRowListFromCsv() to csvToListofList().

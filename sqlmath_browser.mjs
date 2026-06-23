@@ -1564,7 +1564,8 @@ async function onDbAction(evt) {
     case "dbtableRename":
         title = target.textContent.trim().replace(/\s+/g, " ");
         UI_CRUD.querySelector(".modalTitle").innerHTML = (
-            `${stringHtmlSafe(baton.dbtableFullname)}<br>${title}`
+            `${stringHtmlSafe(baton.dbtableFullname)}<br>` +
+            `${stringHtmlSafe(title)}`
         );
         UI_CRUD.querySelector("tbody").innerHTML = (
             (`
