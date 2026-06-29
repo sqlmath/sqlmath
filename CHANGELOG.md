@@ -8,6 +8,7 @@
 - none
 
 # v2026.6.1-beta
+- jslint-ecma - Unify ES2015-destructure-logic into function prefix_destructure().
 - jslint-ecma - Update README.md, documenting supported ES2015+ features.
 - cpplint - Upgrade to cpplint@v2.0.2.
 - jslint - Add ES2018-syntax for object-literal-spread-operator.
