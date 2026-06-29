@@ -100,14 +100,14 @@ let debugInline = (function () {
     let __consoleError = function () {
         return;
     };
-    function debug(...argv) {
+    function debug(...argList) {
 
-// This function will print <argv> to stderr and then return <argv>[0].
+// This function will print <argList> to stderr and then return <argList>[0].
 
         __consoleError("\n\ndebugInline");
-        __consoleError(...argv);
+        __consoleError(...argList);
         __consoleError("\n");
-        return argv[0];
+        return argList[0];
     }
     debug(); // Coverage-hack.
     __consoleError = console.error; //jslint-ignore-line
@@ -708,7 +708,7 @@ async function dbCallAsync(baton, argList, mode, db) {
             profileStart = Date.now();
             sql = String(argList[1]);
             // sql-hash - remove comment
-            sql = sql.replace((/(?:^|\s+?)--.*/gm), "");
+            sql = sql.replace((/\s*?--.*?$/gm), "");
             // sql-hash - remove vowel
             sql = sql.replace((/[aeiou]\b/gi), "\u0000$&");
             sql = sql.replace((/([bcdfghjklmnpqrstvwxyz])[aeiou]+/gi), "$1");

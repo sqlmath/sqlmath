@@ -265,14 +265,14 @@ body {
 <pre><span class="lineno"><a href="#line_100" id="line_100">  100.</a></span><span class="count    ">      3</span><span>    let __consoleError = function () {</span></pre>
 <pre><span class="lineno"><a href="#line_101" id="line_101">  101.</a></span><span class="count    ">      3</span><span>        return;</span></pre>
 <pre><span class="lineno"><a href="#line_102" id="line_102">  102.</a></span><span class="count    ">      3</span><span>    };</span></pre>
-<pre><span class="lineno"><a href="#line_103" id="line_103">  103.</a></span><span class="count    ">      1</span><span>    function debug(...argv) {</span></pre>
+<pre><span class="lineno"><a href="#line_103" id="line_103">  103.</a></span><span class="count    ">      1</span><span>    function debug(...argList) {</span></pre>
 <pre><span class="lineno"><a href="#line_104" id="line_104">  104.</a></span><span class="count    ">      1</span><span></span></pre>
-<pre><span class="lineno"><a href="#line_105" id="line_105">  105.</a></span><span class="count    ">      1</span><span>// This function will print &lt;argv&gt; to stderr and then return &lt;argv&gt;[0].</span></pre>
+<pre><span class="lineno"><a href="#line_105" id="line_105">  105.</a></span><span class="count    ">      1</span><span>// This function will print &lt;argList&gt; to stderr and then return &lt;argList&gt;[0].</span></pre>
 <pre><span class="lineno"><a href="#line_106" id="line_106">  106.</a></span><span class="count    ">      1</span><span></span></pre>
 <pre><span class="lineno"><a href="#line_107" id="line_107">  107.</a></span><span class="count    ">      1</span><span>        __consoleError("\n\ndebugInline");</span></pre>
-<pre><span class="lineno"><a href="#line_108" id="line_108">  108.</a></span><span class="count    ">      1</span><span>        __consoleError(...argv);</span></pre>
+<pre><span class="lineno"><a href="#line_108" id="line_108">  108.</a></span><span class="count    ">      1</span><span>        __consoleError(...argList);</span></pre>
 <pre><span class="lineno"><a href="#line_109" id="line_109">  109.</a></span><span class="count    ">      1</span><span>        __consoleError("\n");</span></pre>
-<pre><span class="lineno"><a href="#line_110" id="line_110">  110.</a></span><span class="count    ">      1</span><span>        return argv[0];</span></pre>
+<pre><span class="lineno"><a href="#line_110" id="line_110">  110.</a></span><span class="count    ">      1</span><span>        return argList[0];</span></pre>
 <pre><span class="lineno"><a href="#line_111" id="line_111">  111.</a></span><span class="count    ">      1</span><span>    }</span></pre>
 <pre><span class="lineno"><a href="#line_112" id="line_112">  112.</a></span><span class="count    ">      1</span><span>    debug(); // Coverage-hack.</span></pre>
 <pre><span class="lineno"><a href="#line_113" id="line_113">  113.</a></span><span class="count    ">      1</span><span>    __consoleError = console.error; //jslint-ignore-line</span></pre>
@@ -873,7 +873,7 @@ body {
 <pre><span class="lineno"><a href="#line_708" id="line_708">  708.</a></span><span class="count    ">   1902</span><span>            profileStart = Date.now();</span></pre>
 <pre><span class="lineno"><a href="#line_709" id="line_709">  709.</a></span><span class="count    ">   1902</span><span>            sql = String(argList[1]);</span></pre>
 <pre><span class="lineno"><a href="#line_710" id="line_710">  710.</a></span><span class="count    ">   1902</span><span>            // sql-hash - remove comment</span></pre>
-<pre><span class="lineno"><a href="#line_711" id="line_711">  711.</a></span><span class="count    ">   1902</span><span>            sql = sql.replace((/(?:^|\s+?)--.*/gm), "");</span></pre>
+<pre><span class="lineno"><a href="#line_711" id="line_711">  711.</a></span><span class="count    ">   1902</span><span>            sql = sql.replace((/\s*?--.*?$/gm), "");</span></pre>
 <pre><span class="lineno"><a href="#line_712" id="line_712">  712.</a></span><span class="count    ">   1902</span><span>            // sql-hash - remove vowel</span></pre>
 <pre><span class="lineno"><a href="#line_713" id="line_713">  713.</a></span><span class="count    ">   1902</span><span>            sql = sql.replace((/[aeiou]\b/gi), "\u0000$&amp;");</span></pre>
 <pre><span class="lineno"><a href="#line_714" id="line_714">  714.</a></span><span class="count    ">   1902</span><span>            sql = sql.replace((/([bcdfghjklmnpqrstvwxyz])[aeiou]+/gi), "$1");</span></pre>
@@ -1241,9 +1241,9 @@ body {
 <pre><span class="lineno"><a href="#line_1076" id="line_1076"> 1076.</a></span><span class="count    ">      1</span><span>        return;</span></pre>
 <pre><span class="lineno"><a href="#line_1077" id="line_1077"> 1077.</a></span><span class="count    ">      1</span><span>    }</span></pre>
 <pre><span class="lineno"><a href="#line_1078" id="line_1078"> 1078.</a></span><span class="count    ">      1</span><span>    result = Object.values(DB_EXEC_PROFILE_DICT);</span></pre>
-<pre><span class="lineno"><a href="#line_1079" id="line_1079"> 1079.</a></span><span class="count    ">   1520</span><span>    result.sort(function (aa, bb) {</span></pre>
-<pre><span class="lineno"><a href="#line_1080" id="line_1080"> 1080.</a></span><span class="count    ">    442</span><span>        return ((bb.timeElapsed - aa.timeElapsed) || (bb.count - aa.count));</span></pre>
-<pre><span class="lineno"><a href="#line_1081" id="line_1081"> 1081.</a></span><span class="count    ">   1520</span><span>    });</span></pre>
+<pre><span class="lineno"><a href="#line_1079" id="line_1079"> 1079.</a></span><span class="count    ">   1525</span><span>    result.sort(function (aa, bb) {</span></pre>
+<pre><span class="lineno"><a href="#line_1080" id="line_1080"> 1080.</a></span><span class="count    ">    409</span><span>        return ((bb.timeElapsed - aa.timeElapsed) || (bb.count - aa.count));</span></pre>
+<pre><span class="lineno"><a href="#line_1081" id="line_1081"> 1081.</a></span><span class="count    ">   1525</span><span>    });</span></pre>
 <pre><span class="lineno"><a href="#line_1082" id="line_1082"> 1082.</a></span><span class="count    ">     20</span><span>    result = result.slice(0, limit).map(function ({</span></pre>
 <pre><span class="lineno"><a href="#line_1083" id="line_1083"> 1083.</a></span><span class="count    ">     20</span><span>        count,</span></pre>
 <pre><span class="lineno"><a href="#line_1084" id="line_1084"> 1084.</a></span><span class="count    ">     20</span><span>        sql,</span></pre>
