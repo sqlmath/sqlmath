@@ -20,6 +20,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+/*
+sh one-liner:
+sh jslint_ci.sh shCiBuildWasm
+sh jslint_ci.sh shSqlmathUpdate
+*/
 
 /*jslint beta, bitwise, name, node*/
 /*global FinalizationRegistry*/
@@ -100,14 +105,14 @@ let debugInline = (function () {
     let __consoleError = function () {
         return;
     };
-    function debug(...argv) {
+    function debug(...argList) {
 
-// This function will print <argv> to stderr and then return <argv>[0].
+// This function will print <argList> to stderr and then return <argList>[0].
 
         __consoleError("\n\ndebugInline");
-        __consoleError(...argv);
+        __consoleError(...argList);
         __consoleError("\n");
-        return argv[0];
+        return argList[0];
     }
     debug(); // Coverage-hack.
     __consoleError = console.error; //jslint-ignore-line
@@ -128,7 +133,7 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2026.6.1-beta";
+let version = "v2026.6.30";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -708,7 +713,7 @@ async function dbCallAsync(baton, argList, mode, db) {
             profileStart = Date.now();
             sql = String(argList[1]);
             // sql-hash - remove comment
-            sql = sql.replace((/(?:^|\s+?)--.*/gm), "");
+            sql = sql.replace((/\s*?--.*?$/gm), "");
             // sql-hash - remove vowel
             sql = sql.replace((/[aeiou]\b/gi), "\u0000$&");
             sql = sql.replace((/([bcdfghjklmnpqrstvwxyz])[aeiou]+/gi), "$1");
