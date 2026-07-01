@@ -251,7 +251,7 @@
     lines,
     linesCovered,
     linesTotal,
-    live,
+    live_list,
     log,
     long,
     loop,
@@ -279,7 +279,7 @@
     moduleName,
     module_list,
     name,
-    names,
+    name_list,
     node,
     nomen,
     noop,
@@ -425,7 +425,7 @@ let jslint_charset_ascii = (
     + "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
     + "`abcdefghijklmnopqrstuvwxyz{|}~\u007f"
 );
-let jslint_edition = "v2026.6.1-beta";
+let jslint_edition = "v2026.7.1-beta";
 let jslint_export;                      // The jslint object to be exported.
 let jslint_fudge = 1;                   // Fudge starting line and starting
                                         // ... column to 1.
@@ -893,7 +893,7 @@ function jslint(
         id: "(global)",
         level: 0,
         line: jslint_fudge,
-        live: [],
+        live_list: [],
         loop: 0,
         switch: 0,
         thru: 0,
@@ -1419,15 +1419,6 @@ function jslint(
             break;
         case "use_double":
             mm = `Use double quotes, not single quotes.`;
-            break;
-
-// PR-386 - Fix issue #382 - Make fart-related warnings more readable.
-
-        case "use_function_not_fart":
-            mm = (
-                `Use 'function (...)', not '(...) =>' when arrow functions`
-                + ` become too complex.`
-            );
             break;
         case "use_open":
             mm = (
@@ -2020,16 +2011,22 @@ function jslint_assert(condition, message) {
 
 // This function will throw <message> if <condition> is falsy.
 
+    let error;
     if (condition) {
-        return condition;
+        return;
     }
-    throw new Error(
+    error = new Error(
         `This was caused by a bug in JSLint.
 Please open an issue with this stack-trace (and possible example-code) at
 https://github.com/jslint-org/jslint/issues.
 edition = "${jslint_edition}";
 ${String(message).slice(0, 2000)}`
     );
+    if (message === "test_internal_error") {
+        error = {};
+    }
+    console.error(error);
+    throw error;
 }
 
 async function jslint_cli({
@@ -4365,7 +4362,15 @@ function jslint_phase3_parse(state) {
             the_token.arity = "assignment";
             right = parse_expression(20 - 1);
             if (id === "=" && left.arity === "variable") {
-                the_token.names = left;
+                the_token.name_list = [];       // 1. name_list for "aa = ..."
+                name_push(
+                    the_token.name_list,        // name_list
+                    false,              // enroll
+                    left,               // name
+                    "variable",         // role
+                    false,              // readonly
+                    true                // init
+                );
                 the_token.expression = right;
             } else {
                 the_token.expression = [left, right];
@@ -4445,6 +4450,10 @@ function jslint_phase3_parse(state) {
         const id = left.id;
         if (
             !left.identifier
+
+// PR-xxx - Relax warning for ((...) => {...}());
+
+            && left.id !== "=>"
             && (
                 left.arity !== "ternary"
                 || (
@@ -4507,13 +4516,20 @@ function jslint_phase3_parse(state) {
 
 // This function will warn if <token_list> is unordered.
 
-        token_list.reduce(function (aa, token) {
-            const bb = artifact(token);
-            if (!option_dict.unordered && aa > bb) {
-                warn("expected_a_b_before_c_d", token, type, bb, type, aa);
-            }
-            return bb;
-        }, "");
+        token_list
+            .filter(function (token) {
+
+// Issue #401 - Regression - Ignore tokens prefixed by ellipsis for sorting.
+
+                return token && !token.ellipsis;
+            })
+            .reduce(function (aa, token) {
+                const bb = artifact(token);
+                if (!option_dict.unordered && aa > bb) {
+                    warn("expected_a_b_before_c_d", token, type, bb, type, aa);
+                }
+                return bb;
+            }, "");
     }
 
     function check_ordered_case(case_list) {
@@ -4775,95 +4791,6 @@ function jslint_phase3_parse(state) {
         return token_now;
     }
 
-    function enroll(name, role, readonly) {
-
-// Enroll a name into the current function context. The role can be exception,
-// function, label, parameter, or variable. We look for variable redefinition
-// because it causes confusion.
-
-        let earlier;
-        let id = name.id;
-
-// Reserved words may not be enrolled.
-
-        if (syntax_dict[id] !== undefined && id !== "ignore") {
-
-// test_cause:
-// ["let undefined", "enroll", "reserved_a", "undefined", 5]
-
-            warn("reserved_a", name);
-            return;
-        }
-
-// Has the name been enrolled in this context?
-
-        earlier = functionage.context[id] || catchage.context[id];
-        if (earlier) {
-
-// test_cause:
-// ["let aa;let aa", "enroll", "redefinition_a_b", "1", 12]
-
-            warn("redefinition_a_b", name, id, earlier.line);
-            return;
-        }
-
-// Has the name been enrolled in an outer context?
-
-        function_stack.forEach(function ({
-            context
-        }) {
-            earlier = context[id] || earlier;
-        });
-        if (earlier && id === "ignore") {
-            if (earlier.role === "variable") {
-
-// test_cause:
-// ["let ignore;function aa(ignore){}", "enroll", "redefinition_a_b", "1", 24]
-
-                warn("redefinition_a_b", name, id, earlier.line);
-            }
-        } else if (
-            earlier
-            && role !== "parameter" && role !== "function"
-            && (role !== "exception" || earlier.role !== "exception")
-        ) {
-
-// test_cause:
-// ["
-// function aa(){try{aa();}catch(aa){aa();}}
-// ", "enroll", "redefinition_a_b", "1", 31]
-// ["function aa(){var aa;}", "enroll", "redefinition_a_b", "1", 19]
-
-            warn("redefinition_a_b", name, id, earlier.line);
-        } else if (
-            option_dict.beta
-            && global_dict[id]
-            && role !== "parameter"
-        ) {
-
-// test_cause:
-// ["let Array", "enroll", "redefinition_global_a_b", "Array", 5]
-
-            warn("redefinition_global_a_b", name, global_dict[id], id);
-        }
-
-// Enroll it.
-
-        Object.assign(name, {
-            dead: true,
-            init: false,
-            parent: (
-                role === "exception"
-                ? catchage
-                : functionage
-            ),
-            readonly,
-            role,
-            used: 0
-        });
-        name.parent.context[id] = name;
-    }
-
     function infix(bp, id, f) {
 
 // Create an infix operator.
@@ -4972,7 +4899,22 @@ function jslint_phase3_parse(state) {
     }
 
     function infix_fart_unwrapped() {
-        return parse_fart(token_now, true);
+        if (!token_prv.identifier) {
+
+// test_cause:
+// ["0=>0", "infix_fart_unwrapped", "expected_identifier_a", "0", 1]
+
+            return stop("expected_identifier_a", token_prv);
+        }
+
+// PR-499 - Update ES2015-feature arrow, to continue parsing unwrapped-form
+// with warning, instead of stopping.
+
+// test_cause:
+// ["aa=>0", "infix_fart_unwrapped", "wrap_fart_parameter", "=>", 3]
+
+        warn("wrap_fart_parameter", token_now);
+        return prefix_function(token_now, true, true);
     }
 
     function infix_grave(left) {
@@ -5040,7 +4982,6 @@ function jslint_phase3_parse(state) {
 
                     test_cause("aa(...aa)");
                     the_argument = prefix_ellipsis();
-                    the_argument.ellipsis = true;
                 } else {
                     the_argument = parse_expression(10);
                 }
@@ -5104,6 +5045,117 @@ function jslint_phase3_parse(state) {
             return the_token;
         };
         return the_symbol;
+    }
+
+    function name_enroll(name, role, readonly) {
+
+// Enroll a name into the current function context. The role can be exception,
+// function, label, parameter, or variable. We look for variable redefinition
+// because it causes confusion.
+
+        let earlier;
+        let id = name.id;
+
+// Reserved words may not be enrolled.
+
+        if (syntax_dict[id] !== undefined && id !== "ignore") {
+
+// test_cause:
+// ["let undefined", "name_enroll", "reserved_a", "undefined", 5]
+
+            warn("reserved_a", name);
+            return;
+        }
+
+// Has the name been enrolled in this context?
+
+        earlier = functionage.context[id] || catchage.context[id];
+        if (earlier) {
+
+// test_cause:
+// ["let aa;let aa", "name_enroll", "redefinition_a_b", "1", 12]
+
+            warn("redefinition_a_b", name, id, earlier.line);
+            return;
+        }
+
+// Has the name been enrolled in an outer context?
+
+        function_stack.forEach(function ({
+            context
+        }) {
+            earlier = context[id] || earlier;
+        });
+        if (earlier && id === "ignore") {
+            if (earlier.role === "variable") {
+
+// test_cause:
+// ["let ignore;(ignore)=>0", "name_enroll", "redefinition_a_b", "1", 13]
+
+                warn("redefinition_a_b", name, id, earlier.line);
+            }
+        } else if (
+            earlier
+            && role !== "parameter" && role !== "function"
+            && (role !== "exception" || earlier.role !== "exception")
+        ) {
+
+// test_cause:
+// ["
+// function aa(){try{aa();}catch(aa){aa();}}
+// ", "name_enroll", "redefinition_a_b", "1", 31]
+// ["function aa(){var aa;}", "name_enroll", "redefinition_a_b", "1", 19]
+
+            warn("redefinition_a_b", name, id, earlier.line);
+        } else if (
+            option_dict.beta
+            && global_dict[id]
+            && role !== "parameter"
+        ) {
+
+// test_cause:
+// ["let Array", "name_enroll", "redefinition_global_a_b", "Array", 5]
+
+            warn("redefinition_global_a_b", name, global_dict[id], id);
+        }
+
+// Enroll it.
+
+        Object.assign(name, {
+
+// 1z. Mark as dead, the variable, during variable-initialization.
+
+            dead: true,
+            parent: (
+                role === "exception"
+                ? catchage
+                : functionage
+            ),
+            readonly,
+            role,
+            used: 0
+        });
+        name.parent.context[id] = name;
+    }
+
+// PR-xxx - Unify name_list.push() logic with helper-function name_push().
+
+    function name_push(name_list, enroll, name, role, readonly, init) {
+
+// This function will:
+// 1. Push variable or function-parameter <name> to <name_list>.
+// 2. Enroll <name> if its either a declared-variable or function-parameter.
+// 3. Set <name>.init = true, if its either an assigned-variable or
+//    function-parameter.
+
+        name_list.push(name);
+        if (enroll) {
+            name_enroll(name, role, readonly);
+        }
+        if (role === "variable") {
+            name.arity = "variable";
+        }
+        name.init = init;
     }
 
     function parse_expression(rbp, initial) {
@@ -5226,108 +5278,6 @@ function jslint_phase3_parse(state) {
         return left;
     }
 
-    function parse_fart(the_fart, mode_infix) {
-
-// Give the function properties storing its names and for observing the depth
-// of loops and switches.
-
-        Object.assign(the_fart, {
-            arity: "binary",
-            context: empty(),
-            finally: 0,
-            level: functionage.level + 1,
-            loop: 0,
-            name: anon,
-            switch: 0,
-            try: 0
-        });
-
-// PR-384 - Relax warning "function_in_loop".
-//
-//         if (functionage.loop > 0) {
-
-// // test_cause:
-// // ["while(0){aa.map(()=>0);}", "parse_fart", "function_in_loop", "=>", 19]
-//
-//             warn("function_in_loop", the_fart);
-//         }
-
-// Push the current function context and establish a new one.
-
-        function_list.push(the_fart);
-        function_stack.push(functionage);
-        functionage = the_fart;
-        if (mode_infix) {
-            if (!token_prv.identifier) {
-
-// test_cause:
-// ["0=>0", "parse_fart", "expected_identifier_a", "0", 1]
-
-                return stop("expected_identifier_a", token_prv);
-            }
-
-// PR-499 - Update ES2015-feature arrow, to continue parsing unwrapped-form
-// with warning, instead of stopping.
-
-// test_cause:
-// ["aa=>0", "parse_fart", "wrap_fart_parameter", "=>", 3]
-
-            warn("wrap_fart_parameter", token_now);
-            the_fart.name = "anonymous";
-            the_fart.names = [token_prv];
-            the_fart.parameter_count = 1;
-            the_fart.signature = token_prv.id;
-            enroll(token_prv, "parameter", false);
-        } else {
-
-// Parse the parameter list.
-
-            prefix_function_parameter(the_fart);
-            advance("=>");
-        }
-
-// The function's body is a block.
-
-        if (token_nxt.id === "{") {
-            if (!option_dict.fart) {
-
-// test_cause:
-// ["()=>{}", "parse_fart", "use_function_not_fart", "=>", 3]
-
-                warn("use_function_not_fart", the_fart);
-            }
-            the_fart.block = block("body");
-
-// The function's body is an expression.
-
-        } else {
-
-// PR-384 - Bugfix - Fixes issue #379 - warn against naked-statement in fart.
-
-            if (
-                syntax_dict[token_nxt.id] !== undefined
-                && syntax_dict[token_nxt.id].fud_stmt !== undefined
-            ) {
-
-// test_cause:
-// ["()=>delete aa", "parse_fart", "unexpected_a_after_b", "=>", 5]
-
-                return stop(
-                    "unexpected_a_after_b",
-                    token_nxt,
-                    token_nxt.id,
-                    "=>"
-                );
-            }
-            the_fart.expression = parse_expression(0);
-        }
-
-// Restore the previous context.
-
-        functionage = function_stack.pop();
-        return the_fart;
-    }
-
     function parse_json() {
         let container;
         let is_dup;
@@ -5340,8 +5290,10 @@ function jslint_phase3_parse(state) {
 // test_cause:
 // ["[-.0]", "parse_json", "unexpected_a", ".", 3]
 // ["[-0x0]", "parse_json", "unexpected_a", "0x0", 3]
+// ["[...]", "parse_json", "unexpected_a", "...", 2]
 // ["[.0]", "parse_json", "unexpected_a", ".", 2]
 // ["[0x0]", "parse_json", "unexpected_a", "0x0", 2]
+// ["{...}", "parse_json", "unexpected_a", "...", 2]
 
                 warn("unexpected_a");
             }
@@ -5508,12 +5460,21 @@ function jslint_phase3_parse(state) {
 // ["aa:while{}", "parse_statement", "the_statement_label", "while", 0]
 
                 test_cause("the_statement_label", token_nxt.id);
-                enroll(the_label, "label", true);
+                name_push(
+                    [],                 // name_list
+                    true,               // enroll
+                    the_label,          // name
+                    "label",            // role
+                    true,               // readonly
+                    true                // init
+                );
+
+// 2a. Mark not dead, the label-statement, before control-flow-block.
+
                 the_label.dead = false;
-                the_label.init = true;
                 the_statement = parse_statement();
 
-// Issue #458 - Regression - Warn about variable usage before initialization.
+// 2z. Mark as dead, the label-statement, after control-flow-block.
 
                 the_label.dead = true;
                 functionage.statement_prv = the_statement;
@@ -5562,13 +5523,6 @@ function jslint_phase3_parse(state) {
             }
             semicolon();
         }
-
-// Issue #458 - Regression - Warn about variable usage before initialization.
-
-//        if (the_label !== undefined) {
-//            the_label.dead = true;
-//        }
-
         return the_statement;
     }
 
@@ -5680,13 +5634,6 @@ function jslint_phase3_parse(state) {
             the_function = Object.assign(token_now.fart, {
                 async: 1
             });
-            if (!option_dict.fart) {
-
-// test_cause:
-// ["async()=>0", "prefix_async", "use_function_not_fart", "=>", 8]
-
-                warn("use_function_not_fart", the_function);
-            }
             prefix_lparen();
 
 // Parse async function.
@@ -5745,7 +5692,8 @@ function jslint_phase3_parse(state) {
         the_function,
         the_function_toplevel
     ) {
-        const is_brace = token_now.id === "{";
+        const is_lbrace = token_now.id === "{";
+        const sub_list = [];
         const the_destructure = token_now;
         let optional;
         function advance_and_signature_push(id) {
@@ -5760,23 +5708,13 @@ function jslint_phase3_parse(state) {
                 }
             }
         }
-        function name_list_push(name) {
-            name_list.push(name);
-
-// PR-500 - Fix false-warning "uninitialized_a" in statement ";[aa]=0;".
-
-            name.arity = role;
-            if (enroll) {
-                enroll(name, role, readonly);
-                name.init = true;
-            }
-        }
         function name_parse() {
             let name = token_nxt;
             switch (name.id) {
             case "...":
                 advance_and_signature_push("...");
                 name = token_nxt;
+                name.ellipsis = true;
                 if (name.id === "...") {
 
 // test_cause:
@@ -5801,14 +5739,6 @@ function jslint_phase3_parse(state) {
                 return true;
             case "[":
             case "{":
-                if (the_function?.id === "=>" && !option_dict.fart) {
-
-// test_cause:
-// ["([aa])=>0", "name_parse", "use_function_not_fart", "=>", 7]
-// ["({aa})=>0", "name_parse", "use_function_not_fart", "=>", 7]
-
-                    warn("use_function_not_fart", the_function);
-                }
                 if (optional) {
 
 // test_cause:
@@ -5848,11 +5778,11 @@ function jslint_phase3_parse(state) {
 
                 return stop("expected_identifier_a", name);
             }
-            if (is_brace) {
+            if (is_lbrace) {
                 survey(name);
             }
             advance_and_signature_push(token_nxt.id);
-            if (is_brace && token_nxt.id === ":") {
+            if (is_lbrace && token_nxt.id === ":") {
                 advance_and_signature_push(":");
                 if (!the_function_toplevel) {
                     the_destructure.open = true;
@@ -5876,16 +5806,11 @@ function jslint_phase3_parse(state) {
                 }
                 token_nxt.label = name;
                 name = token_nxt;
-                name_list_push(name);
+                name_push(sub_list, enroll, name, role, readonly, true);
                 advance_and_signature_push(token_nxt.id);
                 return;
             }
-            name_list_push(name);
-
-// test_cause:
-// ["const[aa]=bb;\nconst bb=0;", "lookup", "out_of_scope_a", "bb", 11]
-// ["const{aa}=bb;\nconst bb=0;", "lookup", "out_of_scope_a", "bb", 11]
-
+            name_push(sub_list, enroll, name, role, readonly, true);
             if (token_nxt.id === "=") {
                 optional = the_function_toplevel && token_now;
                 advance_and_signature_push("=");
@@ -5895,12 +5820,16 @@ function jslint_phase3_parse(state) {
                 name.expression = parse_expression(0);
 
 // test_cause:
-// ["function aa([aa=aa]){}", "name_parse", "optional", "", 0]
-// ["function aa({aa=aa}){}", "name_parse", "optional", "", 0]
-// ["let[aa=0]=0", "name_parse", "optional", "", 0]
-// ["let{aa=0}=0", "name_parse", "optional", "", 0]
+// ["function aa([aa=aa]){}", "name_lookup", "out_of_scope_a", "aa", 17]
+// ["function aa([aa=aa]){}", "name_parse", "optional", "aa", 0]
+// ["function aa({aa=aa}){}", "name_lookup", "out_of_scope_a", "aa", 17]
+// ["function aa({aa=aa}){}", "name_parse", "optional", "aa", 0]
+// ["let[aa=bb]=0;let bb", "name_lookup", "out_of_scope_a", "bb", 8]
+// ["let[aa=bb]=0;let bb", "name_parse", "optional", "aa", 0]
+// ["let{aa=bb}=0;let bb", "name_lookup", "out_of_scope_a", "bb", 8]
+// ["let{aa=bb}=0;let bb", "name_parse", "optional", "aa", 0]
 
-                test_cause("optional");
+                test_cause("optional", name.id);
                 return;
             }
             if (optional) {
@@ -5912,7 +5841,7 @@ function jslint_phase3_parse(state) {
             }
         }
         while (true) {
-            if (!is_brace && !the_function_toplevel && token_nxt.id === ",") {
+            if (!is_lbrace && !the_function_toplevel && token_nxt.id === ",") {
 
 // test_cause:
 // ["(,aa)=>0", "name_parse", "expected_identifier_a", ",", 2]
@@ -5937,9 +5866,11 @@ function jslint_phase3_parse(state) {
             }
             advance_and_signature_push(",");
         }
+        name_list.push(...sub_list);
         if (the_function_toplevel) {
-            advance_and_signature_push(")");
-        } else if (is_brace) {
+            return the_destructure;
+        }
+        if (is_lbrace) {
 
 // test_cause:
 // ["
@@ -5947,11 +5878,13 @@ function jslint_phase3_parse(state) {
 // ", "check_ordered", "expected_a_b_before_c_d", "aa", 17]
 // ["let{bb,aa}=0", "check_ordered", "expected_a_b_before_c_d", "aa", 8]
 
-            check_ordered(role, name_list);
+// PR-xxx - Fix false-warning about ordering in nested-object-destructuring.
+
+            check_ordered(role, sub_list);
             advance_and_signature_push("}");
-        } else {
-            advance_and_signature_push("]");
+            return the_destructure;
         }
+        advance_and_signature_push("]");
         return the_destructure;
     }
 
@@ -5959,6 +5892,7 @@ function jslint_phase3_parse(state) {
         let after_ellipsis;
         advance("...");
         after_ellipsis = parse_expression(0);
+        after_ellipsis.ellipsis = true;
         return after_ellipsis;
     }
 
@@ -5970,66 +5904,58 @@ function jslint_phase3_parse(state) {
         return stop("expected_a_before_b", token_now, "()", "=>");
     }
 
-    function prefix_function(the_function) {
-        let name = the_function && the_function.name;
-        if (the_function === undefined) {
-            the_function = token_now;
+    function prefix_function(the_function, mode_fart, mode_fart_infix) {
+        let name;
+        let role = "function";
+        the_function = the_function || token_now;
+        if (mode_fart) {
+            the_function.arity = "binary";
 
 // A function statement must have a name that will be in the parent's scope.
 
-            if (the_function.arity === "statement") {
-                if (!token_nxt.identifier) {
+        } else if (the_function.arity === "statement") {
+            if (!token_nxt.identifier) {
 
 // test_cause:
 // ["function(){}", "prefix_function", "expected_identifier_a", "(", 9]
 // ["function*aa(){}", "prefix_function", "expected_identifier_a", "*", 9]
 
-                    return stop("expected_identifier_a", token_nxt);
-                }
-                name = token_nxt;
-                enroll(name, "variable", true);
-                the_function.name = Object.assign(name, {
-                    calls: empty(),
-
-// PR-331 - Bugfix - Fixes issue #272 - function hoisting not allowed.
-
-                    dead: false,
-                    init: true
-                });
-                advance();
-            } else if (name === undefined) {
+                return stop("expected_identifier_a", token_nxt);
+            }
+            name = token_nxt;
+            name.calls = empty();
+            role = "variable";
+            advance();
+        } else if (token_nxt.identifier) {
 
 // A function expression may have an optional name.
 
-                the_function.name = anon;
-                if (token_nxt.identifier) {
-                    name = token_nxt;
-                    the_function.name = name;
-                    advance();
-                }
+// test_cause:
+// ["(function bb(){}())", "prefix_function", "expression", "bb", 0]
+// ["aa=function bb(){}", "prefix_function", "expression", "bb", 0]
+
+            test_cause("expression", token_nxt.id);
+            name = token_nxt;
+            advance();
+        }
+        if (name) {
+            name_push(
+                [],                     // name_list
+                true,                   // enroll
+                name,                   // name
+                role,                   // role
+                false,                  // readonly
+                true                    // init
+            );
+            if (the_function.arity === "statement") {
+
+// 3a. Mark not dead, the function-name, in function-statement.
+
+                name.dead = false;
+            } else {
+                name.used += 1;
             }
         }
-
-//  Probably deadcode.
-//  if (mode_mega) {
-//      warn("unexpected_a", the_function);
-//  }
-//  jslint_assert(!mode_mega, `Expected !mode_mega.`);
-
-// PR-378 - Relax warning "function_in_loop".
-//
-// // Don't create functions in loops. It is inefficient, and it can lead to
-// // scoping errors.
-//
-//         if (functionage.loop > 0) {
-//
-// // test_cause:
-// // ["
-// // while(0){aa.map(function(){});}
-// // ", "prefix_function", "function_in_loop", "function", 17]
-//
-//             warn("function_in_loop", the_function);
-//         }
 
 // Give the function properties for storing its names and for observing the
 // depth of loops and switches.
@@ -6040,23 +5966,34 @@ function jslint_phase3_parse(state) {
             finally: 0,
             level: functionage.level + 1,
             loop: 0,
+            name: (
+                name || (
+                    mode_fart_infix
+                    ? "anonymous"
+                    : anon
+                )
+            ),
+            parameter_count: Number(Boolean(mode_fart_infix)),
+            signature: (
+                mode_fart_infix
+                ? token_prv.id
+                : ["("]
+            ),
             statement_prv: undefined,
             switch: 0,
             try: 0
         });
-        if (the_function.arity !== "statement" && typeof name === "object") {
 
-// test_cause:
-// ["let aa=function bb(){return;};", "prefix_function", "expression", "bb", 0]
+// PR-384 - Relax warning "function_in_loop".
+//
+//         if (functionage.loop > 0) {
 
-            test_cause("expression", name.id);
-            enroll(name, "function", true);
-            name.dead = false;
-            name.init = true;
-            name.used = 1;
-        }
+// // test_cause:
+// // ["while(0){aa.map(()=>0);}", "parse_fart", "function_in_loop", "=>", 19]
+//
+//             warn("function_in_loop", the_function);
+//         }
 
-// PR-334 - Bugfix - fix function-redefinition not warned inside function-call.
 // Push the current function context and establish a new one.
 
         function_list.push(the_function);
@@ -6065,86 +6002,115 @@ function jslint_phase3_parse(state) {
 
 // Parse the parameter list.
 
-        advance("(");
-        token_now.arity = "function";
-        prefix_function_parameter(the_function);
+        if (!mode_fart) {
+            advance("(");
+            token_now.arity = "function";
+        }
+        the_function.name_list = [];    // 2. name_list for "function (aa)"
+        if (mode_fart_infix) {
+            name_push(
+                the_function.name_list, // name_list
+                true,                   // enroll
+                token_prv,              // name
+                "parameter",            // role
+                false,                  // readonly
+                true                    // init
+            );
+        } else {
+            token_now.free = false;
+            if (token_nxt.id !== ")" && token_nxt.id !== "(end)") {
+
+// PR-500 - Unify ES2015-destructure-logic. - function ([aa]) {...}
+
+                prefix_destructure(
+                    true,               // enroll
+                    "parameter",        // role
+                    false,              // readonly
+                    the_function.name_list,     // name_list
+                    the_function,       // the_function
+                    true                // the_function_toplevel
+                );
+            }
+            advance(")");
+            the_function.signature = the_function.signature.join("") + ")";
+        }
+        if (mode_fart && !mode_fart_infix) {
+            advance("=>");
+        }
+        if (mode_fart && token_nxt.id !== "{") {
+
+// The function's body is an expression.
+
+// PR-384 - Bugfix - Fixes issue #379 - warn against naked-statement in fart.
+
+            if (
+                syntax_dict[token_nxt.id]
+                && syntax_dict[token_nxt.id].fud_stmt
+            ) {
+
+// test_cause:
+// ["()=>delete aa", "prefix_function", "unexpected_a_after_b", "=>", 5]
+
+                return stop(
+                    "unexpected_a_after_b",
+                    token_nxt,
+                    token_nxt.id,
+                    "=>"
+                );
+            }
+            the_function.expression = parse_expression(0);
+        } else {
 
 // The function's body is a block.
 
-        the_function.block = block("body");
-        if (
-            the_function.arity === "statement"
-            && token_nxt.line === token_now.line
-        ) {
+            the_function.block = block("body");
+            if (
+                the_function.arity === "statement"
+                && token_nxt.line === token_now.line
+            ) {
 
 // test_cause:
 // ["function aa(){}0", "prefix_function", "unexpected_a", "0", 16]
 
-            return stop("unexpected_a");
-        }
-        if (
-            token_nxt.id === "."
-            || token_nxt.id === "?."
+                return stop("unexpected_a");
+            }
+            if (
+                token_nxt.id === "."
+                || token_nxt.id === "?."
 
 // PR-459 - Allow destructuring-assignment after function-definition.
 
-            // || token_nxt.id === "["
-        ) {
+                // || token_nxt.id === "["
+            ) {
 
 // test_cause:
 // ["function aa(){}\n.aa", "prefix_function", "unexpected_a", ".", 1]
 // ["function aa(){}\n?.aa", "prefix_function", "unexpected_a", "?.", 1]
 
-            warn("unexpected_a");
-        }
+                warn("unexpected_a");
+            }
 
 // Check functions are ordered.
 
-        check_ordered(
-            "function",
-            function_list.slice(
-                function_list.indexOf(the_function) + 1
-            ).map(function ({
-                level,
-                name
-            }) {
-                return (level === the_function.level + 1) && name;
-            }).filter(function (name) {
-                return option_dict.beta && name && name.id;
-            })
-        );
+            check_ordered(
+                "function",
+                function_list.slice(
+                    function_list.indexOf(the_function) + 1
+                ).map(function ({
+                    level,
+                    name
+                }) {
+                    return (level === the_function.level + 1) && name;
+                }).filter(function (name) {
+                    return option_dict.beta && name && name.id;
+                })
+            );
+        }
 
 // Restore the previous context.
 
         functionage = function_stack.pop();
         return the_function;
-    }
-
-    function prefix_function_parameter(the_function) {
-
-// This function will parse input <parameters> at beginning of <the_function>
-
-        the_function.names = [];
-        the_function.parameter_count = 0;
-        the_function.signature = ["("];
-        token_now.free = false;
-        if (token_nxt.id !== ")" && token_nxt.id !== "(end)") {
-
-// PR-500 - Unify ES2015-destructure-logic. - function([aa]) {...}
-
-            prefix_destructure(
-                enroll,                 // enroll
-                "parameter",            // role
-                false,                  // readonly
-                the_function.names,     // name_list
-                the_function,           // the_function
-                true                    // the_function_toplevel
-            );
-        } else {
-            advance(")");
-            the_function.signature.push(")");
-        }
-        the_function.signature = the_function.signature.join("");
     }
 
     function prefix_lbrace() {
@@ -6174,7 +6140,6 @@ function jslint_phase3_parse(state) {
 
                 test_cause("ellipsis");
                 value = prefix_ellipsis();
-                value.ellipsis = true;
                 return value;
             }
             advance();
@@ -6310,11 +6275,7 @@ function jslint_phase3_parse(state) {
 
         check_ordered(
             "property",
-            the_brace.expression.filter(function ({
-                ellipsis
-            }) {
-                return !ellipsis;
-            }).map(function ({
+            the_brace.expression.map(function ({
                 label
             }) {
                 return label;
@@ -6330,15 +6291,15 @@ function jslint_phase3_parse(state) {
         the_token.expression = [];
         if (the_token.assignment) {
             the_token = token_now.assignment;
-            the_token.names = [];
+            the_token.name_list = [];   // 3. name_list for "[aa] = ..."
 
 // PR-500 - Unify ES2015-destructure-logic. - [aa] = ...;
 
             element = prefix_destructure(
-                undefined,              // enroll
+                false,                  // enroll
                 "variable",             // role
                 false,                  // readonly
-                the_token.names,        // name_list
+                the_token.name_list,    // name_list
                 undefined,              // the_function
                 false                   // the_function_toplevel
             );
@@ -6354,15 +6315,16 @@ function jslint_phase3_parse(state) {
                 if (!state.mode_json && token_nxt.id === "...") {
 
 // test_cause:
-// ["aa=[...aa]", "prefix_lbracket", "ellipsis", "", 0]
+// ["aa=[...aa]", "prefix_lbracket", "ellipsis", "...", 0]
 
-                    test_cause("ellipsis");
-                    element = prefix_ellipsis();
-                    the_token.expression.push(element);
-                    break;
+                    test_cause("ellipsis", token_nxt.id);
+                    the_token.expression.push(prefix_ellipsis());
+
+// Issue #401 - Regression - Allow multiple-ellipsis in array-literal.
+
+                } else {
+                    the_token.expression.push(parse_expression(10));
                 }
-                element = parse_expression(10);
-                the_token.expression.push(element);
                 if (token_nxt.id !== ",") {
                     break;
                 }
@@ -6370,7 +6332,7 @@ function jslint_phase3_parse(state) {
                 if (token_nxt.id === "]") {
 
 // test_cause:
-// ["let aa=[0,]", "prefix_lbracket", "unexpected_a", ",", 10]
+// ["aa=[0,]", "prefix_lbracket", "unexpected_a", ",", 6]
 
                     warn("unexpected_a", token_now);
                     break;
@@ -6388,7 +6350,7 @@ function jslint_phase3_parse(state) {
 // PR-385 - Bugfix - Fixes issue #382 - failure to detect destructured fart.
 
         if (token_now.fart) {
-            return parse_fart(token_now.fart);
+            return prefix_function(token_now.fart, true, false);
         }
 
 // test_cause:
@@ -6872,7 +6834,7 @@ function jslint_phase3_parse(state) {
     function stmt_import() {
         const the_import = token_now;
         let name;
-        the_import.name = [];
+        the_import.name_list = [];      // 4. name_list for "import ..."
         state.mode_module = true;
         while (true) {
 
@@ -6910,8 +6872,14 @@ function jslint_phase3_parse(state) {
 
                     warn("unexpected_a", name);
                 }
-                enroll(name, "variable", true);
-                the_import.name.push(name);
+                name_push(
+                    the_import.name_list,       // name_list
+                    true,               // enroll
+                    name,               // name
+                    "variable",         // role
+                    true,               // readonly
+                    true                // init
+                );
             } else {
                 advance("{");
                 if (token_nxt.id !== "}") {
@@ -6937,8 +6905,14 @@ function jslint_phase3_parse(state) {
 
                             warn("unexpected_a", name);
                         }
-                        enroll(name, "variable", true);
-                        the_import.name.push(name);
+                        name_push(
+                            the_import.name_list,       // name_list
+                            true,       // enroll
+                            name,       // name
+                            "variable", // role
+                            true,       // readonly
+                            true        // init
+                        );
                         if (token_nxt.id !== ",") {
                             break;
                         }
@@ -7262,7 +7236,14 @@ function jslint_phase3_parse(state) {
                 if (token_nxt.id !== "ignore") {
                     ignored = undefined;
                     the_catch.name = token_nxt;
-                    enroll(token_nxt, "exception", true);
+                    name_push(
+                        [],             // name_list
+                        true,           // enroll
+                        token_nxt,      // name
+                        "exception",    // role
+                        true,           // readonly
+                        true            // init
+                    );
                 }
                 advance();
                 advance(")");
@@ -7303,7 +7284,7 @@ function jslint_phase3_parse(state) {
         let name;
         let the_variable = token_now;
         let variable_prv;
-        the_variable.names = [];
+        the_variable.name_list = [];    // 5. name_list for "let [aa] = ..."
 
 // A program may use var or let, but not both.
 
@@ -7383,10 +7364,10 @@ function jslint_phase3_parse(state) {
 // PR-500 - Unify ES2015-destructure-logic. - let [aa] = ...;
 
                 prefix_destructure(
-                    enroll,             // enroll
+                    true,               // enroll
                     "variable",         // role
                     readonly,           // readonly
-                    the_variable.names, // name_list
+                    the_variable.name_list,     // name_list
                     undefined,          // the_function
                     false               // the_function_toplevel
                 );
@@ -7404,22 +7385,18 @@ function jslint_phase3_parse(state) {
 
                     warn("unexpected_a", name);
                 }
-                enroll(name, "variable", readonly);
                 if (token_nxt.id === "=" || readonly) {
                     advance("=");
-
-// Issue #458 - Regression - Warn about variable usage before initialization.
-
-//                    name.dead = false;
-
-                    name.init = true;
-
-// test_cause:
-// ["const aa=bb;\nconst bb=0;", "lookup", "out_of_scope_a", "bb", 10]
-
                     name.expression = parse_expression(0);
                 }
-                the_variable.names.push(name);
+                name_push(
+                    the_variable.name_list,     // name_list
+                    true,               // enroll
+                    name,               // name
+                    "variable",         // role
+                    readonly,           // readonly
+                    Boolean(name.expression)    // init
+                );
             } else {
 
 // test_cause:
@@ -7446,8 +7423,8 @@ function jslint_phase3_parse(state) {
             && !option_dict.variable
             && variable_prv
             && (
-                variable_prv.id + " " + variable_prv.names[0].id
-                > the_variable.id + " " + the_variable.names[0].id
+                variable_prv.id + " " + variable_prv.name_list[0].id
+                > the_variable.id + " " + the_variable.name_list[0].id
             )
         ) {
 
@@ -7460,9 +7437,9 @@ function jslint_phase3_parse(state) {
                 "expected_a_b_before_c_d",
                 the_variable,
                 the_variable.id,
-                the_variable.names[0].id,
+                the_variable.name_list[0].id,
                 variable_prv.id,
-                variable_prv.names[0].id
+                variable_prv.name_list[0].id
             );
         }
         semicolon();
@@ -7900,16 +7877,13 @@ function jslint_phase4_walk(state) {
         };
     }
 
-    function init_variable(name) {
-        let the_variable = lookup(name);
-        if (!the_variable || the_variable.readonly) {
-            warn("bad_assignment_a", name);
-            return;
-        }
-        the_variable.init = true;
-    }
+    function name_lookup(thing, init) {
 
-    function lookup(thing) {
+// This function will:
+// 1. Lookup and return variable or function-parameter <the_variable> in current
+//    context from given <thing>.id.
+// 2. Set <the_variable>.init = true, if lookup was from an assignment.
+
         let id = thing.id;
         let the_variable;
         if (thing.arity !== "variable") {
@@ -7926,7 +7900,7 @@ function jslint_phase4_walk(state) {
         if (the_variable && the_variable.role === "label") {
 
 // test_cause:
-// ["aa:while(0){aa;}", "lookup", "label_a", "aa", 13]
+// ["aa:while(0){aa;}", "name_lookup", "label_a", "aa", 13]
 
             warn("label_a", thing);
             return the_variable;
@@ -7939,27 +7913,30 @@ function jslint_phase4_walk(state) {
                     the_variable = context[id];
                 }
             });
-
-// If it isn't in any of those either, perhaps it is a predefined global.
-// If so, add it to the global context.
-
             if (!the_variable && global_dict[id] === undefined) {
 
 // test_cause:
-// ["aa", "lookup", "undeclared_a", "aa", 1]
-// ["class aa{}", "lookup", "undeclared_a", "aa", 7]
+// ["aa", "name_lookup", "undeclared_a", "aa", 1]
+// ["class aa{}", "name_lookup", "undeclared_a", "aa", 7]
 // ["
 // let aa=0;try{aa();}catch(bb){bb();}bb();
-// ", "lookup", "undeclared_a", "bb", 36]
+// ", "name_lookup", "undeclared_a", "bb", 36]
 // ["
 // let aa=0;try{aa();}catch(ignore){bb();}
-// ", "lookup", "undeclared_a", "bb", 34]
+// ", "name_lookup", "undeclared_a", "bb", 34]
 
                 warn("undeclared_a", thing);
                 return;
             }
+
+// If it isn't in any of those either, perhaps it is a predefined global.
+// If so, add it to the global context.
+
             if (!the_variable) {
                 the_variable = {
+
+// 4a. Mark not dead, the global-variable, anywhere.
+
                     dead: false,
                     id,
                     init: true,
@@ -7983,11 +7960,17 @@ function jslint_phase4_walk(state) {
         ) {
 
 // test_cause:
-// ["(aa=aa)=>0", "lookup", "out_of_scope_a", "aa", 5]
-// ["let aa;if(aa){let bb;}bb;", "lookup", "out_of_scope_a", "bb", 23]
-// ["let aa=bb;let bb=0;", "lookup", "out_of_scope_a", "bb", 8]
+// ["(aa=aa)=>0", "name_lookup", "out_of_scope_a", "aa", 5]
+// ["let aa;if(aa){let bb;}bb;", "name_lookup", "out_of_scope_a", "bb", 23]
+// ["let aa=bb;let bb=0;", "name_lookup", "out_of_scope_a", "bb", 8]
 
             warn("out_of_scope_a", thing);
+        }
+
+// Set variable as initialized, if lookup was from an assignment.
+
+        if (init && the_variable && !the_variable.readonly) {
+            the_variable.init = true;
         }
         return the_variable;
     }
@@ -8000,57 +7983,24 @@ function jslint_phase4_walk(state) {
 
         const lvalue = thing.expression[0];
         let right;
-        if (thing.id === "=") {
-            if (thing.names !== undefined) {
-                if (Array.isArray(thing.names)) {
-
-// PR-500 - Fix false-warning "uninitialized_a" in statement ";[aa]=0;".
-
-// test_cause:
-// [";[aa]=0", "post_a", ";[aa]=0", "", 0]
-
-                    test_cause(";[aa]=0");
-                    thing.names.forEach(init_variable);
-                } else {
+        if (thing.id !== "=") {
+            if (
+                lvalue.arity === "variable"
+                && (!lvalue.variable || lvalue.variable.readonly)
+            ) {
 
 // test_cause:
-// ["aa=0", "post_a", "aa=0", "", 0]
+// ["aa+=0", "post_a", "+=", "aa", 0]
+// ["aa+=0", "post_a", "bad_assignment_a", "aa", 1]
+// ["const aa=0;aa+=0", "post_a", "+=", "aa", 0]
+// ["const aa=0;aa+=0", "post_a", "bad_assignment_a", "aa", 12]
 
-                    test_cause("aa=0");
-                    init_variable(thing.names);
-                }
-            } else {
-                if (lvalue.id === "[" || lvalue.id === "{") {
-                    lvalue.expression.forEach(function (thing) {
-                        if (thing.variable) {
-                            thing.variable.init = true;
-                        }
-                    });
-                } else if (
-                    lvalue.id === "."
-                    && thing.expression[1].id === "undefined"
-                ) {
-
-// test_cause:
-// ["aa.aa=undefined", "post_a", "expected_a_b", "undefined", 1]
-
-                    warn(
-                        "expected_a_b",
-                        lvalue.expression,
-                        "delete",
-                        "undefined"
-                    );
-                }
-            }
-        } else {
-            if (lvalue.arity === "variable") {
-                if (!lvalue.variable || lvalue.variable.readonly) {
-                    warn("bad_assignment_a", lvalue);
-                }
+                test_cause("+=", lvalue.id);
+                warn("bad_assignment_a", lvalue);
             }
             right = syntax_dict[thing.expression[1].id];
             if (
-                right !== undefined
+                right
                 && (
                     right.id === "function"
                     || right.id === "=>"
@@ -8067,6 +8017,33 @@ function jslint_phase4_walk(state) {
 
                 warn("unexpected_a", thing.expression[1]);
             }
+            return;
+        }
+        if (thing.name_list) {
+            thing.name_list.forEach(function (name) {
+                const the_variable = name_lookup(name, true);
+                if (!the_variable || the_variable.readonly) {
+
+// test_cause:
+// ["aa=0", "post_a", "=", "aa", 0]
+// ["aa=0", "post_a", "bad_assignment_a", "aa", 1]
+// ["const aa=0;aa=0", "post_a", "=", "aa", 0]
+// ["const aa=0;aa=0", "post_a", "bad_assignment_a", "aa", 12]
+
+                    test_cause("=", name.id);
+                    warn("bad_assignment_a", name);
+                    return;
+                }
+            });
+            return;
+        }
+        if (lvalue.id === "." && thing.expression[1].id === "undefined") {
+
+// test_cause:
+// ["aa.aa=undefined", "post_a", "expected_a_b", "undefined", 1]
+
+            warn("expected_a_b", lvalue.expression, "delete", "undefined");
+            return;
         }
     }
 
@@ -8372,7 +8349,7 @@ function jslint_phase4_walk(state) {
         }
     }
 
-    function post_s_export(the_thing) {
+    function post_s_export_toplevel(the_thing) {
 
 // Some features must be at the most outermost level.
 
@@ -8381,7 +8358,7 @@ function jslint_phase4_walk(state) {
 // test_cause:
 // ["
 // if(0){import aa from "aa";}
-// ", "post_s_export", "misplaced_a", "import", 7]
+// ", "post_s_export_toplevel", "misplaced_a", "import", 7]
 
             warn("misplaced_a", the_thing);
         }
@@ -8409,47 +8386,64 @@ function jslint_phase4_walk(state) {
 
             warn("unexpected_parens", thing);
         }
-        return post_s_lbrace();
+        return post_s_lbrace_pop_block();
     }
 
     function post_s_import(the_thing) {
-        the_thing.name.forEach(function (name) {
+        the_thing.name_list.forEach(function (name) {
+
+// 5a. Mark not dead, the import-name, after import-statement.
+
             name.dead = false;
-            name.init = true;
-            blockage.live.push(name);
+
+// 5z. Mark as dead, the import-name, after module-scope.
+
+            blockage.live_list.push(name);
         });
-        return post_s_export(the_thing);
+        return post_s_export_toplevel(the_thing);
     }
 
-    function post_s_lbrace() {
-        blockage.live.forEach(function (name) {
+    function post_s_lbrace_pop_block() {
+        blockage.live_list.forEach(function (name) {
+
+// 1z. Mark as dead, the variable, after block-scope.
+
             name.dead = true;
         });
-        delete blockage.live;
+        delete blockage.live_list;
         blockage = block_stack.pop();
     }
 
     function post_s_try(thing) {
-        if (thing.catch) {
-            if (thing.catch.name) {
-                Object.assign(catchage.context[thing.catch.name.id], {
-                    dead: false,
-                    init: true
-                });
-            }
+        if (!thing.catch) {
+            return;
+        }
+        if (thing.catch.name) {
+
+// 6a. Mark not dead, the exception-variable, before catch-block.
+
+            catchage.context[thing.catch.name.id].dead = false;
+        }
 
 // Recurse walk_statement().
 
-            walk_statement(thing.catch.block);
+        walk_statement(thing.catch.block);
 
 // Restore previous catch-scope after catch-block.
 
-            catchage = catch_stack.pop();
-        }
+        catchage = catch_stack.pop();
     }
 
     function post_s_var(thing) {
-        thing.names.forEach(function (name) {
+        thing.name_list.forEach(function (name) {
+
+// t0d0 - Move to after walk_expression().
+
+// PR-xxx - Fix long-running regression where 'let x = x;'
+// doesn't warn about uninitialized variables.
+
+// 1a. Mark not dead, the variable, after variable-initialization.
+
             name.dead = false;
             if (name.expression) {
 
@@ -8458,22 +8452,6 @@ function jslint_phase4_walk(state) {
 
                 test_cause("let aa=0");
                 walk_expression(name.expression);
-
-// Probably deadcode.
-// if (name.id === "{" || name.id === "[") {
-//     name.names.forEach(subactivate);
-// } else {
-//     name.init = true;
-// }
-
-// PR-500 - Unify property the_function.parameters into the_function.names.
-
-// jslint_assert(
-// !(name.id === "{" || name.id === "["),
-// `Expected !(name.id === "{" || name.id === "[").`
-// );
-
-                name.init = true;
             } else {
 
 // test_cause:
@@ -8481,7 +8459,15 @@ function jslint_phase4_walk(state) {
 
                 test_cause("let aa");
             }
-            blockage.live.push(name);
+            switch (thing.id) {
+            case "const":
+            case "let":
+
+// 1z. Mark as dead, the variable, after block-scope.
+
+                blockage.live_list.push(name);
+                break;
+            }
         });
     }
 
@@ -8726,33 +8712,99 @@ function jslint_phase4_walk(state) {
         warn("unexpected_a", thing);
     }
 
-    function pre_b_lparen(thing) {
-        const left = thing.expression[0];
-        let left_variable;
-        let parent;
-        if (
-            left.identifier
-            && functionage.context[left.id] === undefined
-            && typeof functionage.name === "object"
-        ) {
-            parent = functionage.name.parent;
-            if (parent) {
-                left_variable = parent.context[left.id];
-                if (
-                    left_variable !== undefined
+// PR-xxx - Probably deadcode.
 
-// Probably deadcode.
-// && left_variable.dead
-
-                    && left_variable.parent === parent
-                    && left_variable.calls !== undefined
-                    && left_variable.calls[functionage.name.id] !== undefined
-                ) {
-                    left_variable.dead = false;
-                }
-            }
-        }
-    }
+//     function pre_b_lparen(thing) {
+//
+// // This function runs right before the parser handles a "(" symbol
+// // (like in "myFunction()"). It is a safety valve to prevent
+// // incorrect "use before definition" warnings.
+// //
+// // Example code triggering this preaction:
+// // my_function();
+//
+// // Step 1: Find out what is being called.
+// // If the code is "foo()", "left" gets the "foo" part.
+// //
+// // Code representation:
+// // left === token_foo;
+//
+//         const left = thing.expression[0];
+//         let left_variable;
+//         let parent;
+//
+// // Step 2: Make sure we are calling a named thing (an identifier),
+// // and check that this thing is NOT defined locally inside the
+// // active function. We also make sure the active function
+// // actually has a name.
+// //
+// // Code structure matched here:
+// // function active_function() {
+// //     foo(); // "foo" is not defined inside active_function
+// // }
+//
+//         if (
+//             left.identifier
+//             && functionage.context[left.id] === undefined
+//             && typeof functionage.name === "object"
+//         ) {
+//
+// // Step 3: Find the outer function (the parent) that
+// // wraps our current function.
+// //
+// // Code structure matched here:
+// // function outer_parent() {
+// //     function active_function() { ... }
+// // }
+//
+//             parent = functionage.name.parent;
+//             if (parent) {
+//
+// // Step 4: Look up the variable we are calling ("foo")
+// // inside that parent function.
+// //
+// // Code structure matched here:
+// // function outer_parent() {
+// //     function foo() {} // Defined in the parent scope
+// //     function active_function() { foo(); }
+// // }
+//
+//                 left_variable = parent.context[left.id];
+//
+// // Step 5: Check if we need to temporarily "bring it
+// // back to life".
+// // We verify it was found in the parent scope, is currently marked
+// // as "dead", belongs to this parent, and has a registered call from
+// // our active function. If so, we revive it!
+// //
+// // Code structure matched here (Mutual Recursion):
+// // function outer_parent() {
+// //     function active_function() {
+// //         foo(); // "foo" is forward-referenced & currently dead
+// //     }
+// //     function foo() {
+// //         active_function();
+// //     }
+// // }
+//
+//                 if (
+//                     left_variable !== undefined
+// // Probably deadcode.
+// // && left_variable.dead
+//                     && left_variable.parent === parent
+//                     && left_variable.calls !== undefined
+//                     && left_variable.calls[functionage.name.id] !== undefined
+//                 ) {
+//
+// // If all those match, revive it! Mark "dead" as
+// // false so JSLint won't raise an error for
+// // calling it before its line is executed.
+//
+//                     left_variable.dead = false;
+//                 }
+//             }
+//         }
+//     }
 
     function pre_b_noteq(thing) {
 
@@ -8777,8 +8829,11 @@ function jslint_phase4_walk(state) {
     function pre_s_for(thing) {
         let the_variable;
         if (thing.name !== undefined) {
+
+// 7a. Mark not dead, the iterator variable, during for-loop-initialization.
+
             thing.name.dead = false;
-            the_variable = lookup(thing.name);
+            the_variable = name_lookup(thing.name, true);
             if (the_variable !== undefined) {
                 if (the_variable.init && the_variable.readonly) {
 
@@ -8787,7 +8842,6 @@ function jslint_phase4_walk(state) {
 
                     warn("bad_assignment_a", thing.name);
                 }
-                the_variable.init = true;
             }
         }
 
@@ -8815,10 +8869,12 @@ function jslint_phase4_walk(state) {
         block_stack.push(blockage);
         functionage = thing;
         blockage = thing;
-        thing.live = [];
+        thing.live_list = [];
         if (typeof thing.name === "object") {
+
+// 3a. Mark not dead, the function-name, in function-expression.
+
             thing.name.dead = false;
-            thing.name.init = true;
         }
         if (thing.extra === "get") {
             if (thing.parameter_count !== 0) {
@@ -8843,20 +8899,7 @@ function jslint_phase4_walk(state) {
                 warn("bad_set", thing);
             }
         }
-
-// PR-500 - Unify property the_function.parameters into the_function.names.
-
-// thing.parameters.forEach(function (name) {
-//     walk_expression(name.expression);
-//     if (name.id === "{" || name.id === "[") {
-//         name.names.forEach(subactivate);
-//     } else {
-//         name.dead = false;
-//         name.init = true;
-//     }
-// });
-
-        thing.names.forEach(function (name) {
+        thing.name_list.forEach(function (name) {
             if (name.expression) {
 
 // test_cause:
@@ -8872,15 +8915,17 @@ function jslint_phase4_walk(state) {
                 test_cause("(aa)=>0");
             }
             walk_expression(name.expression);
+
+// 8a. Mark not dead, the function-parameter, after destructuring.
+
             name.dead = false;
-            name.init = true;
         });
     }
 
     function pre_s_lbrace(thing) {
         block_stack.push(blockage);
         blockage = thing;
-        thing.live = [];
+        thing.live_list = [];
     }
 
     function pre_try(thing) {
@@ -8894,20 +8939,12 @@ function jslint_phase4_walk(state) {
     }
 
     function pre_v(thing) {
-        const the_variable = lookup(thing);
+        const the_variable = name_lookup(thing, false);
         if (the_variable !== undefined) {
             thing.variable = the_variable;
             the_variable.used += 1;
         }
     }
-
-// PR-500 - Unify property the_function.parameters into the_function.names.
-
-// function subactivate(name) {
-//     name.init = true;
-//     name.dead = false;
-//     blockage.live.push(name);
-// }
 
     function walk_expression(thing) {
         if (thing) {
@@ -9028,21 +9065,25 @@ function jslint_phase4_walk(state) {
     postaction("binary", "||", post_b_or);
     postaction("binary", post_b);
     postaction("statement", "const", post_s_var);
-    postaction("statement", "export", post_s_export);
+    postaction("statement", "export", post_s_export_toplevel);
     postaction("statement", "for", post_s_for);
     postaction("statement", "function", post_s_function);
     postaction("statement", "import", post_s_import);
     postaction("statement", "let", post_s_var);
     postaction("statement", "try", post_s_try);
     postaction("statement", "var", post_s_var);
-    postaction("statement", "{", post_s_lbrace);
+    postaction("statement", "{", post_s_lbrace_pop_block);
     postaction("ternary", post_t);
     postaction("unary", "+", post_u_plus);
     postaction("unary", "function", post_s_function);
     postaction("unary", post_u);
     preaction("assignment", pre_a_bitwise);
     preaction("binary", "!=", pre_b_noteq);
-    preaction("binary", "(", pre_b_lparen);
+
+// PR-xxx - Probably deadcode.
+
+//     preaction("binary", "(", pre_b_lparen);
+
     preaction("binary", "==", pre_b_eqeq);
     preaction("binary", "=>", pre_s_function);
     preaction("binary", "in", pre_b_in);
@@ -9150,24 +9191,11 @@ function jslint_phase5_whitage(state) {
 // ["function aa(aa) {return aa;}", "delve", "id", "", 0]
 
                 test_cause("id");
-                if (
-                    name.used === 0
-
-// Probably deadcode.
-// && (
-//     name.role !== "function"
-//     || name.parent.arity !== "unary"
-// )
-
-                    && jslint_assert(
-                        name.role !== "function",
-                        `Expected name.role !== "function".`
-                    )
-                ) {
+                if (!name.used) {
 
 // test_cause:
 // ["/*jslint node*/\nlet aa;", "delve", "unused_a", "aa", 5]
-// ["function aa(aa){return;}", "delve", "unused_a", "aa", 13]
+// ["function aa(bb){return;}", "delve", "unused_a", "bb", 13]
 // ["let aa=0;try{aa();}catch(bb){aa();}", "delve", "unused_a", "bb", 26]
 
                     warn("unused_a", name);
@@ -9741,12 +9769,11 @@ function jslint_phase5_whitage(state) {
 // or used. If the file imports or exports, then its global object is also
 // delved.
 
-    if (state.mode_module === true || option_dict.node) {
-        delve(token_global);
-    }
+// PR-xxx - tighten warning of unused variables to be always on.
+
+    delve(token_global);
     catch_list.forEach(delve);
     function_list.forEach(delve);
-
     if (option_dict.white) {
         return;
     }
@@ -10314,7 +10341,7 @@ pyNj+JctcQLXenBOCms46aMkenIx45WpXqxxVJQLz/vgpmAVa0fmDv6Pue9xVTBPfVxCUGfj\
             level,
             line,
             name,
-            names = [],
+            name_list = [],
             signature
         } = the_function;
         let list = Object.keys(context);
@@ -10337,7 +10364,7 @@ pyNj+JctcQLXenBOCms46aMkenIx45WpXqxxVJQLz/vgpmAVa0fmDv6Pue9xVTBPfVxCUGfj\
             )
             + "</dfn>"
         );
-        html += detail("parameter", names.map(function ({id}) {
+        html += detail("parameter", name_list.map(function ({id}) {
             return id;
         }).sort());
         list.sort();
