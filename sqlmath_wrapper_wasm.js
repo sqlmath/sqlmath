@@ -36,37 +36,11 @@
 */
 
 
-// init debugInline
-let debugInline = (function () {
-    let __consoleError = function () {
-        return;
-    };
-    function debug(...argv) {
-
-// This function will print <argv> to stderr and then return <argv>[0].
-
-        __consoleError("\n\ndebugInline");
-        __consoleError(...argv);
-        __consoleError("\n");
-        return argv[0];
-    }
-    debug(); // Coverage-hack.
-    __consoleError = console.error; //jslint-ignore-line
-    return debug;
-}());
-
 function isExternalBuffer(buf) {
 
 // This function will check if <buf> is ArrayBuffer.
 
     return buf && buf.constructor === ArrayBuffer;
-}
-
-function noop(val) {
-
-// This function will do nothing except return <val>.
-
-    return val;
 }
 
 (async function () {
