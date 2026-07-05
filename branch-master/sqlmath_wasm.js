@@ -1,11 +1,11 @@
 /*jslint-disable*/
 // Copyright (c) 2021 Kai Zhu
 // SPDX-License-Identifier: MIT
-// 2026-06-22T16:58:19+0000
+// 2026-07-05T20:45:58+0000
 (function () {
 "use strict";
 
-var g;g||(g=typeof Module !== 'undefined' ? Module : {});var aa=Object.assign;(function(){function a(){}function b(...c){a("\n\ndebugInline");a(...c);a("\n");return c[0]}b();a=console.error;return b})();function ba(a){return a&&a.constructor===ArrayBuffer}
+var g;g||(g=typeof Module !== 'undefined' ? Module : {});var aa=Object.assign;function ba(a){return a&&a.constructor===ArrayBuffer}
 (async function(){let a=h("dbFileLoadOrSave","number",["number","string","number"]),b=h("jsbatonGetErrmsg","string",["number"]),c=h("jsbatonGetString","string",["number","number"]),d=h("sqlite3_errmsg","string",["number"]),e;globalThis.onmessage=async function({data:f}){await e;f.batonPtr=0;try{a:{let G=f.FILENAME_DBTMP;var k=f.JSBATON_OFFSET_ALL;let Rb=f.JSBATON_OFFSET_BUFV,P=f.argList,Q=new Uint8Array(f.baton.buffer),C=0,A=P[4],Sb=0,ea="",W=f.funcname,Va=P[2];switch(W){case "_dbClose":case "_dbExec":case "_dbFileLoad":case "_dbNoop":case "_dbOpen":C=
 ca(Q.byteLength);f.batonPtr=C;l.set(Q,C);switch(W){case "_dbClose":console.error(`_dbClose("${c(C,1)}")`);break;case "_dbFileLoad":Va||da(G,new Uint8Array(A));break;case "_dbOpen":console.error(`_dbOpen("${c(C,0)}")`)}fa(C);ea=b(C);Q.set(l.subarray(C,C+k));switch(!ea&&W){case "_dbExec":A=new BigInt64Array(Q.buffer,Rb);P[0]=l.slice(Number(A[0]),Number(A[0]+A[1])).buffer;ha(Number(A[0]));break;case "_dbFileLoad":if(Va){k=G;var m=m||0;var p=p||"binary";if("utf8"!==p&&"binary"!==p)throw Error('Invalid encoding type "'+
 p+'"');var q,t=n(k,m),v=r(k).size,H=new Uint8Array(v);ia(t,H,0,v,0);"utf8"===p?q=u(H,0):"binary"===p&&(q=H);ja(t);P[0]=q.buffer;ka(G)}break;case "_dbOpen":A&&(da(G,new Uint8Array(A)),A=Number(la(C,0)),(Sb=a(A,G,0))&&(ea=d(A)),ka(G))}postMessage({argList:P,baton:new DataView(Q.buffer),errmsg:ea,funcname:W,id:f.id},[Q.buffer,...P.filter(ba)]);var Tb=void 0;break a}throw Error(`invalid funcname "${W}"`);}await Tb}catch(G){postMessage({errmsg:G.stack,id:f.id})}finally{ha(f.batonPtr)}};e=new Promise(function(f){g.postRun=
