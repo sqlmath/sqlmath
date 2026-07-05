@@ -1,9 +1,5 @@
 #!/bin/sh
 
-# sh one-liner
-# sh jslint_ci.sh shCiBuildWasm
-# sh jslint_ci.sh shSqlmathUpdate
-
 SQLMATH_CFLAG_WALL_LIST=" \
     -Wall \
     -Werror \
@@ -566,6 +562,7 @@ shSqlmathUpdate() {(set -e
         for FILE in \
             .ci.sh \
             asset_sqlmath_external_rollup.js \
+            cpplint.py \
             index.html \
             setup.py \
             sqlmath.mjs \
