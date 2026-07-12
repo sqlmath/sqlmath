@@ -31,21 +31,20 @@
 # http://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html
 
 # sh one-liner
-# git add .; npm run test2; git checkout .
-# git branch -d -r origin/aa
-# git config --global diff.algorithm histogram
-# git fetch --prune
-# git fetch origin alpha beta master && git fetch upstream alpha beta master
-# git fetch origin alpha beta master --tags
-# git fetch upstream "refs/tags/*:refs/tags/*"
-# git ls-files --stage | sort
-# git ls-remote --heads origin
-# git update-index --chmod=+x aa.js
-# head CHANGELOG.md -n50
-# ln -f jslint.mjs ~/jslint.mjs
-# openssl rand -base64 32 # random key
-# sh jslint_ci.sh shRunWithScreenshotTxt .artifact/screenshot_changelog.svg head -n50 CHANGELOG.md
-# vim rgx-lowercase \L\1\e
+: '
+git add .; npm run test2; git checkout .
+git branch -d -r origin/aa
+git config --global diff.algorithm histogram
+git fetch --prune
+git fetch origin alpha beta master && git fetch upstream alpha beta master
+git fetch origin alpha beta master --tags
+git fetch upstream "refs/tags/*:refs/tags/*"
+git ls-files --stage | sort
+git ls-remote --heads origin
+git update-index --chmod=+x aa.js
+openssl rand -base64 32 # random key
+sh jslint_ci.sh shRunWithScreenshotTxt .artifact/screenshot_changelog.svg head -n50 CHANGELOG.md
+'
 
 # charset - ascii
 # \u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007
@@ -1158,12 +1157,16 @@ import moduleAssert from "assert";
 import moduleChildProcess from "child_process";
 import moduleFs from "fs";
 (async function () {
-    let branchCheckpoint = process.argv[1] || "HEAD";
-    let branchMerge = process.argv[2] || "beta";
+    let [
+        ,
+        branchCheckpoint = "HEAD",
+        branchMerge = "beta",
+        version = new Date().toISOString().slice(0, 10),
+        branchSquash = "HEAD"
+    ] = process.argv;
     let branchPull;
     let commitMessage;
     let data;
-    let version = process.argv[3] || new Date().toISOString().slice(0, 10);
     version = version.replace((/-0?/g), ".").replace((/^v/), "");
     // security - sanitize branchXxx
     [
@@ -1193,6 +1196,7 @@ import moduleFs from "fs";
         commitMessage = (
             /\n\n# v\d\d\d\d\.\d\d?\.\d\d?(?:-.*?)?\n(- [\S\s]+?)(?:\n- |\n\n)/
         ).exec(data)[1];
+        commitMessage = `- shGithubPrCreate ${commitMessage}`;
     }
     branchPull = `branch-${version}`;
     // update README.md
@@ -1211,7 +1215,7 @@ import moduleFs from "fs";
     );
     await moduleFs.promises.writeFile("README.md", data);
     // security - sanitize commitMessage
-    commitMessage = commitMessage.trim().replace((/[$\u0027`]/g), "?");
+    commitMessage = commitMessage.trim().replace((/\u0027/g), "$&\"$&\"$&");
     moduleChildProcess.spawn(
         "sh",
         [
@@ -1220,13 +1224,14 @@ import moduleFs from "fs";
 (set -e
     . ./jslint_ci.sh
     npm run test2
-    git push . HEAD:__pr_${branchMerge}_pre -f
-    shGitSquashPop ${branchCheckpoint} \u0027${commitMessage}\u0027
-    git diff origin/${branchPull} || true
-    git push origin alpha:${branchPull} -f
+    git reset "${branchSquash}"
+    git push . HEAD:__pr_"${branchMerge}"_pre -f
+    shGitSquashPop "${branchCheckpoint}" \u0027${commitMessage}\u0027
+    git diff origin/"${branchPull}" || true
+    git push origin alpha:"${branchPull}" -f
     git push origin alpha -f
     shDirHttplinkValidate
-    git push . HEAD:__pr_${branchMerge} -f
+    git push . HEAD:__pr_"${branchMerge}" -f
     git log -n 4
 )
             `)
@@ -1235,7 +1240,7 @@ import moduleFs from "fs";
     ).on("exit", function (exitCode) {
         moduleAssert.ok(
             exitCode === 0,
-            `shGithubPrCreate - exitCode=${exitCode}`
+            `shGithubPrCreate - exitCode="${exitCode}"`
         );
     });
 }());
@@ -1291,7 +1296,7 @@ shGithubPrUpdatePrxxx() {(set -e
     git diff
     git grep -Ei -e '^ *?(//|#) pr-xxx' || true
     git commit -am "- ci - Update 'PR-xxx' placeholder to '${PR_XXX}'."
-    git log -n 2
+    git log -n 4
 )}
 
 shGithubTokenExport() {
