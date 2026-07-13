@@ -8,6 +8,7 @@
 - none
 
 # v2026.7.1-beta
+- jslint-ci - Add automated ci for shellcheck to lint shell-scripts.
 - jslint-regression - Cleanup indent for multiline-method-chaining.
 - jslint-regression - Fix long-running regression where 'let x = x;' doesn't warn about temporal-dead-zone.
 

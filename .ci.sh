@@ -228,10 +228,10 @@ shCiBaseCustomArtifactUpload() {(set -e
         shGitCmdWithGithubToken push origin artifact
         # git squash
         if shCiMatrixIsmainName && \
-            {
-                [ "$GITHUB_BRANCH0" = alpha ] \
-                || [ "$GITHUB_BRANCH0" = beta ] \
-                || [ "$GITHUB_BRANCH0" = master ]; \
+            { \
+                [ "$GITHUB_BRANCH0" = alpha ] || \
+                [ "$GITHUB_BRANCH0" = beta ] || \
+                [ "$GITHUB_BRANCH0" = master ]; \
             }
         then
             shGitCommitPushOrSquash "" 50
@@ -535,15 +535,15 @@ shSqlmathUpdate() {(set -e
     . "$HOME/myci2.sh" && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
-        DIR_SQLITE=sqlite-autoconf-3500400
-        URL_SQLITE=https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
+        DIR=sqlite-autoconf-3500400
+        URL=https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
         # shRollupFetch
-        if [ ! -d ".$DIR_SQLITE" ]
+        if [ ! -d ".$DIR" ]
         then
-            printf "%s %s\n" "$DIR_SQLITE" "$URL_SQLITE"
-            curl -L "$URL_SQLITE" | tar -xz
-            rm -rf ".$DIR_SQLITE"
-            mv "$DIR_SQLITE" ".$DIR_SQLITE"
+            printf "%s %s\n" ".$DIR" "$URL"
+            curl -L "$URL" | tar -xz
+            rm -rf ".$DIR"
+            mv "$DIR" ".$DIR"
         fi
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
