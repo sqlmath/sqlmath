@@ -148,6 +148,7 @@
     dirname,
     disrupt,
     dot,
+    dot_depth,
     edition,
     elem_list,
     ellipsis,
@@ -9168,7 +9169,7 @@ function jslint_phase5_whitage(state) {
         warn
     } = state;
     let closer = "(end)";
-    let free = false;
+    let dot_depth = 0;
 
 // free = false
 
@@ -9190,7 +9191,7 @@ function jslint_phase5_whitage(state) {
 // "switch(){}"
 // "while(){}"
 
-    let indent_method_dict = empty();
+    let free = false;
     let indentage;
     let left = token_global;
     let margin = 0;
@@ -9283,66 +9284,6 @@ function jslint_phase5_whitage(state) {
         );
     }
 
-    function no_space() {
-        if (left.line === right.line) {
-
-// from:
-// if (left.line === right.line) {
-//     no_space();
-// } else {
-
-            if (left.thru !== right.from && nr_comments_skipped === 0) {
-
-// test_cause:
-// ["String( );", "no_space", "unexpected_space_a_b", ")", 9]
-
-                warn(
-                    "unexpected_space_a_b",
-                    right,
-                    artifact(left),
-                    artifact(right)
-                );
-            }
-            return;
-        }
-
-// from:
-// } else if (
-//     right.arity === "binary"
-//     && right.id === "("
-//     && free
-// ) {
-//     no_space();
-// } else if (
-
-// Probably deadcode.
-// if (open) {
-//     const at = (
-//         free
-//         ? margin
-//         : margin + 8
-//     );
-//     if (right.from < at) {
-//         expected_at(at);
-//     }
-// } else {
-//     if (right.from !== margin + 8) {
-//         expected_at(margin + 8);
-//     }
-// }
-
-        jslint_assert(open, `Expected open.`);
-        jslint_assert(free, `Expected free.`);
-        if (right.from < margin) {
-
-// test_cause:
-// ["String(\nString\n()\n);", "no_space", "expected_at(margin)", "(", 0]
-
-            test_cause("expected_at(margin)", right.id);
-            expected_at(margin);
-        }
-    }
-
     function no_space_only() {
         if (
             left.id !== "(global)"
@@ -9397,139 +9338,83 @@ function jslint_phase5_whitage(state) {
         }
     }
 
-    function whitage_case() {
+    function whitage_closer() {
 
 // test_cause:
-// ["String();", "whitage_case", "opener", "(", 0]
-// ["let aa=[];", "whitage_case", "opener", "[", 0]
-// ["let aa=`${0}`;", "whitage_case", "opener", "${", 0]
-// ["let aa={};", "whitage_case", "opener", "{", 0]
+// ["String(0);", "whitage_closer", "closer", ")", 0]
+// ["let aa=[0];", "whitage_closer", "closer", "]", 0]
+// ["let aa=`${0}`;", "whitage_closer", "closer", "}", 0]
+// ["let aa={String};", "whitage_closer", "closer", "}", 0]
 
-        test_cause("opener", left.id);
-        switch (left.id + right.id) {
+        test_cause("closer", right.id);
 
-// Probably deadcode.
-// case "${}":
+// If right is a closer, then pop the previous state.
 
-// test_cause:
-// ["let aa=`${}`;", "parse_expression", "unexpected_a", "}", 11]
+        indentage = function_stack.pop();
+        closer = indentage.closer;
+        free = indentage.free;
+        margin = indentage.margin;
+        open = indentage.open;
+        opening = indentage.opening;
 
-        case "()":
-        case "[]":
-        case "{}":
+// PR-xxx - Cleanup indent for multiline-method-chaining.
 
-// If left and right are opener and closer, then the placement of right depends
-// on the openness. Illegal pairs (like '{]') have already been detected.
-
-            if (left.line === right.line) {
-
-// test_cause:
-// ["String();", "whitage_case", "()", "(", 0]
-
-                test_cause("()", left.id);
-                no_space();
-            } else {
-
-// test_cause:
-// ["String(\n);", "whitage_case", "(\n)", "(", 0]
-
-                test_cause("(\n)", left.id);
-                at_margin(0);
-            }
-            break;
-        default:
-            opening = left.open || (left.line !== right.line);
-            indentage = {
-                closer,
-                free,
-                margin,
-                open,
-                opening
-            };
-            function_stack.push(indentage);
-            switch (left.id) {
-            case "${":
-                closer = "}";
-                break;
-            case "(":
-                closer = ")";
-                break;
-            case "[":
-                closer = "]";
-                break;
-            case "{":
-                closer = "}";
-                break;
-            }
-            if (opening) {
-
-// test_cause:
-// ["String(\n0);", "whitage_case", "(\n0)", "0", 0]
-
-                test_cause("(\n0)", right.value);
-                free = closer === ")" && left.free;
-                open = true;
-                margin += mode_indent;
-                if (indent_method_dict[left.line]) {
-
-// PR-498 - Relax warning on multiline-method-chaining.
-
-                    margin += mode_indent;
-                    indentage.indent_method = true;
-                }
-                if (right.role === "label") {
-                    if (right.from !== 0) {
-
-// test_cause:
-// ["
-// function aa(){
-//  bb:while(aa){aa();}}
-// ", "whitage_case", "{\n label", "bb", 0]
-
-                        test_cause("{\n label", right.id);
-                        expected_at(0);
-                    }
-                } else if (right.switch) {
-                    at_margin(-mode_indent);
-                } else {
-                    at_margin(0);
-                }
-                break;
-            }
-            if (right.statement || right.role === "label") {
-
-// test_cause:
-// ["function aa(){bb:while(aa){aa();}}", "whitage_case", "{label", "bb", 0]
-
-                test_cause("{label", right.id);
-                warn(
-                    "expected_line_break_a_b",
-                    right,
-                    artifact(left),
-                    artifact(right)
-                );
-            }
-            free = false;
-            open = false;
-
-// test_cause:
-// ["String(0);", "whitage_case", "(0)", "0", 0]
-
-            test_cause("(0)", right.value);
-            no_space_only();
+        if (dot_depth > 1) {
+            dot_depth -= 1;
         }
+        if (opening && right.id !== ";") {
+
+// test_cause:
+// ["String(\n0);", "whitage_closer", "aa(\n0)", "0", 0]
+
+            test_cause("aa(\n0)", left.value);
+            at_margin(
+                indentage.dot_depth === 1
+
+// PR-xxx - Cleanup indent for multiline-method-chaining.
+
+                ? mode_indent
+                : 0
+            );
+            return;
+        }
+
+// test_cause:
+// ["String( );", "whitage_closer", "no_space_only", ")", 0]
+
+        test_cause("no_space_only", right.id);
+        no_space_only();
     }
 
     function whitage_default() {
+
+// The open and close pairs.
+
+        switch (left.id) {
+        case "${":
+        case "(":
+        case "[":
+        case "{":
+            whitage_opener();
+            return;
+        }
+        if (right.id === closer) {
+            whitage_closer();
+            return;
+        }
+
+// Left is not an opener, and right is not a closer.
+// The nature of left and right will determine the space between them.
+
         if (right.statement === true) {
             if (left.id === "else") {
 
 // test_cause:
 // ["
 // let aa=0;if(aa){aa();}else if(aa){aa();}
-// ", "whitage_default", "stmt_else", "else", 0]
+// ", "whitage_default", "stmt_else_if", "else", 0]
 
-                test_cause("stmt_else", left.id);
+                test_cause("stmt_else_if", left.id);
                 one_space_only();
                 return;
             }
@@ -9543,39 +9428,7 @@ function jslint_phase5_whitage(state) {
             return;
         }
 
-// If right is a closer, then pop the previous state.
-
-        if (right.id === closer) {
-            indentage = function_stack.pop();
-            closer = indentage.closer;
-            free = indentage.free;
-            margin = indentage.margin;
-            open = indentage.open;
-            opening = indentage.opening;
-            if (opening && right.id !== ";") {
-
-// test_cause:
-// ["String(\n0);", "whitage_default", "aa(\n0)", "0", 0]
-
-                test_cause("aa(\n0)", left.value);
-                at_margin(
-                    indentage.indent_method
-
-// PR-498 - Relax warning on multiline-method-chaining.
-
-                    ? mode_indent
-                    : 0
-                );
-                return;
-            }
-            no_space_only();
-            return;
-        }
-
-// Left is not an opener, and right is not a closer.
-// The nature of left and right will determine the space between them.
-
-// If left is ',' or ';' or right is a statement then if open,
+// If left is ',' or ';' or right is a statement, then if open,
 // right must go at the margin, or if closed, a space between.
 
         if (right.switch) {
@@ -9650,7 +9503,17 @@ function jslint_phase5_whitage(state) {
 // ["String(\nString()\n);", "whitage_default", "aa(0", "(", 0]
 
             test_cause("aa(0", right.id);
-            no_space();
+
+// PR-xxx - Inline internal-function no_space() into whitage_default().
+
+            if (right.from < margin) {
+
+// test_cause:
+// ["String(\nString\n()\n);", "whitage_default", "expected_at(margin)", "(", 0]
+
+                test_cause("expected_at(margin)", right.id);
+                expected_at(margin);
+            }
             return;
         }
         if (
@@ -9687,10 +9550,6 @@ function jslint_phase5_whitage(state) {
                 no_space_only();
                 return;
             }
-
-// PR-498 - Relax warning on multiline-method-chaining.
-
-            indent_method_dict[right.line] = true;
             at_margin(mode_indent);
             return;
         }
@@ -9783,6 +9642,106 @@ function jslint_phase5_whitage(state) {
         }
     }
 
+    function whitage_opener() {
+
+// test_cause:
+// ["String();", "whitage_opener", "opener", "(", 0]
+// ["String(0);", "whitage_opener", "opener", "(", 0]
+// ["let aa=[0];", "whitage_opener", "opener", "[", 0]
+// ["let aa=[];", "whitage_opener", "opener", "[", 0]
+// ["let aa=`${0}`;", "whitage_opener", "opener", "${", 0]
+// ["let aa={String};", "whitage_opener", "opener", "{", 0]
+// ["let aa={};", "whitage_opener", "opener", "{", 0]
+
+        test_cause("opener", left.id);
+        opening = left.open || (left.line !== right.line);
+        indentage = {
+            closer,
+            dot_depth,
+            free,
+            margin,
+            open,
+            opening
+        };
+        function_stack.push(indentage);
+
+// PR-xxx - Cleanup indent for multiline-method-chaining.
+
+        if (dot_depth >= 1) {
+            dot_depth += 1;
+            if (dot_depth === 2) {
+                margin += mode_indent;
+            }
+        }
+        switch (left.id) {
+        case "${":
+            closer = "}";
+            break;
+        case "(":
+            closer = ")";
+            break;
+        case "[":
+            closer = "]";
+            break;
+        case "{":
+            closer = "}";
+            break;
+        }
+        if (right.id === closer) {
+            whitage_closer();
+            return;
+        }
+        if (opening) {
+
+// test_cause:
+// ["String(\n0);", "whitage_opener", "(\n0)", "0", 0]
+
+            test_cause("(\n0)", right.value);
+            free = closer === ")" && left.free;
+            open = true;
+            margin += mode_indent;
+            if (right.role === "label") {
+                if (right.from !== 0) {
+
+// test_cause:
+// ["
+// function aa(){
+//  bb:while(aa){aa();}}
+// ", "whitage_opener", "{\n label", "bb", 0]
+
+                    test_cause("{\n label", right.id);
+                    expected_at(0);
+                }
+            } else if (right.switch) {
+                at_margin(-mode_indent);
+            } else {
+                at_margin(0);
+            }
+            return;
+        }
+        if (right.statement || right.role === "label") {
+
+// test_cause:
+// ["function aa(){bb:while(aa){aa();}}", "whitage_opener", "{label", "bb", 0]
+
+            test_cause("{label", right.id);
+            warn(
+                "expected_line_break_a_b",
+                right,
+                artifact(left),
+                artifact(right)
+            );
+        }
+        free = false;
+        open = false;
+
+// test_cause:
+// ["String(0);", "whitage_opener", "(0)", "0", 0]
+
+        test_cause("(0)", right.value);
+        no_space_only();
+    }
+
 // uninitialized_and_unused();
 // Delve into the functions looking for variables that were not initialized
 // or used. If the file imports or exports, then its global object is also
@@ -9814,17 +9773,18 @@ function jslint_phase5_whitage(state) {
 // etc) starting on its own line. Closed form is more compact. Statement blocks
 // are always in open form.
 
-// The open and close pairs.
+        whitage_default();
 
-        switch (left.id) {
-        case "${":
-        case "(":
-        case "[":
-        case "{":
-            whitage_case();
-            break;
-        default:
-            whitage_default();
+// PR-xxx - Cleanup indent for multiline-method-chaining.
+
+        if (left.line !== right.line) {
+            dot_depth = 0;
+            switch (right.id) {
+            case ".":
+            case "?.":
+                dot_depth = dot_depth || 1;
+                break;
+            }
         }
         nr_comments_skipped = 0;
         delete left.calls;

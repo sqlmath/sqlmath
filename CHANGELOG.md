@@ -8,6 +8,7 @@
 - none
 
 # v2026.7.1-beta
+- jslint-regression - Cleanup indent for multiline-method-chaining.
 - jslint-regression - Fix long-running regression where 'let x = x;' doesn't warn about temporal-dead-zone.
 
 # v2026.6.30
