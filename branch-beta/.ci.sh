@@ -1,5 +1,7 @@
 #!/bin/sh
 
+: "${npm_config_fast:=}"
+
 SQLMATH_CFLAG_WALL_LIST=" \
     -Wall \
     -Werror \
@@ -65,7 +67,7 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
         cp -a .github_cache/* ./ || true # js-hack - */
     fi
     # cleanup
-    rm -rf *.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
+    rm -rf ./*.egg-info _sqlmath* build/ sqlmath/_sqlmath* && mkdir -p build/
     PID_LIST=""
     #
     # run nodejs-ci
@@ -102,7 +104,7 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
         # mkdir .artifact/
         mkdir -p .artifact/
         shImageLogoCreate
-        shCiBuildWasm
+        shCiBuildWasm ""
         # .github_cache - save
         if [ "$GITHUB_ACTION" ] && [ ! -d .github_cache/_emsdk/ ]
         then
@@ -116,17 +118,17 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
     shPidListWait shCiBaseCustom "$PID_LIST"
     #
     # upload artifact
-    if (shCiMatrixIsmainNodeversion) && \
-        ( \
+    if shCiMatrixIsmainNodeversion && \
+        { \
             [ "$GITHUB_EVENT_NAME" = push ] || \
             [ "$GITHUB_EVENT_NAME" = schedule ] || \
-            [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] \
-        ) && \
-        ( \
+            [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; \
+        } && \
+        { \
             [ "$GITHUB_BRANCH0" = alpha ] || \
             [ "$GITHUB_BRANCH0" = beta ] || \
-            [ "$GITHUB_BRANCH0" = master ] \
-        )
+            [ "$GITHUB_BRANCH0" = master ]; \
+        }
     then
         export GITHUB_UPLOAD_RETRY=0
         while true
@@ -159,10 +161,10 @@ shCiBaseCustomArtifactUpload() {(set -e
     COMMIT_MESSAGE="- upload artifact
 - retry$GITHUB_UPLOAD_RETRY
 - $GITHUB_BRANCH0
-- $(printf "$GITHUB_SHA" | cut -c-8)
+- $(printf "%s" "$GITHUB_SHA" | cut -c-8)
 - $(uname)
 "
-    printf "\n\n$COMMIT_MESSAGE\n"
+    printf "\n\n%s\n" "$COMMIT_MESSAGE"
     # init .git/config
     git config --local user.email "github-actions@users.noreply.github.com"
     git config --local user.name "github-actions"
@@ -181,24 +183,24 @@ shCiBaseCustomArtifactUpload() {(set -e
     rm -f libomp.*
     case "$(uname)" in
     Darwin*)
-        rm -f *darwin.so
+        rm -f ./*darwin.so
         case $(uname -m) in
         arm64)
-            rm -f *darwin*arm64*
-            rm -f *macos*arm64*
+            rm -f ./*darwin*arm64*
+            rm -f ./*macos*arm64*
             ;;
         x86_64)
-            rm -f *darwin*x64*
-            rm -f *macos*x86_64*
+            rm -f ./*darwin*x64*
+            rm -f ./*macos*x86_64*
             ;;
         esac
         # save libomp
         cp ../../../sqlmath/libomp* ./
         ;;
     Linux*)
-        rm -f *linux*
+        rm -f ./*linux*
         # save sdist
-        rm -f *.tar.gz
+        rm -f ./*.tar.gz
         cp ../../../dist/sqlmath-*.tar.gz ./
         # save wasm
         rm -f sqlmath_wasm*
@@ -206,16 +208,16 @@ shCiBaseCustomArtifactUpload() {(set -e
         cp ../../../sqlmath_wasm* ./
         ;;
     MINGW*)
-        rm -f *win32_x64*
-        rm -f *win_amd64*
+        rm -f ./*win32_x64*
+        rm -f ./*win_amd64*
         ;;
     esac
     cp ../../../_sqlmath.napi* ./
     cp ../../../_sqlmath.shell* ./
     cp ../../../dist/sqlmath-*.whl ./
     cp ../../../sqlmath/lib_lightgbm* ./
-    rm -f *win32_x64*.exp
-    rm -f *win32_x64*.lib
+    rm -f ./*win32_x64*.exp
+    rm -f ./*win32_x64*.lib
     )
     # git commit
     git add .
@@ -225,10 +227,12 @@ shCiBaseCustomArtifactUpload() {(set -e
         # git push
         shGitCmdWithGithubToken push origin artifact
         # git squash
-        if (shCiMatrixIsmainName) && (
-            [ "$GITHUB_BRANCH0" = alpha ] \
-            || [ "$GITHUB_BRANCH0" = beta ] \
-            || [ "$GITHUB_BRANCH0" = master ])
+        if shCiMatrixIsmainName && \
+            { \
+                [ "$GITHUB_BRANCH0" = alpha ] || \
+                [ "$GITHUB_BRANCH0" = beta ] || \
+                [ "$GITHUB_BRANCH0" = master ]; \
+            }
         then
             shGitCommitPushOrSquash "" 50
         fi
@@ -274,12 +278,13 @@ shCiBuildWasm() {(set -e
         *)
             OPTION2="$OPTION2 $SQLMATH_CFLAG_WNO_LIST"
             # optimization - skip rebuild of rollup if possible
-            if [ "$FILE2" -nt "$FILE" ]
+            if [ -n "$(find "$FILE2" -prune -newer "$FILE" 2>/dev/null)" ]
             then
-                printf "shCiBuildWasm - skip $FILE\n" 1>&2
+                printf "shCiBuildWasm - skip %s\n" "$FILE" 1>&2
                 continue
             fi
         esac
+        # shellcheck disable=SC2086
         emcc $OPTION1 $OPTION2
     done
     OPTION2=""
@@ -305,6 +310,7 @@ shCiBuildWasm() {(set -e
         OPTION2="$OPTION2 --closure 1"
         ;;
     esac
+    # shellcheck disable=SC2086
     emcc $OPTION1 $OPTION2 \
         --memory-init-file 0 \
         --pre-js sqlmath_wrapper_wasm.js \
@@ -322,18 +328,20 @@ shCiBuildWasm() {(set -e
         build/sqlmath_external_sqlite.c.wasm.o \
         #
     printf '' > sqlmath_wasm.js
+    {
     printf "/*jslint-disable*/
 // Copyright (c) 2021 Kai Zhu
 // SPDX-License-Identifier: MIT
-// $(date -u +"%Y-%m-%dT%H:%M:%S%z")
+// %s
 (function () {
 \"use strict\";
-" >> sqlmath_wasm.js
-    cat build/sqlmath_wasm.js | tr -d "\r" >> sqlmath_wasm.js
+" "$(date -u +"%Y-%m-%dT%H:%M:%S%z")"
+    tr -d "\r" < build/sqlmath_wasm.js
     printf '
 }());
 /*jslint-enable*/
-' >> sqlmath_wasm.js
+'
+    } >> sqlmath_wasm.js
     cp build/sqlmath_wasm.wasm ./
     ls -l sqlmath_wasm.*
 )}
@@ -350,6 +358,7 @@ shCiEmsdkExport() {
     fi
 }
 
+# shellcheck disable=SC2086
 shCiEmsdkInstall() {(set -e
 # This function will install emsdk.
     shCiEmsdkExport
@@ -414,8 +423,8 @@ shIndentC() {(set -e
             --line-length78 \
             --no-tabs \
             -bfde \
-            $@
-        dos2unix $@
+            "$@"
+        dos2unix "$@"
     fi
 )}
 
@@ -485,7 +494,7 @@ shCiTestNodejs() {(set -e
         npm_config_mode_setup=1 node --input-type=module -e '
 import {ciBuildExt} from "./sqlmath.mjs";
 ciBuildExt({process});
-' "$@" # '
+' # '
         ) &
         PID_LIST="$PID_LIST $!"
         # build python c-extension
@@ -499,7 +508,7 @@ ciBuildExt({process});
     PID_LIST=""
     # test nodejs
     (
-    rm -f *~ .test*.sqlite __data/.test*.sqlite
+    rm -f ./*~ .test*.sqlite __data/.test*.sqlite
     COVERAGE_EXCLUDE="$COVERAGE_EXCLUDE --exclude=jslint.mjs"
     if (node --eval '
 require("assert")(require("./package.json").name !== "sqlmath");
@@ -508,6 +517,7 @@ require("assert")(require("./package.json").name !== "sqlmath");
         COVERAGE_EXCLUDE="$COVERAGE_EXCLUDE --exclude=sqlmath.mjs"
     fi
     NODE_TEST_OPTION="$NODE_TEST_OPTION --trace-uncaught --trace-warnings"
+    # shellcheck disable=SC2086
     shRunWithCoverage $COVERAGE_EXCLUDE node $NODE_TEST_OPTION test.mjs
     ) &
     PID_LIST="$PID_LIST $!"
@@ -522,28 +532,19 @@ require("assert")(require("./package.json").name !== "sqlmath");
 
 shSqlmathUpdate() {(set -e
 # This function will update files with ~/Documents/sqlmath/.
-    . "$HOME/myci2.sh" : && shMyciUpdate
+    . "$HOME/myci2.sh" && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
-        DIR_SQLITE=sqlite-autoconf-3500400
-        URL_SQLITE=https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
+        DIR=sqlite-autoconf-3500400
+        URL=https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
         # shRollupFetch
-        for DIR in \
-            "$DIR_SQLITE"
-        do
-            if [ ! -d ".$DIR" ]
-            then
-                case "$DIR" in
-                "$DIR_SQLITE")
-                    URL="$URL_SQLITE"
-                    ;;
-                esac
-                echo "$DIR" "$URL"
-                curl -L "$URL" | tar -xz
-                rm -rf ".$DIR"
-                mv "$DIR" ".$DIR"
-            fi
-        done
+        if [ ! -d ".$DIR" ]
+        then
+            printf "%s %s\n" ".$DIR" "$URL"
+            curl -L "$URL" | tar -xz
+            rm -rf ".$DIR"
+            mv "$DIR" ".$DIR"
+        fi
         shRollupFetch asset_sqlmath_external_rollup.js
         shRollupFetch index.html
         shRollupFetch sqlmath_base.h
