@@ -1246,9 +1246,9 @@ body {
 <pre><span class="lineno"><a href="#line_1081" id="line_1081"> 1081.</a></span><span class="count    ">      1</span><span>        return;</span></pre>
 <pre><span class="lineno"><a href="#line_1082" id="line_1082"> 1082.</a></span><span class="count    ">      1</span><span>    }</span></pre>
 <pre><span class="lineno"><a href="#line_1083" id="line_1083"> 1083.</a></span><span class="count    ">      1</span><span>    result = Object.values(DB_EXEC_PROFILE_DICT);</span></pre>
-<pre><span class="lineno"><a href="#line_1084" id="line_1084"> 1084.</a></span><span class="count    ">   1505</span><span>    result.sort(function (aa, bb) {</span></pre>
-<pre><span class="lineno"><a href="#line_1085" id="line_1085"> 1085.</a></span><span class="count    ">    500</span><span>        return ((bb.timeElapsed - aa.timeElapsed) || (bb.count - aa.count));</span></pre>
-<pre><span class="lineno"><a href="#line_1086" id="line_1086"> 1086.</a></span><span class="count    ">   1505</span><span>    });</span></pre>
+<pre><span class="lineno"><a href="#line_1084" id="line_1084"> 1084.</a></span><span class="count    ">   1350</span><span>    result.sort(function (aa, bb) {</span></pre>
+<pre><span class="lineno"><a href="#line_1085" id="line_1085"> 1085.</a></span><span class="count    ">    384</span><span>        return ((bb.timeElapsed - aa.timeElapsed) || (bb.count - aa.count));</span></pre>
+<pre><span class="lineno"><a href="#line_1086" id="line_1086"> 1086.</a></span><span class="count    ">   1350</span><span>    });</span></pre>
 <pre><span class="lineno"><a href="#line_1087" id="line_1087"> 1087.</a></span><span class="count    ">     20</span><span>    result = result.slice(0, limit).map(function ({</span></pre>
 <pre><span class="lineno"><a href="#line_1088" id="line_1088"> 1088.</a></span><span class="count    ">     20</span><span>        count,</span></pre>
 <pre><span class="lineno"><a href="#line_1089" id="line_1089"> 1089.</a></span><span class="count    ">     20</span><span>        sql,</span></pre>
