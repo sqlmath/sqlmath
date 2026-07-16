@@ -1,0 +1,17 @@
+*
+.*
+node_modules
+
+!.npmignore
+!CHANGELOG.md
+!LICENSE
+!README.md
+
+!_sqlmath.napi*
+!_sqlmath.shell*
+!jslint.mjs
+!sqlmath.mjs
+!sqlmath/lib_lightgbm*
+!sqlmath_browser.mjs
+!sqlmath_wasm*
+!test.mjs
