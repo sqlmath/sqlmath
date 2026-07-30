@@ -30,7 +30,26 @@ sh jslint_ci.sh shSqlmathUpdate
 /*global FinalizationRegistry*/
 "use strict";
 
-const JSBATON_ARGC = 8;
+// init debugInline
+const debugInline = (function () {
+    let consoleError = Object;
+    function debug(...argList) {
+
+// This function will print <argList> to stderr and then return <argList>[0].
+
+        consoleError("\n\ndebugInline");
+        consoleError(...argList);
+        consoleError("\n");
+        if (consoleError === Object) {
+            consoleError = console.error;
+        }
+        return argList[0];
+    }
+    return debug;
+}());
+debugInline(); // coverage-hack
+
+const JSBATON_ARGC = 8; //jslint-ignore-line
 const JSBATON_OFFSET_ALL = 256;
 const JSBATON_OFFSET_ARGV = 128;
 const JSBATON_OFFSET_BUFV = 192;
@@ -89,10 +108,11 @@ const SQLITE_OPEN_TRANSIENT_DB = 0x00000400;    /* VFS only */
 const SQLITE_OPEN_URI = 0x00000040;             /* Ok for sqlite3_open_v2() */
 const SQLITE_OPEN_WAL = 0x00080000;             /* VFS only */
 
-let DB_EXEC_PROFILE_DICT = {};
+const DB_EXEC_PROFILE_DICT = {}; //jslint-ignore-line
+const DB_STATE = {};
+const version = "v2026.7.30";
 let DB_EXEC_PROFILE_MODE;
 let DB_EXEC_PROFILE_SQL_LENGTH;
-let DB_STATE = {};
 let IS_BROWSER;
 let SQLMATH_EXE;
 let SQLMATH_NODE;
@@ -100,24 +120,6 @@ let cModule;
 let cModulePath;
 let consoleError = console.error;
 let dbFinalizationRegistry;
-// init debugInline
-let debugInline = (function () {
-    let __consoleError = function () {
-        return;
-    };
-    function debug(...argList) {
-
-// This function will print <argList> to stderr and then return <argList>[0].
-
-        __consoleError("\n\ndebugInline");
-        __consoleError(...argList);
-        __consoleError("\n");
-        return argList[0];
-    }
-    debug(); // Coverage-hack.
-    __consoleError = console.error; //jslint-ignore-line
-    return debug;
-}());
 let moduleChildProcess;
 let moduleChildProcessSpawn;
 let moduleCrypto;
@@ -133,7 +135,6 @@ let {
 let sqlMessageDict = {}; // dict of web-worker-callbacks
 let sqlMessageId = 0;
 let sqlWorker;
-let version = "v2026.7.1-beta";
 
 async function assertErrorThrownAsync(asyncFunc, regexp) {
 
@@ -1785,11 +1786,11 @@ async function moduleFsInit() {
     );
 }
 
-function noop(val) {
+function noop(value) {
 
-// This function will do nothing except return <val>.
+// This function will do nothing except return <value>.
 
-    return val;
+    return value;
 }
 
 function objectDeepCopyWithKeysSorted(obj) {
