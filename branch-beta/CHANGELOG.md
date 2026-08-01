@@ -7,7 +7,12 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
-# v2026.7.1-beta
+# v2026.7.30
+- jslint-ecma - Add ES2015-feature for..of.
+- jslint - Change scope from scope_function to scope_block:
+    - const-declaration
+    - let-declaration
+    - function-declaration
 - jslint - Expand built-in-globals for browser, ecma, and node - auto-generated from online-sources.
 - jslint-ci - Add automated ci for shellcheck to lint shell-scripts.
 - jslint-regression - Cleanup indent for multiline-method-chaining.

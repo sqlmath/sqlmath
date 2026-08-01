@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2026.7.1-beta)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2026.7.30)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -333,7 +333,7 @@ function listOrEmptyList<span class="apidocSignatureSpan">(list)</span>
 <li>
 
 <a class="apidocElementLiA" href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.noop">31.
-function noop<span class="apidocSignatureSpan">(val)</span>
+function noop<span class="apidocSignatureSpan">(value)</span>
 </a>
 
 </li>
@@ -1920,12 +1920,31 @@ FROM __lgbm_state;
 <span class="apidocCodeCommentSpan">
 // This function will print &lt;argList&gt; to stderr and then return &lt;argList&gt;[0].
 
-</span>    __consoleError("\n\ndebugInline");
-    __consoleError(...argList);
-    __consoleError("\n");
+</span>    consoleError("\n\ndebugInline");
+    consoleError(...argList);
+    consoleError("\n");
+    if (consoleError === Object) {
+        consoleError = console.error;
+    }
     return argList[0];
 }</pre></li>
-<li>Example usage:<pre class="apidocCodePre">N/A</pre></li>
+<li>Example usage:<pre class="apidocCodePre">...
+        if (consoleError === Object) {
+            consoleError = console.error;
+        }
+        return argList[0];
+    }
+    return debug;
+}());
+<span class="apidocCodeKeywordSpan">debugInline</span>(); // coverage-hack
+
+const JSBATON_ARGC = 8; //jslint-ignore-line
+const JSBATON_OFFSET_ALL = 256;
+const JSBATON_OFFSET_ARGV = 128;
+const JSBATON_OFFSET_BUFV = 192;
+// const JSBATON_OFFSET_ERRMSG = 48;
+const JSBATON_OFFSET_FUNCNAME = 8;
+...</pre></li>
 
 <li>
     <h2>
@@ -2207,15 +2226,15 @@ jstestDescribe((
 <li>
     <h2>
     <a href="#apidoc.elem.%22.%2Fsqlmath.mjs%22.noop" id="apidoc.elem.%22.%2Fsqlmath.mjs%22.noop">
-    function noop<span class="apidocSignatureSpan">(val)</span>
+    function noop<span class="apidocSignatureSpan">(value)</span>
     </a>
     </h2>
 </li>
-<li>Description and source-code:<pre class="apidocCodePre">function noop(val) {
+<li>Description and source-code:<pre class="apidocCodePre">function noop(value) {
 <span class="apidocCodeCommentSpan">
-// This function will do nothing except return &lt;val&gt;.
+// This function will do nothing except return &lt;value&gt;.
 
-</span>    return val;
+</span>    return value;
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
 let sql;

@@ -21,8 +21,8 @@
 
 """sqlmath.py."""
 
-__version__ = "2026.7.1"
-__version_info__ = ("2026", "7", "1")
+__version__ = "2026.7.30"
+__version_info__ = ("2026", "7", "30")
 
 import csv
 import io
@@ -445,7 +445,7 @@ SELECT LGBM_DLOPEN('{lib_lgbm}');
     return db
 
 
-def db_table_import(
+def db_table_import( # noqa: PLR0917
     db=None,
     filename=None,
     header_missing=None,
