@@ -199,7 +199,7 @@ jstestDescribe((
 ), function test_dbBind() {
     jstestIt((
         "test db-bind handling-behavior"
-    ), async function test_dbBind() {
+    ), async function () {
         let db;
         async function test_dbBind_exec(ii, valIn, valExpect) {
             await Promise.all([
