@@ -5032,6 +5032,8 @@ file sqlmath_python - start
 #if defined(SRC_SQLMATH_PYTHON_C2)
 
 
+// Fix c-header conflict between dlfcn.h and Python.h.
+#undef _POSIX_C_SOURCE
 #include <Python.h>
 
 
