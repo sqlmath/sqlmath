@@ -3959,6 +3959,124 @@ SELECT
         ]);
     });
     jstestIt((
+        "test sqlite-extension-win_sinefit2 empty-frame handling-behavior"
+    ), async function test_sqlite_extension_win_sinefit2_emptyframe() {
+        // WIN_SINEFIT_N = 23 doubles = 184 bytes per column
+        const nhead = 23 * 8;
+        let db = await dbOpenAsync({});
+        // Frame "5 PRECEDING AND 3 PRECEDING" is empty for rows 1-3, so
+        // sqlite calls xValue before the first xStep. Regression-test that
+        // xValue does not allocate an aggregate-context with nhead=0, which
+        // would pin nhead=0 for the life of the aggregate and alias
+        // doublewinHead() onto doublewinBody(). ncol=2 additionally
+        // overflows the 304-byte nhead=0 allocation, needing 2*184+48 = 416
+        // bytes of head.
+        assertJsonEqual(
+            noop(
+                await dbExecAsync({
+                    db,
+                    sql: (`
+CREATE TABLE testWinSinefit2Emptyframe AS
+    SELECT 1 AS xx, 1 AS yy
+    --
+    UNION ALL VALUES
+        (2, 2),
+        (3, 3),
+        (4, 4),
+        (5, 5),
+        (6, 6),
+        (7, 7),
+        (8, 8);
+
+-- empty-window-frame
+SELECT
+        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy) OVER (
+            ORDER BY xx
+            ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
+        )) AS nhead
+    FROM testWinSinefit2Emptyframe;
+
+-- empty-window-frame multi-column
+SELECT
+        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy, xx, yy * 2) OVER (
+            ORDER BY xx
+            ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
+        )) AS nhead
+    FROM testWinSinefit2Emptyframe;
+-- non-empty-window-frame control
+SELECT
+        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy) OVER (
+            ORDER BY xx
+            ROWS BETWEEN 5 PRECEDING AND CURRENT ROW
+        )) AS nhead
+    FROM testWinSinefit2Emptyframe;
+
+-- sinefit-object is well-formed
+-- row 8 frame = rows 3-5, so nnn = 3
+WITH tmp1 AS (
+        SELECT
+            xx,
+            win_sinefit2(0, NULL, xx, yy, xx, yy * 2) OVER (
+                ORDER BY xx
+                ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
+            ) AS wsf
+        FROM testWinSinefit2Emptyframe
+    )
+    SELECT
+        SINEFIT_EXTRACT(wsf, 0, 'nnn', 0) AS nnn0,
+        SINEFIT_EXTRACT(wsf, 1, 'nnn', 0) AS nnn1,
+        SINEFIT_EXTRACT(wsf, 0, 'lbb', 0) AS lbb0,
+        SINEFIT_EXTRACT(wsf, 1, 'lbb', 0) AS lbb1
+    FROM tmp1
+    WHERE xx = 8;
+    -- empty-table xFinal
+    SELECT LENGTH(WIN_SINEFIT2(0, NULL, xx, yy)) AS nhead
+    FROM testWinSinefit2Emptyframe
+    WHERE 0;
+                    `)
+                })
+            ),
+            [
+                [
+                    {nhead: 0},
+                    {nhead: 0},
+                    {nhead: 0},
+                    {nhead},
+                    {nhead},
+                    {nhead},
+                    {nhead},
+                    {nhead}
+                ],
+                [
+                    {nhead: 0},
+                    {nhead: 0},
+                    {nhead: 0},
+                    {nhead: 2 * nhead},
+                    {nhead: 2 * nhead},
+                    {nhead: 2 * nhead},
+                    {nhead: 2 * nhead},
+                    {nhead: 2 * nhead}
+                ],
+                [
+                    {nhead},
+                    {nhead},
+                    {nhead},
+                    {nhead},
+                    {nhead},
+                    {nhead},
+                    {nhead},
+                    {nhead}
+                ],
+                [
+                    {lbb0: 1, lbb1: 2, nnn0: 3, nnn1: 3}
+                ],
+                [
+                    {nhead: 0}
+                ]
+            ]
+        );
+    });
+    jstestIt((
         "test sqlite-extension-win_sumx handling-behavior"
     ), async function test_sqlite_extension_win_sumx() {
         let db = await dbOpenAsync({});

@@ -117,14 +117,20 @@ file sqlmath_h - start
 #endif                          // SQLITE_MAX_FUNCTION_ARG
 
 
+// Allocate only for xStep (nhead > 0). xValue/xFinal/xInverse pass nhead=0 and
+// must NOT create a context - allocating there pins nhead to 0 for the life of
+// the aggregate, which aliases doublewinHead() onto doublewinBody().
 #define DOUBLEWIN_AGGREGATE_CONTEXT(nhead) \
-    Doublewin **dblwinAgg = (Doublewin **) \
-        sqlite3_aggregate_context(context, sizeof(*dblwinAgg)); \
-    if (doublewinAggmalloc(dblwinAgg, nhead) != SQLITE_OK) { \
+    Doublewin **dblwinAgg = (Doublewin **) sqlite3_aggregate_context(context, \
+        (nhead) == 0 ? 0 : sizeof(*dblwinAgg)); \
+    if (trueAlways() && (nhead) > 0 && (dblwinAgg == NULL || \
+        doublewinAggmalloc(dblwinAgg, (nhead)) != SQLITE_OK)) { \
         sqlite3_result_error_nomem(context); \
         return; \
     } \
-    Doublewin *dblwin = *dblwinAgg; \
+    double dblwinNull[32] = { 0 }; \
+    Doublewin *dblwin = dblwinAgg != NULL && *dblwinAgg != NULL ? *dblwinAgg \
+        : (Doublewin *) dblwinNull; \
     double *dblwin_body = doublewinBody(dblwin); \
     double *dblwin_head = doublewinHead(dblwin); \
     UNUSED_PARAMETER(dblwin_body); \
@@ -534,6 +540,12 @@ file sqlmath_base - start
 
 // track how many sqlite-db open
 static int dbCount = 0;
+
+
+static inline int trueAlways(
+) {
+    return 1;
+}
 
 
 // file sqlmath_base - SQLMATH_API
@@ -1205,9 +1217,6 @@ SQLMATH_API void doublewinResultBlob(
 }
 
 // SQLMATH_API doublewin - end
-
-// SQLMATH_API idate - start
-// SQLMATH_API idate - end
 
 // SQLMATH_API str99 - start
 SQLMATH_API void str99ArrayAppendDouble(
@@ -3183,9 +3192,9 @@ static void sql3_lgbm_predictfortable_step(
 typedef struct AggStdev {
     double mxx;                 // x-mean
     double nnn;                 // number of elements
-    double vxx;                 // x-variance.p
+    double vxx;                 // x-M2 (sum of squared deviations from mxx)
     double wnn;                 // window-mode
-    double xxa;                 // x-left
+    double xxa;                 // x-left (outgoing window value)
 } AggStdev;
 
 SQLMATH_FUNC static void sql3_stdev_value(
@@ -3917,6 +3926,9 @@ static void winSinefitSnr(
     // declare var0
     const double nnn = nbody / (ncol * WIN_SINEFIT_STEP);
     const double invn0 = 1.0 / nnn;
+    // const double swwMax = MATH_PI * (nnn - 1) / //
+    // sqrt(12.0 * wsf->vxx * invn0);
+    // const double swwMin = 4.0 * MATH_PI / sqrt(12.0 * wsf->vxx * invn0);
     double inva = 0;
     double saa = 0;
     double spp = 0;
@@ -3928,15 +3940,18 @@ static void winSinefitSnr(
             * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
         inva = 1.0 / saa;
     }
-    if (saa <= 0 || !isnormal(saa)) {
+    if (saa <= 0 || !isnormal(saa) || wsf->vxx <= 0 || !isnormal(wsf->vxx)) {
         goto catch_nan;
     }
-    // guess snr - sww - using x-variance.p
+    // guess snr - sww - using x-M2 (sum of squared deviations from mxx)
     if (1) {
-        if (wsf->vxx <= 0 || !isnormal(wsf->vxx)) {
-            goto catch_nan;
-        }
-        sww = 2 * MATH_PI / sqrt(4.0 * wsf->vxx * invn0);       // window-period
+        // if (!isnormal(swwMax) || !isnormal(swwMin) || swwMin >= swwMax) {
+        //     // window too small/degenerate for any valid cycle count
+        //     goto catch_nan;
+        // }
+        // window-period
+        sww = 2 * MATH_PI / sqrt(4.0 * wsf->vxx * invn0);
+        // sww = fmax(swwMin, fmin(swwMax, sww));
     }
     // guess snr - spp - using multivariate-linear-regression
     if (1) {
@@ -4070,8 +4085,11 @@ static void winSinefitSnr(
             goto catch_nan;
         }
         spp -= invd * (+hww * gp - hpw * gw);
-        sww -= invd * (-hpw * gp + hpp * gw);
         spp = fmod(spp, 2 * MATH_PI);
+        sww -= invd * (-hpw * gp + hpp * gw);
+        // sww = sww < 0           //
+        //     ? -fmax(swwMin, fmin(swwMax, -sww)) //
+        //     : +fmax(swwMin, fmin(swwMax, +sww));
     }
     // calculate spp - shift phase to left for better prediction
     // spp += 0.0625 * MATH_PI;
@@ -4102,10 +4120,7 @@ static void winSinefitSnr(
             spp = spp2;
             vrr1 = vrr2;
         }
-        if (vrr1 < 0) {
-            vrr1 = 0;
-        }
-        wsf->see = sqrt(vrr1 * invn0);
+        wsf->see = sqrt(fmax(0, vrr1 * invn0));
     }
     // Canonicalize sww >= 0: sin(-w*t+p) == -sin(w*t-p).
     if (sww < 0) {
