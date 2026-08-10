@@ -4003,7 +4003,7 @@ static void winSinefitSnr(
             * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
     }
     if (saa <= 0 || !isnormal(saa)) {
-        return;
+        goto singularity;
     }
     const double inva = 1.0 / saa;
     // guess snr - sww - using x-variance.p
@@ -4030,7 +4030,7 @@ static void winSinefitSnr(
         // sbb  = invp*(sum(yy)*sum(xz) - sum(xy)*sum(yz))
         // scc  = invp*(sum(xx)*sum(yz) - sum(xy)*sum(xz))
         // spp  = asin(sbb) = acos(scc)
-        // spp  = atan(sbb/scc)
+        // spp  = atan2(sbb, scc)
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
             tmp = sww * WIN_SINEFIT_WSF_XX(ii);
             const double sxx = cos(tmp);
@@ -4045,7 +4045,7 @@ static void winSinefitSnr(
         }
         const double sbb = sumyy * sumxz - sumxy * sumyz;
         const double scc = sumxx * sumyz - sumxy * sumxz;
-        spp = atan(sbb / scc);
+        spp = atan2(sbb, scc);
         if (!isfinite(spp)) {
             spp = 0;
         }
@@ -4131,8 +4131,11 @@ static void winSinefitSnr(
         // spp  = spp - dp
         // sww  = sww - dw
         const double invd = 1.0 / (hpp * hww - hpw * hpw);
-        if (!isfinite(invd)) {
-            return;
+        const double det = hpp * hww - hpw * hpw;
+        if (!isfinite(invd) ||  //
+            fabs(det) < 1e-12   // Prevent ill-conditioned updates.
+            ) {
+            goto singularity;
         }
         saa = sxy / sxx;
         spp -= invd * (+hww * gp - hpw * gw);
@@ -4177,6 +4180,11 @@ static void winSinefitSnr(
     wsf->saa = saa;
     wsf->spp = spp;
     wsf->sww = sww;
+    return;
+  singularity:
+    wsf->saa = 0;
+    wsf->spp = 0;
+    wsf->sww = 0;
 }
 
 SQLMATH_FUNC static void sql3_win_sinefit2_value(

@@ -8,6 +8,7 @@
 - none
 
 # v2026.8.1-beta
+- sqlmath - Update c-function winSinefitSnr() with error-handling for singularity.
 - sqlmath - Fix c-header conflict between dlfcn.h and Python.h.
 
 # v2026.7.30
