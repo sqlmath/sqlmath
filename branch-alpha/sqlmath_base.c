@@ -117,14 +117,20 @@ file sqlmath_h - start
 #endif                          // SQLITE_MAX_FUNCTION_ARG
 
 
+// Allocate only for xStep (nhead > 0). xValue/xFinal/xInverse pass nhead=0 and
+// must NOT create a context - allocating there pins nhead to 0 for the life of
+// the aggregate, which aliases doublewinHead() onto doublewinBody().
 #define DOUBLEWIN_AGGREGATE_CONTEXT(nhead) \
-    Doublewin **dblwinAgg = (Doublewin **) \
-        sqlite3_aggregate_context(context, sizeof(*dblwinAgg)); \
-    if (doublewinAggmalloc(dblwinAgg, nhead) != SQLITE_OK) { \
+    Doublewin **dblwinAgg = (Doublewin **) sqlite3_aggregate_context(context, \
+        (nhead) == 0 ? 0 : sizeof(*dblwinAgg)); \
+    if (trueAlways() && (nhead) > 0 && (dblwinAgg == NULL || \
+        doublewinAggmalloc(dblwinAgg, (nhead)) != SQLITE_OK)) { \
         sqlite3_result_error_nomem(context); \
         return; \
     } \
-    Doublewin *dblwin = *dblwinAgg; \
+    double dblwinNull[32] = { 0 }; \
+    Doublewin *dblwin = dblwinAgg != NULL && *dblwinAgg != NULL ? *dblwinAgg \
+        : (Doublewin *) dblwinNull; \
     double *dblwin_body = doublewinBody(dblwin); \
     double *dblwin_head = doublewinHead(dblwin); \
     UNUSED_PARAMETER(dblwin_body); \
@@ -534,6 +540,12 @@ file sqlmath_base - start
 
 // track how many sqlite-db open
 static int dbCount = 0;
+
+
+static inline int trueAlways(
+) {
+    return 1;
+}
 
 
 // file sqlmath_base - SQLMATH_API
@@ -1205,9 +1217,6 @@ SQLMATH_API void doublewinResultBlob(
 }
 
 // SQLMATH_API doublewin - end
-
-// SQLMATH_API idate - start
-// SQLMATH_API idate - end
 
 // SQLMATH_API str99 - start
 SQLMATH_API void str99ArrayAppendDouble(
@@ -2237,6 +2246,11 @@ SQLMATH_FUNC static void sql1_lgbm_extract_func(
     }
     const double *arr = (double *) sqlite3_value_blob(argv[0]);
     const char *key = (char *) sqlite3_value_text(argv[1]);
+    if (key == NULL) {
+        sqlite3_result_error(context,
+            "lgbm_extract - 2nd argument 'key' must not be NULL", -1);
+        return;
+    }
     int argmax = 0;
     double probability = arr[0];
     for (int ii = 1; ii < nn; ii += 1) {
@@ -3176,11 +3190,11 @@ static void sql3_lgbm_predictfortable_step(
 
 // SQLMATH_FUNC sql3_stdev_func - start
 typedef struct AggStdev {
-    double mxx;                 // x-average
+    double mxx;                 // x-mean
     double nnn;                 // number of elements
-    double vxx;                 // x-variance.p
+    double vxx;                 // x-M2 (sum of squared deviations from mxx)
     double wnn;                 // window-mode
-    double xxa;                 // x-left
+    double xxa;                 // x-left (outgoing window value)
 } AggStdev;
 
 SQLMATH_FUNC static void sql3_stdev_value(
@@ -3373,6 +3387,11 @@ SQLMATH_FUNC static void sql1_coinflip_extract_func(
     const WinCoinflip *agg =
         (WinCoinflip *) sqlite3_value_blob(argv[0]) + icol;
     const char *key = (char *) sqlite3_value_text(argv[2]);
+    if (key == NULL) {
+        sqlite3_result_error(context,
+            "coinflip_extract - 3rd argument 'key' must not be NULL", -1);
+        return;
+    }
     const char *keyList[] = {
         "nflip",
         "nhead",
@@ -3907,6 +3926,10 @@ static void winSinefitSnr(
     // declare var0
     const double nnn = nbody / (ncol * WIN_SINEFIT_STEP);
     const double invn0 = 1.0 / nnn;
+    // const double swwMax = MATH_PI * (nnn - 1) / //
+    // sqrt(12.0 * wsf->vxx * invn0);
+    // const double swwMin = 4.0 * MATH_PI / sqrt(12.0 * wsf->vxx * invn0);
+    double inva = 0;
     double saa = 0;
     double spp = 0;
     double sww = 0;
@@ -3915,14 +3938,20 @@ static void winSinefitSnr(
     if (1) {
         saa = sqrt(2 * wsf->vyy * invn0 //
             * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy)));
+        inva = 1.0 / saa;
     }
-    if (saa <= 0 || !isnormal(saa)) {
+    if (saa <= 0 || !isnormal(saa) || wsf->vxx <= 0 || !isnormal(wsf->vxx)) {
         goto catch_nan;
     }
-    const double inva = 1.0 / saa;
-    // guess snr - sww - using x-variance.p
+    // guess snr - sww - using x-M2 (sum of squared deviations from mxx)
     if (1) {
-        sww = 2 * MATH_PI / sqrt(4.0 * wsf->vxx * invn0);       // window-period
+        // if (!isnormal(swwMax) || !isnormal(swwMin) || swwMin >= swwMax) {
+        //     // window too small/degenerate for any valid cycle count
+        //     goto catch_nan;
+        // }
+        // window-period
+        sww = 2 * MATH_PI / sqrt(4.0 * wsf->vxx * invn0);
+        // sww = fmax(swwMin, fmin(swwMax, sww));
     }
     // guess snr - spp - using multivariate-linear-regression
     if (1) {
@@ -3968,11 +3997,11 @@ static void winSinefitSnr(
     if (1) {
         const double spp2 = fmod(spp + MATH_PI, 2 * MATH_PI);
         double dr = 0;
-        double mrr1 = 0;        // r-average
-        double mrr2 = 0;        // r-average
+        double mrr1 = 0;        // r-mean
+        double mrr2 = 0;        // r-mean
         double rr = 0;
-        double vrr1 = 0;        // r-variance.p
-        double vrr2 = 0;        // r-variance.p
+        double vrr1 = 0;        // r-M2 (sum of squared deviations from mrr)
+        double vrr2 = 0;        // r-M2 (sum of squared deviations from mrr)
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
             tmp = fmod(sww * WIN_SINEFIT_WSF_XX(ii), 2 * MATH_PI);
             // welford - increment vrr1
@@ -4046,15 +4075,21 @@ static void winSinefitSnr(
         // sww  = sww - dw
         const double invd = 1.0 / (hpp * hww - hpw * hpw);
         const double det = hpp * hww - hpw * hpw;
-        if (!isfinite(invd) ||  //
-            fabs(det) < 1e-12   // Prevent ill-conditioned updates.
-            ) {
+        saa = sxy / sxx;
+        // inva = 1.0 / saa;
+        if (                    //
+            !isfinite(invd) ||  //
+            !isnormal(det) ||   //
+            !isnormal(saa) ||   //
+            fabs(det) < 1e-12 * (fabs(hpp * hww) + fabs(hpw * hpw))) {
             goto catch_nan;
         }
-        saa = sxy / sxx;
         spp -= invd * (+hww * gp - hpw * gw);
-        sww -= invd * (-hpw * gp + hpp * gw);
         spp = fmod(spp, 2 * MATH_PI);
+        sww -= invd * (-hpw * gp + hpp * gw);
+        // sww = sww < 0           //
+        //     ? -fmax(swwMin, fmin(swwMax, -sww)) //
+        //     : +fmax(swwMin, fmin(swwMax, +sww));
     }
     // calculate spp - shift phase to left for better prediction
     // spp += 0.0625 * MATH_PI;
@@ -4062,11 +4097,11 @@ static void winSinefitSnr(
     if (1) {
         const double spp2 = fmod(spp + MATH_PI, 2 * MATH_PI);
         double dr = 0;
-        double mrr1 = 0;        // r-average
-        double mrr2 = 0;        // r-average
+        double mrr1 = 0;        // r-mean
+        double mrr2 = 0;        // r-mean
         double rr = 0;
-        double vrr1 = 0;        // r-variance.p
-        double vrr2 = 0;        // r-variance.p
+        double vrr1 = 0;        // r-M2 (sum of squared deviations from mrr)
+        double vrr2 = 0;        // r-M2 (sum of squared deviations from mrr)
         for (int ii = 0; ii < nbody; ii += ncol * WIN_SINEFIT_STEP) {
             tmp = fmod(sww * WIN_SINEFIT_WSF_XX(ii), 2 * MATH_PI);
             // welford - increment vrr1
@@ -4085,18 +4120,31 @@ static void winSinefitSnr(
             spp = spp2;
             vrr1 = vrr2;
         }
-        wsf->see = sqrt(vrr1 * invn0);
+        wsf->see = sqrt(fmax(0, vrr1 * invn0));
     }
-    // save wsf
+    // Canonicalize sww >= 0: sin(-w*t+p) == -sin(w*t-p).
+    if (sww < 0) {
+        sww = -sww;
+        saa = -saa;
+        spp = -spp;
+    }
+    // Canonicalize saa >= 0: sin(t) == -sin(t+pi).
+    if (saa < 0) {
+        saa = -saa;
+        spp += MATH_PI;
+    }
+    spp = fmod(spp, 2 * MATH_PI);
     if (spp < 0) {
         spp += 2 * MATH_PI;
     }
+    // save wsf
     wsf->saa = saa;
     wsf->spp = spp;
     wsf->sww = sww;
     return;
   catch_nan:
     wsf->saa = 0;
+    wsf->see = 0;
     wsf->spp = 0;
     wsf->sww = 0;
 }
@@ -4260,6 +4308,11 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
     }
     const WinSinefit *wsf = (WinSinefit *) sqlite3_value_blob(argv[0]) + icol;
     const char *key = (char *) sqlite3_value_text(argv[2]);
+    if (key == NULL) {
+        sqlite3_result_error(context,
+            "sinefit_extract - 3rd argument 'key' must not be NULL", -1);
+        return;
+    }
     const char *keyList[] = {
         "laa",
         "lbb",
@@ -4453,6 +4506,7 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
     double *xxyy = (double *) (wsf0 + ncol);
     const int wbb = (int) wsf->wbb;
     if (!(0 <= wbb && wbb + ncol * WIN_SINEFIT_STEP <= nbody)) {
+        sqlite3_free(wsf0);
         goto catch_error;
     }
     for (int ii = 0; ii < ncol; ii += 1) {

@@ -77,13 +77,13 @@
     textLength="768"
     x="10"
     y="274"
->- sqlmath - Remove obsolete sql-functions MEDIAN2(), QUANTILE(), superseded by sqlite-builtins.  </tspan>
+>- sqlmath - Cleanup c-function winSinefitSnr().                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->- sqlmath - Update c-function winSinefitSnr() with error-handling for NaN.                       </tspan>
+>- sqlmath - Remove obsolete sql-functions MEDIAN2(), QUANTILE(), superseded by sqlite-builtins.  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
