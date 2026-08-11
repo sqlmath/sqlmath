@@ -8,6 +8,7 @@
 - none
 
 # v2026.8.1-beta
+- lgbm - Upgrade to lightgbm-v4.7.0.
 - sqlmath - Cleanup c-function winSinefitSnr().
 - sqlmath - Remove obsolete sql-functions MEDIAN2(), QUANTILE(), superseded by sqlite-builtins.
 - sqlmath - Fix c-header conflict between dlfcn.h and Python.h.

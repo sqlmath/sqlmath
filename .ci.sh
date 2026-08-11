@@ -54,7 +54,7 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
 "sqlmath/$(node -p '`libomp_${process.platform}_${process.arch}.dylib`')"
             ;;
         esac
-        pip install lightgbm=="$(printf "v4.6.0" | sed "s|v||")"
+        pip install lightgbm=="$(printf "v4.7.0" | sed "s|v||")"
         cp "$(
             find "$(
                 pip show lightgbm | grep Location | sed "s|Location: ||"
