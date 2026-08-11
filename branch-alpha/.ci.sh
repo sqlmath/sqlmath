@@ -535,8 +535,8 @@ shSqlmathUpdate() {(set -e
     . "$HOME/myci2.sh" && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
-        DIR=sqlite-autoconf-3500400
-        URL=https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
+        DIR=sqlite-autoconf-3510300
+        URL=https://www.sqlite.org/2026/sqlite-autoconf-3510300.tar.gz
         # shRollupFetch
         if [ ! -d ".$DIR" ]
         then

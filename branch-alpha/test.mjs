@@ -3448,6 +3448,218 @@ SELECT DOUBLEARRAY_JSONTO(WIN_SINEFIT2(1, 2, 3, 4)) FROM __tmp1;
                 });
                 assertJsonEqual(valActual, [null]);
             }()),
+            // test win_sinefit2-empty-frame handling-behavior
+            (async function () {
+                // WIN_SINEFIT_N = 23 doubles = 184 bytes per column
+                const nhead = 23 * 8;
+// Frame "5 PRECEDING AND 3 PRECEDING" is empty for rows 1-3, so
+// sqlite calls xValue before the first xStep. Regression-test that
+// xValue does not allocate an aggregate-context with nhead=0, which
+// would pin nhead=0 for the life of the aggregate and alias
+// doublewinHead() onto doublewinBody(). ncol=2 additionally
+// overflows the 304-byte nhead=0 allocation, needing 2*184+48 = 416
+// bytes of head.
+                assertJsonEqual(
+                    noop(
+                        await dbExecAsync({
+                            db,
+                            sql: (`
+CREATE TABLE testWinSinefit2Emptyframe AS
+    SELECT 1 AS xx, 1 AS yy
+    --
+    UNION ALL VALUES
+        (2, 2),
+        (3, 3),
+        (4, 4),
+        (5, 5),
+        (6, 6),
+        (7, 7),
+        (8, 8);
+
+-- empty-window-frame
+SELECT
+        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy) OVER (
+            ORDER BY xx
+            ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
+        )) AS nhead
+    FROM testWinSinefit2Emptyframe;
+
+-- empty-window-frame multi-column
+SELECT
+        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy, xx, yy * 2) OVER (
+            ORDER BY xx
+            ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
+        )) AS nhead
+    FROM testWinSinefit2Emptyframe;
+-- non-empty-window-frame control
+SELECT
+        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy) OVER (
+            ORDER BY xx
+            ROWS BETWEEN 5 PRECEDING AND CURRENT ROW
+        )) AS nhead
+    FROM testWinSinefit2Emptyframe;
+
+-- sinefit-object is well-formed
+-- row 8 frame = rows 3-5, so nnn = 3
+WITH tmp1 AS (
+        SELECT
+            xx,
+            win_sinefit2(0, NULL, xx, yy, xx, yy * 2) OVER (
+                ORDER BY xx
+                ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
+            ) AS wsf
+        FROM testWinSinefit2Emptyframe
+    )
+    SELECT
+        SINEFIT_EXTRACT(wsf, 0, 'nnn', 0) AS nnn0,
+        SINEFIT_EXTRACT(wsf, 1, 'nnn', 0) AS nnn1,
+        SINEFIT_EXTRACT(wsf, 0, 'lbb', 0) AS lbb0,
+        SINEFIT_EXTRACT(wsf, 1, 'lbb', 0) AS lbb1
+    FROM tmp1
+    WHERE xx = 8;
+    -- empty-table xFinal
+    SELECT LENGTH(WIN_SINEFIT2(0, NULL, xx, yy)) AS nhead
+    FROM testWinSinefit2Emptyframe
+    WHERE 0;
+                            `)
+                        })
+                    ),
+                    [
+                        [
+                            {nhead: 0},
+                            {nhead: 0},
+                            {nhead: 0},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead}
+                        ],
+                        [
+                            {nhead: 0},
+                            {nhead: 0},
+                            {nhead: 0},
+                            {nhead: 2 * nhead},
+                            {nhead: 2 * nhead},
+                            {nhead: 2 * nhead},
+                            {nhead: 2 * nhead},
+                            {nhead: 2 * nhead}
+                        ],
+                        [
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead}
+                        ],
+                        [
+                            {lbb0: 1, lbb1: 2, nnn0: 3, nnn1: 3}
+                        ],
+                        [
+                            {nhead: 0}
+                        ]
+                    ]
+                );
+            }()),
+            // test sinefit_refitlast malformed-blob handling-behavior
+            (async function () {
+                // WinSinefit field-offsets, in bytes
+                let offsetNnn = 5 * 8;
+                let offsetWbb = 16 * 8;
+                function blobMalformed(nnn, wbb) {
+                    // ncol=1 header = WIN_SINEFIT_N * 8 = 184 bytes
+                    let buf = new ArrayBuffer(184);
+                    let dv = new DataView(buf);
+                    dv.setFloat64(offsetNnn, nnn, true);
+                    dv.setFloat64(offsetWbb, wbb, true);
+                    return new Uint8Array(buf);
+                }
+                // test malformed-nnn handling-behavior
+                await Promise.all([
+                    0 / 0,              // nan
+                    1 / 0,              // inf
+                    -1 / 0,             // -inf
+                    1e300,              // overflows (int)
+                    -1,                 // negative
+                    0,                  // empty
+                    1.5                 // non-integral
+                ].map(function (nnn) {
+                    return assertErrorThrownAsync(function () {
+                        return dbExecAsync({
+                            bindList: [blobMalformed(nnn, 0)],
+                            db,
+                            sql: "SELECT sinefit_refitlast(?1, 0, 0)"
+                        });
+                    }, "sinefit_refitlast");
+                }));
+                // test malformed-wbb handling-behavior
+                // nnn=1 implies nbody = 3, so any wbb but 0 is invalid.
+                await Promise.all([
+                    0 / 0, 1 / 0, 1e300, -1, 1, 2, 3, 1.5
+                ].map(function (wbb) {
+                    return assertErrorThrownAsync(function () {
+                        return dbExecAsync({
+                            bindList: [blobMalformed(1, wbb)],
+                            db,
+                            sql: "SELECT sinefit_refitlast(?1, 0, 0)"
+                        });
+                    }, "sinefit_refitlast");
+                }));
+                // test truncated-blob handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        bindList: [new Uint8Array(100)],
+                        db,
+                        sql: "SELECT sinefit_refitlast(?1, 0, 0)"
+                    });
+                }, "sinefit_refitlast");
+                // test wrong-argc handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        bindList: [blobMalformed(1, 0)],
+                        db,
+                        sql: "SELECT sinefit_refitlast(?1, 0)"
+                    });
+                }, "sinefit_refitlast");
+            }()),
+            // test sinefit_extract non-blob 1st-argument handling-behavior
+            (async function () {
+                await Promise.all([
+                    "'hello'",
+                    "123",
+                    "1.5",
+                    "NULL",
+                    "zeroblob(0)"
+                ].map(function (arg) {
+                    return assertErrorThrownAsync(function () {
+                        return dbExecAsync({
+                            db,
+                            sql: `SELECT sinefit_extract(${arg}, 0, 'nnn', 0)`
+                        });
+                    }, "sinefit_extract");
+                }));
+            }()),
+            // test win_sinefit2-aggregate-normal handling-behavior
+            (async function () {
+                // test non-blob 1st-argument handling-behavior
+                await Promise.all([
+                    "'hello'",
+                    "123",
+                    "1.5",
+                    "NULL",
+                    "zeroblob(0)"
+                ].map(function (arg) {
+                    return assertErrorThrownAsync(function () {
+                        return dbExecAsync({
+                            db,
+                            sql: `SELECT sinefit_extract(${arg}, 0, 'nnn', 0)`
+                        });
+                    }, "sinefit_extract");
+                }));
+            }()),
             // test win_sinefit2-aggregate-normal handling-behavior
             (async function () {
                 let valActual;
@@ -3957,124 +4169,6 @@ SELECT
                 assertJsonEqual(valActual, valExpect);
             }())
         ]);
-    });
-    jstestIt((
-        "test sqlite-extension-win_sinefit2 empty-frame handling-behavior"
-    ), async function test_sqlite_extension_win_sinefit2_emptyframe() {
-        // WIN_SINEFIT_N = 23 doubles = 184 bytes per column
-        const nhead = 23 * 8;
-        let db = await dbOpenAsync({});
-        // Frame "5 PRECEDING AND 3 PRECEDING" is empty for rows 1-3, so
-        // sqlite calls xValue before the first xStep. Regression-test that
-        // xValue does not allocate an aggregate-context with nhead=0, which
-        // would pin nhead=0 for the life of the aggregate and alias
-        // doublewinHead() onto doublewinBody(). ncol=2 additionally
-        // overflows the 304-byte nhead=0 allocation, needing 2*184+48 = 416
-        // bytes of head.
-        assertJsonEqual(
-            noop(
-                await dbExecAsync({
-                    db,
-                    sql: (`
-CREATE TABLE testWinSinefit2Emptyframe AS
-    SELECT 1 AS xx, 1 AS yy
-    --
-    UNION ALL VALUES
-        (2, 2),
-        (3, 3),
-        (4, 4),
-        (5, 5),
-        (6, 6),
-        (7, 7),
-        (8, 8);
-
--- empty-window-frame
-SELECT
-        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy) OVER (
-            ORDER BY xx
-            ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
-        )) AS nhead
-    FROM testWinSinefit2Emptyframe;
-
--- empty-window-frame multi-column
-SELECT
-        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy, xx, yy * 2) OVER (
-            ORDER BY xx
-            ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
-        )) AS nhead
-    FROM testWinSinefit2Emptyframe;
--- non-empty-window-frame control
-SELECT
-        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy) OVER (
-            ORDER BY xx
-            ROWS BETWEEN 5 PRECEDING AND CURRENT ROW
-        )) AS nhead
-    FROM testWinSinefit2Emptyframe;
-
--- sinefit-object is well-formed
--- row 8 frame = rows 3-5, so nnn = 3
-WITH tmp1 AS (
-        SELECT
-            xx,
-            win_sinefit2(0, NULL, xx, yy, xx, yy * 2) OVER (
-                ORDER BY xx
-                ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
-            ) AS wsf
-        FROM testWinSinefit2Emptyframe
-    )
-    SELECT
-        SINEFIT_EXTRACT(wsf, 0, 'nnn', 0) AS nnn0,
-        SINEFIT_EXTRACT(wsf, 1, 'nnn', 0) AS nnn1,
-        SINEFIT_EXTRACT(wsf, 0, 'lbb', 0) AS lbb0,
-        SINEFIT_EXTRACT(wsf, 1, 'lbb', 0) AS lbb1
-    FROM tmp1
-    WHERE xx = 8;
-    -- empty-table xFinal
-    SELECT LENGTH(WIN_SINEFIT2(0, NULL, xx, yy)) AS nhead
-    FROM testWinSinefit2Emptyframe
-    WHERE 0;
-                    `)
-                })
-            ),
-            [
-                [
-                    {nhead: 0},
-                    {nhead: 0},
-                    {nhead: 0},
-                    {nhead},
-                    {nhead},
-                    {nhead},
-                    {nhead},
-                    {nhead}
-                ],
-                [
-                    {nhead: 0},
-                    {nhead: 0},
-                    {nhead: 0},
-                    {nhead: 2 * nhead},
-                    {nhead: 2 * nhead},
-                    {nhead: 2 * nhead},
-                    {nhead: 2 * nhead},
-                    {nhead: 2 * nhead}
-                ],
-                [
-                    {nhead},
-                    {nhead},
-                    {nhead},
-                    {nhead},
-                    {nhead},
-                    {nhead},
-                    {nhead},
-                    {nhead}
-                ],
-                [
-                    {lbb0: 1, lbb1: 2, nnn0: 3, nnn1: 3}
-                ],
-                [
-                    {nhead: 0}
-                ]
-            ]
-        );
     });
     jstestIt((
         "test sqlite-extension-win_sumx handling-behavior"

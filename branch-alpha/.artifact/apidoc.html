@@ -2237,17 +2237,17 @@ jstestDescribe((
 </span>    return value;
 }</pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-    // sqlite calls xValue before the first xStep. Regression-test that
-    // xValue does not allocate an aggregate-context with nhead=0, which
-    // would pin nhead=0 for the life of the aggregate and alias
-    // doublewinHead() onto doublewinBody(). ncol=2 additionally
-    // overflows the 304-byte nhead=0 allocation, needing 2*184+48 = 416
-    // bytes of head.
-    assertJsonEqual(
-        <span class="apidocCodeKeywordSpan">noop</span>(
-            await dbExecAsync({
-                db,
-                sql: (`
+// sqlite calls xValue before the first xStep. Regression-test that
+// xValue does not allocate an aggregate-context with nhead=0, which
+// would pin nhead=0 for the life of the aggregate and alias
+// doublewinHead() onto doublewinBody(). ncol=2 additionally
+// overflows the 304-byte nhead=0 allocation, needing 2*184+48 = 416
+// bytes of head.
+            assertJsonEqual(
+                <span class="apidocCodeKeywordSpan">noop</span>(
+                    await dbExecAsync({
+                        db,
+                        sql: (`
 CREATE TABLE testWinSinefit2Emptyframe AS
 SELECT 1 AS xx, 1 AS yy
 --
