@@ -3252,7 +3252,7 @@ SELECT
                 "id2": 3,
                 "laa": -4.5,
                 "lbb": 2.5,
-                "lee": 0.40824829,
+                "lee": 0.70710678,
                 "lxy": 0.94491118,
                 "lyy": 3,
                 "mee": 1.52752523,
@@ -3272,7 +3272,7 @@ SELECT
                 "id2": 4,
                 "laa": -3,
                 "lbb": 1.81818182,
-                "lee": 0.47673129,
+                "lee": 0.67419986,
                 "lxy": 0.95346259,
                 "lyy": 4.27272727,
                 "mee": 1.82574186,
@@ -3292,7 +3292,7 @@ SELECT
                 "id2": 5,
                 "laa": -2.29411765,
                 "lbb": 1.52941176,
-                "lee": 0.50874702,
+                "lee": 0.65678958,
                 "lxy": 0.96164474,
                 "lyy": 5.35294118,
                 "mee": 2.07364414,
@@ -3312,7 +3312,7 @@ SELECT
                 "id2": 6,
                 "laa": -2.54385965,
                 "lbb": 1.63157895,
-                "lee": 0.50725727,
+                "lee": 0.62126074,
                 "lxy": 0.97080629,
                 "lyy": 5.61403509,
                 "mee": 2.31660671,
@@ -3332,7 +3332,7 @@ SELECT
                 "id2": 7,
                 "laa": -2.65,
                 "lbb": 1.675,
-                "lee": 0.48550416,
+                "lee": 0.57445626,
                 "lxy": 0.9752227,
                 "lyy": 5.725,
                 "mee": 2.37045304,
@@ -3352,7 +3352,7 @@ SELECT
                 "id2": 8,
                 "laa": -2.5,
                 "lbb": 1.625,
-                "lee": 0.46770717,
+                "lee": 0.54006172,
                 "lxy": 0.97991187,
                 "lyy": 7.25,
                 "mee": 2.50713268,
@@ -3372,7 +3372,7 @@ SELECT
                 "id2": 9,
                 "laa": 0.75,
                 "lbb": 0.85,
-                "lee": 0.94207218,
+                "lee": 1.08781126,
                 "lxy": 0.89597867,
                 "lyy": 9.25,
                 "mee": 2.26778684,
@@ -3392,7 +3392,7 @@ SELECT
                 "id2": 10,
                 "laa": 2.75,
                 "lbb": 0.55,
-                "lee": 0.8587782,
+                "lee": 0.99163165,
                 "lxy": 0.81989159,
                 "lyy": 3.85,
                 "mee": 1.60356745,
@@ -3502,6 +3502,62 @@ SELECT
                         elem.sww1_on,
                         elem.sww2_on,
                         elem.lnr0_on
+                    ];
+                });
+                assertJsonEqual(valActual, [[1, 1, 1, 1]]);
+            }()),
+            (async function () {
+                let valActual;
+                let valSine = JSON.stringify(Array.from({
+                    length: 64
+                }, function (ignore, ii) {
+                    return [ii + 1, Math.sin(0.5 * (ii + 1)) + 0.1 * ii];
+                }));
+                // test sinefit_extract-dof handling-behavior
+                // lee divides by nnn-2 (laa, lbb) and see by nnn-5 (those
+                // plus saa, spp, sww). Pin the divisors by comparing a
+                // 32-row window against an 8-row one - the ratio of the
+                // two is free of the unknown residual sum-of-squares only
+                // if we instead check the small-window NULL boundaries,
+                // which is what this does: lee goes NULL at nnn <= 2 and
+                // see at nnn <= 5, and both are finite one row later.
+                valActual = await dbExecAndReturnLastTable({
+                    bindList: {
+                        valSine
+                    },
+                    db,
+                    sql: (`
+SELECT
+        SINEFIT_EXTRACT(__wsf02, 0, 'lee', 0) IS NULL AS lee_null_at_2,
+        SINEFIT_EXTRACT(__wsf03, 0, 'lee', 0) > 0    AS lee_ok_at_3,
+        SINEFIT_EXTRACT(__wsf05, 0, 'see', 0) IS NULL AS see_null_at_5,
+        SINEFIT_EXTRACT(__wsf06, 0, 'see', 0) >= 0   AS see_ok_at_6
+    FROM (
+        SELECT
+            key,
+            WIN_SINEFIT2(1, NULL, value->>0, value->>1) OVER (
+                ORDER BY key ASC ROWS BETWEEN 1 PRECEDING AND 0 FOLLOWING
+            ) AS __wsf02,
+            WIN_SINEFIT2(1, NULL, value->>0, value->>1) OVER (
+                ORDER BY key ASC ROWS BETWEEN 2 PRECEDING AND 0 FOLLOWING
+            ) AS __wsf03,
+            WIN_SINEFIT2(1, NULL, value->>0, value->>1) OVER (
+                ORDER BY key ASC ROWS BETWEEN 4 PRECEDING AND 0 FOLLOWING
+            ) AS __wsf05,
+            WIN_SINEFIT2(1, NULL, value->>0, value->>1) OVER (
+                ORDER BY key ASC ROWS BETWEEN 5 PRECEDING AND 0 FOLLOWING
+            ) AS __wsf06
+        FROM JSON_EACH($valSine)
+    )
+    WHERE key = 63;
+                    `)
+                });
+                valActual = valActual.map(function (elem) {
+                    return [
+                        elem.lee_null_at_2,
+                        elem.lee_ok_at_3,
+                        elem.see_null_at_5,
+                        elem.see_ok_at_6
                     ];
                 });
                 assertJsonEqual(valActual, [[1, 1, 1, 1]]);
@@ -3747,7 +3803,7 @@ SELECT
                         "gyy": 0.19611614,
                         "laa": 0.77941176,
                         "lbb": 0.84558824,
-                        "lee": 1.40010504,
+                        "lee": 1.56536502,
                         "lxy": 0.81541829,
                         "lyy": 2.47058824,
                         "mee": 2.54950976,
@@ -3773,7 +3829,7 @@ SELECT
                     "gyy": -1.02062073,
                     "laa": -0.82025678,
                     "lbb": 0.14621969,
-                    "lee": 2.23885734,
+                    "lee": 2.74202904,
                     "lxy": 0.865665,
                     "lyy": 6.63694722,
                     "mee": 4.89897949,
@@ -3819,7 +3875,7 @@ SELECT
                     "id2": id3,
                     "laa": 5.25,
                     "lbb": -0.275,
-                    "lee": 2.49624718,
+                    "lee": 2.88241797,
                     "lxy": -0.23918696,
                     "lyy": 2.5,
                     "mee": 2.74837614,
@@ -3839,7 +3895,7 @@ SELECT
                     "id2": id4,
                     "laa": 7.25,
                     "lbb": -0.575,
-                    "lee": 1.95735791,
+                    "lee": 2.26016224,
                     "lxy": -0.5490214,
                     "lyy": 6.1,
                     "mee": 2.50356888,

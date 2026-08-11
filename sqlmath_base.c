@@ -4120,7 +4120,16 @@ static void winSinefitSnr(
             spp = spp2;
             vrr1 = vrr2;
         }
-        wsf->see = sqrt(fmax(0, vrr1 * invn0));
+        // dof = nnn-5: the lnr stage consumes 2 params (laa, lbb) and the
+        // snr stage 3 more (saa, spp, sww), taken from the (nnn-2)-dim lnr
+        // residual subspace. Verified by monte-carlo at nnn = 42/64/252,
+        // against both this sequential estimator and a joint 5-parameter
+        // reference fit. The fmax() cannot be folded into the divisor - a
+        // negative (nnn-5) would be clamped to 0 and silently report a
+        // perfect fit, so guard nnn explicitly and yield NAN -> sqlite
+        // NULL instead.
+        wsf->see = (nnn > 5 ? sqrt(fmax(0, vrr1 / (nnn - 5)))
+            : NAN);
     }
     // Canonicalize sww >= 0: sin(-w*t+p) == -sin(w*t-p).
     if (sww < 0) {
@@ -4382,11 +4391,14 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
         return;
     }
     // linest y-stdev.s2
+    // linest y-stderr. dof = nnn-2: the lnr stage estimates laa and lbb.
+    // NOTE: at nnn <= 2 this yields NULL rather than 0 - two points fit a
+    // line exactly, so the error is undefined, not zero.
     if (strcmp(key, "lee") == 0) {
         sqlite3_result_double_or_null(context, sqrt(    //
                 wsf->vyy        //
                 * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy))     //
-                / wsf->nnn));
+                / (wsf->nnn - 2)));
         return;
     }
     // linest pearson-correlation xy
