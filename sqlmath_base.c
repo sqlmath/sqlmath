@@ -4214,6 +4214,11 @@ static void sql3_win_sinefit2_step(
     }
     // dblwin - init
     const int ncol = (argc - argc0) / 2;
+    if (ncol > 30) {
+        sqlite3_result_error(context,
+            "win_sinefit2 - too many columns for modeSnr bitmask", -1);
+        return;
+    }
     DOUBLEWIN_AGGREGATE_CONTEXT(ncol * WIN_SINEFIT_N);
     if (dblwin->nbody == 0) {
         // dblwin - init ncol
@@ -4221,6 +4226,9 @@ static void sql3_win_sinefit2_step(
     }
     // dblwin - init argv
     const double xxr = sqlite3_value_double_or_nan(argv[1]);
+    // modeSnr - bitmask, bit <ii> enables sine-fit on column <ii>. A
+    // column with its bit clear gets winSinefitLnr only; its
+    // saa/see/spp/sww stay 0, so predict_all degenerates to predict_lnr.
     const int modeSnr = sqlite3_value_int(argv[0]);
     argv += argc0;
     WinSinefit *wsf = NULL;
@@ -4262,7 +4270,7 @@ static void sql3_win_sinefit2_step(
         winSinefitLnr(wsf);
         WIN_SINEFIT_WSF_RR(wbb) = wsf->rrb;
         // dblwin - calculate snr
-        if (modeSnr) {
+        if (modeSnr & (1 << ii)) {
             winSinefitSnr(wsf, xxyy, (int) dblwin->nbody, (int) dblwin->ncol);
         }
         // increment counter
@@ -4559,7 +4567,11 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
         winSinefitLnr(wsf);
         WIN_SINEFIT_WSF_RR(wbb) = wsf->rrb;
         // dblwin - calculate snr
-        if (1) {
+        // sww is exactly 0 when the column was never sine-fit - either its
+        // modeSnr bit was clear in win_sinefit2, or the fit hit catch_nan.
+        // Skip it, so refitlast reproduces how the blob was built instead
+        // of cold-fitting a column nobody reads.
+        if (wsf->sww != 0) {
             winSinefitSnr(wsf, xxyy, nbody, ncol);
         }
         // increment counter

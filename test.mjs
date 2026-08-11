@@ -3434,6 +3434,15 @@ SELECT WIN_SINEFIT2(1, 2, 3) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
+                // test win_sinefit2-modeSnr-bitmask-overflow handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT WIN_SINEFIT2(1, 2${", 3, 4".repeat(31)}) FROM (SELECT 1);
+                        `)
+                    });
+                }, "too many columns");
                 // test win_sinefit2-null-case handling-behavior
                 valActual = await dbExecAndReturnLastTable({
                     db,
@@ -3447,6 +3456,55 @@ SELECT DOUBLEARRAY_JSONTO(WIN_SINEFIT2(1, 2, 3, 4)) FROM __tmp1;
                     return val;
                 });
                 assertJsonEqual(valActual, [null]);
+            }()),
+            (async function () {
+                let valActual;
+                let valSine = JSON.stringify(Array.from({
+                    length: 64
+                }, function (ignore, ii) {
+                    return [ii + 1, Math.sin(0.5 * (ii + 1)) + 0.1 * ii];
+                }));
+                // test win_sinefit2-modeSnr-bitmask handling-behavior
+                // Mask 0b110 is inverted on purpose - column 0 must NOT be
+                // sine-fit. A build that re-hardcodes column 0, or that
+                // treats modeSnr as an all-or-nothing flag, fails here.
+                valActual = await dbExecAndReturnLastTable({
+                    bindList: {
+                        valSine
+                    },
+                    db,
+                    sql: (`
+SELECT
+        SINEFIT_EXTRACT(__wsf, 0, 'sww', 0) = 0 AS sww0_off,
+        SINEFIT_EXTRACT(__wsf, 1, 'sww', 0) > 0 AS sww1_on,
+        SINEFIT_EXTRACT(__wsf, 2, 'sww', 0) > 0 AS sww2_on,
+        SINEFIT_EXTRACT(__wsf, 0, 'rrb', 0) IS NOT NULL AS lnr0_on
+    FROM (
+        SELECT
+            key,
+            WIN_SINEFIT2(
+                6, NULL,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1
+            ) OVER (
+                ORDER BY key ASC
+                ROWS BETWEEN 31 PRECEDING AND 0 FOLLOWING
+            ) AS __wsf
+        FROM JSON_EACH($valSine)
+    )
+    WHERE key = 63;
+                    `)
+                });
+                valActual = valActual.map(function (elem) {
+                    return [
+                        elem.sww0_off,
+                        elem.sww1_on,
+                        elem.sww2_on,
+                        elem.lnr0_on
+                    ];
+                });
+                assertJsonEqual(valActual, [[1, 1, 1, 1]]);
             }()),
             // test win_sinefit2-empty-frame handling-behavior
             (async function () {
