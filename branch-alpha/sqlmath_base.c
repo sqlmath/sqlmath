@@ -4020,15 +4020,15 @@ static void winSinefitSnr(
         }
     }
     // calculate snr - spp, sww - using gauss-newton-method
-    for (int jj = 8; jj > 0; jj -= 1) {
+    for (int jj = 16; jj > 0; jj -= 1) {
         // for (int jj = sqrt(nnn); jj > 1; jj -= 1) {
         double gp = 0;          // gradient-phase
         double gw = 0;          // gradient-frequency
         double hpp = 0;         // hessian ddr/dpdp
         double hpw = 0;         // hessian ddr/dpdw
         double hww = 0;         // hessian ddr/dwdw
-        double sxx = 0;
-        double sxy = 0;
+        // double sxx = 0;
+        // double sxy = 0;
         // yy   ~ saa*sin(sww*tt + spp)
         // cost = cos(sww*tt + spp)
         // sint = sin(sww*tt + spp)
@@ -4051,8 +4051,8 @@ static void winSinefitSnr(
             const double cost = cos(tmp);
             const double sint = sin(tmp);
             // solve saa
-            sxx += sint * sint;
-            sxy += sint * WIN_SINEFIT_WSF_RR(ii);
+            // sxx += sint * sint;
+            // sxy += sint * WIN_SINEFIT_WSF_RR(ii);
             // solve spp, sww
             const double rr = inva * WIN_SINEFIT_WSF_RR(ii) - sint;
             tmp = -cost * rr;
@@ -4075,12 +4075,12 @@ static void winSinefitSnr(
         // sww  = sww - dw
         const double invd = 1.0 / (hpp * hww - hpw * hpw);
         const double det = hpp * hww - hpw * hpw;
-        saa = sxy / sxx;
+        // saa = sxy / sxx;
         // inva = 1.0 / saa;
         if (                    //
             !isfinite(invd) ||  //
             !isnormal(det) ||   //
-            !isnormal(saa) ||   //
+            // !isnormal(saa) ||   //
             fabs(det) < 1e-12 * (fabs(hpp * hww) + fabs(hpw * hpw))) {
             goto catch_nan;
         }
@@ -4120,7 +4120,16 @@ static void winSinefitSnr(
             spp = spp2;
             vrr1 = vrr2;
         }
-        wsf->see = sqrt(fmax(0, vrr1 * invn0));
+        // dof = nnn-5: the lnr stage consumes 2 params (laa, lbb) and the
+        // snr stage 3 more (saa, spp, sww), taken from the (nnn-2)-dim lnr
+        // residual subspace. Verified by monte-carlo at nnn = 42/64/252,
+        // against both this sequential estimator and a joint 5-parameter
+        // reference fit. The fmax() cannot be folded into the divisor - a
+        // negative (nnn-5) would be clamped to 0 and silently report a
+        // perfect fit, so guard nnn explicitly and yield NAN -> sqlite
+        // NULL instead.
+        wsf->see = (nnn > 5 ? sqrt(fmax(0, vrr1 / (nnn - 5)))
+            : NAN);
     }
     // Canonicalize sww >= 0: sin(-w*t+p) == -sin(w*t-p).
     if (sww < 0) {
@@ -4214,6 +4223,11 @@ static void sql3_win_sinefit2_step(
     }
     // dblwin - init
     const int ncol = (argc - argc0) / 2;
+    if (ncol > 30) {
+        sqlite3_result_error(context,
+            "win_sinefit2 - too many columns for modeSnr bitmask", -1);
+        return;
+    }
     DOUBLEWIN_AGGREGATE_CONTEXT(ncol * WIN_SINEFIT_N);
     if (dblwin->nbody == 0) {
         // dblwin - init ncol
@@ -4221,6 +4235,9 @@ static void sql3_win_sinefit2_step(
     }
     // dblwin - init argv
     const double xxr = sqlite3_value_double_or_nan(argv[1]);
+    // modeSnr - bitmask, bit <ii> enables sine-fit on column <ii>. A
+    // column with its bit clear gets winSinefitLnr only; its
+    // saa/see/spp/sww stay 0, so predict_all degenerates to predict_lnr.
     const int modeSnr = sqlite3_value_int(argv[0]);
     argv += argc0;
     WinSinefit *wsf = NULL;
@@ -4262,7 +4279,7 @@ static void sql3_win_sinefit2_step(
         winSinefitLnr(wsf);
         WIN_SINEFIT_WSF_RR(wbb) = wsf->rrb;
         // dblwin - calculate snr
-        if (modeSnr) {
+        if (modeSnr & (1 << ii)) {
             winSinefitSnr(wsf, xxyy, (int) dblwin->nbody, (int) dblwin->ncol);
         }
         // increment counter
@@ -4374,11 +4391,14 @@ SQLMATH_FUNC static void sql1_sinefit_extract_func(
         return;
     }
     // linest y-stdev.s2
+    // linest y-stderr. dof = nnn-2: the lnr stage estimates laa and lbb.
+    // NOTE: at nnn <= 2 this yields NULL rather than 0 - two points fit a
+    // line exactly, so the error is undefined, not zero.
     if (strcmp(key, "lee") == 0) {
         sqlite3_result_double_or_null(context, sqrt(    //
                 wsf->vyy        //
                 * (1 - wsf->vxy * wsf->vxy / (wsf->vxx * wsf->vyy))     //
-                / wsf->nnn));
+                / (wsf->nnn - 2)));
         return;
     }
     // linest pearson-correlation xy
@@ -4559,7 +4579,11 @@ SQLMATH_FUNC static void sql1_sinefit_refitlast_func(
         winSinefitLnr(wsf);
         WIN_SINEFIT_WSF_RR(wbb) = wsf->rrb;
         // dblwin - calculate snr
-        if (1) {
+        // sww is exactly 0 when the column was never sine-fit - either its
+        // modeSnr bit was clear in win_sinefit2, or the fit hit catch_nan.
+        // Skip it, so refitlast reproduces how the blob was built instead
+        // of cold-fitting a column nobody reads.
+        if (wsf->sww != 0) {
             winSinefitSnr(wsf, xxyy, nbody, ncol);
         }
         // increment counter

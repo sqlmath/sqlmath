@@ -11,13 +11,13 @@
     textLength="768"
     x="10"
     y="32"
-> 0.  755  2026-08-11T07:19:26Z  16608 KB  .                                                      </tspan>
+> 0.  755  2026-08-12T00:00:14Z  16621 KB  .                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="54"
-> 1.  644  2026-08-11T07:19:26Z     17 KB  .ci.sh                                                 </tspan>
+> 1.  644  2026-08-11T07:44:37Z     17 KB  .ci.sh                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -59,7 +59,7 @@
     textLength="768"
     x="10"
     y="208"
-> 8.  644  2026-08-10T07:31:33Z     38 KB  CHANGELOG.md                                           </tspan>
+> 8.  644  2026-08-11T16:59:08Z     38 KB  CHANGELOG.md                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -77,13 +77,13 @@
     textLength="768"
     x="10"
     y="274"
->11.  644  2026-08-11T07:19:26Z     22 KB  PKG-INFO                                               </tspan>
+>11.  644  2026-08-11T07:44:37Z     22 KB  PKG-INFO                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->12.  644  2026-08-11T07:19:26Z     21 KB  README.md                                              </tspan>
+>12.  644  2026-08-11T07:44:37Z     21 KB  README.md                                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -191,7 +191,7 @@
     textLength="768"
     x="10"
     y="692"
->30.  644  2026-08-06T06:07:29Z     59 KB  sqlmath.mjs                                            </tspan>
+>30.  644  2026-08-12T00:00:14Z     59 KB  sqlmath.mjs                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -203,13 +203,13 @@
     textLength="768"
     x="10"
     y="736"
->32.  644  2026-08-11T06:41:55Z    165 KB  sqlmath_base.c                                         </tspan>
+>32.  644  2026-08-12T00:00:14Z    166 KB  sqlmath_base.c                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="758"
->33.  644  2026-03-14T03:40:48Z    342 KB  sqlmath_base.h                                         </tspan>
+>33.  644  2026-08-11T07:44:37Z    348 KB  sqlmath_base.h                                         </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -233,7 +233,7 @@
     textLength="768"
     x="10"
     y="846"
->37.  644  2026-08-11T06:41:55Z    152 KB  test.mjs                                               </tspan>
+>37.  644  2026-08-12T00:00:14Z    157 KB  test.mjs                                               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
@@ -245,7 +245,7 @@
     textLength="768"
     x="10"
     y="890"
->39.  644  2026-08-10T09:00:36Z     57 KB  test_data_sinefit.csv                                  </tspan>
+>39.  644  2026-08-12T00:00:14Z     57 KB  test_data_sinefit.csv                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"

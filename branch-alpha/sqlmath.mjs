@@ -22,6 +22,7 @@
 
 /*
 sh one-liner:
+npm_config_mode_test_save=1 npm run test && git diff
 sh jslint_ci.sh shCiBuildWasm
 sh jslint_ci.sh shSqlmathUpdate
 */
