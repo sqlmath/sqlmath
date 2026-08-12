@@ -4020,15 +4020,15 @@ static void winSinefitSnr(
         }
     }
     // calculate snr - spp, sww - using gauss-newton-method
-    for (int jj = 8; jj > 0; jj -= 1) {
+    for (int jj = 16; jj > 0; jj -= 1) {
         // for (int jj = sqrt(nnn); jj > 1; jj -= 1) {
         double gp = 0;          // gradient-phase
         double gw = 0;          // gradient-frequency
         double hpp = 0;         // hessian ddr/dpdp
         double hpw = 0;         // hessian ddr/dpdw
         double hww = 0;         // hessian ddr/dwdw
-        double sxx = 0;
-        double sxy = 0;
+        // double sxx = 0;
+        // double sxy = 0;
         // yy   ~ saa*sin(sww*tt + spp)
         // cost = cos(sww*tt + spp)
         // sint = sin(sww*tt + spp)
@@ -4051,8 +4051,8 @@ static void winSinefitSnr(
             const double cost = cos(tmp);
             const double sint = sin(tmp);
             // solve saa
-            sxx += sint * sint;
-            sxy += sint * WIN_SINEFIT_WSF_RR(ii);
+            // sxx += sint * sint;
+            // sxy += sint * WIN_SINEFIT_WSF_RR(ii);
             // solve spp, sww
             const double rr = inva * WIN_SINEFIT_WSF_RR(ii) - sint;
             tmp = -cost * rr;
@@ -4075,12 +4075,12 @@ static void winSinefitSnr(
         // sww  = sww - dw
         const double invd = 1.0 / (hpp * hww - hpw * hpw);
         const double det = hpp * hww - hpw * hpw;
-        saa = sxy / sxx;
+        // saa = sxy / sxx;
         // inva = 1.0 / saa;
         if (                    //
             !isfinite(invd) ||  //
             !isnormal(det) ||   //
-            !isnormal(saa) ||   //
+            // !isnormal(saa) ||   //
             fabs(det) < 1e-12 * (fabs(hpp * hww) + fabs(hpw * hpw))) {
             goto catch_nan;
         }

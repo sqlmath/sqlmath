@@ -20,11 +20,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-/*
- * example usage:
-npm_config_mode_test_save2=1 npm test
- */
-
 /*jslint beta, node*/
 import moduleChildProcess from "child_process";
 import modulePath from "path";
