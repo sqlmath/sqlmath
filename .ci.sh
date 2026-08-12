@@ -54,7 +54,7 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
 "sqlmath/$(node -p '`libomp_${process.platform}_${process.arch}.dylib`')"
             ;;
         esac
-        pip install lightgbm=="$(printf "v4.6.0" | sed "s|v||")"
+        pip install lightgbm=="$(printf "v4.7.0" | sed "s|v||")"
         cp "$(
             find "$(
                 pip show lightgbm | grep Location | sed "s|Location: ||"
@@ -535,8 +535,8 @@ shSqlmathUpdate() {(set -e
     . "$HOME/myci2.sh" && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
-        DIR=sqlite-autoconf-3500400
-        URL=https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
+        DIR=sqlite-autoconf-3510300
+        URL=https://www.sqlite.org/2026/sqlite-autoconf-3510300.tar.gz
         # shRollupFetch
         if [ ! -d ".$DIR" ]
         then

@@ -2155,15 +2155,13 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
 SELECT
         1 AS id,
-        MEDIAN2(val) AS mdn,
-        QUANTILE(val, 0.5) AS qnt,
         STDEV(val) AS std
     FROM __tmp1;
                 `)
             });
             assertJsonEqual(
                 valActual,
-                [{id: 1, mdn: null, qnt: null, std: null}]
+                [{id: 1, std: null}]
             );
         }());
         await Promise.all([
@@ -2226,20 +2224,12 @@ SELECT
         ]) {
             let avg = 0;
             let data2;
-            let valExpectMdn;
             let valExpectStd = 0;
             data2 = data.map(function (elem) {
                 return Number(elem);
             }).filter(function (elem) {
                 return Number.isFinite(elem);
             }).sort();
-            valExpectMdn = (
-                data2.length % 2 === 0
-                ? 0.5 * (
-                    data2[0.5 * data2.length - 1] + data2[0.5 * data2.length]
-                )
-                : data2[0.5 * (data2.length - 1)]
-            );
             data2.forEach(function (elem) {
                 avg += elem;
             });
@@ -2267,12 +2257,8 @@ SELECT
                     },
                     db,
                     sql: (`
--- test null-case handling-behavior
-SELECT QUANTILE(value, ${qq}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
 -- test last-row handling-behavior
 SELECT
-        MEDIAN2(value) AS mdn,
-        QUANTILE(value, ${qq}) AS qnt,
         ROUND(stdev(value), 8) AS std
     FROM JSON_EACH($tmp1);
                     `)
@@ -2280,8 +2266,6 @@ SELECT
                 assertJsonEqual(
                     valActual,
                     {
-                        mdn: valExpectMdn,
-                        qnt: valExpect ?? null,
                         std: valExpectStd
                     },
                     {
@@ -2289,7 +2273,6 @@ SELECT
                         qq,
                         valActual,
                         valExpect,
-                        valExpectMdn,
                         valExpectStd
                     }
                 );
@@ -3918,7 +3901,7 @@ SELECT
     FROM __sinefit_csv
     JOIN (
         SELECT
-            MEDIAN2(rr) AS rr_avg,
+            MEDIAN(rr) AS rr_avg,
             STDEV(rr) AS rr_err
         FROM __sinefit_csv
     )

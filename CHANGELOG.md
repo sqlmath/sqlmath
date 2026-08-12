@@ -7,6 +7,11 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2026.8.1-beta
+- sqlmath - Remove obsolete sql-functions MEDIAN2(), QUANTILE(), superseded by sqlite-builtins.
+- sqlmath - Update c-function winSinefitSnr() with error-handling for NaN.
+- sqlmath - Fix c-header conflict between dlfcn.h and Python.h.
+
 # v2026.7.30
 - jslint-ecma - Add ES2015-feature for..of.
 - jslint - Change scope from scope_function to scope_block:

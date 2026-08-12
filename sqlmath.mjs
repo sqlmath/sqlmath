@@ -110,7 +110,7 @@ const SQLITE_OPEN_WAL = 0x00080000;             /* VFS only */
 
 const DB_EXEC_PROFILE_DICT = {}; //jslint-ignore-line
 const DB_STATE = {};
-const version = "v2026.7.30";
+const version = "v2026.8.1-beta";
 let DB_EXEC_PROFILE_MODE;
 let DB_EXEC_PROFILE_SQL_LENGTH;
 let IS_BROWSER;

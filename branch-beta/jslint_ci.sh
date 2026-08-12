@@ -976,7 +976,8 @@ shGitSquashPop() {(set -e
     git add .
     # commit HEAD immediately after previous $COMMIT
     git commit --allow-empty -am "$MESSAGE" || true
-    git log -n 4
+    printf "\n\n\n\n"
+    git --no-pager log -n 4
 )}
 
 shGithubCheckoutRemote() {(set -e
@@ -1231,7 +1232,8 @@ import moduleFs from "fs";
     git push origin alpha -f
     shDirHttplinkValidate
     git push . HEAD:__pr_"${branchMerge}" -f
-    git log -n 4
+    printf "\n\n\n\n"
+    git --no-pager log -n 4
 )
             `)
         ],
@@ -1295,7 +1297,8 @@ shGithubPrUpdatePrxxx() {(set -e
     git --no-pager diff
     git grep -Ei -e '^ *?(//|#) pr-xxx' || true
     git commit -am "- ci - Update 'PR-xxx' placeholder to '${PR_XXX}'."
-    git log -n 4
+    printf "\n\n\n\n"
+    git --no-pager log -n 4
 )}
 
 shGithubTokenExport() {
