@@ -77,277 +77,277 @@
     textLength="768"
     x="10"
     y="274"
->- sqlmath - Remove obsolete sql-functions MEDIAN2(), QUANTILE(), superseded by sqlite-builtins.  </tspan>
+>- sqlmath - Cleanup c-function winSinefitSnr().                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="296"
->- sqlmath - Update c-function winSinefitSnr() with error-handling for NaN.                       </tspan>
+>- sqlmath - Update sql-function WIN_SINEFIT2() argument modeSnr with bitmask, allowing selective\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="318"
->- sqlmath - Fix c-header conflict between dlfcn.h and Python.h.                                  </tspan>
+>   sine-fit of each column, to avoid wasting cpu on columns that don't need it.                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="340"
->                                                                                                 </tspan>
+>- lgbm - Upgrade to lightgbm-v4.7.0.                                                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="362"
-># v2026.7.30                                                                                     </tspan>
+>- sqlite - Upgrade to sqlite-v3.51.3.                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="384"
->- jslint-ecma - Add ES2015-feature for..of.                                                      </tspan>
+>- sqlmath - Remove obsolete sql-functions MEDIAN2(), QUANTILE(), superseded by sqlite-builtins.  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="406"
->- jslint - Change scope from scope_function to scope_block:                                      </tspan>
+>- sqlmath - Fix c-header conflict between dlfcn.h and Python.h.                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="428"
->    - const-declaration                                                                          </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="450"
->    - let-declaration                                                                            </tspan>
+># v2026.7.30                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="472"
->    - function-declaration                                                                       </tspan>
+>- jslint-ecma - Add ES2015-feature for..of.                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="494"
->- jslint - Expand built-in-globals for browser, ecma, and node - auto-generated from online-sour\</tspan>
+>- jslint - Change scope from scope_function to scope_block:                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="516"
->  ces.                                                                                           </tspan>
+>    - const-declaration                                                                          </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="538"
->- jslint-ci - Add automated ci for shellcheck to lint shell-scripts.                             </tspan>
+>    - let-declaration                                                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="560"
->- jslint-regression - Cleanup indent for multiline-method-chaining.                              </tspan>
+>    - function-declaration                                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="582"
->- jslint-regression - Fix long-running regression where 'let x = x;' doesn't warn about temporal\</tspan>
+>- jslint - Expand built-in-globals for browser, ecma, and node - auto-generated from online-sour\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="604"
->  -dead-zone.                                                                                    </tspan>
+>  ces.                                                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="626"
->                                                                                                 </tspan>
+>- jslint-ci - Add automated ci for shellcheck to lint shell-scripts.                             </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="648"
-># v2026.6.30                                                                                     </tspan>
+>- jslint-regression - Cleanup indent for multiline-method-chaining.                              </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="670"
->- jslint-ecma - Update README.md, documenting supported ES2015+ features.                        </tspan>
+>- jslint-regression - Fix long-running regression where 'let x = x;' doesn't warn about temporal\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="692"
->- jslint-ecma - Unify ES2015-destructure-logic into function prefix_destructure().               </tspan>
+>  -dead-zone.                                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="714"
->- jslint - Wrap all property-updates 'name.init = true/false' with calls to:                     </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="736"
->    name_lookup() - 'aa=0'                                                                       </tspan>
+># v2026.6.30                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="758"
->    name_push()   - 'let aa=0'                                                                   </tspan>
+>- jslint-ecma - Update README.md, documenting supported ES2015+ features.                        </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="780"
->- cpplint - Upgrade to cpplint@v2.0.2.                                                           </tspan>
+>- jslint-ecma - Unify ES2015-destructure-logic into function prefix_destructure().               </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="802"
->- jslint - Add ES2018-syntax for object-literal-spread-operator.                                 </tspan>
+>- jslint - Wrap all property-updates 'name.init = true/false' with calls to:                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="824"
->- jslint - Add ES2025-syntax 'import ... with {...}'.                                            </tspan>
+>    name_lookup() - 'aa=0'                                                                       </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="846"
->                                                                                                 </tspan>
+>    name_push()   - 'let aa=0'                                                                   </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="868"
-># v2026.5.31                                                                                     </tspan>
+>- cpplint - Upgrade to cpplint@v2.0.2.                                                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="890"
->- sqlmath - Add function csvFromListofList().                                                    </tspan>
+>- jslint - Add ES2018-syntax for object-literal-spread-operator.                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="912"
->- sqlmath - Rename function jsonRowListFromCsv() to csvToListofList().                           </tspan>
+>- jslint - Add ES2025-syntax 'import ... with {...}'.                                            </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="934"
->- sqlmath-demo - Update chart tradebot_tech_intra_xxx normalized to spy_prc instead of stk_pct.  </tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="956"
->- sqlmath - Add function uvthreadpoolsizeGet().                                                  </tspan>
+># v2026.5.31                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="978"
->                                                                                                 </tspan>
+>- sqlmath - Add function csvFromListofList().                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1000"
-># v2026.4.31                                                                                     </tspan>
+>- sqlmath - Rename function jsonRowListFromCsv() to csvToListofList().                           </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1022"
->- sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package. - part3 - \</tspan>
+>- sqlmath-demo - Update chart tradebot_tech_intra_xxx normalized to spy_prc instead of stk_pct.  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1044"
->  ./sqlmath/lib_lightgbm_xxx.                                                                    </tspan>
+>- sqlmath - Add function uvthreadpoolsizeGet().                                                  </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1066"
->- sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package. - part2 - \</tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1088"
->  git checkout origin/artifact branch-beta/                                                      </tspan>
-<tspan
-    lengthAdjust="spacingAndGlyphs"
-    textLength="768"
-    x="10"
-    y="1110"
 >                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
+    y="1088"
+># v2026.4.31                                                                                     </tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
+    y="1110"
+>- sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package. - part3 - \</tspan>
+<tspan
+    lengthAdjust="spacingAndGlyphs"
+    textLength="768"
+    x="10"
     y="1132"
-># v2026.4.30                                                                                     </tspan>
+>  ./sqlmath/lib_lightgbm_xxx.                                                                    </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1154"
->- sqlmath-python - Add context manager and Pythonic API (execute, close) to SqlmathDb matching s\</tspan>
+>- sqlmath-npm - bugfix - Fix missing lib_lightgbm pre-built libraries in npm-package. - part2 - \</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1176"
->  qlite3 conventions.                                                                            </tspan>
+>  git checkout origin/artifact branch-beta/                                                      </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1198"
->- sqlmath-python - Add __repr__ and __bool__ methods to SqlmathDb for better debugging experienc\</tspan>
+>                                                                                                 </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1220"
->  e.                                                                                             </tspan>
+># v2026.4.30                                                                                     </tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1242"
->- sqlmath - Remove under-used custom-files sqlmath_custom.c, sqlmath_custom.mjs.                 </tspan>
+>- sqlmath-python - Add context manager and Pythonic API (execute, close) to SqlmathDb matching s\</tspan>
 <tspan
     lengthAdjust="spacingAndGlyphs"
     textLength="768"
     x="10"
     y="1264"
->- github-ci - Pin various github-runner-os to stable/lts version.                                </tspan>
+>  qlite3 conventions.                                                                            </tspan>
 
 </text>
 </svg>

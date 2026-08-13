@@ -39,44 +39,6 @@
 #define LGBM_DLSYM(func) \
     func = (func##_t) dlsym(lgbm_library, #func);
 #endif                          // _WIN32
-// https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/arrow.h
-typedef struct ArrowSchema {
-    // Array type description
-    const char *format;
-    const char *name;
-    const char *metadata;
-    int64_t flags;
-    int64_t n_children;
-    struct ArrowSchema **children;
-    struct ArrowSchema *dictionary;
-    // Release callback
-    void (
-        *release
-    ) (
-        struct ArrowSchema *
-    );
-    // Opaque producer-specific data
-    void *private_data;
-} ArrowSchema;
-typedef struct ArrowArray {
-    // Array data description
-    int64_t length;
-    int64_t null_count;
-    int64_t offset;
-    int64_t n_buffers;
-    int64_t n_children;
-    const void **buffers;
-    struct ArrowArray **children;
-    struct ArrowArray *dictionary;
-    // Release callback
-    void (
-        *release
-    ) (
-        struct ArrowArray *
-    );
-    // Opaque producer-specific data
-    void *private_data;
-} ArrowArray;
 static void *lgbm_library = NULL;
 
 
@@ -130,6 +92,9 @@ shRollupFetch
         },
         {
             "header": "\n#if defined(SRC_SQLMATH_BASE_C2)\n",
+            "url": "https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/arrow.h"
+        },
+        {
             "replaceList": [
                 {
                     "aa": "\nLIGHTGBM_C_EXPORT ([^\\(]*?) (\\w*?)(\\([\\S\\s]*?\\));\n",
@@ -138,7 +103,7 @@ shRollupFetch
                     "substr": ""
                 }
             ],
-            "url": "https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/c_api.h"
+            "url": "https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h"
         },
         {
             "footer": "\n}\n#endif // SRC_SQLMATH_BASE_C2\n",
@@ -163,7 +128,7 @@ shRollupFetch
                     "substr": ""
                 }
             ],
-            "url": "https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/c_api.h"
+            "url": "https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h"
         },
         {
             "comment": true,
@@ -3321,13 +3286,109 @@ static void tc_sha256_compress(unsigned int *iv, const uint8_t *data)
 
 
 /*
-file https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/c_api.h
+file https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/arrow.h
 */
 
 #if defined(SRC_SQLMATH_BASE_C2)
 /*!
+ * Copyright (c) 2026-2026 The LightGBM developers. All rights reserved.
+ * Licensed under the MIT License. See LICENSE file in the project root for license information.
+ *
+ * Author: Oliver Borchert
+ */
+
+#ifndef LIGHTGBM_INCLUDE_LIGHTGBM_ARROW_H_
+#define LIGHTGBM_INCLUDE_LIGHTGBM_ARROW_H_
+
+// The C data interface (ARROW_C_DATA_INTERFACE) is taken from
+// https://arrow.apache.org/docs/format/CDataInterface.html#structure-definitions
+
+// The C stream interface (ARROW_C_STREAM_INTERFACE) is taken from
+// https://arrow.apache.org/docs/format/CStreamInterface.html#structure-definition
+
+#ifdef __cplusplus
+#include <cstdint>
+#else
+#include <stdint.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifndef ARROW_C_DATA_INTERFACE
+#define ARROW_C_DATA_INTERFACE
+
+#define ARROW_FLAG_DICTIONARY_ORDERED 1
+#define ARROW_FLAG_NULLABLE 2
+#define ARROW_FLAG_MAP_KEYS_SORTED 4
+
+struct ArrowSchema {
+  // Array type description
+  const char* format;
+  const char* name;
+  const char* metadata;
+  int64_t flags;
+  int64_t n_children;
+  struct ArrowSchema** children;
+  struct ArrowSchema* dictionary;
+
+  // Release callback
+  void (*release)(struct ArrowSchema*);
+  // Opaque producer-specific data
+  void* private_data;
+};
+
+struct ArrowArray {
+  // Array data description
+  int64_t length;
+  int64_t null_count;
+  int64_t offset;
+  int64_t n_buffers;
+  int64_t n_children;
+  const void** buffers;
+  struct ArrowArray** children;
+  struct ArrowArray* dictionary;
+
+  // Release callback
+  void (*release)(struct ArrowArray*);
+  // Opaque producer-specific data
+  void* private_data;
+};
+
+#endif  // ARROW_C_DATA_INTERFACE
+
+#ifndef ARROW_C_STREAM_INTERFACE
+#define ARROW_C_STREAM_INTERFACE
+
+struct ArrowArrayStream {
+  // Callbacks providing stream functionality
+  int (*get_schema)(struct ArrowArrayStream*, struct ArrowSchema* out);
+  int (*get_next)(struct ArrowArrayStream*, struct ArrowArray* out);
+  const char* (*get_last_error)(struct ArrowArrayStream*);
+
+  // Release callback
+  void (*release)(struct ArrowArrayStream*);
+
+  // Opaque producer-specific data
+  void* private_data;
+};
+
+#endif  // ARROW_C_STREAM_INTERFACE
+
+#ifdef __cplusplus
+}
+#endif
+#endif  // LIGHTGBM_INCLUDE_LIGHTGBM_ARROW_H_
+
+
+/*
+file https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h
+*/
+/*!
  * \file c_api.h
- * \copyright Copyright (c) 2016 Microsoft Corporation. All rights reserved.
+ * \copyright Copyright (c) 2016-2026 Microsoft Corporation. All rights reserved.
+ *            Copyright (c) 2016-2026 The LightGBM developers. All rights reserved.
  *            Licensed under the MIT License. See LICENSE file in the project root for license information.
  * \note
  * To avoid type conversion on large data, the most of our exposed interface supports both float32 and float64,
@@ -3337,8 +3398,8 @@ file https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/c_api.h
  * .
  * The reason is that they are called frequently, and the type conversion on them may be time-cost.
  */
-#ifndef LIGHTGBM_C_API_H_
-#define LIGHTGBM_C_API_H_
+#ifndef LIGHTGBM_INCLUDE_LIGHTGBM_C_API_H_
+#define LIGHTGBM_INCLUDE_LIGHTGBM_C_API_H_
 
 // hack-nodejs - inline header
 // #include <LightGBM/arrow.h>
@@ -3376,6 +3437,14 @@ typedef void* ByteBufferHandle; /*!< \brief Handle of ByteBuffer. */
 
 #define C_API_FEATURE_IMPORTANCE_SPLIT (0)  /*!< \brief Split type of feature importance. */
 #define C_API_FEATURE_IMPORTANCE_GAIN  (1)  /*!< \brief Gain type of feature importance. */
+
+#if defined(_MSC_VER)
+#  define LIGHTGBM_DEPRECATED(msg) __declspec(deprecated(msg))  /*!< \brief Deprecated function. */
+#elif defined(__GNUC__) || defined(__clang__)
+#  define LIGHTGBM_DEPRECATED(msg) __attribute__((deprecated(msg)))  /*!< \brief Deprecated function. */
+#else
+#  define LIGHTGBM_DEPRECATED(msg)  /*!< \brief Deprecated function. */
+#endif
 
 /*!
  * \brief Get string message of the last error.
@@ -3792,6 +3861,7 @@ static LGBM_DatasetCreateFromMats_t LGBM_DatasetCreateFromMats = NULL;
 
 /*!
  * \brief Create dataset from Arrow.
+ * \deprecated This function is deprecated in favor of ``LGBM_DatasetCreateFromArrowStream``.
  * \param n_chunks The number of Arrow arrays passed to this function
  * \param chunks Pointer to the list of Arrow arrays
  * \param schema Pointer to the schema of all Arrow arrays
@@ -3800,13 +3870,27 @@ static LGBM_DatasetCreateFromMats_t LGBM_DatasetCreateFromMats = NULL;
  * \param[out] out Created dataset
  * \return 0 when succeed, -1 when failure happens
  */
-LIGHTGBM_C_EXPORT int (*LGBM_DatasetCreateFromArrow_t) (int64_t n_chunks,
-                                                  const ArrowArray* chunks,
-                                                  const ArrowSchema* schema,
+LIGHTGBM_C_EXPORT LIGHTGBM_DEPRECATED("Use LGBM_DatasetCreateFromArrowStream instead.")
+int LGBM_DatasetCreateFromArrow(int64_t n_chunks,
+                                                  struct ArrowArray* chunks,
+                                                  struct ArrowSchema* schema,
                                                   const char* parameters,
                                                   const DatasetHandle reference,
                                                   DatasetHandle *out);
-static LGBM_DatasetCreateFromArrow_t LGBM_DatasetCreateFromArrow = NULL;
+
+/*!
+ * \brief Create dataset from Arrow stream.
+ * \param stream Arrow stream pointer
+ * \param parameters Additional parameters
+ * \param reference Used to align bin mapper with other dataset, nullptr means isn't used
+ * \param[out] out Created dataset
+ * \return 0 when succeed, -1 when failure happens
+ */
+LIGHTGBM_C_EXPORT int (*LGBM_DatasetCreateFromArrowStream_t) (struct ArrowArrayStream* stream,
+                                                        const char* parameters,
+                                                        const DatasetHandle reference,
+                                                        DatasetHandle *out);
+static LGBM_DatasetCreateFromArrowStream_t LGBM_DatasetCreateFromArrowStream = NULL;
 
 /*!
  * \brief Create subset of a data.
@@ -3899,11 +3983,11 @@ static LGBM_DatasetDumpText_t LGBM_DatasetDumpText = NULL;
 /*!
  * \brief Set vector to a content in info.
  * \note
- * - \a group only works for ``C_API_DTYPE_INT32``;
+ * - \a group and \a position only work for ``C_API_DTYPE_INT32``;
  * - \a label and \a weight only work for ``C_API_DTYPE_FLOAT32``;
  * - \a init_score only works for ``C_API_DTYPE_FLOAT64``.
  * \param handle Handle of dataset
- * \param field_name Field name, can be \a label, \a weight, \a init_score, \a group
+ * \param field_name Field name, can be \a label, \a weight, \a init_score, \a group, \a position
  * \param field_data Pointer to data vector
  * \param num_element Number of elements in ``field_data``
  * \param type Type of ``field_data`` pointer, can be ``C_API_DTYPE_INT32``, ``C_API_DTYPE_FLOAT32`` or ``C_API_DTYPE_FLOAT64``
@@ -3918,23 +4002,40 @@ static LGBM_DatasetSetField_t LGBM_DatasetSetField = NULL;
 
 /*!
  * \brief Set vector to a content in info.
+ * \deprecated This function is deprecated in favor of ``LGBM_DatasetSetFieldFromArrowStream``.
+ * \note
+ * - \a group and \a position convert input datatype into ``int32``;
+ * - \a label and \a weight convert input datatype into ``float32``;
+ * - \a init_score converts input datatype into ``float64``.
+ * \param handle Handle of dataset
+ * \param field_name Field name, can be \a label, \a weight, \a init_score, \a group, \a position
+ * \param n_chunks The number of Arrow arrays passed to this function
+ * \param chunks Pointer to the list of Arrow arrays
+ * \param schema Pointer to the schema of all Arrow arrays
+ * \return 0 when succeed, -1 when failure happens
+ */
+LIGHTGBM_C_EXPORT LIGHTGBM_DEPRECATED("Use LGBM_DatasetSetFieldFromArrowStream instead.")
+int LGBM_DatasetSetFieldFromArrow(DatasetHandle handle,
+                                                    const char* field_name,
+                                                    int64_t n_chunks,
+                                                    struct ArrowArray* chunks,
+                                                    struct ArrowSchema* schema);
+
+/*!
+ * \brief Set vector to a content in info.
  * \note
  * - \a group converts input datatype into ``int32``;
  * - \a label and \a weight convert input datatype into ``float32``;
  * - \a init_score converts input datatype into ``float64``.
  * \param handle Handle of dataset
  * \param field_name Field name, can be \a label, \a weight, \a init_score, \a group
- * \param n_chunks The number of Arrow arrays passed to this function
- * \param chunks Pointer to the list of Arrow arrays
- * \param schema Pointer to the schema of all Arrow arrays
+ * \param stream Arrow stream pointer
  * \return 0 when succeed, -1 when failure happens
  */
-LIGHTGBM_C_EXPORT int (*LGBM_DatasetSetFieldFromArrow_t) (DatasetHandle handle,
-                                                    const char* field_name,
-                                                    int64_t n_chunks,
-                                                    const ArrowArray* chunks,
-                                                    const ArrowSchema* schema);
-static LGBM_DatasetSetFieldFromArrow_t LGBM_DatasetSetFieldFromArrow = NULL;
+LIGHTGBM_C_EXPORT int (*LGBM_DatasetSetFieldFromArrowStream_t) (DatasetHandle handle,
+                                                          const char* field_name,
+                                                          struct ArrowArrayStream* stream);
+static LGBM_DatasetSetFieldFromArrowStream_t LGBM_DatasetSetFieldFromArrowStream = NULL;
 
 /*!
  * \brief Get info vector from dataset.
@@ -4139,11 +4240,15 @@ static LGBM_BoosterGetNumClasses_t LGBM_BoosterGetNumClasses = NULL;
 /*!
  * \brief Update the model for one iteration.
  * \param handle Handle of booster
- * \param[out] is_finished 1 means the update was successfully finished (cannot split any more), 0 indicates failure
+ * \param[out] produced_empty_tree 1 means the tree(s) produced by this iteration did not have any splits.
+ *                         This usually means that training is "finished" (calling this function again will not change the model's predictions).
+ *                         However, that is not always the case.
+ *                         For example, if you have added any randomness (like column sampling by setting ``feature_fraction_bynode < 1.0``),
+ *                         it is possible that another call to this function would produce a non-empty tree.
  * \return 0 when succeed, -1 when failure happens
  */
 LIGHTGBM_C_EXPORT int (*LGBM_BoosterUpdateOneIter_t) (BoosterHandle handle,
-                                                int* is_finished);
+                                                int* produced_empty_tree);
 static LGBM_BoosterUpdateOneIter_t LGBM_BoosterUpdateOneIter = NULL;
 
 /*!
@@ -4169,13 +4274,17 @@ static LGBM_BoosterRefit_t LGBM_BoosterRefit = NULL;
  * \param handle Handle of booster
  * \param grad The first order derivative (gradient) statistics
  * \param hess The second order derivative (Hessian) statistics
- * \param[out] is_finished 1 means the update was successfully finished (cannot split any more), 0 indicates failure
+ * \param[out] produced_empty_tree 1 means the tree(s) produced by this iteration did not have any splits.
+ *                         This usually means that training is "finished" (calling this function again will not change the model's predictions).
+ *                         However, that is not always the case.
+ *                         For example, if you have added any randomness (like column sampling by setting ``feature_fraction_bynode < 1.0``),
+ *                         it is possible that another call to this function would produce a non-empty tree.
  * \return 0 when succeed, -1 when failure happens
  */
 LIGHTGBM_C_EXPORT int (*LGBM_BoosterUpdateOneIterCustom_t) (BoosterHandle handle,
                                                       const float* grad,
                                                       const float* hess,
-                                                      int* is_finished);
+                                                      int* produced_empty_tree);
 static LGBM_BoosterUpdateOneIterCustom_t LGBM_BoosterUpdateOneIterCustom = NULL;
 
 /*!
@@ -4829,6 +4938,7 @@ static LGBM_BoosterPredictForMats_t LGBM_BoosterPredictForMats = NULL;
 
 /*!
  * \brief Make prediction for a new dataset.
+ * \deprecated This function is deprecated in favor of ``LGBM_BoosterPredictForArrowStream``.
  * \note
  * You should pre-allocate memory for ``out_result``:
  *   - for normal and raw score, its length is equal to ``num_class * num_data``;
@@ -4850,17 +4960,48 @@ static LGBM_BoosterPredictForMats_t LGBM_BoosterPredictForMats = NULL;
  * \param[out] out_result Pointer to array with predictions
  * \return 0 when succeed, -1 when failure happens
  */
-LIGHTGBM_C_EXPORT int (*LGBM_BoosterPredictForArrow_t) (BoosterHandle handle,
+LIGHTGBM_C_EXPORT LIGHTGBM_DEPRECATED("Use LGBM_BoosterPredictForArrowStream instead.")
+int LGBM_BoosterPredictForArrow(BoosterHandle handle,
                                                   int64_t n_chunks,
-                                                  const ArrowArray* chunks,
-                                                  const ArrowSchema* schema,
+                                                  struct ArrowArray* chunks,
+                                                  struct ArrowSchema* schema,
                                                   int predict_type,
                                                   int start_iteration,
                                                   int num_iteration,
                                                   const char* parameter,
                                                   int64_t* out_len,
                                                   double* out_result);
-static LGBM_BoosterPredictForArrow_t LGBM_BoosterPredictForArrow = NULL;
+
+/*!
+ * \brief Make prediction for a new dataset.
+ * \note
+ * You should pre-allocate memory for ``out_result``:
+ *   - for normal and raw score, its length is equal to ``num_class * num_data``;
+ *   - for leaf index, its length is equal to ``num_class * num_data * num_iteration``;
+ *   - for feature contributions, its length is equal to ``num_class * num_data * (num_feature + 1)``.
+ * \param handle Handle of booster
+ * \param stream Arrow stream pointer
+ * \param predict_type What should be predicted
+ *   - ``C_API_PREDICT_NORMAL``: normal prediction, with transform (if needed);
+ *   - ``C_API_PREDICT_RAW_SCORE``: raw score;
+ *   - ``C_API_PREDICT_LEAF_INDEX``: leaf index;
+ *   - ``C_API_PREDICT_CONTRIB``: feature contributions (SHAP values)
+ * \param start_iteration Start index of the iteration to predict
+ * \param num_iteration Number of iteration for prediction, <= 0 means no limit
+ * \param parameter Other parameters for prediction, e.g. early stopping for prediction
+ * \param[out] out_len Length of output result
+ * \param[out] out_result Pointer to array with predictions
+ * \return 0 when succeed, -1 when failure happens
+ */
+LIGHTGBM_C_EXPORT int (*LGBM_BoosterPredictForArrowStream_t) (BoosterHandle handle,
+                                                        struct ArrowArrayStream* stream,
+                                                        int predict_type,
+                                                        int start_iteration,
+                                                        int num_iteration,
+                                                        const char* parameter,
+                                                        int64_t* out_len,
+                                                        double* out_result);
+static LGBM_BoosterPredictForArrowStream_t LGBM_BoosterPredictForArrowStream = NULL;
 
 /*!
  * \brief Save model into file.
@@ -5080,11 +5221,11 @@ INLINE_FUNCTION void LGBM_SetLastError(const char* msg) {
 #endif
 }
 
-#endif  /* LIGHTGBM_C_API_H_ */
+#endif  /* LIGHTGBM_INCLUDE_LIGHTGBM_C_API_H_ */
 
 
 /*
-file https://github.com/microsoft/LightGBM/blob/v4.6.0/include/LightGBM/c_api.h
+file https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h
 */
 static void LGBM_dlsym() {
 LGBM_DLSYM(LGBM_GetLastError);
@@ -5110,7 +5251,7 @@ LGBM_DLSYM(LGBM_DatasetCreateFromCSRFunc);
 LGBM_DLSYM(LGBM_DatasetCreateFromCSC);
 LGBM_DLSYM(LGBM_DatasetCreateFromMat);
 LGBM_DLSYM(LGBM_DatasetCreateFromMats);
-LGBM_DLSYM(LGBM_DatasetCreateFromArrow);
+LGBM_DLSYM(LGBM_DatasetCreateFromArrowStream);
 LGBM_DLSYM(LGBM_DatasetGetSubset);
 LGBM_DLSYM(LGBM_DatasetSetFeatureNames);
 LGBM_DLSYM(LGBM_DatasetGetFeatureNames);
@@ -5119,7 +5260,7 @@ LGBM_DLSYM(LGBM_DatasetSaveBinary);
 LGBM_DLSYM(LGBM_DatasetSerializeReferenceToBinary);
 LGBM_DLSYM(LGBM_DatasetDumpText);
 LGBM_DLSYM(LGBM_DatasetSetField);
-LGBM_DLSYM(LGBM_DatasetSetFieldFromArrow);
+LGBM_DLSYM(LGBM_DatasetSetFieldFromArrowStream);
 LGBM_DLSYM(LGBM_DatasetGetField);
 LGBM_DLSYM(LGBM_DatasetUpdateParamChecking);
 LGBM_DLSYM(LGBM_DatasetGetNumData);
@@ -5168,7 +5309,7 @@ LGBM_DLSYM(LGBM_BoosterPredictForMatSingleRow);
 LGBM_DLSYM(LGBM_BoosterPredictForMatSingleRowFastInit);
 LGBM_DLSYM(LGBM_BoosterPredictForMatSingleRowFast);
 LGBM_DLSYM(LGBM_BoosterPredictForMats);
-LGBM_DLSYM(LGBM_BoosterPredictForArrow);
+LGBM_DLSYM(LGBM_BoosterPredictForArrowStream);
 LGBM_DLSYM(LGBM_BoosterSaveModel);
 LGBM_DLSYM(LGBM_BoosterSaveModelToString);
 LGBM_DLSYM(LGBM_BoosterDumpModel);

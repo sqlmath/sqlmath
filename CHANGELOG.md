@@ -8,8 +8,11 @@
 - none
 
 # v2026.8.1-beta
+- sqlmath - Cleanup c-function winSinefitSnr().
+- sqlmath - Update sql-function WIN_SINEFIT2() argument modeSnr with bitmask, allowing selective sine-fit of each column, to avoid wasting cpu on columns that don't need it.
+- lgbm - Upgrade to lightgbm-v4.7.0.
+- sqlite - Upgrade to sqlite-v3.51.3.
 - sqlmath - Remove obsolete sql-functions MEDIAN2(), QUANTILE(), superseded by sqlite-builtins.
-- sqlmath - Update c-function winSinefitSnr() with error-handling for NaN.
 - sqlmath - Fix c-header conflict between dlfcn.h and Python.h.
 
 # v2026.7.30
