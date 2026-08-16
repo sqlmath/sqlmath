@@ -890,11 +890,16 @@ shGitInitBase() {(set -e
 
 shGitLsTree() {(set -e
 # This function will "git ls-tree" all files committed in HEAD.
+# The sha256 column hashes the WORKING-TREE file, not the git blob,
+# so it can be compared against a copy sent elsewhere with
+# `sha256sum <file> | cut -c1-8`.
 # example usage:
 # shGitLsTree | sort -rk3 # sort by date
 # shGitLsTree | sort -rk4 # sort by size
     node --input-type=module --eval '
 import moduleChildProcess from "child_process";
+import moduleCrypto from "crypto";
+import moduleFs from "fs";
 (async function () {
     let result;
     // get file, mode, size
@@ -930,9 +935,21 @@ import moduleChildProcess from "child_process";
         mode: "755",
         size: 0
     });
-    // get date
+    // get date, hash
     result.forEach(function (elem) {
         result[0].size += elem.size;
+        elem.hash = "sha256  ";
+        if (elem.file !== ".") {
+            try {
+                elem.hash = moduleCrypto.createHash(
+                    "sha256"
+                ).update(
+                    moduleFs.readFileSync(elem.file) //jslint-ignore-line
+                ).digest("hex").slice(0, 8);
+            } catch (ignore) {
+                elem.hash = "?".repeat(8);
+            }
+        }
         moduleChildProcess.spawn(
             "git",
             ["log", "--max-count=1", "--format=%at", elem.file],
@@ -956,6 +973,7 @@ import moduleChildProcess from "child_process";
                 + "  " + String(
                     Math.ceil(elem.size / 1024)
                 ).padStart(sizePad, " ") + " KB"
+                + "  " + elem.hash
                 + "  " + elem.file
                 + "\n"
             );
