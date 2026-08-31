@@ -1150,6 +1150,20 @@ shGithubFileUpload() {(set -e
     shGithubFileDownloadUpload upload "$1" "$2"
 )}
 
+shGithubPrCleanup() {(set -e
+# This function will cleanup pull-request after merge.
+    git checkout alpha
+    git push . alpha:__pr_upstream_pre -f
+    git fetch upstream beta
+    # verify no diff between alpha..upstream/beta
+    git --no-pager diff alpha..upstream/beta
+    git reset upstream/beta
+    git push . alpha:beta -f
+    git push origin alpha beta -f
+    sh jslint_ci.sh shMyciUpdate
+    git push . alpha:__pr_upstream -f
+)}
+
 shGithubPrCreate() {(set -e
 # This function will create-and-push a github-pull-commit to origin/alpha.
     node --input-type=module --eval '
@@ -1264,20 +1278,6 @@ import moduleFs from "fs";
     });
 }());
 ' "$@" # '
-)}
-
-shGithubPrCleanup() {(set -e
-# This function will cleanup pull-request after merge.
-    git checkout alpha
-    git push . alpha:__pr_upstream_pre -f
-    git fetch upstream beta
-    # verify no diff between alpha..upstream/beta
-    git --no-pager diff alpha..upstream/beta
-    git reset upstream/beta
-    git push . alpha:beta -f
-    git push origin alpha beta -f
-    sh jslint_ci.sh shMyciUpdate
-    git push . alpha:__pr_upstream -f
 )}
 
 shGithubPrUpdatePrxxx() {(set -e
@@ -1786,41 +1786,6 @@ function objectDeepCopyWithKeysSorted(obj) {
 ' "$@" # '
 )}
 
-shLintShell() {(set -e
-    if (! shellcheck --version >/dev/null 2>&1)
-    then
-        return
-    fi
-    FILE_LIST="$*"
-    OPTION=""
-    # https://www.shellcheck.net/wiki/
-    # SC1090 – Can't follow non-constant source.
-    # Use a directive to specify location
-    OPTION="$OPTION --exclude=SC1090"
-    # SC1091 – Not following: (error message here)
-    OPTION="$OPTION --exclude=SC1091"
-    # SC2016 – Expressions don't expand in single quotes,
-    # use double quotes for that.
-    OPTION="$OPTION --exclude=SC2016"
-    # SC2030 – Modification of var is local (to subshell caused by pipeline).
-    OPTION="$OPTION --exclude=SC2030"
-    # SC2031 – var was modified in a subshell. That change might be lost.
-    OPTION="$OPTION --exclude=SC2031"
-    # SC2119 – Use `foo "$@"` if function's `$1` should mean script's `$1`.
-    OPTION="$OPTION --exclude=SC2119"
-    # SC2115 – Use `"${var:?}"` to ensure this never expands to `/*` .
-    OPTION="$OPTION --exclude=SC2155"
-    EXIT_CODE=0
-    # shellcheck disable=SC2086
-    shellcheck $OPTION $FILE_LIST >/dev/null || EXIT_CODE="$?"
-    if [ "$EXIT_CODE" != 0 ]
-    then
-        # shellcheck disable=SC2086
-        shellcheck $OPTION $FILE_LIST | head -n 50
-    fi
-    return "$EXIT_CODE"
-)}
-
 shLintPython() {(set -e
 # This function will lint python file.
 # https://docs.astral.sh/ruff/rules/
@@ -1914,6 +1879,41 @@ shLintPython() {(set -e
     #
     shPidListWait shLintPython "$PID_LIST"
     printf "lint successful\n\n"
+)}
+
+shLintShell() {(set -e
+    if (! shellcheck --version >/dev/null 2>&1)
+    then
+        return
+    fi
+    FILE_LIST="$*"
+    OPTION=""
+    # https://www.shellcheck.net/wiki/
+    # SC1090 – Can't follow non-constant source.
+    # Use a directive to specify location
+    OPTION="$OPTION --exclude=SC1090"
+    # SC1091 – Not following: (error message here)
+    OPTION="$OPTION --exclude=SC1091"
+    # SC2016 – Expressions don't expand in single quotes,
+    # use double quotes for that.
+    OPTION="$OPTION --exclude=SC2016"
+    # SC2030 – Modification of var is local (to subshell caused by pipeline).
+    OPTION="$OPTION --exclude=SC2030"
+    # SC2031 – var was modified in a subshell. That change might be lost.
+    OPTION="$OPTION --exclude=SC2031"
+    # SC2119 – Use `foo "$@"` if function's `$1` should mean script's `$1`.
+    OPTION="$OPTION --exclude=SC2119"
+    # SC2115 – Use `"${var:?}"` to ensure this never expands to `/*` .
+    OPTION="$OPTION --exclude=SC2155"
+    EXIT_CODE=0
+    # shellcheck disable=SC2086
+    shellcheck $OPTION $FILE_LIST >/dev/null || EXIT_CODE="$?"
+    if [ "$EXIT_CODE" != 0 ]
+    then
+        # shellcheck disable=SC2086
+        shellcheck $OPTION $FILE_LIST | head -n 50
+    fi
+    return "$EXIT_CODE"
 )}
 
 shNpmPublishV0() {(set -e

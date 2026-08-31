@@ -7,7 +7,7 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
-# v2026.8.1-beta
+# v2026.8.31
 - jslint-ci - Update ci-shell-function shGitLsTree() to include sha256 hash of files.
 - sqlmath - Cleanup c-function winSinefitSnr().
 - sqlmath - Update sql-function WIN_SINEFIT2() argument modeSnr with bitmask, allowing selective sine-fit of each column, to avoid wasting cpu on columns that don't need it.
