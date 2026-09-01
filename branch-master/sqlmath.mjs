@@ -22,6 +22,7 @@
 
 /*
 sh one-liner:
+npm_config_mode_test_save=1 npm run test && git diff
 sh jslint_ci.sh shCiBuildWasm
 sh jslint_ci.sh shSqlmathUpdate
 */
@@ -110,7 +111,7 @@ const SQLITE_OPEN_WAL = 0x00080000;             /* VFS only */
 
 const DB_EXEC_PROFILE_DICT = {}; //jslint-ignore-line
 const DB_STATE = {};
-const version = "v2026.7.30";
+const version = "v2026.8.31";
 let DB_EXEC_PROFILE_MODE;
 let DB_EXEC_PROFILE_SQL_LENGTH;
 let IS_BROWSER;

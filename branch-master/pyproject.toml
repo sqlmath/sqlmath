@@ -9,7 +9,7 @@ backend-path = ["."]
 # https://peps.python.org/pep-0621/#example
 [project]
 name = "sqlmath"
-version = "2026.7.30"
+version = "2026.8.31"
 description = "sqlite for data-science"
 authors = [{name = "Kai Zhu"}]
 maintainers = []

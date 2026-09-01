@@ -54,7 +54,7 @@ process.stdout.write(`lib_lightgbm_${libPlatformArchExt()}`);
 "sqlmath/$(node -p '`libomp_${process.platform}_${process.arch}.dylib`')"
             ;;
         esac
-        pip install lightgbm=="$(printf "v4.6.0" | sed "s|v||")"
+        pip install lightgbm=="$(printf "v4.7.0" | sed "s|v||")"
         cp "$(
             find "$(
                 pip show lightgbm | grep Location | sed "s|Location: ||"
@@ -409,25 +409,6 @@ shCiEmsdkInstall() {(set -e
     #     "$EMSDK/.null.c" -o "$EMSDK/.null_wasm.js"
 )}
 
-shIndentC() {(set -e
-# This function will indent/prettify c file.
-    if (uname | grep -q "MING\|MSYS")
-    then
-        ./indent.exe \
-            --blank-lines-after-commas \
-            --braces-on-func-def-line \
-            --break-function-decl-args \
-            --break-function-decl-args-end \
-            --dont-line-up-parentheses \
-            --k-and-r-style \
-            --line-length78 \
-            --no-tabs \
-            -bfde \
-            "$@"
-        dos2unix "$@"
-    fi
-)}
-
 shCiLintCustom() {(set -e
 # This function will run custom-code to lint files.
     if [ "$GITHUB_ACTION" ]
@@ -530,13 +511,32 @@ require("assert")(require("./package.json").name !== "sqlmath");
     shPidListWait test "$PID_LIST"
 )}
 
+shIndentC() {(set -e
+# This function will indent/prettify c file.
+    if (uname | grep -q "MING\|MSYS")
+    then
+        ./indent.exe \
+            --blank-lines-after-commas \
+            --braces-on-func-def-line \
+            --break-function-decl-args \
+            --break-function-decl-args-end \
+            --dont-line-up-parentheses \
+            --k-and-r-style \
+            --line-length78 \
+            --no-tabs \
+            -bfde \
+            "$@"
+        dos2unix "$@"
+    fi
+)}
+
 shSqlmathUpdate() {(set -e
 # This function will update files with ~/Documents/sqlmath/.
     . "$HOME/myci2.sh" && shMyciUpdate
     if [ "$PWD/" = "$HOME/Documents/sqlmath/" ]
     then
-        DIR=sqlite-autoconf-3500400
-        URL=https://www.sqlite.org/2025/sqlite-autoconf-3500400.tar.gz
+        DIR=sqlite-autoconf-3510300
+        URL=https://www.sqlite.org/2026/sqlite-autoconf-3510300.tar.gz
         # shRollupFetch
         if [ ! -d ".$DIR" ]
         then

@@ -20,11 +20,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-/*
- * example usage:
-npm_config_mode_test_save2=1 npm test
- */
-
 /*jslint beta, node*/
 import moduleChildProcess from "child_process";
 import modulePath from "path";
@@ -2155,15 +2150,13 @@ DROP TABLE IF EXISTS __tmp1;
 CREATE TEMP TABLE __tmp1 (val REAL);
 SELECT
         1 AS id,
-        MEDIAN2(val) AS mdn,
-        QUANTILE(val, 0.5) AS qnt,
         STDEV(val) AS std
     FROM __tmp1;
                 `)
             });
             assertJsonEqual(
                 valActual,
-                [{id: 1, mdn: null, qnt: null, std: null}]
+                [{id: 1, std: null}]
             );
         }());
         await Promise.all([
@@ -2226,20 +2219,12 @@ SELECT
         ]) {
             let avg = 0;
             let data2;
-            let valExpectMdn;
             let valExpectStd = 0;
             data2 = data.map(function (elem) {
                 return Number(elem);
             }).filter(function (elem) {
                 return Number.isFinite(elem);
             }).sort();
-            valExpectMdn = (
-                data2.length % 2 === 0
-                ? 0.5 * (
-                    data2[0.5 * data2.length - 1] + data2[0.5 * data2.length]
-                )
-                : data2[0.5 * (data2.length - 1)]
-            );
             data2.forEach(function (elem) {
                 avg += elem;
             });
@@ -2267,12 +2252,8 @@ SELECT
                     },
                     db,
                     sql: (`
--- test null-case handling-behavior
-SELECT QUANTILE(value, ${qq}) AS qnt FROM JSON_EACH($tmp1) WHERE 0;
 -- test last-row handling-behavior
 SELECT
-        MEDIAN2(value) AS mdn,
-        QUANTILE(value, ${qq}) AS qnt,
         ROUND(stdev(value), 8) AS std
     FROM JSON_EACH($tmp1);
                     `)
@@ -2280,8 +2261,6 @@ SELECT
                 assertJsonEqual(
                     valActual,
                     {
-                        mdn: valExpectMdn,
-                        qnt: valExpect ?? null,
                         std: valExpectStd
                     },
                     {
@@ -2289,7 +2268,6 @@ SELECT
                         qq,
                         valActual,
                         valExpect,
-                        valExpectMdn,
                         valExpectStd
                     }
                 );
@@ -3269,7 +3247,7 @@ SELECT
                 "id2": 3,
                 "laa": -4.5,
                 "lbb": 2.5,
-                "lee": 0.40824829,
+                "lee": 0.70710678,
                 "lxy": 0.94491118,
                 "lyy": 3,
                 "mee": 1.52752523,
@@ -3289,7 +3267,7 @@ SELECT
                 "id2": 4,
                 "laa": -3,
                 "lbb": 1.81818182,
-                "lee": 0.47673129,
+                "lee": 0.67419986,
                 "lxy": 0.95346259,
                 "lyy": 4.27272727,
                 "mee": 1.82574186,
@@ -3309,7 +3287,7 @@ SELECT
                 "id2": 5,
                 "laa": -2.29411765,
                 "lbb": 1.52941176,
-                "lee": 0.50874702,
+                "lee": 0.65678958,
                 "lxy": 0.96164474,
                 "lyy": 5.35294118,
                 "mee": 2.07364414,
@@ -3329,7 +3307,7 @@ SELECT
                 "id2": 6,
                 "laa": -2.54385965,
                 "lbb": 1.63157895,
-                "lee": 0.50725727,
+                "lee": 0.62126074,
                 "lxy": 0.97080629,
                 "lyy": 5.61403509,
                 "mee": 2.31660671,
@@ -3349,7 +3327,7 @@ SELECT
                 "id2": 7,
                 "laa": -2.65,
                 "lbb": 1.675,
-                "lee": 0.48550416,
+                "lee": 0.57445626,
                 "lxy": 0.9752227,
                 "lyy": 5.725,
                 "mee": 2.37045304,
@@ -3369,7 +3347,7 @@ SELECT
                 "id2": 8,
                 "laa": -2.5,
                 "lbb": 1.625,
-                "lee": 0.46770717,
+                "lee": 0.54006172,
                 "lxy": 0.97991187,
                 "lyy": 7.25,
                 "mee": 2.50713268,
@@ -3389,7 +3367,7 @@ SELECT
                 "id2": 9,
                 "laa": 0.75,
                 "lbb": 0.85,
-                "lee": 0.94207218,
+                "lee": 1.08781126,
                 "lxy": 0.89597867,
                 "lyy": 9.25,
                 "mee": 2.26778684,
@@ -3409,7 +3387,7 @@ SELECT
                 "id2": 10,
                 "laa": 2.75,
                 "lbb": 0.55,
-                "lee": 0.8587782,
+                "lee": 0.99163165,
                 "lxy": 0.81989159,
                 "lyy": 3.85,
                 "mee": 1.60356745,
@@ -3451,6 +3429,15 @@ SELECT WIN_SINEFIT2(1, 2, 3) FROM (SELECT 1);
                         `)
                     });
                 }, "wrong number of arguments");
+                // test win_sinefit2-modeSnr-bitmask-overflow handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        db,
+                        sql: (`
+SELECT WIN_SINEFIT2(1, 2${", 3, 4".repeat(31)}) FROM (SELECT 1);
+                        `)
+                    });
+                }, "too many columns");
                 // test win_sinefit2-null-case handling-behavior
                 valActual = await dbExecAndReturnLastTable({
                     db,
@@ -3464,6 +3451,323 @@ SELECT DOUBLEARRAY_JSONTO(WIN_SINEFIT2(1, 2, 3, 4)) FROM __tmp1;
                     return val;
                 });
                 assertJsonEqual(valActual, [null]);
+            }()),
+            (async function () {
+                let valActual;
+                let valSine = JSON.stringify(Array.from({
+                    length: 64
+                }, function (ignore, ii) {
+                    return [ii + 1, Math.sin(0.5 * (ii + 1)) + 0.1 * ii];
+                }));
+                // test win_sinefit2-modeSnr-bitmask handling-behavior
+                // Mask 0b110 is inverted on purpose - column 0 must NOT be
+                // sine-fit. A build that re-hardcodes column 0, or that
+                // treats modeSnr as an all-or-nothing flag, fails here.
+                valActual = await dbExecAndReturnLastTable({
+                    bindList: {
+                        valSine
+                    },
+                    db,
+                    sql: (`
+SELECT
+        SINEFIT_EXTRACT(__wsf, 0, 'sww', 0) = 0 AS sww0_off,
+        SINEFIT_EXTRACT(__wsf, 1, 'sww', 0) > 0 AS sww1_on,
+        SINEFIT_EXTRACT(__wsf, 2, 'sww', 0) > 0 AS sww2_on,
+        SINEFIT_EXTRACT(__wsf, 0, 'rrb', 0) IS NOT NULL AS lnr0_on
+    FROM (
+        SELECT
+            key,
+            WIN_SINEFIT2(
+                6, NULL,
+                value->>0, value->>1,
+                value->>0, value->>1,
+                value->>0, value->>1
+            ) OVER (
+                ORDER BY key ASC
+                ROWS BETWEEN 31 PRECEDING AND 0 FOLLOWING
+            ) AS __wsf
+        FROM JSON_EACH($valSine)
+    )
+    WHERE key = 63;
+                    `)
+                });
+                valActual = valActual.map(function (elem) {
+                    return [
+                        elem.sww0_off,
+                        elem.sww1_on,
+                        elem.sww2_on,
+                        elem.lnr0_on
+                    ];
+                });
+                assertJsonEqual(valActual, [[1, 1, 1, 1]]);
+            }()),
+            (async function () {
+                let valActual;
+                let valSine = JSON.stringify(Array.from({
+                    length: 64
+                }, function (ignore, ii) {
+                    return [ii + 1, Math.sin(0.5 * (ii + 1)) + 0.1 * ii];
+                }));
+                // test sinefit_extract-dof handling-behavior
+                // lee divides by nnn-2 (laa, lbb) and see by nnn-5 (those
+                // plus saa, spp, sww). Pin the divisors by comparing a
+                // 32-row window against an 8-row one - the ratio of the
+                // two is free of the unknown residual sum-of-squares only
+                // if we instead check the small-window NULL boundaries,
+                // which is what this does: lee goes NULL at nnn <= 2 and
+                // see at nnn <= 5, and both are finite one row later.
+                valActual = await dbExecAndReturnLastTable({
+                    bindList: {
+                        valSine
+                    },
+                    db,
+                    sql: (`
+SELECT
+        SINEFIT_EXTRACT(__wsf02, 0, 'lee', 0) IS NULL AS lee_null_at_2,
+        SINEFIT_EXTRACT(__wsf03, 0, 'lee', 0) > 0    AS lee_ok_at_3,
+        SINEFIT_EXTRACT(__wsf05, 0, 'see', 0) IS NULL AS see_null_at_5,
+        SINEFIT_EXTRACT(__wsf06, 0, 'see', 0) >= 0   AS see_ok_at_6
+    FROM (
+        SELECT
+            key,
+            WIN_SINEFIT2(1, NULL, value->>0, value->>1) OVER (
+                ORDER BY key ASC ROWS BETWEEN 1 PRECEDING AND 0 FOLLOWING
+            ) AS __wsf02,
+            WIN_SINEFIT2(1, NULL, value->>0, value->>1) OVER (
+                ORDER BY key ASC ROWS BETWEEN 2 PRECEDING AND 0 FOLLOWING
+            ) AS __wsf03,
+            WIN_SINEFIT2(1, NULL, value->>0, value->>1) OVER (
+                ORDER BY key ASC ROWS BETWEEN 4 PRECEDING AND 0 FOLLOWING
+            ) AS __wsf05,
+            WIN_SINEFIT2(1, NULL, value->>0, value->>1) OVER (
+                ORDER BY key ASC ROWS BETWEEN 5 PRECEDING AND 0 FOLLOWING
+            ) AS __wsf06
+        FROM JSON_EACH($valSine)
+    )
+    WHERE key = 63;
+                    `)
+                });
+                valActual = valActual.map(function (elem) {
+                    return [
+                        elem.lee_null_at_2,
+                        elem.lee_ok_at_3,
+                        elem.see_null_at_5,
+                        elem.see_ok_at_6
+                    ];
+                });
+                assertJsonEqual(valActual, [[1, 1, 1, 1]]);
+            }()),
+            // test win_sinefit2-empty-frame handling-behavior
+            (async function () {
+                // WIN_SINEFIT_N = 23 doubles = 184 bytes per column
+                const nhead = 23 * 8;
+// Frame "5 PRECEDING AND 3 PRECEDING" is empty for rows 1-3, so
+// sqlite calls xValue before the first xStep. Regression-test that
+// xValue does not allocate an aggregate-context with nhead=0, which
+// would pin nhead=0 for the life of the aggregate and alias
+// doublewinHead() onto doublewinBody(). ncol=2 additionally
+// overflows the 304-byte nhead=0 allocation, needing 2*184+48 = 416
+// bytes of head.
+                assertJsonEqual(
+                    noop(
+                        await dbExecAsync({
+                            db,
+                            sql: (`
+CREATE TABLE testWinSinefit2Emptyframe AS
+    SELECT 1 AS xx, 1 AS yy
+    --
+    UNION ALL VALUES
+        (2, 2),
+        (3, 3),
+        (4, 4),
+        (5, 5),
+        (6, 6),
+        (7, 7),
+        (8, 8);
+
+-- empty-window-frame
+SELECT
+        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy) OVER (
+            ORDER BY xx
+            ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
+        )) AS nhead
+    FROM testWinSinefit2Emptyframe;
+
+-- empty-window-frame multi-column
+SELECT
+        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy, xx, yy * 2) OVER (
+            ORDER BY xx
+            ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
+        )) AS nhead
+    FROM testWinSinefit2Emptyframe;
+-- non-empty-window-frame control
+SELECT
+        LENGTH(WIN_SINEFIT2(0, NULL, xx, yy) OVER (
+            ORDER BY xx
+            ROWS BETWEEN 5 PRECEDING AND CURRENT ROW
+        )) AS nhead
+    FROM testWinSinefit2Emptyframe;
+
+-- sinefit-object is well-formed
+-- row 8 frame = rows 3-5, so nnn = 3
+WITH tmp1 AS (
+        SELECT
+            xx,
+            win_sinefit2(0, NULL, xx, yy, xx, yy * 2) OVER (
+                ORDER BY xx
+                ROWS BETWEEN 5 PRECEDING AND 3 PRECEDING
+            ) AS wsf
+        FROM testWinSinefit2Emptyframe
+    )
+    SELECT
+        SINEFIT_EXTRACT(wsf, 0, 'nnn', 0) AS nnn0,
+        SINEFIT_EXTRACT(wsf, 1, 'nnn', 0) AS nnn1,
+        SINEFIT_EXTRACT(wsf, 0, 'lbb', 0) AS lbb0,
+        SINEFIT_EXTRACT(wsf, 1, 'lbb', 0) AS lbb1
+    FROM tmp1
+    WHERE xx = 8;
+    -- empty-table xFinal
+    SELECT LENGTH(WIN_SINEFIT2(0, NULL, xx, yy)) AS nhead
+    FROM testWinSinefit2Emptyframe
+    WHERE 0;
+                            `)
+                        })
+                    ),
+                    [
+                        [
+                            {nhead: 0},
+                            {nhead: 0},
+                            {nhead: 0},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead}
+                        ],
+                        [
+                            {nhead: 0},
+                            {nhead: 0},
+                            {nhead: 0},
+                            {nhead: 2 * nhead},
+                            {nhead: 2 * nhead},
+                            {nhead: 2 * nhead},
+                            {nhead: 2 * nhead},
+                            {nhead: 2 * nhead}
+                        ],
+                        [
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead},
+                            {nhead}
+                        ],
+                        [
+                            {lbb0: 1, lbb1: 2, nnn0: 3, nnn1: 3}
+                        ],
+                        [
+                            {nhead: 0}
+                        ]
+                    ]
+                );
+            }()),
+            // test sinefit_refitlast malformed-blob handling-behavior
+            (async function () {
+                // WinSinefit field-offsets, in bytes
+                let offsetNnn = 5 * 8;
+                let offsetWbb = 16 * 8;
+                function blobMalformed(nnn, wbb) {
+                    // ncol=1 header = WIN_SINEFIT_N * 8 = 184 bytes
+                    let buf = new ArrayBuffer(184);
+                    let dv = new DataView(buf);
+                    dv.setFloat64(offsetNnn, nnn, true);
+                    dv.setFloat64(offsetWbb, wbb, true);
+                    return new Uint8Array(buf);
+                }
+                // test malformed-nnn handling-behavior
+                await Promise.all([
+                    0 / 0,              // nan
+                    1 / 0,              // inf
+                    -1 / 0,             // -inf
+                    1e300,              // overflows (int)
+                    -1,                 // negative
+                    0,                  // empty
+                    1.5                 // non-integral
+                ].map(function (nnn) {
+                    return assertErrorThrownAsync(function () {
+                        return dbExecAsync({
+                            bindList: [blobMalformed(nnn, 0)],
+                            db,
+                            sql: "SELECT sinefit_refitlast(?1, 0, 0)"
+                        });
+                    }, "sinefit_refitlast");
+                }));
+                // test malformed-wbb handling-behavior
+                // nnn=1 implies nbody = 3, so any wbb but 0 is invalid.
+                await Promise.all([
+                    0 / 0, 1 / 0, 1e300, -1, 1, 2, 3, 1.5
+                ].map(function (wbb) {
+                    return assertErrorThrownAsync(function () {
+                        return dbExecAsync({
+                            bindList: [blobMalformed(1, wbb)],
+                            db,
+                            sql: "SELECT sinefit_refitlast(?1, 0, 0)"
+                        });
+                    }, "sinefit_refitlast");
+                }));
+                // test truncated-blob handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        bindList: [new Uint8Array(100)],
+                        db,
+                        sql: "SELECT sinefit_refitlast(?1, 0, 0)"
+                    });
+                }, "sinefit_refitlast");
+                // test wrong-argc handling-behavior
+                await assertErrorThrownAsync(function () {
+                    return dbExecAsync({
+                        bindList: [blobMalformed(1, 0)],
+                        db,
+                        sql: "SELECT sinefit_refitlast(?1, 0)"
+                    });
+                }, "sinefit_refitlast");
+            }()),
+            // test sinefit_extract non-blob 1st-argument handling-behavior
+            (async function () {
+                await Promise.all([
+                    "'hello'",
+                    "123",
+                    "1.5",
+                    "NULL",
+                    "zeroblob(0)"
+                ].map(function (arg) {
+                    return assertErrorThrownAsync(function () {
+                        return dbExecAsync({
+                            db,
+                            sql: `SELECT sinefit_extract(${arg}, 0, 'nnn', 0)`
+                        });
+                    }, "sinefit_extract");
+                }));
+            }()),
+            // test win_sinefit2-aggregate-normal handling-behavior
+            (async function () {
+                // test non-blob 1st-argument handling-behavior
+                await Promise.all([
+                    "'hello'",
+                    "123",
+                    "1.5",
+                    "NULL",
+                    "zeroblob(0)"
+                ].map(function (arg) {
+                    return assertErrorThrownAsync(function () {
+                        return dbExecAsync({
+                            db,
+                            sql: `SELECT sinefit_extract(${arg}, 0, 'nnn', 0)`
+                        });
+                    }, "sinefit_extract");
+                }));
             }()),
             // test win_sinefit2-aggregate-normal handling-behavior
             (async function () {
@@ -3494,7 +3798,7 @@ SELECT
                         "gyy": 0.19611614,
                         "laa": 0.77941176,
                         "lbb": 0.84558824,
-                        "lee": 1.40010504,
+                        "lee": 1.56536502,
                         "lxy": 0.81541829,
                         "lyy": 2.47058824,
                         "mee": 2.54950976,
@@ -3520,7 +3824,7 @@ SELECT
                     "gyy": -1.02062073,
                     "laa": -0.82025678,
                     "lbb": 0.14621969,
-                    "lee": 2.23885734,
+                    "lee": 2.74202904,
                     "lxy": 0.865665,
                     "lyy": 6.63694722,
                     "mee": 4.89897949,
@@ -3566,7 +3870,7 @@ SELECT
                     "id2": id3,
                     "laa": 5.25,
                     "lbb": -0.275,
-                    "lee": 2.49624718,
+                    "lee": 2.88241797,
                     "lxy": -0.23918696,
                     "lyy": 2.5,
                     "mee": 2.74837614,
@@ -3586,7 +3890,7 @@ SELECT
                     "id2": id4,
                     "laa": 7.25,
                     "lbb": -0.575,
-                    "lee": 1.95735791,
+                    "lee": 2.26016224,
                     "lxy": -0.5490214,
                     "lyy": 6.1,
                     "mee": 2.50356888,
@@ -3918,7 +4222,7 @@ SELECT
     FROM __sinefit_csv
     JOIN (
         SELECT
-            MEDIAN2(rr) AS rr_avg,
+            MEDIAN(rr) AS rr_avg,
             STDEV(rr) AS rr_err
         FROM __sinefit_csv
     )
