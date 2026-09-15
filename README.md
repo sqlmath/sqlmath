@@ -18,6 +18,7 @@
 
 
 <br><br>
+
 # Table of Contents
 
 1. [Web Demo](#web-demo)
@@ -78,6 +79,7 @@
 
 
 <br><br>
+
 # Web Demo
 - https://sqlmath.github.io/sqlmath/index.html
 
@@ -85,6 +87,7 @@
 
 
 <br><br>
+
 # Why sqlmath?
 
 SQLite is everywhere — it's the most deployed database in the world. But it lacks the statistical and ML functions needed for data-science. sqlmath fixes that.
@@ -97,10 +100,12 @@ SQLite is everywhere — it's the most deployed database in the world. But it la
 
 
 <br><br>
+
 # Quickstart
 
 
 <br><br>
+
 ### Python
 
 ```shell
@@ -135,6 +140,7 @@ db_close(db)
 
 
 <br><br>
+
 ### JavaScript (Node.js)
 
 ```shell
@@ -165,16 +171,19 @@ await dbCloseAsync(db);
 
 
 <br><br>
+
 ### Browser (WebAssembly)
 
 Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/index.html)**
 
 
 <br><br>
+
 # Built-in SQL Functions
 
 
 <br><br>
+
 ### Math
 
 | Function | Description |
@@ -190,6 +199,7 @@ Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/ind
 
 
 <br><br>
+
 ### Statistics (Aggregate)
 
 | Function | Description |
@@ -201,6 +211,7 @@ Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/ind
 
 
 <br><br>
+
 ### Statistics (Scalar)
 
 | Function | Description |
@@ -210,6 +221,7 @@ Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/ind
 
 
 <br><br>
+
 ### Arrays
 
 | Function | Description |
@@ -221,12 +233,14 @@ Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/ind
 
 
 <br><br>
+
 ### Date/Time
 
 sqlmath extends SQLite's date functions with integer-format conversions (YYYYMMDDHHMMSS).
 
 
 <br><br>
+
 ### Time Series / Signal Processing
 
 | Function | Description |
@@ -236,6 +250,7 @@ sqlmath extends SQLite's date functions with integer-format conversions (YYYYMMD
 
 
 <br><br>
+
 ### Compression
 
 | Function | Description |
@@ -247,6 +262,7 @@ sqlmath extends SQLite's date functions with integer-format conversions (YYYYMMD
 
 
 <br><br>
+
 ### Type Casting
 
 | Function | Description |
@@ -258,6 +274,7 @@ sqlmath extends SQLite's date functions with integer-format conversions (YYYYMMD
 
 
 <br><br>
+
 ### Cryptography
 
 | Function | Description |
@@ -271,6 +288,7 @@ SELECT HEX(sha256('hello')) AS hash;
 
 
 <br><br>
+
 # Machine Learning with LightGBM
 
 sqlmath embeds [LightGBM](https://lightgbm.readthedocs.io/) for gradient boosting directly in SQL queries. Train models on your data without leaving SQL — no data shuffle to Python needed.
@@ -279,6 +297,7 @@ sqlmath embeds [LightGBM](https://lightgbm.readthedocs.io/) for gradient boostin
 
 
 <br><br>
+
 ### Training from a Table
 
 `LGBM_TRAINFROMTABLE` is an **aggregate function** — it consumes rows like `SUM()` or `AVG()`, but outputs a trained model BLOB.
@@ -311,6 +330,7 @@ FROM training_data;
 
 
 <br><br>
+
 ### Prediction
 
 ```sql
@@ -330,6 +350,7 @@ FROM test_data;
 
 
 <br><br>
+
 ### Real-World Example: Credit Card Fraud Detection
 
 From the [Kaggle notebook](https://www.kaggle.com/code/kaizhu256/sql-is-all-you-need) — training on 284,807 transactions with 0.17% fraud rate:
@@ -378,6 +399,7 @@ db_exec(db=db, sql="""
 
 
 <br><br>
+
 ### LightGBM Functions
 
 | Function | Type | Description |
@@ -402,10 +424,12 @@ Full notebook with fraud detection, intraday trading signals, and model persiste
 
 
 <br><br>
+
 # Use Cases
 
 
 <br><br>
+
 ### Financial Data Analysis
 
 ```python
@@ -434,6 +458,7 @@ db_close(db)
 
 
 <br><br>
+
 ### Embedded ML Pipelines
 
 Train and deploy models without data movement:
@@ -460,6 +485,7 @@ db_file_save(db=db, filename="scored_data.sqlite")
 
 
 <br><br>
+
 ### Data Compression & Hashing
 
 ```sql
@@ -476,6 +502,7 @@ HAVING COUNT(*) > 1;
 
 
 <br><br>
+
 # Why sqlmath vs Alternatives?
 
 | Feature | sqlmath | pandas | DuckDB | sqlite3 |
@@ -505,6 +532,7 @@ HAVING COUNT(*) > 1;
 
 
 <br><br>
+
 # Python API Reference
 
 ```python
@@ -522,6 +550,7 @@ from sqlmath import (
 
 
 <br><br>
+
 ### db_exec()
 
 ```python
@@ -537,6 +566,7 @@ result = db_exec(
 
 
 <br><br>
+
 # Node.js API Reference
 - https://sqlmath.github.io/sqlmath/apidoc.html
 
@@ -544,6 +574,7 @@ result = db_exec(
 
 
 <br><br>
+
 # Platform Notes
 
 The JavaScript (Node.js) binding is more mature than Python. Key differences:
@@ -559,10 +590,12 @@ The JavaScript (Node.js) binding is more mature than Python. Key differences:
 
 
 <br><br>
+
 # Building from Source
 
 
 <br><br>
+
 ### Prerequisites
 
 - Node.js 24+
@@ -571,6 +604,7 @@ The JavaScript (Node.js) binding is more mature than Python. Key differences:
 
 
 <br><br>
+
 ### Build
 
 ```shell
@@ -589,6 +623,7 @@ sh jslint_ci.sh shCiBuildWasm
 
 
 <br><br>
+
 ### Run Tests
 
 ```shell
@@ -604,6 +639,7 @@ npm run test --fast
 
 
 <br><br>
+
 ### Serve Demo Locally
 
 ```shell
@@ -613,11 +649,13 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 
 
 <br><br>
+
 # Package Listing
 ![screenshot_package_listing.svg](https://sqlmath.github.io/sqlmath/branch-beta/.artifact/screenshot_package_listing.svg)
 
 
 <br><br>
+
 # Changelog
 - [Full CHANGELOG.md](CHANGELOG.md)
 
@@ -625,6 +663,7 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 
 
 <br><br>
+
 # License
 - [sqlite](https://github.com/sqlite/sqlite) is under [public domain](https://www.sqlite.org/copyright.html).
 - [jslint](https://github.com/jslint-org/jslint) is under [Unlicense License](https://github.com/jslint-org/jslint/blob/master/LICENSE).
@@ -635,10 +674,12 @@ PORT=8080 sh jslint_ci.sh shHttpFileServer
 
 
 <br><br>
+
 # Devops Instruction
 
 
 <br><br>
+
 ### python pypi publish
 ```shell
 python -m build
@@ -652,6 +693,7 @@ pip install sqlmath==2026.9.29
 
 
 <br><br>
+
 ### sqlite upgrade
 - goto https://www.sqlite.org/changes.html
 ```shell
