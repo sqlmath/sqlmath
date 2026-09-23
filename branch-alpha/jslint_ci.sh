@@ -497,11 +497,11 @@ import moduleFs from "fs";
             case "\n\n<br>\n\n#####":
                 toc += "        - [" + title + "](#";
                 break;
-            case "\n\n\n<br><br>\n#":
+            case "\n\n\n<br><br>\n\n#":
                 ii += 1;
                 toc += "\n" + ii + ". [" + title + "](#";
                 break;
-            case "\n\n\n<br><br>\n###":
+            case "\n\n\n<br><br>\n\n###":
                 toc += "    - [" + title + "](#";
                 break;
             default:
@@ -531,7 +531,24 @@ import moduleFs from "fs";
     done
     # shellcheck disable=SC2086
     shLintShell $FILE_LIST
+    # check shell-functions in ascii-order
+    for FILE in $FILE_LIST
+    do
+        if ! grep -o "^[A-Za-z_][A-Za-z0-9_]*() {" "$FILE" | sed "s/() {//" |
+            LC_ALL=C sort -c
+        then
+            printf "%s - shell-functions not in ascii-order\n" "$FILE" >&2
+            exit 1
+        fi
+    done
     JSLINT_BETA=1 node jslint.mjs .
+    for FILE in .ci.sh .ci2.sh
+    do
+        if [ -f "$FILE" ]
+        then
+            JSLINT_BETA=1 node jslint.mjs "$FILE"
+        fi
+    done
     if (command -v shCiLintCustom >/dev/null)
     then
         shCiLintCustom
@@ -1166,6 +1183,35 @@ shGithubPrCleanup() {(set -e
 
 shGithubPrCreate() {(set -e
 # This function will create-and-push a github-pull-commit to origin/alpha.
+    # Update 'PR-xxx' placeholder in codebase.
+    if git grep -Ei -e '^ *?(//|#) pr-xxx'
+    then
+        export UPSTREAM_REPOSITORY="$(sed -En \
+            -e 's|.*"git\+https://github\.com/([^.]+)\.git".*|\1|p' \
+            package.json
+        )"
+        PR_XXX="$(curl -fs --ssl-no-revoke \
+"https://api.github.com/repos/$UPSTREAM_REPOSITORY/issues?per_page=1&state=all"
+        )"
+        PR_XXX="$(
+            printf "%s" "$PR_XXX" | sed -En -e 's/.*"number": ([0-9]+).*/\1/p'
+        )"
+        if [ ! "$PR_XXX" ]
+        then
+            return
+        fi
+        PR_XXX="PR-$((PR_XXX + 1))"
+        FILE_LIST="$(
+git grep -Ei -e '^ *?(//|#) pr-xxx - ' | sed -E -e 's/:.*//' | sort -u
+        )"
+        for FILE in $FILE_LIST
+        do
+            sed -Ei.bak \
+                -e "s/^ *?(\/\/|#) pr-xxx - /\1 $PR_XXX - /gi" \
+                "$FILE" && \
+                rm -f "$FILE".bak
+        done
+    fi
     node --input-type=module --eval '
 // init debugInline
 const debugInline = (function () {
@@ -1231,21 +1277,6 @@ import moduleFs from "fs";
         commitMessage = `- shGithubPrCreate ${commitMessage}`;
     }
     branchPull = `branch-${version}`;
-    // update README.md
-    data = await moduleFs.promises.readFile("README.md", "utf8");
-    data = data.replace(
-        new RegExp(
-            (
-                "(\\bhttps:\\/\\/github\\.com\\/[\\w.\\-\\/]+?"
-                + "\\/compare"
-                + "\\/[\\w.\\-\\/]+?\\.\\.\\.[\\w.:\\-\\/]+?)"
-                + `:branch-${version[0]}\\d\\d\\d\\d\\.\\d\\d?\\.\\d\\d?\\b`
-            ),
-            "g"
-        ),
-        `$1:${branchPull}`
-    );
-    await moduleFs.promises.writeFile("README.md", data);
     // security - sanitize commitMessage
     commitMessage = commitMessage.trim().replace((/\u0027/g), "$&\"$&\"$&");
     moduleChildProcess.spawn(
@@ -1278,45 +1309,6 @@ import moduleFs from "fs";
     });
 }());
 ' "$@" # '
-)}
-
-shGithubPrUpdatePrxxx() {(set -e
-# This function will update 'PR-xxx' placeholder in codebase
-# to next sequential github issue/pull number.
-    if ! git grep -Ei -e '^ *?(//|#) pr-xxx'
-    then
-        return
-    fi
-    export UPSTREAM_REPOSITORY="$(sed -En \
-        -e 's|.*"git\+https://github\.com/([^.]+)\.git".*|\1|p' \
-        package.json
-    )"
-    PR_XXX="$(curl -fs --ssl-no-revoke \
-"https://api.github.com/repos/$UPSTREAM_REPOSITORY/issues?per_page=1&state=all"
-    )"
-    PR_XXX="$(
-        printf "%s" "$PR_XXX" | sed -En -e 's/.*"number": ([0-9]+).*/\1/p'
-    )"
-    if [ ! "$PR_XXX" ]
-    then
-        return
-    fi
-    PR_XXX="PR-$((PR_XXX + 1))"
-    FILE_LIST="$(
-        git grep -Ei -e '^ *?(//|#) pr-xxx - ' | sed -E -e 's/:.*//' | sort -u
-    )"
-    for FILE in $FILE_LIST
-    do
-        sed -Ei.bak \
-            -e "s/^ *?(\/\/|#) pr-xxx - /\1 $PR_XXX - /gi" \
-            "$FILE" && \
-            rm -f "$FILE".bak
-    done
-    git --no-pager diff
-    git grep -Ei -e '^ *?(//|#) pr-xxx' || true
-    git commit -am "- ci - Update 'PR-xxx' placeholder to '${PR_XXX}'."
-    printf "\n\n\n\n"
-    git --no-pager log -n 4
 )}
 
 shGithubTokenExport() {

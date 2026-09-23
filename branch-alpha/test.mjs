@@ -2453,6 +2453,201 @@ SELECT DOUBLEARRAY_JSONTO(WIN_AVG2(1, 2, 3)) FROM __tmp1;
         ]);
     });
     jstestIt((
+        "test sqlite-extension-win_coinflip2 handling-behavior"
+    ), async function test_sqlite_extension_win_coinflip2() {
+// win_coinflip2 reads ONE value per column, and key biasba50 needs a
+// second bit per row - was the flip called correctly - so it reads the
+// 4-state code SIGN(outcome) * (1 + hit) documented at struct
+// WinCoinflip, sqlmath_base.c:
+//     +2 head-hit  +1 head-miss  0 excluded  -1 tail-miss  -2 tail-hit
+// Sign is the OUTCOME class, so nhead and ntail are the two denominators
+// balanced-accuracy divides by, and biashead reads the CLASS BALANCE
+// under this code, not the hit-rate.
+        let db = await dbOpenAsync({});
+        async function test_coinflip_extract({
+            sqlBetween,
+            valExpect,
+            valIn
+        }) {
+            let valActual = await dbExecAndReturnLastRow({
+                bindList: {
+                    valIn: JSON.stringify(valIn)
+                },
+                db,
+                sql: (`
+SELECT
+        COINFLIP_EXTRACT(__wcf, 0, 'nflip') AS nflip,
+        COINFLIP_EXTRACT(__wcf, 0, 'nhead') AS nhead,
+        COINFLIP_EXTRACT(__wcf, 0, 'nhithead') AS nhithead,
+        COINFLIP_EXTRACT(__wcf, 0, 'nhittail') AS nhittail,
+        COINFLIP_EXTRACT(__wcf, 0, 'ntail') AS ntail,
+        ROUND(COINFLIP_EXTRACT(__wcf, 0, 'biasba50'), 6) AS biasba50,
+        ROUND(COINFLIP_EXTRACT(__wcf, 0, 'biashead'), 6) AS biashead
+    FROM (
+        SELECT
+            WIN_COINFLIP2(value) OVER (
+                ORDER BY key ASC
+                ${sqlBetween}
+            ) AS __wcf
+        FROM JSON_EACH($valIn)
+    );
+                `)
+            });
+            assertJsonEqual(valActual, valExpect);
+        }
+        await Promise.all([
+            // test biasba50-unbalanced-panel handling-behavior
+            // 8 up-days with 7 called right, 2 down-days with 0 called
+            // right - a 70% RAW hit-rate that balanced-accuracy scores
+            // BELOW chance, which is the whole reason for the key.
+            test_coinflip_extract({
+                sqlBetween: "",
+                valExpect: {
+                    biasba50: -0.0625,
+                    biashead: 0.3,
+                    nflip: 10,
+                    nhead: 8,
+                    nhithead: 7,
+                    nhittail: 0,
+                    ntail: 2
+                },
+                valIn: [2, 2, 2, 2, 2, 2, 2, 1, -1, -1]
+            }),
+            // test biasba50-parrot-null handling-behavior
+            // an always-up caller hits every up-day and misses every
+            // down-day, and MUST score exactly 0.
+            test_coinflip_extract({
+                sqlBetween: "",
+                valExpect: {
+                    biasba50: 0,
+                    biashead: 0.2,
+                    nflip: 10,
+                    nhead: 7,
+                    nhithead: 7,
+                    nhittail: 0,
+                    ntail: 3
+                },
+                valIn: [2, 2, 2, 2, 2, 2, 2, -1, -1, -1]
+            }),
+            // test biasba50-range handling-behavior
+            test_coinflip_extract({
+                sqlBetween: "",
+                valExpect: {
+                    biasba50: 0.5,
+                    biashead: 0.1,
+                    nflip: 5,
+                    nhead: 3,
+                    nhithead: 3,
+                    nhittail: 2,
+                    ntail: 2
+                },
+                valIn: [2, 2, 2, -2, -2]
+            }),
+            test_coinflip_extract({
+                sqlBetween: "",
+                valExpect: {
+                    biasba50: -0.5,
+                    biashead: 0.1,
+                    nflip: 5,
+                    nhead: 3,
+                    nhithead: 0,
+                    nhittail: 0,
+                    ntail: 2
+                },
+                valIn: [1, 1, 1, -1, -1]
+            }),
+            // test biasba50-one-sided-panel handling-behavior
+            // no down-days means no balanced-accuracy - 0.0/0.0 is NaN,
+            // which sqlite3_result_double_or_null maps to NULL.
+            test_coinflip_extract({
+                sqlBetween: "",
+                valExpect: {
+                    biasba50: null,
+                    biashead: 0.5,
+                    nflip: 3,
+                    nhead: 3,
+                    nhithead: 2,
+                    nhittail: 0,
+                    ntail: 0
+                },
+                valIn: [2, 2, 1]
+            }),
+            // test biasba50-legacy-column handling-behavior
+            // a plain 0/1 column carries no hit-bit, so the pre-existing
+            // keys are unchanged and the two hit-counters stay 0.
+            test_coinflip_extract({
+                sqlBetween: "",
+                valExpect: {
+                    biasba50: null,
+                    biashead: 0.166667,
+                    nflip: 6,
+                    nhead: 4,
+                    nhithead: 0,
+                    nhittail: 0,
+                    ntail: 0
+                },
+                valIn: [1, 1, 0, 1, 0, 1]
+            }),
+            // test biasba50-sliding-window handling-behavior
+            // a bounded frame forces xInverse - the 6 leading rows are
+            // all HITS, so an inverse that failed to decrement the two
+            // hit-counters would inflate biasba50 here.
+            test_coinflip_extract({
+                sqlBetween: "ROWS BETWEEN 3 PRECEDING AND CURRENT ROW",
+                valExpect: {
+                    biasba50: 0.25,
+                    biashead: 0,
+                    nflip: 4,
+                    nhead: 2,
+                    nhithead: 2,
+                    nhittail: 1,
+                    ntail: 2
+                },
+                valIn: [2, 2, 2, -2, -2, -2, 2, -1, -2, 2]
+            })
+        ]);
+        // test win_coinflip2-multi-column handling-behavior
+        assertJsonEqual(await dbExecAndReturnLastRow({
+            db,
+            sql: (`
+SELECT
+        COINFLIP_EXTRACT(__wcf, 0, 'biasba50') AS aa,
+        COINFLIP_EXTRACT(__wcf, 1, 'biasba50') AS bb,
+        COINFLIP_EXTRACT(__wcf, 1, 'nstreak') AS cc
+    FROM (
+        SELECT
+            WIN_COINFLIP2(aa, bb) OVER (ORDER BY id ASC) AS __wcf
+        FROM (
+            SELECT 1 AS id, 2 AS aa, 1 AS bb
+            UNION ALL SELECT 2, 2, -1
+            UNION ALL SELECT 3, -2, -1
+            UNION ALL SELECT 4, -1, -1
+        )
+    );
+            `)
+        }), {
+            aa: 0.25,
+            bb: -0.5,
+            cc: -3
+        });
+        // test coinflip_extract-error handling-behavior
+        await assertErrorThrownAsync(
+            dbExecAsync.bind(undefined, {
+                db,
+                sql: (`
+SELECT
+        COINFLIP_EXTRACT(__wcf, 0, 'biasba49')
+    FROM (
+        SELECT
+            WIN_COINFLIP2(value) OVER (ORDER BY key ASC) AS __wcf
+        FROM JSON_EACH('[2,-2]')
+    );
+                `)
+            }),
+            "invalid key"
+        );
+    });
+    jstestIt((
         "test sqlite-extension-win_emax handling-behavior"
     ), async function test_sqlite_extension_win_emax() {
         let db = await dbOpenAsync({});
