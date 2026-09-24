@@ -135,9 +135,9 @@ jstestDescribe((
                     moduleChildProcess.execFile
                 )(
                     (
-                        process.cwd()
-                        + modulePath.sep
-                        + SQLMATH_EXE
+                        process.cwd() +
+                        modulePath.sep +
+                        SQLMATH_EXE
                     ),
                     [
                         ":memory:",
@@ -203,10 +203,10 @@ jstestDescribe((
                         valExpect, valExpect, 0
                     ],
                     (
-                        "SELECT 0;"
-                        + " SELECT ? AS c1, ? AS c2, ? AS c3, ? AS c4"
-                        + " UNION ALL SELECT ?1, ?2, ?3, ?4"
-                        + " UNION ALL SELECT ?1, ?2, ?3, ?4"
+                        "SELECT 0;" +
+                        " SELECT ? AS c1, ? AS c2, ? AS c3, ? AS c4" +
+                        " UNION ALL SELECT ?1, ?2, ?3, ?4" +
+                        " UNION ALL SELECT ?1, ?2, ?3, ?4"
                     )
                 ],
                 [
@@ -216,10 +216,10 @@ jstestDescribe((
                         k3: 0
                     },
                     (
-                        "SELECT 0;"
-                        + " SELECT $k1 AS c1, $k2 AS c2, $k3 AS c3, $k4 AS c4"
-                        + " UNION ALL SELECT :k1, :k2, :k3, :k4"
-                        + " UNION ALL SELECT @k1, @k2, @k3, @k4"
+                        "SELECT 0;" +
+                        " SELECT $k1 AS c1, $k2 AS c2, $k3 AS c3, $k4 AS c4" +
+                        " UNION ALL SELECT :k1, :k2, :k3, :k4" +
+                        " UNION ALL SELECT @k1, @k2, @k3, @k4"
                     )
                 ]
             ].map(async function ([
@@ -309,8 +309,8 @@ jstestDescribe((
                     break;
                 }
                 if (
-                    valIn?.constructor === ArrayBuffer
-                    || ArrayBuffer.isView(valIn)
+                    valIn?.constructor === ArrayBuffer ||
+                    ArrayBuffer.isView(valIn)
                 ) {
                     bufExpect = new TextDecoder().decode(valIn);
                     break;
@@ -1429,8 +1429,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                     return arg - (arg % 1_00);
                 }
                 if (
-                    (/^IDATEYMDFROM|'ITEXTYMD'/).test(sqlFunc)
-                    || ((/_YMD$/).test(sqlFunc) && !(/IDATEFROM/).test(sqlFunc))
+                    (/^IDATEYMDFROM|'ITEXTYMD'/).test(sqlFunc) ||
+                    ((/_YMD$/).test(sqlFunc) && !(/IDATEFROM/).test(sqlFunc))
                 ) {
                     return idateArgYmdTruncate(arg);
                 }
@@ -1840,8 +1840,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "CASTTEXTOREMPTY": "",
                 "COPYBLOB": "",
                 "SHA256": (
-                    "E3B0C44298FC1C149AFBF4C8996FB924"
-                    + "27AE41E4649B934CA495991B7852B855"
+                    "E3B0C44298FC1C149AFBF4C8996FB924" +
+                    "27AE41E4649B934CA495991B7852B855"
                 )
             },
             "'-0.5'": {
@@ -1850,8 +1850,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "CASTTEXTOREMPTY": "-0.5",
                 "COPYBLOB": "-0.5",
                 "SHA256": (
-                    "1B07B0CFFA0B3F596B5E048B01151688"
-                    + "86CC5183DD518655B5515EE5DDDAC6D1"
+                    "1B07B0CFFA0B3F596B5E048B01151688" +
+                    "86CC5183DD518655B5515EE5DDDAC6D1"
                 )
             },
             "'-1'": {
@@ -1862,8 +1862,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": -0.642092615934331,
                 "COTH": -1.31303528549933,
                 "SHA256": (
-                    "1BAD6B8CF97131FCEAB8543E81F77571"
-                    + "95FBB1D36B376EE994AD1CF17699C464"
+                    "1BAD6B8CF97131FCEAB8543E81F77571" +
+                    "95FBB1D36B376EE994AD1CF17699C464"
                 ),
                 "SIGN": -1,
                 "SQRTWITHSIGN": -1
@@ -1876,8 +1876,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": null,
                 "COTH": null,
                 "SHA256": (
-                    "5FECEB66FFC86F38D952786C6D696C79"
-                    + "C2DBC239DD4E91B46729D73A27FB57E9"
+                    "5FECEB66FFC86F38D952786C6D696C79" +
+                    "C2DBC239DD4E91B46729D73A27FB57E9"
                 ),
                 "SIGN": 0,
                 "SQRTWITHSIGN": 0
@@ -1888,8 +1888,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "CASTTEXTOREMPTY": "0.5",
                 "COPYBLOB": "0.5",
                 "SHA256": (
-                    "D2CBAD71FF333DE67D07EC676E352AB7"
-                    + "F38248EB69C942950157220607C55E84"
+                    "D2CBAD71FF333DE67D07EC676E352AB7" +
+                    "F38248EB69C942950157220607C55E84"
                 )
             },
             "'1'": {
@@ -1900,8 +1900,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": 0.642092615934331,
                 "COTH": 1.31303528549933,
                 "SHA256": (
-                    "6B86B273FF34FCE19D6B804EFF5A3F57"
-                    + "47ADA4EAA22F1D49C01E52DDB7875B4B"
+                    "6B86B273FF34FCE19D6B804EFF5A3F57" +
+                    "47ADA4EAA22F1D49C01E52DDB7875B4B"
                 ),
                 "SIGN": 1,
                 "SQRTWITHSIGN": 1
@@ -1912,20 +1912,20 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "CASTTEXTOREMPTY": "aa",
                 "COPYBLOB": "aa",
                 "SHA256": (
-                    "961B6DD3EDE3CB8ECBAACBD68DE040CD"
-                    + "78EB2ED5889130CCEB4C49268EA4D506"
+                    "961B6DD3EDE3CB8ECBAACBD68DE040CD" +
+                    "78EB2ED5889130CCEB4C49268EA4D506"
                 )
             },
             "'abc'": {
                 "SHA256": (
-                    "BA7816BF8F01CFEA414140DE5DAE2223"
-                    + "B00361A396177A9CB410FF61F20015AD"
+                    "BA7816BF8F01CFEA414140DE5DAE2223" +
+                    "B00361A396177A9CB410FF61F20015AD"
                 )
             },
             "'abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq'": {
                 "SHA256": (
-                    "248D6A61D20638B8E5C026930C3E6039"
-                    + "A33CE45964FF2167F6ECEDD419DB06C1"
+                    "248D6A61D20638B8E5C026930C3E6039" +
+                    "A33CE45964FF2167F6ECEDD419DB06C1"
                 )
             },
             "'hello'": {
@@ -1934,8 +1934,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "CASTTEXTOREMPTY": "hello",
                 "COPYBLOB": "hello",
                 "SHA256": (
-                    "2CF24DBA5FB0A30E26E83B2AC5B9E29E"
-                    + "1B161E5C1FA7425E73043362938B9824"
+                    "2CF24DBA5FB0A30E26E83B2AC5B9E29E" +
+                    "1B161E5C1FA7425E73043362938B9824"
                 )
             },
             "-0.5": {
@@ -1944,16 +1944,16 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "CASTTEXTOREMPTY": "-0.5",
                 "COPYBLOB": -0.5,
                 "SHA256": (
-                    "1B07B0CFFA0B3F596B5E048B01151688"
-                    + "86CC5183DD518655B5515EE5DDDAC6D1"
+                    "1B07B0CFFA0B3F596B5E048B01151688" +
+                    "86CC5183DD518655B5515EE5DDDAC6D1"
                 )
             },
             "-0x7fffffffffffffff": {
                 "COT": -0.0118008981305845,
                 "COTH": -1,
                 "SHA256": ( // '-9223372036854775807'
-                    "B7AE81320053F61245ED2D36E72E1D05"
-                    + "AD4235D8C784E60285F1EB1F06DA7845"
+                    "B7AE81320053F61245ED2D36E72E1D05" +
+                    "AD4235D8C784E60285F1EB1F06DA7845"
                 ),
                 "SIGN": -1,
                 "SQRTWITHSIGN": -3037000499.97605
@@ -1966,8 +1966,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": -0.642092615934331,
                 "COTH": -1.31303528549933,
                 "SHA256": (
-                    "1BAD6B8CF97131FCEAB8543E81F77571"
-                    + "95FBB1D36B376EE994AD1CF17699C464"
+                    "1BAD6B8CF97131FCEAB8543E81F77571" +
+                    "95FBB1D36B376EE994AD1CF17699C464"
                 ),
                 "SIGN": -1,
                 "SQRTWITHSIGN": -1
@@ -1976,8 +1976,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": null,
                 "COTH": -1,
                 "SHA256": ( // '-Inf'
-                    "8C1FB05600CEB1FF74474E66DDD603F5"
-                    + "FE8C839B03598A124E2AACB6A08C8837"
+                    "8C1FB05600CEB1FF74474E66DDD603F5" +
+                    "FE8C839B03598A124E2AACB6A08C8837"
                 ),
                 "SIGN": -1,
                 "SQRTWITHSIGN": null
@@ -1990,8 +1990,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": null,
                 "COTH": null,
                 "SHA256": (
-                    "5FECEB66FFC86F38D952786C6D696C79"
-                    + "C2DBC239DD4E91B46729D73A27FB57E9"
+                    "5FECEB66FFC86F38D952786C6D696C79" +
+                    "C2DBC239DD4E91B46729D73A27FB57E9"
                 ),
                 "SIGN": 0,
                 "SQRTWITHSIGN": 0
@@ -2002,8 +2002,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "CASTTEXTOREMPTY": "0.5",
                 "COPYBLOB": 0.5,
                 "SHA256": (
-                    "D2CBAD71FF333DE67D07EC676E352AB7"
-                    + "F38248EB69C942950157220607C55E84"
+                    "D2CBAD71FF333DE67D07EC676E352AB7" +
+                    "F38248EB69C942950157220607C55E84"
                 )
             },
             "0.5, 0.5": {
@@ -2019,8 +2019,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": 0.0118008981305845,
                 "COTH": 1,
                 "SHA256": ( // '9223372036854775807'
-                    "B34A1C30A715F6BF8B7243AFA7FAB883"
-                    + "CE3612B7231716BDCBBDC1982E1AED29"
+                    "B34A1C30A715F6BF8B7243AFA7FAB883" +
+                    "CE3612B7231716BDCBBDC1982E1AED29"
                 ),
                 "SIGN": 1,
                 "SQRTWITHSIGN": 3037000499.97605
@@ -2029,8 +2029,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": -0.0118008981305845,
                 "COTH": -1,
                 "SHA256": ( // '-9223372036854775808'
-                    "85386477F3AF47E4A0B308EE3B3A688D"
-                    + "F16E8B2228105DD7D4DCD42A9807CB78"
+                    "85386477F3AF47E4A0B308EE3B3A688D" +
+                    "F16E8B2228105DD7D4DCD42A9807CB78"
                 ),
                 "SIGN": -1,
                 "SQRTWITHSIGN": -3037000499.97605
@@ -2039,8 +2039,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": -0.642092615934331,
                 "COTH": -1.31303528549933,
                 "SHA256": ( // '-1'
-                    "1BAD6B8CF97131FCEAB8543E81F77571"
-                    + "95FBB1D36B376EE994AD1CF17699C464"
+                    "1BAD6B8CF97131FCEAB8543E81F77571" +
+                    "95FBB1D36B376EE994AD1CF17699C464"
                 ),
                 "SIGN": -1,
                 "SQRTWITHSIGN": -1
@@ -2053,8 +2053,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": 0.642092615934331,
                 "COTH": 1.31303528549933,
                 "SHA256": (
-                    "6B86B273FF34FCE19D6B804EFF5A3F57"
-                    + "47ADA4EAA22F1D49C01E52DDB7875B4B"
+                    "6B86B273FF34FCE19D6B804EFF5A3F57" +
+                    "47ADA4EAA22F1D49C01E52DDB7875B4B"
                 ),
                 "SIGN": 1,
                 "SQRTWITHSIGN": 1
@@ -2065,8 +2065,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "COT": null,
                 "COTH": 1,
                 "SHA256": ( // 'Inf'
-                    "1DAEC9C71EE2A842CDEE6977AD8C562E"
-                    + "D4AA4FB1338BECD25D79A104B473D9D8"
+                    "1DAEC9C71EE2A842CDEE6977AD8C562E" +
+                    "D4AA4FB1338BECD25D79A104B473D9D8"
                 ),
                 "SIGN": 1,
                 "SQRTWITHSIGN": null
@@ -2097,8 +2097,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "CASTTEXTOREMPTY": "",
                 "COPYBLOB": null,
                 "SHA256": (
-                    "E3B0C44298FC1C149AFBF4C8996FB924"
-                    + "27AE41E4649B934CA495991B7852B855"
+                    "E3B0C44298FC1C149AFBF4C8996FB924" +
+                    "27AE41E4649B934CA495991B7852B855"
                 )
             },
             "ZEROBLOB(1)": {
@@ -2107,8 +2107,8 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
                 "CASTTEXTOREMPTY": "",
                 "COPYBLOB": null,
                 "SHA256": (
-                    "6E340B9CFFB37A989CA544E6BB780A2C"
-                    + "78901D3FB33738768511A30617AFA01D"
+                    "6E340B9CFFB37A989CA544E6BB780A2C" +
+                    "78901D3FB33738768511A30617AFA01D"
                 )
             }
         }).forEach(function ([

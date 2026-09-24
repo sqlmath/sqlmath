@@ -161,8 +161,8 @@ function assertInt64(val) {
         -9_223_372_036_854_775_808n <= val && val <= 9_223_372_036_854_775_807n
     )) {
         throw new Error(
-            `integer ${val} outside signed-64-bit inclusive-range`
-            + " -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
+            `integer ${val} outside signed-64-bit inclusive-range` +
+            " -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
         );
     }
 }
@@ -175,8 +175,8 @@ function assertJsonEqual(aa, bb, message) {
     bb = JSON.stringify(objectDeepCopyWithKeysSorted(bb), undefined, 1);
     if (aa !== bb) {
         throw new Error(
-            "\n" + aa + "\n!==\n" + bb
-            + (
+            "\n" + aa + "\n!==\n" + bb +
+            (
                 typeof message === "string"
                 ? " - " + message
                 : message
@@ -791,13 +791,16 @@ async function dbCallAsync(baton, argList, mode, db) {
             // check for min/max safe-integer
             assertOrThrow(
                 (
-                    (JS_MIN_SAFE_INTEGER <= val && val <= JS_MAX_SAFE_INTEGER)
-                    || typeof val === "bigint"
+                    (
+                        JS_MIN_SAFE_INTEGER <= val &&
+                        val <= JS_MAX_SAFE_INTEGER
+                    ) ||
+                    typeof val === "bigint"
                 ),
                 (
-                    "dbCallAsync - "
-                    + "non-bigint-integer must be within inclusive-range"
-                    + ` ${JS_MIN_SAFE_INTEGER} to ${JS_MAX_SAFE_INTEGER}`
+                    "dbCallAsync - " +
+                    "non-bigint-integer must be within inclusive-range" +
+                    ` ${JS_MIN_SAFE_INTEGER} to ${JS_MAX_SAFE_INTEGER}`
                 )
             );
             val = BigInt(val);
@@ -818,8 +821,8 @@ async function dbCallAsync(baton, argList, mode, db) {
         assertOrThrow(
             !ArrayBuffer.isView(val) || val.byteOffset === 0,
             (
-                "dbCallAsync - argList cannot contain arraybuffer-views"
-                + " with non-zero byteOffset"
+                "dbCallAsync - argList cannot contain arraybuffer-views" +
+                " with non-zero byteOffset"
             )
         );
         if (isExternalBuffer(val)) {
@@ -878,9 +881,9 @@ async function dbCallAsync(baton, argList, mode, db) {
         timeElapsed = Date.now() - timeElapsed;
         if (timeElapsed > 500 || funcname === "testTimeElapsed") {
             consoleError(
-                "sqlMessagePost - "
-                + JSON.stringify({funcname, timeElapsed})
-                + errStack
+                "sqlMessagePost - " +
+                JSON.stringify({funcname, timeElapsed}) +
+                errStack
             );
         }
         assertOrThrow(!result.errmsg, result.errmsg);
@@ -1092,16 +1095,16 @@ function dbExecProfile({
         timeElapsed
     }, ii) {
         return String(
-            `${Number(ii + 1).toFixed(0).padStart(2, " ")}.`
-            + ` ${timeElapsed.toFixed(0).padStart(4)}`
-            + ` ${count.toFixed(0).padStart(3)}`
-            + " " + JSON.stringify(sql)
+            `${Number(ii + 1).toFixed(0).padStart(2, " ")}.` +
+            ` ${timeElapsed.toFixed(0).padStart(4)}` +
+            ` ${count.toFixed(0).padStart(3)}` +
+            " " + JSON.stringify(sql)
         ).slice(0, lineLength);
     }).join("\n");
     result = (
-        `\ndbExecProfile:\n`
-        + ` #  time cnt sql\n`
-        + `${result}\n`
+        `\ndbExecProfile:\n` +
+        ` #  time cnt sql\n` +
+        `${result}\n`
     );
     return result;
 }
@@ -1385,11 +1388,11 @@ async function dbTableImportAsync({
             rowList.length === 0
             ? `CREATE TABLE ${tableName} (${colList.join(",")});`
             : (
-                `CREATE TABLE ${tableName} AS SELECT `
-                + colList.map(function (colName, ii) {
+                `CREATE TABLE ${tableName} AS SELECT ` +
+                colList.map(function (colName, ii) {
                     return "value->>" + ii + " AS " + colName;
-                }).join(",")
-                + " FROM JSON_EACH($rowList);"
+                }).join(",") +
+                " FROM JSON_EACH($rowList);"
             )
         )
     });
@@ -1657,8 +1660,8 @@ function jsbatonSetValue(baton, argi, val, bufi, referenceList) {
         assertOrThrow(
             0 <= vsize && vsize <= SIZEOF_BLOB_MAX,
             (
-                "sqlite-blob byte-length must be within inclusive-range"
-                + ` 0 to ${SIZEOF_BLOB_MAX}`
+                "sqlite-blob byte-length must be within inclusive-range" +
+                ` 0 to ${SIZEOF_BLOB_MAX}`
             )
         );
         // push vsize - 4-byte
@@ -1675,8 +1678,8 @@ function jsbatonSetValue(baton, argi, val, bufi, referenceList) {
         assertOrThrow(
             0 <= vsize && vsize <= SIZEOF_BLOB_MAX,
             (
-                "sqlite-blob byte-length must be within inclusive-range"
-                + ` 0 to ${SIZEOF_BLOB_MAX}`
+                "sqlite-blob byte-length must be within inclusive-range" +
+                ` 0 to ${SIZEOF_BLOB_MAX}`
             )
         );
         assertOrThrow(
@@ -1714,8 +1717,8 @@ function jsonParseArraybuffer(buf) {
             IS_BROWSER
             ? new TextDecoder().decode(buf)
             : buf
-        )
-        || "null"
+        ) ||
+        "null"
     );
 }
 
@@ -1776,8 +1779,8 @@ async function moduleFsInit() {
     }
     SQLMATH_NODE = `_sqlmath.napi6_${process.platform}_${process.arch}.node`;
     SQLMATH_EXE = (
-        `_sqlmath.shell_${process.platform}_${process.arch}`
-        + process.platform.replace(
+        `_sqlmath.shell_${process.platform}_${process.arch}` +
+        process.platform.replace(
             "win32",
             ".exe"
         ).replace(
@@ -1844,9 +1847,9 @@ async function sqlmathInit() {
 // Feature-detect nodejs.
 
     if (
-        typeof process !== "object"
-        || typeof process?.versions?.node !== "string"
-        || cModule
+        typeof process !== "object" ||
+        typeof process?.versions?.node !== "string" ||
+        cModule
     ) {
         return;
     }
