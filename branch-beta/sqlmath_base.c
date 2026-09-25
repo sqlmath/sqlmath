@@ -3268,9 +3268,23 @@ static void sql3_stdev_step(
 // SQLMATH_FUNC sql3_stdev_func - end
 
 // SQLMATH_FUNC sql3_win_coinflip2_func - start
+// INPUT ENCODING - each column takes ONE value, whose SIGN alone drives
+// nflip, nhead, nstreak, ntail, outcome exactly as it always has.
+// nhithead, nhittail and key 'biasba50' need a SECOND bit per row - was
+// the flip called CORRECTLY - so they read a 4-state code the caller
+// builds as SIGN(outcome) * (1 + hit):
+//     +2 head-hit  +1 head-miss  0 excluded  -1 tail-miss  -2 tail-hit
+// Sign stays the OUTCOME class, so nhead and ntail ARE the two class
+// denominators balanced-accuracy divides by.
+// A column fed a RAW value (a price return, say) still yields correct
+// nflip, nhead, nstreak, ntail, outcome - but its nhithead, nhittail and
+// biasba50 are MEANINGLESS, the magnitude carrying no hit-bit. Do not
+// read those three off such a column.
 typedef struct WinCoinflip {
     double nflip;               // number of coin-flips
     double nhead;               // number of coin-flips landing on head
+    double nhithead;            // number of head-flips called correctly
+    double nhittail;            // number of tail-flips called correctly
     double nstreak;             // current head/tail win-streak
     double ntail;               // number of coin-flips landing on tail
     double outcome;             // current-outcome - head=+1, tail=-1, tie=0
@@ -3316,10 +3330,14 @@ SQLMATH_FUNC static void sql3_win_coinflip2_inverse(
     // dblwin - inverse
     WinCoinflip *agg = (WinCoinflip *) dblwin_head;
     for (int ii = 0; ii < ncol; ii += 1) {
-        const int outcome = doubleSign(sqlite3_value_double(argv[0]));
+        const double val = sqlite3_value_double(argv[0]);
+        const int outcome = doubleSign(val);
+        const int hit = doubleAbs(val) > 1.5;
         const int sstreak = doubleSign(agg->nstreak);
         agg->nflip -= 1;
         agg->nhead -= outcome == +1;
+        agg->nhithead -= hit && outcome == +1;
+        agg->nhittail -= hit && outcome == -1;
         agg->nstreak =
             sstreak * doubleMin(sstreak * agg->nstreak, agg->nflip);
         agg->ntail -= outcome == -1;
@@ -3347,10 +3365,14 @@ SQLMATH_FUNC static void sql3_win_coinflip2_step(
     // dblwin - calculate coin-flip-bias
     WinCoinflip *agg = (WinCoinflip *) dblwin_head;
     for (int ii = 0; ii < ncol; ii += 1) {
-        const int outcome = doubleSign(sqlite3_value_double(argv[0]));
+        const double val = sqlite3_value_double(argv[0]);
+        const int outcome = doubleSign(val);
+        const int hit = doubleAbs(val) > 1.5;
         const int sstreak = doubleSign(agg->nstreak);
         agg->nflip += 1;
         agg->nhead += outcome == +1;
+        agg->nhithead += hit && outcome == +1;
+        agg->nhittail += hit && outcome == -1;
         agg->nstreak = outcome == sstreak ? agg->nstreak + outcome : outcome;
         agg->ntail += outcome == -1;
         agg->outcome = outcome;
@@ -3395,6 +3417,8 @@ SQLMATH_FUNC static void sql1_coinflip_extract_func(
     const char *keyList[] = {
         "nflip",
         "nhead",
+        "nhithead",
+        "nhittail",
         "nstreak",
         "ntail",
         "outcome"
@@ -3404,6 +3428,21 @@ SQLMATH_FUNC static void sql1_coinflip_extract_func(
             sqlite3_result_int(context, (int) (((double *) agg)[ii]));
             return;
         }
+    }
+    // balanced-accuracy less the 0.5 a zero-skill caller scores - the
+    // MEAN of the head-hit-rate and the tail-hit-rate, so each class
+    // weighs the same however lopsided the panel is. Reads the 4-state
+    // input code documented at WinCoinflip; NULL until BOTH classes are
+    // non-empty, 0.0/0.0 being NaN and result_double_or_null mapping
+    // that to NULL. Fraction like every bias* key, NOT points - the 50
+    // names the pts convention, it is not the scale.
+    if (strcmp(key, "biasba50") == 0) {
+        sqlite3_result_double_or_null(context, (        //
+                0.5 * (         //
+                    agg->nhithead / agg->nhead +        //
+                    agg->nhittail / agg->ntail) -       //
+                0.5));          //
+        return;
     }
     // bias for head
     if (strcmp(key, "biashead") == 0) {

@@ -67,7 +67,7 @@ body {
 </head>
 <body>
 <div class="apidocDiv">
-<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2026.8.31)</a></h1>
+<h1>API Doc for <a href="https://github.com/sqlmath/sqlmath">sqlmath (v2026.9.29)</a></h1>
 <div class="apidocSectionDiv">
     <a href="#apidocTableOfContents1" id="apidocTableOfContents1">
         <h1>Table of Contents</h1>
@@ -700,8 +700,8 @@ SELECT WIN_SUM2() FROM (SELECT 1);
         -9_223_372_036_854_775_808n &lt;= val &amp;&amp; val &lt;= 9_223_372_036_854_775_807n
     )) {
         throw new Error(
-            `integer ${val} outside signed-64-bit inclusive-range`
-            + " -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
+            `integer ${val} outside signed-64-bit inclusive-range` +
+            " -9,223,372,036,854,775,808 to 9,223,372,036,854,775,807"
         );
     }
 }</pre></li>
@@ -737,8 +737,8 @@ SELECT WIN_SUM2() FROM (SELECT 1);
     bb = JSON.stringify(objectDeepCopyWithKeysSorted(bb), undefined, 1);
     if (aa !== bb) {
         throw new Error(
-            "\n" + aa + "\n!==\n" + bb
-            + (
+            "\n" + aa + "\n!==\n" + bb +
+            (
                 typeof message === "string"
                 ? " - " + message
                 : message
@@ -1206,9 +1206,8 @@ await <span class="apidocCodeKeywordSpan">dbCloseAsync</span>(db);
 
 
 &lt;br&gt;&lt;br&gt;
-### Browser (WebAssembly)
 
-Try it live: **[sqlmath.github.io/sqlmath](https://sqlmath.github.io/sqlmath/index.html)**
+### Browser (WebAssembly)
 ...</pre></li>
 
 <li>
@@ -1444,7 +1443,7 @@ assertJsonEqual(valActual, valExpect, {
 }
 </pre></li>
 <li>Example usage:<pre class="apidocCodePre">...
-&lt;br&gt;&lt;br&gt;
+
 # Platform Notes
 
 The JavaScript (Node.js) binding is more mature than Python. Key differences:
@@ -1502,16 +1501,16 @@ The JavaScript (Node.js) binding is more mature than Python. Key differences:
         timeElapsed
     }, ii) {
         return String(
-            `${Number(ii + 1).toFixed(0).padStart(2, " ")}.`
-            + ` ${timeElapsed.toFixed(0).padStart(4)}`
-            + ` ${count.toFixed(0).padStart(3)}`
-            + " " + JSON.stringify(sql)
+            `${Number(ii + 1).toFixed(0).padStart(2, " ")}.` +
+            ` ${timeElapsed.toFixed(0).padStart(4)}` +
+            ` ${count.toFixed(0).padStart(3)}` +
+            " " + JSON.stringify(sql)
         ).slice(0, lineLength);
     }).join("\n");
     result = (
-        `\ndbExecProfile:\n`
-        + ` #  time cnt sql\n`
-        + `${result}\n`
+        `\ndbExecProfile:\n` +
+        ` #  time cnt sql\n` +
+        `${result}\n`
     );
     return result;
 }</pre></li>

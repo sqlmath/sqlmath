@@ -94,7 +94,6 @@
 /*property
     JSLINT_BETA,
     NODE_V8_COVERAGE,
-    a,
     alive,
     all,
     argv,
@@ -107,14 +106,14 @@
     assigned,
     assignment,
     async,
-    b,
+    autofix,
+    autofixed,
     beta,
     bitwise,
     block,
     block_list,
     block_stack,
     browser,
-    c,
     calls,
     catch,
     causes,
@@ -136,7 +135,6 @@
     coverageDir,
     create,
     cwd,
-    d,
     debugInline,
     default,
     delta,
@@ -179,13 +177,12 @@
     finally,
     flag,
     floor,
-    for,
     forEach,
     for_init,
+    for_loop,
     for_of,
     for_semicolon,
     formatted_message,
-    free,
     freeze,
     from,
     froms,
@@ -226,6 +223,7 @@
     jslint,
     jslint_apidoc,
     jslint_assert,
+    jslint_autofix_warning_list,
     jslint_charset_ascii,
     jslint_cli,
     jslint_edition,
@@ -234,6 +232,7 @@
     jslint_phase3_parse,
     jslint_phase4_walk,
     jslint_phase5_whitage,
+    jslint_phase6_autofix,
     jslint_report,
     json,
     jstestDescribe,
@@ -257,7 +256,6 @@
     log,
     long,
     loop,
-    m,
     map,
     margin,
     match,
@@ -328,6 +326,7 @@
     resolve,
     result,
     reverse,
+    rgx,
     role,
     round,
     scope_block,
@@ -362,6 +361,8 @@
     stop_at,
     stringify,
     subscript,
+    suffix,
+    suffix_file,
     switch,
     syntax_dict,
     tenure,
@@ -383,7 +384,7 @@
     tree,
     trim,
     trimEnd,
-    trimRight,
+    trimStart,
     try,
     type,
     unlink,
@@ -426,16 +427,28 @@ const debugInline = (function () {
     return debug;
 }());
 debugInline(); // coverage-hack
-const jslint_charset_ascii = ( //jslint-ignore-line
-    "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007"
-    + "\b\t\n\u000b\f\r\u000e\u000f"
-    + "\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017"
-    + "\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f"
-    + " !\"#$%&'()*+,-./0123456789:;<=>?"
-    + "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
-    + "`abcdefghijklmnopqrstuvwxyz{|}~\u007f"
+
+const jslint_autofix_warning_list = [ //jslint-ignore-line
+    "expected_a_at_b_c",
+    "expected_a_at_end",
+    "expected_line_break_a_b",
+    "expected_space_a_b",
+    "unexpected_space_a_b",
+
+// PR-511 - jslint-autofix - Warning 'too_long' no longer blocks autofix.
+
+    "too_long"
+];
+const jslint_charset_ascii = (
+    "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007" +
+    "\b\t\n\u000b\f\r\u000e\u000f" +
+    "\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017" +
+    "\u0018\u0019\u001a\u001b\u001c\u001d\u001e\u001f" +
+    " !\"#$%&'()*+,-./0123456789:;<=>?" +
+    "@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_" +
+    "`abcdefghijklmnopqrstuvwxyz{|}~\u007f"
 );
-const jslint_edition = "v2026.8.31";
+const jslint_edition = "v2026.9.29";
 const jslint_fudge = 1;                 // Fudge starting line and starting
                                         // ... column to 1.
 const jslint_global_dict_all = {
@@ -723,33 +736,33 @@ const jslint_rgx_todo = (
     /\b(?:todo|TO\s?DO|HACK)\b/
 );
 const jslint_rgx_token = new RegExp(
-    "^("
-    + "(\\s+)"
-    + "|([a-zA-Z_$][a-zA-Z0-9_$]*)"
-    + "|[(){}\\[\\],:;'\"~\\`]"
-    + "|\\?\\?="
-    + "|\\?[?.]?"
-    + "|=(?:==?|>)?"
-    + "|\\.+"
-    + "|\\*[*\\/=]?"
-    + "|\\/[*\\/]?"
-    + "|\\+[=+]?"
-    + "|-[=\\-]?"
-    + "|[\\^%]=?"
-    + "|&&="
-    + "|&[&=]?"
-    + "|\\|\\|="
-    + "|\\|[|=]?"
-    + "|>{1,3}=?"
-    + "|<<?=?"
-    + "|!(?:!|==?)?"
+    "^(" +
+    "(\\s+)" +
+    "|([a-zA-Z_$][a-zA-Z0-9_$]*)" +
+    "|[(){}\\[\\],:;'\"~\\`]" +
+    "|\\?\\?=" +
+    "|\\?[?.]?" +
+    "|=(?:==?|>)?" +
+    "|\\.+" +
+    "|\\*[*\\/=]?" +
+    "|\\/[*\\/]?" +
+    "|\\+[=+]?" +
+    "|-[=\\-]?" +
+    "|[\\^%]=?" +
+    "|&&=" +
+    "|&[&=]?" +
+    "|\\|\\|=" +
+    "|\\|[|=]?" +
+    "|>{1,3}=?" +
+    "|<<?=?" +
+    "|!(?:!|==?)?" +
 
 // PR-351 - Add BigInt support.
 // PR-390 - Add numeric-separator support.
 
-    + "|((?:0_?|[1-9][0-9_]*)n?)"
-    + ")"
-    + "(.*)$"
+    "|((?:0_?|[1-9][0-9_]*)n?)" +
+    ")" +
+    "(.*)$"
 );
 const jslint_rgx_url_search_window_jslint = (
     /[&?]window_jslint=1(?:$|&)/m
@@ -795,8 +808,8 @@ function assertJsonEqual(aa, bb, message) {
     bb = JSON.stringify(objectDeepCopyWithKeysSorted(bb), undefined, 1);
     if (aa !== bb) {
         throw new Error(
-            "\n" + aa + "\n!==\n" + bb
-            + (
+            "\n" + aa + "\n!==\n" + bb +
+            (
                 typeof message === "string"
                 ? " - " + message
                 : message
@@ -886,10 +899,10 @@ function globExclude({
         ]) {
             list.join(separator).replace(rgx, function (match0, char) {
                 throw new Error(
-                    "Weird character "
-                    + JSON.stringify(char)
-                    + " found in " + name + " "
-                    + JSON.stringify(match0)
+                    "Weird character " +
+                    JSON.stringify(char) +
+                    " found in " + name + " " +
+                    JSON.stringify(match0)
                 );
             });
         });
@@ -1112,6 +1125,11 @@ function jslint(
             line_source
         };
     });
+    const mode_autofix = (
+        option_dict.autofix === true
+        ? 256
+        : Math.max(0, Number(option_dict.autofix) || 0)
+    );
     const property_dict = empty();      // The object containing the tallied
                                         // ... property names.
                                 // jslint functions.
@@ -1134,7 +1152,9 @@ function jslint(
     };
     const token_list = [];      // The array of tokens.
     const warning_list = [];    // The array collecting all generated warnings.
+    let autofixed;              // The <source> after one autofix pass.
     let mode_stop = false;      // true if JSLint cannot finish.
+    let result_autofix;         // The re-lint of <autofixed>.
 
 // Error reportage functions:
 
@@ -1157,7 +1177,16 @@ function jslint(
 
         test_cause("");
 
-// Probably deadcode.
+// PR-510 - deadcode-confirmed - <aa> and <bb> are never the same object. Each
+// call below pairs a slot of <aa> with the same slot of <bb>, and the only
+// slot that can be undefined on both sides is <expression>[1] of a binary
+// token. Case "`" returns before that branch, and <aa>.id !== "(" skips it.
+//
+// deadcode-revive - Delete case '`' below and a tagged template with no
+// substitution falls through to the binary branch again. Its <expression>
+// holds one element, so both sides read <expression>[1] as undefined. Any
+// token with fewer slots than its <arity> implies does the same.
+//
 // if (aa === bb) {
 //     return true;
 // }
@@ -1165,9 +1194,9 @@ function jslint(
         jslint_assert(!(aa === bb), `Expected !(aa === bb).`);
         if (Array.isArray(aa)) {
             return (
-                Array.isArray(bb)
-                && aa.length === bb.length
-                && aa.every(function (value, index) {
+                Array.isArray(bb) &&
+                aa.length === bb.length &&
+                aa.every(function (value, index) {
 
 // test_cause:
 // ["`${0}`&&`${0}`", "is_equal", "recurse_isArray", "", 0]
@@ -1179,7 +1208,14 @@ function jslint(
             );
         }
 
-// Probably deadcode.
+// PR-510 - deadcode-confirmed - If <aa> is not an array then <bb> is not one
+// either. Arrays only reach <is_equal> from case "`" below, and only when
+// <aa>.id === <bb>.id, so they arrive in pairs and the branch above takes both.
+//
+// deadcode-revive - Recurse on a slot that holds an array for some token ids
+// and a single token for others, or let the backtick case run when only one
+// side is a backtick.
+//
 // if (Array.isArray(bb)) {
 //     return false;
 // }
@@ -1189,15 +1225,24 @@ function jslint(
         case "(number)":
         case "(string)":
             return aa.value === bb.value;
-
-// PR-394 - Bugfix
-// Fix jslint falsely believing megastring literals `0` and `1` are similar.
-
         case "`":
-            if (!is_equal(aa.value, bb.value)) {
-                return false;
-            }
-            break;
+
+// test_cause:
+// ["aa=bb`${cc}${dd}`&&bb`${cc}${ee}`", "is_equal", "recurse_mega", "", 0]
+
+            test_cause("recurse_mega");
+            return (
+
+// PR-394 - Bugfix - Fix jslint treating megastrings bb`0` and bb`1` as equal.
+// The untagged form always warns, because <post_b_and> fires on any constant.
+
+                is_equal(aa.value, bb.value) &&
+
+// PR-510 - Bugfix - Fix jslint treating tagged templates as equal when they
+// differ past the first substitution, which is all the binary branch compared.
+
+                is_equal(aa.expression, bb.expression)
+            );
         }
         if (is_weird(aa) || is_weird(bb)) {
 
@@ -1216,8 +1261,8 @@ function jslint(
 
                 test_cause("recurse_arity_id");
                 return (
-                    is_equal(aa.expression, bb.expression)
-                    && is_equal(aa.name, bb.name)
+                    is_equal(aa.expression, bb.expression) &&
+                    is_equal(aa.name, bb.name)
                 );
             }
             if (aa.arity === "unary") {
@@ -1235,9 +1280,9 @@ function jslint(
 
                 test_cause("recurse_binary");
                 return (
-                    aa.id !== "("
-                    && is_equal(aa.expression[0], bb.expression[0])
-                    && is_equal(aa.expression[1], bb.expression[1])
+                    aa.id !== "(" &&
+                    is_equal(aa.expression[0], bb.expression[0]) &&
+                    is_equal(aa.expression[1], bb.expression[1])
                 );
             }
             if (aa.arity === "ternary") {
@@ -1247,13 +1292,21 @@ function jslint(
 
                 test_cause("recurse_ternary");
                 return (
-                    is_equal(aa.expression[0], bb.expression[0])
-                    && is_equal(aa.expression[1], bb.expression[1])
-                    && is_equal(aa.expression[2], bb.expression[2])
+                    is_equal(aa.expression[0], bb.expression[0]) &&
+                    is_equal(aa.expression[1], bb.expression[1]) &&
+                    is_equal(aa.expression[2], bb.expression[2])
                 );
             }
 
-// Probably deadcode.
+// PR-510 - deadcode-confirmed - Nothing in this file sets <arity> to "regexp",
+// and <arity> "function" is set in one place, on the "(" that opens a
+// parameter list in <prefix_function>. That token is never stored in an
+// <expression>, <name> or <value> slot, so <is_equal> never sees it.
+//
+// deadcode-revive - Compare two function expressions by recursing into their
+// parameter lists, which puts that "(" on both sides. Giving any token
+// <arity> "regexp" would also do it.
+//
 // if (aa.arity === "function" || aa.arity === "regexp") {
 //     return false;
 // }
@@ -1386,7 +1439,7 @@ function jslint(
         the_warning = warn_at(
             code,
             the_token.line,
-            (the_token.from || 0) + jslint_fudge,
+            the_token.from,
             a || artifact(the_token),
             b,
             c,
@@ -1416,25 +1469,32 @@ function jslint(
 // Report an error at some line and column of the program. The warning object
 // resembles an exception.
 
-        let mm;
-        let warning = {
-            a,
-            b,
-            c,
+        const warning = {
+            a, //jslint-ignore-line
+            b, //jslint-ignore-line
+            c, //jslint-ignore-line
             code,
-
-// Fudge column numbers in warning message.
-
-            column: column || jslint_fudge,
-            d,
+            d, //jslint-ignore-line
             line,
             line_source: "",
             name: "JSLintError",
-            ...line_list[line]
+            ...line_list[Math.min(line, line_list.length - 1)]
         };
-        warning.column = Math.max(
-            Math.min(warning.column, warning.line_source.length),
-            jslint_fudge
+        let mm;
+        jslint_assert(typeof column === "number", `column=${column}`);
+        if (line >= line_list.length) {
+
+// Handle premature EOF.
+
+            warning.line = line_list.length - 1;
+            column = warning.line_source.length - 1;
+        }
+        warning.column = (
+
+// Fudge column numbers in warning message.
+
+            jslint_fudge +
+            Math.max(0, Math.min(column, warning.line_source.length - 1))
         );
         test_cause(code, b || a, warning.column);
         switch (code) {
@@ -1476,8 +1536,17 @@ function jslint(
         case "expected_a":
             mm = `Expected '${a}'.`;
             break;
+        case "expected_a_after_b":
+            mm = `Expected '${a}' after '${b}'.`;
+            break;
         case "expected_a_at_b_c":
-            mm = `Expected '${a}' at column ${b}, not column ${c}.`;
+            mm = (
+                `Expected '${a}' at column ${b + jslint_fudge},` +
+                ` not column ${c + jslint_fudge}.`
+            );
+            break;
+        case "expected_a_at_end":
+            mm = `Expected '${a}' at the end of its left operand's line.`;
             break;
         case "expected_a_b":
             mm = `Expected '${a}' and instead saw '${b}'.`;
@@ -1487,8 +1556,8 @@ function jslint(
             break;
         case "expected_a_b_from_c_d":
             mm = (
-                `Expected '${a}' to match '${b}' from line ${c}`
-                + ` and instead saw '${d}'.`
+                `Expected '${a}' to match '${b}' from line ${c}` +
+                ` and instead saw '${d}'.`
             );
             break;
         case "expected_a_before_b":
@@ -1536,12 +1605,12 @@ function jslint(
 // PR-390 - Add numeric-separator check.
 
         case "illegal_num_separator":
-            mm = `Illegal numeric separator '_' at column ${column}.`;
+            mm = `Illegal numeric separator '_' at column ${warning.column}.`;
             break;
         case "infix_in":
             mm = (
-                `Unexpected 'in'. Compare with undefined,`
-                + ` or use Object.hasOwn() instead.`
+                `Unexpected 'in'. Compare with undefined,` +
+                ` or use Object.hasOwn() instead.`
             );
             break;
         case "label_a":
@@ -1606,8 +1675,8 @@ function jslint(
             break;
         case "unclosed_disable":
             mm = (
-                `Directive '/*jslint-disable*/' was not closed`
-                + ` with '/*jslint-enable*/'.`
+                `Directive '/*jslint-disable*/' was not closed` +
+                ` with '/*jslint-enable*/'.`
             );
             break;
         case "unclosed_mega":
@@ -1669,8 +1738,8 @@ function jslint(
             break;
         case "unopened_enable":
             mm = (
-                `Directive '/*jslint-enable*/' was not opened`
-                + ` with '/*jslint-disable*/'.`
+                `Directive '/*jslint-enable*/' was not opened` +
+                ` with '/*jslint-disable*/'.`
             );
             break;
         case "unreachable_a":
@@ -1690,14 +1759,14 @@ function jslint(
 
         case "use_function_not_fart":
             mm = (
-                `Use 'function (...)', not '(...) =>' when arrow functions`
-                + ` become too complex.`
+                `Use 'function (...)', not '(...) =>' when arrow functions` +
+                ` become too complex.`
             );
             break;
         case "use_open":
             mm = (
-                `Wrap a ternary expression in parens,`
-                + ` with a line break after the left paren.`
+                `Wrap a ternary expression in parens,` +
+                ` with a line break after the left paren.`
             );
             break;
         case "use_spaces":
@@ -1735,9 +1804,9 @@ function jslint(
             break;
         case "wrap_immediate":
             mm = (
-                `Wrap an immediate function invocation in parentheses to assist`
-                + ` the reader in understanding that the expression is the`
-                + ` result of a function, and not the function itself.`
+                `Wrap an immediate function invocation in parentheses to` +
+                ` assist the reader in understanding that the expression is` +
+                ` the result of a function, and not the function itself.`
             );
             break;
         case "wrap_regexp":
@@ -1848,14 +1917,72 @@ function jslint(
 
 // PHASE 5. Check whitespace between tokens in <token_list>.
 
-        if (!state.mode_json && warning_list.length === 0) {
+        if (
+            !state.mode_json &&
+            !warning_list.some(function ({
+                code
+            }) {
+                if (mode_autofix) {
+
+// PR-511 - jslint-autofix - Warning 'too_long' no longer blocks autofix.
+
+                    return !jslint_autofix_warning_list.includes(code);
+                }
+                return true;
+            })
+        ) {
             jslint_phase5_whitage(state);
+        }
+
+// PHASE 6. Autofix whitespace-warnings in <source>, and re-lint the result.
+
+        if (mode_autofix) {
+            autofixed = jslint_phase6_autofix(state) || state.source;
+            if (autofixed !== state.source) {
+
+// Recurse jslint.
+
+                result_autofix = jslint(
+                    autofixed,
+                    {
+                        ...option_dict,
+                        autofix: mode_autofix - 1
+                    },
+                    global_list
+                );
+
+// A stop in the re-lint can only be the fix's own doing - this pass parsed to
+// the end, or phase 6 would have had a non-whitespace warning to block on - so
+// discard the fix and report on <source> as-is, unfixed.
+
+                if (!result_autofix.stop) {
+                    return {
+                        autofixed,
+                        ...result_autofix
+                    };
+                }
+
+// Name the discarded fix in this pass's own report, or a fixer defect would
+// look exactly like an ordinary blocked file.
+
+                result_autofix.warnings.forEach(function (warning) {
+                    if (warning.mode_stop) {
+                        warning_list.push({
+                            ...warning,
+                            message: (
+                                "[autofix discarded - line and column refer" +
+                                " to the autofixed text] " + warning.message
+                            )
+                        });
+                    }
+                });
+            }
         }
         if (option_dict.test_internal_error) {
             jslint_assert(undefined, "test_internal_error");
         }
         if (option_dict.test_unknown_warning_code) {
-            warn_at("test_unknown_warning_code");
+            warn_at("test_unknown_warning_code", jslint_fudge, 0);
         }
     } catch (err) {
         mode_stop = true;
@@ -1876,9 +2003,9 @@ function jslint(
 
     warning_list.sort(function (aa, bb) {
         return (
-            Boolean(bb.mode_stop) - Boolean(aa.mode_stop)
-            || aa.line - bb.line
-            || aa.column - bb.column
+            Boolean(bb.mode_stop) - Boolean(aa.mode_stop) ||
+            aa.line - bb.line ||
+            aa.column - bb.column
         );
 
 // Update each warning with formatted_message ready-for-use by jslint_cli.
@@ -1891,13 +2018,13 @@ function jslint(
         stack_trace = ""
     }, ii, list) {
         list[ii].formatted_message = String(
-            String(ii + 1).padStart(2, " ")
-            + ". \u001b[31m" + message + "\u001b[39m"
-            + " \u001b[90m\/\/ line " + line + ", column " + column
-            + "\u001b[39m\n"
-            + ("    " + line_source.trim()).slice(0, 72) + "\n"
-            + stack_trace
-        ).trimRight();
+            String(ii + 1).padStart(2, " ") +
+            ". \u001b[31m" + message + "\u001b[39m" +
+            " \u001b[90m\/\/ line " + line + ", column " + column +
+            "\u001b[39m\n" +
+            ("    " + line_source.trim()).slice(0, 72) + "\n" +
+            stack_trace
+        ).trimEnd();
     });
 
     return {
@@ -1994,18 +2121,18 @@ ${name}
         example_list.some(function (example2) {
             example2.replace(
                 new RegExp((
-                    "((?:\\n.*?){8}(function )?)\\b"
-                    + key
-                    + "(\\((?:.*?\\n){8})"
+                    "((?:\\n.*?){8}(function )?)\\b" +
+                    key +
+                    "(\\((?:.*?\\n){8})"
                 ), "g"),
                 function (ignore, header, isDeclaration, footer) {
                     if (!isDeclaration) {
                         example = "..." + trim_start(
-                            htmlEscape(header)
-                            + "<span class=\"apidocCodeKeywordSpan\">"
-                            + htmlEscape(key)
-                            + "</span>"
-                            + htmlEscape(footer)
+                            htmlEscape(header) +
+                            "<span class=\"apidocCodeKeywordSpan\">" +
+                            htmlEscape(key) +
+                            "</span>" +
+                            htmlEscape(footer)
                         ).trimEnd() + "\n...";
                     }
                     return "";
@@ -2069,12 +2196,12 @@ ${name}<span class="apidocSignatureSpan">${signature}</span>
 
         let result = await moduleFs.promises.readFile(file, "utf8");
         result = (
-            "\n\n\n\n\n\n\n\n"
+            "\n\n\n\n\n\n\n\n" +
 
 // bug-workaround - Truncate example to manageable size.
 
-            + result.slice(0, 524288)
-            + "\n\n\n\n\n\n\n\n"
+            result.slice(0, 524288) +
+            "\n\n\n\n\n\n\n\n"
         );
         result = result.replace((
             /\r\n*/g
@@ -2202,13 +2329,13 @@ body {
         <li>
             <a class="apidocModuleA" href="#${id}">Module ${moduleName}</a>
             <ul>
-            `)
-            + elem_list.map(function ({
+            `) +
+            elem_list.map(function ({
                 signature
             }) {
                 return "<li>\n" + signature + "\n</li>\n";
-            }).join("")
-            + (`
+            }).join("") +
+            (`
             </ul>
         </li>
             `)
@@ -2226,13 +2353,13 @@ body {
 <div class="apidocSectionDiv">
     <h1><a href="#${id}" id="${id}">Module ${moduleName}</a></h1>
     <ul>
-            `)
-            + elem_list.map(function ({
+            `) +
+            elem_list.map(function ({
                 source
             }) {
                 return source;
-            }).join("")
-            + (`
+            }).join("") +
+            (`
     </ul>
 </div>
             `)
@@ -2300,9 +2427,73 @@ async function jslint_cli({
     let command;
     let data;
     let exit_code = 0;
+    let mode_autofix;
     let mode_report;
     let mode_wrapper_vim;
     let result;
+
+// PR-509 - Add command jslint_autofix.
+
+    function autofix_embedded({
+        code,
+        file,
+        mode_conditional,
+        option,
+        rgx,
+        suffix,
+        suffix_file
+    }) {
+
+// This function will jslint each embedded block <rgx> matches, and return
+// <code> with every autofixed block spliced back between the SAME delimiters
+// - or undefined if no block was autofixed. <suffix> is the closing
+// delimiter, which the capture deliberately excludes.
+//
+// A BLOCKED BLOCK IS LEFT AS IT WAS AND THE REST ARE STILL REPAIRED, unlike a
+// blocked whole-file, which is not written at all.
+
+        const code_fixed = code.replace(rgx, function (match0, match1, ii) {
+            const result_embedded = jslint_from_file({
+                code: match1,
+                file: file + suffix_file,
+                line_offset: (
+                    jslint_fudge +
+
+// Count line-terminators the way <jslint_rgx_crlf> splits them, without
+// materialising every preceding line.
+
+                    (
+                        code
+                            .slice(0, ii)
+                            .match(new RegExp(jslint_rgx_crlf, "g"))
+                            ?.length ||
+                        0
+                    )
+                ),
+                mode_conditional,
+                option
+            });
+            if (
+                result_embedded === undefined ||
+                result_embedded.autofixed === undefined
+            ) {
+                return match0;
+            }
+            return (
+                match0.slice(
+                    0,
+                    match0.length - match1.length - suffix.length
+                ) +
+                result_embedded.autofixed +
+                suffix
+            );
+        });
+        return (
+            code_fixed === code
+            ? undefined
+            : code_fixed
+        );
+    }
 
     function jslint_from_file({
         code,
@@ -2313,8 +2504,8 @@ async function jslint_cli({
     }) {
         let result_from_file;
         if (
-            mode_conditional
-            && !(
+            mode_conditional &&
+            !(
                 /^\/\*jslint\b/m
             ).test(code.slice(0, 65536))
         ) {
@@ -2331,44 +2522,50 @@ async function jslint_cli({
 
 // Recursively jslint embedded "<script>\n...\n</script>".
 
-            code.replace((
-                /^<script\b[^>]*?>\n([\S\s]*?\n)<\/script>$/gm
-            ), function (ignore, match1, ii) {
-                jslint_from_file({
-                    code: match1,
-                    file: file + ".<script>.js",
-                    line_offset: string_line_count(code.slice(0, ii)) + 1,
+            return {
+                autofixed: autofix_embedded({
+                    code,
+                    file,
                     option: {
                         browser: true,
                         ...option
-                    }
-                });
-                return "";
-            });
-            return;
+                    },
+                    rgx: (/^<script\b[^>]*?>\n([\S\s]*?\n)<\/script>$/gm),
+                    suffix: "</script>",
+                    suffix_file: ".<script>.js"
+                })
+            };
         case ".md":
 
 // Recursively jslint embedded "node --eval '\n...\n'".
 
-            jslint_node_eval({
+            return jslint_node_eval({
                 code,
                 file,
                 mode_conditional: true,
                 option
             });
-            return;
         case ".sh":
 
 // Recursively jslint embedded "node --eval '\n...\n'".
 
-            jslint_node_eval({
+            return jslint_node_eval({
                 code,
                 file,
                 option
             });
-            return;
         default:
             result_from_file = jslint("\n".repeat(line_offset) + code, option);
+
+// The <line_offset> newlines prefixed above make the warnings absolute, and
+// they ride along in <autofixed> too. Strip exactly them back off, so the
+// caller splices the block back between its OWN delimiters.
+
+            if (line_offset > 0 && result_from_file.autofixed !== undefined) {
+                result_from_file.autofixed = (
+                    result_from_file.autofixed.slice(line_offset)
+                );
+            }
         }
 
 // Print only first 10 warnings to stderr.
@@ -2386,18 +2583,18 @@ async function jslint_cli({
                     message
                 }, ii) {
                     return (
-                        file
-                        + ":" + ii
-                        + ":" + line
-                        + ":" + column
-                        + ":" + message
+                        file +
+                        ":" + ii +
+                        ":" + line +
+                        ":" + column +
+                        ":" + message
                     );
                 }).join("\n")
 
 // Print warnings in format readable by human.
 
-                : "\u001b[1mjslint " + file + "\u001b[22m\n"
-                + result_from_file.warnings.slice(0, 10).map(function ({
+                : "\u001b[1mjslint " + file + "\u001b[22m\n" +
+                result_from_file.warnings.slice(0, 10).map(function ({
                     formatted_message
                 }) {
                     return formatted_message;
@@ -2413,48 +2610,26 @@ async function jslint_cli({
         mode_conditional,
         option = empty()
     }) {
-        code.replace((
-            /\bnode\b.*? (?:--eval|-e) '\n([\S\s]*?\n)'/gm
-        ), function (ignore, match1, ii) {
-            jslint_from_file({
-                code: match1,
-                file: file + ".<node -e>.js",
-                line_offset: string_line_count(code.slice(0, ii)) + 1,
+        return {
+            autofixed: autofix_embedded({
+                code,
+                file,
                 mode_conditional,
                 option: {
                     beta: Boolean(
-                        process_env.JSLINT_BETA
-                        && !(
+                        process_env.JSLINT_BETA &&
+                        !(
                             /0|false|null|undefined/
                         ).test(process_env.JSLINT_BETA)
                     ),
                     node: true,
                     ...option
-                }
-            });
-            return "";
-        });
-    }
-
-    function string_line_count(code) {
-
-// This function will count number of newlines in <code>.
-
-        let count;
-        let ii;
-
-// https://jsperf.com/regexp-counting-2/8
-
-        count = 0;
-        ii = 0;
-        while (true) {
-            ii = code.indexOf("\n", ii) + 1;
-            if (ii === 0) {
-                break;
-            }
-            count += 1;
-        }
-        return count;
+                },
+                rgx: (/\bnode\b.*? (?:--eval|-e) '\n([\S\s]*?\n)'/gm),
+                suffix: "'",
+                suffix_file: ".<node -e>.js"
+            })
+        };
     }
 
 // PR-396 - window.jslint
@@ -2467,8 +2642,8 @@ async function jslint_cli({
 
     import_meta_url = import_meta_url || jslint_import_meta_url;
     if (
-        jslint_rgx_url_search_window_jslint.test(import_meta_url)
-        && (typeof globalThis === "object" && globalThis)
+        jslint_rgx_url_search_window_jslint.test(import_meta_url) &&
+        (typeof globalThis === "object" && globalThis)
     ) {
         globalThis.jslint = jslint;
     }
@@ -2476,10 +2651,10 @@ async function jslint_cli({
 // Feature-detect nodejs.
 
     if (!(
-        (typeof process === "object" && process)
-        && process.versions
-        && typeof process.versions.node === "string"
-        && !mode_noop
+        (typeof process === "object" && process) &&
+        process.versions &&
+        typeof process.versions.node === "string" &&
+        !mode_noop
     )) {
         return exit_code;
     }
@@ -2494,21 +2669,20 @@ async function jslint_cli({
 
 // Feature-detect nodejs-cli.
 
-            process.execArgv.indexOf("--eval") === -1
-            && process.execArgv.indexOf("-e") === -1
-            && (
+            process.execArgv.indexOf("--eval") === -1 &&
+            process.execArgv.indexOf("-e") === -1 &&
+            (
                 (
                     /[\/|\\]jslint(?:\.[cm]?js)?$/m
-                ).test(process_argv[1])
-                || mode_cli
-            )
-            && (
-                moduleUrl.fileURLToPath(import_meta_url)
-                ===
+                ).test(process_argv[1]) ||
+                mode_cli
+            ) &&
+            (
+                moduleUrl.fileURLToPath(import_meta_url) ===
                 modulePath.resolve(process_argv[1])
             )
-        )
-        && !mode_cli
+        ) &&
+        !mode_cli
     ) {
         return exit_code;
     }
@@ -2528,6 +2702,17 @@ async function jslint_cli({
             pathname: command[1]
         });
         return;
+
+// PR-509 - Add command jslint_autofix.
+
+    case "jslint_autofix":
+        file = command[1];
+        mode_autofix = true;
+        option = {
+            ...option,
+            autofix: true
+        };
+        break;
 
 // PR-363 - Add command jslint_report.
 
@@ -2586,11 +2771,16 @@ async function jslint_cli({
         if (data) {
             await Promise.all(data.map(async function (file2) {
                 let code;
+                let result_dir;
                 let time_start = Date.now();
+
+// PR-409 - Skip dotfile (e.g. .foo.js) when reading directory.
+
+                if ((/^\./).test(file2)) {
+                    return;
+                }
                 file2 = file + "/" + file2;
-                switch ((
-                    /\.\w+?$|$/m
-                ).exec(file2)[0]) {
+                switch ((/\.\w+?$|$/m).exec(file2)[0]) {
                 case ".cjs":
                 case ".html":
                 case ".js":
@@ -2608,18 +2798,19 @@ async function jslint_cli({
                     return;
                 }
                 if (
-                    (
-                        /(?:\b|_)(?:lock|min|raw|rollup)(?:\b|_)/
-                    ).test(file2)
-                    || !(code && code.length < 1048576)
+                    (/(?:\b|_)(?:lock|min|raw|rollup)(?:\b|_)/).test(file2) ||
+                    !(code && code.length < 1048576)
                 ) {
                     return;
                 }
-                jslint_from_file({
+                result_dir = jslint_from_file({
                     code,
                     file: file2,
                     option
                 });
+                if (mode_autofix && result_dir.autofixed !== undefined) {
+                    await fsWriteFileWithParents(file2, result_dir.autofixed);
+                }
                 console_error(
                     "jslint - " + (Date.now() - time_start) + "ms - " + file2
                 );
@@ -2644,7 +2835,20 @@ async function jslint_cli({
         file,
         option
     });
+    if (mode_autofix && result.autofixed !== undefined) {
+        await fsWriteFileWithParents(file, result.autofixed);
+    }
     if (mode_report) {
+
+// A container-file - .html, .md, .sh - lints its embedded blocks one by one
+// and returns no single lint-result, so there is nothing to report on.
+
+        if (result.warnings === undefined) {
+            console_error(`jslint_report - ${file} - not javascript file`);
+            exit_code = 1;
+            process_exit(exit_code);
+            return exit_code;
+        }
         result = jslint.jslint_report(result);
         result = `<body class="JSLINT_ JSLINT_REPORT_">\n${result}</body>\n`;
         await fsWriteFileWithParents(mode_report, result);
@@ -2721,19 +2925,31 @@ function jslint_phase2_lex(state) {
         if (match !== undefined && char !== match) {
 
 // test_cause:
-// ["aa=/[", "char_after", "expected_a", "]", 5]
+// ["aa=/", "char_after", "expected_a_after_b", "/", 4]
+// ["aa=/(?-", "char_after", "expected_a_after_b", "-", 7]
+// ["aa=/[", "char_after", "expected_a_after_b", "[", 5]
 // ["aa=/aa{/", "char_after", "expected_a_b", "/", 8]
+// ["aa=/aa{/;", "char_after", "expected_a_b", "/", 8]
 
             return (
                 char === ""
-                ? stop_at("expected_a", line, column - 1, match)
-                : stop_at("expected_a_b", line, column, match, char)
+                ? stop_at(
+                    "expected_a_after_b",
+                    line,
+                    column - 1,
+                    match,
+
+// At EOL, <snippet> may have been reset or trimmed, so use <line_list[line]>.
+
+                    line_list[line].line_source.slice(-1)
+                )
+                : stop_at("expected_a_b", line, column - 1, match, char)
             );
         }
         char = line_source.slice(0, 1);
-        line_source = line_source.slice(1);
-        snippet += char || " ";
-        column += 1;
+        snippet += char;
+        column += char.length;
+        line_source = line_source.slice(char.length);
         return char;
     }
 
@@ -2748,7 +2964,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["\"\\", "char_after_escape", "unclosed_string", "", 2]
 
-            return stop_at("unclosed_string", line, column);
+            return stop_at("unclosed_string", line, column - 0);
         case "/":
             return char_after();
         case "\\":
@@ -2777,24 +2993,25 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["[\"\\u{12345}\"]", "char_after_escape", "unexpected_a", "{", 5]
 
-                    warn_at("unexpected_a", line, column, char);
+                    warn_at("unexpected_a", line, column - 1, char);
                 }
                 if (read_digits("x", undefined) > 5) {
 
 // test_cause:
 // ["\"\\u{123456}\"", "char_after_escape", "too_many_digits", "", 11]
 
-                    warn_at("too_many_digits", line, column);
+                    warn_at("too_many_digits", line, column - 1);
                 }
                 if (char !== "}") {
 
 // test_cause:
 // ["\"\\u{12345\"", "char_after_escape", "expected_a_before_b", "\"", 10]
+// ["\"\\u{12345\";", "char_after_escape", "expected_a_before_b", "\"", 10]
 
                     return stop_at(
                         "expected_a_before_b",
                         line,
-                        column,
+                        column - 1,
                         "}",
                         char
                     );
@@ -2806,8 +3023,9 @@ function jslint_phase2_lex(state) {
 
 // test_cause:
 // ["\"\\u0\"", "char_after_escape", "expected_four_digits", "", 5]
+// ["\"\\u0\";", "char_after_escape", "expected_four_digits", "", 5]
 
-                warn_at("expected_four_digits", line, column);
+                warn_at("expected_four_digits", line, column - 1);
             }
             return;
         default:
@@ -2818,7 +3036,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["\"\\0\"", "char_after_escape", "unexpected_a_before_b", "0", 3]
 
-            warn_at("unexpected_a_before_b", line, column, "\\", char);
+            warn_at("unexpected_a_before_b", line, column - 1, "\\", char);
         }
     }
 
@@ -2827,13 +3045,13 @@ function jslint_phase2_lex(state) {
 // Back up one character by moving a character from the end of the snippet to
 // the front of the line_source.
 
-        char = snippet.slice(-1);
         line_source = char + line_source;
         column -= char.length;
 
-// Remove last character from snippet.
+// Remove last character from snippet. At end of line <char> is "" and nothing
+// was consumed, so nothing comes off column or snippet.
 
-        snippet = snippet.slice(0, -1);
+        snippet = snippet.slice(0, snippet.length - char.length);
         return char;
     }
 
@@ -2852,7 +3070,7 @@ function jslint_phase2_lex(state) {
 // ["aa=1_2__3", "check_numeric_separator", "illegal_num_separator", "", 7]
 // ["aa=1_2_n", "check_numeric_separator", "illegal_num_separator", "", 7]
 
-            warn_at("illegal_num_separator", line, column + ii + 1);
+            warn_at("illegal_num_separator", line, column - 0 + ii);
             return "";
         });
     }
@@ -2887,9 +3105,10 @@ function jslint_phase2_lex(state) {
             if (line_source[0] === "/") {
 
 // test_cause:
-// ["/*/", "lex_comment", "unexpected_a", "/", 2]
+// ["/*/", "lex_comment", "unexpected_a", "/", 3]
+// ["/*/*", "lex_comment", "unexpected_a", "/", 3]
 
-                warn_at("unexpected_a", line, column + ii, "/");
+                warn_at("unexpected_a", line, column - 0, "/");
             }
 
 // Lex/loop through each line until "*/".
@@ -2905,18 +3124,18 @@ function jslint_phase2_lex(state) {
                 if (ii >= 0) {
 
 // test_cause:
-// ["/*/*", "lex_comment", "nested_comment", "", 2]
+// ["/*/*", "lex_comment", "nested_comment", "", 3]
 
-                    warn_at("nested_comment", line, column + ii);
+                    warn_at("nested_comment", line, column - 0 + ii);
                 }
                 snippet.push(line_source);
                 line_source = read_line();
                 if (line_source === undefined) {
 
 // test_cause:
-// ["/*", "lex_comment", "unclosed_comment", "", 1]
+// ["/*", "lex_comment", "unclosed_comment", "", 2]
 
-                    return stop_at("unclosed_comment", line, column);
+                    return stop_at("unclosed_comment", line, column - 0);
                 }
             }
             jj = line_source.slice(0, ii).search(
@@ -2925,9 +3144,9 @@ function jslint_phase2_lex(state) {
             if (jj >= 0) {
 
 // test_cause:
-// ["/*/**/", "lex_comment", "nested_comment", "", 2]
+// ["/*/**/", "lex_comment", "nested_comment", "", 3]
 
-                warn_at("nested_comment", line, column + jj);
+                warn_at("nested_comment", line, column - 0 + jj);
             }
             snippet.push(line_source.slice(0, ii));
             snippet = snippet.join(" ");
@@ -2941,6 +3160,7 @@ function jslint_phase2_lex(state) {
         if (!option_dict.devel && jslint_rgx_todo.test(snippet)) {
 
 // test_cause:
+// [" //todo", "lex_comment", "todo_comment", "(comment)", 2] //jslint-ignore-line
 // ["//todo", "lex_comment", "todo_comment", "(comment)", 1] //jslint-ignore-line
 
             warn("todo_comment", the_comment);
@@ -2963,6 +3183,7 @@ function jslint_phase2_lex(state) {
         if (!mode_directive) {
 
 // test_cause:
+// ["0; /*global aa*/", "lex_comment", "misplaced_directive_a", "global", 4]
 // ["0\n/*global aa*/", "lex_comment", "misplaced_directive_a", "global", 1]
 
             warn_at("misplaced_directive_a", line, from, the_comment.directive);
@@ -2986,6 +3207,7 @@ function jslint_phase2_lex(state) {
             if (ii !== jj) {
 
 // test_cause:
+// [" /*jslint !*/", "lex_comment", "bad_directive_a", "!", 2]
 // ["/*jslint !*/", "lex_comment", "bad_directive_a", "!", 1]
 
                 return stop("bad_directive_a", the_comment, body.slice(ii));
@@ -2999,6 +3221,7 @@ function jslint_phase2_lex(state) {
                 if (value) {
 
 // test_cause:
+// [" /*global aa:false*/", "lex_comment", "bad_option_a", "aa:false", 2]
 // ["/*global aa:false*/", "lex_comment", "bad_option_a", "aa:false", 1]
 
                     warn("bad_option_a", the_comment, key + ":" + value);
@@ -3039,8 +3262,9 @@ function jslint_phase2_lex(state) {
 
 // test_cause:
 // ["`${`", "lex_megastring", "expected_a_b", "`", 4]
+// ["`${`;", "lex_megastring", "expected_a_b", "`", 4]
 
-            return stop_at("expected_a_b", line, column, "}", "`");
+            return stop_at("expected_a_b", line, column - 1, "}", "`");
         }
         from_mega = from;
         line_mega = line;
@@ -3078,8 +3302,8 @@ function jslint_phase2_lex(state) {
 // a } token is made.
 
                 column += 2;
-                token_create("${");
                 line_source = line_source.slice(2);
+                token_create("${");
 
 // Lex/loop through each token inside megastring-expression `${...}`.
 
@@ -3090,7 +3314,13 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["`${{", "lex_megastring", "expected_a_b", "{", 4]
 
-                        return stop_at("expected_a_b", line, column, "}", "{");
+                        return stop_at(
+                            "expected_a_b",
+                            line,
+                            column - 1,
+                            "}",
+                            "{"
+                        );
                     }
                     if (id === "}") {
                         break;
@@ -3099,8 +3329,8 @@ function jslint_phase2_lex(state) {
                 break;
             case "\\":
                 snippet += line_source.slice(0, 2);
-                line_source = line_source.slice(2);
                 column += 2;
+                line_source = line_source.slice(2);
                 break;
             case "`":
 
@@ -3112,8 +3342,8 @@ function jslint_phase2_lex(state) {
 
 // Terminate megastring with `.
 
-                line_source = line_source.slice(1);
                 column += 1;
+                line_source = line_source.slice(1);
                 mode_mega = false;
                 return token_create("`");
             default:
@@ -3124,6 +3354,7 @@ function jslint_phase2_lex(state) {
                 if (read_line() === undefined) {
 
 // test_cause:
+// [" `0", "lex_megastring", "unclosed_mega", "", 2]
 // ["`", "lex_megastring", "unclosed_mega", "", 1]
 
                     return stop_at("unclosed_mega", line_mega, from_mega);
@@ -3168,18 +3399,19 @@ function jslint_phase2_lex(state) {
 // unexpected is going on.
 
         if (
-            (char >= "0" && char <= "9")
-            || (char >= "a" && char <= "z")
-            || (char >= "A" && char <= "Z")
+            (char >= "0" && char <= "9") ||
+            (char >= "a" && char <= "z") ||
+            (char >= "A" && char <= "Z")
         ) {
 
 // test_cause:
-// ["0a", "lex_number", "unexpected_a_after_b", "0", 2]
+// [" 0a", "lex_number", "unexpected_a_after_b", "0", 3]
+// [" 0a;", "lex_number", "unexpected_a_after_b", "0", 3]
 
             return stop_at(
                 "unexpected_a_after_b",
                 line,
-                column,
+                column - 1,
                 snippet.slice(-1),
                 snippet.slice(0, -1)
             );
@@ -3228,7 +3460,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["aa=/[0-]/", "lex_regexp_bracketed", "unexpected_a", "-", 7]
 
-                        warn_at("unexpected_a", line, column - 1, "-");
+                        warn_at("unexpected_a", line, column - 2, "-");
                     }
                     return char_after("]");
 
@@ -3254,7 +3486,13 @@ function jslint_phase2_lex(state) {
 // ["aa=/[\\\\/]/", "lex_regexp_bracketed", "expected_a_before_b", "/", 8]
 // ["aa=/[\\\\[]/", "lex_regexp_bracketed", "expected_a_before_b", "[", 8]
 
-                    warn_at("expected_a_before_b", line, column, "\\", char);
+                    warn_at(
+                        "expected_a_before_b",
+                        line,
+                        column - 1,
+                        "\\",
+                        char
+                    );
                     break;
                 case "\\":
                     char_after_escape("BbDdSsWw-[]^");
@@ -3266,7 +3504,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["`${/[`]/}`", "lex_regexp_bracketed", "unexpected_a", "`", 6]
 
-                        warn_at("unexpected_a", line, column, "`");
+                        warn_at("unexpected_a", line, column - 1, "`");
                     }
                     break;
                 }
@@ -3288,21 +3526,23 @@ function jslint_phase2_lex(state) {
 // RegExp
 // Lex sequence of characters in regexp.
 
+            let modifier_seen = "";
             switch (char) {
             case "":
-                warn_at("expected_regexp_factor_a", line, column, char);
+                warn_at("expected_regexp_factor_a", line, column - 0, char);
                 break;
             case ")":
-                warn_at("expected_regexp_factor_a", line, column, char);
+                warn_at("expected_regexp_factor_a", line, column - 1, char);
                 break;
             case "]":
 
 // test_cause:
 // ["/ /", "lex_regexp_group", "expected_regexp_factor_a", "", 3]
 // ["aa=/)", "lex_regexp_group", "expected_regexp_factor_a", ")", 5]
+// ["aa=/);", "lex_regexp_group", "expected_regexp_factor_a", ")", 5]
 // ["aa=/]", "lex_regexp_group", "expected_regexp_factor_a", "]", 5]
 
-                warn_at("expected_regexp_factor_a", line, column, char);
+                warn_at("expected_regexp_factor_a", line, column - 1, char);
                 break;
             }
             while (true) {
@@ -3343,7 +3583,13 @@ function jslint_phase2_lex(state) {
 // ["aa=/(:)/", "lex_regexp_group", "expected_a_before_b", ":", 6]
 // ["aa=/?/", "lex_regexp_group", "expected_a_before_b", "?", 5]
 
-                        warn_at("expected_a_before_b", line, column, "?", ":");
+                        warn_at(
+                            "expected_a_before_b",
+                            line,
+                            column - 1,
+                            "?",
+                            ":"
+                        );
                         break;
                     case "?":
                         char_after("?");
@@ -3369,9 +3615,13 @@ function jslint_phase2_lex(state) {
                         case "i":
                         case "m":
                         case "s":
+                            modifier_seen = char;
                             char_after();
                             while (true) {
-                                if (char === ":" && snippet.slice(-1) !== "-") {
+
+// A lone "-" adds and removes nothing, which v8 rejects - unlike "(?i-:".
+
+                                if (char === ":" && modifier_seen !== "-") {
                                     char_after();
                                     break;
                                 }
@@ -3380,17 +3630,40 @@ function jslint_phase2_lex(state) {
                                 case "i":
                                 case "m":
                                 case "s":
+
+// test_cause:
+// ["aa=/(?--:x)/", "lex_regexp_group", "unexpected_a_after_b", "(?-", 8]
+// ["aa=/(?ii:x)/", "lex_regexp_group", "unexpected_a_after_b", "(?i", 8]
+
+                                    if (modifier_seen.includes(char)) {
+                                        return stop_at(
+                                            "unexpected_a_after_b",
+                                            line,
+                                            column - 1,
+                                            snippet.slice(-1),
+                                            snippet.slice(0, -1)
+                                        );
+                                    }
+                                    modifier_seen += char;
                                     char_after();
                                     break;
                                 default:
 
+// End of line inside (?flags - report the missing ":" the way char_after does.
+
+                                    if (char === "") {
+                                        return char_after(":");
+                                    }
+
 // test_cause:
 // ["aa=/(?-.", "lex_regexp_group", "unexpected_a_after_b", "(?-", 8]
+// ["aa=/(?-.)/", "lex_regexp_group", "unexpected_a_after_b", "(?-", 8]
+// ["aa=/(?-:x)/", "lex_regexp_group", "unexpected_a_after_b", "(?-", 8]
 
                                     return stop_at(
                                         "unexpected_a_after_b",
                                         line,
-                                        column,
+                                        column - 1,
                                         snippet.slice(-1),
                                         snippet.slice(0, -1)
                                     );
@@ -3404,7 +3677,7 @@ function jslint_phase2_lex(state) {
                     }
 
 // RegExp
-// Recurse lex_regexp_group().
+// Recurse lex_regexp_group.
 
                     lex_regexp_group();
                     char_after(")");
@@ -3422,7 +3695,12 @@ function jslint_phase2_lex(state) {
 // ["aa=/{/", "lex_regexp_group", "expected_a_before_b", "{", 5]
 // ["aa=/}/", "lex_regexp_group", "expected_a_before_b", "}", 5]
 
-                    warn_at("expected_a_before_b", line, column, "\\", char);
+                    warn_at(
+                        "expected_a_before_b",
+                        line, column - 1,
+                        "\\",
+                        char
+                    );
                     char_after();
                     break;
                 case "[":
@@ -3451,7 +3729,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["`${/`/}`", "lex_regexp_group", "unexpected_a", "`", 5]
 
-                        warn_at("unexpected_a", line, column, "`");
+                        warn_at("unexpected_a", line, column - 1, "`");
                     }
                     char_after();
                     break;
@@ -3481,7 +3759,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["aa=/.??/", "lex_regexp_group", "unexpected_a", "?", 7]
 
-                        warn_at("unexpected_a", line, column, char);
+                        warn_at("unexpected_a", line, column - 1, char);
                         char_after("?");
                     }
                     break;
@@ -3491,7 +3769,13 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["aa=/aa{/", "lex_regexp_group", "expected_a_before_b", ",", 8]
 
-                        warn_at("expected_a_before_b", line, column, "0", ",");
+                        warn_at(
+                            "expected_a_before_b",
+                            line,
+                            column - 1,
+                            "0",
+                            ","
+                        );
                     }
                     if (char === ",") {
 
@@ -3506,7 +3790,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["aa=/.{0}?/", "lex_regexp_group", "unexpected_a", "?", 9]
 
-                        warn_at("unexpected_a", line, column, char);
+                        warn_at("unexpected_a", line, column - 1, char);
                         char_after("?");
                     }
                     break;
@@ -3525,7 +3809,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["aa=/=/", "lex_regexp", "expected_a_before_b", "=", 5]
 
-            warn_at("expected_a_before_b", line, column, "\\", "=");
+            warn_at("expected_a_before_b", line, column - 1, "\\", "=");
         }
         lex_regexp_group();
 
@@ -3549,8 +3833,8 @@ function jslint_phase2_lex(state) {
 // Regexp
 // char is a letter.
 
-            (char >= "a" && char <= "z\uffff")
-            || (char >= "A" && char <= "Z\uffff")
+            (char >= "a" && char <= "z\uffff") ||
+            (char >= "A" && char <= "Z\uffff")
         ) {
 
 // RegExp
@@ -3574,11 +3858,32 @@ function jslint_phase2_lex(state) {
             case "s":
                 break;
             case "u":
+
+// test_cause:
+// ["aa=/./vu", "lex_regexp", "unexpected_a", "u", 8]
+// ["aa=/./vu;", "lex_regexp", "unexpected_a", "u", 8]
+
+                if (
+                    flag.v //jslint-ignore-line
+                ) {
+                    warn_at("unexpected_a", line, column - 1, char);
+                }
                 break;
 
 // PR-499 - Add ES2024-feature RegExp v flag with set-notation + str-properties.
 
             case "v":
+
+// "u" and "v" select different grammars, so v8 rejects the pair.
+
+// test_cause:
+// ["aa=/./uv", "lex_regexp", "unexpected_a", "v", 8]
+
+                if (
+                    flag.u //jslint-ignore-line
+                ) {
+                    warn_at("unexpected_a", line, column - 1, char);
+                }
                 break;
             case "y":
 
@@ -3593,7 +3898,7 @@ function jslint_phase2_lex(state) {
 // ["aa=/./gg", "lex_regexp", "unexpected_a", "g", 8]
 // ["aa=/./z", "lex_regexp", "unexpected_a", "z", 7]
 
-                warn_at("unexpected_a", line, column, char);
+                warn_at("unexpected_a", line, column - 1, char);
             }
             flag[char] = true;
             char_after();
@@ -3602,19 +3907,23 @@ function jslint_phase2_lex(state) {
         if (char === "/" || char === "*") {
 
 // test_cause:
-// ["aa=/.//", "lex_regexp", "unexpected_a", "/", 3]
+// ["aa=/.//", "lex_regexp", "unexpected_a", "/", 7]
 
-            return stop_at("unexpected_a", line, from, char);
+            return stop_at("unexpected_a", line, column - 0, char);
         }
         result = token_create("(regexp)", char);
         result.flag = flag;
         result.value = value;
-        if (mode_regexp_multiline && !flag.m) {
+        if (
+            mode_regexp_multiline &&
+            !flag.m //jslint-ignore-line
+        ) {
 
 // test_cause:
 // ["aa=/$^/", "lex_regexp", "missing_m", "", 7]
+// ["aa=/$^/;", "lex_regexp", "missing_m", "", 7]
 
-            warn_at("missing_m", line, column);
+            warn_at("missing_m", line, column - 1);
         }
         return result;
     }
@@ -3632,9 +3941,9 @@ function jslint_phase2_lex(state) {
 
         let the_token;
         switch (
-            token_prv_expr.identifier
-            && !token_prv_expr.dot
-            && token_prv_expr.id
+            token_prv_expr.identifier &&
+            !token_prv_expr.dot &&
+            token_prv_expr.id
         ) {
         case "case":
         case "delete":
@@ -3716,10 +4025,14 @@ function jslint_phase2_lex(state) {
             return lex_regexp();
         }
         if (line_source[0] === "=") {
+            snippet = "/=";
             column += 1;
             line_source = line_source.slice(1);
-            snippet = "/=";
-            warn_at("unexpected_a", line, column, "/=");
+
+// test_cause:
+// ["0/=0", "lex_slash_or_regexp", "unexpected_a", "/=", 2]
+
+            warn_at("unexpected_a", line, column - 2, "/=");
         }
         return token_create(snippet);
     }
@@ -3732,9 +4045,10 @@ function jslint_phase2_lex(state) {
         if (!option_dict.single && quote === "'") {
 
 // test_cause:
+// [" ''", "lex_string", "use_double", "", 2]
 // ["''", "lex_string", "use_double", "", 1]
 
-            warn_at("use_double", line, column);
+            warn_at("use_double", line, column - 1);
         }
         snippet = "";
         char_after();
@@ -3748,7 +4062,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["\"", "lex_string", "unclosed_string", "", 1]
 
-                return stop_at("unclosed_string", line, column);
+                return stop_at("unclosed_string", line, column - 0);
             case "\\":
                 char_after_escape(quote);
                 break;
@@ -3758,7 +4072,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["`${\"`\"}`", "lex_string", "unexpected_a", "`", 5]
 
-                    warn_at("unexpected_a", line, column, "`");
+                    warn_at("unexpected_a", line, column - 1, "`");
                 }
                 char_after("`");
                 break;
@@ -3793,6 +4107,7 @@ function jslint_phase2_lex(state) {
                         mode_mega
 
 // test_cause:
+// [" `${//}`", "lex_token", "unclosed_mega", "", 2]
 // ["`${//}`", "lex_token", "unclosed_mega", "", 1]
 
                         ? stop_at("unclosed_mega", line_mega, from_mega)
@@ -3801,7 +4116,7 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["/*jslint-disable*/", "lex_token", "unclosed_disable", "", 1]
 
-                        ? stop_at("unclosed_disable", line_disable)
+                        ? stop_at("unclosed_disable", line_disable, column - 0)
                         : token_create("(end)")
                     );
                 }
@@ -3819,17 +4134,18 @@ function jslint_phase2_lex(state) {
 
 // test_cause:
 // ["#", "lex_token", "unexpected_char_a", "#", 1]
+// ["aa=#0", "lex_token", "unexpected_char_a", "#", 4]
 
                 return stop_at(
                     "unexpected_char_a",
                     line,
-                    column,
+                    column - 0,
                     line_source[0]
                 );
             }
             snippet = match[1];
             column += snippet.length;
-            line_source = match[5];
+            line_source = line_source.slice(snippet.length);
             if (!match[2]) {
                 break;
             }
@@ -3890,7 +4206,7 @@ function jslint_phase2_lex(state) {
         case "ecma":            // Assume ECMAScript environment.
         case "eval":            // Allow eval().
         case "fart":            // Allow complex fat-arrow.
-        case "for":             // Allow for-statement.
+        case "for":             // Allow for-statement (deprecated).
         case "getset":          // Allow get() and set().
         case "indent2":         // Use 2-space indent.
         case "long":            // Allow long lines.
@@ -3908,17 +4224,17 @@ function jslint_phase2_lex(state) {
         case "unordered":       // Allow unordered cases, params, properties,
                                 // ... variables, and exports.
         case "variable":        // Allow unordered const and let declarations
-                                // ... that are not at top of scope_function.
+                                // ... not at top of function-scope.
         case "white":           // Allow messy whitespace.
             option_dict[key] = value;
             break;
 
-// PR-404 - Alias "evil" to jslint-directive "eval" for backwards-compat.
+// PR-404 - Alias "evil" to sub-directive "eval" for backwards-compat.
 
         case "evil":
             return option_set_item("eval", value);
 
-// PR-404 - Alias "nomen" to jslint-directive "name" for backwards-compat.
+// PR-404 - Alias "nomen" to sub-directive "name" for backwards-compat.
 
         case "name":
             return option_set_item("nomen", value);
@@ -3938,8 +4254,8 @@ function jslint_phase2_lex(state) {
                 dict_name, dict
             ]) {
                 if (
-                    dict_name.startsWith(key)
-                    || (key === "browser" && dict_name === "node_auto")
+                    dict_name.startsWith(key) ||
+                    (key === "browser" && dict_name === "node_auto")
                 ) {
                     Object.entries(dict).forEach(function ([name, is_global]) {
                         if (dict_name === "node_auto") {
@@ -3989,15 +4305,15 @@ function jslint_phase2_lex(state) {
             : jslint_rgx_digits_decimals
         )[0];
         if (
-            (mode !== mode_digits_empty_string && digits.length === 0)
-            || digits[0] === "_"
+            (mode !== mode_digits_empty_string && digits.length === 0) ||
+            digits[0] === "_"
         ) {
 
 // test_cause:
 // ["0x", "read_digits", "expected_digits_after_a", "0x", 2]
 // ["0x_", "read_digits", "expected_digits_after_a", "0x", 2]
 
-            warn_at("expected_digits_after_a", line, column, snippet);
+            warn_at("expected_digits_after_a", line, column - 1, snippet);
         }
 
 // PR-390 - Add numeric-separator check.
@@ -4012,12 +4328,12 @@ function jslint_phase2_lex(state) {
             warn_at(
                 "illegal_num_separator",
                 line,
-                column + digits.indexOf("_") + 1
+                column + digits.indexOf("_")
             );
         }
+        snippet += digits;
         column += digits.length;
         line_source = line_source.slice(digits.length);
-        snippet += digits;
         char_after();
         return digits.length;
     }
@@ -4029,18 +4345,18 @@ function jslint_phase2_lex(state) {
 // unsafe characters or is too damn long.
 
         if (
-            !option_dict.long
-            && line_whole.length > 80
-            && line_disable === undefined
-            && !state.mode_json
-            && token_1
-            && !mode_regexp
+            !option_dict.long &&
+            line_whole.length > 80 &&
+            line_disable === undefined &&
+            !state.mode_json &&
+            token_1 &&
+            !mode_regexp
         ) {
 
 // test_cause:
 // ["/////////////////////////////////////////////////////////////////////////////////", "read_line", "too_long", "", 1] //jslint-ignore-line
 
-            warn_at("too_long", line);
+            warn_at("too_long", line, 0);
         }
         column = 0;
         line += 1;
@@ -4071,12 +4387,12 @@ function jslint_phase2_lex(state) {
 // test_cause:
 // ["/*jslint-enable*/", "read_line", "unopened_enable", "", 1]
 
-                return stop_at("unopened_enable", line);
+                return stop_at("unopened_enable", line, column - 0);
             }
             line_disable = undefined;
         } else if (
-            line_source.endsWith(" //jslint-ignore-line")
-            || line_source.endsWith(" //jslint-quiet")
+            line_source.endsWith(" //jslint-ignore-line") ||
+            line_source.endsWith(" //jslint-quiet")
         ) {
 
 // test_cause:
@@ -4098,9 +4414,10 @@ function jslint_phase2_lex(state) {
             if (!option_dict.white) {
 
 // test_cause:
+// [" \t0", "read_line", "use_spaces", "", 2]
 // ["\t", "read_line", "use_spaces", "", 1]
 
-                warn_at("use_spaces", line, line_source.indexOf("\t") + 1);
+                warn_at("use_spaces", line, line_source.indexOf("\t"));
             }
             line_source = line_source.replace(jslint_rgx_tab, " ");
         }
@@ -4108,6 +4425,7 @@ function jslint_phase2_lex(state) {
 
 // test_cause:
 // [" ", "read_line", "unexpected_trailing_space", "", 1]
+// ["0 ", "read_line", "unexpected_trailing_space", "", 2]
 
             warn_at("unexpected_trailing_space", line, line_source.length - 1);
         }
@@ -4141,10 +4459,10 @@ function jslint_phase2_lex(state) {
 // This warning is not suppressed by option_dict.white.
 
         if (
-            token_prv.line === line
-            && token_prv.thru === from
-            && (id === "(comment)" || id === "(regexp)" || id === "/")
-            && (token_prv.id === "(comment)" || token_prv.id === "(regexp)")
+            token_prv.line === line &&
+            token_prv.thru === from &&
+            (id === "(comment)" || id === "(regexp)" || id === "/") &&
+            (token_prv.id === "(comment)" || token_prv.id === "(regexp)")
         ) {
 
 // test_cause:
@@ -4160,6 +4478,7 @@ function jslint_phase2_lex(state) {
         if (token_prv.id === "." && id === "(number)") {
 
 // test_cause:
+// [" .0", "token_create", "expected_a_before_b", ".", 2]
 // [".0", "token_create", "expected_a_before_b", ".", 1]
 
             warn("expected_a_before_b", token_prv, "0", ".");
@@ -4185,11 +4504,12 @@ function jslint_phase2_lex(state) {
 
             opener_popped = opener_stack.shift() || empty();
             if (
-                (id === ")" && opener_popped.id !== "(")
-                || (id === "]" && opener_popped.id !== "[")
+                (id === ")" && opener_popped.id !== "(") ||
+                (id === "]" && opener_popped.id !== "[")
             ) {
 
 // test_cause:
+// [" );", "token_create", "unexpected_a", ")", 2]
 // [")", "token_create", "unexpected_a", ")", 1]
 // [";(]", "token_create", "unexpected_a", "]", 3]
 // [";[)", "token_create", "unexpected_a", ")", 3]
@@ -4199,8 +4519,8 @@ function jslint_phase2_lex(state) {
             }
             break;
         case ";":
-            if (opener_stack[0]?.for) {
-                opener_stack[0].for.for_semicolon = [
+            if (opener_stack[0]?.for_loop) {
+                opener_stack[0].for_loop.for_semicolon = [
                     undefined,
                     undefined,
                     undefined
@@ -4211,6 +4531,18 @@ function jslint_phase2_lex(state) {
 // PR-503 - Fix jslint unable to continue parsing 'async aa => 0'.
 
         case "=>":
+
+// PR-511 - Stop on line-break before '=>', which is a SyntaxError.
+
+            if (token_prv_expr.line !== the_token.line) {
+
+// test_cause:
+// ["()//\n =>0", "token_create", "unexpected_a", "=>", 2]
+// ["()\n =>0", "token_create", "unexpected_a", "=>", 2]
+// ["aa\n =>0", "token_create", "unexpected_a", "=>", 2]
+
+                return stop("unexpected_a", the_token);
+            }
             if (token_prv_expr.identifier) {
                 token_prv_expr.fart = the_token;
             }
@@ -4223,8 +4555,21 @@ function jslint_phase2_lex(state) {
         case "] =":
             opener_popped.assignment = the_token;
             break;
+
+// PR-508 - Add ES2018-feature Asynchronous Iteration - for await...of.
+
+        case "await (":
+            if (token_prv_expr.for_loop) {
+                the_token.for_loop = token_prv_expr.for_loop;
+                delete token_prv_expr.for_loop;
+            }
+            break;
         case "for (":
-            the_token.for = token_prv_expr;
+
+// PR-508 - Add ES2018-feature Asynchronous Iteration - for await...of.
+
+        case "for await":
+            the_token.for_loop = token_prv_expr;
             break;
         }
 
@@ -4329,14 +4674,14 @@ function jslint_phase3_parse(state) {
 // Attempt to give helpful names to anonymous functions.
 
         if (
-            token_now.identifier
-            && token_now.id !== "function"
-            && token_now.id !== "async"
+            token_now.identifier &&
+            token_now.id !== "function" &&
+            token_now.id !== "async"
         ) {
             anon = token_now.id;
         } else if (
-            token_now.id === "(string)"
-            && jslint_rgx_identifier.test(token_now.value)
+            token_now.id === "(string)" &&
+            jslint_rgx_identifier.test(token_now.value)
         ) {
             anon = token_now.value;
         }
@@ -4353,7 +4698,7 @@ function jslint_phase3_parse(state) {
                 ? stop("expected_a_b", token_nxt, id, artifact())
 
 // test_cause:
-// ["{\"aa\":0", "advance", "expected_a_b_from_c_d", "{", 1]
+// ["{\"aa\":0", "advance", "expected_a_b_from_c_d", "{", 7]
 
                 : stop(
                     "expected_a_b_from_c_d",
@@ -4418,9 +4763,9 @@ function jslint_phase3_parse(state) {
                 the_token.expression = [left, right];
             }
             if (
-                right.arity === "assignment"
-                || right.arity === "preassign"
-                || right.arity === "postassign"
+                right.arity === "assignment" ||
+                right.arity === "preassign" ||
+                right.arity === "postassign"
             ) {
                 warn("unexpected_a", right);
             }
@@ -4476,9 +4821,9 @@ function jslint_phase3_parse(state) {
 // Top level function bodies may include the "use strict" pragma.
 
         if (
-            special === "body"
-            && function_stack.length === 2
-            && token_nxt.value === "use strict"
+            special === "body" &&
+            function_stack.length === 2 &&
+            token_nxt.value === "use strict"
         ) {
             token_nxt.statement = true;
             advance("(string)");
@@ -4517,17 +4862,17 @@ function jslint_phase3_parse(state) {
 
         const id = left.id;
         if (
-            !left.identifier
-            && (
-                left.arity !== "ternary"
-                || (
-                    !check_left(left.expression[1])
-                    && !check_left(left.expression[2])
+            !left.identifier &&
+            (
+                left.arity !== "ternary" ||
+                (
+                    !check_left(left.expression[1]) &&
+                    !check_left(left.expression[2])
                 )
-            )
-            && (
-                left.arity !== "binary"
-                || (id !== "." && id !== "?." && id !== "(" && id !== "[")
+            ) &&
+            (
+                left.arity !== "binary" ||
+                (id !== "." && id !== "?." && id !== "(" && id !== "[")
             )
         ) {
             warn("unexpected_a", right || token_nxt);
@@ -4546,13 +4891,14 @@ function jslint_phase3_parse(state) {
 //      {destructure}
 
         if (
-            the_thing.arity !== "variable"
-            && the_thing.id !== "."
-            && the_thing.id !== "["
-            && the_thing.id !== "{"
+            the_thing.arity !== "variable" &&
+            the_thing.id !== "." &&
+            the_thing.id !== "[" &&
+            the_thing.id !== "{"
         ) {
 
 // test_cause:
+// [" 0=0", "check_mutation", "bad_assignment_a", "0", 2]
 // ["0=0", "check_mutation", "bad_assignment_a", "0", 1]
 
             warn("bad_assignment_a", the_thing);
@@ -4568,6 +4914,7 @@ function jslint_phase3_parse(state) {
         if (scope_function === token_global) {
 
 // test_cause:
+// [" for(;;){}", "check_not_top_level", "unexpected_at_top_level_a", "for", 2]
 // ["
 // while(0){}
 // ", "check_not_top_level", "unexpected_at_top_level_a", "while", 1]
@@ -4629,12 +4976,12 @@ function jslint_phase3_parse(state) {
 
 // PR-419 - Hide warning about unordered case-statements behind beta-flag.
 
-                option_dict.beta
-                && !option_dict.unordered
-                && aa && bb
-                && (
-                    aa.order > bb.order
-                    || (aa.order === bb.order && aa.value > bb.value)
+                option_dict.beta &&
+                !option_dict.unordered &&
+                aa && bb &&
+                (
+                    aa.order > bb.order ||
+                    (aa.order === bb.order && aa.value > bb.value)
                 )
             ) {
                 warn(
@@ -4660,21 +5007,21 @@ function jslint_phase3_parse(state) {
 
         function check(variable_prv, bb) {
             switch (
-                Boolean(variable_prv)
-                && !variable_prv.for_init
-                && variable_prv.id
+                Boolean(variable_prv) &&
+                !variable_prv.for_init &&
+                variable_prv.id
             ) {
             case "const":
             case "let":
             case "var":
                 if (
-                    option_dict.beta
-                    && !option_dict.unordered
-                    && !option_dict.variable
-                    && variable_prv
-                    && (
-                        variable_prv.id + " " + variable_prv.name_list[0].id
-                        > the_variable.id + " " + the_variable.name_list[0].id
+                    option_dict.beta &&
+                    !option_dict.unordered &&
+                    !option_dict.variable &&
+                    variable_prv &&
+                    (
+                        variable_prv.id + " " + variable_prv.name_list[0].id >
+                        the_variable.id + " " + the_variable.name_list[0].id
                     )
                 ) {
 
@@ -4703,9 +5050,9 @@ function jslint_phase3_parse(state) {
                 break;
             default:
                 if (
-                    (variable_prv.id !== "{" || the_variable.id === "var")
-                    && option_dict.beta
-                    && !option_dict.variable
+                    (variable_prv.id !== "{" || the_variable.id === "var") &&
+                    option_dict.beta &&
+                    !option_dict.variable
                 ) {
 
 // test_cause:
@@ -4748,7 +5095,6 @@ function jslint_phase3_parse(state) {
 // ["while(){}", "condition", "", "", 0]
 
         test_cause("");
-        the_paren.free = true;
         advance("(");
         the_value = parse_expression(0);
         advance(")");
@@ -4860,6 +5206,7 @@ function jslint_phase3_parse(state) {
         if (!option_dict.eval) {
 
 // test_cause:
+// [" Function", "constant_Function", "unexpected_a", "Function", 2]
 // ["Function", "constant_Function", "unexpected_a", "Function", 1]
 
             warn("unexpected_a", token_now);
@@ -4869,7 +5216,7 @@ function jslint_phase3_parse(state) {
 // ["
 // /*jslint eval*/
 // Function
-// ", "constant_Function", "expected_a_before_b", "(end)", 1]
+// ", "constant_Function", "expected_a_before_b", "(end)", 8]
 
             warn("expected_a_before_b", token_nxt, "(", artifact());
         }
@@ -4879,6 +5226,7 @@ function jslint_phase3_parse(state) {
     function constant_arguments() {
 
 // test_cause:
+// [" arguments", "constant_arguments", "unexpected_a", "arguments", 2]
 // ["arguments", "constant_arguments", "unexpected_a", "arguments", 1]
 
         warn("unexpected_a", token_now);
@@ -4889,13 +5237,14 @@ function jslint_phase3_parse(state) {
         if (!option_dict.eval) {
 
 // test_cause:
+// [" eval", "constant_eval", "unexpected_a", "eval", 2]
 // ["eval", "constant_eval", "unexpected_a", "eval", 1]
 
             warn("unexpected_a", token_now);
         } else if (token_nxt.id !== "(") {
 
 // test_cause:
-// ["/*jslint eval*/\neval", "constant_eval", "expected_a_before_b", "(end)", 1]
+// ["/*jslint eval*/\neval", "constant_eval", "expected_a_before_b", "(end)", 4]
 
             warn("expected_a_before_b", token_nxt, "(", artifact());
         }
@@ -4905,6 +5254,7 @@ function jslint_phase3_parse(state) {
     function constant_ignore() {
 
 // test_cause:
+// [" ignore", "constant_ignore", "unexpected_a", "ignore", 2]
 // ["ignore", "constant_ignore", "unexpected_a", "ignore", 1]
 
         warn("unexpected_a", token_now);
@@ -4914,6 +5264,7 @@ function jslint_phase3_parse(state) {
     function constant_isInfinite() {
 
 // test_cause:
+// [" isFinite", "constant_isInfinite", "expected_a_b", "isFinite", 2]
 // ["isFinite", "constant_isInfinite", "expected_a_b", "isFinite", 1]
 
         warn("expected_a_b", token_now, "Number.isFinite", "isFinite");
@@ -4923,6 +5274,7 @@ function jslint_phase3_parse(state) {
     function constant_isNaN() {
 
 // test_cause:
+// [" isNaN(0)", "constant_isNaN", "number_isNaN", "isNaN", 2]
 // ["isNaN(0)", "constant_isNaN", "number_isNaN", "isNaN", 1]
 
         warn("number_isNaN", token_now);
@@ -4933,6 +5285,7 @@ function jslint_phase3_parse(state) {
         if (!option_dict.this) {
 
 // test_cause:
+// [" this", "constant_this", "unexpected_a", "this", 2]
 // ["this", "constant_this", "unexpected_a", "this", 1]
 
             warn("unexpected_a", token_now);
@@ -4962,46 +5315,46 @@ function jslint_phase3_parse(state) {
         let name = token_nxt;
         if (
             (
-                left.id !== "(string)"
-                || (
-                    name.id !== "at"
-                    && name.id !== "charCodeAt"
-                    && name.id !== "includes"
-                    && name.id !== "indexOf"
-                    && name.id !== "isWellFormed"
-                    && name.id !== "match"
-                    && name.id !== "repeat"
-                    && name.id !== "replace"
-                    && name.id !== "toLowerCase"
-                    && name.id !== "toUpperCase"
-                    && name.id !== "toWellFormed"
+                left.id !== "(string)" ||
+                (
+                    name.id !== "at" &&
+                    name.id !== "charCodeAt" &&
+                    name.id !== "includes" &&
+                    name.id !== "indexOf" &&
+                    name.id !== "isWellFormed" &&
+                    name.id !== "match" &&
+                    name.id !== "repeat" &&
+                    name.id !== "replace" &&
+                    name.id !== "toLowerCase" &&
+                    name.id !== "toUpperCase" &&
+                    name.id !== "toWellFormed"
                 )
-            )
-            && (
-                left.id !== "["
-                || (
-                    name.id !== "at"
-                    && name.id !== "concat"
-                    && name.id !== "every"
-                    && name.id !== "filter"
-                    && name.id !== "find"
-                    && name.id !== "findIndex"
-                    && name.id !== "flat"
-                    && name.id !== "flatMap"
-                    && name.id !== "forEach"
-                    && name.id !== "includes"
-                    && name.id !== "join"
-                    && name.id !== "map"
-                    && name.id !== "reduce"
-                    && name.id !== "some"
-                    && name.id !== "toReversed"
-                    && name.id !== "toSorted"
+            ) &&
+            (
+                left.id !== "[" ||
+                (
+                    name.id !== "at" &&
+                    name.id !== "concat" &&
+                    name.id !== "every" &&
+                    name.id !== "filter" &&
+                    name.id !== "find" &&
+                    name.id !== "findIndex" &&
+                    name.id !== "flat" &&
+                    name.id !== "flatMap" &&
+                    name.id !== "forEach" &&
+                    name.id !== "includes" &&
+                    name.id !== "join" &&
+                    name.id !== "map" &&
+                    name.id !== "reduce" &&
+                    name.id !== "some" &&
+                    name.id !== "toReversed" &&
+                    name.id !== "toSorted"
                 )
-            )
-            && (left.id !== "+" || name.id !== "slice")
-            && (
-                left.id !== "(regexp)"
-                || (name.id !== "exec" && name.id !== "test")
+            ) &&
+            (left.id !== "+" || name.id !== "slice") &&
+            (
+                left.id !== "(regexp)" ||
+                (name.id !== "exec" && name.id !== "test")
             )
         ) {
 
@@ -5017,8 +5370,8 @@ function jslint_phase3_parse(state) {
 // Issue #468 - Fix optional dynamic-property/function-call not recognized.
 
         if (
-            the_token.id === "?."
-            && (name.id === "[" || name.id === "(")
+            the_token.id === "?." &&
+            (name.id === "[" || name.id === "(")
         ) {
 
 // test_cause:
@@ -5032,6 +5385,7 @@ function jslint_phase3_parse(state) {
 
 // test_cause:
 // ["(0+0)?.0", "infix_dot", "expected_identifier_a", "0", 8]
+// ["(0+0)?.0;", "infix_dot", "expected_identifier_a", "0", 8]
 // ["aa.0", "infix_dot", "expected_identifier_a", "0", 4]
 // ["aa?.0", "infix_dot", "expected_identifier_a", "0", 5]
 
@@ -5051,6 +5405,7 @@ function jslint_phase3_parse(state) {
         if (!token_prv.identifier) {
 
 // test_cause:
+// [" 0=>0", "infix_fart_unwrapped", "expected_identifier_a", "0", 2]
 // ["0=>0", "infix_fart_unwrapped", "expected_identifier_a", "0", 1]
 
             return stop("expected_identifier_a", token_prv);
@@ -5080,7 +5435,7 @@ function jslint_phase3_parse(state) {
         if (the_subscript.id === "(string)" || the_subscript.id === "`") {
             name = survey(the_subscript);
 
-// PR-404 - Add new directive "subscript" to play nice with Google Closure.
+// PR-404 - Add new sub-directive "subscript" to play nice with Google Closure.
 
             if (!option_dict.subscript && jslint_rgx_identifier.test(name)) {
 
@@ -5139,18 +5494,12 @@ function jslint_phase3_parse(state) {
         }
         advance(")", the_paren);
         if (the_paren.expression.length === 2) {
-
-// test_cause:
-// ["aa(0)", "infix_lparen", "free", "", 0]
-
-            test_cause("free");
-            the_paren.free = true;
             if (
-                the_argument.wrapped === true
+                the_argument.wrapped === true &&
 
 // PR-483 - Allow parenthesis after ellipsis inside a function call.
 
-                && the_argument.ellipsis !== true
+                the_argument.ellipsis !== true
             ) {
 
 // test_cause:
@@ -5161,14 +5510,6 @@ function jslint_phase3_parse(state) {
             if (the_argument.id === "(") {
                 the_argument.wrapped = true;
             }
-        } else {
-
-// test_cause:
-// ["aa()", "infix_lparen", "not_free", "", 0]
-// ["aa(0,0)", "infix_lparen", "not_free", "", 0]
-
-            test_cause("not_free");
-            the_paren.free = false;
         }
         return the_paren;
     }
@@ -5279,6 +5620,7 @@ function jslint_phase3_parse(state) {
 // test_cause:
 // ["let aa;(function aa(){})", "name_declare", "scope_current", "aa", 0]
 // ["let aa;function aa(){}", "name_declare", "scope_current", "aa", 0]
+// ["let aa;let aa", "name_declare", "redefinition_a_b", "1", 12]
 // ["let aa;let aa", "name_declare", "scope_current", "aa", 0]
 
             test_cause("scope_current", id);
@@ -5337,9 +5679,9 @@ function jslint_phase3_parse(state) {
             return;
         }
         if (
-            earlier
-            && role !== "parameter" && role !== "function"
-            && (role !== "exception" || earlier.role !== "exception")
+            earlier &&
+            role !== "parameter" && role !== "function" &&
+            (role !== "exception" || earlier.role !== "exception")
         ) {
 
 // test_cause:
@@ -5361,9 +5703,9 @@ function jslint_phase3_parse(state) {
             return;
         }
         if (
-            option_dict.beta
-            && global_dict[id]
-            && role !== "parameter"
+            option_dict.beta &&
+            global_dict[id] &&
+            role !== "parameter"
         ) {
 
 // test_cause:
@@ -5482,9 +5824,9 @@ function jslint_phase3_parse(state) {
         while (true) {
             the_symbol = syntax_dict[token_nxt.id];
             if (
-                the_symbol === undefined
-                || the_symbol.led_infix === undefined
-                || the_symbol.lbp <= rbp
+                the_symbol === undefined ||
+                the_symbol.led_infix === undefined ||
+                the_symbol.lbp <= rbp
             ) {
                 break;
             }
@@ -5530,7 +5872,7 @@ function jslint_phase3_parse(state) {
             negative.arity = "unary";
             advance("-");
 
-// Recurse parse_json().
+// Recurse parse_json.
 
             negative.expression = parse_json();
             return negative;
@@ -5546,7 +5888,7 @@ function jslint_phase3_parse(state) {
             if (token_nxt.id !== "]") {
                 while (true) {
 
-// Recurse parse_json().
+// Recurse parse_json.
 
                     container.expression.push(parse_json());
                     if (token_nxt.id !== ",") {
@@ -5618,10 +5960,10 @@ function jslint_phase3_parse(state) {
                     }
                     advance(":");
                     container.expression.push(
-
-// Recurse parse_json().
-
                         Object.assign(
+
+// Recurse parse_json.
+
                             parse_json(),
                             {
                                 name_alias: name
@@ -5714,12 +6056,12 @@ function jslint_phase3_parse(state) {
         first.statement = true;
         the_symbol = syntax_dict[first.id];
         if (
-            the_symbol !== undefined
-            && the_symbol.fud_stmt !== undefined
+            the_symbol !== undefined &&
+            the_symbol.fud_stmt !== undefined &&
 
 // PR-318 - Bugfix - Fixes issues #316, #317 - dynamic-import().
 
-            && !(the_symbol.id === "import" && token_nxt.id === "(")
+            !(the_symbol.id === "import" && token_nxt.id === "(")
         ) {
             the_symbol.disrupt = false;
             the_symbol.statement = true;
@@ -5733,6 +6075,7 @@ function jslint_phase3_parse(state) {
             if (the_statement.wrapped && the_statement.id !== "(") {
 
 // test_cause:
+// [" (0)", "parse_statement_single", "unexpected_a", "(", 2]
 // ["(0)", "parse_statement_single", "unexpected_a", "(", 1]
 
                 warn("unexpected_a", first);
@@ -5792,6 +6135,7 @@ function jslint_phase3_parse(state) {
     function prefix_assign_divide() {
 
 // test_cause:
+// [" /=", "prefix_assign_divide", "expected_a_b", "/=", 2]
 // ["/=", "prefix_assign_divide", "expected_a_b", "/=", 1]
 
         return stop("expected_a_b", token_now, "/\\=", "/=");
@@ -5858,7 +6202,7 @@ function jslint_phase3_parse(state) {
         the_await.expression = parse_expression(150);
         if (the_await.arity === "statement") {
 
-// PR-405 - Bugfix - fix expression after "await" mis-identified as statement.
+// PR-405 - Bugfix - Fix expression after "await" mis-identified as statement.
 
             semicolon();
         }
@@ -6102,6 +6446,7 @@ function jslint_phase3_parse(state) {
     function prefix_fart() {
 
 // test_cause:
+// [" =>0", "prefix_fart", "expected_a_before_b", "=>", 2]
 // ["=>0", "prefix_fart", "expected_a_before_b", "=>", 1]
 
         return stop("expected_a_before_b", token_now, "()", "=>");
@@ -6172,8 +6517,8 @@ function jslint_phase3_parse(state) {
         the_function.level = scope_function.level + 1;
         the_function.loop = 0;
         the_function.name = (
-            name
-            || (
+            name ||
+            (
                 mode_fart_unwrapped
                 ? "anonymous"
                 : anon
@@ -6216,6 +6561,7 @@ function jslint_phase3_parse(state) {
         if (mode_fart_unwrapped) {
 
 // test_cause:
+// [" aa=>0", "prefix_function", "wrap_fart_parameter", "aa", 2]
 // ["aa=>0", "prefix_function", "wrap_fart_parameter", "aa", 1]
 
             warn("wrap_fart_parameter", token_prv);
@@ -6234,7 +6580,6 @@ function jslint_phase3_parse(state) {
                 true                    // assigned
             );
         } else {
-            token_now.free = false;
             if (token_nxt.id !== ")" && token_nxt.id !== "(end)") {
 
 // PR-500 - Unify ES2015-destructure-logic. - function ([aa]) {...}
@@ -6264,8 +6609,8 @@ function jslint_phase3_parse(state) {
 // PR-384 - Bugfix - Fixes issue #379 - warn against naked-statement in fart.
 
             if (
-                syntax_dict[token_nxt.id]
-                && syntax_dict[token_nxt.id].fud_stmt
+                syntax_dict[token_nxt.id] &&
+                syntax_dict[token_nxt.id].fud_stmt
             ) {
 
 // test_cause:
@@ -6294,15 +6639,16 @@ function jslint_phase3_parse(state) {
         } else {
             the_function.block = block("body");
             if (
-                the_function.arity === "statement"
-                && token_nxt.line === token_now.line
-                && !option_dict.white
+                the_function.arity === "statement" &&
+                token_nxt.line === token_now.line &&
+                !option_dict.white
             ) {
 
 // PR-503 - Fix jslint unable to continue parsing 'function aa(){}0'.
 
 // test_cause:
 // ["function aa(){}0", "prefix_function", "expected_line_break_a_b", "0", 16]
+// ["function aa(){}0;", "prefix_function", "expected_line_break_a_b", "0", 16]
 
                 warn(
                     "expected_line_break_a_b",
@@ -6312,8 +6658,8 @@ function jslint_phase3_parse(state) {
                 );
             }
             if (
-                token_nxt.id === "."
-                || token_nxt.id === "?."
+                token_nxt.id === "." ||
+                token_nxt.id === "?."
 
 // PR-459 - Allow destructuring-assignment after function-definition.
 
@@ -6321,6 +6667,7 @@ function jslint_phase3_parse(state) {
             ) {
 
 // test_cause:
+// [" function aa(){}\n .aa", "prefix_function", "unexpected_a", ".", 2]
 // ["function aa(){}\n.aa", "prefix_function", "unexpected_a", ".", 1]
 // ["function aa(){}\n?.aa", "prefix_function", "unexpected_a", "?.", 1]
 
@@ -6382,8 +6729,8 @@ function jslint_phase3_parse(state) {
             }
             advance();
             if (
-                (name.id === "get" || name.id === "set")
-                && token_nxt.identifier
+                (name.id === "get" || name.id === "set") &&
+                token_nxt.identifier
             ) {
                 if (!option_dict.getset) {
 
@@ -6474,8 +6821,8 @@ function jslint_phase3_parse(state) {
                 advance(":");
                 value = parse_expression(0);
                 if (
-                    value.id === name.id
-                    && value.id !== "function"
+                    value.id === name.id &&
+                    value.id !== "function"
                 ) {
 
 // test_cause:
@@ -6599,11 +6946,11 @@ function jslint_phase3_parse(state) {
 // ["(0)", "prefix_lparen", "expr", "", 0]
 
         test_cause("expr");
-        the_paren.free = true;
         the_value = parse_expression(0);
         if (the_value.wrapped === true) {
 
 // test_cause:
+// [" ((0))", "prefix_lparen", "unexpected_a", "(", 2]
 // ["((0))", "prefix_lparen", "unexpected_a", "(", 1]
 
             warn("unexpected_a", the_paren);
@@ -6620,7 +6967,7 @@ function jslint_phase3_parse(state) {
         if (token_nxt.id !== "(") {
 
 // test_cause:
-// ["new aa", "prefix_new", "expected_a_before_b", "(end)", 1]
+// ["new aa", "prefix_new", "expected_a_before_b", "(end)", 6]
 
             warn("expected_a_before_b", token_nxt, "()", artifact());
         }
@@ -6660,6 +7007,7 @@ function jslint_phase3_parse(state) {
         const the_void = token_now;
 
 // test_cause:
+// [" void 0", "prefix_void", "unexpected_a", "void", 2]
 // ["void 0", "prefix_void", "unexpected_a", "void", 1]
 // ["void", "prefix_void", "unexpected_a", "void", 1]
 
@@ -6677,14 +7025,21 @@ function jslint_phase3_parse(state) {
         } else {
 
 // test_cause:
-// ["0", "semicolon", "expected_a_b", "(end)", 1]
+// [" 0//c", "semicolon", "expected_a_after_b", "0", 2]
+// ["0", "semicolon", "expected_a_after_b", "0", 1]
 
             warn_at(
-                "expected_a_b",
+                "expected_a_after_b",
                 token_now.line,
-                token_now.thru + 1,
+
+// <thru> is EXCLUSIVE - one past the token's last char - so it marked the
+// character AFTER <b>. At end of line the clamp pulled it back onto <b> and
+// hid that; off end of line it did not. <expected_a_after_b> exists so the
+// message names the character the marker covers, so mark <b> itself.
+
+                token_now.thru - 1,
                 ";",
-                artifact()
+                artifact(token_now)
             );
         }
         anon = "anonymous";
@@ -6703,11 +7058,12 @@ function jslint_phase3_parse(state) {
         const the_break = token_now;
         let the_label;
         if (
-            (scope_function.loop < 1 && scope_function.switch < 1)
-            || scope_function.finally > 0
+            (scope_function.loop < 1 && scope_function.switch < 1) ||
+            scope_function.finally > 0
         ) {
 
 // test_cause:
+// [" break", "stmt_break", "unexpected_a", "break", 2]
 // ["break", "stmt_break", "unexpected_a", "break", 1]
 
             warn("unexpected_a", the_break);
@@ -6763,6 +7119,7 @@ function jslint_phase3_parse(state) {
         if (!option_dict.devel) {
 
 // test_cause:
+// [" debugger", "stmt_debugger", "unexpected_a", "debugger", 2]
 // ["debugger", "stmt_debugger", "unexpected_a", "debugger", 1]
 
             warn("unexpected_a", the_debug);
@@ -6775,12 +7132,13 @@ function jslint_phase3_parse(state) {
         const the_token = token_now;
         const the_value = parse_expression(0);
         if (
-            (the_value.id !== "." && the_value.id !== "[")
-            || the_value.arity !== "binary"
+            (the_value.id !== "." && the_value.id !== "[") ||
+            the_value.arity !== "binary"
         ) {
 
 // test_cause:
 // ["delete 0", "stmt_delete", "expected_a_b", "0", 8]
+// ["delete 0;", "stmt_delete", "expected_a_b", "0", 8]
 
             return stop("expected_a_b", the_value, ".", artifact(the_value));
         }
@@ -6800,6 +7158,7 @@ function jslint_phase3_parse(state) {
         if (the_do.block.disrupt === true) {
 
 // test_cause:
+// [" do{break}while(0)", "stmt_do", "weird_loop", "do", 2]
 // ["do{break}while(0)", "stmt_do", "weird_loop", "do", 1]
 
             warn("weird_loop", the_do);
@@ -6829,10 +7188,10 @@ function jslint_phase3_parse(state) {
             advance("default");
             the_thing = parse_expression(0);
             if (
-                the_thing.id !== "("
-                || the_thing.expression[0].id !== "."
-                || the_thing.expression[0].expression.id !== "Object"
-                || the_thing.expression[0].name.id !== "freeze"
+                the_thing.id !== "(" ||
+                the_thing.expression[0].id !== "." ||
+                the_thing.expression[0].expression.id !== "Object" ||
+                the_thing.expression[0].name.id !== "freeze"
             ) {
 
 // test_cause:
@@ -6847,7 +7206,7 @@ function jslint_phase3_parse(state) {
 // test_cause:
 // ["
 // export default Object.freeze({})
-// ", "semicolon", "expected_a_b", "(end)", 32]
+// ", "semicolon", "expected_a_after_b", ")", 32]
 
                 semicolon();
             }
@@ -6882,9 +7241,9 @@ function jslint_phase3_parse(state) {
                 the_thing.statement = false;
                 the_thing.arity = "unary";
             } else if (
-                token_nxt.id === "var"
-                || token_nxt.id === "let"
-                || token_nxt.id === "const"
+                token_nxt.id === "var" ||
+                token_nxt.id === "let" ||
+                token_nxt.id === "const"
             ) {
 
 // test_cause:
@@ -6906,6 +7265,7 @@ function jslint_phase3_parse(state) {
 
 // test_cause:
 // ["export {}", "stmt_export", "expected_identifier_a", "}", 9]
+// ["export {};", "stmt_export", "expected_identifier_a", "}", 9]
 
                         return stop("expected_identifier_a", token_nxt);
                     }
@@ -6948,7 +7308,7 @@ function jslint_phase3_parse(state) {
             } else {
 
 // test_cause:
-// ["export", "stmt_export", "unexpected_a", "(end)", 1]
+// ["export", "stmt_export", "unexpected_a", "(end)", 6]
 
                 return stop("unexpected_a");
             }
@@ -6958,6 +7318,7 @@ function jslint_phase3_parse(state) {
     }
 
     function stmt_for() {
+        const for_await = token_nxt.id === "await";
         const the_for = token_now;
         let the_operator;
         let the_variable;
@@ -6968,8 +7329,30 @@ function jslint_phase3_parse(state) {
 // - for-variable
 
         scope_block = scope_block_push(the_for, true);
+
+// PR-508 - Add ES2018-feature Asynchronous Iteration - for await...of.
+
+        if (for_await) {
+            if (the_for.for_semicolon) {
+
+// test_cause:
+// ["for await(;;){}", "stmt_for", "expected_a", "for await...of", 1]
+
+                return stop("expected_a", the_for, "for await...of");
+            }
+            if (scope_function.async === 0 && scope_function !== token_global) {
+
+// test_cause:
+// ["()=>{for await(aa of aa){}}", "stmt_for", "unexpected_a", "await", 10]
+
+                warn("unexpected_a", token_nxt);
+            }
+            if (scope_function.async === 1) {
+                scope_function.async = 2;
+            }
+            advance("await");
+        }
         advance("(");
-        the_for.free = true;
         if (the_for.for_semicolon) {
             switch (token_nxt.id) {
             case ";":
@@ -7004,6 +7387,19 @@ function jslint_phase3_parse(state) {
             }
             token_nxt.for_init = true;
             the_for.for_semicolon[0] = parse_statement_single();
+
+// PR-409 - jquery - Tolerate comma-expression in for_init `for(ii=0,jj=0;;)`.
+
+            while (token_nxt.id === ",") {
+
+// test_cause:
+// ["for(aa=0,bb=0;;){}", "stmt_for", "for_init_comma", "", 0]
+
+                test_cause("for_init_comma");
+                advance(",");
+                parse_expression(0);
+                semicolon();
+            }
             token_nxt.for_init = true;
             if (token_nxt.id === ";") {
 
@@ -7071,6 +7467,13 @@ function jslint_phase3_parse(state) {
             the_variable.for_init = true;
             switch (the_operator.id) {
             case "in":
+                if (for_await) {
+
+// test_cause:
+// ["for await(aa in aa){}", "stmt_for", "expected_a_b", "in", 14]
+
+                    return stop("expected_a_b", the_operator, "of", "in");
+                }
 
 // test_cause:
 // ["for(aa in aa){}", "stmt_for", "expected_a_b", "for in", 1]
@@ -7192,7 +7595,7 @@ function jslint_phase3_parse(state) {
                 if (!token_nxt.identifier) {
 
 // test_cause:
-// ["import * as", "stmt_import", "expected_identifier_a", "(end)", 1]
+// ["import * as", "stmt_import", "expected_identifier_a", "(end)", 11]
 
                     return stop("expected_identifier_a", token_nxt);
                 }
@@ -7228,7 +7631,7 @@ function jslint_phase3_parse(state) {
                         if (!token_nxt.identifier) {
 
 // test_cause:
-// ["import {", "stmt_import", "expected_identifier_a", "(end)", 1]
+// ["import {", "stmt_import", "expected_identifier_a", "(end)", 8]
 
                             return stop("expected_identifier_a", token_nxt);
                         }
@@ -7320,6 +7723,7 @@ function jslint_phase3_parse(state) {
         if (the_label.id === "ignore") {
 
 // test_cause:
+// [" ignore:", "stmt_label", "unexpected_a", "ignore", 2]
 // ["ignore:", "stmt_label", "unexpected_a", "ignore", 1]
 
             warn("unexpected_a", the_label);
@@ -7416,6 +7820,7 @@ function jslint_phase3_parse(state) {
     function stmt_semicolon() {
 
 // test_cause:
+// [" ;0", "stmt_semicolon", "unexpected_a", ";", 2]
 // [";", "stmt_semicolon", "unexpected_a", ";", 1]
 
         warn("unexpected_a", token_now);
@@ -7448,7 +7853,6 @@ function jslint_phase3_parse(state) {
         }
         scope_function.switch += 1;
         advance("(");
-        token_now.free = true;
         the_switch.expression = parse_expression(0);
         the_switch.block = the_cases;
         advance(")");
@@ -7525,6 +7929,10 @@ function jslint_phase3_parse(state) {
                     the_disrupt = false;
                 }
             } else {
+
+// test_cause:
+// ["switch(0){case 0:;}", "stmt_switch", "expected_a_before_b", "}", 19]
+
                 warn("expected_a_before_b", token_nxt, "break;", artifact());
             }
             if (token_nxt.id !== "case") {
@@ -7575,8 +7983,8 @@ function jslint_phase3_parse(state) {
                     the_switch.else.length - 1
                 ];
                 if (
-                    the_last.id === "break"
-                    && the_last.label_break === undefined
+                    the_last.id === "break" &&
+                    the_last.label_break === undefined
                 ) {
 
 // test_cause:
@@ -7626,6 +8034,13 @@ function jslint_phase3_parse(state) {
             warn("unexpected_a", the_try);
         }
         scope_function.try += 1;
+        if (token_nxt.id !== "{") {
+
+// test_cause:
+// ["try", "stmt_try", "expected_a_b", "(end)", 3]
+
+            return stop("expected_a_b", token_nxt, "{", artifact());
+        }
         the_try.block = block();
         the_disrupt = the_try.block.disrupt;
         if (token_nxt.id === "catch") {
@@ -7672,6 +8087,14 @@ function jslint_phase3_parse(state) {
                 advance();
                 advance(")");
             }
+
+// test_cause:
+// ["try{}catch(aa);", "stmt_try", "expected_a_b", ";", 15]
+// ["try{}catch(aa);;", "stmt_try", "expected_a_b", ";", 15]
+
+            if (token_nxt.id !== "{") {
+                return stop("expected_a_b", token_nxt, "{", artifact());
+            }
             the_catch.block = block(ignored);
             if (the_catch.block.disrupt !== true) {
                 the_disrupt = false;
@@ -7694,6 +8117,13 @@ function jslint_phase3_parse(state) {
         if (token_nxt.id === "finally") {
             scope_function.finally += 1;
             advance("finally");
+
+// test_cause:
+// ["try{}finally;", "stmt_try", "expected_a_b", ";", 13]
+
+            if (token_nxt.id !== "{") {
+                return stop("expected_a_b", token_nxt, "{", artifact());
+            }
             the_try.else = block();
             the_disrupt = the_try.else.disrupt;
             scope_function.finally -= 1;
@@ -7847,6 +8277,7 @@ function jslint_phase3_parse(state) {
 
 // test_cause:
 // ["let 0", "stmt_var", "expected_identifier_a", "0", 5]
+// ["let 0;", "stmt_var", "expected_identifier_a", "0", 5]
 
                 return stop("expected_identifier_a", token_nxt);
             }
@@ -7875,6 +8306,7 @@ function jslint_phase3_parse(state) {
         if (the_while.block.disrupt === true) {
 
 // test_cause:
+// [" while(0){break}", "stmt_while", "weird_loop", "while", 2]
 // ["while(0){break}", "stmt_while", "weird_loop", "while", 1]
 
             warn("weird_loop", the_while);
@@ -7886,6 +8318,7 @@ function jslint_phase3_parse(state) {
     function stmt_with() {
 
 // test_cause:
+// [" with", "stmt_with", "unexpected_a", "with", 2]
 // ["with", "stmt_with", "unexpected_a", "with", 1]
 
         return stop("unexpected_a", token_now);
@@ -7898,6 +8331,16 @@ function jslint_phase3_parse(state) {
 // to the identifier rules.
 
         switch (id) {
+        case "(number)":
+
+// PR-409 - jquery - Tolerate numeric object-key `{0: 200}` - warn, do not stop.
+// Like a non-identifier string-key, it is not tallied for /*property*/.
+
+// test_cause:
+// ["String({0:0})", "survey", "unexpected_a", "0", 9]
+
+            warn("unexpected_a", name);
+            return name.value;
         case "(string)":
             id = name.value;
             if (!jslint_rgx_identifier.test(id)) {
@@ -7916,7 +8359,7 @@ function jslint_phase3_parse(state) {
             if (!name.identifier) {
 
 // test_cause:
-// ["let aa={0:0}", "survey", "expected_identifier_a", "0", 9]
+// ["String({+:0})", "survey", "expected_identifier_a", "+", 9]
 
                 return stop("expected_identifier_a", name);
             }
@@ -7942,9 +8385,9 @@ function jslint_phase3_parse(state) {
                 warn("unregistered_property_a", name);
             }
         } else if (
-            !option_dict.nomen
-            && name.identifier
-            && jslint_rgx_weird_property.test(id)
+            !option_dict.nomen &&
+            name.identifier &&
+            jslint_rgx_weird_property.test(id)
         ) {
 
 // test_cause:
@@ -8322,14 +8765,23 @@ function jslint_phase4_walk(state) {
         const id = thing.id;
         let the_variable;
 
-// PR-504 - Probably deadcode.
+// PR-510 - deadcode-confirmed - Both callers pass a token already known to be
+// a variable. <pre_v_var> is registered as a preaction on arity "variable",
+// and <post_a_assignment> walks an assignment token's <name_list>, which only
+// <name_declare> calls with role "variable" fill. That role sets <arity>.
+//
+// deadcode-revive - <name_declare> pushes into the list it is given before
+// it checks the role, so a list built under another role holds names with no
+// <arity>. <the_function>.name_list collects "parameter" names that way. Pass
+// one here and the lookup below resolves the wrong name, with no error.
+//
 // if (thing.arity !== "variable") {
 //     return;
 // }
 
         jslint_assert(
-            thing.arity === "variable",
-            `Expected thing.arity === "variable".`
+            !(thing.arity !== "variable"),
+            `Expected !(thing.arity !== "variable").`
         );
 
 // Look up the variable, from current-scope, moving up the scope-chain.
@@ -8392,11 +8844,11 @@ function jslint_phase4_walk(state) {
             warn("label_a", thing);
         } else if (
             (
-                !the_variable.calls
-                || !scope_function.name
-                || !the_variable.calls[scope_function.name.id]
-            )
-            && !the_variable.alive
+                !the_variable.calls ||
+                !scope_function.name ||
+                !the_variable.calls[scope_function.name.id]
+            ) &&
+            !the_variable.alive
         ) {
 
 // Warn variable is 'out-of-scope'.
@@ -8423,8 +8875,8 @@ function jslint_phase4_walk(state) {
         let right;
         if (thing.id !== "=") {
             if (
-                lvalue.arity === "variable"
-                && (!lvalue.variable || lvalue.variable.readonly)
+                lvalue.arity === "variable" &&
+                (!lvalue.variable || lvalue.variable.readonly)
             ) {
 
 // test_cause:
@@ -8438,14 +8890,14 @@ function jslint_phase4_walk(state) {
             }
             right = syntax_dict[thing.expression[1].id];
             if (
-                right
-                && (
-                    right.id === "function"
-                    || right.id === "=>"
-                    || (
-                        right.constant
-                        && right.id !== "(number)"
-                        && (right.id !== "(string)" || thing.id !== "+=")
+                right &&
+                (
+                    right.id === "function" ||
+                    right.id === "=>" ||
+                    (
+                        right.constant &&
+                        right.id !== "(number)" &&
+                        (right.id !== "(string)" || thing.id !== "+=")
                     )
                 )
             ) {
@@ -8482,6 +8934,7 @@ function jslint_phase4_walk(state) {
         if (lvalue.id === "." && thing.expression[1].id === "undefined") {
 
 // test_cause:
+// [" aa.aa=undefined", "post_a_assignment", "expected_a_b", "undefined", 2]
 // ["aa.aa=undefined", "post_a_assignment", "expected_a_b", "undefined", 1]
 
             warn("expected_a_b", lvalue.expression, "delete", "undefined");
@@ -8493,12 +8946,12 @@ function jslint_phase4_walk(state) {
         const right = thing.expression[1];
         if (right.constant) {
             if (
-                right.value === ""
-                || (right.id === "(number)" && right.value === "0")
-                || right.id === "(boolean)"
-                || right.id === "null"
-                || right.id === "undefined"
-                || Number.isNaN(right.value)
+                right.value === "" ||
+                (right.id === "(number)" && right.value === "0") ||
+                right.id === "(boolean)" ||
+                right.id === "null" ||
+                right.id === "undefined" ||
+                Number.isNaN(right.value)
             ) {
                 warn("unexpected_a", right);
             }
@@ -8507,10 +8960,10 @@ function jslint_phase4_walk(state) {
 
     function post_b_and(thing) {
         if (
-            is_weird(thing.expression[0])
-            || is_equal(thing.expression[0], thing.expression[1])
-            || thing.expression[0].constant === true
-            || thing.expression[1].constant === true
+            is_weird(thing.expression[0]) ||
+            is_equal(thing.expression[0], thing.expression[1]) ||
+            thing.expression[0].constant === true ||
+            thing.expression[1].constant === true
         ) {
 
 // test_cause:
@@ -8520,6 +8973,7 @@ function jslint_phase4_walk(state) {
 // ["aa=0&&0", "post_b_and", "weird_condition_a", "&&", 5]
 // ["aa=[]&&[]", "post_b_and", "weird_condition_a", "&&", 6]
 // ["aa=`${0}`&&`${0}`", "post_b_and", "weird_condition_a", "&&", 10]
+// ["aa=bb``&&bb``", "post_b_and", "weird_condition_a", "&&", 8]
 // ["
 // aa=function aa(){}&&function aa(){}
 // ", "post_b_and", "weird_condition_a", "&&", 19]
@@ -8533,12 +8987,12 @@ function jslint_phase4_walk(state) {
         let right;
         if (relationop[thing.id]) {
             if (
-                is_weird(thing.expression[0])
-                || is_weird(thing.expression[1])
-                || is_equal(thing.expression[0], thing.expression[1])
-                || (
-                    thing.expression[0].constant === true
-                    && thing.expression[1].constant === true
+                is_weird(thing.expression[0]) ||
+                is_weird(thing.expression[1]) ||
+                is_equal(thing.expression[0], thing.expression[1]) ||
+                (
+                    thing.expression[0].constant === true &&
+                    thing.expression[1].constant === true
                 )
             ) {
 
@@ -8548,7 +9002,16 @@ function jslint_phase4_walk(state) {
                 warn("weird_relation_a", thing);
             }
         }
-        if (thing.id === "+") {
+        switch (thing.id) {
+        case "(":
+        case "=>":
+
+// Tagged-template is infix at same binding-power as "(" and is a call,
+// not binary-operator.
+
+        case "`":
+            break;
+        case "+":
             if (!option_dict.convert) {
                 if (thing.expression[0].value === "") {
 
@@ -8564,7 +9027,23 @@ function jslint_phase4_walk(state) {
                     warn("expected_a_b", thing, "String(...)", "+ \"\"");
                 }
             }
-        } else if (thing.id === "[") {
+            break;
+        case ".":
+        case "?.":
+            if (thing.expression.id === "RegExp") {
+
+// PR-499 - Relax warning for ES2025-feature RegExp.escape().
+
+                if (!thing.name || thing.name.id !== "escape") {
+
+// test_cause:
+// ["aa=RegExp.aa", "post_b_binary", "weird_expression_a", ".", 10]
+
+                    warn("weird_expression_a", thing);
+                }
+            }
+            break;
+        case "[":
             if (thing.expression[0].id === "window") {
 
 // test_cause:
@@ -8579,26 +9058,14 @@ function jslint_phase4_walk(state) {
 
                 warn("weird_expression_a", thing, "self[...]");
             }
-        } else if (thing.id === "." || thing.id === "?.") {
-            if (thing.expression.id === "RegExp") {
-
-// PR-499 - Relax warning for ES2025-feature RegExp.escape().
-
-                if (!thing.name || thing.name.id !== "escape") {
-
-// test_cause:
-// ["aa=RegExp.aa", "post_b_binary", "weird_expression_a", ".", 10]
-
-                    warn("weird_expression_a", thing);
-                }
-            }
-        } else if (thing.id !== "=>" && thing.id !== "(") {
+            break;
+        default:
             right = thing.expression[1];
             if (
-                (thing.id === "+" || thing.id === "-")
-                && right.id === thing.id
-                && right.arity === "unary"
-                && !right.wrapped
+                (thing.id === "+" || thing.id === "-") &&
+                right.id === thing.id &&
+                right.arity === "unary" &&
+                !right.wrapped
             ) {
 
 // test_cause:
@@ -8607,8 +9074,8 @@ function jslint_phase4_walk(state) {
                 warn("wrap_unary", right);
             }
             if (
-                thing.expression[0].constant === true
-                && right.constant === true
+                thing.expression[0].constant === true &&
+                right.constant === true
             ) {
                 thing.constant = true;
             }
@@ -8655,12 +9122,12 @@ function jslint_phase4_walk(state) {
         } else if (left.identifier) {
             if (the_new !== undefined) {
                 if (
-                    left.id[0] > "Z"
-                    || left.id === "BigInt"
-                    || left.id === "Boolean"
-                    || left.id === "Number"
-                    || left.id === "String"
-                    || left.id === "Symbol"
+                    left.id[0] > "Z" ||
+                    left.id === "BigInt" ||
+                    left.id === "Boolean" ||
+                    left.id === "Number" ||
+                    left.id === "String" ||
+                    left.id === "Symbol"
                 ) {
 
 // test_cause:
@@ -8703,13 +9170,13 @@ function jslint_phase4_walk(state) {
                 }
             } else {
                 if (
-                    left.id[0] >= "A"
-                    && left.id[0] <= "Z"
-                    && left.id !== "BigInt"
-                    && left.id !== "Boolean"
-                    && left.id !== "Number"
-                    && left.id !== "String"
-                    && left.id !== "Symbol"
+                    left.id[0] >= "A" &&
+                    left.id[0] <= "Z" &&
+                    left.id !== "BigInt" &&
+                    left.id !== "Boolean" &&
+                    left.id !== "Number" &&
+                    left.id !== "String" &&
+                    left.id !== "Symbol"
                 ) {
 
 // test_cause:
@@ -8755,8 +9222,8 @@ function jslint_phase4_walk(state) {
                     if (array.length === 1) {
                         new_date = array[0];
                         if (
-                            new_date.id === "new"
-                            && new_date.expression.id === "Date"
+                            new_date.id === "new" &&
+                            new_date.expression.id === "Date"
                         ) {
 
 // test_cause:
@@ -8779,9 +9246,9 @@ function jslint_phase4_walk(state) {
 
     function post_b_or(thing) {
         if (
-            is_weird(thing.expression[0])
-            || is_equal(thing.expression[0], thing.expression[1])
-            || thing.expression[0].constant === true
+            is_weird(thing.expression[0]) ||
+            is_equal(thing.expression[0], thing.expression[1]) ||
+            thing.expression[0].constant === true
         ) {
 
 // test_cause:
@@ -8807,10 +9274,10 @@ function jslint_phase4_walk(state) {
     }
 
     function post_s_for(thing) {
-
-// Recurse walk_statement().
-
         if (thing.for_semicolon) {
+
+// Recurse walk_statement.
+
             walk_statement(thing.for_semicolon[2]);
         }
         scope_block = scope_block_pop();
@@ -8849,7 +9316,7 @@ function jslint_phase4_walk(state) {
 
             scope_block = scope_block_push(thing.catch, false);
 
-// Recurse walk_statement().
+// Recurse walk_statement.
 
             walk_statement(thing.catch.block);
 
@@ -8887,9 +9354,9 @@ function jslint_phase4_walk(state) {
 
     function post_t_ternary(thing) {
         if (
-            is_weird(thing.expression[0])
-            || thing.expression[0].constant === true
-            || is_equal(thing.expression[1], thing.expression[2])
+            is_weird(thing.expression[0]) ||
+            thing.expression[0].constant === true ||
+            is_equal(thing.expression[1], thing.expression[2])
         ) {
 
 // test_cause:
@@ -8910,8 +9377,8 @@ function jslint_phase4_walk(state) {
 
             warn("expected_a_b", thing, "&&", "?");
         } else if (
-            thing.expression[1].id === "true"
-            && thing.expression[2].id === "false"
+            thing.expression[1].id === "true" &&
+            thing.expression[2].id === "false"
         ) {
 
 // test_cause:
@@ -8919,8 +9386,8 @@ function jslint_phase4_walk(state) {
 
             warn("expected_a_b", thing, "Boolean(...)", "?");
         } else if (
-            thing.expression[1].id === "false"
-            && thing.expression[2].id === "true"
+            thing.expression[1].id === "false" &&
+            thing.expression[2].id === "true"
         ) {
 
 // test_cause:
@@ -8928,10 +9395,10 @@ function jslint_phase4_walk(state) {
 
             warn("expected_a_b", thing, "!", "?");
         } else if (
-            thing.expression[0].wrapped !== true
-            && (
-                thing.expression[0].id === "||"
-                || thing.expression[0].id === "&&"
+            thing.expression[0].wrapped !== true &&
+            (
+                thing.expression[0].id === "||" ||
+                thing.expression[0].id === "&&"
             )
         ) {
 
@@ -8954,9 +9421,9 @@ function jslint_phase4_walk(state) {
         if (right.id === "(" && right.expression[0].id === "new") {
             warn("unexpected_a_before_b", thing, "+", "new");
         } else if (
-            right.constant
-            || right.id === "{"
-            || (right.id === "[" && right.arity !== "binary")
+            right.constant ||
+            right.id === "{" ||
+            (right.id === "[" && right.arity !== "binary")
         ) {
             warn("unexpected_a", thing, "+");
         }
@@ -8977,15 +9444,16 @@ function jslint_phase4_walk(state) {
             if (!option_dict.convert) {
 
 // test_cause:
+// [" !!0", "post_u_unary", "expected_a_b", "!!", 2]
 // ["!!0", "post_u_unary", "expected_a_b", "!!", 1]
 
                 warn("expected_a_b", thing, "Boolean(...)", "!!");
             }
         } else if (
-            thing.id !== "["
-            && thing.id !== "{"
-            && thing.id !== "function"
-            && thing.id !== "new"
+            thing.id !== "[" &&
+            thing.id !== "{" &&
+            thing.id !== "function" &&
+            thing.id !== "new"
         ) {
             if (thing.expression.constant === true) {
                 thing.constant = true;
@@ -9031,15 +9499,15 @@ function jslint_phase4_walk(state) {
             break;
         }
         if (
-            thing.id !== "("
-            && thing.id !== "&&"
-            && thing.id !== "||"
-            && thing.id !== "="
-            && Array.isArray(thing.expression)
-            && thing.expression.length === 2
-            && (
-                relationop[thing.expression[0].id] === true
-                || relationop[thing.expression[1].id] === true
+            thing.id !== "(" &&
+            thing.id !== "&&" &&
+            thing.id !== "||" &&
+            thing.id !== "=" &&
+            Array.isArray(thing.expression) &&
+            thing.expression.length === 2 &&
+            (
+                relationop[thing.expression[0].id] === true ||
+                relationop[thing.expression[1].id] === true
             )
         ) {
 
@@ -9069,6 +9537,7 @@ function jslint_phase4_walk(state) {
 
 // test_cause:
 // ["typeof 0===0", "pre_b_binary", "expected_string_a", "0", 12]
+// ["typeof 0===0;", "pre_b_binary", "expected_string_a", "0", 12]
 
                         warn("expected_string_a", right);
                     }
@@ -9083,13 +9552,13 @@ function jslint_phase4_walk(state) {
 
                         warn("unexpected_typeof_a", right, value);
                     } else if (
-                        value !== "bigint"
-                        && value !== "boolean"
-                        && value !== "function"
-                        && value !== "number"
-                        && value !== "object"
-                        && value !== "string"
-                        && value !== "symbol"
+                        value !== "bigint" &&
+                        value !== "boolean" &&
+                        value !== "function" &&
+                        value !== "number" &&
+                        value !== "object" &&
+                        value !== "string" &&
+                        value !== "symbol"
                     ) {
 
 // test_cause:
@@ -9253,7 +9722,7 @@ function jslint_phase4_walk(state) {
                 preamble(thing);
                 walk_expression(thing.expression);
 
-// PR-414 - Bugfix - fix fart-body not being walked.
+// PR-414 - Bugfix - Fix fart-body not being walked.
 
                 if (thing.id === "function" || thing.id === "=>") {
 
@@ -9263,7 +9732,7 @@ function jslint_phase4_walk(state) {
 
                     test_cause("function", thing.id);
 
-// Recurse walk_statement().
+// Recurse walk_statement.
 
                     walk_statement(thing.block);
                 }
@@ -9279,8 +9748,8 @@ function jslint_phase4_walk(state) {
 
                     warn("unexpected_a", thing);
                 } else if (
-                    thing.arity === "statement"
-                    || thing.arity === "assignment"
+                    thing.arity === "statement" ||
+                    thing.arity === "assignment"
                 ) {
 
 // test_cause:
@@ -9309,7 +9778,7 @@ function jslint_phase4_walk(state) {
 
             test_cause("isArray");
 
-// Recurse walk_statement().
+// Recurse walk_statement.
 
             thing.forEach(walk_statement);
             return;
@@ -9335,9 +9804,9 @@ function jslint_phase4_walk(state) {
                 warn("unexpected_expression_a", thing);
             }
         } else if (
-            thing.arity !== "statement"
-            && thing.arity !== "assignment"
-            && thing.id !== "import"
+            thing.arity !== "statement" &&
+            thing.arity !== "assignment" &&
+            thing.id !== "import"
         ) {
 
 // test_cause:
@@ -9350,7 +9819,7 @@ function jslint_phase4_walk(state) {
             warn("unexpected_expression_a", thing);
         }
 
-// Recurse walk_statement().
+// Recurse walk_statement.
 
         walk_statement(thing.block);
         walk_statement(thing.else);
@@ -9444,28 +9913,6 @@ function jslint_phase5_whitage(state) {
     const indent_stack = [];
     let closer = "(end)";
     let dot_depth = 0;
-
-// free = false
-
-// cause:
-// "()=>0"
-// "aa()"
-// "aa(0,0)"
-// "function(){}"
-
-// free = true
-
-// cause:
-// "(0)"
-// "(aa)"
-// "aa(0)"
-// "do{}while()"
-// "for(){}"
-// "if(){}"
-// "switch(){}"
-// "while(){}"
-
-    let free = false;
     let indentage;
     let left = token_global;
     let margin = 0;
@@ -9537,7 +9984,14 @@ function jslint_phase5_whitage(state) {
 
     function expected_at(at) {
 
-// Probably deadcode.
+// PR-510 - deadcode-confirmed - <right> is always assigned first. The whitage
+// walk starts in one place, the <token_list>.forEach whose first statement is
+// <right> = <the_token>, and every route to <expected_at> runs inside it.
+//
+// deadcode-revive - Call <expected_at>, or anything that reaches it, from
+// outside that forEach. A pre-pass or post-pass indent check would do it, and
+// <right> would hold whatever the last token left there, or undefined.
+//
 // if (right === undefined) {
 //     right = token_nxt;
 // }
@@ -9550,21 +10004,18 @@ function jslint_phase5_whitage(state) {
             "expected_a_at_b_c",
             right,
             artifact(right),
-
-// Fudge column numbers in warning message.
-
-            at + jslint_fudge,
-            right.from + jslint_fudge
+            at,
+            right.from
         );
     }
 
     function no_space_only() {
         if (
-            left.id !== "(global)"
-            && left.nr + 1 === right.nr
-            && (
-                left.line !== right.line
-                || left.thru !== right.from
+            left.id !== "(global)" &&
+            left.nr + 1 === right.nr &&
+            (
+                left.line !== right.line ||
+                left.thru !== right.from
             )
         ) {
 
@@ -9626,7 +10077,6 @@ function jslint_phase5_whitage(state) {
 
         indentage = indent_stack.pop();
         closer = indentage.closer;
-        free = indentage.free;
         margin = indentage.margin;
         open = indentage.open;
         opening = indentage.opening;
@@ -9725,11 +10175,8 @@ function jslint_phase5_whitage(state) {
         }
         if (left.id === ",") {
             if (
-                !open
-                || (
-                    (free || closer === "]")
-                    && left.line === right.line
-                )
+                !open ||
+                (closer === "]" && left.line === right.line)
             ) {
 
 // test_cause:
@@ -9768,42 +10215,19 @@ function jslint_phase5_whitage(state) {
             return;
         }
         if (
-            right.arity === "binary"
-            && right.id === "("
-            && free
-        ) {
-
-// test_cause:
-// ["String(\nString()\n);", "whitage_default", "aa(0", "(", 0]
-
-            test_cause("aa(0", right.id);
-
-// Commit 3903449a - Inline internal-function no_space() into whitage_default().
-
-            if (right.from < margin) {
-
-// test_cause:
-// ["String(\nString\n()\n);", "whitage_default", "expected_at(margin)", "(", 0]
-
-                test_cause("expected_at(margin)", right.id);
-                expected_at(margin);
-            }
-            return;
-        }
-        if (
-            left.id === "."
-            || left.id === "?."
-            || left.id === "..."
-            || right.id === ","
-            || right.id === ";"
-            || right.id === ":"
-            || (
-                right.arity === "binary"
-                && (right.id === "(" || right.id === "[")
-            )
-            || (
-                right.arity === "function"
-                && left.id !== "function"
+            left.id === "." ||
+            left.id === "?." ||
+            left.id === "..." ||
+            right.id === "," ||
+            right.id === ";" ||
+            right.id === ":" ||
+            (
+                right.arity === "binary" &&
+                (right.id === "(" || right.id === "[")
+            ) ||
+            (
+                right.arity === "function" &&
+                left.id !== "function"
             )
         ) {
 
@@ -9849,18 +10273,18 @@ function jslint_phase5_whitage(state) {
             return;
         }
         if (
-            left.arity === "ternary"
-            || left.id === "case"
-            || left.id === "catch"
-            || left.id === "else"
-            || left.id === "finally"
-            || left.id === "while"
-            || left.id === "await"
-            || right.id === "catch"
-            || right.id === "else"
-            || right.id === "finally"
-            || (right.id === "while" && !right.statement)
-            || (left.id === ")" && right.id === "{")
+            left.arity === "ternary" ||
+            left.id === "case" ||
+            left.id === "catch" ||
+            left.id === "else" ||
+            left.id === "finally" ||
+            left.id === "while" ||
+            left.id === "await" ||
+            right.id === "catch" ||
+            right.id === "else" ||
+            right.id === "finally" ||
+            (right.id === "while" && !right.statement) ||
+            (left.id === ")" && right.id === "{")
         ) {
 
 // test_cause:
@@ -9874,32 +10298,32 @@ function jslint_phase5_whitage(state) {
 
 // There is a space between left and right.
 
-            spaceop[left.id] === true
-            || spaceop[right.id] === true
-            || (
-                left.arity === "binary"
-                && (left.id === "+" || left.id === "-")
-            )
-            || (
-                right.arity === "binary"
-                && (right.id === "+" || right.id === "-")
-            )
-            || left.id === "function"
-            || left.id === ":"
-            || left.id === "async"
-            || (
+            spaceop[left.id] === true ||
+            spaceop[right.id] === true ||
+            (
+                left.arity === "binary" &&
+                (left.id === "+" || left.id === "-")
+            ) ||
+            (
+                right.arity === "binary" &&
+                (right.id === "+" || right.id === "-")
+            ) ||
+            left.id === "function" ||
+            left.id === ":" ||
+            left.id === "async" ||
+            (
                 (
-                    left.identifier
-                    || left.id === "(string)"
-                    || left.id === "(number)"
+                    left.identifier ||
+                    left.id === "(string)" ||
+                    left.id === "(number)"
+                ) &&
+                (
+                    right.identifier ||
+                    right.id === "(string)" ||
+                    right.id === "(number)"
                 )
-                && (
-                    right.identifier
-                    || right.id === "(string)"
-                    || right.id === "(number)"
-                )
-            )
-            || (left.arity === "statement" && right.id !== ";")
+            ) ||
+            (left.arity === "statement" && right.id !== ";")
         ) {
 
 // test_cause:
@@ -9931,7 +10355,6 @@ function jslint_phase5_whitage(state) {
         indentage = {
             closer,
             dot_depth,
-            free,
             margin,
             open,
             opening
@@ -9970,7 +10393,6 @@ function jslint_phase5_whitage(state) {
 // ["String(\n0);", "whitage_opener", "(\n0)", "0", 0]
 
             test_cause("(\n0)", right.value);
-            free = closer === ")" && left.free;
             open = true;
             margin += mode_indent;
             if (right.role === "label") {
@@ -9993,8 +10415,8 @@ function jslint_phase5_whitage(state) {
             return;
         }
         if (
-            (right.statement || right.role === "label")
-            && (!right.for_init || left.line !== right.line)
+            (right.statement || right.role === "label") &&
+            (!right.for_init || left.line !== right.line)
         ) {
 
 // test_cause:
@@ -10008,7 +10430,6 @@ function jslint_phase5_whitage(state) {
                 artifact(right)
             );
         }
-        free = false;
         open = false;
 
 // test_cause:
@@ -10022,7 +10443,7 @@ function jslint_phase5_whitage(state) {
 // Delve into the functions looking for variables that were not assigned or
 // used. If the file imports or exports, then its global object is also delved.
 
-// PR-502 - tighten warning of unused variables to be always on.
+// PR-502 - Tighten warning of unused variables to be always on.
 
     block_list.forEach(delve);
     if (option_dict.white) {
@@ -10051,6 +10472,36 @@ function jslint_phase5_whitage(state) {
 // Commit 3903449a - Cleanup indent for multiline-method-chaining.
 
         if (left.line !== right.line) {
+
+// PR-511 - Binary operators at end-of-line - A tagged template is a binary '`'
+// whose right side is the template. Moving its backtick up would put the line
+// break INSIDE the template and change its value, so it is excluded.
+
+            if (
+                option_dict.beta &&
+                right.arity === "binary" &&
+                right.id !== "." &&
+                right.id !== "?." &&
+                right.id !== "`"
+            ) {
+
+// test_cause:
+// ["
+// let aa = [
+//     0
+//     + 0
+// ];
+// ", "jslint_phase5_whitage", "expected_a_at_end", "+", 5]
+
+                warn(
+                    "expected_a_at_end",
+                    right,
+                    artifact(right),
+                    undefined,
+                    left.line,
+                    left.thru
+                );
+            }
             dot_depth = 0;
             switch (right.id) {
             case ".":
@@ -10063,7 +10514,6 @@ function jslint_phase5_whitage(state) {
         delete left.alive;
         delete left.assigned;
         delete left.calls;
-        delete left.free;
         delete left.open;
         delete left.used;
         left = right;
@@ -10074,7 +10524,149 @@ function jslint_phase5_whitage(state) {
     );
 }
 
+// PR-509 - Add function jslint_phase6_autofix.
+
+function jslint_phase6_autofix(state) {
+
+// PHASE 6. Autofix whitespace-warnings in <source>, and return the result.
+
+    const line_crlf = jslint_rgx_crlf.exec(state.source)?.[0] || "\n";
+    const line_list = state.line_list.map(function ({
+        line_source
+    }) {
+        return line_source;
+    });
+    const warning_list = state.warning_list;
+    if (warning_list.length === 0) {
+        return;
+    }
+    for (const {code} of warning_list) {
+        if (!jslint_autofix_warning_list.includes(code)) {
+            return;
+        }
+    }
+
+// Apply each fix RIGHT-TO-LEFT within a line, so an earlier fix cannot
+// invalidate a later fix's column, and BOTTOM-UP across lines, so every line
+// a splice shifts has already been visited.
+
+    warning_list.slice().sort(function (aa, bb) {
+        return bb.line - aa.line || bb.column - aa.column;
+    }).forEach(function ({
+        a,
+        b,
+        c,
+        code,
+        column,
+        d,
+        line
+    }) {
+        const ii = column - 1;
+        const line_source = line_list[line];
+        let indentage_at;
+        let jj = ii;
+        switch (code) {
+        case "expected_a_at_b_c":
+
+// expected_a_at_b_c IS UNAMBIGUOUSLY INDENTATION. expected_at has FOUR
+// callers, not one: at_margin and one_space warn a token that already belongs
+// at a margin, so the target column belongs to the warned line itself. The
+// other two pass 0, are LABEL placement, and DO warn a mid-line token -
+// unreachable here only because a label always co-raises weird_loop or
+// unused_a, which blocks the pass. So do NOT read "always at a margin" as
+// licence to drop the mid-line branch below.
+
+            indentage_at = line_source.length - line_source.trimStart().length;
+
+// A MID-LINE token cannot be re-indented, but it does not need to be skipped:
+// at_margin fires for tokens that belong AT a margin and therefore on their
+// OWN line. So split first and indent the remainder, which also lands a
+// trailing closer correctly, and is what line-breaks a single-line ternary.
+
+            if (ii !== indentage_at) {
+                line_list.splice(
+                    line,
+                    1,
+                    line_source.slice(0, ii).replace((/ +$/), ""),
+                    " ".repeat(b) + line_source.slice(ii)
+                );
+                return;
+            }
+            line_list[line] = " ".repeat(b) + line_source.trimStart();
+            return;
+        case "expected_a_at_end":
+
+// PR-511 - Move the line-leading operator to just after its left operand, which
+// ends at line <c>, column <d>, and before any trailing comment there.
+
+            line_list[c] = (
+                line_list[c].slice(0, d) + " " + a +
+                line_list[c].slice(d).replace((/ +$/), "")
+            );
+            line_list[line] = (
+                line_source.slice(0, ii) +
+                line_source.slice(ii + a.length).replace((/^ /), "")
+            );
+
+// An operator left ALONE on its line would leave a blank line behind.
+
+            if (line_list[line].trim() === "") {
+                line_list.splice(line, 1);
+            }
+            return;
+        case "expected_line_break_a_b":
+
+// Split the line at the token. The new line lands unindented and the
+// expected_a_at_b_c pass re-indents it on the NEXT recursion - that division
+// of labour is why autofix iterates rather than trying to be complete in one
+// pass.
+
+            line_list.splice(
+                line,
+                1,
+                line_source.slice(0, ii).replace((/ +$/), ""),
+                line_source.slice(ii)
+            );
+            return;
+        }
+
+// Walk back over the whitespace-run immediately before the token.
+
+        while (
+            jj > 0 &&
+            (line_source[jj - 1] === " " || line_source[jj - 1] === "\t")
+        ) {
+            jj -= 1;
+        }
+
+// A run reaching column 0 is INDENTATION or a line-join, not a gap between
+// two tokens on one line. Leave it to a future jslint_autofix_warning_list
+// entry.
+
+        if (jj === 0) {
+            return;
+        }
+        line_list[line] = (
+            line_source.slice(0, jj) +
+            (
+                code === "expected_space_a_b"
+                ? " "
+                : ""
+            ) +
+            line_source.slice(ii)
+        );
+    });
+
+// PR-511 - jslint-autofix - Append <line_crlf> to end of code, if missing.
+
+    if (line_list[line_list.length - 1] !== "") {
+        line_list.push("");
+    }
+    return line_list.slice(jslint_fudge).join(line_crlf);
+}
+
 function jslint_report({
+    autofix,
     exports,
     froms,
     functions,
@@ -10093,6 +10685,11 @@ function jslint_report({
 //  let result = jslint("console.log('hello world')");
 //  let html = jslint_report(result);
 
+    const autofix_blocked = autofix && warnings.some(function ({
+        code
+    }) {
+        return !jslint_autofix_warning_list.includes(code);
+    });
     let html = "";
     let length_80 = 1111;
 
@@ -10370,6 +10967,15 @@ pyNj+JctcQLXenBOCms46aMkenIx45WpXqxxVJQLz/vgpmAVa0fmDv6Pue9xVTBPfVxCUGfj\
     width: 100%;
     word-wrap: break-word;
 }
+.JSLINT_ #JSLINT_REPORT_AUTOFIX > div {
+    background: honeydew;
+}
+.JSLINT_ #JSLINT_REPORT_AUTOFIX.blocked > div {
+    background: pink;
+}
+.JSLINT_ #JSLINT_REPORT_AUTOFIX.blocked > legend {
+    background: #b44;
+}
 .JSLINT_ #JSLINT_REPORT_FUNCTIONS .level {
     background: cornsilk;
     padding: 8px 16px;
@@ -10473,13 +11079,39 @@ pyNj+JctcQLXenBOCms46aMkenIx45WpXqxxVJQLz/vgpmAVa0fmDv6Pue9xVTBPfVxCUGfj\
     background: #b44;
 }
 </style>
-            `).trim() + "\n";
+    `).trim() + "\n";
 
 // Produce the Title.
 
     html += "<div class=\"center\" id=\"JSLINT_REPORT_TITLE\">\n";
     html += "JSLint Report\n";
     html += "</div>\n";
+
+// PR-509 - Produce the Autofix Report.
+
+    html += String(`
+<fieldset
+    class="
+    ${(
+        autofix_blocked
+        ? "blocked"
+        : ""
+    )}
+    "
+    id="JSLINT_REPORT_AUTOFIX"
+>
+<legend>Report: Autofix</legend>
+<div class="center">
+    ${(
+        autofix_blocked
+        ? "Autofix blocked. Fix non-whitespace warnings below."
+        : autofix
+        ? "Autofix successful."
+        : ""
+    )}
+</div>
+</fieldset>
+    `).trim() + "\n";
 
 // Produce the HTML Error Report.
 // <cite>
@@ -10502,13 +11134,13 @@ pyNj+JctcQLXenBOCms46aMkenIx45WpXqxxVJQLz/vgpmAVa0fmDv6Pue9xVTBPfVxCUGfj\
         stack_trace = ""
     }, ii) {
         html += (
-            "<cite>"
-            + address(line, column)
-            + htmlEscape((ii + 1) + ". " + message)
-            + "</cite>"
-            + "<samp>"
-            + htmlEscape(line_source.slice(0, 400) + "\n" + stack_trace)
-            + "</samp>\n"
+            "<cite>" +
+            address(line, column) +
+            htmlEscape((ii + 1) + ". " + message) +
+            "</cite>" +
+            "<samp>" +
+            htmlEscape(line_source.slice(0, 400) + "\n" + stack_trace) +
+            "</samp>\n"
         );
     });
     if (warnings.length === 0) {
@@ -10521,9 +11153,9 @@ pyNj+JctcQLXenBOCms46aMkenIx45WpXqxxVJQLz/vgpmAVa0fmDv6Pue9xVTBPfVxCUGfj\
 
     html += "<fieldset id=\"JSLINT_REPORT_PROPERTIES\">\n";
     html += (
-        "<legend>Report: Properties ("
-        + Object.keys(property).length
-        + ")</legend>\n"
+        "<legend>Report: Properties (" +
+        Object.keys(property).length +
+        ")</legend>\n"
     );
     html += "<label>\n";
     html += "<textarea readonly>";
@@ -10560,7 +11192,7 @@ pyNj+JctcQLXenBOCms46aMkenIx45WpXqxxVJQLz/vgpmAVa0fmDv6Pue9xVTBPfVxCUGfj\
     html += "<div>\n";
     if (json) {
 
-// Bugfix - fix website crashing when linting pure json-object.
+// Bugfix - Fix website crashing when linting pure json-object.
 // return (
 
         html += (
@@ -10602,23 +11234,23 @@ pyNj+JctcQLXenBOCms46aMkenIx45WpXqxxVJQLz/vgpmAVa0fmDv6Pue9xVTBPfVxCUGfj\
         } = the_function;
         let list = Object.keys(context);
         html += (
-            "<div class=\"level level" + htmlEscape(level) + "\">"
-            + address(line, from + 1)
-            + "<dfn>"
-            + (
+            "<div class=\"level level" + htmlEscape(level) + "\">" +
+            address(line, from + 1) +
+            "<dfn>" +
+            (
                 id === "=>"
                 ? (
-                    "\u00ab" + htmlEscape(name) + "\u00bb"
-                    + htmlEscape(signature)
-                    + " =>"
+                    "\u00ab" + htmlEscape(name) + "\u00bb" +
+                    htmlEscape(signature) +
+                    " =>"
                 )
                 : (
                     typeof name === "string"
                     ? "\u00ab" + htmlEscape(name) + "\u00bb"
                     : htmlEscape(name.id)
                 ) + htmlEscape(signature)
-            )
-            + "</dfn>"
+            ) +
+            "</dfn>"
         );
         html += detail("parameter", name_list.map(function ({id}) {
             return id;
@@ -10632,14 +11264,14 @@ pyNj+JctcQLXenBOCms46aMkenIx45WpXqxxVJQLz/vgpmAVa0fmDv6Pue9xVTBPfVxCUGfj\
         }));
         html += detail("closure", list.filter(function (id) {
             return (
-                context[id].closure === true
-                && context[id].scope_declared === the_function
+                context[id].closure === true &&
+                context[id].scope_declared === the_function
             );
         }));
         html += detail("outer", list.filter(function (id) {
             return (
-                context[id].scope_declared.id !== "(global)"
-                && context[id].scope_declared !== the_function
+                context[id].scope_declared.id !== "(global)" &&
+                context[id].scope_declared !== the_function
             );
         }));
         html += detail(module, list.filter(function (id) {
@@ -10691,17 +11323,17 @@ async function jstestDescribe(description, testFunction) {
 // Print test results.
 
     message = (
-        "\n  " + (Date.now() - jstestTimeStart) + "ms"
-        + " - test describe - " + description + "\n"
-        + result.map(function ([
+        "\n  " + (Date.now() - jstestTimeStart) + "ms" +
+        " - test describe - " + description + "\n" +
+        result.map(function ([
             err, description, mode
         ]) {
             jstestItCount += 1;
             if (err) {
                 jstestCountFailed += 1;
                 err = (
-                    "    \u001b[31m\u2718 " + jstestItCount + ". test it - "
-                    + description + "\n" + err.stack + "\u001b[39m"
+                    "    \u001b[31m\u2718 " + jstestItCount + ". test it - " +
+                    description + "\n" + err.stack + "\u001b[39m"
                 );
                 if (mode === "pass") {
                     jstestCountFailed -= 1;
@@ -10709,8 +11341,8 @@ async function jstestDescribe(description, testFunction) {
                 }
             }
             return err || (
-                "    \u001b[32m\u2714 " + jstestItCount + ". test it - "
-                + description + "\u001b[39m"
+                "    \u001b[32m\u2714 " + jstestItCount + ". test it - " +
+                description + "\u001b[39m"
             );
         }).join("\n")
     );
@@ -10744,14 +11376,14 @@ function jstestOnExit(exitCode, mode) {
             (jstestCountFailed || mode === "testsFailed")
             ? "\n\u001b[31m"
             : "\n\u001b[32m"
-        )
-        + "  tests total  - " + jstestCountTotal + "\n"
-        + "  tests failed - " + jstestCountFailed + "\n"
-        + "\n"
-        + "  time finished - "
-        + Number(Date.now() - jstestTimeStart).toLocaleString()
-        + " ms\n"
-        + "\u001b[39m"
+        ) +
+        "  tests total  - " + jstestCountTotal + "\n" +
+        "  tests failed - " + jstestCountFailed + "\n" +
+        "\n" +
+        "  time finished - " +
+        Number(Date.now() - jstestTimeStart).toLocaleString() +
+        " ms\n" +
+        "\u001b[39m"
     );
     if (mode !== "testsFailed") {
         console.error(message);
@@ -11018,9 +11650,9 @@ function v8CoverageListMerge(processCovs) {
             let treesMatching = [];
             parentToChildDict.forEach(function (nested) {
                 if (
-                    nested.length === 1
-                    && nested[0].start === openRange.start
-                    && nested[0].end === openRange.end
+                    nested.length === 1 &&
+                    nested[0].start === openRange.start &&
+                    nested[0].end === openRange.end
                 ) {
                     treesMatching.push(nested[0]);
                 } else {
@@ -11037,7 +11669,7 @@ function v8CoverageListMerge(processCovs) {
             });
             parentToChildDict.clear();
 
-// Recurse mergeTreeList().
+// Recurse mergeTreeList.
 
             resultChildren.push(mergeTreeList(treesMatching));
         }
@@ -11060,7 +11692,7 @@ function v8CoverageListMerge(processCovs) {
                 child = tree.children[ii];
                 if (child.start < offset && offset < child.end) {
 
-// Recurse treeSplit().
+// Recurse treeSplit.
 
                     mid = treeSplit(child, offset);
                     leftChildLen = ii + 1;
@@ -11240,7 +11872,7 @@ function v8CoverageListMerge(processCovs) {
                     tail.length = 0;
                 }
 
-// Recurse normalizeRange().
+// Recurse normalizeRange.
 
                 normalizeRange(head);
                 children.push(head);
@@ -11263,8 +11895,8 @@ function v8CoverageListMerge(processCovs) {
             }
             if (children.length === 1) {
                 if (
-                    children[0].start === tree.start
-                    && children[0].end === tree.end
+                    children[0].start === tree.start &&
+                    children[0].end === tree.end
                 ) {
                     tree.delta += children[0].delta;
                     tree.children = children[0].children;
@@ -11333,7 +11965,14 @@ function v8CoverageListMerge(processCovs) {
 
         let rangeToFuncDict = new Map();
 
-// Probably deadcode.
+// PR-510 - deadcode-confirmed - Every list in <urlToScriptDict> has at least
+// one element. <dictKeyValueAppend> is the only writer and pushes in the same
+// call that creates the list, and nothing pops, splices or filters it.
+//
+// deadcode-revive - Restore <mergeScriptList>, whose signature is commented
+// out above. It took its list from any caller, which is why it needed this
+// guard. Adding a second writer or a filter to the map would also do it.
+//
 // if (scriptCovs.length === 0) {
 //     return undefined;
 // }
@@ -11359,8 +11998,8 @@ function v8CoverageListMerge(processCovs) {
 // This assumes that `ranges` is non-empty (true for valid function coverages).
 
                     (
-                        funcCov.ranges[0].startOffset
-                        + ";" + funcCov.ranges[0].endOffset
+                        funcCov.ranges[0].startOffset +
+                        ";" + funcCov.ranges[0].endOffset
                     ),
                     funcCov
                 );
@@ -11386,7 +12025,13 @@ function v8CoverageListMerge(processCovs) {
             let ranges;
             let trees = [];
 
-// Probably deadcode.
+// PR-510 - deadcode-confirmed - Same as <scriptCovs> above, but with
+// <rangeToFuncDict>. <dictKeyValueAppend> is its only writer and pushes as it
+// creates each list.
+//
+// deadcode-revive - Restore <mergeFuncList>, commented out above, or give the
+// map a second writer.
+//
 // if (funcCovs.length === 0) {
 //     return undefined;
 // }
@@ -11671,17 +12316,17 @@ body {
             });
         }
         txtBorder = (
-            "+" + "-".repeat(padPathname + 2) + "+"
-            + "-".repeat(padLines + 2) + "+"
-            + "-".repeat(padLines + 2) + "+\n"
+            "+" + "-".repeat(padPathname + 2) + "+" +
+            "-".repeat(padLines + 2) + "+" +
+            "-".repeat(padLines + 2) + "+\n"
         );
         txt = "";
         txt += "V8 Coverage Report\n";
         txt += txtBorder;
         txt += (
-            "| " + String("Files covered").padEnd(padPathname, " ") + " | "
-            + String("Lines").padStart(padLines, " ") + " | "
-            + String("Remaining").padStart(padLines, " ") + " |\n"
+            "| " + String("Files covered").padEnd(padPathname, " ") + " | " +
+            String("Lines").padStart(padLines, " ") + " | " +
+            String("Remaining").padStart(padLines, " ") + " |\n"
         );
         txt += txtBorder;
         fileList.forEach(function ({
@@ -11717,17 +12362,17 @@ body {
 
                     "#" + Math.round(
                         (100 - Number(coveragePct)) * 2.21
-                    ).toString(16).padStart(2, "0")
+                    ).toString(16).padStart(2, "0") +
 
 // Badge-color rgb-green.
 
-                    + Math.round(
+                    Math.round(
                         Number(coveragePct) * 2.21
-                    ).toString(16).padStart(2, "0")
+                    ).toString(16).padStart(2, "0") +
 
 // Badge-color rgb-blue.
 
-                    + "00"
+                    "00"
                 );
                 str1 = "coverage";
                 str2 = coveragePct + " %";
@@ -11757,21 +12402,21 @@ body {
                 pathname = "";
             }
             txt += (
-                "| "
-                + String("./" + pathname).padEnd(padPathname, " ") + " | "
-                + String(
+                "| " +
+                String("./" + pathname).padEnd(padPathname, " ") + " | " +
+                String(
                     modeCoverageIgnoreFile + " " + coveragePct + " %"
-                ).padStart(padLines, " ") + " | "
-                + " ".repeat(padLines) + " |\n"
+                ).padStart(padLines, " ") + " | " +
+                " ".repeat(padLines) + " |\n"
             );
             txt += (
                 "| " + "*".repeat(
                     Math.round(0.01 * coveragePct * padPathname)
-                ).padEnd(padPathname, "_") + " | "
-                + String(
+                ).padEnd(padPathname, "_") + " | " +
+                String(
                     linesCovered + " / " + linesTotal
-                ).padStart(padLines, " ") + " | "
-                + String(
+                ).padStart(padLines, " ") + " | " +
+                String(
                     (linesTotal - linesCovered) + " / " + linesTotal
                 ).padStart(padLines, " ") + " |\n"
             );
@@ -11786,14 +12431,14 @@ body {
             ${(
                 modeIndex
                 ? (
-                    "<a href=\"" + (pathname || "index") + ".html\">. / "
-                    + pathname + "</a><br>"
+                    "<a href=\"" + (pathname || "index") + ".html\">. / " +
+                    pathname + "</a><br>"
                 )
                 : (
-                    "<a href=\""
-                    + "../".repeat(pathname.split("/").length - 1)
-                    + "index.html\">. / </a>"
-                    + pathname + "<br>"
+                    "<a href=\"" +
+                    "../".repeat(pathname.split("/").length - 1) +
+                    "index.html\">. / </a>" +
+                    pathname + "<br>"
                 )
             )}
         <div class="percentbar">
@@ -11867,19 +12512,24 @@ body {
                     }) {
                         if (inHole !== isHole) {
                             lineHtml += htmlEscape(chunk);
-                            lineHtml += "</span><span";
+                            lineHtml += (
+                                (isHole && ignoreLine)
+                                ? "</span><span class=\"ignore\">"
+                                : isHole
+                                ? "</span><span class=\"uncovered\">"
 
-// Coverage-hack - Ugly-hack around possible deadcode where isHole is always
-// true.
+// PR-510 - deadcode-dispelled - The branch below is live: a hole ending before
+// end-of-line re-enters with <isHole> undefined, and that bare span closes it.
+// Line coverage hides this, the condition above running either way:
+//
+// function aa(bb) {
+//     return bb && bb.cc;
+//               ^^^^^^^^ this hole ends at the ";", not at end-of-line
+// }
+// aa(0);
 
-                            if (isHole) {
-                                lineHtml += (
-                                    ignoreLine
-                                    ? " class=\"ignore\""
-                                    : " class=\"uncovered\""
-                                );
-                            }
-                            lineHtml += ">";
+                                : "</span><span>"
+                            );
                             chunk = "";
                             inHole = isHole;
                         }
@@ -12041,8 +12691,8 @@ function sentinel() {}
 // child_process.spawn and child_process.spawnSync without the shell option set.
 
                     shell: (
-                        processArgv0.endsWith(".bat")
-                        || processArgv0.endsWith(".cmd")
+                        processArgv0.endsWith(".bat") ||
+                        processArgv0.endsWith(".cmd")
                     ),
                     stdio: ["ignore", 1, 2]
                 }
@@ -12175,14 +12825,14 @@ function sentinel() {}
                 lineList.forEach(function (elem) {
                     if (!(
                         (
-                            elem.startOffset <= startOffset
-                            && startOffset <= elem.endOffset
+                            elem.startOffset <= startOffset &&
+                            startOffset <= elem.endOffset
                         ) || (
-                            elem.startOffset <= endOffset
-                            && endOffset <= elem.endOffset
+                            elem.startOffset <= endOffset &&
+                            endOffset <= elem.endOffset
                         ) || (
-                            startOffset <= elem.startOffset
-                            && elem.endOffset <= endOffset
+                            startOffset <= elem.startOffset &&
+                            elem.endOffset <= endOffset
                         )
                     )) {
                         return;
@@ -12279,6 +12929,7 @@ jslint_export = Object.freeze(
             jslint,
             jslint_apidoc,
             jslint_assert,
+            jslint_autofix_warning_list,
             jslint_charset_ascii,
             jslint_cli,
             jslint_edition,
@@ -12287,6 +12938,7 @@ jslint_export = Object.freeze(
             jslint_phase3_parse,
             jslint_phase4_walk,
             jslint_phase5_whitage,
+            jslint_phase6_autofix,
             jslint_report,
             jstestDescribe,
             jstestIt,
