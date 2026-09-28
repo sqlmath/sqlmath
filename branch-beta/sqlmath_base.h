@@ -92,7 +92,7 @@ shRollupFetch
         },
         {
             "header": "\n#if defined(SRC_SQLMATH_BASE_C2)\n",
-            "url": "https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/arrow.h"
+            "url": "https://github.com/lightgbm-org/LightGBM/blob/v4.7.0/include/LightGBM/arrow.h"
         },
         {
             "replaceList": [
@@ -103,7 +103,7 @@ shRollupFetch
                     "substr": ""
                 }
             ],
-            "url": "https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h"
+            "url": "https://github.com/lightgbm-org/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h"
         },
         {
             "footer": "\n}\n#endif // SRC_SQLMATH_BASE_C2\n",
@@ -128,7 +128,7 @@ shRollupFetch
                     "substr": ""
                 }
             ],
-            "url": "https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h"
+            "url": "https://github.com/lightgbm-org/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h"
         },
         {
             "comment": true,
@@ -3286,7 +3286,13 @@ static void tc_sha256_compress(unsigned int *iv, const uint8_t *data)
 
 
 /*
-file https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/arrow.h
+repo https://github.com/lightgbm-org/LightGBM/tree/v4.7.0
+committed 2026-07-18T20:10:03Z
+*/
+
+
+/*
+file https://github.com/lightgbm-org/LightGBM/blob/v4.7.0/include/LightGBM/arrow.h
 */
 
 #if defined(SRC_SQLMATH_BASE_C2)
@@ -3383,7 +3389,7 @@ struct ArrowArrayStream {
 
 
 /*
-file https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h
+file https://github.com/lightgbm-org/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h
 */
 /*!
  * \file c_api.h
@@ -5225,7 +5231,7 @@ INLINE_FUNCTION void LGBM_SetLastError(const char* msg) {
 
 
 /*
-file https://github.com/microsoft/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h
+file https://github.com/lightgbm-org/LightGBM/blob/v4.7.0/include/LightGBM/c_api.h
 */
 static void LGBM_dlsym() {
 LGBM_DLSYM(LGBM_GetLastError);

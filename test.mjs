@@ -698,7 +698,7 @@ SELECT 401 AS c401, 402 AS c402, 403 AS c403
 UNION ALL
 VALUES
     (501, 502.0123, 5030123456789),
-    (601, '602', '603_\"\x01\x08\x09\x0a\x0b\x0c\x0d\x0e'),
+    (601, '602', '603_"\u0001\u0008\u0009\u000a\u000b\u000c\u000d\u000e'),
     (?1, ?2, ?3),
     (CAST(?1 AS TEXT), CAST(?2 AS TEXT), CAST(?3 AS TEXT)),
     (
