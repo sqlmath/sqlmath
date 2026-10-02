@@ -510,14 +510,14 @@ HAVING COUNT(*) > 1;
 | In-database ML | ✅ LightGBM | ❌ | ❌ | ❌ |
 | Zero data shuffle | ✅ | ❌ | ✅ | ✅ |
 | Statistical functions | ✅ 20+ | ✅ | ✅ | ❌ |
-| Browser support | ✅ WASM | ❌ | ❌ | ❌ |
+| Browser support | ✅ WASM + LightGBM | ❌ | ✅ DuckDB-Wasm | ✅ official WASM |
 | Single file deployment | ✅ | ❌ | ✅ | ✅ |
 | Memory efficiency | ✅ Streaming | ❌ In-memory | ✅ | ✅ |
 
 **Choose sqlmath when:**
 - You need ML training/inference inside the database
 - Your data is already in SQLite
-- You want browser-based analytics (WebAssembly)
+- You want ML training/inference in the browser (WebAssembly)
 - You need statistical functions beyond basic SQL
 
 **Choose pandas when:**
