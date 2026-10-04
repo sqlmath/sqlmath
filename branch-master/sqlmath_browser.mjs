@@ -408,16 +408,16 @@ ALTER TABLE tradebot_tech_intra_month DROP COLUMN xdate2;
                 : "tradebot_historical"
             );
             tableChart = (
-                "chart._{{ii}}_tradebot_historical_"
-                + dateInterval.replace((
+                "chart._{{ii}}_tradebot_historical_" +
+                dateInterval.replace((
                     /\W/g
                 ), "_")
             );
             optionDict = {
                 title: (
-                    "tradebot historical performance vs market - "
-                    + dateInterval
-                    + (
+                    "tradebot historical performance vs market - " +
+                    dateInterval +
+                    (
                         dateInterval === "1 day"
                         ? "\n[ updated " + new Date(
                             tradebotState.datenow + "Z"
@@ -944,16 +944,16 @@ INSERT INTO chart._{{ii}}_tradebot_buysell_history (
                 : "tradebot_tech_intra"
             );
             tableChart = (
-                "chart._{{ii}}_tradebot_tech_intra_"
-                + dateInterval.replace((
+                "chart._{{ii}}_tradebot_tech_intra_" +
+                dateInterval.replace((
                     /\W/g
                 ), "_")
             );
             optionDict = {
                 title: (
-                    "tradebot technical intraday - "
-                    + dateInterval
-                    + (
+                    "tradebot technical intraday - " +
+                    dateInterval +
+                    (
                         dateInterval === "1 day"
                         ? "\n[ updated " + new Date(
                             tradebotState.datenow + "Z"
@@ -1258,11 +1258,11 @@ function fileSave({
     ), "_").replace((
         /_([^_]+)$/
     ), (
-        "_"
-        + new Date().toISOString().slice(0, 10).replace((
+        "_" +
+        new Date().toISOString().slice(0, 10).replace((
             /-/g
-        ), "")
-        + ".$1"
+        ), "") +
+        ".$1"
     ));
     UI_FILE_SAVE.click();
 }
@@ -1517,8 +1517,8 @@ function onContextmenu(evt) {
     });
     // contextmenu - show
     UI_CONTEXTMENU.children[0].innerHTML = (
-        "crud operation for:<br>"
-        + stringHtmlSafe(baton.dbtableFullname || "script editor")
+        "crud operation for:<br>" +
+        stringHtmlSafe(baton.dbtableFullname || "script editor")
     );
     uiFadeIn(UI_CONTEXTMENU);
     UI_CONTEXTMENU.style.left = Math.max(0, Math.min(
@@ -1579,13 +1579,13 @@ async function onDbAction(evt) {
     <td><span class="crudLabel">{{selected_column}}</span></td>
     <td class="tdInput">
     <select class="crudInput">
-            `)
-            + baton.colList.slice(1).map(function (col) {
+            `) +
+            baton.colList.slice(1).map(function (col) {
                 return (
                     `<option>${stringHtmlSafe(col)}</option>`
                 );
-            }).join("")
-            + (`
+            }).join("") +
+            (`
     </select>
     </td>
 </tr>
@@ -1621,22 +1621,22 @@ TO
     "{{new_column}}";
 
 -- row - insert
-INSERT INTO ${baton.dbtableFullname} (`
-            + JSON.stringify(baton.colList.slice(1), undefined, 4).slice(1, -1)
-            + `) VALUES (\n`
-            + `${"    NULL,\n".repeat(baton.colList.length - 2)}    NULL`
-            + `
+INSERT INTO ${baton.dbtableFullname} (` +
+            JSON.stringify(baton.colList.slice(1), undefined, 4).slice(1, -1) +
+            `) VALUES (\n` +
+            `${"    NULL,\n".repeat(baton.colList.length - 2)}    NULL` +
+            `
 );
 
 -- row - update
 UPDATE
     ${baton.dbtableFullname}
 SET
-`
-            + baton.colList.slice(1).map(function (col) {
+` +
+            baton.colList.slice(1).map(function (col) {
                 return `    "${col}" = NULL`;
-            }).join(",\n")
-            + `
+            }).join(",\n") +
+            `
 WHERE
     rowid = ${baton.rowid};
 
@@ -1757,8 +1757,8 @@ RENAME TO
     switch (action) {
     case "dbDetach":
         if (!window.confirm(
-            "are you sure you want to detach and close database"
-            + ` ${baton.dbName} ?`
+            "are you sure you want to detach and close database" +
+            ` ${baton.dbName} ?`
         )) {
             return;
         }
@@ -1791,8 +1791,8 @@ RENAME TO
         return;
     case "dbrowDelete":
         if (!window.confirm(
-            `are you sure you want to delete row with rowid = ${baton.rowid}`
-            + ` in table ${baton.dbtableFullname} ?`
+            `are you sure you want to delete row with rowid = ${baton.rowid}` +
+            ` in table ${baton.dbtableFullname} ?`
         )) {
             return;
         }
@@ -1854,11 +1854,11 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
             db: baton.db,
             responseType: "list",
             sql: (
-                `SELECT `
-                + baton.colList.map(function (col) {
+                `SELECT ` +
+                baton.colList.map(function (col) {
                     return `COLUMNTYPE(${col}) AS ${col}`;
-                }).join(",")
-                + ` FROM ${baton.dbtableName};`
+                }).join(",") +
+                ` FROM ${baton.dbtableName};`
             )
         });
         columntypeList = columntypeList[0][1];
@@ -1876,9 +1876,9 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
 -- SELECT * FROM __sqlite_table_01;
 -- ALTER TABLE __sqlite_table_01 RENAME TO __sqlite_table_02;
 -- EXEC sp_rename '__sqlite_table_01', '__sqlite_table_02';
-            `).trim()
-            + `\nCREATE TABLE __sqlite_table_01 (\n`
-            + baton.colList.map(function (col, ii) {
+            `).trim() +
+            `\nCREATE TABLE __sqlite_table_01 (\n` +
+            baton.colList.map(function (col, ii) {
                 col = col.replace((/\W/g), "_");
                 col = col.replace((/^\d/), "_$&");
                 // #define SQLITE_INTEGER  1
@@ -1900,12 +1900,12 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
                 default:
                     return `    ${col} INTEGER`;
                 }
-            }).join(",\n")
-            + `\n);\n`
-            + data.map(function (rowList) {
+            }).join(",\n") +
+            `\n);\n` +
+            data.map(function (rowList) {
                 return (
-                    `INSERT INTO __sqlite_table_01 VALUES (`
-                    + rowList.map(function (val, ii) {
+                    `INSERT INTO __sqlite_table_01 VALUES (` +
+                    rowList.map(function (val, ii) {
                         switch (val !== null && columntypeList[ii]) {
                         case 1: // SQLITE_INTEGER
                         case 2: // SQLITE_FLOAT
@@ -1919,8 +1919,8 @@ DELETE FROM ${baton.dbtableName} WHERE rowid = ${baton.rowid};
                         default:
                             return "NULL";
                         }
-                    }).join(",")
-                    + `);\n`
+                    }).join(",") +
+                    `);\n`
                 );
             }).join("")
         );
@@ -2195,8 +2195,8 @@ function svgAnimate(elem, attrDict, mode) {
         // animate - linear fxnow, fxprg
         if (!isDone) {
             fxprg = (
-                UI_ANIMATE_DURATION_INV
-                * (UI_ANIMATE_DATENOW - datebeg)
+                UI_ANIMATE_DURATION_INV *
+                (UI_ANIMATE_DATENOW - datebeg)
             );
             if (mode === "easeout") {
                 fxprg = Math.sqrt(fxprg);
@@ -2603,15 +2603,15 @@ SELECT COUNT(*) AS rowcount FROM ${dbtableName};
                 : ` data-dbtype="table"`
             );
             html += (
-                ` title="`
-                + stringHtmlSafe((
+                ` title="` +
+                stringHtmlSafe((
                     `right-click for crud operation\n\n`
                 ) + JSON.stringify({
                     dbtableFullname,
                     rowCount,
                     colList //jslint-ignore-line
-                }, undefined, 4))
-                + `"`
+                }, undefined, 4)) +
+                `"`
             );
             html += `>${ii + 1}. `;
             html += (
@@ -2652,8 +2652,8 @@ async function uiTryCatch(func, ...argList) {
         await waitAsync(500);
         UI_LOADING_COUNTER -= 1;
         if (
-            UI_LOADING_COUNTER === 0
-            && UI_LOADING.style.visibility === "visible"
+            UI_LOADING_COUNTER === 0 &&
+            UI_LOADING.style.visibility === "visible"
         ) {
             uiFadeOut(UI_LOADING);
         }
@@ -3048,9 +3048,9 @@ SELECT
         }
         // skip ticklabel, if elemTick is not contained in xlabelList
         if (
-            isXaxis
-            && xlabelList.length
-            && !xlabelList.hasOwnProperty(tickx - 1)
+            isXaxis &&
+            xlabelList.length &&
+            !xlabelList.hasOwnProperty(tickx - 1)
         ) {
             return elemTick;
         }
@@ -3193,11 +3193,11 @@ SELECT
         }
         if (evt.deltaY < 0) {
             xmid = (
-                evt.pageX
-                - elemCanvasFixed.getBoundingClientRect().left
-                - window.scrollX
-                + document.documentElement.clientLeft
-                - plotLeft
+                evt.pageX -
+                elemCanvasFixed.getBoundingClientRect().left -
+                window.scrollX +
+                document.documentElement.clientLeft -
+                plotLeft
             ) / plotWidth;
             xscale = 0.8000; // zoom-in
         }
@@ -3229,9 +3229,9 @@ SELECT
         // get closest-series-point to mouse as pointHovered
         pointObj = xpixelToPointDictHovered[mouseX];
         if (
-            !pointObj
-            || pointObj === pointHovered
-            || pointObj.series.isHidden
+            !pointObj ||
+            pointObj === pointHovered ||
+            pointObj.series.isHidden
         ) {
             return;
         }
@@ -3356,11 +3356,11 @@ SELECT
                 /^#(..)(..)(..)$/
             ), function (ignore, rr, gg, bb) {
                 return (
-                    "rgb("
-                    + Math.round(0.5 * parseInt(rr, 16)) + ","
-                    + Math.round(0.5 * parseInt(gg, 16)) + ","
-                    + Math.round(0.5 * parseInt(bb, 16))
-                    + ")"
+                    "rgb(" +
+                    Math.round(0.5 * parseInt(rr, 16)) + "," +
+                    Math.round(0.5 * parseInt(gg, 16)) + "," +
+                    Math.round(0.5 * parseInt(bb, 16)) +
+                    ")"
                 );
             });
             seriesHovered.pointListSeries.forEach(function (pointObj) {
@@ -3620,8 +3620,7 @@ SELECT
             ]).some(function (multiple, ii, list) {
                 tickMultiple = multiple;
                 return (
-                    2 * tickInterval
-                    <=
+                    2 * tickInterval <=
                     tickMultiple + (list[ii + 1] || tickMultiple)
                 );
             });
@@ -3674,8 +3673,8 @@ SELECT
                 tickx, elemTick
             ]) {
                 if (
-                    elemTick.isXaxis !== isXaxis
-                    || tickxList.indexOf(Number(tickx)) !== -1
+                    elemTick.isXaxis !== isXaxis ||
+                    tickxList.indexOf(Number(tickx)) !== -1
                 ) {
                     return;
                 }
@@ -3775,8 +3774,8 @@ SELECT
                 if (elemGridline) {
                     svgAttrSet(elemGridline, {
                         d: (
-                            `M ${plotLeft} ${yy}`
-                            + ` L ${canvasWidth - plotRight} ${yy}`
+                            `M ${plotLeft} ${yy}` +
+                            ` L ${canvasWidth - plotRight} ${yy}`
                         )
                     });
                 }
@@ -3819,8 +3818,8 @@ SELECT
             if (elemGridline) {
                 svgAnimate(elemGridline, {
                     d: (
-                        `M ${plotLeft} ${yy + CRISPY}`
-                        + ` L ${canvasWidth - plotRight} ${yy + CRISPY}`
+                        `M ${plotLeft} ${yy + CRISPY}` +
+                        ` L ${canvasWidth - plotRight} ${yy + CRISPY}`
                     )
                 });
             }
@@ -3882,10 +3881,10 @@ SELECT
                 }
                 if (
                     128 <= (
-                        Math.pow(pointX - pointXPrv, 2)
-                        + Math.pow(pointY - pointYPrv, 2)
-                    )
-                    || ii + 1 === pointListSeries.length
+                        Math.pow(pointX - pointXPrv, 2) +
+                        Math.pow(pointY - pointYPrv, 2)
+                    ) ||
+                    ii + 1 === pointListSeries.length
                 ) {
                     pointXPrv = pointX;
                     pointYPrv = pointY;
@@ -3910,9 +3909,9 @@ SELECT
                         ? "M"
                         // lineto
                         : "L"
-                    )
+                    ) +
                     // + ` ${pointX} ${pointY} `
-                    + ` ${pointXPrv} ${pointYPrv} `
+                    ` ${pointXPrv} ${pointYPrv} `
                 );
             });
             // if not isBarchart, then redraw elemGraph
@@ -4292,28 +4291,28 @@ async function uitableAjax(baton, {
             return;
         }
         viewRowBeg = Math.max(0, Math.round(
-            rowCount
-            * elemScroller.scrollTop
-            / (elemScroller.scrollHeight - 1 * UI_ROW_HEIGHT)
+            rowCount *
+            elemScroller.scrollTop /
+            (elemScroller.scrollHeight - 1 * UI_ROW_HEIGHT)
         ));
         viewRowEnd = Math.min(rowCount, Math.round(viewRowBeg + UI_VIEW_SIZE));
         // update table-view info
         elemInfo.textContent = (
-            "showing "
-            + new Intl.NumberFormat().format(viewRowBeg + 1)
-            + " to "
-            + new Intl.NumberFormat().format(viewRowEnd)
-            + " of "
-            + new Intl.NumberFormat().format(rowCount)
-            + " rows"
+            "showing " +
+            new Intl.NumberFormat().format(viewRowBeg + 1) +
+            " to " +
+            new Intl.NumberFormat().format(viewRowEnd) +
+            " of " +
+            new Intl.NumberFormat().format(rowCount) +
+            " rows"
         );
         // skip expensive table-redraw, if scroll-point is within boundaries
         if (
-            contentElem.dataset.init !== "0"
-            && baton.rowOffset <= Math.max(0, viewRowBeg - 1 * UI_VIEW_SIZE)
-            && (
-                Math.min(rowCount, viewRowEnd + 1 * UI_VIEW_SIZE)
-                <= baton.rowOffset + UI_PAGE_SIZE
+            contentElem.dataset.init !== "0" &&
+            baton.rowOffset <= Math.max(0, viewRowBeg - 1 * UI_VIEW_SIZE) &&
+            (
+                Math.min(rowCount, viewRowEnd + 1 * UI_VIEW_SIZE) <=
+                baton.rowOffset + UI_PAGE_SIZE
             )
         ) {
             return;
@@ -4442,15 +4441,15 @@ function uitableCreate(baton) {
         <table class="uitableTable">
             <thead>
                 <tr>
-        `)
-        + jsonHtmlSafe(baton.colList).map(function (col, ii) {
+        `) +
+        jsonHtmlSafe(baton.colList).map(function (col, ii) {
             return (
                 ii === 0
                 ? `<th title="${col}" data-sort="asc">${col}</th>`
                 : `<th title="${col}">${col}</th>`
             );
-        }).join("")
-        + (`
+        }).join("") +
+        (`
                 </tr>
             </thead>
             <tbody>
