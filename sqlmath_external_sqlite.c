@@ -278,11 +278,19 @@ shRollupFetch
 +// hack-sqlite - fix warning
 +      ZipfileLFH lfh = { 0 };
 
+-    char *z = strchr(&zIn[i],'\\');
++// hack-sqlite - fix warning
++    const char *z = strchr(&zIn[i],'\\');
+
 -  uLong nData;
 -  sqlite3_int64 sz;
 +// hack-sqlite - fix warning
 +  uLong nData;
 +  uLong sz;
+
+-  zTail = strrchr(zName, '_');
++// hack-sqlite - fix warning
++  zTail = (char *) strrchr(zName, '_');
 
 -#if HAVE_GMTIME_R
 +// hack-sqlite - HAVE_GMTIME_S
@@ -142036,7 +142044,8 @@ SQLITE_PRIVATE void sqlite3MarkAllShadowTablesOf(sqlite3 *db, Table *pTab){
 SQLITE_PRIVATE int sqlite3ShadowTableName(sqlite3 *db, const char *zName){
   char *zTail;                  /* Pointer to the last "_" in zName */
   Table *pTab;                  /* Table that zName is a shadow of */
-  zTail = strrchr(zName, '_');
+// hack-sqlite - fix warning
+  zTail = (char *) strrchr(zName, '_');
   if( zTail==0 ) return 0;
   *zTail = 0;
   pTab = sqlite3FindTable(db, zName, 0);
@@ -148064,7 +148073,8 @@ static void unistrFunc(
   }
   i = j = 0;
   while( i<nIn ){
-    char *z = strchr(&zIn[i],'\\');
+// hack-sqlite - fix warning
+    const char *z = strchr(&zIn[i],'\\');
     if( z==0 ){
       n = nIn - i;
       memmove(&zOut[j], &zIn[i], n);

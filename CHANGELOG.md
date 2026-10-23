@@ -7,6 +7,9 @@
 - sqlite - Add similar error-handling from builtin-sql-function PERCENTILE() into custom-sql-function QUANTILE().
 - none
 
+# v2026.10.30
+- jslint - Report: Functions - Copy each signature from its source text, keeping default values.
+
 # v2026.9.29
 - sqlmath - Update sql-function WIN_COINFLIP2() to calculate 'biasba50' - balanced-accuracy-minus-50.
 - jslint-ecma - Add Exponentiation-assignment-operator '**=' support.
