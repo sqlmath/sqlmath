@@ -1394,7 +1394,7 @@ SELECT DOUBLEARRAY_JSONTO(DOUBLEARRAY_JSONFROM($valIn)) AS result;
         }));
     });
     jstestIt((
-        "test_sqlite_extension_idate_xxx handling-behavior"
+        "test sqlite-extension-idate_xxx handling-behavior"
     ), async function test_sqlite_extension_idate_xxx() {
         let db = await dbOpenAsync({});
         let promiseList = [];

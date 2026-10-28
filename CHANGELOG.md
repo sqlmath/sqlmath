@@ -8,6 +8,8 @@
 - none
 
 # v2026.10.30
+- jstest - Collect each describe's tests before running them, and report every failed, hung or crashed test at exit.
+- jslint - Revamp cause-based testing on option trace and V8 block coverage, replacing the runtime hook and option test_cause.
 - jslint - Report: Functions - Copy each signature from its source text, keeping default values.
 
 # v2026.9.29

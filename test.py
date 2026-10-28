@@ -25,7 +25,7 @@ test.py.
 python test.py --verbose
 """
 
-import datetime
+import datetime as dt
 import json
 import math
 import pathlib
@@ -291,7 +291,7 @@ class TestCaseSqlmath(unittest.TestCase):
             [(), "[]"],
             [(None,), "[null]"],
             # 16. 0.misc
-            [datetime.datetime.now(datetime.timezone.utc), Exception],
+            [dt.datetime.now(dt.timezone.utc), Exception],
             [noop, Exception],
             [re.compile(""), Exception],
         ]):
@@ -492,7 +492,7 @@ SELECT * FROM testDbExecAsync2;
             [(), Exception],
             [(None,), Exception],
             # 16. 0.misc
-            [datetime.datetime.now(datetime.timezone.utc), Exception],
+            [dt.datetime.now(dt.timezone.utc), Exception],
             [noop, Exception],
             [re.compile(""), Exception],
         ]:
