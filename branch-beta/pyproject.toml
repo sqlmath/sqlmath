@@ -1,7 +1,7 @@
 [build-system]
 requires = [
-    "pycodestyle == 2.14.0",
-    "ruff >= 0.15.1",
+    "pycodestyle >= 2.15.0",
+    "ruff >= 0.17.2",
 ]
 build-backend = "setup"
 backend-path = ["."]
@@ -9,7 +9,7 @@ backend-path = ["."]
 # https://peps.python.org/pep-0621/#example
 [project]
 name = "sqlmath"
-version = "2026.9.29"
+version = "2026.10.30"
 description = "sqlite for data-science"
 authors = [{name = "Kai Zhu"}]
 maintainers = []
