@@ -67,12 +67,12 @@
      "functionName": "assertInt64",
      "ranges": [
       {
-       "count": 14319,
+       "count": 14311,
        "endOffset": 6514,
        "startOffset": 6100
       },
       {
-       "count": 14312,
+       "count": 14304,
        "endOffset": 6321,
        "startOffset": 6285
       },
@@ -150,7 +150,7 @@
      "functionName": "assertOrThrow",
      "ranges": [
       {
-       "count": 50297,
+       "count": 50279,
        "endOffset": 7832,
        "startOffset": 7534
       },
@@ -417,12 +417,12 @@
      "functionName": "dbCallAsync",
      "ranges": [
       {
-       "count": 3995,
+       "count": 3994,
        "endOffset": 29219,
        "startOffset": 22160
       },
       {
-       "count": 2068,
+       "count": 2067,
        "endOffset": 22571,
        "startOffset": 22547
       },
@@ -447,49 +447,49 @@
        "startOffset": 24595
       },
       {
-       "count": 384,
+       "count": 386,
        "endOffset": 24988,
        "startOffset": 24896
       },
       {
-       "count": 2053,
+       "count": 2052,
        "endOffset": 25316,
        "startOffset": 25018
       },
       {
-       "count": 6358,
+       "count": 6351,
        "endOffset": 25349,
        "startOffset": 25316
       },
       {
-       "count": 2053,
+       "count": 2052,
        "endOffset": 27517,
        "startOffset": 25349
       },
       {
-       "count": 2028,
+       "count": 2027,
        "endOffset": 27685,
        "startOffset": 27517
       },
       {
-       "count": 1944,
+       "count": 1943,
        "endOffset": 27685,
        "startOffset": 27595
       },
       {
        "count": 2,
-       "endOffset": 28651,
+       "endOffset": 28618,
        "startOffset": 27685
       },
       {
-       "count": 1,
-       "endOffset": 28826,
-       "startOffset": 28653
+       "count": 0,
+       "endOffset": 28651,
+       "startOffset": 28618
       },
       {
        "count": 2,
        "endOffset": 28973,
-       "startOffset": 28826
+       "startOffset": 28653
       },
       {
        "count": 84,
@@ -503,12 +503,12 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 16286,
+       "count": 16278,
        "endOffset": 27025,
        "startOffset": 25413
       },
       {
-       "count": 16285,
+       "count": 16277,
        "endOffset": 25481,
        "startOffset": 25461
       },
@@ -518,22 +518,22 @@
        "startOffset": 25483
       },
       {
-       "count": 8218,
+       "count": 8210,
        "endOffset": 25568,
        "startOffset": 25554
       },
       {
-       "count": 10148,
+       "count": 10140,
        "endOffset": 25592,
        "startOffset": 25577
       },
       {
-       "count": 14287,
+       "count": 14279,
        "endOffset": 26316,
        "startOffset": 25601
       },
       {
-       "count": 14280,
+       "count": 14272,
        "endOffset": 25833,
        "startOffset": 25780
       },
@@ -584,12 +584,12 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 18270,
+       "count": 18261,
        "endOffset": 27191,
        "startOffset": 27091
       },
       {
-       "count": 2030,
+       "count": 2029,
        "endOffset": 27178,
        "startOffset": 27155
       }
@@ -895,12 +895,12 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 1552,
+       "count": 1416,
        "endOffset": 33967,
        "startOffset": 33865
       },
       {
-       "count": 494,
+       "count": 357,
        "endOffset": 33959,
        "startOffset": 33935
       }
@@ -1360,7 +1360,7 @@
      "functionName": "jsbatonCreate",
      "ranges": [
       {
-       "count": 2066,
+       "count": 2065,
        "endOffset": 44173,
        "startOffset": 43730
       }
@@ -1669,7 +1669,7 @@
      "functionName": "noop",
      "ranges": [
       {
-       "count": 264,
+       "count": 265,
        "endOffset": 52961,
        "startOffset": 52861
       }
@@ -1758,7 +1758,7 @@
      "functionName": "dbFinalizationRegistry",
      "ranges": [
       {
-       "count": 20,
+       "count": 19,
        "endOffset": 54081,
        "startOffset": 53724
       },
