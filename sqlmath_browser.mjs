@@ -4554,4 +4554,10 @@ function waitAsync(timeout) {
 }
 
 // init
-window.addEventListener("load", init);
+// iOS Safari can fire load before this module finishes evaluating
+// (top-level await in sqlmath.mjs), so init directly if already loaded.
+if (document.readyState === "complete") {
+    init();
+} else {
+    window.addEventListener("load", init);
+}
