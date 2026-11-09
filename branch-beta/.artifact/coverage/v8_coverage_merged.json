@@ -67,12 +67,12 @@
      "functionName": "assertInt64",
      "ranges": [
       {
-       "count": 14327,
+       "count": 14311,
        "endOffset": 6514,
        "startOffset": 6100
       },
       {
-       "count": 14320,
+       "count": 14304,
        "endOffset": 6321,
        "startOffset": 6285
       },
@@ -150,7 +150,7 @@
      "functionName": "assertOrThrow",
      "ranges": [
       {
-       "count": 50315,
+       "count": 50279,
        "endOffset": 7832,
        "startOffset": 7534
       },
@@ -417,12 +417,12 @@
      "functionName": "dbCallAsync",
      "ranges": [
       {
-       "count": 3996,
+       "count": 3994,
        "endOffset": 29219,
        "startOffset": 22160
       },
       {
-       "count": 2069,
+       "count": 2067,
        "endOffset": 22571,
        "startOffset": 22547
       },
@@ -447,32 +447,32 @@
        "startOffset": 24595
       },
       {
-       "count": 382,
+       "count": 381,
        "endOffset": 24988,
        "startOffset": 24896
       },
       {
-       "count": 2054,
+       "count": 2052,
        "endOffset": 25316,
        "startOffset": 25018
       },
       {
-       "count": 6365,
+       "count": 6351,
        "endOffset": 25349,
        "startOffset": 25316
       },
       {
-       "count": 2054,
+       "count": 2052,
        "endOffset": 27517,
        "startOffset": 25349
       },
       {
-       "count": 2029,
+       "count": 2027,
        "endOffset": 27685,
        "startOffset": 27517
       },
       {
-       "count": 1945,
+       "count": 1943,
        "endOffset": 27685,
        "startOffset": 27595
       },
@@ -503,12 +503,12 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 16294,
+       "count": 16278,
        "endOffset": 27025,
        "startOffset": 25413
       },
       {
-       "count": 16293,
+       "count": 16277,
        "endOffset": 25481,
        "startOffset": 25461
       },
@@ -518,22 +518,22 @@
        "startOffset": 25483
       },
       {
-       "count": 8226,
+       "count": 8210,
        "endOffset": 25568,
        "startOffset": 25554
       },
       {
-       "count": 10156,
+       "count": 10140,
        "endOffset": 25592,
        "startOffset": 25577
       },
       {
-       "count": 14295,
+       "count": 14279,
        "endOffset": 26316,
        "startOffset": 25601
       },
       {
-       "count": 14288,
+       "count": 14272,
        "endOffset": 25833,
        "startOffset": 25780
       },
@@ -584,12 +584,12 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 18279,
+       "count": 18261,
        "endOffset": 27191,
        "startOffset": 27091
       },
       {
-       "count": 2031,
+       "count": 2029,
        "endOffset": 27178,
        "startOffset": 27155
       }
@@ -895,12 +895,12 @@
      "functionName": "",
      "ranges": [
       {
-       "count": 1590,
+       "count": 1483,
        "endOffset": 33967,
        "startOffset": 33865
       },
       {
-       "count": 396,
+       "count": 467,
        "endOffset": 33959,
        "startOffset": 33935
       }
@@ -1360,7 +1360,7 @@
      "functionName": "jsbatonCreate",
      "ranges": [
       {
-       "count": 2067,
+       "count": 2065,
        "endOffset": 44173,
        "startOffset": 43730
       }
@@ -1758,7 +1758,7 @@
      "functionName": "dbFinalizationRegistry",
      "ranges": [
       {
-       "count": 21,
+       "count": 19,
        "endOffset": 54081,
        "startOffset": 53724
       },
